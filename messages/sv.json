@@ -1,0 +1,189 @@
+{
+  "common": {
+    "appName": "Kravhantering",
+    "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
+    "loading": "Laddar...",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "delete": "Ta bort",
+    "edit": "Redigera",
+    "create": "Skapa ny",
+    "search": "Sök",
+    "filter": "Filtrera",
+    "export": "Exportera",
+    "print": "Skriv ut",
+    "yes": "Ja",
+    "no": "Nej",
+    "back": "Tillbaka",
+    "confirm": "Bekräfta",
+    "actions": "Åtgärder",
+    "noResults": "Inga resultat hittades",
+    "showArchived": "Visa arkiverade",
+    "clearFilters": "Rensa filter",
+    "none": "Alla",
+    "showFilters": "Visa filter",
+    "hideFilters": "Dölj filter",
+    "reactivate": "Återaktivera",
+    "archive": "Arkivera",
+    "archiveTooltip": "Arkivera kravet permanent",
+    "editTooltip": "Redigera kravets innehåll",
+    "close": "Stäng",
+    "version": "Version",
+    "versions": "Versioner",
+    "restoreVersion": "Återskapa version",
+    "createdAt": "Skapad",
+    "updatedAt": "Uppdaterad"
+  },
+  "nav": {
+    "catalog": "Kravkatalog",
+    "areas": "Kravområden",
+    "packages": "Kravpaket",
+    "scenarios": "Kravscenarier",
+    "statuses": "Kravstatusar",
+    "types": "Kravtyper",
+    "taxonomy": "Taxonomi",
+    "iso25010": "ISO 25010",
+    "responsibilityAreas": "Ansvarsområden",
+    "implementationTypes": "Genomförandeformer"
+  },
+  "notFound": {
+    "title": "404",
+    "description": "Sidan kunde inte hittas",
+    "goHome": "Gå till kravkatalogen"
+  },
+  "requirement": {
+    "uniqueId": "Krav-ID",
+    "description": "Beskrivning",
+    "acceptanceCriteria": "Acceptanskriterie",
+    "area": "Kravområde",
+    "category": "Kravkategori",
+    "type": "Kravtyp",
+    "typeCategory": "ISO-kategori",
+    "requiresTesting": "Testbar",
+    "reference": "Kravreferens",
+    "scenario": "Kravscenario",
+    "newRequirement": "Nytt krav",
+    "editRequirement": "Redigera krav",
+    "status": "Kravstatus",
+    "hasPendingVersion": "Det finns en väntande version",
+    "statusLabel": {
+      "Utkast": "Utkast",
+      "Granskning": "Granskning",
+      "Publicerad": "Publicerad",
+      "Arkiverad": "Arkiverad"
+    },
+    "archiveConfirm": "Är du säker på att du vill arkivera detta krav?",
+    "deleteDraftConfirm": "Är du säker på att du vill ta bort detta utkast? Utkastet raderas permanent.",
+    "reactivateConfirm": "Är du säker på att du vill återaktivera detta krav?",
+    "transitionToGranskning": "Granskning ↗",
+    "transitionToPublicerad": "Publicera ↗",
+    "transitionToUtkast": "← Utkast",
+    "transitionToArkiverad": "Arkivera",
+    "transitionTooltipGranskning": "Redo för granskning",
+    "transitionTooltipPublicerad": "Godkänn och publicera",
+    "transitionTooltipUtkast": "Återgå till arbeta med utkast",
+    "sendBackToDraftConfirm": "Är du säker på att du vill återgå till ett utkast? Du kan redigera kravet efteråt.",
+    "restoreConfirm": "Är du säker på att du vill återskapa denna version? En ny version skapas med data från den valda versionen.",
+    "versionHistory": "Versionshistorik",
+    "currentVersion": "Aktuell version",
+    "versionCreated": "Version skapad",
+    "olderVersions": "Äldre versioner",
+    "showOlderVersions": "Visa äldre versioner",
+    "hideOlderVersions": "Dölj äldre versioner",
+    "showNewerVersions": "Visa nyare versioner",
+    "hideNewerVersions": "Dölj nyare versioner",
+    "lifecycle": "Livscykel",
+    "pendingVersionBanner": "En nyare version (v{version}) är under {status}",
+    "displayedVersion": "Visar version",
+    "viewingOlderVersion": "Visar version {version}",
+    "backToLatest": "Tillbaka till senaste versionen"
+  },
+  "area": {
+    "prefix": "Prefix",
+    "name": "Namn",
+    "description": "Beskrivning",
+    "owner": "Kravägare",
+    "newArea": "Nytt kravområde",
+    "editArea": "Redigera kravområde"
+  },
+  "category": {
+    "business": "Verksamhetskrav",
+    "it": "IT-krav",
+    "supplier": "Leverantörskrav"
+  },
+  "type": {
+    "functional": "Funktionellt",
+    "nonFunctional": "Icke-funktionellt"
+  },
+  "package": {
+    "name": "Namn",
+    "responsibilityArea": "Ansvarsområde",
+    "implementationType": "Genomförandeform",
+    "needsReference": "Behovsreferens",
+    "newPackage": "Nytt kravpaket",
+    "editPackage": "Redigera kravpaket",
+    "linkedRequirements": "Kopplade krav"
+  },
+  "scenario": {
+    "name": "Namn",
+    "description": "Beskrivning",
+    "owner": "Kravscenarioägare",
+    "newScenario": "Nytt kravscenario",
+    "editScenario": "Redigera kravscenario"
+  },
+  "statusMgmt": {
+    "name": "Namn",
+    "color": "Färg",
+    "sortOrder": "Sorteringsordning",
+    "isSystem": "Systemstatus",
+    "newStatus": "Ny status",
+    "editStatus": "Redigera status",
+    "cannotDeleteSystem": "Systemstatusar kan inte tas bort",
+    "cannotDeleteInUse": "Går inte att ta bort – statusen används av befintliga krav"
+  },
+  "reference": {
+    "name": "Namn",
+    "uri": "URI",
+    "owner": "Referensägare",
+    "addReference": "Lägg till referens"
+  },
+  "responsibilityAreaMgmt": {
+    "name": "Namn",
+    "title": "Ansvarsområden",
+    "newItem": "Nytt ansvarsområde",
+    "editItem": "Redigera ansvarsområde"
+  },
+  "implementationTypeMgmt": {
+    "name": "Namn",
+    "title": "Genomförandeformer",
+    "newItem": "Ny genomförandeform",
+    "editItem": "Redigera genomförandeform"
+  },
+  "theme": {
+    "light": "Ljust",
+    "dark": "Mörkt",
+    "auto": "Auto",
+    "toggle": "Växla tema",
+    "pickColor": "Färgtema",
+    "themes": {
+      "default": "Standard",
+      "navy": "Marinblå",
+      "purple": "Lila",
+      "magenta": "Magenta",
+      "forest": "Skog",
+      "sunset": "Solnedgång",
+      "ocean": "Hav",
+      "berry": "Bär",
+      "autumn": "Höst",
+      "nordic": "Nordisk"
+    }
+  },
+  "language": {
+    "sv": "Svenska",
+    "en": "English",
+    "switchTo": "Byt språk"
+  },
+  "footer": {
+    "copyright": "© {year} Bidragsgivare till Kravhantering. Alla rättigheter förbehållna."
+  }
+}

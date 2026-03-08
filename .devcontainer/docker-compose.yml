@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      # Mount the root folder that contains .git
+      - ..:/workspace:cached
+      # Persistent npm cache for faster installs across rebuilds (commented out - not needed for infrequent rebuilds)
+      # - npm-cache:/home/vscode/.npm
+    # Keep container running
+    command: sleep infinity
+    # Set environment variables
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
+    # Proper init system for signal handling and zombie process reaping
+    init: true
+
+# volumes:
+# npm-cache:

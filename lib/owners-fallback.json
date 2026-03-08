@@ -1,0 +1,20 @@
+[
+  {
+    "id": "owner-1",
+    "first_name": "Anna",
+    "last_name": "Johansson",
+    "email": "anna.johansson@example.com"
+  },
+  {
+    "id": "owner-2",
+    "first_name": "Erik",
+    "last_name": "Lindberg",
+    "email": "erik.lindberg@example.com"
+  },
+  {
+    "id": "owner-3",
+    "first_name": "Maria",
+    "last_name": "Svensson",
+    "email": "maria.svensson@example.com"
+  }
+]

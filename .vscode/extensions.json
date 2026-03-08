@@ -1,0 +1,38 @@
+{
+  "recommendations": [
+    // Code formatting and linting
+    "biomejs.biome",
+    "DavidAnson.vscode-markdownlint",
+
+    // Spell checking
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-swedish",
+
+    // React and Next.js
+    "bradlc.vscode-tailwindcss",
+
+    // Auto-complete and IntelliSense
+    "christian-kohler.path-intellisense",
+    "christian-kohler.npm-intellisense",
+
+    // HTML/CSS/Tailwind
+    //"formulahendry.auto-rename-tag",
+    //"pranaygp.vscode-css-peek",
+
+    // i18n support
+    //"lokalise.i18n-ally",
+
+    // Productivity
+    "gruntfuggly.todo-tree",
+    "usernamehw.errorlens",
+    "bierner.markdown-mermaid",
+    "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+    "qwtel.sqlite-viewer",
+
+    // GitHub Copilot
+    "GitHub.copilot-chat",
+    "openai.chatgpt",
+
+    // Testing
+    "vitest.explorer"  ]
+}

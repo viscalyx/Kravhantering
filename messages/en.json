@@ -1,0 +1,189 @@
+{
+  "common": {
+    "appName": "Requirements Management",
+    "appDescription": "A web application for requirements management that supports the company's requirements model and process",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create new",
+    "search": "Search",
+    "filter": "Filter",
+    "export": "Export",
+    "print": "Print",
+    "yes": "Yes",
+    "no": "No",
+    "back": "Back",
+    "confirm": "Confirm",
+    "actions": "Actions",
+    "noResults": "No results found",
+    "showArchived": "Show archived",
+    "clearFilters": "Clear filters",
+    "none": "All",
+    "showFilters": "Show filters",
+    "hideFilters": "Hide filters",
+    "reactivate": "Reactivate",
+    "archive": "Archive",
+    "archiveTooltip": "Permanently archive the requirement",
+    "editTooltip": "Edit the requirement content",
+    "close": "Close",
+    "version": "Version",
+    "versions": "Versions",
+    "restoreVersion": "Restore version",
+    "createdAt": "Created",
+    "updatedAt": "Updated"
+  },
+  "nav": {
+    "catalog": "Requirements Catalog",
+    "areas": "Requirement Areas",
+    "packages": "Requirement Packages",
+    "scenarios": "Requirement Scenarios",
+    "statuses": "Requirement Statuses",
+    "types": "Requirement Types",
+    "taxonomy": "Taxonomy",
+    "iso25010": "ISO 25010",
+    "responsibilityAreas": "Responsibility Areas",
+    "implementationTypes": "Implementation Types"
+  },
+  "notFound": {
+    "title": "404",
+    "description": "Page not found",
+    "goHome": "Go to catalog"
+  },
+  "requirement": {
+    "uniqueId": "Requirement ID",
+    "description": "Description",
+    "acceptanceCriteria": "Acceptance criteria",
+    "area": "Requirement area",
+    "category": "Requirement category",
+    "type": "Requirement type",
+    "typeCategory": "ISO category",
+    "requiresTesting": "Testable",
+    "reference": "Requirement reference",
+    "scenario": "Requirement scenario",
+    "newRequirement": "New requirement",
+    "editRequirement": "Edit requirement",
+    "status": "Status",
+    "hasPendingVersion": "There is a pending version",
+    "statusLabel": {
+      "Utkast": "Draft",
+      "Granskning": "Review",
+      "Publicerad": "Published",
+      "Arkiverad": "Archived"
+    },
+    "archiveConfirm": "Are you sure you want to archive this requirement?",
+    "deleteDraftConfirm": "Are you sure you want to delete this draft? The draft will be permanently removed.",
+    "reactivateConfirm": "Are you sure you want to reactivate this requirement?",
+    "transitionToGranskning": "Review ↗",
+    "transitionToPublicerad": "Publish ↗",
+    "transitionToUtkast": "← Draft",
+    "transitionToArkiverad": "Archive",
+    "transitionTooltipGranskning": "Ready for review",
+    "transitionTooltipPublicerad": "Approve and publish",
+    "transitionTooltipUtkast": "Return to working on draft",
+    "sendBackToDraftConfirm": "Are you sure you want to return to a draft? You will be able to edit the requirement after.",
+    "restoreConfirm": "Are you sure you want to restore this version? A new version will be created with data from the selected version.",
+    "versionHistory": "Version history",
+    "currentVersion": "Current version",
+    "versionCreated": "Version created",
+    "olderVersions": "Older versions",
+    "showOlderVersions": "Show older versions",
+    "hideOlderVersions": "Hide older versions",
+    "showNewerVersions": "Show newer versions",
+    "hideNewerVersions": "Hide newer versions",
+    "lifecycle": "Lifecycle",
+    "pendingVersionBanner": "A newer version (v{version}) is in {status}",
+    "displayedVersion": "Showing version",
+    "viewingOlderVersion": "Viewing version {version}",
+    "backToLatest": "Back to latest version"
+  },
+  "area": {
+    "prefix": "Prefix",
+    "name": "Name",
+    "description": "Description",
+    "owner": "Requirement owner",
+    "newArea": "New requirement area",
+    "editArea": "Edit requirement area"
+  },
+  "category": {
+    "business": "Business requirement",
+    "it": "IT requirement",
+    "supplier": "Supplier requirement"
+  },
+  "type": {
+    "functional": "Functional",
+    "nonFunctional": "Non-functional"
+  },
+  "package": {
+    "name": "Name",
+    "responsibilityArea": "Responsibility area",
+    "implementationType": "Implementation type",
+    "needsReference": "Needs reference",
+    "newPackage": "New requirement package",
+    "editPackage": "Edit requirement package",
+    "linkedRequirements": "Linked requirements"
+  },
+  "scenario": {
+    "name": "Name",
+    "description": "Description",
+    "owner": "Scenario owner",
+    "newScenario": "New requirement scenario",
+    "editScenario": "Edit requirement scenario"
+  },
+  "statusMgmt": {
+    "name": "Name",
+    "color": "Color",
+    "sortOrder": "Sort order",
+    "isSystem": "System status",
+    "newStatus": "New status",
+    "editStatus": "Edit status",
+    "cannotDeleteSystem": "System statuses cannot be deleted",
+    "cannotDeleteInUse": "Cannot delete — status is used by existing requirements"
+  },
+  "reference": {
+    "name": "Name",
+    "uri": "URI",
+    "owner": "Reference owner",
+    "addReference": "Add reference"
+  },
+  "responsibilityAreaMgmt": {
+    "name": "Name",
+    "title": "Responsibility Areas",
+    "newItem": "New responsibility area",
+    "editItem": "Edit responsibility area"
+  },
+  "implementationTypeMgmt": {
+    "name": "Name",
+    "title": "Implementation Types",
+    "newItem": "New implementation type",
+    "editItem": "Edit implementation type"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "auto": "Auto",
+    "toggle": "Toggle theme",
+    "pickColor": "Color theme",
+    "themes": {
+      "default": "Default",
+      "navy": "Navy",
+      "purple": "Purple",
+      "magenta": "Magenta",
+      "forest": "Forest",
+      "sunset": "Sunset",
+      "ocean": "Ocean",
+      "berry": "Berry",
+      "autumn": "Autumn",
+      "nordic": "Nordic"
+    }
+  },
+  "language": {
+    "sv": "Svenska",
+    "en": "English",
+    "switchTo": "Switch language"
+  },
+  "footer": {
+    "copyright": "© {year} Contributors to Requirements Management. All rights reserved."
+  }
+}

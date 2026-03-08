@@ -1,0 +1,113 @@
+name: Quality Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  quality-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # cSpell:ignore typegen
+      - name: Generate Cloudflare types
+        run: npm run cf-typegen
+
+      - name: Generate site data
+        run: npm run build:sitedata
+
+      - name: Run formatting check
+        run: npm run format:check
+
+      - name: Run spell check
+        run: npm run spell:check
+
+      - name: Run lint check
+        run: npm run lint
+
+      - name: Run markdown lint check
+        run: npm run lint:md
+
+      - name: Run type check
+        run: npm run type-check
+
+      - name: Run tests and coverage
+        run: npm run test:coverage
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: ./test-results
+          retention-days: 7
+
+      - name: Upload code coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: code-coverage
+          path: ./coverage
+          retention-days: 7
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage/lcov.info
+          fail_ci_if_error: false
+          verbose: true
+          token: ${{ vars.CODECOV_TOKEN }}
+
+      - name: Upload test results to Codecov
+        if: always() && !cancelled()
+        uses: codecov/test-results-action@v1
+        with:
+          directory: ./test-results
+          flags: components, app, lib
+          token: ${{ vars.CODECOV_TOKEN }}
+          verbose: true
+
+      - name: Comment on PR if checks failed
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const checks = [
+              { name: 'Formatting', command: 'npm run format:check' },
+              { name: 'Spell Check', command: 'npm run spell:check' },
+              { name: 'Lint', command: 'npm run lint' },
+              { name: 'Markdown Lint', command: 'npm run lint:md' },
+              { name: 'Type Check', command: 'npm run type-check' }
+            ];
+
+            let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';
+            body += checks.map(check =>
+              `- **${check.name}**: Run \`${check.command}\` locally to see and fix issues`
+            ).join('\n');
+            body += '\n\nYou can also run `npm run check` to run all checks at once.';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            })

@@ -1,0 +1,498 @@
+import { relations } from 'drizzle-orm'
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
+
+// ─── Requirement Areas ───────────────────────────────────────────────────────
+
+export const requirementAreas = sqliteTable(
+  'requirement_areas',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    prefix: text('prefix').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    ownerId: text('owner_id'),
+    nextSequence: integer('next_sequence').notNull().default(1),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [uniqueIndex('uq_requirement_areas_prefix').on(table.prefix)],
+)
+
+export const requirementAreasRelations = relations(
+  requirementAreas,
+  ({ many }) => ({
+    requirements: many(requirements),
+  }),
+)
+
+// ─── Requirement Categories ──────────────────────────────────────────────────
+
+export const requirementCategories = sqliteTable(
+  'requirement_categories',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_requirement_categories_name_sv').on(table.nameSv),
+    uniqueIndex('uq_requirement_categories_name_en').on(table.nameEn),
+  ],
+)
+
+// ─── Requirement Types ───────────────────────────────────────────────────────
+
+export const requirementTypes = sqliteTable(
+  'requirement_types',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_requirement_types_name_sv').on(table.nameSv),
+    uniqueIndex('uq_requirement_types_name_en').on(table.nameEn),
+  ],
+)
+
+export const requirementTypesRelations = relations(
+  requirementTypes,
+  ({ many }) => ({
+    typeCategories: many(requirementTypeCategories),
+  }),
+)
+
+// ─── Requirement Type Categories (ISO/IEC 25010:2023) ────────────────────────
+
+export const requirementTypeCategories = sqliteTable(
+  'requirement_type_categories',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+    requirementTypeId: integer('requirement_type_id')
+      .notNull()
+      .references(() => requirementTypes.id),
+    parentId: integer('parent_category_id'),
+  },
+  table => [
+    index('idx_requirement_type_categories_requirement_type_id').on(
+      table.requirementTypeId,
+    ),
+    index('idx_requirement_type_categories_parent_category_id').on(
+      table.parentId,
+    ),
+  ],
+)
+
+export const requirementTypeCategoriesRelations = relations(
+  requirementTypeCategories,
+  ({ one, many }) => ({
+    requirementType: one(requirementTypes, {
+      fields: [requirementTypeCategories.requirementTypeId],
+      references: [requirementTypes.id],
+    }),
+    parent: one(requirementTypeCategories, {
+      fields: [requirementTypeCategories.parentId],
+      references: [requirementTypeCategories.id],
+      relationName: 'parentChild',
+    }),
+    children: many(requirementTypeCategories, {
+      relationName: 'parentChild',
+    }),
+  }),
+)
+
+// ─── Requirement Statuses ────────────────────────────────────────────────────
+
+export const requirementStatuses = sqliteTable(
+  'requirement_statuses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    color: text('color').notNull(),
+    isSystem: integer('is_system', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+  },
+  table => [
+    uniqueIndex('uq_requirement_statuses_name_sv').on(table.nameSv),
+    uniqueIndex('uq_requirement_statuses_name_en').on(table.nameEn),
+  ],
+)
+
+export const requirementStatusesRelations = relations(
+  requirementStatuses,
+  ({ many }) => ({
+    versions: many(requirementVersions),
+    transitionsFrom: many(requirementStatusTransitions, {
+      relationName: 'fromStatus',
+    }),
+    transitionsTo: many(requirementStatusTransitions, {
+      relationName: 'toStatus',
+    }),
+  }),
+)
+
+// ─── Requirement Status Transitions ──────────────────────────────────────────
+
+export const requirementStatusTransitions = sqliteTable(
+  'requirement_status_transitions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    fromStatusId: integer('from_requirement_status_id')
+      .notNull()
+      .references(() => requirementStatuses.id),
+    toStatusId: integer('to_requirement_status_id')
+      .notNull()
+      .references(() => requirementStatuses.id),
+  },
+  table => [
+    uniqueIndex('uq_requirement_status_transitions_from_to').on(
+      table.fromStatusId,
+      table.toStatusId,
+    ),
+  ],
+)
+
+export const requirementStatusTransitionsRelations = relations(
+  requirementStatusTransitions,
+  ({ one }) => ({
+    fromStatus: one(requirementStatuses, {
+      fields: [requirementStatusTransitions.fromStatusId],
+      references: [requirementStatuses.id],
+      relationName: 'fromStatus',
+    }),
+    toStatus: one(requirementStatuses, {
+      fields: [requirementStatusTransitions.toStatusId],
+      references: [requirementStatuses.id],
+      relationName: 'toStatus',
+    }),
+  }),
+)
+
+// ─── Requirements (stable identity) ─────────────────────────────────────────
+
+export const requirements = sqliteTable(
+  'requirements',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uniqueId: text('unique_id').notNull(),
+    requirementAreaId: integer('requirement_area_id')
+      .notNull()
+      .references(() => requirementAreas.id),
+    sequenceNumber: integer('sequence_number').notNull(),
+    isArchived: integer('is_archived', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    uniqueIndex('uq_requirements_unique_id').on(table.uniqueId),
+    index('idx_requirements_requirement_area_id').on(table.requirementAreaId),
+    index('idx_requirements_is_archived').on(table.isArchived),
+  ],
+)
+
+export const requirementsRelations = relations(
+  requirements,
+  ({ one, many }) => ({
+    area: one(requirementAreas, {
+      fields: [requirements.requirementAreaId],
+      references: [requirementAreas.id],
+    }),
+    versions: many(requirementVersions),
+    packageItems: many(requirementPackageItems),
+  }),
+)
+
+// ─── Requirement Versions (full snapshot per version) ────────────────────────
+
+export const requirementVersions = sqliteTable(
+  'requirement_versions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    requirementId: integer('requirement_id')
+      .notNull()
+      .references(() => requirements.id),
+    versionNumber: integer('version_number').notNull(),
+    description: text('description').notNull(),
+    acceptanceCriteria: text('acceptance_criteria'),
+    requirementCategoryId: integer('requirement_category_id').references(
+      () => requirementCategories.id,
+    ),
+    requirementTypeId: integer('requirement_type_id').references(
+      () => requirementTypes.id,
+    ),
+    requirementTypeCategoryId: integer(
+      'requirement_type_category_id',
+    ).references(() => requirementTypeCategories.id),
+    statusId: integer('requirement_status_id')
+      .notNull()
+      .references(() => requirementStatuses.id),
+    // requirement_status_id: 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad
+    requiresTesting: integer('is_testing_required', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    editedAt: text('edited_at'),
+    publishedAt: text('published_at'),
+    archivedAt: text('archived_at'),
+    createdBy: text('created_by'),
+  },
+  table => [
+    index('idx_requirement_versions_requirement_id').on(table.requirementId),
+    uniqueIndex('uq_requirement_versions_requirement_id_version_number').on(
+      table.requirementId,
+      table.versionNumber,
+    ),
+  ],
+)
+
+export const requirementVersionsRelations = relations(
+  requirementVersions,
+  ({ one, many }) => ({
+    requirement: one(requirements, {
+      fields: [requirementVersions.requirementId],
+      references: [requirements.id],
+    }),
+    status: one(requirementStatuses, {
+      fields: [requirementVersions.statusId],
+      references: [requirementStatuses.id],
+    }),
+    category: one(requirementCategories, {
+      fields: [requirementVersions.requirementCategoryId],
+      references: [requirementCategories.id],
+    }),
+    type: one(requirementTypes, {
+      fields: [requirementVersions.requirementTypeId],
+      references: [requirementTypes.id],
+    }),
+    typeCategory: one(requirementTypeCategories, {
+      fields: [requirementVersions.requirementTypeCategoryId],
+      references: [requirementTypeCategories.id],
+    }),
+    references: many(requirementReferences),
+    versionScenarios: many(requirementVersionScenarios),
+  }),
+)
+
+// ─── Requirement References ──────────────────────────────────────────────────
+
+export const requirementReferences = sqliteTable(
+  'requirement_references',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    requirementVersionId: integer('requirement_version_id')
+      .notNull()
+      .references(() => requirementVersions.id),
+    name: text('name').notNull(),
+    uri: text('uri'),
+    owner: text('owner'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    index('idx_requirement_references_requirement_version_id').on(
+      table.requirementVersionId,
+    ),
+  ],
+)
+
+export const requirementReferencesRelations = relations(
+  requirementReferences,
+  ({ one }) => ({
+    version: one(requirementVersions, {
+      fields: [requirementReferences.requirementVersionId],
+      references: [requirementVersions.id],
+    }),
+  }),
+)
+
+// ─── Requirement Scenarios ───────────────────────────────────────────────────
+
+export const requirementScenarios = sqliteTable('requirement_scenarios', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  nameSv: text('name_sv').notNull(),
+  nameEn: text('name_en').notNull(),
+  descriptionSv: text('description_sv'),
+  descriptionEn: text('description_en'),
+  owner: text('owner'),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+export const requirementScenariosRelations = relations(
+  requirementScenarios,
+  ({ many }) => ({
+    versionScenarios: many(requirementVersionScenarios),
+  }),
+)
+
+// ─── Requirement Version ↔ Scenario (join table) ────────────────────────────
+
+export const requirementVersionScenarios = sqliteTable(
+  'requirement_version_scenarios',
+  {
+    requirementVersionId: integer('requirement_version_id')
+      .notNull()
+      .references(() => requirementVersions.id),
+    scenarioId: integer('requirement_scenario_id')
+      .notNull()
+      .references(() => requirementScenarios.id),
+  },
+  table => [
+    primaryKey({
+      columns: [table.requirementVersionId, table.scenarioId],
+    }),
+  ],
+)
+
+export const requirementVersionScenariosRelations = relations(
+  requirementVersionScenarios,
+  ({ one }) => ({
+    version: one(requirementVersions, {
+      fields: [requirementVersionScenarios.requirementVersionId],
+      references: [requirementVersions.id],
+    }),
+    scenario: one(requirementScenarios, {
+      fields: [requirementVersionScenarios.scenarioId],
+      references: [requirementScenarios.id],
+    }),
+  }),
+)
+
+// ─── Package Responsibility Areas (taxonomy) ────────────────────────────────
+
+export const packageResponsibilityAreas = sqliteTable(
+  'package_responsibility_areas',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_package_responsibility_areas_name_sv').on(table.nameSv),
+    uniqueIndex('uq_package_responsibility_areas_name_en').on(table.nameEn),
+  ],
+)
+
+// ─── Package Implementation Types (taxonomy) ─────────────────────────────────
+
+export const packageImplementationTypes = sqliteTable(
+  'package_implementation_types',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_package_implementation_types_name_sv').on(table.nameSv),
+    uniqueIndex('uq_package_implementation_types_name_en').on(table.nameEn),
+  ],
+)
+
+// ─── Requirement Packages ────────────────────────────────────────────────────
+
+export const requirementPackages = sqliteTable('requirement_packages', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  nameSv: text('name_sv').notNull(),
+  nameEn: text('name_en').notNull(),
+  packageResponsibilityAreaId: integer(
+    'package_responsibility_area_id',
+  ).references(() => packageResponsibilityAreas.id),
+  packageImplementationTypeId: integer(
+    'package_implementation_type_id',
+  ).references(() => packageImplementationTypes.id),
+  createdAt: text('created_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+})
+
+export const requirementPackagesRelations = relations(
+  requirementPackages,
+  ({ one, many }) => ({
+    responsibilityArea: one(packageResponsibilityAreas, {
+      fields: [requirementPackages.packageResponsibilityAreaId],
+      references: [packageResponsibilityAreas.id],
+    }),
+    implementationType: one(packageImplementationTypes, {
+      fields: [requirementPackages.packageImplementationTypeId],
+      references: [packageImplementationTypes.id],
+    }),
+    items: many(requirementPackageItems),
+  }),
+)
+
+// ─── Requirement Package Items ───────────────────────────────────────────────
+
+export const requirementPackageItems = sqliteTable(
+  'requirement_package_items',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    packageId: integer('requirement_package_id')
+      .notNull()
+      .references(() => requirementPackages.id),
+    requirementId: integer('requirement_id')
+      .notNull()
+      .references(() => requirements.id),
+    requirementVersionId: integer('requirement_version_id')
+      .notNull()
+      .references(() => requirementVersions.id),
+    needsReference: text('needs_reference'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    index('idx_requirement_package_items_requirement_package_id').on(
+      table.packageId,
+    ),
+    index('idx_requirement_package_items_requirement_id').on(
+      table.requirementId,
+    ),
+  ],
+)
+
+export const requirementPackageItemsRelations = relations(
+  requirementPackageItems,
+  ({ one }) => ({
+    package: one(requirementPackages, {
+      fields: [requirementPackageItems.packageId],
+      references: [requirementPackages.id],
+    }),
+    requirement: one(requirements, {
+      fields: [requirementPackageItems.requirementId],
+      references: [requirements.id],
+    }),
+    version: one(requirementVersions, {
+      fields: [requirementPackageItems.requirementVersionId],
+      references: [requirementVersions.id],
+    }),
+  }),
+)

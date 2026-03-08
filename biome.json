@@ -1,0 +1,50 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "noDuplicateClasses": "on",
+        "useSortedAttributes": "on",
+        "useSortedInterfaceMembers": "on",
+        "useSortedKeys": "off",
+        "useSortedProperties": "on"
+      }
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "formatter": {
+      "indentStyle": "space",
+      "enabled": true
+    }
+  },
+  "files": {
+    "ignoreUnknown": true
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "useEditorconfig": true
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "asNeeded",
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "indentStyle": "space"
+    }
+  },
+  "json": {
+    "formatter": {
+      "indentStyle": "space"
+    }
+  },
+  "linter": {},
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  }
+}

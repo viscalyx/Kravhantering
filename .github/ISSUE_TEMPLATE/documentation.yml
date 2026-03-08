@@ -1,0 +1,32 @@
+name: Documentation
+description: Report documentation issues or suggest improvements
+title: '[Docs]: '
+labels: ['documentation', 'triage']
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the documentation.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What documentation issue did you find?
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Location
+      description: Where is this documentation located?
+      placeholder: Link to the file or section
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Improvement
+      description: How can this be improved?

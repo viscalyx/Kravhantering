@@ -1,0 +1,67 @@
+name: Build Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production code
+        run: npm run build
+        env:
+          # Treat warnings as errors during build
+          CI: true
+          # Codecov token
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Check build output
+        run: |
+          if [ ! -d ".next" ]; then
+            echo "❌ Build failed: .next directory not found"
+            exit 1
+          fi
+          echo "✅ Build successful: .next directory created"
+
+      - name: Comment on PR if build failed
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Build failed!** There are compilation errors in the production build. Please run `npm run build` locally to identify and fix the issues before merging.'
+            })
+
+      - name: Upload build artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: build-logs
+          path: |
+            .next/
+            npm-debug.log*
+            yarn-error.log*
+          retention-days: 1

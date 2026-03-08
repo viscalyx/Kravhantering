@@ -1,0 +1,104 @@
+{
+  "editor.defaultFormatter": "biomejs.biome",
+  "[markdown]": {
+    "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+  },
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+
+  // Code Spell Checker Configuration
+  "cSpell.enabled": true,
+  "cSpell.enabledFileTypes": {
+    "markdown": true,
+    "typescript": true,
+    "typescriptreact": true,
+    "javascript": true,
+    "javascriptreact": true,
+    "json": true,
+    "jsonc": true,
+    "yaml": true,
+    "yml": true
+  },
+  "cSpell.diagnosticLevel": "Warning",
+  "cSpell.checkLimit": 500,
+
+  // Editor enhancements from devcontainer.json for non-container use
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit",
+    "source.fixAll.markdownlint": "explicit",
+    "source.organizeImports.biome": "explicit",
+    "source.organizeImports": "never"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+  "editor.rulers": [80, 120],
+  "editor.wordWrap": "on",
+  "editor.minimap.enabled": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+
+  // File handling
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/.open-next": true,
+    "**/.wrangler": true,
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/tsconfig.tsbuildinfo": true
+  },
+
+  // TypeScript settings
+  "typescript.preferences.quoteStyle": "single",
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.suggest.autoImports": true,
+  "typescript.preferences.includePackageJsonAutoImports": "auto",
+
+  // TailwindCSS settings
+  "tailwindCSS.includeLanguages": {
+    "typescript": "javascript",
+    "typescriptreact": "javascript"
+  },
+  "tailwindCSS.experimental.classRegex": [
+      "tw`([^`]*)",
+      ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+      ["classNames\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+      ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+    ],
+
+  // Spell Checker extras
+  "cSpell.language": "en,sv",
+  "cSpell.words": [],
+
+  // Git settings
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+
+  // Terminal settings
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.profiles.linux": {
+    "zsh": {
+      "path": "/bin/zsh"
+    }
+  },
+
+  // Emmet settings
+  "emmet.includeLanguages": {
+    "typescript": "html",
+    "typescriptreact": "html"
+  },
+
+  // Explorer settings
+  "explorer.compactFolders": false,
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+
+  "markdown-mermaid.darkModeTheme": "default",
+  "markdown-mermaid.lightModeTheme": "default"
+}

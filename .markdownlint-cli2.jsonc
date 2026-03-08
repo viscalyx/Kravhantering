@@ -1,0 +1,29 @@
+{
+  "config": {
+    "default": true
+  },
+  "gitignore": true,
+  "globs": [
+    "**/*.md",
+    "!**/AGENTS.md",
+    "!.github/copilot-instructions.md",
+    "!.github/instructions/**",
+    "!.github/prompts/**",
+    "!.github/skills/**",
+    "!.github/ISSUE_TEMPLATE/**",
+    "!.github/pull_request_template.md",
+    "!.next/**",
+    "!.open-next/**",
+    "!.wrangler/**",
+    "!node_modules/**",
+    "!coverage/**",
+    "!test-results/**",
+    "!build/**",
+    "!dist/**",
+    "!out/**",
+    "!bundled/**",
+    "!playwright-report/**",
+    "!playwright-report-dev/**",
+    "!playwright-report-preview/**"
+  ]
+}

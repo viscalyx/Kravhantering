@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync Codex Skills"
+  short_description: "Copy .github skills to Codex skill directory"
+  default_prompt: "Use $sync-codex-skills to copy each skill from .github/skills into ${CODEX_HOME:-$HOME/.codex}/skills and verify Codex can discover them."

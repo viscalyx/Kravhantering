@@ -1,0 +1,375 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Class-based dark mode toggle */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Primary color scale — Indigo (modern, WCAG AAA friendly) */
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-primary-950: #1e1b4b;
+
+  /* Secondary color scale — Slate (cool neutral, WCAG AAA friendly) */
+  --color-secondary-50: #f8fafc;
+  --color-secondary-100: #f1f5f9;
+  --color-secondary-200: #e2e8f0;
+  --color-secondary-300: #cbd5e1;
+  --color-secondary-400: #94a3b8;
+  --color-secondary-500: #64748b;
+  --color-secondary-600: #475569;
+  --color-secondary-700: #334155;
+  --color-secondary-800: #1e293b;
+  --color-secondary-900: #0f172a;
+  --color-secondary-950: #020617;
+
+  /* Font — Apercu (licensed) with Inter fallback */
+  --font-sans: "Apercu", Inter, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    overflow-x: hidden;
+    @apply bg-white dark:bg-secondary-950 text-secondary-900 dark:text-secondary-100 transition-colors duration-200;
+  }
+
+  * {
+    @apply border-secondary-200 dark:border-secondary-700;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-700 hover:bg-primary-800 dark:bg-primary-600 dark:hover:bg-primary-700 text-white font-medium py-2.5 px-5 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:ring-offset-2 dark:focus:ring-offset-secondary-950;
+  }
+
+  .btn-secondary {
+    @apply bg-white hover:bg-secondary-50 dark:bg-secondary-800 dark:hover:bg-secondary-700 text-secondary-900 dark:text-secondary-100 font-medium py-2.5 px-5 rounded-xl border border-secondary-200 dark:border-secondary-600 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-400/50 focus:ring-offset-2 dark:focus:ring-offset-secondary-950;
+  }
+
+  .section-padding {
+    @apply py-12 px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-custom {
+    @apply max-w-7xl mx-auto;
+  }
+
+  .gradient-bg {
+    @apply bg-linear-to-br from-primary-50 via-white to-secondary-50 dark:from-secondary-950 dark:via-secondary-900 dark:to-secondary-950;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .text-gradient {
+    @apply bg-linear-to-r from-primary-700 to-primary-900 dark:from-primary-400 dark:to-primary-300 bg-clip-text text-transparent;
+  }
+
+  .glass {
+    @apply bg-white/70 dark:bg-secondary-900/70 backdrop-blur-xl border border-white/20 dark:border-secondary-700/30 shadow-sm;
+  }
+}
+
+@layer utilities {
+  .backdrop-blur-custom {
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out;
+  }
+
+  .animate-slide-down {
+    animation: slide-down 0.2s ease-out;
+  }
+}
+
+/* ======================================================
+   Color Themes — each overrides primary + secondary scales.
+   Brand colors from colors.md profile palette.
+   Dark mode continues to work via .dark class orthogonally.
+   ====================================================== */
+
+/* Navy — Profile 4 (#24406C) + Complement 10 (Teal #63C3D1) */
+[data-theme="navy"] {
+  --color-primary-50: #e9eef9;
+  --color-primary-100: #d0dcf0;
+  --color-primary-200: #a6bce3;
+  --color-primary-300: #7b9bd4;
+  --color-primary-400: #5178c0;
+  --color-primary-500: #3a5d9e;
+  --color-primary-600: #2e4c84;
+  --color-primary-700: #24406c;
+  --color-primary-800: #1b3154;
+  --color-primary-900: #12213b;
+  --color-primary-950: #0b1526;
+  --color-secondary-50: #ecfafb;
+  --color-secondary-100: #d2f2f5;
+  --color-secondary-200: #a8e5ec;
+  --color-secondary-300: #7ed7e2;
+  --color-secondary-400: #63c3d1;
+  --color-secondary-500: #4aa4b2;
+  --color-secondary-600: #3a8391;
+  --color-secondary-700: #2d6570;
+  --color-secondary-800: #1f474f;
+  --color-secondary-900: #122b31;
+  --color-secondary-950: #091a1e;
+}
+
+/* Purple — Profile 3 (#614789) + Complement 9 (Lavender #A79CC6) */
+[data-theme="purple"] {
+  --color-primary-50: #f3f0f8;
+  --color-primary-100: #e3dcf0;
+  --color-primary-200: #c7bae0;
+  --color-primary-300: #a997cf;
+  --color-primary-400: #8b73bb;
+  --color-primary-500: #7359a4;
+  --color-primary-600: #614789;
+  --color-primary-700: #513b73;
+  --color-primary-800: #3e2d58;
+  --color-primary-900: #2b1f3e;
+  --color-primary-950: #1a1228;
+  --color-secondary-50: #f5f3f9;
+  --color-secondary-100: #e9e5f1;
+  --color-secondary-200: #d4cde4;
+  --color-secondary-300: #bfb4d5;
+  --color-secondary-400: #a79cc6;
+  --color-secondary-500: #8a7faa;
+  --color-secondary-600: #6e6490;
+  --color-secondary-700: #554d70;
+  --color-secondary-800: #3c3750;
+  --color-secondary-900: #262233;
+  --color-secondary-950: #17151f;
+}
+
+/* Magenta — Profile 2 (#9D1458) + Complement 8 (Rose #F39B9B) */
+[data-theme="magenta"] {
+  --color-primary-50: #fdf0f5;
+  --color-primary-100: #f9d8e6;
+  --color-primary-200: #f0aecb;
+  --color-primary-300: #e27dac;
+  --color-primary-400: #d04d8a;
+  --color-primary-500: #b52c6e;
+  --color-primary-600: #9d1458;
+  --color-primary-700: #831048;
+  --color-primary-800: #640c37;
+  --color-primary-900: #450826;
+  --color-primary-950: #2d0518;
+  --color-secondary-50: #fef5f5;
+  --color-secondary-100: #fde7e7;
+  --color-secondary-200: #f9cdcd;
+  --color-secondary-300: #f5b4b4;
+  --color-secondary-400: #f39b9b;
+  --color-secondary-500: #d17a7a;
+  --color-secondary-600: #ab5e5e;
+  --color-secondary-700: #844747;
+  --color-secondary-800: #5e3232;
+  --color-secondary-900: #3b2020;
+  --color-secondary-950: #241313;
+}
+
+/* Forest — Profile 5 (#1A7251) + Complement 11 (Sage #6EBD8F) */
+[data-theme="forest"] {
+  --color-primary-50: #edf8f3;
+  --color-primary-100: #d4ede2;
+  --color-primary-200: #a9dbc5;
+  --color-primary-300: #7ec8a8;
+  --color-primary-400: #4faf87;
+  --color-primary-500: #2f916b;
+  --color-primary-600: #1a7251;
+  --color-primary-700: #155f44;
+  --color-primary-800: #104834;
+  --color-primary-900: #0b3124;
+  --color-primary-950: #061e16;
+  --color-secondary-50: #f0f9f3;
+  --color-secondary-100: #dbf0e2;
+  --color-secondary-200: #b8e2c7;
+  --color-secondary-300: #94d3ab;
+  --color-secondary-400: #6ebd8f;
+  --color-secondary-500: #559e74;
+  --color-secondary-600: #417e5b;
+  --color-secondary-700: #326145;
+  --color-secondary-800: #234431;
+  --color-secondary-900: #162b1f;
+  --color-secondary-950: #0d1a13;
+}
+
+/* Sunset — Profile 1 (#E25046) + Complement 6 (Amber #F9B44F) */
+[data-theme="sunset"] {
+  --color-primary-50: #fef2f1;
+  --color-primary-100: #fddbd9;
+  --color-primary-200: #f9b3af;
+  --color-primary-300: #f28b84;
+  --color-primary-400: #ea6a61;
+  --color-primary-500: #e25046;
+  --color-primary-600: #c93a30;
+  --color-primary-700: #a52f28;
+  --color-primary-800: #7e241e;
+  --color-primary-900: #571915;
+  --color-primary-950: #370f0d;
+  --color-secondary-50: #fef8ed;
+  --color-secondary-100: #fcefd2;
+  --color-secondary-200: #fadda4;
+  --color-secondary-300: #f9cb79;
+  --color-secondary-400: #f9b44f;
+  --color-secondary-500: #d49538;
+  --color-secondary-600: #ab772b;
+  --color-secondary-700: #825b21;
+  --color-secondary-800: #5c4018;
+  --color-secondary-900: #3a280f;
+  --color-secondary-950: #231808;
+}
+
+/* Ocean — Profile 4 (Navy #24406C) + Profile 5 (Green #1A7251) */
+[data-theme="ocean"] {
+  --color-primary-50: #eaf0f5;
+  --color-primary-100: #d1deea;
+  --color-primary-200: #a6bdd6;
+  --color-primary-300: #7c9dc1;
+  --color-primary-400: #517dab;
+  --color-primary-500: #3c6190;
+  --color-primary-600: #2e4f78;
+  --color-primary-700: #24406c;
+  --color-primary-800: #1b3154;
+  --color-primary-900: #12213b;
+  --color-primary-950: #0b1526;
+  --color-secondary-50: #edf8f3;
+  --color-secondary-100: #d4ede2;
+  --color-secondary-200: #a9dbc5;
+  --color-secondary-300: #7ec8a8;
+  --color-secondary-400: #4faf87;
+  --color-secondary-500: #2f916b;
+  --color-secondary-600: #1a7251;
+  --color-secondary-700: #155f44;
+  --color-secondary-800: #104834;
+  --color-secondary-900: #0b3124;
+  --color-secondary-950: #061e16;
+}
+
+/* Berry — Profile 2 (Magenta #9D1458) + Profile 3 (Purple #614789) */
+[data-theme="berry"] {
+  --color-primary-50: #fdf0f5;
+  --color-primary-100: #f9d8e6;
+  --color-primary-200: #f0aecb;
+  --color-primary-300: #e27dac;
+  --color-primary-400: #d04d8a;
+  --color-primary-500: #b52c6e;
+  --color-primary-600: #9d1458;
+  --color-primary-700: #831048;
+  --color-primary-800: #640c37;
+  --color-primary-900: #450826;
+  --color-primary-950: #2d0518;
+  --color-secondary-50: #f3f0f8;
+  --color-secondary-100: #e3dcf0;
+  --color-secondary-200: #c7bae0;
+  --color-secondary-300: #a997cf;
+  --color-secondary-400: #8b73bb;
+  --color-secondary-500: #7359a4;
+  --color-secondary-600: #614789;
+  --color-secondary-700: #513b73;
+  --color-secondary-800: #3e2d58;
+  --color-secondary-900: #2b1f3e;
+  --color-secondary-950: #1a1228;
+}
+
+/* Autumn — Profile 1 (Red #E25046) + Complement 7 (Coral #F28C5C) */
+[data-theme="autumn"] {
+  --color-primary-50: #fef2f1;
+  --color-primary-100: #fddbd9;
+  --color-primary-200: #f9b3af;
+  --color-primary-300: #f28b84;
+  --color-primary-400: #ea6a61;
+  --color-primary-500: #e25046;
+  --color-primary-600: #c93a30;
+  --color-primary-700: #a52f28;
+  --color-primary-800: #7e241e;
+  --color-primary-900: #571915;
+  --color-primary-950: #370f0d;
+  --color-secondary-50: #fef5ef;
+  --color-secondary-100: #fce6d8;
+  --color-secondary-200: #f8ccb1;
+  --color-secondary-300: #f5ac85;
+  --color-secondary-400: #f28c5c;
+  --color-secondary-500: #cd7244;
+  --color-secondary-600: #a45a35;
+  --color-secondary-700: #7d4429;
+  --color-secondary-800: #58301d;
+  --color-secondary-900: #371e12;
+  --color-secondary-950: #21120b;
+}
+
+/* Nordic — Profile 4 (Navy #24406C) + Complement 15 (Ice Blue #E9EEF9) */
+[data-theme="nordic"] {
+  --color-primary-50: #e9eef9;
+  --color-primary-100: #d0dcf0;
+  --color-primary-200: #a6bce3;
+  --color-primary-300: #7b9bd4;
+  --color-primary-400: #5178c0;
+  --color-primary-500: #3a5d9e;
+  --color-primary-600: #2e4c84;
+  --color-primary-700: #24406c;
+  --color-primary-800: #1b3154;
+  --color-primary-900: #12213b;
+  --color-primary-950: #0b1526;
+  --color-secondary-50: #f6f8fc;
+  --color-secondary-100: #e9eef9;
+  --color-secondary-200: #d5dff2;
+  --color-secondary-300: #bccbe8;
+  --color-secondary-400: #97adda;
+  --color-secondary-500: #7289c0;
+  --color-secondary-600: #566a9c;
+  --color-secondary-700: #415079;
+  --color-secondary-800: #2f3a57;
+  --color-secondary-900: #1e2538;
+  --color-secondary-950: #121622;
+}

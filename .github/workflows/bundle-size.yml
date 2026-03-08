@@ -1,0 +1,99 @@
+name: Bundle Size Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  bundle-size:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Cloudflare Workers
+        run: npx opennextjs-cloudflare build
+
+      - name: Analyze bundle size
+        id: bundle
+        run: |
+          node scripts/analyze-bundle.js --ci --dry-run
+
+          # Generate markdown for PR comment
+          mkdir -p test-results
+          node scripts/analyze-bundle.js --markdown --no-build > test-results/bundle-report.md
+
+      - name: Comment bundle size on PR
+        # Skip for fork PRs - they can't write comments due to security restrictions
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('test-results/bundle-report.md', 'utf8');
+
+            // Find existing comment to update
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('## 📦 Bundle Size Report')
+            );
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Print bundle report (fork PRs)
+        # For fork PRs, print to logs since we can't comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "📦 Bundle Size Report (see below - cannot comment on fork PRs)"
+          echo ""
+          cat test-results/bundle-report.md
+
+      - name: Check for size limit violation
+        if: steps.bundle.outputs.status == 'error'
+        run: |
+          echo "❌ Bundle size exceeds Cloudflare Workers limit!"
+          echo "Wrangler bundle: ${{ steps.bundle.outputs.wrangler-gzip-formatted }}"
+          exit 1
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v7
+        with:
+          name: bundle-analysis
+          path: test-results/bundle-report.md
+          retention-days: 7
+          if-no-files-found: warn
