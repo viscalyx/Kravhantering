@@ -2,7 +2,7 @@ import {
   McpServer,
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
-import * as z from 'zod/v3'
+import * as z from 'zod'
 import {
   createRequestContext,
   type RequestContext,
@@ -33,7 +33,7 @@ const PaginationSchema = z
 const QueryCatalogOutputSchema = z
   .object({
     catalog: z.string(),
-    items: z.array(z.record(z.unknown())),
+    items: z.array(z.record(z.string(), z.unknown())),
     message: z.string(),
     pagination: PaginationSchema.nullable(),
   })
@@ -42,28 +42,28 @@ const QueryCatalogOutputSchema = z
 const GetRequirementOutputSchema = z
   .object({
     message: z.string(),
-    requirement: z.record(z.unknown()),
+    requirement: z.record(z.string(), z.unknown()),
     requirementResourceUri: z.string(),
     requirementViewUri: z.string(),
-    version: z.record(z.unknown()).optional(),
-    versions: z.array(z.record(z.unknown())).optional(),
+    version: z.record(z.string(), z.unknown()).optional(),
+    versions: z.array(z.record(z.string(), z.unknown())).optional(),
   })
   .strict()
 
 const ManageRequirementOutputSchema = z
   .object({
-    detail: z.record(z.unknown()).optional(),
+    detail: z.record(z.string(), z.unknown()).optional(),
     message: z.string(),
     operation: z.string(),
-    result: z.record(z.unknown()),
+    result: z.record(z.string(), z.unknown()),
   })
   .strict()
 
 const TransitionRequirementOutputSchema = z
   .object({
-    detail: z.record(z.unknown()),
+    detail: z.record(z.string(), z.unknown()),
     message: z.string(),
-    version: z.record(z.unknown()),
+    version: z.record(z.string(), z.unknown()),
   })
   .strict()
 
