@@ -86,7 +86,7 @@
     "transitionTooltipPublicerad": "Approve and publish",
     "transitionTooltipUtkast": "Return to working on draft",
     "sendBackToDraftConfirm": "Are you sure you want to return to a draft? You will be able to edit the requirement after.",
-    "restoreConfirm": "Are you sure you want to restore this version? A new version will be created with data from the selected version.",
+    "restoreConfirm": "Are you sure you want to restore this version? A new draft version will be created with data from the selected version. The requirement will need to go through the review process before it can be published.",
     "versionHistory": "Version history",
     "currentVersion": "Current version",
     "versionCreated": "Version created",

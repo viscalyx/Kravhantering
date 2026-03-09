@@ -86,7 +86,7 @@
     "transitionTooltipPublicerad": "Godkänn och publicera",
     "transitionTooltipUtkast": "Återgå till arbeta med utkast",
     "sendBackToDraftConfirm": "Är du säker på att du vill återgå till ett utkast? Du kan redigera kravet efteråt.",
-    "restoreConfirm": "Är du säker på att du vill återskapa denna version? En ny version skapas med data från den valda versionen.",
+    "restoreConfirm": "Är du säker på att du vill återskapa denna version? En ny utkastversion skapas med data från den valda versionen. Kravet behöver gå igenom granskningsprocessen innan den kan publiceras.",
     "versionHistory": "Versionshistorik",
     "currentVersion": "Aktuell version",
     "versionCreated": "Version skapad",
