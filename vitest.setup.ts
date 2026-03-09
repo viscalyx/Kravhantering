@@ -192,3 +192,24 @@ vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
   notFound: vi.fn(),
 }))
+
+// jsdom does not provide these browser observers, but multiple components
+// rely on them during effects. Define stable no-op implementations once so
+// per-test global cleanup restores to these defaults instead of `undefined`.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+  }
+}
+
+if (typeof globalThis.MutationObserver === 'undefined') {
+  globalThis.MutationObserver = class MutationObserver {
+    disconnect() {}
+    observe() {}
+    takeRecords() {
+      return []
+    }
+  }
+}

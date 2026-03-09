@@ -118,7 +118,7 @@ export interface TransitionRequirementInput extends RequirementRefInput {
 }
 
 const DEFAULT_PAGE_SIZE = 20
-const MAX_PAGE_SIZE = 50
+const MAX_PAGE_SIZE = 200
 const PUBLISHED_REQUIREMENT_STATUS_ID = 3
 
 function clampLimit(limit?: number) {
@@ -971,7 +971,11 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'reactivate') {
-            await reactivateRequirement(db, requirementId)
+            await reactivateRequirement(
+              db,
+              requirementId,
+              context.actor.id ?? undefined,
+            )
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {

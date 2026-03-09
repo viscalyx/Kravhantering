@@ -98,6 +98,9 @@
     "lifecycle": "Livscykel",
     "pendingVersionBanner": "En nyare version (v{version}) är under {status}",
     "displayedVersion": "Visar version",
+    "publishedVersionAvailableBanner": "Det finns en publicerad version (v{version})",
+    "reviewVersionAvailableBanner": "Det finns en version under granskning (v{version})",
+    "draftVersionAvailableBanner": "Det finns en utkastsversion (v{version})",
     "viewingOlderVersion": "Visar version {version}",
     "backToLatest": "Tillbaka till senaste versionen"
   },

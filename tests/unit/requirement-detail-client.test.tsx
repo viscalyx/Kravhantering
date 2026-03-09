@@ -35,12 +35,18 @@ vi.mock('next-intl', () => ({
       'requirement.category': 'Category',
       'requirement.deleteDraftConfirm': 'Delete this draft?',
       'requirement.description': 'Description',
+      'requirement.draftVersionAvailableBanner': values =>
+        `Draft version v${values?.version} is available`,
       'requirement.displayedVersion': 'Displayed version',
       'requirement.pendingVersionBanner': values =>
         `Pending version v${values?.version} ${values?.status}`,
+      'requirement.publishedVersionAvailableBanner': values =>
+        `Published version v${values?.version} is available`,
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm': 'Reactivate this requirement?',
       'requirement.reference': 'Reference',
+      'requirement.reviewVersionAvailableBanner': values =>
+        `Review version v${values?.version} is available`,
       'requirement.requiresTesting': 'Requires testing',
       'requirement.restoreConfirm': 'Restore this version?',
       'requirement.scenario': 'Scenario',
@@ -462,7 +468,9 @@ describe('RequirementDetailClient', () => {
     await userEvent.click(screen.getByRole('button', { name: 'v1' }))
 
     expect(screen.getByText('Archived description')).toBeInTheDocument()
-    expect(screen.getByText('Viewing older version v1')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Published version v2 is available/),
+    ).toBeInTheDocument()
     expect(screen.getByText('No')).toBeInTheDocument()
 
     await userEvent.click(
@@ -518,6 +526,214 @@ describe('RequirementDetailClient', () => {
       ),
     )
     expect(routerPush).toHaveBeenCalledWith('/kravkatalog')
+  })
+
+  it('keeps archived requirements actionable while a newer draft replacement exists', async () => {
+    const requirement = makeRequirement(
+      [
+        makeVersion(2, {
+          description: 'Draft replacement',
+          editedAt: '2026-03-04',
+          status: 1,
+          statusColor: '#3b82f6',
+          statusNameEn: 'Draft',
+          statusNameSv: 'Utkast',
+        }),
+        makeVersion(1, {
+          archivedAt: '2026-03-01',
+          description: 'Archived description',
+          publishedAt: '2026-02-28',
+          status: 4,
+          statusColor: '#6b7280',
+          statusNameEn: 'Archived',
+          statusNameSv: 'Arkiverad',
+        }),
+      ],
+      { isArchived: true },
+    )
+
+    const fetchMock = setupFetch({
+      initialRequirement: requirement,
+      transitionNextRequirement: requirement,
+    })
+
+    renderSubject()
+
+    expect(await screen.findByText('Archived description')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Draft version v2 is available/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/kravkatalog/123/redigera',
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'v2' }))
+
+    expect(screen.getByText('Draft replacement')).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Send to review' }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/123/transition',
+        expect.objectContaining({
+          body: JSON.stringify({ statusId: 2 }),
+          method: 'POST',
+        }),
+      ),
+    )
+  })
+
+  it('hides the pending version banner when the latest review version is selected', async () => {
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Review description',
+        editedAt: '2026-03-04',
+        status: 2,
+        statusColor: '#eab308',
+        statusNameEn: 'Review',
+        statusNameSv: 'Granskning',
+      }),
+      makeVersion(1, {
+        description: 'Published description',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject()
+
+    expect(await screen.findByText('Published description')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Pending version v2 Granskning/),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'v2' }))
+
+    expect(screen.getByText('Review description')).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Pending version v2 Granskning/),
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the published availability banner when viewing an archived version even if a newer review version exists', async () => {
+    const requirement = makeRequirement([
+      makeVersion(10, {
+        description: 'Review description',
+        editedAt: '2026-03-04',
+        status: 2,
+        statusColor: '#eab308',
+        statusNameEn: 'Review',
+        statusNameSv: 'Granskning',
+      }),
+      makeVersion(9, {
+        description: 'Published description',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+      makeVersion(8, {
+        archivedAt: '2026-02-17',
+        description: 'Archived description',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject()
+
+    expect(await screen.findByText('Published description')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'v8' }))
+
+    const bannerText = screen.getByText(/Published version v9 is available/)
+    const bannerIcon = bannerText.closest('div')?.querySelector('svg')
+
+    expect(bannerText).toBeInTheDocument()
+    expect(screen.queryByText('Viewing older version v8')).toBeNull()
+    expect(bannerIcon).toHaveStyle({ color: '#22c55e' })
+  })
+
+  it('falls back to the review availability banner when no newer published version exists', async () => {
+    const requirement = makeRequirement([
+      makeVersion(10, {
+        description: 'Review description',
+        editedAt: '2026-03-04',
+        status: 2,
+        statusColor: '#eab308',
+        statusNameEn: 'Review',
+        statusNameSv: 'Granskning',
+      }),
+      makeVersion(8, {
+        archivedAt: '2026-02-17',
+        description: 'Archived description',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject()
+
+    expect(await screen.findByText('Archived description')).toBeInTheDocument()
+
+    const bannerText = screen.getByText(/Review version v10 is available/)
+    const bannerIcon = bannerText.closest('div')?.querySelector('svg')
+
+    expect(bannerText).toBeInTheDocument()
+    expect(screen.queryByText('Viewing older version v8')).toBeNull()
+    expect(bannerIcon).toHaveStyle({ color: '#eab308' })
+  })
+
+  it('falls back to the draft availability banner when no newer published or review version exists', async () => {
+    const requirement = makeRequirement([
+      makeVersion(10, {
+        description: 'Draft description',
+        editedAt: '2026-03-04',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+      makeVersion(8, {
+        archivedAt: '2026-02-17',
+        description: 'Archived description',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject()
+
+    expect(await screen.findByText('Archived description')).toBeInTheDocument()
+
+    const bannerText = screen.getByText(/Draft version v10 is available/)
+    const bannerIcon = bannerText.closest('div')?.querySelector('svg')
+
+    expect(bannerText).toBeInTheDocument()
+    expect(screen.queryByText('Viewing older version v8')).toBeNull()
+    expect(bannerIcon).toHaveStyle({ color: '#3b82f6' })
   })
 
   it('transitions a draft requirement to review and deletes the draft version after confirmation', async () => {

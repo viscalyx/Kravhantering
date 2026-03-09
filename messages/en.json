@@ -98,6 +98,9 @@
     "lifecycle": "Lifecycle",
     "pendingVersionBanner": "A newer version (v{version}) is in {status}",
     "displayedVersion": "Showing version",
+    "publishedVersionAvailableBanner": "A published version (v{version}) is available",
+    "reviewVersionAvailableBanner": "A version in review (v{version}) is available",
+    "draftVersionAvailableBanner": "A draft version (v{version}) is available",
     "viewingOlderVersion": "Viewing version {version}",
     "backToLatest": "Back to latest version"
   },

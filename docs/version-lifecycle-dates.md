@@ -35,6 +35,9 @@ New version rows are created **only** by these operations:
   in place instead.
 - **Restoring an old version** (`restoreVersion`) — inserts a new
   Draft version that copies the old version's content.
+  If the requirement is archived, `requirements.is_archived`
+  stays `true` until the restored replacement version is
+  published.
 
 Status transitions **never** create new version rows. They update
 the existing row in place.
@@ -158,6 +161,39 @@ v(n+1):                      created ── edited
 - `v(n+1).published_at` and `v(n+1).archived_at` are both
   `NULL`.
 
+## Effective Status (Filtering)
+
+When listing requirements the system computes an
+**effective status** for each requirement using the
+following priority order (highest priority first):
+
+<!-- markdownlint-disable MD013 -->
+| Priority | Condition | Effective Status |
+| -------- | --------- | ---------------- |
+| 1 | Any version has `requirement_status_id = 3` | Published |
+| 2 | No Published version and `requirements.is_archived = true` | Archived |
+| 3 | No Published, not archived, any version has `requirement_status_id = 2` | Review |
+| 4 | Otherwise | Draft |
+<!-- markdownlint-enable MD013 -->
+
+Each filter option shows only requirements whose effective
+status matches. This means:
+
+- **Draft** — requirements that have **only** Draft
+  versions and are not archived (`is_archived = false`).
+- **Review** — requirements whose highest-priority status
+  is Review, with `is_archived = false`.
+- **Published** — requirements that have at least one
+  Published version.
+- **Archived** — requirements that are archived
+  (`is_archived = true`) and have no Published version,
+  even while a newer Draft or Review replacement version
+  exists.
+
+The effective status is a **query-time computation** (a SQL
+`CASE` expression in `buildRequirementListConditions`). It
+is not stored as a column.
+
 ## Deleting Draft Versions
 
 A Draft version can **always** be deleted, regardless of whether
@@ -195,8 +231,14 @@ The version history pills show the relevant date per status:
   transitioning to Published or Archived respectively.
   **Never** touches `edited_at`. **Never** creates a new version
   row. When publishing, auto-archives any previously published
-  version of the same requirement.
+  version of the same requirement. For archived requirements
+  with a pending Draft or Review replacement, `is_archived`
+  stays `true` until that replacement version is published.
 - **Archiving via delete** (`archiveRequirement`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
   Archived and `archived_at` to the current time. **Never**
   touches `edited_at`. **Never** creates a new version row.
+- **Restoring a version** (`restoreVersion`): Creates a new
+  Draft copy of the selected historical version. If the
+  requirement was archived, `is_archived` remains `true`
+  until the restored replacement version is published.

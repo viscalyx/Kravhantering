@@ -488,6 +488,14 @@ on `(requirement_id, version_number)`.
 **Lifecycle invariant:** `created_at` < `published_at`
 < `archived_at` (when applicable).
 
+**Effective status (filtering):** When listing requirements
+the system computes a priority-based effective status per
+requirement: Published > Archived > Review > Draft. See
+[version-lifecycle-dates.md](version-lifecycle-dates.md#effective-status-filtering)
+for details. When an archived requirement gets a replacement
+Draft or Review version, `requirements.is_archived` stays
+`true` until that newer version is published.
+
 ---
 
 ### `requirement_references`

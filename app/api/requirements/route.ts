@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     .filter((v): v is boolean => v !== null)
   const statusParams = url.searchParams.getAll('statuses')
   const statuses = statusParams.map(Number).filter(n => !Number.isNaN(n))
-  const includeArchived = statuses.includes(4)
+  const includeArchived = statuses.length === 0 || statuses.includes(4)
 
   try {
     const result = await service.queryCatalog(context, {

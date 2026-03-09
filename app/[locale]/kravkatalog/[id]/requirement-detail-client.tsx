@@ -331,6 +331,7 @@ export default function RequirementDetailClient({
 
   const latest = req.versions[0]
   const latestStatusForActions = latest?.status ?? 1
+  const isLatestVersionArchived = latestStatusForActions === STATUS_ARCHIVED
 
   // Display version priority: Published > Archived > latest (draft/review)
   const displayVersion =
@@ -342,6 +343,39 @@ export default function RequirementDetailClient({
   const selectedVersion =
     req.versions.find(v => v.versionNumber === selectedVersionNumber) ??
     displayVersion
+
+  const newerVersionsThanSelected =
+    selectedVersion == null
+      ? []
+      : req.versions.filter(
+          version => version.versionNumber > selectedVersion.versionNumber,
+        )
+
+  const archivedVersionPreferredVersion =
+    selectedVersion?.status === STATUS_ARCHIVED
+      ? (newerVersionsThanSelected.find(
+          version => version.status === STATUS_PUBLISHED,
+        ) ??
+        newerVersionsThanSelected.find(
+          version => version.status === STATUS_REVIEW,
+        ) ??
+        newerVersionsThanSelected.find(
+          version => version.status === STATUS_DRAFT,
+        ) ??
+        null)
+      : null
+
+  const archivedVersionBannerKey =
+    archivedVersionPreferredVersion?.status === STATUS_PUBLISHED
+      ? 'publishedVersionAvailableBanner'
+      : archivedVersionPreferredVersion?.status === STATUS_REVIEW
+        ? 'reviewVersionAvailableBanner'
+        : archivedVersionPreferredVersion?.status === STATUS_DRAFT
+          ? 'draftVersionAvailableBanner'
+          : null
+
+  const showsArchivedVersionAvailabilityBanner =
+    archivedVersionPreferredVersion != null && archivedVersionBannerKey != null
 
   const hasPendingVersion =
     latest &&
@@ -355,6 +389,9 @@ export default function RequirementDetailClient({
   // Whether the user is viewing the latest (newest) version
   const isViewingLatest =
     selectedVersion?.versionNumber === latest?.versionNumber
+
+  const isViewingDisplayVersion =
+    selectedVersion?.versionNumber === displayVersion?.versionNumber
 
   // Determine if the user is viewing a historical (non-default, non-latest) version
   const isViewingHistory =
@@ -502,7 +539,27 @@ export default function RequirementDetailClient({
 
         {/* Lifecycle progress bar */}
         <div className={`mb-5 ${inline ? '' : ''}`}>
-          {isViewingHistory && (
+          {showsArchivedVersionAvailabilityBanner ? (
+            <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
+              <AlertCircle
+                className="h-3.5 w-3.5 shrink-0"
+                style={{
+                  color:
+                    archivedVersionPreferredVersion.statusColor ?? undefined,
+                }}
+              />
+              <span>
+                {t(archivedVersionBannerKey, {
+                  version: String(
+                    archivedVersionPreferredVersion.versionNumber,
+                  ),
+                })}
+                {' — '}
+                {t('displayedVersion')}{' '}
+                <span className="font-medium">v{currentVersionNumber}</span>
+              </span>
+            </div>
+          ) : isViewingHistory ? (
             <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
               <Clock
                 className="h-3.5 w-3.5 shrink-0"
@@ -514,24 +571,26 @@ export default function RequirementDetailClient({
                 })}
               </span>
             </div>
-          )}
-          {hasPendingVersion && !isViewingHistory && (
-            <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
-              <AlertCircle
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: latest?.statusColor ?? undefined }}
-              />
-              <span>
-                {t('pendingVersionBanner', {
-                  version: String(pendingVersionNumber),
-                  status: pendingStatusLabel,
-                })}
-                {' — '}
-                {t('displayedVersion')}{' '}
-                <span className="font-medium">v{currentVersionNumber}</span>
-              </span>
-            </div>
-          )}
+          ) : null}
+          {hasPendingVersion &&
+            isViewingDisplayVersion &&
+            !showsArchivedVersionAvailabilityBanner && (
+              <div className="flex items-center gap-2 mb-2 px-1 text-xs text-secondary-500 dark:text-secondary-400">
+                <AlertCircle
+                  className="h-3.5 w-3.5 shrink-0"
+                  style={{ color: latest?.statusColor ?? undefined }}
+                />
+                <span>
+                  {t('pendingVersionBanner', {
+                    version: String(pendingVersionNumber),
+                    status: pendingStatusLabel,
+                  })}
+                  {' — '}
+                  {t('displayedVersion')}{' '}
+                  <span className="font-medium">v{currentVersionNumber}</span>
+                </span>
+              </div>
+            )}
           <StatusStepper
             currentStatusId={currentStatusId}
             statuses={statuses}
@@ -671,7 +730,7 @@ export default function RequirementDetailClient({
                       {t('backToLatest')}
                     </button>
                   </>
-                ) : !req.isArchived ? (
+                ) : !isLatestVersionArchived ? (
                   <>
                     {isViewingLatest &&
                       transitions

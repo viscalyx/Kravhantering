@@ -98,6 +98,84 @@ describe('RequirementsTable', () => {
     expect(screen.getByLabelText('hasPendingVersionReview')).toBeTruthy()
   })
 
+  it('shows a blue pending draft indicator for archived rows', () => {
+    const rows = [
+      {
+        id: 1,
+        uniqueId: 'INT0003',
+        isArchived: true,
+        hasPendingVersion: true,
+        pendingVersionStatusColor: '#3b82f6',
+        pendingVersionStatusId: 1,
+        version: {
+          description: 'Arkiverad',
+          categoryNameSv: null,
+          categoryNameEn: null,
+          typeNameSv: null,
+          typeNameEn: null,
+          typeCategoryNameSv: null,
+          typeCategoryNameEn: null,
+          requiresTesting: false,
+          versionNumber: 1,
+          status: 4,
+          statusNameSv: 'Arkiverad',
+          statusNameEn: 'Archived',
+          statusColor: '#6b7280',
+        },
+        area: null,
+      },
+    ]
+
+    render(<RequirementsTable locale="sv" rows={rows} />)
+
+    expect(screen.getAllByText('Arkiverad')).toHaveLength(2)
+    expect(
+      screen.getByLabelText('hasPendingVersionDraft').closest('tr')?.className,
+    ).not.toContain('opacity-50')
+    expect(screen.getByLabelText('hasPendingVersionDraft')).toHaveStyle({
+      color: '#3b82f6',
+    })
+  })
+
+  it('shows a yellow pending review indicator for archived rows', () => {
+    const rows = [
+      {
+        id: 1,
+        uniqueId: 'INT0004',
+        isArchived: true,
+        hasPendingVersion: true,
+        pendingVersionStatusColor: '#eab308',
+        pendingVersionStatusId: 2,
+        version: {
+          description: 'Arkiverad',
+          categoryNameSv: null,
+          categoryNameEn: null,
+          typeNameSv: null,
+          typeNameEn: null,
+          typeCategoryNameSv: null,
+          typeCategoryNameEn: null,
+          requiresTesting: false,
+          versionNumber: 1,
+          status: 4,
+          statusNameSv: 'Arkiverad',
+          statusNameEn: 'Archived',
+          statusColor: '#6b7280',
+        },
+        area: null,
+      },
+    ]
+
+    render(<RequirementsTable locale="sv" rows={rows} />)
+
+    expect(screen.getAllByText('Arkiverad')).toHaveLength(2)
+    expect(
+      screen.getByLabelText('hasPendingVersionReview').closest('tr')?.className,
+    ).not.toContain('opacity-50')
+    expect(screen.getByLabelText('hasPendingVersionReview')).toHaveStyle({
+      color: '#eab308',
+    })
+  })
+
   it('applies opacity for archived rows', () => {
     const rows = [
       {
@@ -124,8 +202,10 @@ describe('RequirementsTable', () => {
     ]
     const { container } = render(<RequirementsTable locale="sv" rows={rows} />)
     const tr = container.querySelector('tbody tr')
+    const firstCell = tr?.querySelector('td')
 
-    expect(tr?.classList.contains('opacity-50')).toBe(true)
+    expect(tr?.classList.contains('opacity-50')).toBe(false)
+    expect(firstCell?.className).toContain('opacity-50')
   })
 
   it('applies zebra striping on alternating rows', () => {

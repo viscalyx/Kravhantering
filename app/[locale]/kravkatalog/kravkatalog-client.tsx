@@ -59,8 +59,11 @@ interface TypeCategoryOption {
   parentId: number | null
 }
 
+const PAGE_SIZE = 200
+
 function buildFilterParams(filters: FilterValues): URLSearchParams {
   const params = new URLSearchParams()
+  params.set('limit', String(PAGE_SIZE))
   if (filters.uniqueIdSearch)
     params.set('uniqueIdSearch', filters.uniqueIdSearch)
   if (filters.descriptionSearch)
@@ -102,6 +105,8 @@ export default function KravkatalogClient() {
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // Stable ref so the onChange callback always sees the latest selectedId
   const selectedIdRef = useRef<number | null>(null)
@@ -112,8 +117,12 @@ export default function KravkatalogClient() {
 
     const res = await fetch(`/api/requirements?${params}`)
     if (res.ok) {
-      const data = (await res.json()) as { requirements?: RequirementRow[] }
+      const data = (await res.json()) as {
+        pagination?: { hasMore?: boolean }
+        requirements?: RequirementRow[]
+      }
       const newRows = data.requirements ?? []
+      setHasMore(data.pagination?.hasMore ?? false)
 
       // If an expanded row is no longer in the filtered results, pin it
       const sid = selectedIdRef.current
@@ -182,6 +191,27 @@ export default function KravkatalogClient() {
       setLoading(false)
     }
   }, [refreshRows])
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const params = buildFilterParams(filters)
+      params.set('offset', String(rows.length))
+      const res = await fetch(`/api/requirements?${params}`)
+      if (res.ok) {
+        const data = (await res.json()) as {
+          pagination?: { hasMore?: boolean }
+          requirements?: RequirementRow[]
+        }
+        const moreRows = data.requirements ?? []
+        setHasMore(data.pagination?.hasMore ?? false)
+        setRows(prev => [...prev, ...moreRows])
+      }
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [filters, hasMore, loadingMore, rows.length])
 
   const fetchFilters = useCallback(async () => {
     const [areasRes, categoriesRes, typesRes, typeCategoriesRes, statusesRes] =
@@ -290,13 +320,16 @@ export default function KravkatalogClient() {
             filterValues={filters}
             getName={getName}
             getStatusName={getStatusName}
+            hasMore={hasMore}
             loading={loading}
+            loadingMore={loadingMore}
             locale={locale}
             onFilterChange={val => {
               setFilters(val)
               setSelectedId(null)
               setPinnedRow(null)
             }}
+            onLoadMore={loadMore}
             onRowClick={id => {
               setSelectedId(prev => {
                 const next = prev === id ? null : id
