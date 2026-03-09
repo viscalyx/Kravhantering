@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
 
@@ -40,9 +40,13 @@ describe('RequirementsTable', () => {
   })
 
   it('renders loading state when loading is true', () => {
+    vi.useFakeTimers()
     render(<RequirementsTable loading locale="sv" rows={[]} />)
+    expect(screen.queryByText('Hämtar krav\u2026')).toBeNull()
+    act(() => vi.advanceTimersByTime(1000))
     expect(screen.getByText('Hämtar krav\u2026')).toBeTruthy()
-    expect(screen.queryByText('Inga resultat hittades')).toBeNull()
+    expect(screen.queryByText('Inga resultat hittades')).toBeTruthy()
+    vi.useRealTimers()
   })
 
   it('renders table rows with status badge', () => {

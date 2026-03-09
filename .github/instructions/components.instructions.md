@@ -27,6 +27,7 @@ Examples:
 - `dark:` variants in Tailwind classes
 - ARIA labels on interactive elements
 - Semantic HTML, proper heading order
+- Prefer semantic HTML elements over non-semantic elements with ARIA roles. Biome `a11y/useSemanticElements` enforces this (e.g. use `<output>` instead of `<div role="status">`). Do not replace a semantic element with a `<div>`/`<span>` + `role` attribute.
 
 ### Responsive (mobile + desktop)
 
