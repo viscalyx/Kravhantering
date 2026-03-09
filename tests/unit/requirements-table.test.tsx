@@ -5,23 +5,7 @@ import RequirementsTable from '@/components/RequirementsTable'
 const mockPush = vi.fn()
 
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => {
-    const t: Record<string, string> = {
-      uniqueId: 'Krav-ID',
-      description: 'Beskrivning',
-      area: 'Kravområde',
-      category: 'Kravkategori',
-      type: 'Kravtyp',
-      status: 'Kravstatus',
-      requiresTesting: 'Kräver testning',
-      hasPendingVersionDraft: 'Det finns en nyare version i utkast',
-      hasPendingVersionReview: 'Det finns en nyare version som granskas',
-      noResults: 'Inga resultat hittades',
-      loadingRequirements: 'Hämtar krav\u2026',
-      version: 'Version',
-    }
-    return t[key] ?? key
-  },
+  useTranslations: () => (key: string) => key,
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -37,16 +21,16 @@ vi.mock('@/i18n/routing', () => ({
 describe('RequirementsTable', () => {
   it('renders empty state when no rows', () => {
     render(<RequirementsTable locale="sv" rows={[]} />)
-    expect(screen.getByText('Inga resultat hittades')).toBeTruthy()
+    expect(screen.getByText('noResults')).toBeTruthy()
   })
 
   it('renders loading state when loading is true', () => {
     vi.useFakeTimers()
     render(<RequirementsTable loading locale="sv" rows={[]} />)
-    expect(screen.queryByText('Hämtar krav\u2026')).toBeNull()
+    expect(screen.queryByText('loadingRequirements')).toBeNull()
     act(() => vi.advanceTimersByTime(1000))
-    expect(screen.getByText('Hämtar krav\u2026')).toBeTruthy()
-    expect(screen.queryByText('Inga resultat hittades')).toBeTruthy()
+    expect(screen.getByText('loadingRequirements')).toBeTruthy()
+    expect(screen.queryByText('noResults')).toBeTruthy()
     vi.useRealTimers()
   })
 
@@ -111,9 +95,7 @@ describe('RequirementsTable', () => {
       },
     ]
     render(<RequirementsTable locale="sv" rows={rows} />)
-    expect(
-      screen.getByLabelText('Det finns en nyare version som granskas'),
-    ).toBeTruthy()
+    expect(screen.getByLabelText('hasPendingVersionReview')).toBeTruthy()
   })
 
   it('applies opacity for archived rows', () => {
