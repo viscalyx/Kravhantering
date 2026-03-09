@@ -461,5 +461,5 @@ console.log(
   '-- Seed data generated. Pipe to: wrangler d1 execute kravhantering-db --local --command "..."',
 )
 console.log(
-  '-- Or use: npx tsx drizzle/seed.ts | wrangler d1 execute kravhantering-db --local --file=-',
+  '-- Or use: node drizzle/seed.ts | wrangler d1 execute kravhantering-db --local --file=-',
 )
