@@ -413,15 +413,6 @@ export default function RequirementDetailClient({
     }
   }
 
-  const handleReactivate = async (e?: React.MouseEvent<HTMLButtonElement>) => {
-    const anchorEl = e?.currentTarget
-    if (!(await confirm({ message: t('reactivateConfirm'), anchorEl }))) return
-    await fetch(`/api/requirements/${requirementId}/reactivate`, {
-      method: 'POST',
-    })
-    await Promise.all([fetchRequirement(), onChange?.()])
-  }
-
   const handleTransition = async (
     targetStatusId: number,
     anchorEl?: HTMLElement,
@@ -733,11 +724,17 @@ export default function RequirementDetailClient({
                   </>
                 ) : (
                   <button
-                    className="btn-secondary w-full justify-center"
-                    onClick={handleReactivate}
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                    onClick={e =>
+                      handleRestore(
+                        selectedVersion?.versionNumber ?? 0,
+                        e.currentTarget as HTMLElement,
+                      )
+                    }
                     type="button"
                   >
-                    {tc('reactivate')}
+                    <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                    {tc('restoreVersion')}
                   </button>
                 )}
               </div>
