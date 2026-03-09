@@ -70,6 +70,7 @@ interface RequirementsTableProps {
   filterValues?: FilterValues
   getName?: (opt: FilterOption) => string
   getStatusName?: (opt: StatusOption) => string
+  loading?: boolean
   locale: string
   onFilterChange?: (values: FilterValues) => void
   onRowClick?: (id: number) => void
@@ -524,6 +525,7 @@ export default function RequirementsTable({
   filterValues,
   getName = () => '',
   getStatusName = () => '',
+  loading = false,
   locale,
   onFilterChange,
   onRowClick,
@@ -572,6 +574,17 @@ export default function RequirementsTable({
   const setRt = (ids: number[]) => {
     const values = ids.map(id => (id === 1 ? 'true' : 'false'))
     updateFilter({ requiresTesting: values.length > 0 ? values : undefined })
+  }
+
+  if (loading) {
+    return (
+      <output className="flex flex-col items-center justify-center py-16 gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
+        <p className="text-secondary-600 dark:text-secondary-400">
+          {tc('loadingRequirements')}
+        </p>
+      </output>
+    )
   }
 
   if (rows.length === 0 && !hasFilters) {

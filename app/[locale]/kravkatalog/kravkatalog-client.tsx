@@ -282,7 +282,7 @@ export default function KravkatalogClient() {
         </div>
 
         <div
-          className={`bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm transition-opacity ${loading ? 'opacity-50' : ''}`}
+          className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm"
         >
           <RequirementsTable
             areas={areas}
@@ -291,6 +291,7 @@ export default function KravkatalogClient() {
             filterValues={filters}
             getName={getName}
             getStatusName={getStatusName}
+            loading={loading}
             locale={locale}
             onFilterChange={val => {
               setFilters(val)

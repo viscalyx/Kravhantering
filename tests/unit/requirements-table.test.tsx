@@ -16,6 +16,7 @@ vi.mock('next-intl', () => ({
       requiresTesting: 'Kräver testning',
       hasPendingVersion: 'Det finns en väntande version',
       noResults: 'Inga resultat hittades',
+      loadingRequirements: 'Hämtar krav\u2026',
       version: 'Version',
     }
     return t[key] ?? key
@@ -36,6 +37,12 @@ describe('RequirementsTable', () => {
   it('renders empty state when no rows', () => {
     render(<RequirementsTable locale="sv" rows={[]} />)
     expect(screen.getByText('Inga resultat hittades')).toBeTruthy()
+  })
+
+  it('renders loading state when loading is true', () => {
+    render(<RequirementsTable loading locale="sv" rows={[]} />)
+    expect(screen.getByText('Hämtar krav\u2026')).toBeTruthy()
+    expect(screen.queryByText('Inga resultat hittades')).toBeNull()
   })
 
   it('renders table rows with status badge', () => {

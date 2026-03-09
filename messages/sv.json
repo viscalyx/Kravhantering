@@ -3,6 +3,7 @@
     "appName": "Kravhantering",
     "appDescription": "En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess",
     "loading": "Laddar...",
+    "loadingRequirements": "Hämtar krav…",
     "save": "Spara",
     "cancel": "Avbryt",
     "delete": "Ta bort",

@@ -3,6 +3,7 @@
     "appName": "Requirements Management",
     "appDescription": "A web application for requirements management that supports the company's requirements model and process",
     "loading": "Loading...",
+    "loadingRequirements": "Fetching requirements…",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
