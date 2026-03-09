@@ -50,7 +50,7 @@
     "bundle:analyze": "node scripts/analyze-bundle.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "yes | wrangler d1 migrations apply kravhantering-db --local",
-    "db:seed": "npx tsx drizzle/seed.ts > /tmp/seed.sql && wrangler d1 execute kravhantering-db --local --file=/tmp/seed.sql",
+    "db:seed": "node drizzle/seed.ts > /tmp/seed.sql && wrangler d1 execute kravhantering-db --local --file=/tmp/seed.sql",
     "db:reset": "find .wrangler -name '*.sqlite' -delete -o -name '*.sqlite-wal' -delete -o -name '*.sqlite-shm' -delete 2>/dev/null; echo 'Local D1 database removed'",
     "db:setup": "npm run db:reset && npm run db:migrate && npm run db:seed",
     "db:browse": "find .wrangler -name '*.sqlite' -print0 | xargs -0 -r code",
@@ -85,7 +85,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.18",
     "autoprefixer": "^10.4.27",
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^12.6.2",
     "cross-env": "^10.1.0",
     "cspell": "^9.7.0",
     "drizzle-kit": "^0.31.9",
@@ -93,14 +93,11 @@
     "markdownlint-cli2": "^0.21.0",
     "rimraf": "^6.1.3",
     "tailwindcss": "^4.2.1",
-    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18",
     "wrangler": "^4.71.0"
   },
-  "overrides": {
-    "katex": "0.16.35"
-  },
+  "overrides": {},
   "//overrides": [
     "Overrides pin transitive dependencies to patched versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
