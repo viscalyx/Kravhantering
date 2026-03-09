@@ -352,6 +352,10 @@ export default function RequirementDetailClient({
     ? ((locale === 'sv' ? latest?.statusNameSv : latest?.statusNameEn) ?? '')
     : ''
 
+  // Whether the user is viewing the latest (newest) version
+  const isViewingLatest =
+    selectedVersion?.versionNumber === latest?.versionNumber
+
   // Determine if the user is viewing a historical (non-default, non-latest) version
   const isViewingHistory =
     selectedVersion &&
@@ -674,23 +678,24 @@ export default function RequirementDetailClient({
                   </>
                 ) : !req.isArchived ? (
                   <>
-                    {transitions
-                      .filter(tr => tr.id !== 4)
-                      .map(tr => (
-                        <button
-                          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-                          disabled={isTransitioning}
-                          key={tr.id}
-                          onClick={e =>
-                            handleTransition(tr.id, e.currentTarget)
-                          }
-                          title={t(`transitionTooltip${tr.nameSv}`)}
-                          type="button"
-                        >
-                          {t(`transitionTo${tr.nameSv}`)}
-                        </button>
-                      ))}
-                    {latestStatusForActions !== STATUS_REVIEW && (
+                    {isViewingLatest &&
+                      transitions
+                        .filter(tr => tr.id !== 4)
+                        .map(tr => (
+                          <button
+                            className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                            disabled={isTransitioning}
+                            key={tr.id}
+                            onClick={e =>
+                              handleTransition(tr.id, e.currentTarget)
+                            }
+                            title={t(`transitionTooltip${tr.nameSv}`)}
+                            type="button"
+                          >
+                            {t(`transitionTo${tr.nameSv}`)}
+                          </button>
+                        ))}
+                    {currentStatusId !== STATUS_REVIEW && (
                       <Link
                         className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
                         href={`/kravkatalog/${req.id}/redigera`}
@@ -700,7 +705,7 @@ export default function RequirementDetailClient({
                         {tc('edit')}
                       </Link>
                     )}
-                    {latestStatusForActions === 3 && (
+                    {currentStatusId === STATUS_PUBLISHED && (
                       <button
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
                         onClick={handleArchive}
@@ -711,7 +716,7 @@ export default function RequirementDetailClient({
                         {tc('archive')}
                       </button>
                     )}
-                    {latestStatusForActions === 1 && (
+                    {currentStatusId === STATUS_DRAFT && isViewingLatest && (
                       <button
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
                         onClick={handleDeleteDraft}
