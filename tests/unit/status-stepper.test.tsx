@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import StatusStepper from '@/components/StatusStepper'
 
 vi.mock('next-intl', () => ({
@@ -7,20 +7,6 @@ vi.mock('next-intl', () => ({
 }))
 
 describe('StatusStepper', () => {
-  beforeEach(() => {
-    vi.stubGlobal(
-      'ResizeObserver',
-      class ResizeObserver {
-        disconnect() {}
-        observe() {}
-      },
-    )
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
   it('renders fallback steps and highlights the first status', () => {
     const { container } = render(<StatusStepper currentStatusId={1} />)
 

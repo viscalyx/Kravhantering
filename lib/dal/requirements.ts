@@ -226,13 +226,17 @@ export async function listRequirements(
       typeCategoryNameEn: requirementTypeCategories.nameEn,
       maxVersion: latestVersions.maxVersion,
       pendingVersionStatusColor: sql<string | null>`(
-        SELECT rs.color FROM requirement_versions rv
+        SELECT CASE WHEN rv.requirement_status_id = ${STATUS_ARCHIVED} THEN NULL
+          ELSE rs.color END
+        FROM requirement_versions rv
         JOIN requirement_statuses rs ON rs.id = rv.requirement_status_id
         WHERE rv.requirement_id = ${requirements.id}
         ORDER BY rv.version_number DESC LIMIT 1
       )`.as('pending_version_status_color'),
       pendingVersionStatusId: sql<number | null>`(
-        SELECT rv.requirement_status_id FROM requirement_versions rv
+        SELECT CASE WHEN rv.requirement_status_id = ${STATUS_ARCHIVED} THEN NULL
+          ELSE rv.requirement_status_id END
+        FROM requirement_versions rv
         WHERE rv.requirement_id = ${requirements.id}
         ORDER BY rv.version_number DESC LIMIT 1
       )`.as('pending_version_status_id'),

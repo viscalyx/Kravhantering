@@ -178,7 +178,9 @@ function formatRequirementListItem(
         }
       : null,
     createdAt: item.createdAt,
-    hasPendingVersion: item.maxVersion > item.versionNumber,
+    hasPendingVersion:
+      item.maxVersion > item.versionNumber &&
+      item.pendingVersionStatusId != null,
     id: item.id,
     isArchived: item.isArchived,
     pendingVersionStatusColor:

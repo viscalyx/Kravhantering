@@ -759,17 +759,18 @@ export default function RequirementDetailClient({
                         {tc('edit')}
                       </Link>
                     )}
-                    {currentStatusId === STATUS_PUBLISHED && (
-                      <button
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
-                        onClick={handleArchive}
-                        title={tc('archiveTooltip')}
-                        type="button"
-                      >
-                        <Archive aria-hidden="true" className="h-4 w-4" />
-                        {tc('archive')}
-                      </button>
-                    )}
+                    {isViewingLatest &&
+                      latestStatusForActions === STATUS_PUBLISHED && (
+                        <button
+                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
+                          onClick={handleArchive}
+                          title={tc('archiveTooltip')}
+                          type="button"
+                        >
+                          <Archive aria-hidden="true" className="h-4 w-4" />
+                          {tc('archive')}
+                        </button>
+                      )}
                     {currentStatusId === STATUS_DRAFT && isViewingLatest && (
                       <button
                         className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
