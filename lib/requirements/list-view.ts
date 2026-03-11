@@ -546,7 +546,7 @@ function compareNullableText(
   left: string | null | undefined,
   right: string | null | undefined,
   direction: RequirementSortDirection,
-) {
+): number {
   const leftValue = left?.trim() ?? ''
   const rightValue = right?.trim() ?? ''
 
@@ -570,7 +570,7 @@ function compareNumber(
   left: number | null | undefined,
   right: number | null | undefined,
   direction: RequirementSortDirection,
-) {
+): number {
   const leftValue = left ?? Number.POSITIVE_INFINITY
   const rightValue = right ?? Number.POSITIVE_INFINITY
   const result = leftValue - rightValue
@@ -581,7 +581,7 @@ function compareNumber(
 function getStatusOrder(
   row: RequirementRow,
   statusOptions: readonly Pick<StatusOption, 'id' | 'sortOrder'>[],
-) {
+): number | null {
   const statusId = row.version?.status ?? null
   return (
     statusOptions.find(option => option.id === statusId)?.sortOrder ?? statusId
