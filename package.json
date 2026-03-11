@@ -19,7 +19,6 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui --api.host=0.0.0.0 --api.port=51204",
-    "test:security": "node scripts/security-audit.js",
     "test:integration": "playwright test",
     "test:integration:preview": "playwright test --config=playwright.preview.config.ts",
     "lint": "biome check --error-on-warnings --assist-enabled=false --formatter-enabled=false .",

@@ -30,4 +30,3 @@ Create tests in `lib/__tests__/utility-name.test.ts`
 
 - Use `sanitize-html` for any user/external HTML content
 - Validate file paths before dynamic imports
-- Run `npm run test:security` after changes to sanitization logic
