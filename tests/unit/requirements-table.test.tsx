@@ -1,8 +1,15 @@
-import { act, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { useState } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
+import {
+  DEFAULT_REQUIREMENT_SORT,
+  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+} from '@/lib/requirements/list-view'
 
 const mockPush = vi.fn()
+const resizeObserverObserve = vi.fn()
+const resizeObserverDisconnect = vi.fn()
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -19,9 +26,106 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 describe('RequirementsTable', () => {
+  beforeEach(() => {
+    mockPush.mockReset()
+    resizeObserverObserve.mockReset()
+    resizeObserverDisconnect.mockReset()
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: vi.fn().mockImplementation((query: string) => ({
+        addEventListener: vi.fn(),
+        addListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+        matches: true,
+        media: query,
+        onchange: null,
+        removeEventListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
+    })
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        disconnect() {
+          resizeObserverDisconnect()
+        }
+
+        observe(target: Element) {
+          resizeObserverObserve(target)
+        }
+
+        unobserve() {}
+      },
+    )
+  })
+
+  function makeRow(overrides: Record<string, unknown> = {}) {
+    return {
+      area: { name: 'Integration' },
+      id: 1,
+      isArchived: false,
+      uniqueId: 'INT0001',
+      version: {
+        categoryNameEn: 'Business requirement',
+        categoryNameSv: 'Verksamhetskrav',
+        description: 'Testkrav',
+        requiresTesting: true,
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        typeCategoryNameEn: null,
+        typeCategoryNameSv: null,
+        typeNameEn: 'Functional',
+        typeNameSv: 'Funktionellt',
+        versionNumber: 2,
+      },
+      ...overrides,
+    }
+  }
+
+  function ControlledResizableTable({
+    initialColumnWidths = {},
+  }: {
+    initialColumnWidths?: Record<string, number>
+  }) {
+    const [columnWidths, setColumnWidths] =
+      useState<Record<string, number>>(initialColumnWidths)
+
+    return (
+      <div>
+        <div data-testid="column-width-state">
+          {JSON.stringify(columnWidths)}
+        </div>
+        <RequirementsTable
+          columnWidths={columnWidths}
+          locale="sv"
+          onColumnWidthsChange={setColumnWidths}
+          rows={[makeRow()]}
+        />
+      </div>
+    )
+  }
+
+  function getTableContent(container: HTMLElement) {
+    return container.querySelector(
+      '[data-requirements-scroll-container="true"] > div:last-child',
+    ) as HTMLDivElement | null
+  }
+
+  function getColumnWidths(container: HTMLElement) {
+    return Array.from(container.querySelectorAll('col')).map(
+      col => (col as HTMLTableColElement).style.width,
+    )
+  }
+
   it('renders empty state when no rows', () => {
     render(<RequirementsTable locale="sv" rows={[]} />)
     expect(screen.getByText('noResults')).toBeTruthy()
+    expect(screen.getByText('noResults').closest('td')).toHaveAttribute(
+      'colspan',
+      String(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS.length),
+    )
   })
 
   it('renders loading state when loading is true', () => {
@@ -35,61 +139,406 @@ describe('RequirementsTable', () => {
   })
 
   it('renders table rows with status badge', () => {
-    const rows = [
-      {
-        id: 1,
-        uniqueId: 'INT0001',
-        isArchived: false,
-        version: {
-          description: 'Testkrav',
-          categoryNameSv: 'Verksamhetskrav',
-          categoryNameEn: 'Business requirement',
-          typeNameSv: 'Funktionellt',
-          typeNameEn: 'Functional',
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
-          requiresTesting: true,
-          versionNumber: 2,
-          status: 3,
-          statusNameSv: 'Publicerad',
-          statusNameEn: 'Published',
-          statusColor: '#22c55e',
-        },
-        area: { name: 'Integration' },
-      },
-    ]
+    const rows = [makeRow()]
     render(<RequirementsTable locale="sv" rows={rows} />)
 
     expect(screen.getByText('INT0001')).toBeTruthy()
     expect(screen.getByText('Testkrav')).toBeTruthy()
     expect(screen.getByText('Integration')).toBeTruthy()
     expect(screen.getByText('Publicerad')).toBeTruthy()
+    expect(screen.queryByText('v2')).toBeNull()
+  })
+
+  it('renders version when the column is made visible', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={[makeRow()]}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'version']}
+      />,
+    )
+
     expect(screen.getByText('v2')).toBeTruthy()
+  })
+
+  it('toggles sorting from the header button and updates aria-sort', () => {
+    const onSortChange = vi.fn()
+
+    render(
+      <RequirementsTable
+        locale="sv"
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={DEFAULT_REQUIREMENT_SORT}
+      />,
+    )
+
+    const headerButton = screen.getByRole('button', { name: 'uniqueId' })
+    const header = headerButton.closest('th')
+
+    expect(header).toHaveAttribute('aria-sort', 'ascending')
+    fireEvent.click(headerButton)
+    expect(onSortChange).toHaveBeenCalledWith({
+      by: 'uniqueId',
+      direction: 'desc',
+    })
+  })
+
+  it('shows locked columns as disabled in the columns popover', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'columns' }))
+
+    expect(screen.getByRole('checkbox', { name: 'uniqueId' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'description' })).toBeDisabled()
+    expect(screen.getByRole('checkbox', { name: 'area' })).not.toBeDisabled()
+  })
+
+  it('clears hidden column filters and resets hidden active sort', () => {
+    const onFilterChange = vi.fn()
+    const onSortChange = vi.fn()
+    const onVisibleColumnsChange = vi.fn()
+
+    render(
+      <RequirementsTable
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        onVisibleColumnsChange={onVisibleColumnsChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'columns' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'status' }))
+
+    expect(onVisibleColumnsChange).toHaveBeenCalledWith([
+      'uniqueId',
+      'description',
+      'area',
+      'category',
+      'type',
+    ])
+    expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
+    expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+  })
+
+  it('renders resize handles whenever column resizing is enabled', () => {
+    const { container, rerender } = render(
+      <RequirementsTable
+        columnWidths={{ status: 220 }}
+        locale="sv"
+        onColumnWidthsChange={vi.fn()}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      screen.getAllByRole('button', { name: 'resizeColumn' }),
+    ).toHaveLength(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS.length - 1)
+    expect(
+      container.querySelector('[data-column-resize-handle="status"]'),
+    ).toBeNull()
+
+    rerender(
+      <RequirementsTable
+        columnWidths={{ status: 220 }}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      container.querySelectorAll('[data-column-resize-handle]').length,
+    ).toBe(0)
+  })
+
+  it('widens the dragged column and keeps later columns at their width', () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+    const tableContent = getTableContent(container)
+
+    expect(handle).toBeTruthy()
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '360px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1122px')
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":392}',
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1154px')
+  })
+
+  it('shows the resized width during drag and commits it on pointer up', async () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+    const tableContent = getTableContent(container)
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1154px')
+
+    fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":392}',
+    )
+  })
+
+  it('keeps dragging active across multiple pointer moves', () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+    const tableContent = getTableContent(container)
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    fireEvent.pointerMove(window, { clientX: 164 })
+    fireEvent.pointerUp(window, { clientX: 164 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":424}',
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '424px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1186px')
+  })
+
+  it('does not emit duplicate width updates for repeated pointer moves at the same position', () => {
+    const onColumnWidthsChange = vi.fn()
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        onColumnWidthsChange={onColumnWidthsChange}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(onColumnWidthsChange).toHaveBeenCalledTimes(1)
+    expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 392 })
+  })
+
+  it('commits only the final width after rapid back-and-forth dragging', () => {
+    const onColumnWidthsChange = vi.fn()
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        onColumnWidthsChange={onColumnWidthsChange}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    fireEvent.pointerMove(window, { clientX: 76 })
+    fireEvent.pointerMove(window, { clientX: 164 })
+    fireEvent.pointerMove(window, { clientX: 120 })
+    fireEvent.pointerUp(window, { clientX: 120 })
+
+    expect(onColumnWidthsChange).toHaveBeenCalledTimes(1)
+    expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 380 })
+  })
+
+  it('shrinks the dragged column without changing later column widths', () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+    const tableContent = getTableContent(container)
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 68 })
+    fireEvent.pointerUp(window, { clientX: 68 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":328}',
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '328px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1090px')
+  })
+
+  it('supports keyboard resizing and double-click reset', () => {
+    const { container } = render(
+      <ControlledResizableTable
+        initialColumnWidths={{ status: 220, type: 220 }}
+      />,
+    )
+
+    const handle = container.querySelector('[data-column-resize-handle="type"]')
+    const tableContent = getTableContent(container)
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.keyDown(handle as Element, { key: 'ArrowRight' })
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"status":220,"type":228}',
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '360px',
+      '136px',
+      '152px',
+      '228px',
+      '220px',
+    ])
+    expect(tableContent?.style.width).toBe('1246px')
+
+    fireEvent.doubleClick(handle as Element)
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"status":220}',
+    )
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '360px',
+      '136px',
+      '152px',
+      '148px',
+      '220px',
+    ])
+    expect(tableContent?.style.width).toBe('1166px')
+  })
+
+  it('shows horizontal edge fades only when more content is off-screen', () => {
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        onColumnWidthsChange={vi.fn()}
+        rows={[makeRow()]}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'typeCategory',
+          'requiresTesting',
+          'version',
+        ]}
+      />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement
+    const leftFade = container.querySelector('[data-scroll-fade="left"]')
+    const rightFade = container.querySelector('[data-scroll-fade="right"]')
+
+    Object.defineProperty(scrollContainer, 'clientWidth', {
+      configurable: true,
+      value: 240,
+    })
+    Object.defineProperty(scrollContainer, 'scrollWidth', {
+      configurable: true,
+      value: 420,
+    })
+    Object.defineProperty(scrollContainer, 'scrollLeft', {
+      configurable: true,
+      value: 0,
+      writable: true,
+    })
+
+    fireEvent.scroll(scrollContainer)
+    expect(leftFade?.className).toContain('opacity-0')
+    expect(rightFade?.className).toContain('opacity-100')
+
+    scrollContainer.scrollLeft = 80
+    fireEvent.scroll(scrollContainer)
+    expect(leftFade?.className).toContain('opacity-100')
+    expect(rightFade?.className).toContain('opacity-100')
+
+    scrollContainer.scrollLeft = 180
+    fireEvent.scroll(scrollContainer)
+    expect(rightFade?.className).toContain('opacity-0')
   })
 
   it('shows pending version indicator', () => {
     const rows = [
       {
-        id: 1,
-        uniqueId: 'INT0001',
-        isArchived: false,
+        ...makeRow(),
         hasPendingVersion: true,
         pendingVersionStatusColor: '#3b82f6',
         pendingVersionStatusId: 2,
         version: {
-          description: 'Test',
-          categoryNameSv: null,
-          categoryNameEn: null,
-          typeNameSv: null,
-          typeNameEn: null,
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
+          ...makeRow().version,
           requiresTesting: false,
           versionNumber: 1,
-          status: 3,
-          statusNameSv: 'Publicerad',
-          statusNameEn: 'Published',
-          statusColor: '#22c55e',
         },
         area: null,
       },

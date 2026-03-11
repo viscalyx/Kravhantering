@@ -3,42 +3,16 @@
 import { ChevronDown, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
-
-export interface FilterValues {
-  areaIds?: number[]
-  categoryIds?: number[]
-  descriptionSearch?: string
-  requiresTesting?: string[]
-  statuses?: number[]
-  typeCategoryIds?: number[]
-  typeIds?: number[]
-  uniqueIdSearch?: string
-}
-
-interface FilterOption {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface AreaOption {
-  id: number
-  name: string
-}
-
-interface TypeCategoryOption {
-  id: number
-  nameEn: string
-  nameSv: string
-  parentId: number | null
-}
-
-export interface StatusOption {
-  color: string | null
-  id: number
-  nameEn: string
-  nameSv: string
-}
+import {
+  type AreaOption,
+  DEFAULT_FILTERS,
+  DEFAULT_PUBLISHED_STATUS_ID,
+  type FilterOption,
+  type FilterValues,
+  hasActiveFilters,
+  type StatusOption,
+  type TypeCategoryOption,
+} from '@/lib/requirements/list-view'
 
 interface RequirementsFilterProps {
   areas: AreaOption[]
@@ -52,29 +26,12 @@ interface RequirementsFilterProps {
   values: FilterValues
 }
 
-export const DEFAULT_PUBLISHED_STATUS_ID = 3
-
-export const DEFAULT_FILTERS: FilterValues = {
-  statuses: [DEFAULT_PUBLISHED_STATUS_ID],
-}
-
-export function hasActiveFilters(values: FilterValues): boolean {
-  const defaultStatuses = DEFAULT_FILTERS.statuses ?? []
-  const currentStatuses = values.statuses ?? []
-  const statusesDiffer =
-    currentStatuses.length !== defaultStatuses.length ||
-    !currentStatuses.every(s => defaultStatuses.includes(s))
-
-  return !!(
-    (values.areaIds && values.areaIds.length > 0) ||
-    (values.categoryIds && values.categoryIds.length > 0) ||
-    (values.requiresTesting && values.requiresTesting.length > 0) ||
-    (values.typeIds && values.typeIds.length > 0) ||
-    (values.typeCategoryIds && values.typeCategoryIds.length > 0) ||
-    values.uniqueIdSearch ||
-    values.descriptionSearch ||
-    statusesDiffer
-  )
+export {
+  DEFAULT_FILTERS,
+  DEFAULT_PUBLISHED_STATUS_ID,
+  hasActiveFilters,
+  type FilterValues,
+  type StatusOption,
 }
 
 export default function RequirementsFilter({

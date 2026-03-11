@@ -179,12 +179,15 @@
     "skärmlässupport",
     "snapshotbaserad",
     "stegindikator",
+    "standardvy",
     "syftebeskrivning",
     "tabellvy",
     "tokenbyte",
     "versionerad",
     "videostreaming",
-    "ztna"
+    "ztna",
+    "`pointerup`",
+    "`pointercancel`"
   ],
   "flagWords": [],
   "ignorePaths": [

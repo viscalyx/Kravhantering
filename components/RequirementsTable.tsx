@@ -2,8 +2,12 @@
 
 import {
   AlertCircle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   ChevronDown,
   ChevronRight,
+  Columns3,
   Filter,
   Search,
   TestTube2,
@@ -12,68 +16,39 @@ import {
 import { useTranslations } from 'next-intl'
 import {
   Fragment,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import type {
-  FilterValues,
-  StatusOption,
-} from '@/components/RequirementsFilter'
 import StatusBadge from '@/components/StatusBadge'
 import { useRouter } from '@/i18n/routing'
-
-interface RequirementRow {
-  area: {
-    name: string
-  } | null
-  hasPendingVersion?: boolean
-  id: number
-  isArchived: boolean
-  pendingVersionStatusColor?: string | null
-  pendingVersionStatusId?: number | null
-  uniqueId: string
-  version: {
-    description: string | null
-    categoryNameSv: string | null
-    categoryNameEn: string | null
-    typeNameSv: string | null
-    typeNameEn: string | null
-    typeCategoryNameSv: string | null
-    typeCategoryNameEn: string | null
-    requiresTesting: boolean
-    versionNumber: number
-    status: number
-    statusNameSv: string | null
-    statusNameEn: string | null
-    statusColor: string | null
-  } | null
-}
-
-interface FilterOption {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface AreaOption {
-  id: number
-  name: string
-}
-
-interface TypeCategoryOption {
-  id: number
-  nameEn: string
-  nameSv: string
-  parentId: number | null
-}
+import {
+  type AreaOption,
+  clampRequirementColumnWidth,
+  DEFAULT_REQUIREMENT_SORT,
+  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  type FilterOption,
+  type FilterValues,
+  getRequirementColumnWidth,
+  REQUIREMENT_LIST_COLUMNS,
+  type RequirementColumnId,
+  type RequirementColumnWidths,
+  type RequirementRow,
+  type RequirementSortField,
+  type RequirementSortState,
+  type StatusOption,
+  type TypeCategoryOption,
+} from '@/lib/requirements/list-view'
 
 interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
+  columnWidths?: RequirementColumnWidths
   expandedId?: number | null
   filterValues?: FilterValues
   getName?: (opt: FilterOption) => string
@@ -82,15 +57,29 @@ interface RequirementsTableProps {
   loading?: boolean
   loadingMore?: boolean
   locale: string
+  onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
   onRowClick?: (id: number) => void
+  onSortChange?: (value: RequirementSortState) => void
+  onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   renderExpanded?: (id: number) => ReactNode
   rows: RequirementRow[]
+  sortState?: RequirementSortState
   statusOptions?: StatusOption[]
   typeCategories?: TypeCategoryOption[]
   types?: FilterOption[]
+  visibleColumns?: RequirementColumnId[]
+}
+
+function areColumnWidthsEqual(
+  left: RequirementColumnWidths,
+  right: RequirementColumnWidths,
+) {
+  return REQUIREMENT_LIST_COLUMNS.every(
+    column => left[column.id] === right[column.id],
+  )
 }
 
 /* ── Filter popover for text search columns (uniqueId, description) ── */
@@ -104,6 +93,7 @@ function SearchFilterPopover({
   label: string
   onChange: (v: string | undefined) => void
 }) {
+  const tc = useTranslations('common')
   const [open, setOpen] = useState(false)
   const [local, setLocal] = useState(activeValue)
   const ref = useRef<HTMLDivElement>(null)
@@ -149,8 +139,8 @@ function SearchFilterPopover({
   return (
     <div className="relative inline-flex" ref={ref}>
       <button
-        aria-label={`${label} filter`}
-        className={`ml-1 p-0.5 rounded transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        aria-label={tc('filterBy', { label })}
+        className={`inline-flex h-4 w-4 items-center justify-center rounded transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         onClick={e => {
           e.stopPropagation()
           if (!open && btnRef.current) {
@@ -160,9 +150,10 @@ function SearchFilterPopover({
           setOpen(v => !v)
         }}
         ref={btnRef}
+        title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3 w-3" />
+        <Filter className="h-3.5 w-3.5" />
       </button>
       {open &&
         createPortal(
@@ -234,6 +225,7 @@ function MultiSelectFilterPopover({
   options: { id: number }[]
   value: number[]
 }) {
+  const tc = useTranslations('common')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -283,13 +275,14 @@ function MultiSelectFilterPopover({
   return (
     <div className="relative inline-flex" ref={ref}>
       <button
-        aria-label={`${label} filter`}
-        className={`ml-1 p-0.5 rounded transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        aria-label={tc('filterBy', { label })}
+        className={`inline-flex h-4 w-4 items-center justify-center rounded transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         onClick={openDropdown}
         ref={btnRef}
+        title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3 w-3" />
+        <Filter className="h-3.5 w-3.5" />
         {activeCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold text-white leading-none">
             {activeCount}
@@ -351,6 +344,7 @@ function GroupedMultiSelectFilterPopover({
   options: TypeCategoryOption[]
   value: number[]
 }) {
+  const tc = useTranslations('common')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -404,13 +398,14 @@ function GroupedMultiSelectFilterPopover({
   return (
     <div className="relative inline-flex" ref={ref}>
       <button
-        aria-label={`${label} filter`}
-        className={`ml-1 p-0.5 rounded transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        aria-label={tc('filterBy', { label })}
+        className={`inline-flex h-4 w-4 items-center justify-center rounded transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         onClick={openDropdown}
         ref={btnRef}
+        title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3 w-3" />
+        <Filter className="h-3.5 w-3.5" />
         {activeCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold text-white leading-none">
             {activeCount}
@@ -458,6 +453,110 @@ function GroupedMultiSelectFilterPopover({
                 </div>
               )
             })}
+          </div>,
+          document.body,
+        )}
+    </div>
+  )
+}
+
+function ColumnsPopover({
+  columns,
+  onReset,
+  onToggle,
+  visibleColumns,
+}: {
+  columns: {
+    canHide: boolean
+    id: RequirementColumnId
+    label: string
+  }[]
+  onReset: () => void
+  onToggle: (id: RequirementColumnId) => void
+  visibleColumns: RequirementColumnId[]
+}) {
+  const tc = useTranslations('common')
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [pos, setPos] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  })
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        ref.current &&
+        !ref.current.contains(target) &&
+        dropRef.current &&
+        !dropRef.current.contains(target)
+      ) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  return (
+    <div className="relative inline-flex" ref={ref}>
+      <button
+        aria-label={tc('columns')}
+        className="inline-flex h-4 w-4 items-center justify-center rounded text-secondary-400 transition-colors hover:text-secondary-600 dark:hover:text-secondary-300"
+        onClick={() => {
+          if (!open && btnRef.current) {
+            const rect = btnRef.current.getBoundingClientRect()
+            setPos({ top: rect.bottom + 4, left: rect.right - 220 })
+          }
+          setOpen(value => !value)
+        }}
+        ref={btnRef}
+        title={tc('columns')}
+        type="button"
+      >
+        <Columns3 aria-hidden="true" className="h-3.5 w-3.5 translate-y-0.5" />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            className="fixed z-50 min-w-56 rounded-xl border bg-white p-2 shadow-lg dark:bg-secondary-800"
+            ref={dropRef}
+            style={{ left: Math.max(pos.left, 8), top: pos.top }}
+          >
+            <div className="mb-1 border-b pb-1">
+              <button
+                className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-secondary-500 transition-colors hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200"
+                onClick={() => {
+                  onReset()
+                  setOpen(false)
+                }}
+                type="button"
+              >
+                {tc('resetToDefault')}
+              </button>
+            </div>
+            <div className="space-y-0.5">
+              {columns.map(column => (
+                <label
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
+                    !column.canHide ? 'cursor-not-allowed opacity-60' : ''
+                  }`}
+                  key={column.id}
+                >
+                  <input
+                    checked={visibleColumns.includes(column.id)}
+                    disabled={!column.canHide}
+                    onChange={() => onToggle(column.id)}
+                    type="checkbox"
+                  />
+                  <span>{column.label}</span>
+                </label>
+              ))}
+            </div>
           </div>,
           document.body,
         )}
@@ -532,6 +631,7 @@ function FilterChips({
 export default function RequirementsTable({
   areas = [],
   categories = [],
+  columnWidths = {},
   expandedId,
   filterValues,
   getName = () => '',
@@ -543,12 +643,17 @@ export default function RequirementsTable({
   onFilterChange,
   onLoadMore,
   onRowClick,
+  onColumnWidthsChange,
+  onSortChange,
+  onVisibleColumnsChange,
   pinnedIds,
   renderExpanded,
   rows,
+  sortState = DEFAULT_REQUIREMENT_SORT,
   statusOptions = [],
   typeCategories = [],
   types = [],
+  visibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
@@ -556,6 +661,104 @@ export default function RequirementsTable({
 
   const fv = filterValues ?? {}
   const hasFilters = !!onFilterChange
+  const visibleColumnSet = new Set([
+    ...visibleColumns,
+    'uniqueId',
+    'description',
+  ])
+  const columnDefinitions = REQUIREMENT_LIST_COLUMNS.filter(column =>
+    visibleColumnSet.has(column.id),
+  )
+  const configuredColumnWidths = Object.fromEntries(
+    columnDefinitions.map(column => [
+      column.id,
+      getRequirementColumnWidth(column.id, columnWidths),
+    ]),
+  ) as Record<RequirementColumnId, number>
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const tableContentRef = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<HTMLTableElement>(null)
+  const colRefs = useRef<
+    Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
+  >({})
+  const headerCellRefs = useRef<
+    Partial<Record<RequirementColumnId, HTMLTableCellElement | null>>
+  >({})
+  const resizeHandleRefs = useRef<
+    Partial<Record<RequirementColumnId, HTMLButtonElement | null>>
+  >({})
+  const columnWidthsRef = useRef(columnWidths)
+  const onColumnWidthsChangeRef = useRef(onColumnWidthsChange)
+  const visibleColumnIdsRef = useRef<RequirementColumnId[]>(
+    columnDefinitions.map(column => column.id),
+  )
+  const resizePreviewVisibleWidthsRef = useRef<Record<
+    RequirementColumnId,
+    number
+  > | null>(null)
+  const pendingResizePreviewVisibleWidthsRef = useRef<Record<
+    RequirementColumnId,
+    number
+  > | null>(null)
+  const resizePreviewFrameRef = useRef<number | null>(null)
+  const [scrollContainerWidth, setScrollContainerWidth] = useState(0)
+  const hasManualColumnWidths = columnDefinitions.some(
+    column => typeof columnWidths[column.id] === 'number',
+  )
+  const renderedColumnWidths = {
+    ...configuredColumnWidths,
+  } as Record<RequirementColumnId, number>
+  if (!hasManualColumnWidths) {
+    const growColumnIds = columnDefinitions
+      .filter(column => column.grows)
+      .map(column => column.id)
+    const configuredTableWidth = columnDefinitions.reduce(
+      (total, column) => total + configuredColumnWidths[column.id],
+      0,
+    )
+    const availableExtraWidth =
+      growColumnIds.length > 0
+        ? Math.max(0, scrollContainerWidth - configuredTableWidth)
+        : 0
+
+    if (availableExtraWidth > 0) {
+      const evenShare = Math.floor(availableExtraWidth / growColumnIds.length)
+      const remainder = availableExtraWidth - evenShare * growColumnIds.length
+
+      for (const [index, columnId] of growColumnIds.entries()) {
+        renderedColumnWidths[columnId] +=
+          evenShare + (index === 0 ? remainder : 0)
+      }
+    }
+  }
+
+  const tableWidth = columnDefinitions.reduce(
+    (total, column) => total + renderedColumnWidths[column.id],
+    0,
+  )
+  const scrollLayoutSignature = columnDefinitions
+    .map(column => `${column.id}:${renderedColumnWidths[column.id]}`)
+    .concat(String(scrollContainerWidth))
+    .join('|')
+  const resizeStateRef = useRef<{
+    columnId: RequirementColumnId
+    handle: HTMLButtonElement | null
+    pointerId: number
+    startWidth: number
+    startX: number
+    visibleWidths: Record<RequirementColumnId, number>
+  } | null>(null)
+  const [resizeHandleOffsets, setResizeHandleOffsets] = useState<
+    {
+      columnId: RequirementColumnId
+      left: number
+    }[]
+  >([])
+  const [scrollFadeState, setScrollFadeState] = useState({
+    left: false,
+    right: false,
+  })
+  const canResizeColumns = !!onColumnWidthsChange
 
   const updateFilter = (patch: Partial<FilterValues>) => {
     if (onFilterChange) onFilterChange({ ...fv, ...patch })
@@ -590,6 +793,1015 @@ export default function RequirementsTable({
     updateFilter({ requiresTesting: values.length > 0 ? values : undefined })
   }
 
+  const getColumnLabel = (columnId: RequirementColumnId) => {
+    const column = REQUIREMENT_LIST_COLUMNS.find(item => item.id === columnId)
+    if (!column) {
+      return columnId
+    }
+
+    return column.labelNamespace === 'common'
+      ? tc(column.labelKey)
+      : t(column.labelKey)
+  }
+
+  const getSortIcon = (columnId: RequirementSortField) => {
+    if (sortState.by !== columnId) {
+      return (
+        <ArrowUpDown
+          aria-hidden="true"
+          className="h-3.5 w-3.5 text-secondary-400 transition-colors group-hover:text-secondary-600 dark:group-hover:text-secondary-300"
+        />
+      )
+    }
+
+    return sortState.direction === 'asc' ? (
+      <ArrowUp
+        aria-hidden="true"
+        className="h-3.5 w-3.5 text-primary-600 dark:text-primary-400"
+      />
+    ) : (
+      <ArrowDown
+        aria-hidden="true"
+        className="h-3.5 w-3.5 text-primary-600 dark:text-primary-400"
+      />
+    )
+  }
+
+  const getSortTooltip = (label: string, isActiveSort: boolean) => {
+    if (!isActiveSort) {
+      return tc('sortBy', { label })
+    }
+
+    const currentOrderKey =
+      sortState.direction === 'asc' ? 'ascending' : 'descending'
+    const nextOrderKey =
+      sortState.direction === 'asc' ? 'descending' : 'ascending'
+
+    return tc('sortDirectionTooltip', {
+      current: tc(currentOrderKey),
+      label,
+      next: tc(nextOrderKey),
+    })
+  }
+
+  const handleSortToggle = (columnId: RequirementSortField) => {
+    if (!onSortChange) {
+      return
+    }
+
+    if (sortState.by === columnId) {
+      onSortChange({
+        by: columnId,
+        direction: sortState.direction === 'asc' ? 'desc' : 'asc',
+      })
+      return
+    }
+
+    onSortChange({ by: columnId, direction: 'asc' })
+  }
+
+  useEffect(() => {
+    columnWidthsRef.current = columnWidths
+  }, [columnWidths])
+
+  useEffect(() => {
+    onColumnWidthsChangeRef.current = onColumnWidthsChange
+  }, [onColumnWidthsChange])
+
+  useEffect(() => {
+    visibleColumnIdsRef.current = columnDefinitions.map(column => column.id)
+  }, [columnDefinitions])
+
+  const buildColumnWidthOverrides = useCallback(
+    (visibleWidths: Record<RequirementColumnId, number>) => {
+      const nextWidths = { ...columnWidthsRef.current }
+
+      for (const columnId of visibleColumnIdsRef.current) {
+        const width = visibleWidths[columnId]
+        const column = REQUIREMENT_LIST_COLUMNS.find(
+          item => item.id === columnId,
+        )
+
+        if (typeof width !== 'number' || !column?.resizable) {
+          continue
+        }
+
+        const nextWidth = clampRequirementColumnWidth(columnId, width)
+        if (nextWidth === column.defaultWidthPx) {
+          delete nextWidths[columnId]
+        } else {
+          nextWidths[columnId] = nextWidth
+        }
+      }
+
+      return nextWidths
+    },
+    [],
+  )
+
+  const getResizeHandleLeft = useCallback(
+    (
+      visibleWidths: Record<RequirementColumnId, number>,
+      columnId: RequirementColumnId,
+    ) => {
+      let left = 0
+
+      for (const column of columnDefinitions) {
+        left += visibleWidths[column.id] ?? renderedColumnWidths[column.id]
+        if (column.id === columnId) {
+          return left
+        }
+      }
+
+      return null
+    },
+    [columnDefinitions, renderedColumnWidths],
+  )
+
+  const applyVisibleWidthPreview = useCallback(
+    (visibleWidths: Record<RequirementColumnId, number>) => {
+      const tableContent = tableContentRef.current
+      if (tableContent) {
+        const nextTableWidth = columnDefinitions.reduce(
+          (total, column) =>
+            total +
+            (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
+          0,
+        )
+        tableContent.style.width = `${nextTableWidth}px`
+      }
+
+      for (const column of columnDefinitions) {
+        const width =
+          visibleWidths[column.id] ?? renderedColumnWidths[column.id]
+        const col = colRefs.current[column.id]
+        if (col) {
+          col.style.width = `${width}px`
+        }
+      }
+
+      const activeResize = resizeStateRef.current
+      if (!activeResize) {
+        return
+      }
+
+      const handle = resizeHandleRefs.current[activeResize.columnId]
+      const handleLeft = getResizeHandleLeft(
+        visibleWidths,
+        activeResize.columnId,
+      )
+
+      if (handle && typeof handleLeft === 'number') {
+        handle.style.left = `${handleLeft}px`
+      }
+    },
+    [columnDefinitions, getResizeHandleLeft, renderedColumnWidths],
+  )
+
+  const cancelResizePreviewFrame = useCallback(() => {
+    if (
+      resizePreviewFrameRef.current !== null &&
+      typeof globalThis.cancelAnimationFrame === 'function'
+    ) {
+      globalThis.cancelAnimationFrame(resizePreviewFrameRef.current)
+    }
+
+    resizePreviewFrameRef.current = null
+  }, [])
+
+  const flushResizePreview = useCallback(() => {
+    const nextVisibleWidths = pendingResizePreviewVisibleWidthsRef.current
+    if (!nextVisibleWidths) {
+      return
+    }
+
+    pendingResizePreviewVisibleWidthsRef.current = null
+    resizePreviewVisibleWidthsRef.current = nextVisibleWidths
+    applyVisibleWidthPreview(nextVisibleWidths)
+  }, [applyVisibleWidthPreview])
+
+  const scheduleResizePreview = useCallback(
+    (nextVisibleWidths: Record<RequirementColumnId, number>) => {
+      const activeResize = resizeStateRef.current
+      if (!activeResize) {
+        return
+      }
+
+      const currentVisibleWidths =
+        pendingResizePreviewVisibleWidthsRef.current ??
+        resizePreviewVisibleWidthsRef.current ??
+        activeResize.visibleWidths
+
+      if (
+        currentVisibleWidths[activeResize.columnId] ===
+        nextVisibleWidths[activeResize.columnId]
+      ) {
+        return
+      }
+
+      pendingResizePreviewVisibleWidthsRef.current = nextVisibleWidths
+      if (resizePreviewFrameRef.current !== null) {
+        return
+      }
+
+      if (typeof globalThis.requestAnimationFrame !== 'function') {
+        flushResizePreview()
+        return
+      }
+
+      resizePreviewFrameRef.current = globalThis.requestAnimationFrame(() => {
+        resizePreviewFrameRef.current = null
+        flushResizePreview()
+      })
+    },
+    [flushResizePreview],
+  )
+
+  const commitColumnWidthOverrides = useCallback(
+    (nextWidths: RequirementColumnWidths) => {
+      const onChange = onColumnWidthsChangeRef.current
+      if (!onChange) {
+        return
+      }
+
+      if (areColumnWidthsEqual(columnWidthsRef.current, nextWidths)) {
+        return
+      }
+
+      columnWidthsRef.current = nextWidths
+      onChange(nextWidths)
+    },
+    [],
+  )
+
+  const getVisibleWidthSnapshot = useCallback(() => {
+    const snapshot = {} as Record<RequirementColumnId, number>
+
+    for (const column of columnDefinitions) {
+      const cell = headerCellRefs.current[column.id]
+      const measuredWidth = Math.round(
+        cell?.getBoundingClientRect().width ?? cell?.offsetWidth ?? 0,
+      )
+
+      snapshot[column.id] = clampRequirementColumnWidth(
+        column.id,
+        measuredWidth > 0 ? measuredWidth : renderedColumnWidths[column.id],
+      )
+    }
+
+    return snapshot
+  }, [columnDefinitions, renderedColumnWidths])
+
+  const resetColumnWidth = useCallback(
+    (columnId: RequirementColumnId) => {
+      const onChange = onColumnWidthsChangeRef.current
+      if (!onChange) {
+        return
+      }
+
+      const currentWidths = resizePreviewVisibleWidthsRef.current
+        ? buildColumnWidthOverrides(resizePreviewVisibleWidthsRef.current)
+        : columnWidthsRef.current
+      if (!(columnId in currentWidths)) {
+        return
+      }
+
+      const nextWidths = { ...currentWidths }
+      delete nextWidths[columnId]
+      cancelResizePreviewFrame()
+      pendingResizePreviewVisibleWidthsRef.current = null
+      resizePreviewVisibleWidthsRef.current = null
+      commitColumnWidthOverrides(nextWidths)
+    },
+    [
+      buildColumnWidthOverrides,
+      cancelResizePreviewFrame,
+      commitColumnWidthOverrides,
+    ],
+  )
+
+  const finishResizing = useCallback(
+    (commitPreview: boolean) => {
+      const activeResize = resizeStateRef.current
+      if (!activeResize) {
+        return
+      }
+
+      flushResizePreview()
+
+      const previewVisibleWidths = resizePreviewVisibleWidthsRef.current
+      const finalVisibleWidths =
+        previewVisibleWidths ?? activeResize.visibleWidths
+
+      if (!commitPreview) {
+        applyVisibleWidthPreview(activeResize.visibleWidths)
+      }
+
+      cancelResizePreviewFrame()
+      pendingResizePreviewVisibleWidthsRef.current = null
+      resizePreviewVisibleWidthsRef.current = null
+
+      if (commitPreview) {
+        commitColumnWidthOverrides(
+          buildColumnWidthOverrides(finalVisibleWidths),
+        )
+      }
+
+      if (
+        activeResize.handle?.isConnected &&
+        activeResize.handle.hasPointerCapture?.(activeResize.pointerId)
+      ) {
+        activeResize.handle.releasePointerCapture(activeResize.pointerId)
+      }
+
+      resizeStateRef.current = null
+      document.body.style.removeProperty('cursor')
+      document.body.style.removeProperty('user-select')
+    },
+    [
+      applyVisibleWidthPreview,
+      buildColumnWidthOverrides,
+      cancelResizePreviewFrame,
+      commitColumnWidthOverrides,
+      flushResizePreview,
+    ],
+  )
+
+  const handleResizePointerUp = useCallback(() => {
+    finishResizing(true)
+  }, [finishResizing])
+
+  const handleResizePointerCancel = useCallback(() => {
+    finishResizing(false)
+  }, [finishResizing])
+
+  const updateScrollFades = useCallback(() => {
+    if (resizeStateRef.current) {
+      return
+    }
+
+    const container = scrollContainerRef.current
+
+    if (!container) {
+      setScrollFadeState(previous =>
+        previous.left || previous.right
+          ? { left: false, right: false }
+          : previous,
+      )
+      return
+    }
+
+    const maxScrollLeft = container.scrollWidth - container.clientWidth
+    const nextState = {
+      left: container.scrollLeft > 1,
+      right: maxScrollLeft > 1 && container.scrollLeft < maxScrollLeft - 1,
+    }
+
+    setScrollContainerWidth(previous =>
+      previous === container.clientWidth ? previous : container.clientWidth,
+    )
+
+    setScrollFadeState(previous => {
+      if (
+        previous.left === nextState.left &&
+        previous.right === nextState.right
+      ) {
+        return previous
+      }
+
+      return nextState
+    })
+  }, [])
+
+  const updateResizeHandleOffsets = useCallback(() => {
+    if (resizeStateRef.current) {
+      return
+    }
+
+    if (!canResizeColumns) {
+      setResizeHandleOffsets(previous =>
+        previous.length === 0 ? previous : [],
+      )
+      return
+    }
+
+    const nextOffsets = columnDefinitions
+      .map((column, columnIndex) => {
+        const cell = headerCellRefs.current[column.id]
+
+        if (!cell || columnIndex === columnDefinitions.length - 1) {
+          return null
+        }
+
+        return {
+          columnId: column.id,
+          left: Math.round(cell.offsetLeft + cell.offsetWidth),
+        }
+      })
+      .filter(
+        (
+          value,
+        ): value is {
+          columnId: RequirementColumnId
+          left: number
+        } => value !== null,
+      )
+
+    setResizeHandleOffsets(previous => {
+      if (
+        previous.length === nextOffsets.length &&
+        previous.every(
+          (value, index) =>
+            value.columnId === nextOffsets[index]?.columnId &&
+            value.left === nextOffsets[index]?.left,
+        )
+      ) {
+        return previous
+      }
+
+      return nextOffsets
+    })
+  }, [canResizeColumns, columnDefinitions])
+
+  const setResizeHoverCursor = useCallback((active: boolean) => {
+    if (resizeStateRef.current) {
+      return
+    }
+
+    if (active) {
+      document.body.style.cursor = 'ew-resize'
+      return
+    }
+
+    document.body.style.removeProperty('cursor')
+  }, [])
+
+  useEffect(() => {
+    const handlePointerMove = (event: PointerEvent) => {
+      const activeResize = resizeStateRef.current
+      if (!activeResize) {
+        return
+      }
+
+      const nextWidth = clampRequirementColumnWidth(
+        activeResize.columnId,
+        activeResize.startWidth + (event.clientX - activeResize.startX),
+      )
+      if (nextWidth === activeResize.visibleWidths[activeResize.columnId]) {
+        return
+      }
+
+      scheduleResizePreview({
+        ...activeResize.visibleWidths,
+        [activeResize.columnId]: nextWidth,
+      })
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handleResizePointerUp)
+    window.addEventListener('pointercancel', handleResizePointerCancel)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handleResizePointerUp)
+      window.removeEventListener('pointercancel', handleResizePointerCancel)
+      document.body.style.removeProperty('cursor')
+      document.body.style.removeProperty('user-select')
+    }
+  }, [handleResizePointerCancel, handleResizePointerUp, scheduleResizePreview])
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+
+    if (!container) {
+      return
+    }
+
+    updateScrollFades()
+    updateResizeHandleOffsets()
+
+    const handleScroll = () => updateScrollFades()
+    container.addEventListener('scroll', handleScroll, { passive: true })
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => {
+            updateScrollFades()
+            updateResizeHandleOffsets()
+          })
+
+    resizeObserver?.observe(container)
+    if (tableContentRef.current) {
+      resizeObserver?.observe(tableContentRef.current)
+    }
+    if (tableRef.current) {
+      resizeObserver?.observe(tableRef.current)
+    }
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+      resizeObserver?.disconnect()
+    }
+  }, [updateResizeHandleOffsets, updateScrollFades])
+
+  useEffect(() => {
+    void scrollLayoutSignature
+    updateScrollFades()
+    updateResizeHandleOffsets()
+  }, [scrollLayoutSignature, updateResizeHandleOffsets, updateScrollFades])
+
+  const handleResizePointerDown = (
+    columnId: RequirementColumnId,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    if (!canResizeColumns) {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    cancelResizePreviewFrame()
+    pendingResizePreviewVisibleWidthsRef.current = null
+    resizePreviewVisibleWidthsRef.current = null
+    const visibleWidths = getVisibleWidthSnapshot()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    resizeStateRef.current = {
+      columnId,
+      handle: event.currentTarget,
+      pointerId: event.pointerId,
+      startWidth: visibleWidths[columnId],
+      startX: event.clientX,
+      visibleWidths,
+    }
+    document.body.style.cursor = 'ew-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  const handleResizeKeyDown = (
+    columnId: RequirementColumnId,
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ) => {
+    if (!canResizeColumns) {
+      return
+    }
+
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    const visibleWidths = getVisibleWidthSnapshot()
+    const step = event.shiftKey ? 32 : 8
+    const delta = event.key === 'ArrowRight' ? step : -step
+    cancelResizePreviewFrame()
+    pendingResizePreviewVisibleWidthsRef.current = null
+    resizePreviewVisibleWidthsRef.current = null
+    commitColumnWidthOverrides(
+      buildColumnWidthOverrides({
+        ...visibleWidths,
+        [columnId]: clampRequirementColumnWidth(
+          columnId,
+          visibleWidths[columnId] + delta,
+        ),
+      }),
+    )
+  }
+
+  const getVisibilityPatch = (hiddenColumns: RequirementColumnId[]) => {
+    const patch: Partial<FilterValues> = {}
+
+    for (const columnId of hiddenColumns) {
+      switch (columnId) {
+        case 'uniqueId':
+          patch.uniqueIdSearch = undefined
+          break
+        case 'description':
+          patch.descriptionSearch = undefined
+          break
+        case 'area':
+          patch.areaIds = undefined
+          break
+        case 'category':
+          patch.categoryIds = undefined
+          break
+        case 'type':
+          patch.typeIds = undefined
+          break
+        case 'typeCategory':
+          patch.typeCategoryIds = undefined
+          break
+        case 'status':
+          patch.statuses = undefined
+          break
+        case 'requiresTesting':
+          patch.requiresTesting = undefined
+          break
+        case 'version':
+          break
+      }
+    }
+
+    return patch
+  }
+
+  const applyVisibleColumns = (nextVisibleColumns: RequirementColumnId[]) => {
+    if (!onVisibleColumnsChange) {
+      return
+    }
+
+    const normalizedColumns = REQUIREMENT_LIST_COLUMNS.filter(
+      column =>
+        nextVisibleColumns.includes(column.id) ||
+        column.id === 'uniqueId' ||
+        column.id === 'description',
+    ).map(column => column.id)
+    const hiddenColumns = columnDefinitions
+      .map(column => column.id)
+      .filter(columnId => !normalizedColumns.includes(columnId))
+    const filterPatch = getVisibilityPatch(hiddenColumns)
+
+    onVisibleColumnsChange(normalizedColumns)
+
+    if (Object.keys(filterPatch).length > 0 && onFilterChange) {
+      onFilterChange({ ...fv, ...filterPatch })
+    }
+    if (
+      hiddenColumns.includes(sortState.by) &&
+      onSortChange &&
+      sortState.by !== DEFAULT_REQUIREMENT_SORT.by
+    ) {
+      onSortChange(DEFAULT_REQUIREMENT_SORT)
+    }
+  }
+
+  const toggleColumn = (columnId: RequirementColumnId) => {
+    const column = REQUIREMENT_LIST_COLUMNS.find(item => item.id === columnId)
+    if (!column?.canHide) {
+      return
+    }
+
+    if (visibleColumnSet.has(columnId)) {
+      applyVisibleColumns(visibleColumns.filter(value => value !== columnId))
+      return
+    }
+
+    applyVisibleColumns([...visibleColumns, columnId])
+  }
+
+  const renderFilterControl = (columnId: RequirementColumnId) => {
+    if (!hasFilters) {
+      return null
+    }
+
+    switch (columnId) {
+      case 'uniqueId':
+        return (
+          <SearchFilterPopover
+            activeValue={fv.uniqueIdSearch ?? ''}
+            label={t('uniqueId')}
+            onChange={value => updateFilter({ uniqueIdSearch: value })}
+          />
+        )
+      case 'description':
+        return (
+          <SearchFilterPopover
+            activeValue={fv.descriptionSearch ?? ''}
+            label={t('description')}
+            onChange={value => updateFilter({ descriptionSearch: value })}
+          />
+        )
+      case 'area':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.areaIds ?? []).length}
+            getLabel={option => areaLabel(option.id)}
+            label={t('area')}
+            onChange={ids =>
+              updateFilter({ areaIds: ids.length > 0 ? ids : undefined })
+            }
+            options={areas}
+            value={fv.areaIds ?? []}
+          />
+        )
+      case 'category':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.categoryIds ?? []).length}
+            getLabel={option => catLabel(option.id)}
+            label={t('category')}
+            onChange={ids =>
+              updateFilter({ categoryIds: ids.length > 0 ? ids : undefined })
+            }
+            options={categories}
+            value={fv.categoryIds ?? []}
+          />
+        )
+      case 'type':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.typeIds ?? []).length}
+            getLabel={option => typeLabel(option.id)}
+            label={t('type')}
+            onChange={ids =>
+              updateFilter({ typeIds: ids.length > 0 ? ids : undefined })
+            }
+            options={types}
+            value={fv.typeIds ?? []}
+          />
+        )
+      case 'typeCategory':
+        return (
+          <GroupedMultiSelectFilterPopover
+            activeCount={(fv.typeCategoryIds ?? []).length}
+            getLabel={option => typeCatLabel(option.id)}
+            label={t('typeCategory')}
+            onChange={ids =>
+              updateFilter({
+                typeCategoryIds: ids.length > 0 ? ids : undefined,
+              })
+            }
+            options={typeCategories}
+            value={fv.typeCategoryIds ?? []}
+          />
+        )
+      case 'status':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.statuses ?? []).length}
+            getLabel={option => statusLabel(option.id)}
+            label={t('status')}
+            onChange={ids =>
+              updateFilter({ statuses: ids.length > 0 ? ids : undefined })
+            }
+            options={statusOptions}
+            value={fv.statuses ?? []}
+          />
+        )
+      case 'requiresTesting':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={rtValue.length}
+            getLabel={option =>
+              requiresTestingOptions.find(item => item.id === option.id)
+                ?.label ?? ''
+            }
+            label={t('requiresTesting')}
+            onChange={setRt}
+            options={requiresTestingOptions}
+            value={rtValue}
+          />
+        )
+      case 'version':
+        return null
+    }
+  }
+
+  const renderFilterChips = (columnId: RequirementColumnId) => {
+    switch (columnId) {
+      case 'uniqueId':
+        return fv.uniqueIdSearch ? (
+          <SearchChip
+            label={fv.uniqueIdSearch}
+            onRemove={() => updateFilter({ uniqueIdSearch: undefined })}
+          />
+        ) : null
+      case 'description':
+        return fv.descriptionSearch ? (
+          <SearchChip
+            label={fv.descriptionSearch}
+            onRemove={() => updateFilter({ descriptionSearch: undefined })}
+          />
+        ) : null
+      case 'area':
+        return (
+          <FilterChips
+            getLabel={areaLabel}
+            onRemove={id =>
+              updateFilter({
+                areaIds: (fv.areaIds ?? []).filter(value => value !== id),
+              })
+            }
+            values={fv.areaIds ?? []}
+          />
+        )
+      case 'category':
+        return (
+          <FilterChips
+            getLabel={catLabel}
+            onRemove={id =>
+              updateFilter({
+                categoryIds: (fv.categoryIds ?? []).filter(
+                  value => value !== id,
+                ),
+              })
+            }
+            values={fv.categoryIds ?? []}
+          />
+        )
+      case 'type':
+        return (
+          <FilterChips
+            getLabel={typeLabel}
+            onRemove={id =>
+              updateFilter({
+                typeIds: (fv.typeIds ?? []).filter(value => value !== id),
+              })
+            }
+            values={fv.typeIds ?? []}
+          />
+        )
+      case 'typeCategory':
+        return (
+          <FilterChips
+            getLabel={typeCatLabel}
+            onRemove={id =>
+              updateFilter({
+                typeCategoryIds: (fv.typeCategoryIds ?? []).filter(
+                  value => value !== id,
+                ),
+              })
+            }
+            values={fv.typeCategoryIds ?? []}
+          />
+        )
+      case 'status':
+        return (
+          <FilterChips
+            getLabel={statusLabel}
+            onRemove={id =>
+              updateFilter({
+                statuses: (fv.statuses ?? []).filter(value => value !== id),
+              })
+            }
+            values={fv.statuses ?? []}
+          />
+        )
+      case 'requiresTesting':
+        return (
+          <FilterChips
+            getLabel={id =>
+              requiresTestingOptions.find(option => option.id === id)?.label ??
+              ''
+            }
+            onRemove={id => setRt(rtValue.filter(value => value !== id))}
+            values={rtValue}
+          />
+        )
+      case 'version':
+        return null
+    }
+  }
+
+  const renderCell = (
+    row: RequirementRow,
+    columnId: RequirementColumnId,
+    isLastColumn: boolean,
+  ) => {
+    const archivedContentClass = row.isArchived ? 'opacity-50' : ''
+    const dividerClass = isLastColumn
+      ? ''
+      : 'border-r border-secondary-200/5 dark:border-secondary-700/5'
+
+    switch (columnId) {
+      case 'uniqueId':
+        return (
+          <td
+            className={`py-2 px-2 font-mono font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap ${archivedContentClass} ${dividerClass}`}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              {renderExpanded ? (
+                row.id === expandedId ? (
+                  <ChevronDown
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 text-secondary-500"
+                  />
+                ) : (
+                  <ChevronRight
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 text-secondary-400"
+                  />
+                )
+              ) : null}
+              {row.uniqueId}
+            </span>
+          </td>
+        )
+      case 'description':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.version?.description ?? '—'}
+          </td>
+        )
+      case 'area':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.area?.name ?? '—'}
+          </td>
+        )
+      case 'category':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {(locale === 'sv'
+              ? row.version?.categoryNameSv
+              : row.version?.categoryNameEn) ?? '—'}
+          </td>
+        )
+      case 'type':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {(locale === 'sv'
+              ? row.version?.typeNameSv
+              : row.version?.typeNameEn) ?? '—'}
+          </td>
+        )
+      case 'typeCategory':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {(locale === 'sv'
+              ? row.version?.typeCategoryNameSv
+              : row.version?.typeCategoryNameEn) ?? '—'}
+          </td>
+        )
+      case 'status':
+        return (
+          <td className={`py-2 px-2 ${dividerClass}`}>
+            <span className="inline-flex items-center gap-1">
+              {row.version ? (
+                <span className={archivedContentClass}>
+                  <StatusBadge
+                    color={row.version.statusColor}
+                    label={
+                      (locale === 'sv'
+                        ? row.version.statusNameSv
+                        : row.version.statusNameEn) ?? '—'
+                    }
+                  />
+                </span>
+              ) : (
+                '—'
+              )}
+              {row.hasPendingVersion && (
+                <span
+                  title={t(
+                    row.pendingVersionStatusId === 1
+                      ? 'hasPendingVersionDraft'
+                      : 'hasPendingVersionReview',
+                  )}
+                >
+                  <AlertCircle
+                    aria-label={t(
+                      row.pendingVersionStatusId === 1
+                        ? 'hasPendingVersionDraft'
+                        : 'hasPendingVersionReview',
+                    )}
+                    className="h-3.5 w-3.5"
+                    style={{
+                      color: row.pendingVersionStatusColor ?? undefined,
+                    }}
+                  />
+                </span>
+              )}
+            </span>
+          </td>
+        )
+      case 'requiresTesting':
+        return (
+          <td
+            className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.version?.requiresTesting && (
+              <TestTube2
+                aria-label={t('requiresTesting')}
+                className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
+              />
+            )}
+          </td>
+        )
+      case 'version':
+        return (
+          <td
+            className={`py-2 px-2 text-center text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+          >
+            v{row.version?.versionNumber ?? 1}
+          </td>
+        )
+    }
+  }
+
   const [showSpinner, setShowSpinner] = useState(false)
   useEffect(() => {
     if (!loading) {
@@ -621,10 +1833,29 @@ export default function RequirementsTable({
   }, [hasMore, onLoadMore, stableLoadMore])
 
   const thBase =
-    'py-2 px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
+    'relative py-2 px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
+  const resetColumnsView = () => {
+    cancelResizePreviewFrame()
+    pendingResizePreviewVisibleWidthsRef.current = null
+    resizePreviewVisibleWidthsRef.current = null
+    applyVisibleColumns([...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS])
+    onColumnWidthsChange?.({})
+  }
+  const columnsPopover = (
+    <ColumnsPopover
+      columns={REQUIREMENT_LIST_COLUMNS.map(column => ({
+        canHide: column.canHide,
+        id: column.id,
+        label: getColumnLabel(column.id),
+      }))}
+      onReset={resetColumnsView}
+      onToggle={toggleColumn}
+      visibleColumns={columnDefinitions.map(column => column.id)}
+    />
+  )
 
   return (
-    <div className="relative overflow-x-auto">
+    <div className="relative">
       {showSpinner && (
         <output
           aria-live="polite"
@@ -636,400 +1867,213 @@ export default function RequirementsTable({
           </p>
         </output>
       )}
-      <table className="w-full text-sm table-fixed">
-        <colgroup>
-          <col className="w-[8%]" />
-          {/* uniqueId */}
-          <col className="w-[18%]" />
-          {/* description */}
-          <col className="w-[10%]" />
-          {/* area */}
-          <col className="w-[12%]" />
-          {/* category */}
-          <col className="w-[10%]" />
-          {/* type */}
-          <col className="w-[14%]" />
-          {/* typeCategory */}
-          <col className="w-[10%]" />
-          {/* status */}
-          <col className="w-[10%]" />
-          {/* requiresTesting */}
-          <col className="w-[8%]" />
-          {/* version */}
-        </colgroup>
-        <thead>
-          <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left">
-            {/* uniqueId */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('uniqueId')}</span>
-                {hasFilters && (
-                  <SearchFilterPopover
-                    activeValue={fv.uniqueIdSearch ?? ''}
-                    label={t('uniqueId')}
-                    onChange={v => updateFilter({ uniqueIdSearch: v })}
-                  />
-                )}
-              </div>
-              {fv.uniqueIdSearch && (
-                <SearchChip
-                  label={fv.uniqueIdSearch}
-                  onRemove={() => updateFilter({ uniqueIdSearch: undefined })}
-                />
-              )}
-            </th>
-            {/* description */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('description')}</span>
-                {hasFilters && (
-                  <SearchFilterPopover
-                    activeValue={fv.descriptionSearch ?? ''}
-                    label={t('description')}
-                    onChange={v => updateFilter({ descriptionSearch: v })}
-                  />
-                )}
-              </div>
-              {fv.descriptionSearch && (
-                <SearchChip
-                  label={fv.descriptionSearch}
-                  onRemove={() =>
-                    updateFilter({ descriptionSearch: undefined })
-                  }
-                />
-              )}
-            </th>
-            {/* area */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('area')}</span>
-                {hasFilters && (
-                  <MultiSelectFilterPopover
-                    activeCount={(fv.areaIds ?? []).length}
-                    getLabel={opt => areaLabel(opt.id)}
-                    label={t('area')}
-                    onChange={ids =>
-                      updateFilter({
-                        areaIds: ids.length > 0 ? ids : undefined,
-                      })
-                    }
-                    options={areas}
-                    value={fv.areaIds ?? []}
-                  />
-                )}
-              </div>
-              <FilterChips
-                getLabel={areaLabel}
-                onRemove={id =>
-                  updateFilter({
-                    areaIds: (fv.areaIds ?? []).filter(v => v !== id),
-                  })
-                }
-                values={fv.areaIds ?? []}
-              />
-            </th>
-            {/* category */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('category')}</span>
-                {hasFilters && (
-                  <MultiSelectFilterPopover
-                    activeCount={(fv.categoryIds ?? []).length}
-                    getLabel={opt => catLabel(opt.id)}
-                    label={t('category')}
-                    onChange={ids =>
-                      updateFilter({
-                        categoryIds: ids.length > 0 ? ids : undefined,
-                      })
-                    }
-                    options={categories}
-                    value={fv.categoryIds ?? []}
-                  />
-                )}
-              </div>
-              <FilterChips
-                getLabel={catLabel}
-                onRemove={id =>
-                  updateFilter({
-                    categoryIds: (fv.categoryIds ?? []).filter(v => v !== id),
-                  })
-                }
-                values={fv.categoryIds ?? []}
-              />
-            </th>
-            {/* type */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('type')}</span>
-                {hasFilters && (
-                  <MultiSelectFilterPopover
-                    activeCount={(fv.typeIds ?? []).length}
-                    getLabel={opt => typeLabel(opt.id)}
-                    label={t('type')}
-                    onChange={ids =>
-                      updateFilter({
-                        typeIds: ids.length > 0 ? ids : undefined,
-                      })
-                    }
-                    options={types}
-                    value={fv.typeIds ?? []}
-                  />
-                )}
-              </div>
-              <FilterChips
-                getLabel={typeLabel}
-                onRemove={id =>
-                  updateFilter({
-                    typeIds: (fv.typeIds ?? []).filter(v => v !== id),
-                  })
-                }
-                values={fv.typeIds ?? []}
-              />
-            </th>
-            {/* typeCategory */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('typeCategory')}</span>
-                {hasFilters && (
-                  <GroupedMultiSelectFilterPopover
-                    activeCount={(fv.typeCategoryIds ?? []).length}
-                    getLabel={opt => typeCatLabel(opt.id)}
-                    label={t('typeCategory')}
-                    onChange={ids =>
-                      updateFilter({
-                        typeCategoryIds: ids.length > 0 ? ids : undefined,
-                      })
-                    }
-                    options={typeCategories}
-                    value={fv.typeCategoryIds ?? []}
-                  />
-                )}
-              </div>
-              <FilterChips
-                getLabel={typeCatLabel}
-                onRemove={id =>
-                  updateFilter({
-                    typeCategoryIds: (fv.typeCategoryIds ?? []).filter(
-                      v => v !== id,
-                    ),
-                  })
-                }
-                values={fv.typeCategoryIds ?? []}
-              />
-            </th>
-            {/* status */}
-            <th className={thBase}>
-              <div className="flex items-center">
-                <span>{t('status')}</span>
-                {hasFilters && (
-                  <MultiSelectFilterPopover
-                    activeCount={(fv.statuses ?? []).length}
-                    getLabel={opt => statusLabel(opt.id)}
-                    label={t('status')}
-                    onChange={ids =>
-                      updateFilter({
-                        statuses: ids.length > 0 ? ids : undefined,
-                      })
-                    }
-                    options={statusOptions}
-                    value={fv.statuses ?? []}
-                  />
-                )}
-              </div>
-              <FilterChips
-                getLabel={statusLabel}
-                onRemove={id =>
-                  updateFilter({
-                    statuses: (fv.statuses ?? []).filter(v => v !== id),
-                  })
-                }
-                values={fv.statuses ?? []}
-              />
-            </th>
-            {/* requiresTesting */}
-            <th className={`${thBase} text-center`}>
-              <div className="flex items-center justify-center">
-                <span>{t('requiresTesting')}</span>
-                {hasFilters && (
-                  <MultiSelectFilterPopover
-                    activeCount={rtValue.length}
-                    getLabel={opt =>
-                      requiresTestingOptions.find(o => o.id === opt.id)
-                        ?.label ?? ''
-                    }
-                    label={t('requiresTesting')}
-                    onChange={setRt}
-                    options={requiresTestingOptions}
-                    value={rtValue}
-                  />
-                )}
-              </div>
-              <FilterChips
-                getLabel={id =>
-                  requiresTestingOptions.find(o => o.id === id)?.label ?? ''
-                }
-                onRemove={id => setRt(rtValue.filter(v => v !== id))}
-                values={rtValue}
-              />
-            </th>
-            {/* version — no filter */}
-            <th className={`${thBase} text-center`}>{tc('version')}</th>
-          </tr>
-        </thead>
-        <tbody
-          className={`${showSpinner ? 'opacity-40' : ''} ${loading ? 'pointer-events-none' : ''}`}
+      <div
+        className="relative overflow-x-auto"
+        data-requirements-scroll-container="true"
+        ref={scrollContainerRef}
+      >
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-white/85 via-white/55 to-transparent transition-opacity dark:from-secondary-900/85 dark:via-secondary-900/55 ${
+            scrollFadeState.left ? 'opacity-100' : 'opacity-0'
+          }`}
+          data-scroll-fade="left"
+        />
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-white/85 via-white/55 to-transparent transition-opacity dark:from-secondary-900/85 dark:via-secondary-900/55 ${
+            scrollFadeState.right ? 'opacity-100' : 'opacity-0'
+          }`}
+          data-scroll-fade="right"
+        />
+        <div
+          className="relative"
+          ref={tableContentRef}
+          style={{ width: `${tableWidth}px` }}
         >
-          {rows.length === 0 ? (
-            <tr>
-              <td
-                className="text-center py-12 text-secondary-600 dark:text-secondary-400"
-                colSpan={9}
-              >
-                {tc('noResults')}
-              </td>
-            </tr>
-          ) : (
-            rows.map((row, idx) => {
-              const isExpanded = row.id === expandedId
-              const isPinned = pinnedIds?.has(row.id) ?? false
-              const archivedContentClass = row.isArchived ? 'opacity-50' : ''
-              return (
-                <Fragment key={row.id}>
-                  <tr
-                    className={`border-b cursor-pointer transition-colors hover:bg-primary-50/40 dark:hover:bg-primary-950/20 ${
-                      isExpanded
-                        ? 'bg-primary-50/60 dark:bg-primary-950/30 border-l-2 border-l-primary-500'
-                        : ''
-                    } ${!isExpanded && isPinned ? 'opacity-60 border-l-2 border-l-dashed border-l-secondary-400 dark:border-l-secondary-500' : ''} ${!isExpanded && !isPinned && idx % 2 === 1 ? 'bg-secondary-50/40 dark:bg-secondary-800/20' : ''}`}
-                    onClick={() =>
-                      onRowClick
-                        ? onRowClick(row.id)
-                        : router.push(`/kravkatalog/${row.id}`)
+          {canResizeColumns
+            ? resizeHandleOffsets.map(({ columnId, left }) => {
+                const label = getColumnLabel(columnId)
+
+                return (
+                  <button
+                    aria-label={tc('resizeColumn', { label })}
+                    className="group pointer-events-auto absolute inset-y-0 z-20 m-0 w-6 -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:outline-none before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:before:bg-secondary-600/25 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400"
+                    data-column-resize-handle={columnId}
+                    key={columnId}
+                    onBlur={() => setResizeHoverCursor(false)}
+                    onDoubleClick={event => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      resetColumnWidth(columnId)
+                    }}
+                    onFocus={() => setResizeHoverCursor(true)}
+                    onKeyDown={event => handleResizeKeyDown(columnId, event)}
+                    onMouseEnter={() => setResizeHoverCursor(true)}
+                    onMouseLeave={() => setResizeHoverCursor(false)}
+                    onPointerDown={event =>
+                      handleResizePointerDown(columnId, event)
                     }
-                  >
-                    <td
-                      className={`py-2 px-2 font-mono font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap ${archivedContentClass}`}
+                    ref={node => {
+                      resizeHandleRefs.current[columnId] = node
+                    }}
+                    style={{ left: `${left}px` }}
+                    title={tc('resizeColumn', { label })}
+                    type="button"
+                  />
+                )
+              })
+            : null}
+          <table className="w-full table-fixed text-sm" ref={tableRef}>
+            <colgroup>
+              {columnDefinitions.map(column => (
+                <col
+                  key={column.id}
+                  ref={node => {
+                    colRefs.current[column.id] = node
+                  }}
+                  style={{ width: `${renderedColumnWidths[column.id]}px` }}
+                />
+              ))}
+            </colgroup>
+            <thead>
+              <tr className="border-b border-secondary-200/35 bg-secondary-50/80 text-left dark:border-secondary-700/35 dark:bg-secondary-800/30">
+                {columnDefinitions.map((column, columnIndex) => {
+                  const label = getColumnLabel(column.id)
+                  const isSortable = column.canSort
+                  const isActiveSort = isSortable && sortState.by === column.id
+                  const sortTooltip = getSortTooltip(label, isActiveSort)
+                  const headerAlignClass =
+                    column.align === 'center' ? 'text-center' : ''
+                  const headerControlClass =
+                    column.align === 'center'
+                      ? 'justify-center'
+                      : 'justify-start'
+                  const isLastColumn =
+                    columnIndex === columnDefinitions.length - 1
+                  const dividerClass = isLastColumn
+                    ? ''
+                    : 'border-r border-secondary-200/5 dark:border-secondary-700/5'
+
+                  return (
+                    <th
+                      aria-sort={
+                        isSortable
+                          ? isActiveSort
+                            ? sortState.direction === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                          : undefined
+                      }
+                      className={`${thBase} ${headerAlignClass} ${dividerClass}`}
+                      key={column.id}
+                      ref={node => {
+                        headerCellRefs.current[column.id] = node
+                      }}
                     >
-                      <span className="inline-flex items-center gap-1.5">
-                        {renderExpanded ? (
-                          isExpanded ? (
-                            <ChevronDown
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5 text-secondary-500"
-                            />
-                          ) : (
-                            <ChevronRight
-                              aria-hidden="true"
-                              className="h-3.5 w-3.5 text-secondary-400"
-                            />
-                          )
-                        ) : null}
-                        {row.uniqueId}
-                      </span>
-                    </td>
-                    <td
-                      className={`py-2 px-2 truncate ${archivedContentClass}`}
-                    >
-                      {row.version?.description ?? '—'}
-                    </td>
-                    <td
-                      className={`py-2 px-2 truncate ${archivedContentClass}`}
-                    >
-                      {row.area?.name ?? '—'}
-                    </td>
-                    <td
-                      className={`py-2 px-2 truncate ${archivedContentClass}`}
-                    >
-                      {(locale === 'sv'
-                        ? row.version?.categoryNameSv
-                        : row.version?.categoryNameEn) ?? '—'}
-                    </td>
-                    <td
-                      className={`py-2 px-2 truncate ${archivedContentClass}`}
-                    >
-                      {(locale === 'sv'
-                        ? row.version?.typeNameSv
-                        : row.version?.typeNameEn) ?? '—'}
-                    </td>
-                    <td
-                      className={`py-2 px-2 truncate ${archivedContentClass}`}
-                    >
-                      {(locale === 'sv'
-                        ? row.version?.typeCategoryNameSv
-                        : row.version?.typeCategoryNameEn) ?? '—'}
-                    </td>
-                    <td className="py-2 px-2">
-                      <span className="inline-flex items-center gap-1">
-                        {row.version ? (
-                          <span className={archivedContentClass}>
-                            <StatusBadge
-                              color={row.version.statusColor}
-                              label={
-                                (locale === 'sv'
-                                  ? row.version.statusNameSv
-                                  : row.version.statusNameEn) ?? '—'
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                        >
+                          {isSortable ? (
+                            <button
+                              className="group inline-flex min-w-0 max-w-full items-center gap-1 text-left"
+                              onClick={() =>
+                                handleSortToggle(
+                                  column.id as RequirementSortField,
+                                )
                               }
-                            />
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                        {row.hasPendingVersion && (
-                          <span
-                            title={t(
-                              row.pendingVersionStatusId === 1
-                                ? 'hasPendingVersionDraft'
-                                : 'hasPendingVersionReview',
-                            )}
-                          >
-                            <AlertCircle
-                              aria-label={t(
-                                row.pendingVersionStatusId === 1
-                                  ? 'hasPendingVersionDraft'
-                                  : 'hasPendingVersionReview',
-                              )}
-                              className="h-3.5 w-3.5"
-                              style={{
-                                color:
-                                  row.pendingVersionStatusColor ?? undefined,
-                              }}
-                            />
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td
-                      className={`py-2 px-2 text-center ${archivedContentClass}`}
-                    >
-                      {row.version?.requiresTesting && (
-                        <TestTube2
-                          aria-label={t('requiresTesting')}
-                          className="h-4 w-4 inline text-primary-700 dark:text-primary-300"
-                        />
-                      )}
-                    </td>
-                    <td
-                      className={`py-2 px-2 text-center text-secondary-600 dark:text-secondary-400 ${archivedContentClass}`}
-                    >
-                      v{row.version?.versionNumber ?? 1}
-                    </td>
-                  </tr>
-                  {isExpanded && renderExpanded && (
-                    <tr>
-                      <td
-                        className="p-0 border-b border-l-2 border-l-primary-500 bg-secondary-50/60 dark:bg-secondary-800/30"
-                        colSpan={9}
+                              title={sortTooltip}
+                              type="button"
+                            >
+                              <span className="truncate">{label}</span>
+                              {getSortIcon(column.id as RequirementSortField)}
+                            </button>
+                          ) : (
+                            <span>{label}</span>
+                          )}
+                          {renderFilterControl(column.id)}
+                        </div>
+                        {isLastColumn ? (
+                          <div className="ml-auto shrink-0">
+                            {columnsPopover}
+                          </div>
+                        ) : null}
+                      </div>
+                      {renderFilterChips(column.id)}
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody
+              className={`${showSpinner ? 'opacity-40' : ''} ${loading ? 'pointer-events-none' : ''}`}
+            >
+              {rows.length === 0 ? (
+                <tr>
+                  <td
+                    className="py-12 text-center text-secondary-600 dark:text-secondary-400"
+                    colSpan={columnDefinitions.length}
+                  >
+                    {tc('noResults')}
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, idx) => {
+                  const isExpanded = row.id === expandedId
+                  const isPinned = pinnedIds?.has(row.id) ?? false
+
+                  return (
+                    <Fragment key={row.id}>
+                      <tr
+                        className={`border-b border-secondary-200/35 cursor-pointer transition-colors hover:bg-primary-50/40 dark:border-secondary-700/35 dark:hover:bg-primary-950/20 ${
+                          isExpanded
+                            ? 'border-l-2 border-l-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
+                            : ''
+                        } ${
+                          !isExpanded && isPinned
+                            ? 'border-l-2 border-l-dashed border-l-secondary-400 opacity-60 dark:border-l-secondary-500'
+                            : ''
+                        } ${
+                          !isExpanded && !isPinned && idx % 2 === 1
+                            ? 'bg-secondary-50/40 dark:bg-secondary-800/20'
+                            : ''
+                        }`}
+                        onClick={() =>
+                          onRowClick
+                            ? onRowClick(row.id)
+                            : router.push(`/kravkatalog/${row.id}`)
+                        }
                       >
-                        {renderExpanded(row.id)}
-                      </td>
-                    </tr>
-                  )}
-                </Fragment>
-              )
-            })
-          )}
-        </tbody>
-      </table>
+                        {columnDefinitions.map((column, columnIndex) => (
+                          <Fragment key={column.id}>
+                            {renderCell(
+                              row,
+                              column.id,
+                              columnIndex === columnDefinitions.length - 1,
+                            )}
+                          </Fragment>
+                        ))}
+                      </tr>
+                      {isExpanded && renderExpanded && (
+                        <tr>
+                          <td
+                            className="border-b border-l-2 border-l-primary-500 border-secondary-200/35 bg-secondary-50/60 p-0 dark:border-secondary-700/35 dark:bg-secondary-800/30"
+                            colSpan={columnDefinitions.length}
+                          >
+                            {renderExpanded(row.id)}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
       {hasMore && (
         <div
           aria-hidden="true"

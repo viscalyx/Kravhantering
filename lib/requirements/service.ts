@@ -30,6 +30,10 @@ import {
   isRequirementsServiceError,
   notFoundError,
 } from '@/lib/requirements/errors'
+import type {
+  RequirementSortDirection,
+  RequirementSortField,
+} from '@/lib/requirements/list-view'
 import {
   createRequirementsLogger,
   type RequirementsLogger,
@@ -83,6 +87,8 @@ export interface QueryCatalogInput {
   offset?: number
   requiresTesting?: boolean[]
   responseFormat?: ResponseFormat
+  sortBy?: RequirementSortField
+  sortDirection?: RequirementSortDirection
   statuses?: number[]
   typeCategoryIds?: number[]
   typeId?: number
@@ -500,8 +506,11 @@ export function createRequirementsService(
               descriptionSearch: input.descriptionSearch,
               includeArchived: input.includeArchived,
               limit,
+              locale,
               offset,
               requiresTesting: input.requiresTesting,
+              sortBy: input.sortBy,
+              sortDirection: input.sortDirection,
               statuses: input.statuses,
               typeCategoryIds: input.typeCategoryIds,
               typeIds: input.typeIds,

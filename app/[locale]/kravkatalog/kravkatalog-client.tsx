@@ -5,90 +5,77 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ExportButton from '@/components/ExportButton'
 import PrintButton from '@/components/PrintButton'
-import {
-  DEFAULT_FILTERS,
-  type FilterValues,
-  type StatusOption,
-} from '@/components/RequirementsFilter'
 import RequirementsTable from '@/components/RequirementsTable'
 import { Link } from '@/i18n/routing'
+import {
+  type AreaOption,
+  buildRequirementListParams,
+  compareRequirementRows,
+  DEFAULT_FILTERS,
+  DEFAULT_REQUIREMENT_SORT,
+  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  type FilterOption,
+  type FilterValues,
+  getRequirementColumnWidthsStorageKey,
+  parseRequirementColumnWidths,
+  parseRequirementVisibleColumns,
+  REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+  type RequirementColumnId,
+  type RequirementColumnWidths,
+  type RequirementRow,
+  type RequirementSortState,
+  type StatusOption,
+  serializeRequirementColumnWidths,
+  serializeRequirementVisibleColumns,
+  type TypeCategoryOption,
+} from '@/lib/requirements/list-view'
 import RequirementDetailClient from './[id]/requirement-detail-client'
-
-interface RequirementRow {
-  area: {
-    name: string
-  } | null
-  hasPendingVersion?: boolean
-  id: number
-  isArchived: boolean
-  pendingVersionStatusColor?: string | null
-  pendingVersionStatusId?: number | null
-  uniqueId: string
-  version: {
-    description: string | null
-    categoryNameSv: string | null
-    categoryNameEn: string | null
-    typeNameSv: string | null
-    typeNameEn: string | null
-    typeCategoryNameSv: string | null
-    typeCategoryNameEn: string | null
-    requiresTesting: boolean
-    versionNumber: number
-    status: number
-    statusNameSv: string | null
-    statusNameEn: string | null
-    statusColor: string | null
-  } | null
-}
-
-interface FilterOption {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface AreaOption {
-  id: number
-  name: string
-}
-
-interface TypeCategoryOption {
-  id: number
-  nameEn: string
-  nameSv: string
-  parentId: number | null
-}
 
 const PAGE_SIZE = 200
 
-function buildFilterParams(filters: FilterValues): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set('limit', String(PAGE_SIZE))
-  if (filters.uniqueIdSearch)
-    params.set('uniqueIdSearch', filters.uniqueIdSearch)
-  if (filters.descriptionSearch)
-    params.set('descriptionSearch', filters.descriptionSearch)
-  if (filters.areaIds) {
-    for (const id of filters.areaIds) params.append('areaIds', String(id))
+function mapRequirementDetailToRow(detail: {
+  area?: { name: string } | null
+  id: number
+  isArchived: boolean
+  uniqueId: string
+  versions?: {
+    category?: { nameEn: string; nameSv: string } | null
+    description: string | null
+    requiresTesting: boolean
+    status: number
+    statusColor: string | null
+    statusNameEn: string | null
+    statusNameSv: string | null
+    type?: { nameEn: string; nameSv: string } | null
+    typeCategory?: { nameEn: string; nameSv: string } | null
+    versionNumber: number
+  }[]
+}): RequirementRow {
+  const version = detail.versions?.[0]
+
+  return {
+    area: detail.area ?? null,
+    id: detail.id,
+    isArchived: detail.isArchived,
+    uniqueId: detail.uniqueId,
+    version: version
+      ? {
+          categoryNameEn: version.category?.nameEn ?? null,
+          categoryNameSv: version.category?.nameSv ?? null,
+          description: version.description,
+          requiresTesting: version.requiresTesting,
+          status: version.status,
+          statusColor: version.statusColor,
+          statusNameEn: version.statusNameEn,
+          statusNameSv: version.statusNameSv,
+          typeCategoryNameEn: version.typeCategory?.nameEn ?? null,
+          typeCategoryNameSv: version.typeCategory?.nameSv ?? null,
+          typeNameEn: version.type?.nameEn ?? null,
+          typeNameSv: version.type?.nameSv ?? null,
+          versionNumber: version.versionNumber,
+        }
+      : null,
   }
-  if (filters.categoryIds) {
-    for (const id of filters.categoryIds)
-      params.append('categoryIds', String(id))
-  }
-  if (filters.typeIds) {
-    for (const id of filters.typeIds) params.append('typeIds', String(id))
-  }
-  if (filters.typeCategoryIds) {
-    for (const id of filters.typeCategoryIds)
-      params.append('typeCategoryIds', String(id))
-  }
-  if (filters.requiresTesting) {
-    for (const v of filters.requiresTesting) params.append('requiresTesting', v)
-  }
-  if (filters.statuses) {
-    for (const s of filters.statuses) params.append('statuses', String(s))
-  }
-  return params
 }
 
 export default function KravkatalogClient() {
@@ -102,18 +89,35 @@ export default function KravkatalogClient() {
   const [typeCategories, setTypeCategories] = useState<TypeCategoryOption[]>([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
+  const [sortState, setSortState] = useState<RequirementSortState>(
+    DEFAULT_REQUIREMENT_SORT,
+  )
+  const [visibleColumns, setVisibleColumns] = useState<RequirementColumnId[]>(
+    DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  )
+  const [columnWidths, setColumnWidths] = useState<RequirementColumnWidths>({})
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
+    useState(false)
+  const [hydratedColumnWidthsStorageKey, setHydratedColumnWidthsStorageKey] =
+    useState<string | null>(null)
+  const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey(locale)
 
   // Stable ref so the onChange callback always sees the latest selectedId
   const selectedIdRef = useRef<number | null>(null)
   selectedIdRef.current = selectedId
 
   const refreshRows = useCallback(async () => {
-    const params = buildFilterParams(filters)
+    const params = buildRequirementListParams({
+      filters,
+      limit: PAGE_SIZE,
+      locale,
+      sort: sortState,
+    })
 
     const res = await fetch(`/api/requirements?${params}`)
     if (res.ok) {
@@ -132,48 +136,24 @@ export default function KravkatalogClient() {
         const singleRes = await fetch(`/api/requirements/${sid}`)
         if (singleRes.ok) {
           const detail = (await singleRes.json()) as {
-            id: number
-            uniqueId: string
-            isArchived: boolean
             area?: { name: string } | null
-            requirementAreaId?: number
+            id: number
+            isArchived: boolean
+            uniqueId: string
             versions?: {
-              versionNumber: number
+              category?: { nameSv: string; nameEn: string } | null
               description: string | null
               requiresTesting: boolean
-              category?: { nameSv: string; nameEn: string } | null
+              status: number
+              statusColor: string | null
+              statusNameEn: string | null
+              statusNameSv: string | null
               type?: { nameSv: string; nameEn: string } | null
               typeCategory?: { nameSv: string; nameEn: string } | null
-              status: number
-              statusNameSv: string | null
-              statusNameEn: string | null
-              statusColor: string | null
+              versionNumber: number
             }[]
           }
-          const v = detail.versions?.[0]
-          newPinnedRow = {
-            id: detail.id,
-            uniqueId: detail.uniqueId,
-            isArchived: detail.isArchived,
-            area: detail.area ?? null,
-            version: v
-              ? {
-                  description: v.description,
-                  categoryNameSv: v.category?.nameSv ?? null,
-                  categoryNameEn: v.category?.nameEn ?? null,
-                  typeNameSv: v.type?.nameSv ?? null,
-                  typeNameEn: v.type?.nameEn ?? null,
-                  typeCategoryNameSv: v.typeCategory?.nameSv ?? null,
-                  typeCategoryNameEn: v.typeCategory?.nameEn ?? null,
-                  requiresTesting: v.requiresTesting,
-                  versionNumber: v.versionNumber,
-                  status: v.status,
-                  statusNameSv: v.statusNameSv,
-                  statusNameEn: v.statusNameEn,
-                  statusColor: v.statusColor,
-                }
-              : null,
-          }
+          newPinnedRow = mapRequirementDetailToRow(detail)
         }
       }
 
@@ -181,7 +161,7 @@ export default function KravkatalogClient() {
       setRows(newRows)
       setPinnedRow(newPinnedRow)
     }
-  }, [filters])
+  }, [filters, locale, sortState])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -196,8 +176,13 @@ export default function KravkatalogClient() {
     if (loadingMore || !hasMore) return
     setLoadingMore(true)
     try {
-      const params = buildFilterParams(filters)
-      params.set('offset', String(rows.length))
+      const params = buildRequirementListParams({
+        filters,
+        limit: PAGE_SIZE,
+        locale,
+        offset: rows.length,
+        sort: sortState,
+      })
       const res = await fetch(`/api/requirements?${params}`)
       if (res.ok) {
         const data = (await res.json()) as {
@@ -211,7 +196,7 @@ export default function KravkatalogClient() {
     } finally {
       setLoadingMore(false)
     }
-  }, [filters, hasMore, loadingMore, rows.length])
+  }, [filters, hasMore, loadingMore, locale, rows.length, sortState])
 
   const fetchFilters = useCallback(async () => {
     const [areasRes, categoriesRes, typesRes, typeCategoriesRes, statusesRes] =
@@ -261,20 +246,84 @@ export default function KravkatalogClient() {
   }, [fetchFilters])
 
   useEffect(() => {
+    try {
+      setVisibleColumns(
+        parseRequirementVisibleColumns(
+          globalThis.localStorage.getItem(
+            REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+          ),
+        ),
+      )
+    } catch {
+      setVisibleColumns(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS)
+    } finally {
+      setHasLoadedColumnPreferences(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      setColumnWidths(
+        parseRequirementColumnWidths(
+          globalThis.localStorage.getItem(columnWidthsStorageKey),
+        ),
+      )
+    } catch {
+      setColumnWidths({})
+    } finally {
+      setHydratedColumnWidthsStorageKey(columnWidthsStorageKey)
+    }
+  }, [columnWidthsStorageKey])
+
+  useEffect(() => {
+    if (!hasLoadedColumnPreferences) {
+      return
+    }
+
+    try {
+      globalThis.localStorage.setItem(
+        REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+        serializeRequirementVisibleColumns(visibleColumns),
+      )
+    } catch {
+      // Ignore storage failures and keep the in-memory preference.
+    }
+  }, [hasLoadedColumnPreferences, visibleColumns])
+
+  useEffect(() => {
+    if (hydratedColumnWidthsStorageKey !== columnWidthsStorageKey) {
+      return
+    }
+
+    try {
+      globalThis.localStorage.setItem(
+        columnWidthsStorageKey,
+        serializeRequirementColumnWidths(columnWidths),
+      )
+    } catch {
+      // Ignore storage failures and keep the in-memory preference.
+    }
+  }, [columnWidths, columnWidthsStorageKey, hydratedColumnWidthsStorageKey])
+
+  useEffect(() => {
     fetchData()
   }, [fetchData])
 
   const displayRows = useMemo(() => {
     if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {
-      // Insert at sorted position (rows are ordered by uniqueId)
       const idx = rows.findIndex(
-        r => r.uniqueId.localeCompare(pinnedRow.uniqueId) > 0,
+        row =>
+          compareRequirementRows(row, pinnedRow, {
+            locale,
+            sort: sortState,
+            statusOptions,
+          }) > 0,
       )
       const pos = idx === -1 ? rows.length : idx
       return [...rows.slice(0, pos), pinnedRow, ...rows.slice(pos)]
     }
     return rows
-  }, [rows, pinnedRow])
+  }, [locale, pinnedRow, rows, sortState, statusOptions])
 
   const pinnedIds = useMemo(
     () => (pinnedRow ? new Set([pinnedRow.id]) : undefined),
@@ -282,9 +331,13 @@ export default function KravkatalogClient() {
   )
 
   const handleExport = async () => {
-    const params = buildFilterParams(filters)
-    params.set('format', 'csv')
-    params.set('locale', locale)
+    const params = buildRequirementListParams({
+      filters,
+      format: 'csv',
+      limit: PAGE_SIZE,
+      locale,
+      sort: sortState,
+    })
 
     const res = await fetch(`/api/requirements?${params}`)
     if (!res.ok) return
@@ -300,7 +353,7 @@ export default function KravkatalogClient() {
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="mb-3 flex flex-wrap items-center gap-3">
           <ExportButton onClick={handleExport} />
           <PrintButton />
           <Link
@@ -316,6 +369,7 @@ export default function KravkatalogClient() {
           <RequirementsTable
             areas={areas}
             categories={categories}
+            columnWidths={columnWidths}
             expandedId={selectedId}
             filterValues={filters}
             getName={getName}
@@ -324,6 +378,7 @@ export default function KravkatalogClient() {
             loading={loading}
             loadingMore={loadingMore}
             locale={locale}
+            onColumnWidthsChange={setColumnWidths}
             onFilterChange={val => {
               setFilters(val)
               setSelectedId(null)
@@ -337,6 +392,8 @@ export default function KravkatalogClient() {
                 return next
               })
             }}
+            onSortChange={setSortState}
+            onVisibleColumnsChange={setVisibleColumns}
             pinnedIds={pinnedIds}
             renderExpanded={id => (
               <RequirementDetailClient
@@ -350,9 +407,11 @@ export default function KravkatalogClient() {
               />
             )}
             rows={displayRows}
+            sortState={sortState}
             statusOptions={statusOptions}
             typeCategories={typeCategories}
             types={types}
+            visibleColumns={visibleColumns}
           />
         </div>
       </div>

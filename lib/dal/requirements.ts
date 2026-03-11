@@ -1,4 +1,14 @@
-import { and, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  like,
+  or,
+  type SQLWrapper,
+  sql,
+} from 'drizzle-orm'
 import {
   requirementAreas,
   requirementCategories,
@@ -17,6 +27,10 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import type {
+  RequirementSortDirection,
+  RequirementSortField,
+} from '@/lib/requirements/list-view'
 
 export const STATUS_DRAFT = 1
 export const STATUS_REVIEW = 2
@@ -24,17 +38,20 @@ export const STATUS_PUBLISHED = 3
 export const STATUS_ARCHIVED = 4
 
 type ListRequirementsOptions = {
-  includeArchived?: boolean
   areaIds?: number[]
   categoryIds?: number[]
-  typeIds?: number[]
-  typeCategoryIds?: number[]
-  requiresTesting?: boolean[]
-  statuses?: number[]
-  uniqueIdSearch?: string
   descriptionSearch?: string
+  includeArchived?: boolean
   limit?: number
+  locale?: 'en' | 'sv'
   offset?: number
+  requiresTesting?: boolean[]
+  sortBy?: RequirementSortField
+  sortDirection?: RequirementSortDirection
+  statuses?: number[]
+  typeCategoryIds?: number[]
+  typeIds?: number[]
+  uniqueIdSearch?: string
 }
 
 // Effective status uses priority: Published > Archived > Review > Draft.
@@ -169,6 +186,36 @@ function buildDisplayVersionNumberSql(subqueries: {
   END`
 }
 
+const effectiveStatusSortOrderSql = sql<number>`(
+  SELECT rs.sort_order
+  FROM requirement_statuses rs
+  WHERE rs.id = ${effectiveStatusSql}
+)`
+
+function orderByText(column: SQLWrapper, direction: RequirementSortDirection) {
+  const emptyLastSql = sql<number>`CASE WHEN ${column} IS NULL OR TRIM(${column}) = '' THEN 1 ELSE 0 END`
+  const textSql = sql<string | null>`LOWER(${column})`
+
+  return [
+    asc(emptyLastSql),
+    direction === 'desc' ? desc(textSql) : asc(textSql),
+    asc(requirements.uniqueId),
+  ] as const
+}
+
+function orderByNumber(
+  column: SQLWrapper,
+  direction: RequirementSortDirection,
+) {
+  const emptyLastSql = sql<number>`CASE WHEN ${column} IS NULL THEN 1 ELSE 0 END`
+
+  return [
+    asc(emptyLastSql),
+    direction === 'desc' ? desc(column) : asc(column),
+    asc(requirements.uniqueId),
+  ] as const
+}
+
 export async function listRequirements(
   db: Database,
   opts: ListRequirementsOptions = {},
@@ -286,7 +333,67 @@ export async function listRequirements(
     query = query.where(and(...conditions))
   }
 
-  query = query.orderBy(requirements.uniqueId)
+  const locale = opts.locale ?? 'en'
+  const sortBy = opts.sortBy ?? 'uniqueId'
+  const sortDirection = opts.sortDirection ?? 'asc'
+
+  switch (sortBy) {
+    case 'description':
+      query = query.orderBy(
+        ...orderByText(requirementVersions.description, sortDirection),
+      )
+      break
+    case 'area':
+      query = query.orderBy(
+        ...orderByText(requirementAreas.name, sortDirection),
+      )
+      break
+    case 'category':
+      query = query.orderBy(
+        ...orderByText(
+          locale === 'sv'
+            ? requirementCategories.nameSv
+            : requirementCategories.nameEn,
+          sortDirection,
+        ),
+      )
+      break
+    case 'type':
+      query = query.orderBy(
+        ...orderByText(
+          locale === 'sv' ? requirementTypes.nameSv : requirementTypes.nameEn,
+          sortDirection,
+        ),
+      )
+      break
+    case 'typeCategory':
+      query = query.orderBy(
+        ...orderByText(
+          locale === 'sv'
+            ? requirementTypeCategories.nameSv
+            : requirementTypeCategories.nameEn,
+          sortDirection,
+        ),
+      )
+      break
+    case 'status':
+      query = query.orderBy(
+        ...orderByNumber(effectiveStatusSortOrderSql, sortDirection),
+      )
+      break
+    case 'version':
+      query = query.orderBy(
+        ...orderByNumber(requirementVersions.versionNumber, sortDirection),
+      )
+      break
+    case 'uniqueId':
+      query = query.orderBy(
+        sortDirection === 'desc'
+          ? desc(requirements.uniqueId)
+          : asc(requirements.uniqueId),
+      )
+      break
+  }
 
   if (opts.limit != null) {
     query = query.limit(opts.limit)
