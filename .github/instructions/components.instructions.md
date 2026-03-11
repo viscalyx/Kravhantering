@@ -51,6 +51,10 @@ See `ConfirmModal.tsx` for a full example.
 - Always use `next/image` for all images
 - Include `alt` text for accessibility
 
+## High-Frequency Interactions
+
+- For drag, resize, slider, or scrubber interactions, avoid controlled React state updates on every `pointermove`; use refs and throttled preview updates, then commit final state on interaction end
+
 ## After Changes
 
 1. Add/update test: `tests/unit/component-name.test.tsx`
