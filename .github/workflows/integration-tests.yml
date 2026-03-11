@@ -1,4 +1,4 @@
-name: Quality Checks
+name: Integration Tests
 
 on:
   pull_request:
@@ -6,13 +6,19 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
 
 jobs:
-  quality-checks:
+  test-dev-server:
+    name: Test Against Dev Server
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -27,84 +33,97 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # cSpell:ignore typegen
-      - name: Generate Cloudflare types
-        run: npm run cf-typegen
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
 
-      - name: Run formatting check
-        run: npm run format:check
+      - name: Run Playwright tests against dev server
+        run: npm run test:integration
+        env:
+          CI: true
 
-      - name: Run spell check
-        run: npm run spell:check
-
-      - name: Run lint check
-        run: npm run lint
-
-      - name: Run markdown lint check
-        run: npm run lint:md
-
-      - name: Run type check
-        run: npm run type-check
-
-      - name: Run tests and coverage
-        run: npm run test:coverage
-
-      - name: Upload test results
+      - name: Upload test results (dev)
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results
-          path: ./test-results
+          name: playwright-report-dev
+          path: playwright-report-dev/
           retention-days: 7
 
-      - name: Upload code coverage
+      - name: Upload test results XML (dev)
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: code-coverage
-          path: ./coverage
+          name: playwright-junit-dev
+          path: test-results/dev/playwright-junit.xml
           retention-days: 7
 
-      - name: Upload coverage to Codecov
+  test-preview-server:
+    name: Test Against Preview Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests against preview server
+        run: npm run test:integration:preview
+        env:
+          CI: true
+
+      - name: Upload test results (preview)
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: actions/upload-artifact@v7
         with:
-          file: ./coverage/lcov.info
-          fail_ci_if_error: false
-          verbose: true
-          token: ${{ vars.CODECOV_TOKEN }}
+          name: playwright-report-preview
+          path: playwright-report-preview/
+          retention-days: 7
 
-      - name: Upload test results to Codecov
-        if: always() && !cancelled()
-        uses: codecov/test-results-action@v1
+      - name: Upload test results XML (preview)
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
-          directory: ./test-results
-          flags: components, app, lib
-          token: ${{ vars.CODECOV_TOKEN }}
-          verbose: true
+          name: playwright-junit-preview
+          path: test-results/preview/playwright-junit.xml
+          retention-days: 7
 
-      - name: Comment on PR if checks failed
-        if: failure() && github.event_name == 'pull_request'
+  comment-on-failure:
+    name: Comment on PR if tests failed
+    if: failure() && github.event_name == 'pull_request'
+    needs: [test-dev-server, test-preview-server]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Comment on PR
         uses: actions/github-script@v8
         with:
           script: |
-            const checks = [
-              { name: 'Formatting', command: 'npm run format:check' },
-              { name: 'Spell Check', command: 'npm run spell:check' },
-              { name: 'Lint', command: 'npm run lint' },
-              { name: 'Markdown Lint', command: 'npm run lint:md' },
-              { name: 'Type Check', command: 'npm run type-check' }
-            ];
+            const body = '❌ **Integration tests failed!** Please check the test results and fix any issues.\n\n' +
+                        'You can run integration tests locally with:\n' +
+                        '- `npm run test:integration` - Test against dev server\n' +
+                        '- `npm run test:integration:preview` - Test against preview server\n' +
+                        '- `npm run test:integration:ui` - Run with Playwright UI for debugging\n\n' +
+                        'Check the artifacts for detailed test reports.';
 
-            let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';
-            body += checks.map(check =>
-              `- **${check.name}**: Run \`${check.command}\` locally to see and fix issues`
-            ).join('\n');
-            body += '\n\nYou can also run `npm run check` to run all checks at once.';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            })
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } catch (error) {
+              core.error(`Failed to create PR comment: ${error.message}`);
+            }
