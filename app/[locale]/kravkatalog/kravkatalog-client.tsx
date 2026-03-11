@@ -10,6 +10,7 @@ import { Link } from '@/i18n/routing'
 import {
   type AreaOption,
   buildRequirementListParams,
+  clearRequirementFiltersForHiddenColumns,
   compareRequirementRows,
   DEFAULT_FILTERS,
   DEFAULT_REQUIREMENT_SORT,
@@ -198,43 +199,6 @@ export default function KravkatalogClient() {
     }
   }, [filters, hasMore, loadingMore, locale, rows.length, sortState])
 
-  const fetchFilters = useCallback(async () => {
-    const [areasRes, categoriesRes, typesRes, typeCategoriesRes, statusesRes] =
-      await Promise.all([
-        fetch('/api/requirement-areas'),
-        fetch('/api/requirement-categories'),
-        fetch('/api/requirement-types'),
-        fetch('/api/requirement-type-categories'),
-        fetch('/api/requirement-statuses'),
-      ])
-    if (areasRes.ok) {
-      const data = (await areasRes.json()) as { areas?: AreaOption[] }
-      setAreas(data.areas ?? [])
-    }
-    if (categoriesRes.ok) {
-      const data = (await categoriesRes.json()) as {
-        categories?: FilterOption[]
-      }
-      setCategories(data.categories ?? [])
-    }
-    if (typesRes.ok) {
-      const data = (await typesRes.json()) as { types?: FilterOption[] }
-      setTypes(data.types ?? [])
-    }
-    if (typeCategoriesRes.ok) {
-      const data = (await typeCategoriesRes.json()) as {
-        typeCategories?: TypeCategoryOption[]
-      }
-      setTypeCategories(data.typeCategories ?? [])
-    }
-    if (statusesRes.ok) {
-      const data = (await statusesRes.json()) as {
-        statuses?: StatusOption[]
-      }
-      setStatusOptions(data.statuses ?? [])
-    }
-  }, [])
-
   const getName = (opt: FilterOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
 
@@ -242,21 +206,64 @@ export default function KravkatalogClient() {
     locale === 'sv' ? opt.nameSv : opt.nameEn
 
   useEffect(() => {
-    fetchFilters()
-  }, [fetchFilters])
+    const fetchFilters = async () => {
+      const [areasRes, categoriesRes, typesRes, typeCategoriesRes, statusesRes] =
+        await Promise.all([
+          fetch('/api/requirement-areas'),
+          fetch('/api/requirement-categories'),
+          fetch('/api/requirement-types'),
+          fetch('/api/requirement-type-categories'),
+          fetch('/api/requirement-statuses'),
+        ])
+
+      if (areasRes.ok) {
+        const data = (await areasRes.json()) as { areas?: AreaOption[] }
+        setAreas(data.areas ?? [])
+      }
+      if (categoriesRes.ok) {
+        const data = (await categoriesRes.json()) as {
+          categories?: FilterOption[]
+        }
+        setCategories(data.categories ?? [])
+      }
+      if (typesRes.ok) {
+        const data = (await typesRes.json()) as { types?: FilterOption[] }
+        setTypes(data.types ?? [])
+      }
+      if (typeCategoriesRes.ok) {
+        const data = (await typeCategoriesRes.json()) as {
+          typeCategories?: TypeCategoryOption[]
+        }
+        setTypeCategories(data.typeCategories ?? [])
+      }
+      if (statusesRes.ok) {
+        const data = (await statusesRes.json()) as {
+          statuses?: StatusOption[]
+        }
+        setStatusOptions(data.statuses ?? [])
+      }
+    }
+
+    void fetchFilters()
+  }, [])
 
   useEffect(() => {
+    let nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS
+
     try {
-      setVisibleColumns(
-        parseRequirementVisibleColumns(
-          globalThis.localStorage.getItem(
-            REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
-          ),
-        ),
+      nextVisibleColumns = parseRequirementVisibleColumns(
+        globalThis.localStorage.getItem(REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY),
       )
     } catch {
-      setVisibleColumns(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS)
+      nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS
     } finally {
+      setVisibleColumns(nextVisibleColumns)
+      setFilters(previousFilters =>
+        clearRequirementFiltersForHiddenColumns(
+          previousFilters,
+          nextVisibleColumns,
+        ),
+      )
       setHasLoadedColumnPreferences(true)
     }
   }, [])
@@ -306,8 +313,12 @@ export default function KravkatalogClient() {
   }, [columnWidths, columnWidthsStorageKey, hydratedColumnWidthsStorageKey])
 
   useEffect(() => {
+    if (!hasLoadedColumnPreferences) {
+      return
+    }
+
     fetchData()
-  }, [fetchData])
+  }, [fetchData, hasLoadedColumnPreferences])
 
   const displayRows = useMemo(() => {
     if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {

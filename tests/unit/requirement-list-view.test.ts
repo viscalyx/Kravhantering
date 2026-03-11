@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildRequirementListParams,
+  clearRequirementFiltersForHiddenColumns,
   compareRequirementRows,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   getRequirementColumnWidthsStorageKey,
@@ -71,6 +72,25 @@ describe('requirement list view helpers', () => {
     expect(
       JSON.parse(serializeRequirementVisibleColumns(['status', 'type'])),
     ).toEqual(['uniqueId', 'description', 'type', 'status'])
+  })
+
+  it('clears hidden column filters while keeping locked-column filters intact', () => {
+    expect(
+      clearRequirementFiltersForHiddenColumns(
+        {
+          areaIds: [1],
+          descriptionSearch: 'secure',
+          statuses: [3],
+          uniqueIdSearch: 'INT',
+        },
+        ['uniqueId', 'description'],
+      ),
+    ).toEqual({
+      areaIds: undefined,
+      descriptionSearch: 'secure',
+      statuses: undefined,
+      uniqueIdSearch: 'INT',
+    })
   })
 
   it('parses stored column widths with clamping and ignores unknown columns', () => {

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import KravkatalogClient from '@/app/[locale]/kravkatalog/kravkatalog-client'
 import {
+  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   getRequirementColumnWidthsStorageKey,
   REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
 } from '@/lib/requirements/list-view'
@@ -96,7 +97,76 @@ function okJson(body: unknown) {
   } as Response
 }
 
+function mockCommonFetches() {
+  fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input)
+
+    if (url.startsWith('/api/requirements?')) {
+      return okJson({
+        pagination: { hasMore: false },
+        requirements: [
+          {
+            area: { name: 'Integration' },
+            id: 1,
+            isArchived: false,
+            uniqueId: 'INT0001',
+            version: {
+              categoryNameEn: 'Business requirement',
+              categoryNameSv: 'Verksamhetskrav',
+              description: 'Testkrav',
+              requiresTesting: false,
+              status: 3,
+              statusColor: '#22c55e',
+              statusNameEn: 'Published',
+              statusNameSv: 'Publicerad',
+              typeCategoryNameEn: null,
+              typeCategoryNameSv: null,
+              typeNameEn: 'Functional',
+              typeNameSv: 'Funktionellt',
+              versionNumber: 1,
+            },
+          },
+        ],
+      })
+    }
+
+    if (url === '/api/requirement-areas') {
+      return okJson({ areas: [] })
+    }
+    if (url === '/api/requirement-categories') {
+      return okJson({ categories: [] })
+    }
+    if (url === '/api/requirement-types') {
+      return okJson({ types: [] })
+    }
+    if (url === '/api/requirement-type-categories') {
+      return okJson({ typeCategories: [] })
+    }
+    if (url === '/api/requirement-statuses') {
+      return okJson({
+        statuses: [
+          {
+            color: '#22c55e',
+            id: 3,
+            nameEn: 'Published',
+            nameSv: 'Publicerad',
+            sortOrder: 3,
+          },
+        ],
+      })
+    }
+
+    throw new Error(`Unhandled fetch: ${url}`)
+  })
+}
+
 describe('KravkatalogClient', () => {
+  beforeEach(() => {
+    fetchMock.mockReset()
+    storageGetItem.mockReset()
+    storageSetItem.mockReset()
+  })
+
   it('hydrates saved columns and widths and sends sort params in list requests', async () => {
     const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey('sv')
 
@@ -117,67 +187,7 @@ describe('KravkatalogClient', () => {
       writable: true,
     })
 
-    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
-      const url = String(input)
-
-      if (url.startsWith('/api/requirements?')) {
-        return okJson({
-          pagination: { hasMore: false },
-          requirements: [
-            {
-              area: { name: 'Integration' },
-              id: 1,
-              isArchived: false,
-              uniqueId: 'INT0001',
-              version: {
-                categoryNameEn: 'Business requirement',
-                categoryNameSv: 'Verksamhetskrav',
-                description: 'Testkrav',
-                requiresTesting: false,
-                status: 3,
-                statusColor: '#22c55e',
-                statusNameEn: 'Published',
-                statusNameSv: 'Publicerad',
-                typeCategoryNameEn: null,
-                typeCategoryNameSv: null,
-                typeNameEn: 'Functional',
-                typeNameSv: 'Funktionellt',
-                versionNumber: 1,
-              },
-            },
-          ],
-        })
-      }
-
-      if (url === '/api/requirement-areas') {
-        return okJson({ areas: [] })
-      }
-      if (url === '/api/requirement-categories') {
-        return okJson({ categories: [] })
-      }
-      if (url === '/api/requirement-types') {
-        return okJson({ types: [] })
-      }
-      if (url === '/api/requirement-type-categories') {
-        return okJson({ typeCategories: [] })
-      }
-      if (url === '/api/requirement-statuses') {
-        return okJson({
-          statuses: [
-            {
-              color: '#22c55e',
-              id: 3,
-              nameEn: 'Published',
-              nameSv: 'Publicerad',
-              sortOrder: 3,
-            },
-          ],
-        })
-      }
-
-      throw new Error(`Unhandled fetch: ${url}`)
-    })
-
+    mockCommonFetches()
     vi.stubGlobal('fetch', fetchMock)
 
     const { container } = render(<KravkatalogClient />)
@@ -234,6 +244,99 @@ describe('KravkatalogClient', () => {
       expect(storageSetItem).toHaveBeenCalledWith(
         columnWidthsStorageKey,
         '{"type":200,"status":220}',
+      ),
+    )
+  })
+
+  it('falls back to default column preferences when local storage is invalid', async () => {
+    const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey('sv')
+
+    storageGetItem.mockImplementation((key: string) => {
+      if (key === REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY) {
+        return 'not-json'
+      }
+      if (key === columnWidthsStorageKey) {
+        return '{invalid'
+      }
+      return null
+    })
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: storageGetItem,
+        setItem: storageSetItem,
+      },
+      writable: true,
+    })
+
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('visible-columns').textContent).toBe(
+        DEFAULT_VISIBLE_REQUIREMENT_COLUMNS.join(','),
+      ),
+    )
+    expect(screen.getByTestId('column-widths').textContent).toBe('{}')
+  })
+
+  it('clears hidden default filters from stored column preferences', async () => {
+    storageGetItem.mockImplementation((key: string) => {
+      if (key === REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY) {
+        return '["uniqueId","description"]'
+      }
+      return null
+    })
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: storageGetItem,
+        setItem: storageSetItem,
+      },
+      writable: true,
+    })
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        expect(url).not.toContain('statuses=3')
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [],
+        })
+      }
+
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: [] })
+      }
+      if (url === '/api/requirement-categories') {
+        return okJson({ categories: [] })
+      }
+      if (url === '/api/requirement-types') {
+        return okJson({ types: [] })
+      }
+      if (url === '/api/requirement-type-categories') {
+        return okJson({ typeCategories: [] })
+      }
+      if (url === '/api/requirement-statuses') {
+        return okJson({ statuses: [] })
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('visible-columns').textContent).toBe(
+        'uniqueId,description',
+      ),
+    )
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/requirements?'),
       ),
     )
   })

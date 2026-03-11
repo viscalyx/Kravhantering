@@ -137,6 +137,52 @@ describe('RequirementsTable', () => {
     return getResizeHandle(container, columnId)?.style.left ?? null
   }
 
+  function getColumnPickerTrigger(
+    container: HTMLElement,
+  ): HTMLButtonElement | null {
+    return (
+      (container.querySelector(
+        '[data-column-picker-trigger="true"]',
+      ) as HTMLButtonElement | null) ??
+      (document.querySelector(
+        '[data-column-picker-trigger="true"]',
+      ) as HTMLButtonElement | null)
+    )
+  }
+
+  function getColumnPickerBadge(container: HTMLElement) {
+    return (
+      (container.querySelector(
+        '[data-column-picker-badge="true"]',
+      ) as HTMLSpanElement | null) ??
+      (document.querySelector(
+        '[data-column-picker-badge="true"]',
+      ) as HTMLSpanElement | null)
+    )
+  }
+
+  function getColumnPickerWrapper(container: HTMLElement) {
+    return (
+      (container.querySelector(
+        '[data-column-picker-wrapper="true"]',
+      ) as HTMLDivElement | null) ??
+      (document.querySelector(
+        '[data-column-picker-wrapper="true"]',
+      ) as HTMLDivElement | null)
+    )
+  }
+
+  function getColumnPickerShell(container: HTMLElement) {
+    return (
+      (container.querySelector(
+        '[data-column-picker-shell="true"]',
+      ) as HTMLButtonElement | null) ??
+      (document.querySelector(
+        '[data-column-picker-shell="true"]',
+      ) as HTMLButtonElement | null)
+    )
+  }
+
   function setHeaderMetrics(container: HTMLElement, widths: number[]) {
     const headers = Array.from(
       container.querySelectorAll('thead th'),
@@ -259,6 +305,45 @@ describe('RequirementsTable', () => {
     expect(screen.getByRole('checkbox', { name: 'uniqueId' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'description' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'area' })).not.toBeDisabled()
+  })
+
+  it('renders the floating pill outside the table header and closes on outside click', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    expect(
+      container.querySelector('[data-column-picker-trigger="true"]'),
+    ).toBeNull()
+    expect(getColumnPickerTrigger(container)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'columns' }))
+    expect(screen.getByRole('checkbox', { name: 'status' })).toBeTruthy()
+
+    fireEvent.mouseDown(document.body)
+    expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull()
+  })
+
+  it('shows the floating pill badge in the default column state', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    expect(getColumnPickerBadge(container)?.textContent).toBe('6/9')
+  })
+
+  it('renders the floating pill in a centered square shell', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const wrapper = getColumnPickerWrapper(container)
+    const shell = getColumnPickerShell(container)
+
+    expect(wrapper).toBeTruthy()
+    expect(shell).toBeTruthy()
+    expect(shell?.className).toContain('w-10')
+    expect(shell?.className).toContain('rounded-full')
   })
 
   it('clears hidden column filters and resets hidden active sort', () => {

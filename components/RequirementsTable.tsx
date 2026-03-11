@@ -19,6 +19,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -28,6 +29,7 @@ import { createPortal } from 'react-dom'
 import StatusBadge from '@/components/StatusBadge'
 import { useRouter } from '@/i18n/routing'
 import {
+  clearRequirementFiltersForHiddenColumns,
   type AreaOption,
   clampRequirementColumnWidth,
   DEFAULT_REQUIREMENT_SORT,
@@ -461,11 +463,15 @@ function GroupedMultiSelectFilterPopover({
 }
 
 function ColumnsPopover({
+  anchorRef,
+  badgeLabel = null,
   columns,
   onReset,
   onToggle,
   visibleColumns,
 }: {
+  anchorRef?: RefObject<HTMLElement | null>
+  badgeLabel?: string | null
   columns: {
     canHide: boolean
     id: RequirementColumnId
@@ -484,6 +490,12 @@ function ColumnsPopover({
     top: 0,
     left: 0,
   })
+  const [outsidePillPos, setOutsidePillPos] = useState<{
+    left: number
+    top: number
+  } | null>(null)
+  const triggerClassName =
+    'inline-flex h-10 w-10 items-center justify-center rounded-full border border-secondary-200/80 bg-white/90 text-secondary-500 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100'
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -502,28 +514,111 @@ function ColumnsPopover({
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    if (!anchorRef?.current) {
+      setOutsidePillPos(null)
+      return
+    }
+
+    const anchor = anchorRef.current
+
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect()
+      setOutsidePillPos({
+        left: rect.right + 12,
+        top: rect.top + 12,
+      })
+    }
+
+    updatePosition()
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => updatePosition())
+
+    resizeObserver?.observe(anchor)
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [anchorRef])
+
+  const trigger = (
+    <button
+      aria-label={tc('columns')}
+      className={triggerClassName}
+      data-column-picker-shell="true"
+      data-column-picker-trigger="true"
+      onClick={() => {
+        if (!open && btnRef.current) {
+          const rect = btnRef.current.getBoundingClientRect()
+          const popoverWidth = 224
+          const minLeft = 8
+          const maxLeft =
+            typeof window === 'undefined'
+              ? rect.right - popoverWidth
+              : Math.max(minLeft, window.innerWidth - popoverWidth - 8)
+          setPos({
+            top: rect.bottom + 8,
+            left: Math.min(
+              Math.max(rect.right - popoverWidth, minLeft),
+              maxLeft,
+            ),
+          })
+        }
+        setOpen(value => !value)
+      }}
+      ref={btnRef}
+      title={tc('columns')}
+      type="button"
+    >
+      <span className="sr-only">{tc('columns')}</span>
+      <Columns3
+        aria-hidden="true"
+        className="h-4 w-4"
+        data-column-picker-icon="true"
+      />
+      {badgeLabel ? (
+        <span
+          aria-hidden="true"
+          className="absolute -right-1 -top-2 flex h-4 min-w-8 items-center justify-center rounded-full bg-primary-600 px-1.5 text-[9px] font-semibold leading-none text-white shadow-sm"
+          data-column-picker-badge="true"
+        >
+          {badgeLabel}
+        </span>
+      ) : null}
+    </button>
+  )
+
   return (
-    <div className="relative inline-flex" ref={ref}>
-      <button
-        aria-label={tc('columns')}
-        className="inline-flex h-4 w-4 items-center justify-center rounded text-secondary-400 transition-colors hover:text-secondary-600 dark:hover:text-secondary-300"
-        onClick={() => {
-          if (!open && btnRef.current) {
-            const rect = btnRef.current.getBoundingClientRect()
-            setPos({ top: rect.bottom + 4, left: rect.right - 220 })
-          }
-          setOpen(value => !value)
-        }}
-        ref={btnRef}
-        title={tc('columns')}
-        type="button"
-      >
-        <Columns3 aria-hidden="true" className="h-3.5 w-3.5 translate-y-0.5" />
-      </button>
+    <>
+      {outsidePillPos
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-30"
+              style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
+            >
+              <div
+                className="pointer-events-auto relative inline-flex"
+                data-column-picker-wrapper="true"
+                ref={ref}
+              >
+                {trigger}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
       {open &&
         createPortal(
           <div
             className="fixed z-50 min-w-56 rounded-xl border bg-white p-2 shadow-lg dark:bg-secondary-800"
+            data-column-picker-popover="true"
             ref={dropRef}
             style={{ left: Math.max(pos.left, 8), top: pos.top }}
           >
@@ -560,7 +655,7 @@ function ColumnsPopover({
           </div>,
           document.body,
         )}
-    </div>
+    </>
   )
 }
 
@@ -666,6 +761,10 @@ export default function RequirementsTable({
     'uniqueId',
     'description',
   ])
+  const columnPickerBadgeLabel =
+    visibleColumnSet.size > 0
+      ? `${visibleColumnSet.size}/${REQUIREMENT_LIST_COLUMNS.length}`
+      : null
   const columnDefinitions = REQUIREMENT_LIST_COLUMNS.filter(column =>
     visibleColumnSet.has(column.id),
   )
@@ -1358,43 +1457,6 @@ export default function RequirementsTable({
     )
   }
 
-  const getVisibilityPatch = (hiddenColumns: RequirementColumnId[]) => {
-    const patch: Partial<FilterValues> = {}
-
-    for (const columnId of hiddenColumns) {
-      switch (columnId) {
-        case 'uniqueId':
-          patch.uniqueIdSearch = undefined
-          break
-        case 'description':
-          patch.descriptionSearch = undefined
-          break
-        case 'area':
-          patch.areaIds = undefined
-          break
-        case 'category':
-          patch.categoryIds = undefined
-          break
-        case 'type':
-          patch.typeIds = undefined
-          break
-        case 'typeCategory':
-          patch.typeCategoryIds = undefined
-          break
-        case 'status':
-          patch.statuses = undefined
-          break
-        case 'requiresTesting':
-          patch.requiresTesting = undefined
-          break
-        case 'version':
-          break
-      }
-    }
-
-    return patch
-  }
-
   const applyVisibleColumns = (nextVisibleColumns: RequirementColumnId[]) => {
     if (!onVisibleColumnsChange) {
       return
@@ -1409,12 +1471,15 @@ export default function RequirementsTable({
     const hiddenColumns = columnDefinitions
       .map(column => column.id)
       .filter(columnId => !normalizedColumns.includes(columnId))
-    const filterPatch = getVisibilityPatch(hiddenColumns)
+    const nextFilterValues = clearRequirementFiltersForHiddenColumns(
+      fv,
+      normalizedColumns,
+    )
 
     onVisibleColumnsChange(normalizedColumns)
 
-    if (Object.keys(filterPatch).length > 0 && onFilterChange) {
-      onFilterChange({ ...fv, ...filterPatch })
+    if (nextFilterValues !== fv && onFilterChange) {
+      onFilterChange(nextFilterValues)
     }
     if (
       hiddenColumns.includes(sortState.by) &&
@@ -1830,6 +1895,8 @@ export default function RequirementsTable({
   }
   const columnsPopover = (
     <ColumnsPopover
+      anchorRef={scrollContainerRef}
+      badgeLabel={columnPickerBadgeLabel}
       columns={REQUIREMENT_LIST_COLUMNS.map(column => ({
         canHide: column.canHide,
         id: column.id,
@@ -1854,6 +1921,7 @@ export default function RequirementsTable({
           </p>
         </output>
       )}
+      {columnsPopover}
       <div
         className="relative overflow-x-auto"
         data-requirements-scroll-container="true"
@@ -1982,11 +2050,6 @@ export default function RequirementsTable({
                           )}
                           {renderFilterControl(column.id)}
                         </div>
-                        {isLastColumn ? (
-                          <div className="ml-auto shrink-0">
-                            {columnsPopover}
-                          </div>
-                        ) : null}
                       </div>
                       {renderFilterChips(column.id)}
                     </th>

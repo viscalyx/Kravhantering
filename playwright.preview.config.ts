@@ -29,8 +29,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      /* Cross-origin warning tests only apply to the dev server. */
-      testIgnore: /cross-origin-warning/,
     },
   ],
 

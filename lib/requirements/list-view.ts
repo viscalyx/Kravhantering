@@ -354,6 +354,42 @@ export function serializeRequirementVisibleColumns(
   return JSON.stringify(normalizeRequirementVisibleColumns(columns))
 }
 
+export function clearRequirementFiltersForHiddenColumns(
+  values: FilterValues,
+  visibleColumns: readonly RequirementColumnId[],
+): FilterValues {
+  const visibleColumnSet = new Set(
+    normalizeRequirementVisibleColumns(visibleColumns),
+  )
+  let nextValues = values
+
+  const clearIfHidden = <K extends keyof FilterValues>(
+    columnId: RequirementColumnId,
+    key: K,
+  ) => {
+    if (visibleColumnSet.has(columnId) || values[key] === undefined) {
+      return
+    }
+
+    if (nextValues === values) {
+      nextValues = { ...values }
+    }
+
+    nextValues[key] = undefined
+  }
+
+  clearIfHidden('uniqueId', 'uniqueIdSearch')
+  clearIfHidden('description', 'descriptionSearch')
+  clearIfHidden('area', 'areaIds')
+  clearIfHidden('category', 'categoryIds')
+  clearIfHidden('type', 'typeIds')
+  clearIfHidden('typeCategory', 'typeCategoryIds')
+  clearIfHidden('status', 'statuses')
+  clearIfHidden('requiresTesting', 'requiresTesting')
+
+  return nextValues
+}
+
 export function getRequirementColumnWidthsStorageKey(locale: string): string {
   return `${REQUIREMENT_COLUMN_WIDTHS_STORAGE_KEY_PREFIX}.${locale}`
 }
