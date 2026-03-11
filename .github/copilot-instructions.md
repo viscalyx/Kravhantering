@@ -13,7 +13,8 @@
 
 ## Commands
 
-- `npm run check` - all checks (`lint`, `test`, `type`, `format`, `spell`)
+- `npm run check` - all checks (`type-check`, `format:check`,
+  `spell:check`, `lint`, `lint:md`, `test`)
 - `npm run test` - run tests
 - `npm run dev` - start dev server
 
