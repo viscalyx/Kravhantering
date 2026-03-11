@@ -180,7 +180,15 @@ describe('KravkatalogClient', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    const { container } = render(<KravkatalogClient />)
+
+    const tableCard = Array.from(container.querySelectorAll('div')).find(node =>
+      node.className.includes(
+        'backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden',
+      ),
+    )
+
+    expect(tableCard).toBeTruthy()
 
     await waitFor(() =>
       expect(screen.getByTestId('visible-columns').textContent).toBe(

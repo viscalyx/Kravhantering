@@ -365,7 +365,7 @@ export default function KravkatalogClient() {
           </Link>
         </div>
 
-        <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm">
+        <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
           <RequirementsTable
             areas={areas}
             categories={categories}
