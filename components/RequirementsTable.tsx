@@ -156,6 +156,34 @@ function areColumnWidthsEqual(
   )
 }
 
+type ResizeHandleSegmentKey = 'bottom' | 'full' | 'top'
+type ResizeHandleSegmentNode = HTMLButtonElement | HTMLDivElement
+
+interface ExpandedDetailBounds {
+  bottom: number
+  contentHeight: number
+  top: number
+}
+
+function areExpandedDetailBoundsEqual(
+  left: ExpandedDetailBounds | null,
+  right: ExpandedDetailBounds | null,
+) {
+  if (left === right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return false
+  }
+
+  return (
+    left.top === right.top &&
+    left.bottom === right.bottom &&
+    left.contentHeight === right.contentHeight
+  )
+}
+
 /* ── Filter popover for text search columns (uniqueId, description) ── */
 
 function SearchFilterPopover({
@@ -894,6 +922,7 @@ export default function RequirementsTable({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const tableContentRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLTableElement>(null)
+  const expandedDetailCellRef = useRef<HTMLTableCellElement>(null)
   const colRefs = useRef<
     Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
   >({})
@@ -901,7 +930,12 @@ export default function RequirementsTable({
     Partial<Record<RequirementColumnId, HTMLTableCellElement | null>>
   >({})
   const resizeHandleRefs = useRef<
-    Partial<Record<RequirementColumnId, HTMLButtonElement | null>>
+    Partial<
+      Record<
+        RequirementColumnId,
+        Partial<Record<ResizeHandleSegmentKey, ResizeHandleSegmentNode | null>>
+      >
+    >
   >({})
   const columnWidthsRef = useRef(columnWidths)
   const onColumnWidthsChangeRef = useRef(onColumnWidthsChange)
@@ -958,7 +992,7 @@ export default function RequirementsTable({
     .join('|')
   const resizeStateRef = useRef<{
     columnId: RequirementColumnId
-    handle: HTMLButtonElement | null
+    handle: HTMLElement | null
     pointerId: number
     startWidth: number
     startX: number
@@ -970,11 +1004,23 @@ export default function RequirementsTable({
       left: number
     }[]
   >([])
+  const [expandedDetailBounds, setExpandedDetailBounds] =
+    useState<ExpandedDetailBounds | null>(null)
   const [scrollFadeState, setScrollFadeState] = useState({
     left: false,
     right: false,
   })
   const canResizeColumns = !!onColumnWidthsChange
+  const hasExpandedDetailRow =
+    expandedId !== null &&
+    expandedId !== undefined &&
+    !!renderExpanded &&
+    rows.some(row => row.id === expandedId)
+  const clippedResizeHandleBounds = hasExpandedDetailRow
+    ? expandedDetailBounds
+    : null
+  const shouldRenderResizeHandles =
+    canResizeColumns && (!hasExpandedDetailRow || clippedResizeHandleBounds)
 
   const updateFilter = (patch: Partial<FilterValues>) => {
     if (onFilterChange) onFilterChange({ ...fv, ...patch })
@@ -1125,9 +1171,11 @@ export default function RequirementsTable({
           continue
         }
 
-        const handle = resizeHandleRefs.current[column.id]
-        if (handle) {
-          handle.style.left = `${left}px`
+        const handles = Object.values(resizeHandleRefs.current[column.id] ?? {})
+        for (const handle of handles) {
+          if (handle) {
+            handle.style.left = `${left}px`
+          }
         }
       }
     },
@@ -1436,6 +1484,41 @@ export default function RequirementsTable({
     })
   }, [canResizeColumns, columnDefinitions])
 
+  const updateExpandedDetailBounds = useCallback(() => {
+    if (!canResizeColumns || !hasExpandedDetailRow) {
+      setExpandedDetailBounds(previous => (previous ? null : previous))
+      return
+    }
+
+    const cell = expandedDetailCellRef.current
+    const tableContent = tableContentRef.current
+
+    if (!cell || !tableContent) {
+      setExpandedDetailBounds(previous => (previous ? null : previous))
+      return
+    }
+
+    const cellRect = cell.getBoundingClientRect()
+    const tableContentRect = tableContent.getBoundingClientRect()
+    const contentHeight = Math.max(0, Math.round(tableContentRect.height))
+    const top = Math.min(
+      contentHeight,
+      Math.max(0, Math.round(cellRect.top - tableContentRect.top)),
+    )
+    const nextBounds = {
+      bottom: Math.min(
+        contentHeight,
+        Math.max(top, Math.round(cellRect.bottom - tableContentRect.top)),
+      ),
+      contentHeight,
+      top,
+    }
+
+    setExpandedDetailBounds(previous =>
+      areExpandedDetailBoundsEqual(previous, nextBounds) ? previous : nextBounds,
+    )
+  }, [canResizeColumns, hasExpandedDetailRow])
+
   const setResizeHoverCursor = useCallback((active: boolean) => {
     if (resizeStateRef.current) {
       return
@@ -1492,6 +1575,7 @@ export default function RequirementsTable({
 
     updateScrollFades()
     updateResizeHandleOffsets()
+    updateExpandedDetailBounds()
 
     const handleScroll = () => updateScrollFades()
     container.addEventListener('scroll', handleScroll, { passive: true })
@@ -1502,6 +1586,7 @@ export default function RequirementsTable({
         : new ResizeObserver(() => {
             updateScrollFades()
             updateResizeHandleOffsets()
+            updateExpandedDetailBounds()
           })
 
     resizeObserver?.observe(container)
@@ -1511,22 +1596,36 @@ export default function RequirementsTable({
     if (tableRef.current) {
       resizeObserver?.observe(tableRef.current)
     }
+    if (expandedDetailCellRef.current) {
+      resizeObserver?.observe(expandedDetailCellRef.current)
+    }
 
     return () => {
       container.removeEventListener('scroll', handleScroll)
       resizeObserver?.disconnect()
     }
-  }, [updateResizeHandleOffsets, updateScrollFades])
+  }, [
+    hasExpandedDetailRow,
+    updateExpandedDetailBounds,
+    updateResizeHandleOffsets,
+    updateScrollFades,
+  ])
 
   useEffect(() => {
     void scrollLayoutSignature
     updateScrollFades()
     updateResizeHandleOffsets()
-  }, [scrollLayoutSignature, updateResizeHandleOffsets, updateScrollFades])
+    updateExpandedDetailBounds()
+  }, [
+    scrollLayoutSignature,
+    updateExpandedDetailBounds,
+    updateResizeHandleOffsets,
+    updateScrollFades,
+  ])
 
   const handleResizePointerDown = (
     columnId: RequirementColumnId,
-    event: ReactPointerEvent<HTMLButtonElement>,
+    event: ReactPointerEvent<HTMLElement>,
   ) => {
     if (!canResizeColumns) {
       return
@@ -2013,6 +2112,10 @@ export default function RequirementsTable({
 
   const thBase =
     'relative py-2 px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
+  const resizeHandleBaseClassName =
+    'group pointer-events-auto absolute left-0 z-20 m-0 w-6 -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
+  const interactiveResizeHandleClassName = `${resizeHandleBaseClassName} focus-visible:outline-none hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400`
+  const pointerResizeSegmentClassName = `${resizeHandleBaseClassName} hover:before:bg-primary-400 dark:hover:before:bg-primary-400`
   const resetColumnsView = () => {
     cancelResizePreviewFrame()
     pendingResizePreviewVisibleWidthsRef.current = null
@@ -2035,6 +2138,113 @@ export default function RequirementsTable({
       visibleColumns={columnDefinitions.map(column => column.id)}
     />
   )
+
+  const renderResizeHandle = (
+    columnId: RequirementColumnId,
+    left: number,
+    label: string,
+  ) => {
+    const assignResizeHandleRef = (
+      segment: ResizeHandleSegmentKey,
+      node: ResizeHandleSegmentNode | null,
+    ) => {
+      const nextRefs = resizeHandleRefs.current[columnId] ?? {}
+      nextRefs[segment] = node
+      resizeHandleRefs.current[columnId] = nextRefs
+    }
+    const interactiveProps = {
+      'aria-label': tc('resizeColumn', { label }),
+      className: interactiveResizeHandleClassName,
+      'data-column-resize-handle': columnId,
+      onBlur: () => setResizeHoverCursor(false),
+      onDoubleClick: event => {
+        event.preventDefault()
+        event.stopPropagation()
+        resetColumnWidth(columnId)
+      },
+      onFocus: () => setResizeHoverCursor(true),
+      onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) =>
+        handleResizeKeyDown(columnId, event),
+      onMouseEnter: () => setResizeHoverCursor(true),
+      onMouseLeave: () => setResizeHoverCursor(false),
+      onPointerDown: (event: ReactPointerEvent<HTMLElement>) =>
+        handleResizePointerDown(columnId, event),
+      title: tc('resizeColumn', { label }),
+    }
+
+    if (!clippedResizeHandleBounds) {
+      return (
+        <button
+          {...interactiveProps}
+          data-column-resize-column={columnId}
+          data-column-resize-segment="full"
+          key={columnId}
+          ref={node => {
+            assignResizeHandleRef('full', node)
+          }}
+          style={{ bottom: 0, left, top: 0 }}
+          type="button"
+        />
+      )
+    }
+
+    const segmentNodes: ReactNode[] = []
+
+    if (clippedResizeHandleBounds.top > 0) {
+      segmentNodes.push(
+        <button
+          {...interactiveProps}
+          data-column-resize-column={columnId}
+          data-column-resize-segment="top"
+          key={`${columnId}-top`}
+          ref={node => {
+            assignResizeHandleRef('top', node)
+          }}
+          style={{
+            height: clippedResizeHandleBounds.top,
+            left,
+            top: 0,
+          }}
+          type="button"
+        />,
+      )
+    }
+
+    if (
+      clippedResizeHandleBounds.bottom < clippedResizeHandleBounds.contentHeight
+    ) {
+      segmentNodes.push(
+        <div
+          aria-hidden="true"
+          className={pointerResizeSegmentClassName}
+          data-column-resize-column={columnId}
+          data-column-resize-role="pointer"
+          data-column-resize-segment="bottom"
+          key={`${columnId}-bottom`}
+          onDoubleClick={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            resetColumnWidth(columnId)
+          }}
+          onMouseEnter={() => setResizeHoverCursor(true)}
+          onMouseLeave={() => setResizeHoverCursor(false)}
+          onPointerDown={event => handleResizePointerDown(columnId, event)}
+          ref={node => {
+            assignResizeHandleRef('bottom', node)
+          }}
+          style={{
+            height:
+              clippedResizeHandleBounds.contentHeight -
+              clippedResizeHandleBounds.bottom,
+            left,
+            top: clippedResizeHandleBounds.bottom,
+          }}
+        />,
+      )
+    }
+
+    return <Fragment key={columnId}>{segmentNodes}</Fragment>
+  }
 
   return (
     <div className="relative">
@@ -2074,37 +2284,11 @@ export default function RequirementsTable({
           ref={tableContentRef}
           style={{ width: `${tableWidth}px` }}
         >
-          {canResizeColumns
+          {shouldRenderResizeHandles
             ? resizeHandleOffsets.map(({ columnId, left }) => {
                 const label = getColumnLabel(columnId)
 
-                return (
-                  <button
-                    aria-label={tc('resizeColumn', { label })}
-                    className="group pointer-events-auto absolute inset-y-0 z-20 m-0 w-6 -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 focus-visible:outline-none before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:before:bg-secondary-600/25 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400"
-                    data-column-resize-handle={columnId}
-                    key={columnId}
-                    onBlur={() => setResizeHoverCursor(false)}
-                    onDoubleClick={event => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      resetColumnWidth(columnId)
-                    }}
-                    onFocus={() => setResizeHoverCursor(true)}
-                    onKeyDown={event => handleResizeKeyDown(columnId, event)}
-                    onMouseEnter={() => setResizeHoverCursor(true)}
-                    onMouseLeave={() => setResizeHoverCursor(false)}
-                    onPointerDown={event =>
-                      handleResizePointerDown(columnId, event)
-                    }
-                    ref={node => {
-                      resizeHandleRefs.current[columnId] = node
-                    }}
-                    style={{ left: `${left}px` }}
-                    title={tc('resizeColumn', { label })}
-                    type="button"
-                  />
-                )
+                return renderResizeHandle(columnId, left, label)
               })
             : null}
           <table className="w-full table-fixed text-sm" ref={tableRef}>
@@ -2223,8 +2407,8 @@ export default function RequirementsTable({
                             ? onRowClick(row.id)
                             : router.push(`/kravkatalog/${row.id}`)
                         }
-                      >
-                        {columnDefinitions.map((column, columnIndex) => (
+                    >
+                      {columnDefinitions.map((column, columnIndex) => (
                           <Fragment key={column.id}>
                             {renderCell(
                               row,
@@ -2239,6 +2423,8 @@ export default function RequirementsTable({
                           <td
                             className="border-b border-l-2 border-l-primary-500 border-secondary-200/35 bg-secondary-50/60 p-0 dark:border-secondary-700/35 dark:bg-secondary-800/30"
                             colSpan={columnDefinitions.length}
+                            data-expanded-detail-cell="true"
+                            ref={expandedDetailCellRef}
                           >
                             {renderExpanded(row.id)}
                           </td>

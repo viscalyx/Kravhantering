@@ -3,8 +3,9 @@
 > Test flow documentation for [`requirements-table-resize.spec.ts`](tests/integration/requirements-table-resize.spec.ts)
 
 This suite verifies that the Krav list keeps resizing responsive under
-rapid pointer dragging on both mobile and desktop layouts and does not
-fall into a React render loop while persisting the final width.
+rapid pointer dragging on both mobile and desktop layouts, does not
+fall into a React render loop while persisting the final width, and
+clips resize-divider overlays around an expanded inline detail pane.
 
 ## Data Model
 
@@ -13,6 +14,8 @@ fall into a React render loop while persisting the final width.
 |Storage key constant|Swedish width override key.|
 |`description` resize handle|Divider for `Beskrivning` resize.|
 |`area` resize handle|Later divider used to verify live divider movement.|
+|Expanded detail cell|`colSpan` row that must not contain resize segments.|
+|Bottom resize segment|Pointer-only divider segment rendered below the detail pane.|
 |Viewport matrix|Runs at `375x667` and `1280x720`.|
 
 Keep the storage key constant in sync with
@@ -31,17 +34,20 @@ flowchart TD
     A[Start viewport variant] --> B{Viewport}
     B -- 375x667 --> C[Open /sv/kravkatalog]
     B -- 1280x720 --> C
-    C --> D[Wait for description resize handle]
-    D --> E[Start drag and move divider right]
-    E --> F[Verify later divider shifts before release]
-    F --> G[Drag divider rapidly left and right]
-    G --> H[Release pointer]
-    H --> I{Outcome}
-    I -- Width changed --> J[Description column committed]
-    I -- No render-loop errors --> K[Console remains clean]
-    F --> K
-    J --> L[Test passes]
-    K --> L
+    C --> D{Scenario}
+    D -- Rapid drag --> E[Wait for description resize handle]
+    E --> F[Start drag and move divider right]
+    F --> G[Verify later divider shifts before release]
+    G --> H[Drag divider rapidly left and right]
+    H --> I[Release pointer]
+    I --> J[Persist width without render-loop errors]
+    D -- Expanded row --> K[Open first requirement row]
+    K --> L[Wait for expanded detail cell]
+    L --> M[Verify top and bottom resize segments stay outside pane]
+    M --> N[Drag top resize segment]
+    N --> O[Persist width while row stays expanded]
+    J --> P[Test passes]
+    O --> P
 ```
 
 ## Test Setup
@@ -60,12 +66,15 @@ flowchart TD
 - The test also samples the `area` divider during an active drag to
   confirm later divider lines move with the previewed columns before the
   resize is committed.
+- The expanded-row test uses `[data-expanded-detail-cell="true"]` and
+  segmented resize-handle selectors to verify the divider overlay leaves
+  a gap over the inline detail pane.
 - No fixed wait is used for the commit. The assertions poll the DOM
   width and `localStorage` until the committed resize appears.
 
 ## resizes the description column during rapid dragging without render-loop errors
 
-### Purpose
+### Purpose: Expanded Detail Pane
 
 This test validates the failure mode reported in the browser: repeated
 left-right dragging of the `Beskrivning` divider must still resize the
@@ -73,7 +82,7 @@ table, move the later visible divider lines during the live preview, and
 must not trigger React's "Maximum update depth exceeded" error in both
 the mobile and desktop layouts.
 
-### Step-by-Step Flow
+### Flow: Expanded Detail Pane
 
 1. Start the current viewport variant (`375x667` or `1280x720`).
 2. Clear browser storage before navigation.
@@ -94,7 +103,7 @@ the mobile and desktop layouts.
    `description` override.
 13. Assert that no captured error contains the render-loop signatures.
 
-### Sequence Diagram
+### Sequence Diagram: Expanded Detail Pane
 
 ```mermaid
 sequenceDiagram
@@ -116,4 +125,62 @@ sequenceDiagram
     T->>S: Persist final width override
     Note over T: ✓ Description column width changed
     Note over P: ✓ No maximum update depth error
+```
+
+## clips resize handles around an expanded detail pane and still resizes
+
+### Purpose
+
+This test validates the reported visual bug directly: once a
+requirement row expands inline, the description divider must split into
+top and bottom segments so no visible line or resize hit area overlaps
+the detail pane, and resizing must still commit successfully while the
+pane remains open.
+
+### Step-by-Step Flow
+
+1. Start the current viewport variant (`375x667` or `1280x720`).
+2. Clear browser storage before navigation.
+3. Open `/sv/kravkatalog`.
+4. Wait for the first two table rows so the expanded row will have
+   content below it.
+5. Open the first row's inline detail pane.
+6. Wait for `[data-expanded-detail-cell="true"]`,
+   `[data-column-resize-handle="description"]`, and the description
+   bottom segment to render.
+7. Read the bounding boxes for the expanded detail cell, the top
+   interactive resize handle, and the bottom pointer-only segment.
+8. Assert that the top handle ends at or above the detail-pane top
+   edge.
+9. Assert that the bottom segment starts at or below the detail-pane
+   bottom edge.
+10. Record the current description column width.
+11. Drag the bottom description resize segment to the right.
+12. Release the pointer to commit the resize.
+13. Assert that the description column width changed.
+14. Assert that the Swedish width override in `localStorage` contains a
+   `description` entry.
+
+### Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Page
+    participant T as Table
+    participant D as Detail Pane
+    participant S as Storage
+
+    P->>P: Apply viewport variant
+    U->>P: Open /sv/kravkatalog
+    P->>T: Render list and divider overlay
+    U->>T: Click first requirement row
+    T->>D: Render inline detail pane
+    Note over T,D: ✓ Divider overlay splits above and below pane
+    U->>T: Drag bottom description segment right
+    T->>T: Update column width
+    U->>T: Release pointer
+    T->>S: Persist final width override
+    Note over D: ✓ No divider segment overlaps the pane
+    Note over S: ✓ Stored value contains description
 ```

@@ -116,6 +116,38 @@ describe('RequirementsTable', () => {
     )
   }
 
+  function ControlledExpandedResizableTable() {
+    const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+
+    return (
+      <div>
+        <div data-testid="column-width-state">
+          {JSON.stringify(columnWidths)}
+        </div>
+        <RequirementsTable
+          columnWidths={columnWidths}
+          expandedId={1}
+          locale="sv"
+          onColumnWidthsChange={setColumnWidths}
+          renderExpanded={() => (
+            <div data-testid="expanded-detail-content">Expanded detail</div>
+          )}
+          rows={[
+            makeRow(),
+            makeRow({
+              id: 2,
+              uniqueId: 'INT0002',
+              version: {
+                ...makeRow().version,
+                description: 'Uppfoljning',
+              },
+            }),
+          ]}
+        />
+      </div>
+    )
+  }
+
   function ControlledSearchFilterTable() {
     const [filterValues, setFilterValues] = useState({
       ...DEFAULT_FILTERS,
@@ -273,6 +305,63 @@ describe('RequirementsTable', () => {
     widths: number[] = DEFAULT_COLUMN_WIDTHS,
   ) {
     setHeaderMetrics(container, widths)
+
+    act(() => {
+      resizeObserverCallback?.([], {} as ResizeObserver)
+    })
+  }
+
+  function setExpandedDetailMetrics(
+    container: HTMLElement,
+    {
+      bottom,
+      contentHeight,
+      top,
+    }: {
+      bottom: number
+      contentHeight: number
+      top: number
+    },
+  ) {
+    const tableContent = getTableContent(container)
+    const detailCell = container.querySelector(
+      '[data-expanded-detail-cell="true"]',
+    ) as HTMLTableCellElement | null
+
+    if (!tableContent || !detailCell) {
+      throw new Error('Expanded detail metrics require a rendered detail cell.')
+    }
+
+    Object.defineProperty(tableContent, 'getBoundingClientRect', {
+      configurable: true,
+      value: () =>
+        ({
+          bottom: contentHeight,
+          height: contentHeight,
+          left: 0,
+          right: 1122,
+          toJSON: () => ({}),
+          top: 0,
+          width: 1122,
+          x: 0,
+          y: 0,
+        }) as DOMRect,
+    })
+    Object.defineProperty(detailCell, 'getBoundingClientRect', {
+      configurable: true,
+      value: () =>
+        ({
+          bottom,
+          height: bottom - top,
+          left: 0,
+          right: 1122,
+          toJSON: () => ({}),
+          top,
+          width: 1122,
+          x: 0,
+          y: top,
+        }) as DOMRect,
+    })
 
     act(() => {
       resizeObserverCallback?.([], {} as ResizeObserver)
@@ -663,6 +752,43 @@ describe('RequirementsTable', () => {
       '176px',
     ])
 
+    fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":392}',
+    )
+  })
+
+  it('clips resize handles around the expanded detail pane', () => {
+    const { container } = render(<ControlledExpandedResizableTable />)
+
+    syncResizeHandleMetrics(container)
+    setExpandedDetailMetrics(container, {
+      bottom: 240,
+      contentHeight: 360,
+      top: 120,
+    })
+
+    const topHandle = getResizeHandle(container, 'description')
+    const bottomSegment = container.querySelector(
+      '[data-column-resize-column="description"][data-column-resize-segment="bottom"]',
+    ) as HTMLDivElement | null
+
+    expect(topHandle).toBeTruthy()
+    expect(topHandle).toHaveAttribute('data-column-resize-segment', 'top')
+    expect(topHandle?.style.top).toBe('0px')
+    expect(topHandle?.style.height).toBe('120px')
+    expect(bottomSegment).toBeTruthy()
+    expect(bottomSegment?.style.top).toBe('240px')
+    expect(bottomSegment?.style.height).toBe('120px')
+    expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
+    expect(
+      Number.parseInt(topHandle?.style.height ?? '0', 10),
+    ).toBeLessThanOrEqual(120)
+    expect(Number.parseInt(bottomSegment?.style.top ?? '0', 10)).toBeGreaterThanOrEqual(240)
+
+    fireEvent.pointerDown(bottomSegment as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
