@@ -12,12 +12,15 @@
 ## Document New Tests
 
 - Create a co-located `.md` companion for each new integration test.
-- Follow
+- Follow the template in
   [`.github/prompts/generate-test-docs.prompt.md`](../../.github/prompts/generate-test-docs.prompt.md).
-- Include a title, introduction, overview mermaid flowchart, test setup, and
-  per-test sections.
-- Use [`requirements-table-resize.md`](requirements-table-resize.md) as
-  the current reference example.
+- Use [`requirements-table-resize.md`](requirements-table-resize.md) as the
+  current reference example.
+- Include the global title and introduction, an overview Mermaid flowchart,
+  and test setup documentation.
+- For each test case, add an explicit section with a clear purpose, a numbered
+  step-by-step flow, a Mermaid sequence diagram, and an optional supplementary
+  Mermaid flowchart when branches or state transitions need clarification.
 
 ## General Rules
 

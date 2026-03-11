@@ -1,6 +1,6 @@
 # Requirements Table Column Resizing Integration Tests
 
-> Test flow documentation for [`requirements-table-resize.spec.ts`](/workspace/tests/integration/requirements-table-resize.spec.ts)
+> Test flow documentation for [`requirements-table-resize.spec.ts`](tests/integration/requirements-table-resize.spec.ts)
 
 This suite verifies that the Krav list keeps resizing responsive under
 rapid pointer dragging on both mobile and desktop layouts and does not

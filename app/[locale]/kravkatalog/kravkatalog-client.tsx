@@ -108,9 +108,12 @@ export default function KravkatalogClient() {
 
   // Stable ref so the onChange callback always sees the latest selectedId
   const selectedIdRef = useRef<number | null>(null)
+  const latestRowsRequestIdRef = useRef(0)
+  const latestFetchDataRequestIdRef = useRef(0)
   selectedIdRef.current = selectedId
 
   const refreshRows = useCallback(async () => {
+    const requestId = ++latestRowsRequestIdRef.current
     const params = buildRequirementListParams({
       filters,
       limit: PAGE_SIZE,
@@ -119,60 +122,83 @@ export default function KravkatalogClient() {
     })
 
     const res = await fetch(`/api/requirements?${params}`)
-    if (res.ok) {
-      const data = (await res.json()) as {
-        pagination?: { hasMore?: boolean }
-        requirements?: RequirementRow[]
-      }
-      const newRows = data.requirements ?? []
-      setHasMore(data.pagination?.hasMore ?? false)
-
-      // If an expanded row is no longer in the filtered results, pin it
-      const sid = selectedIdRef.current
-      let newPinnedRow: RequirementRow | null = null
-
-      if (sid != null && !newRows.some(r => r.id === sid)) {
-        const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (singleRes.ok) {
-          const detail = (await singleRes.json()) as {
-            area?: { name: string } | null
-            id: number
-            isArchived: boolean
-            uniqueId: string
-            versions?: {
-              category?: { nameSv: string; nameEn: string } | null
-              description: string | null
-              requiresTesting: boolean
-              status: number
-              statusColor: string | null
-              statusNameEn: string | null
-              statusNameSv: string | null
-              type?: { nameSv: string; nameEn: string } | null
-              typeCategory?: { nameSv: string; nameEn: string } | null
-              versionNumber: number
-            }[]
-          }
-          newPinnedRow = mapRequirementDetailToRow(detail)
-        }
-      }
-
-      // Batch both updates in one synchronous block to avoid intermediate renders
-      setRows(newRows)
-      setPinnedRow(newPinnedRow)
+    if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+      return
     }
+
+    const data = (await res.json()) as {
+      pagination?: { hasMore?: boolean }
+      requirements?: RequirementRow[]
+    }
+    if (requestId !== latestRowsRequestIdRef.current) {
+      return
+    }
+
+    const newRows = data.requirements ?? []
+    const nextHasMore = data.pagination?.hasMore ?? false
+
+    // If an expanded row is no longer in the filtered results, pin it
+    const sid = selectedIdRef.current
+    let newPinnedRow: RequirementRow | null = null
+
+    if (sid != null && !newRows.some(r => r.id === sid)) {
+      const singleRes = await fetch(`/api/requirements/${sid}`)
+      if (requestId !== latestRowsRequestIdRef.current) {
+        return
+      }
+
+      if (singleRes.ok) {
+        const detail = (await singleRes.json()) as {
+          area?: { name: string } | null
+          id: number
+          isArchived: boolean
+          uniqueId: string
+          versions?: {
+            category?: { nameSv: string; nameEn: string } | null
+            description: string | null
+            requiresTesting: boolean
+            status: number
+            statusColor: string | null
+            statusNameEn: string | null
+            statusNameSv: string | null
+            type?: { nameSv: string; nameEn: string } | null
+            typeCategory?: { nameSv: string; nameEn: string } | null
+            versionNumber: number
+          }[]
+        }
+        if (requestId !== latestRowsRequestIdRef.current) {
+          return
+        }
+
+        newPinnedRow = mapRequirementDetailToRow(detail)
+      }
+    }
+
+    if (requestId !== latestRowsRequestIdRef.current) {
+      return
+    }
+
+    // Batch both updates in one synchronous block to avoid intermediate renders
+    setHasMore(nextHasMore)
+    setRows(newRows)
+    setPinnedRow(newPinnedRow)
   }, [filters, locale, sortState])
 
   const fetchData = useCallback(async () => {
+    const requestId = ++latestFetchDataRequestIdRef.current
     setLoading(true)
     try {
       await refreshRows()
     } finally {
-      setLoading(false)
+      if (requestId === latestFetchDataRequestIdRef.current) {
+        setLoading(false)
+      }
     }
   }, [refreshRows])
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return
+    const requestId = ++latestRowsRequestIdRef.current
     setLoadingMore(true)
     try {
       const params = buildRequirementListParams({
@@ -183,15 +209,21 @@ export default function KravkatalogClient() {
         sort: sortState,
       })
       const res = await fetch(`/api/requirements?${params}`)
-      if (res.ok) {
-        const data = (await res.json()) as {
-          pagination?: { hasMore?: boolean }
-          requirements?: RequirementRow[]
-        }
-        const moreRows = data.requirements ?? []
-        setHasMore(data.pagination?.hasMore ?? false)
-        setRows(prev => [...prev, ...moreRows])
+      if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+        return
       }
+
+      const data = (await res.json()) as {
+        pagination?: { hasMore?: boolean }
+        requirements?: RequirementRow[]
+      }
+      if (requestId !== latestRowsRequestIdRef.current) {
+        return
+      }
+
+      const moreRows = data.requirements ?? []
+      setHasMore(data.pagination?.hasMore ?? false)
+      setRows(prev => [...prev, ...moreRows])
     } finally {
       setLoadingMore(false)
     }

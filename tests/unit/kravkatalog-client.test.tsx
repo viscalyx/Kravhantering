@@ -31,9 +31,15 @@ vi.mock('@/components/RequirementsTable', () => ({
   default: ({
     columnWidths,
     floatingActions,
+    hasMore,
+    loading,
+    loadingMore,
     onColumnWidthsChange,
+    onLoadMore,
+    onRowClick,
     onSortChange,
     onVisibleColumnsChange,
+    rows,
     sortState,
     visibleColumns,
   }: {
@@ -46,9 +52,15 @@ vi.mock('@/components/RequirementsTable', () => ({
       position?: 'beforeColumns' | 'afterColumns'
       variant?: 'default' | 'primary'
     }[]
+    hasMore?: boolean
+    loading?: boolean
+    loadingMore?: boolean
     onColumnWidthsChange?: (value: Record<string, number>) => void
+    onLoadMore?: () => void
+    onRowClick?: (id: number) => void
     onSortChange?: (value: { by: string; direction: 'asc' | 'desc' }) => void
     onVisibleColumnsChange?: (value: string[]) => void
+    rows?: { id: number; uniqueId: string }[]
     sortState?: { by: string; direction: 'asc' | 'desc' }
     visibleColumns?: string[]
   }) => (
@@ -70,6 +82,19 @@ vi.mock('@/components/RequirementsTable', () => ({
       <div data-testid="column-widths">
         {JSON.stringify(columnWidths ?? {})}
       </div>
+      <div data-testid="row-ids">{(rows ?? []).map(row => row.uniqueId).join(',')}</div>
+      <div data-testid="has-more">{String(hasMore ?? false)}</div>
+      <div data-testid="loading">{String(loading ?? false)}</div>
+      <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
+      {(rows ?? []).map(row => (
+        <button
+          key={row.id}
+          onClick={() => onRowClick?.(row.id)}
+          type="button"
+        >
+          {`row-${row.id}`}
+        </button>
+      ))}
       {(floatingActions ?? []).map(action =>
         action.href ? (
           <a
@@ -101,6 +126,12 @@ vi.mock('@/components/RequirementsTable', () => ({
         change-sort
       </button>
       <button
+        onClick={() => onSortChange?.({ by: 'uniqueId', direction: 'desc' })}
+        type="button"
+      >
+        change-sort-desc
+      </button>
+      <button
         onClick={() =>
           onVisibleColumnsChange?.(['uniqueId', 'description', 'status'])
         }
@@ -113,6 +144,9 @@ vi.mock('@/components/RequirementsTable', () => ({
         type="button"
       >
         change-widths
+      </button>
+      <button disabled={!hasMore} onClick={() => onLoadMore?.()} type="button">
+        load-more
       </button>
     </div>
   ),
@@ -129,6 +163,102 @@ function okJson(body: unknown) {
   } as Response
 }
 
+function createDeferredJsonResponse<T>() {
+  let resolve: ((body: T) => void) | undefined
+  const promise = new Promise<Response>(promiseResolve => {
+    resolve = body => promiseResolve(okJson(body))
+  })
+
+  return {
+    promise,
+    resolve(body: T) {
+      resolve?.(body)
+    },
+  }
+}
+
+function makeRequirementRow(id: number, overrides: Record<string, unknown> = {}) {
+  return {
+    area: { name: 'Integration' },
+    id,
+    isArchived: false,
+    uniqueId: `INT${String(id).padStart(4, '0')}`,
+    version: {
+      categoryNameEn: 'Business requirement',
+      categoryNameSv: 'Verksamhetskrav',
+      description: `Testkrav ${id}`,
+      requiresTesting: false,
+      status: 3,
+      statusColor: '#22c55e',
+      statusNameEn: 'Published',
+      statusNameSv: 'Publicerad',
+      typeCategoryNameEn: null,
+      typeCategoryNameSv: null,
+      typeNameEn: 'Functional',
+      typeNameSv: 'Funktionellt',
+      versionNumber: 1,
+    },
+    ...overrides,
+  }
+}
+
+function makeRequirementDetail(
+  id: number,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    area: { name: 'Integration' },
+    id,
+    isArchived: false,
+    uniqueId: `INT${String(id).padStart(4, '0')}`,
+    versions: [
+      {
+        category: { nameEn: 'Business requirement', nameSv: 'Verksamhetskrav' },
+        description: `Pinned krav ${id}`,
+        requiresTesting: false,
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        type: { nameEn: 'Functional', nameSv: 'Funktionellt' },
+        typeCategory: null,
+        versionNumber: 1,
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function mockMetadataFetch(url: string) {
+  if (url === '/api/requirement-areas') {
+    return okJson({ areas: [] })
+  }
+  if (url === '/api/requirement-categories') {
+    return okJson({ categories: [] })
+  }
+  if (url === '/api/requirement-types') {
+    return okJson({ types: [] })
+  }
+  if (url === '/api/requirement-type-categories') {
+    return okJson({ typeCategories: [] })
+  }
+  if (url === '/api/requirement-statuses') {
+    return okJson({
+      statuses: [
+        {
+          color: '#22c55e',
+          id: 3,
+          nameEn: 'Published',
+          nameSv: 'Publicerad',
+          sortOrder: 3,
+        },
+      ],
+    })
+  }
+
+  return null
+}
+
 function mockCommonFetches() {
   fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
     const url = String(input)
@@ -143,56 +273,13 @@ function mockCommonFetches() {
 
       return okJson({
         pagination: { hasMore: false },
-        requirements: [
-          {
-            area: { name: 'Integration' },
-            id: 1,
-            isArchived: false,
-            uniqueId: 'INT0001',
-            version: {
-              categoryNameEn: 'Business requirement',
-              categoryNameSv: 'Verksamhetskrav',
-              description: 'Testkrav',
-              requiresTesting: false,
-              status: 3,
-              statusColor: '#22c55e',
-              statusNameEn: 'Published',
-              statusNameSv: 'Publicerad',
-              typeCategoryNameEn: null,
-              typeCategoryNameSv: null,
-              typeNameEn: 'Functional',
-              typeNameSv: 'Funktionellt',
-              versionNumber: 1,
-            },
-          },
-        ],
+        requirements: [makeRequirementRow(1)],
       })
     }
 
-    if (url === '/api/requirement-areas') {
-      return okJson({ areas: [] })
-    }
-    if (url === '/api/requirement-categories') {
-      return okJson({ categories: [] })
-    }
-    if (url === '/api/requirement-types') {
-      return okJson({ types: [] })
-    }
-    if (url === '/api/requirement-type-categories') {
-      return okJson({ typeCategories: [] })
-    }
-    if (url === '/api/requirement-statuses') {
-      return okJson({
-        statuses: [
-          {
-            color: '#22c55e',
-            id: 3,
-            nameEn: 'Published',
-            nameSv: 'Publicerad',
-            sortOrder: 3,
-          },
-        ],
-      })
+    const metadataResponse = mockMetadataFetch(url)
+    if (metadataResponse) {
+      return metadataResponse
     }
 
     throw new Error(`Unhandled fetch: ${url}`)
@@ -207,6 +294,7 @@ describe('KravkatalogClient', () => {
     createObjectURLMock.mockReturnValue('blob:requirements-export')
     revokeObjectURLMock.mockReset()
     storageGetItem.mockReset()
+    storageGetItem.mockImplementation(() => null)
     storageSetItem.mockReset()
     Object.defineProperty(window, 'print', {
       configurable: true,
@@ -221,6 +309,14 @@ describe('KravkatalogClient', () => {
     Object.defineProperty(URL, 'revokeObjectURL', {
       configurable: true,
       value: revokeObjectURLMock,
+      writable: true,
+    })
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: storageGetItem,
+        setItem: storageSetItem,
+      },
       writable: true,
     })
   })
@@ -336,6 +432,224 @@ describe('KravkatalogClient', () => {
     )
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
+  })
+
+  it('ignores stale refresh responses and pinned-row fetches once a newer refresh wins', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const staleList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const freshList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const stalePinned = createDeferredJsonResponse<
+      ReturnType<typeof makeRequirementDetail>
+    >()
+    const freshPinned = createDeferredJsonResponse<
+      ReturnType<typeof makeRequirementDetail>
+    >()
+    let pinnedFetchCount = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('sortBy=uniqueId') && url.includes('sortDirection=asc')) {
+          return initialList.promise
+        }
+        if (url.includes('sortBy=status') && url.includes('sortDirection=asc')) {
+          return staleList.promise
+        }
+        if (url.includes('sortBy=uniqueId') && url.includes('sortDirection=desc')) {
+          return freshList.promise
+        }
+      }
+
+      if (url === '/api/requirements/1') {
+        pinnedFetchCount += 1
+        return pinnedFetchCount === 1 ? stalePinned.promise : freshPinned.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortBy=status'),
+      ),
+    )
+
+    staleList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(2)],
+    })
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(
+          ([input]) => String(input) === '/api/requirements/1',
+        ),
+      ).toHaveLength(1),
+    )
+
+    fireEvent.click(screen.getByText('change-sort-desc'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortDirection=desc'),
+      ),
+    )
+
+    freshList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(3)],
+    })
+
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.filter(
+          ([input]) => String(input) === '/api/requirements/1',
+        ),
+      ).toHaveLength(2),
+    )
+
+    freshPinned.resolve(
+      makeRequirementDetail(1, { uniqueId: 'FRESH-PINNED-0001' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toContain('INT0003'),
+    )
+    expect(screen.getByTestId('row-ids').textContent).toContain(
+      'FRESH-PINNED-0001',
+    )
+    expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0002')
+
+    stalePinned.resolve(
+      makeRequirementDetail(1, { uniqueId: 'STALE-PINNED-0001' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toContain('INT0003'),
+    )
+    expect(screen.getByTestId('row-ids').textContent).toContain(
+      'FRESH-PINNED-0001',
+    )
+    expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0002')
+    expect(screen.getByTestId('row-ids').textContent).not.toContain(
+      'STALE-PINNED-0001',
+    )
+  })
+
+  it('ignores stale load-more responses after a newer refresh replaces the list', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const staleLoadMore = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const freshRefresh = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('offset=1')) {
+          return staleLoadMore.promise
+        }
+        if (url.includes('sortBy=status') && url.includes('sortDirection=asc')) {
+          return freshRefresh.promise
+        }
+        if (url.includes('sortBy=uniqueId') && url.includes('sortDirection=asc')) {
+          return initialList.promise
+        }
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: true },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('has-more').textContent).toBe('true'),
+    )
+
+    fireEvent.click(screen.getByText('load-more'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('offset=1'),
+      ),
+    )
+
+    fireEvent.click(screen.getByText('change-sort'))
+
+    freshRefresh.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(2)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+    expect(screen.getByTestId('has-more').textContent).toBe('false')
+
+    staleLoadMore.resolve({
+      pagination: { hasMore: true },
+      requirements: [makeRequirementRow(3)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('loading-more').textContent).toBe('false'),
+    )
+
+    expect(screen.getByTestId('row-ids').textContent).toBe('INT0002')
+    expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0003')
+    expect(screen.getByTestId('has-more').textContent).toBe('false')
   })
 
   it('falls back to default column preferences when local storage is invalid', async () => {

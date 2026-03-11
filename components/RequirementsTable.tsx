@@ -179,8 +179,20 @@ function SearchFilterPopover({
     left: 0,
   })
   const isActive = !!activeValue
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearPendingCommit = () => {
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
+  }
 
   useEffect(() => {
+    if (timer.current) {
+      clearTimeout(timer.current)
+      timer.current = null
+    }
     setLocal(activeValue)
   }, [activeValue])
 
@@ -204,10 +216,22 @@ function SearchFilterPopover({
     if (open) inputRef.current?.focus()
   }, [open])
 
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (timer.current) {
+        clearTimeout(timer.current)
+        timer.current = null
+      }
+    },
+    [],
+  )
+
   const commit = (v: string) => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => onChange(v || undefined), 400)
+    clearPendingCommit()
+    timer.current = setTimeout(() => {
+      timer.current = null
+      onChange(v || undefined)
+    }, 400)
   }
 
   return (
@@ -251,7 +275,7 @@ function SearchFilterPopover({
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
-                    if (timer.current) clearTimeout(timer.current)
+                    clearPendingCommit()
                     onChange(local || undefined)
                   }
                 }}
@@ -266,7 +290,7 @@ function SearchFilterPopover({
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
                   onClick={() => {
                     setLocal('')
-                    if (timer.current) clearTimeout(timer.current)
+                    clearPendingCommit()
                     onChange(undefined)
                   }}
                   type="button"
@@ -1306,11 +1330,21 @@ export default function RequirementsTable({
     ],
   )
 
-  const handleResizePointerUp = useCallback(() => {
+  const handleResizePointerUp = useCallback((event: PointerEvent) => {
+    const activeResize = resizeStateRef.current
+    if (!activeResize || event.pointerId !== activeResize.pointerId) {
+      return
+    }
+
     finishResizing(true)
   }, [finishResizing])
 
-  const handleResizePointerCancel = useCallback(() => {
+  const handleResizePointerCancel = useCallback((event: PointerEvent) => {
+    const activeResize = resizeStateRef.current
+    if (!activeResize || event.pointerId !== activeResize.pointerId) {
+      return
+    }
+
     finishResizing(false)
   }, [finishResizing])
 
@@ -1418,7 +1452,7 @@ export default function RequirementsTable({
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
       const activeResize = resizeStateRef.current
-      if (!activeResize) {
+      if (!activeResize || event.pointerId !== activeResize.pointerId) {
         return
       }
 

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
+  DEFAULT_FILTERS,
   DEFAULT_REQUIREMENT_SORT,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
 } from '@/lib/requirements/list-view'
@@ -109,6 +110,38 @@ describe('RequirementsTable', () => {
           columnWidths={columnWidths}
           locale="sv"
           onColumnWidthsChange={setColumnWidths}
+          rows={[makeRow()]}
+        />
+      </div>
+    )
+  }
+
+  function ControlledSearchFilterTable() {
+    const [filterValues, setFilterValues] = useState({
+      ...DEFAULT_FILTERS,
+      uniqueIdSearch: 'seed',
+    })
+
+    return (
+      <div>
+        <button
+          onClick={() =>
+            setFilterValues(previous => ({
+              ...previous,
+              uniqueIdSearch: undefined,
+            }))
+          }
+          type="button"
+        >
+          clear-search
+        </button>
+        <div data-testid="search-filter-state">
+          {filterValues.uniqueIdSearch ?? ''}
+        </div>
+        <RequirementsTable
+          filterValues={filterValues}
+          locale="sv"
+          onFilterChange={setFilterValues}
           rows={[makeRow()]}
         />
       </div>
@@ -438,6 +471,24 @@ describe('RequirementsTable', () => {
     expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
   })
 
+  it('cancels pending search commits when the controlled filter value is cleared externally', () => {
+    vi.useFakeTimers()
+
+    render(<ControlledSearchFilterTable />)
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'filterBy' })[0]!)
+    fireEvent.change(screen.getByRole('textbox', { name: 'uniqueId' }), {
+      target: { value: 'pending-search' },
+    })
+
+    fireEvent.click(screen.getByText('clear-search'))
+    act(() => vi.advanceTimersByTime(400))
+
+    expect(screen.getByTestId('search-filter-state').textContent).toBe('')
+
+    vi.useRealTimers()
+  })
+
   it('renders resize handles whenever column resizing is enabled', () => {
     const { container, rerender } = render(
       <RequirementsTable
@@ -535,6 +586,46 @@ describe('RequirementsTable', () => {
     expect(tableContent?.style.width).toBe('1154px')
 
     fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":392}',
+    )
+  })
+
+  it('ignores pointer events from other pointers while a resize is active', async () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    syncResizeHandleMetrics(container)
+
+    const handle = getResizeHandle(container, 'description')
+
+    expect(handle).toBeTruthy()
+    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(window, { clientX: 132, pointerId: 2 })
+    fireEvent.pointerUp(window, { clientX: 132, pointerId: 2 })
+    fireEvent.pointerCancel(window, { clientX: 132, pointerId: 2 })
+
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+    expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
+
+    fireEvent.pointerMove(window, { clientX: 132, pointerId: 1 })
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(getResizeHandleLeft(container, 'description')).toBe('542px')
+
+    fireEvent.pointerUp(window, { clientX: 132, pointerId: 1 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"description":392}',
