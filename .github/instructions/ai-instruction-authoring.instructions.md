@@ -15,6 +15,6 @@ concise guidance.
 - Omit *why* unless the reason changes behaviour.
 - Check existing instructions before adding rules. Update existing rules on conflict; never duplicate.
 - Use narrowest `applyTo` glob possible. Never `**/*` when a specific path suffices. `ApplyTo` attribute must be a string, never an array
-- Start each file with YAML frontmatter `applyTo`. Keep files under 80 lines.
+- Start each file, except copilot-instructions.md, with YAML frontmatter `applyTo`
 - Use `##`/`###` headings, `-` bullets, backticks for code tokens, fenced blocks for multi-line examples.
 - No bold/italic emphasis, conversational tone, or verbose examples.
