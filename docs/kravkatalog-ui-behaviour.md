@@ -100,6 +100,8 @@ The behaviors below apply to the requirement list rendered by:
   every event.
 - Live drag preview should be throttled to animation frames and applied directly
   to the rendered table widths.
+- All visible resize-divider lines should stay aligned with the previewed
+  column boundaries during drag, not snap into place only after drag end.
 - Cleanup should happen only when the drag actually ends:
   - pointer up
   - pointer cancel

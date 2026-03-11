@@ -899,21 +899,21 @@ export default function RequirementsTable({
     [],
   )
 
-  const getResizeHandleLeft = useCallback(
-    (
-      visibleWidths: Record<RequirementColumnId, number>,
-      columnId: RequirementColumnId,
-    ) => {
+  const syncResizeHandlePositions = useCallback(
+    (visibleWidths: Record<RequirementColumnId, number>) => {
       let left = 0
 
-      for (const column of columnDefinitions) {
+      for (const [columnIndex, column] of columnDefinitions.entries()) {
         left += visibleWidths[column.id] ?? renderedColumnWidths[column.id]
-        if (column.id === columnId) {
-          return left
+        if (columnIndex === columnDefinitions.length - 1) {
+          continue
+        }
+
+        const handle = resizeHandleRefs.current[column.id]
+        if (handle) {
+          handle.style.left = `${left}px`
         }
       }
-
-      return null
     },
     [columnDefinitions, renderedColumnWidths],
   )
@@ -940,22 +940,9 @@ export default function RequirementsTable({
         }
       }
 
-      const activeResize = resizeStateRef.current
-      if (!activeResize) {
-        return
-      }
-
-      const handle = resizeHandleRefs.current[activeResize.columnId]
-      const handleLeft = getResizeHandleLeft(
-        visibleWidths,
-        activeResize.columnId,
-      )
-
-      if (handle && typeof handleLeft === 'number') {
-        handle.style.left = `${handleLeft}px`
-      }
+      syncResizeHandlePositions(visibleWidths)
     },
-    [columnDefinitions, getResizeHandleLeft, renderedColumnWidths],
+    [columnDefinitions, renderedColumnWidths, syncResizeHandlePositions],
   )
 
   const cancelResizePreviewFrame = useCallback(() => {

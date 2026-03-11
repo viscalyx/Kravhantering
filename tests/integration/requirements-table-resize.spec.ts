@@ -46,21 +46,28 @@ test.describe('Requirements table column resizing', () => {
         const handle = page
           .locator('[data-column-resize-handle="description"]')
           .first()
+        const laterDivider = page.locator('[data-column-resize-handle="area"]').first()
         const descriptionColumn = page.locator('colgroup col').nth(1)
 
         await handle.scrollIntoViewIfNeeded()
         await expect(handle).toBeVisible()
+        await expect(laterDivider).toBeVisible()
 
         const beforeWidth = await descriptionColumn.evaluate(
           node => (node as HTMLTableColElement).style.width,
         )
         const box = await handle.boundingBox()
+        const laterDividerBox = await laterDivider.boundingBox()
 
         expect(box).not.toBeNull()
         if (!box) {
           throw new Error(
             'Description resize handle did not expose a bounding box.',
           )
+        }
+        expect(laterDividerBox).not.toBeNull()
+        if (!laterDividerBox) {
+          throw new Error('Area resize handle did not expose a bounding box.')
         }
 
         const startX = box.x + box.width / 2
@@ -69,8 +76,16 @@ test.describe('Requirements table column resizing', () => {
 
         await page.mouse.move(startX, pointerY)
         await page.mouse.down()
+        await page.mouse.move(startX + deltas[0], pointerY, { steps: 3 })
 
-        for (const delta of deltas) {
+        await expect
+          .poll(async () => {
+            const nextBox = await laterDivider.boundingBox()
+            return nextBox ? Math.round(nextBox.x) : -1
+          })
+          .toBeGreaterThan(Math.round(laterDividerBox.x))
+
+        for (const delta of deltas.slice(1)) {
           await page.mouse.move(startX + delta, pointerY, { steps: 3 })
         }
 

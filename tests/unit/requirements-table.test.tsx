@@ -10,6 +10,9 @@ import {
 const mockPush = vi.fn()
 const resizeObserverObserve = vi.fn()
 const resizeObserverDisconnect = vi.fn()
+const DEFAULT_COLUMN_WIDTHS = [150, 360, 136, 152, 148, 176]
+
+let resizeObserverCallback: ResizeObserverCallback | null = null
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -30,6 +33,7 @@ describe('RequirementsTable', () => {
     mockPush.mockReset()
     resizeObserverObserve.mockReset()
     resizeObserverDisconnect.mockReset()
+    resizeObserverCallback = null
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -46,6 +50,10 @@ describe('RequirementsTable', () => {
     vi.stubGlobal(
       'ResizeObserver',
       class ResizeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          resizeObserverCallback = callback
+        }
+
         disconnect() {
           resizeObserverDisconnect()
         }
@@ -117,6 +125,65 @@ describe('RequirementsTable', () => {
     return Array.from(container.querySelectorAll('col')).map(
       col => (col as HTMLTableColElement).style.width,
     )
+  }
+
+  function getResizeHandle(container: HTMLElement, columnId: string) {
+    return container.querySelector(
+      `[data-column-resize-handle="${columnId}"]`,
+    ) as HTMLButtonElement | null
+  }
+
+  function getResizeHandleLeft(container: HTMLElement, columnId: string) {
+    return getResizeHandle(container, columnId)?.style.left ?? null
+  }
+
+  function setHeaderMetrics(container: HTMLElement, widths: number[]) {
+    const headers = Array.from(
+      container.querySelectorAll('thead th'),
+    ) as HTMLTableCellElement[]
+
+    let left = 0
+    for (const [index, header] of headers.entries()) {
+      const width = widths[index]
+      const nextLeft = left
+
+      Object.defineProperty(header, 'offsetLeft', {
+        configurable: true,
+        get: () => nextLeft,
+      })
+      Object.defineProperty(header, 'offsetWidth', {
+        configurable: true,
+        get: () => width,
+      })
+      Object.defineProperty(header, 'getBoundingClientRect', {
+        configurable: true,
+        value: () =>
+          ({
+            bottom: 40,
+            height: 40,
+            left: nextLeft,
+            right: nextLeft + width,
+            toJSON: () => ({}),
+            top: 0,
+            width,
+            x: nextLeft,
+            y: 0,
+          }) as DOMRect,
+      })
+
+      left += width
+    }
+  }
+
+  function syncResizeHandleMetrics(
+    container: HTMLElement,
+    widths: number[] = DEFAULT_COLUMN_WIDTHS,
+  ) {
+    setHeaderMetrics(container, widths)
+
+    act(() => {
+      resizeObserverCallback?.([], {} as ResizeObserver)
+    })
   }
 
   it('renders empty state when no rows', () => {
@@ -326,6 +393,81 @@ describe('RequirementsTable', () => {
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"description":392}',
     )
+  })
+
+  it('moves later divider lines during drag before commit', async () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    syncResizeHandleMetrics(container)
+
+    const descriptionHandle = getResizeHandle(container, 'description')
+
+    expect(descriptionHandle).toBeTruthy()
+    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('646px')
+
+    fireEvent.pointerDown(descriptionHandle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
+    expect(getResizeHandleLeft(container, 'description')).toBe('542px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('678px')
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+
+    fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":392}',
+    )
+  })
+
+  it('restores divider positions on pointer cancel', async () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    syncResizeHandleMetrics(container)
+
+    const descriptionHandle = getResizeHandle(container, 'description')
+
+    expect(descriptionHandle).toBeTruthy()
+    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('646px')
+
+    fireEvent.pointerDown(descriptionHandle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(getResizeHandleLeft(container, 'description')).toBe('542px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('678px')
+
+    fireEvent.pointerCancel(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe('{}')
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '360px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(getResizeHandleLeft(container, 'description')).toBe('510px')
+    expect(getResizeHandleLeft(container, 'area')).toBe('646px')
   })
 
   it('keeps dragging active across multiple pointer moves', () => {
