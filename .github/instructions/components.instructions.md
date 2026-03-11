@@ -51,9 +51,15 @@ See `ConfirmModal.tsx` for a full example.
 - Always use `next/image` for all images
 - Include `alt` text for accessibility
 
+## Loading States
+
+- Track an `isLoading` boolean for async work started by the component.
+- Disable conflicting controls while work is pending, for example `disabled={isLoading}` on buttons.
+- Show inline loading feedback in the UI text, for example `{isLoading ? t('saving') : t('save')}`.
+
 ## High-Frequency Interactions
 
-- For drag, resize, slider, or scrubber interactions, avoid controlled React state updates on every `pointermove`; use refs and throttled preview updates, then commit final state on interaction end
+- For drag, resize, slider, or scrubber interactions, avoid controlled React state updates during every pointer move; use refs and throttled preview updates, then commit final state on interaction end
 
 ## After Changes
 
