@@ -24,8 +24,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const format = url.searchParams.get('format')
   const localeParam = url.searchParams.get('locale')
-  const locale =
-    localeParam === 'sv' || localeParam === 'en' ? localeParam : undefined
+  const locale: 'en' | 'sv' = localeParam === 'sv' ? 'sv' : 'en'
   const uniqueIdSearch = url.searchParams.get('uniqueIdSearch') ?? undefined
   const descriptionSearch =
     url.searchParams.get('descriptionSearch') ?? undefined
@@ -87,7 +86,7 @@ export async function GET(request: NextRequest) {
     const requirements = result.items as RequirementListItem[]
 
     if (format === 'csv') {
-      const isSv = locale !== 'en'
+      const isSv = locale === 'sv'
 
       const headers = isSv
         ? [

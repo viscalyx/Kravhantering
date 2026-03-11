@@ -283,7 +283,9 @@ export const DEFAULT_REQUIREMENT_COLUMN_WIDTHS = Object.fromEntries(
   REQUIREMENT_LIST_COLUMNS.map(column => [column.id, column.defaultWidthPx]),
 ) as Record<RequirementColumnId, number>
 
-export function getRequirementColumnDefinition(columnId: RequirementColumnId) {
+export function getRequirementColumnDefinition(
+  columnId: RequirementColumnId,
+): RequirementColumnDefinition | undefined {
   return REQUIREMENT_LIST_COLUMNS.find(column => column.id === columnId)
 }
 
@@ -307,7 +309,7 @@ export function isRequirementSortField(
 
 export function normalizeRequirementVisibleColumns(
   columns: readonly string[] | null | undefined,
-) {
+): RequirementColumnId[] {
   if (!columns || columns.length === 0) {
     return [...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS]
   }
@@ -325,7 +327,9 @@ export function normalizeRequirementVisibleColumns(
   return REQUIREMENT_COLUMN_ORDER.filter(column => requested.has(column))
 }
 
-export function parseRequirementVisibleColumns(raw: string | null | undefined) {
+export function parseRequirementVisibleColumns(
+  raw: string | null | undefined,
+): RequirementColumnId[] {
   if (!raw) {
     return [...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS]
   }
@@ -346,18 +350,18 @@ export function parseRequirementVisibleColumns(raw: string | null | undefined) {
 
 export function serializeRequirementVisibleColumns(
   columns: readonly RequirementColumnId[],
-) {
+): string {
   return JSON.stringify(normalizeRequirementVisibleColumns(columns))
 }
 
-export function getRequirementColumnWidthsStorageKey(locale: string) {
+export function getRequirementColumnWidthsStorageKey(locale: string): string {
   return `${REQUIREMENT_COLUMN_WIDTHS_STORAGE_KEY_PREFIX}.${locale}`
 }
 
 export function clampRequirementColumnWidth(
   columnId: RequirementColumnId,
   width: number,
-) {
+): number {
   const column = getRequirementColumnDefinition(columnId)
 
   if (!column || !Number.isFinite(width)) {
@@ -373,7 +377,7 @@ export function clampRequirementColumnWidth(
 export function getRequirementColumnWidth(
   columnId: RequirementColumnId,
   widths: RequirementColumnWidths | null | undefined,
-) {
+): number {
   const rawWidth = widths?.[columnId]
 
   if (typeof rawWidth !== 'number' || !Number.isFinite(rawWidth)) {
@@ -385,7 +389,7 @@ export function getRequirementColumnWidth(
 
 export function normalizeRequirementColumnWidths(
   widths: Record<string, unknown> | null | undefined,
-) {
+): RequirementColumnWidths {
   if (!widths) {
     return {} as RequirementColumnWidths
   }
@@ -409,7 +413,9 @@ export function normalizeRequirementColumnWidths(
   return normalized
 }
 
-export function parseRequirementColumnWidths(raw: string | null | undefined) {
+export function parseRequirementColumnWidths(
+  raw: string | null | undefined,
+): RequirementColumnWidths {
   if (!raw) {
     return {} as RequirementColumnWidths
   }
@@ -429,7 +435,7 @@ export function parseRequirementColumnWidths(raw: string | null | undefined) {
 
 export function serializeRequirementColumnWidths(
   widths: RequirementColumnWidths,
-) {
+): string {
   return JSON.stringify(
     normalizeRequirementColumnWidths(widths as Record<string, unknown>),
   )
@@ -449,7 +455,7 @@ export function buildRequirementListParams({
   locale: string
   offset?: number
   sort: RequirementSortState
-}) {
+}): URLSearchParams {
   const params = new URLSearchParams()
   params.set('limit', String(limit))
   params.set('locale', locale)
@@ -560,7 +566,7 @@ export function compareRequirementRows(
     sort: RequirementSortState
     statusOptions: readonly Pick<StatusOption, 'id' | 'sortOrder'>[]
   },
-) {
+): number {
   const compareByUniqueId = () =>
     compareNullableText(left.uniqueId, right.uniqueId, 'asc')
 
