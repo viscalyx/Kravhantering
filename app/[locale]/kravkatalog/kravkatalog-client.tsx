@@ -1,12 +1,9 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import { Download, Plus, Printer } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import ExportButton from '@/components/ExportButton'
-import PrintButton from '@/components/PrintButton'
 import RequirementsTable from '@/components/RequirementsTable'
-import { Link } from '@/i18n/routing'
 import {
   type AreaOption,
   buildRequirementListParams,
@@ -80,6 +77,7 @@ function mapRequirementDetailToRow(detail: {
 }
 
 export default function KravkatalogClient() {
+  const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const locale = useLocale()
 
@@ -371,18 +369,6 @@ export default function KravkatalogClient() {
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <ExportButton onClick={handleExport} />
-          <PrintButton />
-          <Link
-            className="btn-primary inline-flex items-center gap-1.5 ml-auto"
-            href="/kravkatalog/ny"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newRequirement')}
-          </Link>
-        </div>
-
         <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
           <RequirementsTable
             areas={areas}
@@ -390,6 +376,28 @@ export default function KravkatalogClient() {
             columnWidths={columnWidths}
             expandedId={selectedId}
             filterValues={filters}
+            floatingActions={[
+              {
+                ariaLabel: t('newRequirement'),
+                href: '/kravkatalog/ny',
+                icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                id: 'create',
+                position: 'beforeColumns',
+                variant: 'primary',
+              },
+              {
+                ariaLabel: tc('print'),
+                icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                id: 'print',
+                onClick: () => globalThis.print(),
+              },
+              {
+                ariaLabel: tc('export'),
+                icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                id: 'export',
+                onClick: handleExport,
+              },
+            ]}
             getName={getName}
             getStatusName={getStatusName}
             hasMore={hasMore}

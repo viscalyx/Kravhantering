@@ -27,7 +27,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import StatusBadge from '@/components/StatusBadge'
-import { useRouter } from '@/i18n/routing'
+import { Link, useRouter } from '@/i18n/routing'
 import {
   type AreaOption,
   clampRequirementColumnWidth,
@@ -53,6 +53,7 @@ interface RequirementsTableProps {
   columnWidths?: RequirementColumnWidths
   expandedId?: number | null
   filterValues?: FilterValues
+  floatingActions?: FloatingActionItem[]
   getName?: (opt: FilterOption) => string
   getStatusName?: (opt: StatusOption) => string
   hasMore?: boolean
@@ -73,6 +74,77 @@ interface RequirementsTableProps {
   typeCategories?: TypeCategoryOption[]
   types?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
+}
+
+type FloatingActionPillVariant = 'default' | 'primary'
+
+interface FloatingActionItem {
+  ariaLabel: string
+  href?: string
+  icon: ReactNode
+  id: string
+  onClick?: () => void
+  position?: 'beforeColumns' | 'afterColumns'
+  variant?: FloatingActionPillVariant
+}
+
+const floatingPillBaseClassName =
+  'inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:-translate-y-px dark:focus-visible:ring-offset-secondary-950'
+
+const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
+  {
+    default:
+      'border-secondary-200/80 bg-white/90 text-secondary-500 hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100',
+    primary:
+      'border-primary-600/80 bg-primary-700 text-white hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700',
+  }
+
+function getFloatingPillClassName(
+  variant: FloatingActionPillVariant = 'default',
+) {
+  return `${floatingPillBaseClassName} ${floatingPillVariantClassNames[variant]}`
+}
+
+function FloatingActionPill({ action }: { action: FloatingActionItem }) {
+  const variant = action.variant ?? 'default'
+
+  if (action.href) {
+    return (
+      <Link
+        aria-label={action.ariaLabel}
+        className={getFloatingPillClassName(variant)}
+        data-floating-action-id={action.id}
+        data-floating-action-item="true"
+        data-floating-action-variant={variant}
+        href={action.href}
+        onClick={action.onClick}
+        title={action.ariaLabel}
+      >
+        <span aria-hidden="true" className="flex items-center justify-center">
+          {action.icon}
+        </span>
+        <span className="sr-only">{action.ariaLabel}</span>
+      </Link>
+    )
+  }
+
+  return (
+    <button
+      aria-label={action.ariaLabel}
+      className={getFloatingPillClassName(variant)}
+      data-floating-action-id={action.id}
+      data-floating-action-item="true"
+      data-floating-action-variant={variant}
+      onClick={action.onClick}
+      title={action.ariaLabel}
+      type="button"
+    >
+      <span aria-hidden="true" className="flex items-center justify-center">
+        {action.icon}
+      </span>
+      <span className="sr-only">{action.ariaLabel}</span>
+    </button>
+  )
 }
 
 function areColumnWidthsEqual(
@@ -463,6 +535,7 @@ function GroupedMultiSelectFilterPopover({
 }
 
 function ColumnsPopover({
+  actions = [],
   anchorRef,
   badgeLabel = null,
   columns,
@@ -470,6 +543,7 @@ function ColumnsPopover({
   onToggle,
   visibleColumns,
 }: {
+  actions?: FloatingActionItem[]
   anchorRef?: RefObject<HTMLElement | null>
   badgeLabel?: string | null
   columns: {
@@ -494,8 +568,12 @@ function ColumnsPopover({
     left: number
     top: number
   } | null>(null)
-  const triggerClassName =
-    'inline-flex h-10 w-10 items-center justify-center rounded-full border border-secondary-200/80 bg-white/90 text-secondary-500 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-secondary-300 hover:text-secondary-700 hover:shadow-[0_14px_36px_-20px_rgba(15,23,42,0.5)] dark:border-secondary-700/80 dark:bg-secondary-900/80 dark:text-secondary-300 dark:hover:border-secondary-600 dark:hover:text-secondary-100'
+  const actionsBeforeColumns = actions.filter(
+    action => action.position === 'beforeColumns',
+  )
+  const actionsAfterColumns = actions.filter(
+    action => action.position !== 'beforeColumns',
+  )
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -551,9 +629,12 @@ function ColumnsPopover({
   const trigger = (
     <button
       aria-label={tc('columns')}
-      className={triggerClassName}
+      className={getFloatingPillClassName()}
       data-column-picker-shell="true"
       data-column-picker-trigger="true"
+      data-floating-action-id="columns"
+      data-floating-action-item="true"
+      data-floating-action-variant="default"
       onClick={() => {
         if (!open && btnRef.current) {
           const rect = btnRef.current.getBoundingClientRect()
@@ -604,11 +685,22 @@ function ColumnsPopover({
               style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
             >
               <div
-                className="pointer-events-auto relative inline-flex"
-                data-column-picker-wrapper="true"
-                ref={ref}
+                className="pointer-events-auto flex flex-col gap-3"
+                data-floating-action-rail="true"
               >
-                {trigger}
+                {actionsBeforeColumns.map(action => (
+                  <FloatingActionPill action={action} key={action.id} />
+                ))}
+                <div
+                  className="relative inline-flex"
+                  data-column-picker-wrapper="true"
+                  ref={ref}
+                >
+                  {trigger}
+                </div>
+                {actionsAfterColumns.map(action => (
+                  <FloatingActionPill action={action} key={action.id} />
+                ))}
               </div>
             </div>,
             document.body,
@@ -729,6 +821,7 @@ export default function RequirementsTable({
   columnWidths = {},
   expandedId,
   filterValues,
+  floatingActions = [],
   getName = () => '',
   getStatusName = () => '',
   hasMore = false,
@@ -1895,6 +1988,7 @@ export default function RequirementsTable({
   }
   const columnsPopover = (
     <ColumnsPopover
+      actions={floatingActions}
       anchorRef={scrollContainerRef}
       badgeLabel={columnPickerBadgeLabel}
       columns={REQUIREMENT_LIST_COLUMNS.map(column => ({

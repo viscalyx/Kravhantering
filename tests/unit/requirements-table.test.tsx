@@ -183,6 +183,20 @@ describe('RequirementsTable', () => {
     )
   }
 
+  function getFloatingActionIds(container: HTMLElement) {
+    const rail =
+      (container.querySelector(
+        '[data-floating-action-rail="true"]',
+      ) as HTMLDivElement | null) ??
+      (document.querySelector(
+        '[data-floating-action-rail="true"]',
+      ) as HTMLDivElement | null)
+
+    return Array.from(rail?.querySelectorAll('[data-floating-action-id]') ?? [])
+      .map(node => node.getAttribute('data-floating-action-id'))
+      .filter((value): value is string => value !== null)
+  }
+
   function setHeaderMetrics(container: HTMLElement, widths: number[]) {
     const headers = Array.from(
       container.querySelectorAll('thead th'),
@@ -344,6 +358,53 @@ describe('RequirementsTable', () => {
     expect(shell).toBeTruthy()
     expect(shell?.className).toContain('w-10')
     expect(shell?.className).toContain('rounded-full')
+  })
+
+  it('renders custom floating actions around the columns pill in rail order', () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/kravkatalog/ny',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+          {
+            ariaLabel: 'export',
+            icon: <span aria-hidden="true">E</span>,
+            id: 'export',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(getFloatingActionIds(container)).toEqual([
+      'create',
+      'columns',
+      'print',
+      'export',
+    ])
+    expect(
+      screen.getByRole('link', { name: 'newRequirement' }),
+    ).toHaveAttribute('href', '/kravkatalog/ny')
+    expect(
+      screen.getByRole('link', { name: 'newRequirement' }).dataset
+        .floatingActionVariant,
+    ).toBe('primary')
+    expect(
+      screen.getByRole('button', { name: 'columns' }).dataset
+        .floatingActionVariant,
+    ).toBe('default')
   })
 
   it('clears hidden column filters and resets hidden active sort', () => {
