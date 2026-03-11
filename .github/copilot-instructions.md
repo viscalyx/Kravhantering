@@ -2,19 +2,24 @@
 
 ## Stack
 
-Next.js 16 (App Router) | React 19 | TypeScript strict | Tailwind CSS 4 | next-intl (en/sv) | Framer Motion | Vitest | Cloudflare Workers
+- Next.js 16 (App Router)
+- React 19
+- TypeScript strict
+- Tailwind CSS 4
+- next-intl (`en`/`sv`)
+- Framer Motion
+- Vitest
+- Cloudflare Workers
 
 ## Commands
 
-| Command | Purpose |
-|---|---|
-| `npm run check` | **All checks** (lint, test, type, format, spell) |
-| `npm run test` | Run tests |
-| `npm run dev` | Dev server |
+- `npm run check` - all checks (`lint`, `test`, `type`, `format`, `spell`)
+- `npm run test` - run tests
+- `npm run dev` - start dev server
 
-# General rules
+## General Rules
 
-- After making a change to the codebase, verify if any documentation in docs/*.md need updating
+- After changes, update relevant `docs/*.md` when behavior or workflows change.
 
 ## Database Schema Changes
 
