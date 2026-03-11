@@ -6,18 +6,18 @@ Instructions for AI coding agents working in `tests/integration/`.
 
 Integration test files may have a co-located `.md` companion that documents the test flow with Mermaid diagrams and step-by-step descriptions.
 
-**After modifying a test file**, check whether a companion `.md` exists in the same directory. If it does, verify that:
+After modifying a test file, check whether a companion `.md` exists in the same directory. If it does, verify that:
 
 - Helper function descriptions still match the implementation.
 - Sequence diagrams and flowcharts reflect the current test steps.
 - Constants, imports, and tool descriptions are accurate.
 - Any new behavior or changed assertions are documented.
 
-**Never leave docs describing stale behavior.**
+Never leave docs describing stale behavior.
 
 ## Creating Documentation for New Tests
 
-When adding a **new** integration test file, generate a companion `.md` following the prompt at [`.github/prompts/generate-test-docs.prompt.md`](../../.github/prompts/generate-test-docs.prompt.md). That prompt defines the required structure:
+When adding a new integration test file, generate a companion `.md` following the prompt at [`.github/prompts/generate-test-docs.prompt.md`](../../.github/prompts/generate-test-docs.prompt.md). That prompt defines the required structure:
 
 - Title and introduction
 - Overview flowchart (Mermaid)
