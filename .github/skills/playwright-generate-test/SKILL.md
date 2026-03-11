@@ -3,15 +3,17 @@ name: playwright-generate-test
 description: 'Generate a Playwright test based on a scenario using Playwright MCP'
 ---
 
-# Test Generation with Playwright MCP
+## Test Generation with Playwright MCP
 
-Your goal is to generate a Playwright test based on the provided scenario after completing all prescribed steps.
+Generate a Playwright test from the provided scenario only after completing the prescribed Playwright MCP steps.
 
-## Specific Instructions
+### Specific Instructions
 
-- You are given a scenario, and you need to generate a playwright test for it. If the user does not provide a scenario, you will ask them to provide one.
-- DO NOT generate test code prematurely or based solely on the scenario without completing all prescribed steps.
-- DO run steps one by one using the tools provided by the Playwright MCP.
-- Only after all steps are completed, emit a Playwright TypeScript test that uses `@playwright/test` based on message history
-- Save generated test file in the tests directory
-- Execute the test file and iterate until the test passes
+- Require a concrete scenario before generating code.
+- Do not emit test code before finishing the prescribed Playwright MCP workflow.
+- Run the workflow step by step with the Playwright MCP tools.
+- Only after all steps are complete, emit a Playwright TypeScript test that uses `@playwright/test` and the recorded message history.
+- Save the generated test file under `tests/`.
+- If the target path is under `tests/integration`, also generate a co-located companion `.md` file using `.github/prompts/generate-test-docs.prompt.md`.
+- Populate the test and companion doc from the same scenario, message history, selectors, and runtime observations, and keep them synchronized as the test evolves.
+- Execute the generated test file and iterate until it passes.
