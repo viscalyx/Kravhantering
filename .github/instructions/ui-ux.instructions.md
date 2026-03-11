@@ -40,6 +40,10 @@ applyTo: '{components,app}/**/*.tsx'
 - Batch operations where users commonly act on multiple items
 - Preserve scroll position and filter state across interactions
 
+## Persisted View State
+
+- If UI view state is stored in browser storage and its semantics change materially, version the storage key instead of reusing incompatible stored data
+
 ## Visual Feedback
 
 - Loading: disable buttons during async ops, swap label to loading text
