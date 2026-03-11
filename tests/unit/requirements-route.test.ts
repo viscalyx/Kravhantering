@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
@@ -98,7 +99,7 @@ describe('requirements route CSV locale fallback', () => {
   it.each(
     CSV_EXPORT_CASES,
   )('defaults CSV exports to English when $description', async ({ url }) => {
-    const response = await GET(new Request(url) as never)
+    const response = await GET(new NextRequest(url))
 
     expect(routeState.queryCatalog).toHaveBeenCalledWith(
       expect.anything(),
