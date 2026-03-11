@@ -759,7 +759,7 @@ describe('RequirementsTable', () => {
     )
   })
 
-  it('clips resize handles around the expanded detail pane', () => {
+  it('clips resize handles around the expanded detail pane and caps the lower grip', () => {
     const { container } = render(<ControlledExpandedResizableTable />)
 
     syncResizeHandleMetrics(container)
@@ -780,12 +780,17 @@ describe('RequirementsTable', () => {
     expect(topHandle?.style.height).toBe('120px')
     expect(bottomSegment).toBeTruthy()
     expect(bottomSegment?.style.top).toBe('240px')
-    expect(bottomSegment?.style.height).toBe('120px')
+    expect(bottomSegment?.style.height).toBe('48px')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
     expect(
       Number.parseInt(topHandle?.style.height ?? '0', 10),
     ).toBeLessThanOrEqual(120)
-    expect(Number.parseInt(bottomSegment?.style.top ?? '0', 10)).toBeGreaterThanOrEqual(240)
+    expect(
+      Number.parseInt(bottomSegment?.style.top ?? '0', 10),
+    ).toBeGreaterThanOrEqual(240)
+    expect(
+      Number.parseInt(bottomSegment?.style.height ?? '0', 10),
+    ).toBeLessThanOrEqual(48)
 
     fireEvent.pointerDown(bottomSegment as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })

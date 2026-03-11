@@ -158,6 +158,7 @@ function areColumnWidthsEqual(
 
 type ResizeHandleSegmentKey = 'bottom' | 'full' | 'top'
 type ResizeHandleSegmentNode = HTMLButtonElement | HTMLDivElement
+const MAX_EXPANDED_DETAIL_RESIZE_GRIP_HEIGHT = 48
 
 interface ExpandedDetailBounds {
   bottom: number
@@ -2213,6 +2214,16 @@ export default function RequirementsTable({
     if (
       clippedResizeHandleBounds.bottom < clippedResizeHandleBounds.contentHeight
     ) {
+      const bottomSegmentHeight = Math.min(
+        MAX_EXPANDED_DETAIL_RESIZE_GRIP_HEIGHT,
+        clippedResizeHandleBounds.contentHeight -
+          clippedResizeHandleBounds.bottom,
+      )
+
+      if (bottomSegmentHeight <= 0) {
+        return <Fragment key={columnId}>{segmentNodes}</Fragment>
+      }
+
       segmentNodes.push(
         <div
           aria-hidden="true"
@@ -2233,9 +2244,7 @@ export default function RequirementsTable({
             assignResizeHandleRef('bottom', node)
           }}
           style={{
-            height:
-              clippedResizeHandleBounds.contentHeight -
-              clippedResizeHandleBounds.bottom,
+            height: bottomSegmentHeight,
             left,
             top: clippedResizeHandleBounds.bottom,
           }}

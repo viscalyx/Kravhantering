@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 // Keep this in sync with getRequirementColumnWidthsStorageKey('sv')
 // in lib/requirements/list-view.ts.
@@ -14,6 +14,26 @@ const viewportVariants = [
     viewport: { height: 720, width: 1280 },
   },
 ] as const
+
+async function openFirstRequirementDetail(page: Page) {
+  const firstRow = page.locator('tbody > tr').first()
+  const firstRowUniqueIdCell = firstRow.locator('td').first()
+  const secondRow = page.locator('tbody > tr').nth(1)
+  const detailCell = page.locator('[data-expanded-detail-cell="true"]').first()
+
+  await expect(firstRow).toBeVisible()
+  await expect(secondRow).toBeVisible()
+  await expect(firstRowUniqueIdCell).toBeVisible()
+
+  await firstRowUniqueIdCell.click({ position: { x: 24, y: 20 } })
+  await expect(detailCell).toBeVisible()
+
+  return { detailCell }
+}
+
+async function getScrollY(page: Page) {
+  return page.evaluate(() => window.scrollY)
+}
 
 test.describe('Requirements table column resizing', () => {
   test.beforeEach(async ({ page }) => {
@@ -122,18 +142,7 @@ test.describe('Requirements table column resizing', () => {
         page,
       }) => {
         await page.goto('/sv/kravkatalog')
-
-        const firstRow = page.locator('tbody > tr').first()
-        const firstRowUniqueIdCell = firstRow.locator('td').first()
-        const secondRow = page.locator('tbody > tr').nth(1)
-
-        await expect(firstRow).toBeVisible()
-        await expect(secondRow).toBeVisible()
-        await expect(firstRowUniqueIdCell).toBeVisible()
-
-        await firstRowUniqueIdCell.click({ position: { x: 24, y: 20 } })
-
-        const detailCell = page.locator('[data-expanded-detail-cell="true"]')
+        const { detailCell } = await openFirstRequirementDetail(page)
         const handle = page
           .locator('[data-column-resize-handle="description"]')
           .first()
@@ -147,7 +156,6 @@ test.describe('Requirements table column resizing', () => {
         await expect(detailCell).toBeVisible()
         await expect(handle).toBeVisible()
         await expect(bottomSegment).toBeVisible()
-        await bottomSegment.scrollIntoViewIfNeeded()
 
         const detailBox = await detailCell.boundingBox()
         const topHandleBox = await handle.boundingBox()
@@ -172,6 +180,7 @@ test.describe('Requirements table column resizing', () => {
         expect(Math.round(bottomSegmentBox.y)).toBeGreaterThanOrEqual(
           Math.round(detailBox.y + detailBox.height),
         )
+        expect(Math.round(bottomSegmentBox.height)).toBeLessThanOrEqual(48)
 
         const beforeWidth = await descriptionColumn.evaluate(
           node => (node as HTMLTableColElement).style.width,
@@ -238,6 +247,79 @@ test.describe('Requirements table column resizing', () => {
             ),
           )
           .toContain('"description"')
+      })
+
+      test('scrolls immediately up and down after opening an inline detail pane', async ({
+        page,
+      }) => {
+        await page.goto('/sv/kravkatalog')
+
+        const { detailCell } = await openFirstRequirementDetail(page)
+        const bottomSegment = page
+          .locator('[data-column-resize-segment="bottom"]')
+          .first()
+        const fallbackHandle = page.locator('[data-column-resize-handle]').first()
+
+        await expect(detailCell).toBeVisible()
+
+        const detailBox = await detailCell.boundingBox()
+        const resizeProbeBox =
+          (await bottomSegment.boundingBox()) ?? (await fallbackHandle.boundingBox())
+
+        expect(detailBox).not.toBeNull()
+        if (!detailBox) {
+          throw new Error('Expanded detail pane did not expose a bounding box.')
+        }
+        expect(resizeProbeBox).not.toBeNull()
+        if (!resizeProbeBox) {
+          throw new Error(
+            'Description resize handle did not expose a bounding box.',
+          )
+        }
+
+        const viewportSize = page.viewportSize()
+        const viewportHeight = viewportSize?.height ?? viewport.height
+        const viewportWidth = viewportSize?.width ?? viewport.width
+        const probePoint = {
+          x: Math.max(
+            32,
+            Math.min(
+              viewportWidth - 32,
+              Math.round(resizeProbeBox.x + resizeProbeBox.width / 2),
+            ),
+          ),
+          y: Math.min(
+            viewportHeight - 32,
+            Math.round(detailBox.y + detailBox.height + 64),
+          ),
+        }
+
+        const targetAtProbe = await page.evaluate(({ x, y }) => {
+          const el = document.elementFromPoint(x, y)
+
+          return {
+            resizeSegment: el?.getAttribute('data-column-resize-segment') ?? null,
+            tagName: el?.tagName ?? null,
+          }
+        }, probePoint)
+
+        expect(targetAtProbe.resizeSegment).toBeNull()
+
+        await page.mouse.move(probePoint.x, probePoint.y)
+
+        const beforeDown = await getScrollY(page)
+        await page.mouse.wheel(0, 180)
+        await expect.poll(() => getScrollY(page)).toBeGreaterThan(beforeDown)
+
+        const afterDown = await getScrollY(page)
+        await page.mouse.move(probePoint.x, probePoint.y)
+        await page.mouse.wheel(0, -180)
+        await expect.poll(() => getScrollY(page)).toBeLessThan(afterDown)
+
+        const afterUp = await getScrollY(page)
+        await page.mouse.move(probePoint.x, probePoint.y)
+        await page.mouse.wheel(0, 180)
+        await expect.poll(() => getScrollY(page)).toBeGreaterThan(afterUp)
       })
     })
   }
