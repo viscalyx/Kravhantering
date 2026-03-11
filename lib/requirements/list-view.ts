@@ -378,8 +378,6 @@ export function clearRequirementFiltersForHiddenColumns(
     nextValues[key] = undefined
   }
 
-  clearIfHidden('uniqueId', 'uniqueIdSearch')
-  clearIfHidden('description', 'descriptionSearch')
   clearIfHidden('area', 'areaIds')
   clearIfHidden('category', 'categoryIds')
   clearIfHidden('type', 'typeIds')
