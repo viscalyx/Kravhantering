@@ -46,7 +46,9 @@ test.describe('Requirements table column resizing', () => {
         const handle = page
           .locator('[data-column-resize-handle="description"]')
           .first()
-        const laterDivider = page.locator('[data-column-resize-handle="area"]').first()
+        const laterDivider = page
+          .locator('[data-column-resize-handle="area"]')
+          .first()
         const descriptionColumn = page.locator('colgroup col').nth(1)
 
         await handle.scrollIntoViewIfNeeded()

@@ -207,14 +207,19 @@ export default function KravkatalogClient() {
 
   useEffect(() => {
     const fetchFilters = async () => {
-      const [areasRes, categoriesRes, typesRes, typeCategoriesRes, statusesRes] =
-        await Promise.all([
-          fetch('/api/requirement-areas'),
-          fetch('/api/requirement-categories'),
-          fetch('/api/requirement-types'),
-          fetch('/api/requirement-type-categories'),
-          fetch('/api/requirement-statuses'),
-        ])
+      const [
+        areasRes,
+        categoriesRes,
+        typesRes,
+        typeCategoriesRes,
+        statusesRes,
+      ] = await Promise.all([
+        fetch('/api/requirement-areas'),
+        fetch('/api/requirement-categories'),
+        fetch('/api/requirement-types'),
+        fetch('/api/requirement-type-categories'),
+        fetch('/api/requirement-statuses'),
+      ])
 
       if (areasRes.ok) {
         const data = (await areasRes.json()) as { areas?: AreaOption[] }
@@ -252,7 +257,9 @@ export default function KravkatalogClient() {
 
     try {
       nextVisibleColumns = parseRequirementVisibleColumns(
-        globalThis.localStorage.getItem(REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY),
+        globalThis.localStorage.getItem(
+          REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+        ),
       )
     } catch {
       nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS

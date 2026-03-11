@@ -29,9 +29,9 @@ import { createPortal } from 'react-dom'
 import StatusBadge from '@/components/StatusBadge'
 import { useRouter } from '@/i18n/routing'
 import {
-  clearRequirementFiltersForHiddenColumns,
   type AreaOption,
   clampRequirementColumnWidth,
+  clearRequirementFiltersForHiddenColumns,
   DEFAULT_REQUIREMENT_SORT,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterOption,
