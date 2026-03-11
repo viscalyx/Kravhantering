@@ -24,18 +24,6 @@ Examples:
 ## Required
 
 - `useTranslations('section')` for all UI text (client components only; server components use `getTranslations`)
-- `dark:` variants in Tailwind classes
-- ARIA labels on interactive elements
-- Semantic HTML, proper heading order
-- Prefer semantic HTML elements over non-semantic elements with ARIA roles. Biome `a11y/useSemanticElements` enforces this (e.g. use `<output>` instead of `<div role="status">`). Do not replace a semantic element with a `<div>`/`<span>` + `role` attribute.
-
-### Responsive (mobile + desktop)
-
-- Mobile-first: base styles for small screens, add `sm:`, `md:`, `lg:` for larger viewports
-- All layouts must work from 320px to 1440px+ (single-column mobile → multi-column desktop)
-- Touch targets: buttons and links need `min-h-[44px] min-w-[44px]`
-- No fixed widths — use responsive/fluid sizing (`w-full`, `max-w-*`, `flex`, `grid`)
-- Test layout mentally at mobile and desktop before submitting
 
 ## Animation Patterns
 
@@ -62,12 +50,6 @@ See `ConfirmModal.tsx` for a full example.
 
 - Always use `next/image` for all images
 - Include `alt` text for accessibility
-
-## Loading States
-
-- Implement `isLoading` state for async operations
-- Disable buttons during loading: `disabled={isLoading}`
-- Show loading feedback: `{isLoading ? t('saving') : t('save')}`
 
 ## After Changes
 
