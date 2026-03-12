@@ -472,6 +472,7 @@ export default function KravkatalogClient() {
                   onChange={refreshRows}
                   onClose={() => {
                     setSelectedId(null)
+                    setPinnedRow(null)
                     fetchData()
                   }}
                   requirementId={id}

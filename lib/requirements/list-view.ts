@@ -548,6 +548,7 @@ function compareNullableText(
   left: string | null | undefined,
   right: string | null | undefined,
   direction: RequirementSortDirection,
+  locale: string | string[] | undefined,
 ): number {
   const leftValue = left?.trim() ?? ''
   const rightValue = right?.trim() ?? ''
@@ -562,7 +563,7 @@ function compareNullableText(
     return -1
   }
 
-  const result = leftValue.localeCompare(rightValue, undefined, {
+  const result = leftValue.localeCompare(rightValue, locale, {
     sensitivity: 'base',
   })
   return direction === 'asc' ? result : -result
@@ -604,7 +605,7 @@ export function compareRequirementRows(
   },
 ): number {
   const compareByUniqueId = () =>
-    compareNullableText(left.uniqueId, right.uniqueId, 'asc')
+    compareNullableText(left.uniqueId, right.uniqueId, 'asc', locale)
 
   let result = 0
 
@@ -614,6 +615,7 @@ export function compareRequirementRows(
         left.uniqueId,
         right.uniqueId,
         sort.direction,
+        locale,
       )
       break
     case 'description':
@@ -621,6 +623,7 @@ export function compareRequirementRows(
         left.version?.description,
         right.version?.description,
         sort.direction,
+        locale,
       )
       break
     case 'area':
@@ -628,6 +631,7 @@ export function compareRequirementRows(
         left.area?.name,
         right.area?.name,
         sort.direction,
+        locale,
       )
       break
     case 'category':
@@ -639,6 +643,7 @@ export function compareRequirementRows(
           ? right.version?.categoryNameSv
           : right.version?.categoryNameEn,
         sort.direction,
+        locale,
       )
       break
     case 'type':
@@ -646,6 +651,7 @@ export function compareRequirementRows(
         locale === 'sv' ? left.version?.typeNameSv : left.version?.typeNameEn,
         locale === 'sv' ? right.version?.typeNameSv : right.version?.typeNameEn,
         sort.direction,
+        locale,
       )
       break
     case 'typeCategory':
@@ -657,6 +663,7 @@ export function compareRequirementRows(
           ? right.version?.typeCategoryNameSv
           : right.version?.typeCategoryNameEn,
         sort.direction,
+        locale,
       )
       break
     case 'status':

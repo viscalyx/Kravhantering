@@ -186,6 +186,25 @@ function areExpandedDetailBoundsEqual(
   )
 }
 
+const POPOVER_VIEWPORT_MARGIN = 8
+
+function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
+  if (typeof window === 'undefined') {
+    return anchorLeft
+  }
+
+  const viewportWidth = Math.max(
+    window.innerWidth,
+    document.documentElement.clientWidth,
+  )
+  const maxLeft = Math.max(
+    POPOVER_VIEWPORT_MARGIN,
+    viewportWidth - popoverWidth - POPOVER_VIEWPORT_MARGIN,
+  )
+
+  return Math.min(Math.max(anchorLeft, POPOVER_VIEWPORT_MARGIN), maxLeft)
+}
+
 /* ── Filter popover for text search columns (uniqueId, description) ── */
 
 function SearchFilterPopover({
@@ -274,7 +293,10 @@ function SearchFilterPopover({
           e.stopPropagation()
           if (!open && btnRef.current) {
             const rect = btnRef.current.getBoundingClientRect()
-            setPos({ top: rect.bottom + 4, left: rect.left })
+            setPos({
+              top: rect.bottom + 4,
+              left: clampPopoverLeft(rect.left, 192),
+            })
           }
           setOpen(v => !v)
         }}
@@ -388,7 +410,7 @@ function MultiSelectFilterPopover({
       const rect = btnRef.current.getBoundingClientRect()
       setPos({
         top: rect.bottom + 4,
-        left: rect.left,
+        left: clampPopoverLeft(rect.left, 160),
         maxH: window.innerHeight - rect.bottom - 16,
       })
     }
@@ -516,7 +538,7 @@ function GroupedMultiSelectFilterPopover({
       const rect = btnRef.current.getBoundingClientRect()
       setPos({
         top: rect.bottom + 4,
-        left: rect.left,
+        left: clampPopoverLeft(rect.left, 192),
         maxH: window.innerHeight - rect.bottom - 16,
       })
     }
@@ -1985,12 +2007,12 @@ export default function RequirementsTable({
       case 'uniqueId':
         return (
           <td
-            className={`py-2 px-2 font-mono font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap ${archivedContentClass} ${dividerClass}`}
+            className={`font-mono font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap ${archivedContentClass} ${dividerClass}`}
           >
             <button
               aria-controls={renderExpanded ? expandedDetailCellId : undefined}
               aria-expanded={renderExpanded ? isExpanded : undefined}
-              className="inline-flex w-full items-center gap-1.5 rounded border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
+              className="inline-flex min-h-[44px] min-w-[44px] w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
               onClick={() =>
                 onRowClick
                   ? onRowClick(row.id)
