@@ -36,9 +36,6 @@ jobs:
       - name: Clean server and database state
         run: npm run clean:all
 
-      - name: Generate Cloudflare environment types
-        run: npm run cf-typegen
-
       - name: Setup local D1 database
         run: npm run db:setup
 
@@ -86,9 +83,6 @@ jobs:
 
       - name: Clean server and database state
         run: npm run clean:all
-
-      - name: Generate Cloudflare environment types
-        run: npm run cf-typegen
 
       - name: Setup local D1 database
         run: npm run db:setup
