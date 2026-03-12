@@ -502,7 +502,8 @@ describe('RequirementsTable', () => {
 
     expect(wrapper).toBeTruthy()
     expect(shell).toBeTruthy()
-    expect(shell?.className).toContain('w-10')
+    expect(shell?.className).toContain('h-11')
+    expect(shell?.className).toContain('w-11')
     expect(shell?.className).toContain('rounded-full')
   })
 
