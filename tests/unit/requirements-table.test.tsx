@@ -263,6 +263,18 @@ describe('RequirementsTable', () => {
       .filter((value): value is string => value !== null)
   }
 
+  function getFloatingActionRailContainer(container: HTMLElement) {
+    const rail =
+      (container.querySelector(
+        '[data-floating-action-rail="true"]',
+      ) as HTMLDivElement | null) ??
+      (document.querySelector(
+        '[data-floating-action-rail="true"]',
+      ) as HTMLDivElement | null)
+
+    return rail?.parentElement as HTMLDivElement | null
+  }
+
   function setHeaderMetrics(container: HTMLElement, widths: number[]) {
     const headers = Array.from(
       container.querySelectorAll('thead th'),
@@ -457,6 +469,21 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('keeps the sort icon fixed while the header label remains truncation-friendly', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    const headerButton = screen.getByRole('button', { name: 'uniqueId' })
+    const label = screen.getByText('uniqueId')
+    const icon = headerButton.querySelector('svg')
+
+    expect(label.className).toContain('min-w-0')
+    expect(label.className).toContain('flex-1')
+    expect(label.className).toContain('truncate')
+    expect(icon?.getAttribute('class')).toContain('shrink-0')
+    expect(icon?.getAttribute('class')).toContain('h-3.5')
+    expect(icon?.getAttribute('class')).toContain('w-3.5')
+  })
+
   it('shows locked columns as disabled in the columns popover', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
@@ -482,6 +509,51 @@ describe('RequirementsTable', () => {
 
     fireEvent.mouseDown(document.body)
     expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull()
+  })
+
+  it('keeps the floating action rail within the viewport on narrow screens', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 320,
+    })
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 320,
+    })
+    Object.defineProperty(scrollContainer, 'getBoundingClientRect', {
+      configurable: true,
+      value: () =>
+        ({
+          bottom: 284,
+          height: 240,
+          left: 24,
+          right: 340,
+          toJSON: () => ({}),
+          top: 24,
+          width: 316,
+          x: 24,
+          y: 24,
+        }) as DOMRect,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(getFloatingActionRailContainer(container)?.style.left).toBe('268px')
   })
 
   it('shows the floating pill badge in the default column state', () => {
@@ -607,6 +679,50 @@ describe('RequirementsTable', () => {
     expect(screen.getByTestId('search-filter-state').textContent).toBe('')
 
     vi.useRealTimers()
+  })
+
+  it('renders filter buttons with 44px touch targets', () => {
+    render(
+      <RequirementsTable
+        filterValues={DEFAULT_FILTERS}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+      />,
+    )
+
+    for (const button of screen.getAllByRole('button', { name: 'filterBy' })) {
+      expect(button.className).toContain('min-h-[44px]')
+      expect(button.className).toContain('min-w-[44px]')
+    }
+  })
+
+  it('anchors active filter count badges to the filter icon instead of the full button shell', () => {
+    const { container } = render(
+      <RequirementsTable
+        filterValues={{ statuses: [3], typeCategoryIds: [2] }}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+        typeCategories={[
+          { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
+          { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
+        ]}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'typeCategory']}
+      />,
+    )
+
+    const badges = container.querySelectorAll('[data-filter-count-badge="true"]')
+    expect(badges).toHaveLength(2)
+
+    for (const badge of badges) {
+      const iconAnchor = badge.closest('[data-filter-icon-anchor="true"]')
+      const button = badge.closest('button')
+
+      expect(iconAnchor).toBeTruthy()
+      expect(iconAnchor?.parentElement).toBe(button)
+      expect(button?.getAttribute('data-filter-icon-anchor')).toBeNull()
+    }
   })
 
   it('renders resize handles whenever column resizing is enabled', () => {
@@ -1067,6 +1183,39 @@ describe('RequirementsTable', () => {
     scrollContainer.scrollLeft = 180
     fireEvent.scroll(scrollContainer)
     expect(rightFade?.className).toContain('opacity-0')
+  })
+
+  it('uses a focusable button for expanded row actions instead of the table row', () => {
+    const onRowClick = vi.fn()
+    render(
+      <RequirementsTable
+        expandedId={1}
+        locale="sv"
+        onRowClick={onRowClick}
+        renderExpanded={() => <div>Expanded detail</div>}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const action = screen.getByRole('button', { name: 'INT0001' })
+    const row = action.closest('tr')
+
+    expect(action).toHaveAttribute('aria-controls', 'requirement-row-detail-1')
+    expect(action).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(row as Element)
+    expect(onRowClick).not.toHaveBeenCalled()
+
+    fireEvent.click(action)
+    expect(onRowClick).toHaveBeenCalledWith(1)
+  })
+
+  it('navigates from the row action button when no row click handler is provided', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'INT0001' }))
+
+    expect(mockPush).toHaveBeenCalledWith('/kravkatalog/1')
   })
 
   it('shows pending version indicator', () => {

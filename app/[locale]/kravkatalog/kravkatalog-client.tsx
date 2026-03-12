@@ -31,10 +31,13 @@ import RequirementDetailClient from './[id]/requirement-detail-client'
 
 const PAGE_SIZE = 200
 
-function mapRequirementDetailToRow(detail: {
+type RequirementDetailRowSource = {
   area?: { name: string } | null
+  hasPendingVersion?: boolean
   id: number
   isArchived: boolean
+  pendingVersionStatusColor?: string | null
+  pendingVersionStatusId?: number | null
   uniqueId: string
   versions?: {
     category?: { nameEn: string; nameSv: string } | null
@@ -48,13 +51,20 @@ function mapRequirementDetailToRow(detail: {
     typeCategory?: { nameEn: string; nameSv: string } | null
     versionNumber: number
   }[]
-}): RequirementRow {
+}
+
+function mapRequirementDetailToRow(
+  detail: RequirementDetailRowSource,
+): RequirementRow {
   const version = detail.versions?.[0]
 
   return {
     area: detail.area ?? null,
+    hasPendingVersion: detail.hasPendingVersion ?? false,
     id: detail.id,
     isArchived: detail.isArchived,
+    pendingVersionStatusColor: detail.pendingVersionStatusColor ?? null,
+    pendingVersionStatusId: detail.pendingVersionStatusId ?? null,
     uniqueId: detail.uniqueId,
     version: version
       ? {
@@ -152,24 +162,7 @@ export default function KravkatalogClient() {
       }
 
       if (singleRes.ok) {
-        const detail = (await singleRes.json()) as {
-          area?: { name: string } | null
-          id: number
-          isArchived: boolean
-          uniqueId: string
-          versions?: {
-            category?: { nameSv: string; nameEn: string } | null
-            description: string | null
-            requiresTesting: boolean
-            status: number
-            statusColor: string | null
-            statusNameEn: string | null
-            statusNameSv: string | null
-            type?: { nameSv: string; nameEn: string } | null
-            typeCategory?: { nameSv: string; nameEn: string } | null
-            versionNumber: number
-          }[]
-        }
+        const detail = (await singleRes.json()) as RequirementDetailRowSource
         if (requestId !== latestRowsRequestIdRef.current) {
           return
         }
@@ -391,7 +384,6 @@ export default function KravkatalogClient() {
     const params = buildRequirementListParams({
       filters,
       format: 'csv',
-      limit: PAGE_SIZE,
       locale,
       sort: sortState,
     })

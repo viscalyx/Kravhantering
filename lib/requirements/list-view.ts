@@ -485,13 +485,15 @@ export function buildRequirementListParams({
 }: {
   filters: FilterValues
   format?: 'csv'
-  limit: number
+  limit?: number
   locale: string
   offset?: number
   sort: RequirementSortState
 }): URLSearchParams {
   const params = new URLSearchParams()
-  params.set('limit', String(limit))
+  if (limit != null) {
+    params.set('limit', String(limit))
+  }
   params.set('locale', locale)
   params.set('sortBy', sort.by)
   params.set('sortDirection', sort.direction)

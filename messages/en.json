@@ -112,6 +112,10 @@
     "viewingOlderVersion": "Viewing version {version}",
     "backToLatest": "Back to latest version"
   },
+  "requirementsTable": {
+    "clear": "Clear",
+    "removeItem": "Remove {label}"
+  },
   "area": {
     "prefix": "Prefix",
     "name": "Name",

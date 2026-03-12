@@ -38,49 +38,60 @@ async function expectHydratedTable(page: Page) {
     .toBe('220px')
 }
 
-test.describe('Requirements table hydration', () => {
-  test.use({ viewport: { height: 720, width: 1280 } })
+for (const viewportConfig of [
+  {
+    name: 'desktop',
+    viewport: { height: 720, width: 1280 },
+  },
+  {
+    name: 'mobile',
+    viewport: { height: 812, width: 375 },
+  },
+]) {
+  test.describe(`Requirements table hydration (${viewportConfig.name})`, () => {
+    test.use({ viewport: viewportConfig.viewport })
 
-  test('uses persisted columns and widths on the first visible render and after reload', async ({
-    page,
-  }) => {
-    await page.addInitScript(
-      ({
-        columnVisibilityStorageKey,
-        columnWidthsStorageKey,
-      }: {
-        columnVisibilityStorageKey: string
-        columnWidthsStorageKey: string
-      }) => {
-        globalThis.localStorage.clear()
-        globalThis.localStorage.setItem(
+    test(`uses persisted columns and widths on the first visible render and after reload (${viewportConfig.name})`, async ({
+      page,
+    }) => {
+      await page.addInitScript(
+        ({
           columnVisibilityStorageKey,
-          '["area","status"]',
-        )
-        globalThis.localStorage.setItem(
           columnWidthsStorageKey,
-          '{"status":220}',
-        )
-      },
-      {
-        columnVisibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
-        columnWidthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
-      },
-    )
+        }: {
+          columnVisibilityStorageKey: string
+          columnWidthsStorageKey: string
+        }) => {
+          globalThis.localStorage.clear()
+          globalThis.localStorage.setItem(
+            columnVisibilityStorageKey,
+            '["area","status"]',
+          )
+          globalThis.localStorage.setItem(
+            columnWidthsStorageKey,
+            '{"status":220}',
+          )
+        },
+        {
+          columnVisibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+          columnWidthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+        },
+      )
 
-    await page.route('**/api/requirements?*', async route => {
-      await new Promise(resolve => setTimeout(resolve, 700))
-      await route.continue()
+      await page.route('**/api/requirements?*', async route => {
+        await new Promise(resolve => setTimeout(resolve, 700))
+        await route.continue()
+      })
+
+      await page.goto('/sv/kravkatalog')
+
+      await expectInitialLoadingState(page)
+      await expectHydratedTable(page)
+
+      await page.reload()
+
+      await expectInitialLoadingState(page)
+      await expectHydratedTable(page)
     })
-
-    await page.goto('/sv/kravkatalog')
-
-    await expectInitialLoadingState(page)
-    await expectHydratedTable(page)
-
-    await page.reload()
-
-    await expectInitialLoadingState(page)
-    await expectHydratedTable(page)
   })
-})
+}

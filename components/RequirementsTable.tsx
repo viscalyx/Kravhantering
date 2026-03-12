@@ -198,6 +198,7 @@ function SearchFilterPopover({
   onChange: (v: string | undefined) => void
 }) {
   const tc = useTranslations('common')
+  const tt = useTranslations('requirementsTable')
   const [open, setOpen] = useState(false)
   const [local, setLocal] = useState(activeValue)
   const ref = useRef<HTMLDivElement>(null)
@@ -268,7 +269,7 @@ function SearchFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex h-4 w-4 items-center justify-center rounded transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         onClick={e => {
           e.stopPropagation()
           if (!open && btnRef.current) {
@@ -316,7 +317,7 @@ function SearchFilterPopover({
               />
               {local && (
                 <button
-                  aria-label="Clear"
+                  aria-label={tt('clear')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
                   onClick={() => {
                     setLocal('')
@@ -354,6 +355,7 @@ function MultiSelectFilterPopover({
   value: number[]
 }) {
   const tc = useTranslations('common')
+  const tt = useTranslations('requirementsTable')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -404,18 +406,26 @@ function MultiSelectFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex h-4 w-4 items-center justify-center rounded transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         onClick={openDropdown}
         ref={btnRef}
         title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3.5 w-3.5" />
-        {activeCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold text-white leading-none">
-            {activeCount}
-          </span>
-        )}
+        <span
+          className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
+          data-filter-icon-anchor="true"
+        >
+          <Filter className="h-3.5 w-3.5" />
+          {activeCount > 0 && (
+            <span
+              className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
+              data-filter-count-badge="true"
+            >
+              {activeCount}
+            </span>
+          )}
+        </span>
       </button>
       {open &&
         createPortal(
@@ -431,7 +441,7 @@ function MultiSelectFilterPopover({
                 type="button"
               >
                 <X aria-hidden="true" className="h-3 w-3 inline mr-1" />
-                Clear
+                {tt('clear')}
               </button>
             )}
             {options.map(opt => (
@@ -473,6 +483,7 @@ function GroupedMultiSelectFilterPopover({
   value: number[]
 }) {
   const tc = useTranslations('common')
+  const tt = useTranslations('requirementsTable')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -527,18 +538,26 @@ function GroupedMultiSelectFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex h-4 w-4 items-center justify-center rounded transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         onClick={openDropdown}
         ref={btnRef}
         title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3.5 w-3.5" />
-        {activeCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold text-white leading-none">
-            {activeCount}
-          </span>
-        )}
+        <span
+          className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
+          data-filter-icon-anchor="true"
+        >
+          <Filter className="h-3.5 w-3.5" />
+          {activeCount > 0 && (
+            <span
+              className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
+              data-filter-count-badge="true"
+            >
+              {activeCount}
+            </span>
+          )}
+        </span>
       </button>
       {open &&
         createPortal(
@@ -554,7 +573,7 @@ function GroupedMultiSelectFilterPopover({
                 type="button"
               >
                 <X aria-hidden="true" className="h-3 w-3 inline mr-1" />
-                Clear
+                {tt('clear')}
               </button>
             )}
             {parents.map(parent => {
@@ -656,8 +675,15 @@ function ColumnsPopover({
 
     const updatePosition = () => {
       const rect = anchor.getBoundingClientRect()
+      const railWidth = 44
+      const railMargin = 8
+      const viewportWidth = Math.max(
+        window.innerWidth,
+        document.documentElement.clientWidth,
+      )
+      const maxLeft = viewportWidth - railWidth - railMargin
       setOutsidePillPos({
-        left: rect.right + 12,
+        left: Math.max(railMargin, Math.min(rect.right + 12, maxLeft)),
         top: rect.top + 12,
       })
     }
@@ -814,11 +840,13 @@ function SearchChip({
   label: string
   onRemove: () => void
 }) {
+  const tt = useTranslations('requirementsTable')
+
   return (
     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] leading-tight rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 max-w-full">
       <span className="truncate">{label}</span>
       <button
-        aria-label={`Remove ${label}`}
+        aria-label={tt('removeItem', { label })}
         className="shrink-0 hover:text-red-600 dark:hover:text-red-400"
         onClick={e => {
           e.stopPropagation()
@@ -843,6 +871,8 @@ function FilterChips({
   onRemove: (id: number) => void
   values: number[]
 }) {
+  const tt = useTranslations('requirementsTable')
+
   if (values.length === 0) return null
   return (
     <div className="flex flex-wrap gap-0.5 mt-1">
@@ -853,7 +883,7 @@ function FilterChips({
         >
           <span className="truncate">{getLabel(id)}</span>
           <button
-            aria-label={`Remove ${getLabel(id)}`}
+            aria-label={tt('removeItem', { label: getLabel(id) })}
             className="shrink-0 hover:text-red-600 dark:hover:text-red-400"
             onClick={e => {
               e.stopPropagation()
@@ -1073,7 +1103,7 @@ export default function RequirementsTable({
       return (
         <ArrowUpDown
           aria-hidden="true"
-          className="h-3.5 w-3.5 text-secondary-400 transition-colors group-hover:text-secondary-600 dark:group-hover:text-secondary-300"
+          className="h-3.5 w-3.5 shrink-0 text-secondary-400 transition-colors group-hover:text-secondary-600 dark:group-hover:text-secondary-300"
         />
       )
     }
@@ -1081,12 +1111,12 @@ export default function RequirementsTable({
     return sortState.direction === 'asc' ? (
       <ArrowUp
         aria-hidden="true"
-        className="h-3.5 w-3.5 text-primary-600 dark:text-primary-400"
+        className="h-3.5 w-3.5 shrink-0 text-primary-600 dark:text-primary-400"
       />
     ) : (
       <ArrowDown
         aria-hidden="true"
-        className="h-3.5 w-3.5 text-primary-600 dark:text-primary-400"
+        className="h-3.5 w-3.5 shrink-0 text-primary-600 dark:text-primary-400"
       />
     )
   }
@@ -1948,6 +1978,8 @@ export default function RequirementsTable({
     const dividerClass = isLastColumn
       ? ''
       : 'border-r border-secondary-200/5 dark:border-secondary-700/5'
+    const isExpanded = row.id === expandedId
+    const expandedDetailCellId = `requirement-row-detail-${row.id}`
 
     switch (columnId) {
       case 'uniqueId':
@@ -1955,9 +1987,19 @@ export default function RequirementsTable({
           <td
             className={`py-2 px-2 font-mono font-medium text-primary-700 dark:text-primary-300 whitespace-nowrap ${archivedContentClass} ${dividerClass}`}
           >
-            <span className="inline-flex items-center gap-1.5">
+            <button
+              aria-controls={renderExpanded ? expandedDetailCellId : undefined}
+              aria-expanded={renderExpanded ? isExpanded : undefined}
+              className="inline-flex w-full items-center gap-1.5 rounded border-0 bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
+              onClick={() =>
+                onRowClick
+                  ? onRowClick(row.id)
+                  : router.push(`/kravkatalog/${row.id}`)
+              }
+              type="button"
+            >
               {renderExpanded ? (
-                row.id === expandedId ? (
+                isExpanded ? (
                   <ChevronDown
                     aria-hidden="true"
                     className="h-3.5 w-3.5 text-secondary-500"
@@ -1970,7 +2012,7 @@ export default function RequirementsTable({
                 )
               ) : null}
               {row.uniqueId}
-            </span>
+            </button>
           </td>
         )
       case 'description':
@@ -2368,7 +2410,9 @@ export default function RequirementsTable({
                               title={sortTooltip}
                               type="button"
                             >
-                              <span className="truncate">{label}</span>
+                              <span className="min-w-0 flex-1 truncate">
+                                {label}
+                              </span>
                               {getSortIcon(column.id as RequirementSortField)}
                             </button>
                           ) : (
@@ -2403,7 +2447,7 @@ export default function RequirementsTable({
                   return (
                     <Fragment key={row.id}>
                       <tr
-                        className={`border-b border-secondary-200/35 cursor-pointer transition-colors hover:bg-primary-50/40 dark:border-secondary-700/35 dark:hover:bg-primary-950/20 ${
+                        className={`border-b border-secondary-200/35 transition-colors hover:bg-primary-50/40 dark:border-secondary-700/35 dark:hover:bg-primary-950/20 ${
                           isExpanded
                             ? 'border-l-2 border-l-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
                             : ''
@@ -2416,11 +2460,6 @@ export default function RequirementsTable({
                             ? 'bg-secondary-50/40 dark:bg-secondary-800/20'
                             : ''
                         }`}
-                        onClick={() =>
-                          onRowClick
-                            ? onRowClick(row.id)
-                            : router.push(`/kravkatalog/${row.id}`)
-                        }
                       >
                         {columnDefinitions.map((column, columnIndex) => (
                           <Fragment key={column.id}>
@@ -2438,6 +2477,7 @@ export default function RequirementsTable({
                             className="border-b border-l-2 border-l-primary-500 border-secondary-200/35 bg-secondary-50/60 p-0 dark:border-secondary-700/35 dark:bg-secondary-800/30"
                             colSpan={columnDefinitions.length}
                             data-expanded-detail-cell="true"
+                            id={`requirement-row-detail-${row.id}`}
                             ref={expandedDetailCellRef}
                           >
                             {renderExpanded(row.id)}

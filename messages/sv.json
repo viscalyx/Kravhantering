@@ -112,6 +112,10 @@
     "viewingOlderVersion": "Visar version {version}",
     "backToLatest": "Tillbaka till senaste versionen"
   },
+  "requirementsTable": {
+    "clear": "Rensa",
+    "removeItem": "Ta bort {label}"
+  },
   "area": {
     "prefix": "Prefix",
     "name": "Namn",

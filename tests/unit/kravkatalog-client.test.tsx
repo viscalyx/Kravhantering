@@ -524,6 +524,11 @@ describe('KravkatalogClient', () => {
         expect.stringContaining('format=csv'),
       ),
     )
+    const exportRequest = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .find(url => url.includes('format=csv'))
+    expect(exportRequest).toBeTruthy()
+    expect(exportRequest).not.toContain('limit=')
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
   })
@@ -642,7 +647,12 @@ describe('KravkatalogClient', () => {
     )
 
     freshPinned.resolve(
-      makeRequirementDetail(1, { uniqueId: 'FRESH-PINNED-0001' }),
+      makeRequirementDetail(1, {
+        hasPendingVersion: true,
+        pendingVersionStatusColor: '#eab308',
+        pendingVersionStatusId: 2,
+        uniqueId: 'FRESH-PINNED-0001',
+      }),
     )
 
     await waitFor(() =>
@@ -652,6 +662,16 @@ describe('KravkatalogClient', () => {
       'FRESH-PINNED-0001',
     )
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0002')
+    expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      rows: expect.arrayContaining([
+        expect.objectContaining({
+          hasPendingVersion: true,
+          pendingVersionStatusColor: '#eab308',
+          pendingVersionStatusId: 2,
+          uniqueId: 'FRESH-PINNED-0001',
+        }),
+      ]),
+    })
 
     stalePinned.resolve(
       makeRequirementDetail(1, { uniqueId: 'STALE-PINNED-0001' }),
