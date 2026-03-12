@@ -19,16 +19,10 @@ function normalizePort(port) {
 
 function extractPids(inputText, port) {
   const normalizedPort = normalizePort(port)
-  const re = new RegExp(`:${normalizedPort}[\\s\\S]*?pid=(\\d+)`, 'g')
-  const found = new Set()
-
-  while (true) {
-    const match = re.exec(inputText)
-    if (match === null) {
-      break
-    }
-    found.add(match[1])
-  }
+  const re = new RegExp(`:${normalizedPort}(?=\\s|$)[\\s\\S]*?pid=(\\d+)`, 'g')
+  const found = new Set(
+    [...String(inputText).matchAll(re)].map(match => match[1]),
+  )
 
   return [...found]
 }
@@ -53,7 +47,7 @@ function main(argv = process.argv.slice(2)) {
   }
 }
 
-module.exports = { extractPids, main }
+module.exports = { extractPids, main, normalizePort }
 
 if (require.main === module) {
   main()

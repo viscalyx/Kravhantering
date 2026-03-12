@@ -1,13 +1,22 @@
 #!/usr/bin/env node
 const { execSync } = require('node:child_process')
+const { extractPids, normalizePort } = require('./extract-pids.js')
 
-const port = process.argv[2] || process.env.PORT || '3000'
+const portArg = process.argv[2] || process.env.PORT || '3000'
+
+let port
+try {
+  port = normalizePort(portArg)
+} catch (error) {
+  console.error(error.message)
+  process.exit(2)
+}
+
 try {
   const raw = execSync('ss -ltnp', { encoding: 'utf8' })
-  const re = new RegExp(`:${port}[\\s\\S]*?pid=(\\d+)`, 'g')
-  const found = new Set([...raw.matchAll(re)].map(match => match[1]))
-  if (found.size > 0) {
-    console.log([...found].join(' '))
+  const pids = extractPids(raw, port)
+  if (pids.length > 0) {
+    console.log(pids.join(' '))
   } else {
     // Print info to stderr so callers parsing stdout don't get confused
     console.error(`No process listening on port ${port}`)
