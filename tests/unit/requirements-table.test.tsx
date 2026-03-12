@@ -1319,7 +1319,7 @@ describe('RequirementsTable', () => {
     expect(rightFade?.className).toContain('opacity-0')
   })
 
-  it('uses a focusable button for expanded row actions instead of the table row', () => {
+  it('activates expanded rows from the table row and non-interactive cells while keeping the button accessible', () => {
     const onRowClick = vi.fn()
     render(
       <RequirementsTable
@@ -1333,23 +1333,35 @@ describe('RequirementsTable', () => {
 
     const action = screen.getByRole('button', { name: 'INT0001' })
     const row = action.closest('tr')
+    const descriptionCell = screen.getByText('Testkrav').closest('td')
 
     expect(action).toHaveAttribute('aria-controls', 'requirement-row-detail-1')
     expect(action).toHaveAttribute('aria-expanded', 'true')
+    expect(row?.className).toContain('cursor-pointer')
 
     fireEvent.click(row as Element)
-    expect(onRowClick).not.toHaveBeenCalled()
+    expect(onRowClick).toHaveBeenCalledTimes(1)
+    expect(onRowClick).toHaveBeenCalledWith(1)
+
+    fireEvent.click(descriptionCell as Element)
+    expect(onRowClick).toHaveBeenCalledTimes(2)
+    expect(onRowClick).toHaveBeenNthCalledWith(2, 1)
 
     fireEvent.click(action)
-    expect(onRowClick).toHaveBeenCalledWith(1)
+    expect(onRowClick).toHaveBeenCalledTimes(3)
+    expect(onRowClick).toHaveBeenNthCalledWith(3, 1)
   })
 
-  it('navigates from the row action button when no row click handler is provided', () => {
+  it('navigates from whole-row clicks and the row action button when no row click handler is provided', () => {
     render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
+    fireEvent.click(screen.getByText('Testkrav').closest('td') as Element)
     fireEvent.click(screen.getByRole('button', { name: 'INT0001' }))
 
-    expect(mockPush).toHaveBeenCalledWith('/kravkatalog/1')
+    expect(mockPush.mock.calls).toEqual([
+      ['/kravkatalog/1'],
+      ['/kravkatalog/1'],
+    ])
   })
 
   it('applies the minimum touch target sizing to row action buttons', () => {

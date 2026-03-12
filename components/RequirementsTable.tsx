@@ -187,6 +187,8 @@ function areExpandedDetailBoundsEqual(
 }
 
 const POPOVER_VIEWPORT_MARGIN = 8
+const ROW_CLICK_INTERACTIVE_SELECTOR =
+  'button, a, input, select, textarea, [contenteditable]:not([contenteditable="false"])'
 
 function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
   if (typeof window === 'undefined') {
@@ -1108,6 +1110,34 @@ export default function RequirementsTable({
     const values = ids.map(id => (id === 1 ? 'true' : 'false'))
     updateFilter({ requiresTesting: values.length > 0 ? values : undefined })
   }
+  const handleRowAction = useCallback(
+    (id: number) => {
+      if (onRowClick) {
+        onRowClick(id)
+        return
+      }
+
+      router.push(`/kravkatalog/${id}`)
+    },
+    [onRowClick, router],
+  )
+  const handleBodyRowClick = useCallback(
+    (event: ReactMouseEvent<HTMLTableRowElement>, id: number) => {
+      if (event.defaultPrevented) {
+        return
+      }
+
+      if (
+        event.target instanceof Element &&
+        event.target.closest(ROW_CLICK_INTERACTIVE_SELECTOR)
+      ) {
+        return
+      }
+
+      handleRowAction(id)
+    },
+    [handleRowAction],
+  )
 
   const getColumnLabel = (columnId: RequirementColumnId) => {
     const column = REQUIREMENT_LIST_COLUMNS.find(item => item.id === columnId)
@@ -2013,11 +2043,10 @@ export default function RequirementsTable({
               aria-controls={renderExpanded ? expandedDetailCellId : undefined}
               aria-expanded={renderExpanded ? isExpanded : undefined}
               className="inline-flex min-h-[44px] min-w-[44px] w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
-              onClick={() =>
-                onRowClick
-                  ? onRowClick(row.id)
-                  : router.push(`/kravkatalog/${row.id}`)
-              }
+              onClick={event => {
+                event.stopPropagation()
+                handleRowAction(row.id)
+              }}
               type="button"
             >
               {renderExpanded ? (
@@ -2469,7 +2498,7 @@ export default function RequirementsTable({
                   return (
                     <Fragment key={row.id}>
                       <tr
-                        className={`border-b border-secondary-200/35 transition-colors hover:bg-primary-50/40 dark:border-secondary-700/35 dark:hover:bg-primary-950/20 ${
+                        className={`border-b border-secondary-200/35 cursor-pointer transition-colors hover:bg-primary-50/40 dark:border-secondary-700/35 dark:hover:bg-primary-950/20 ${
                           isExpanded
                             ? 'border-l-2 border-l-primary-500 bg-primary-50/60 dark:bg-primary-950/30'
                             : ''
@@ -2482,6 +2511,7 @@ export default function RequirementsTable({
                             ? 'bg-secondary-50/40 dark:bg-secondary-800/20'
                             : ''
                         }`}
+                        onClick={event => handleBodyRowClick(event, row.id)}
                       >
                         {columnDefinitions.map((column, columnIndex) => (
                           <Fragment key={column.id}>
