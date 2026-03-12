@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 
 // Keep this in sync with getRequirementColumnWidthsStorageKey('sv')
 // in lib/requirements/list-view.ts.
@@ -171,12 +171,14 @@ test.describe('Requirements table column resizing', () => {
         }
         expect(bottomSegmentBox).not.toBeNull()
         if (!bottomSegmentBox) {
-          throw new Error('Bottom resize segment did not expose a bounding box.')
+          throw new Error(
+            'Bottom resize segment did not expose a bounding box.',
+          )
         }
 
-        expect(Math.round(topHandleBox.y + topHandleBox.height)).toBeLessThanOrEqual(
-          Math.round(detailBox.y),
-        )
+        expect(
+          Math.round(topHandleBox.y + topHandleBox.height),
+        ).toBeLessThanOrEqual(Math.round(detailBox.y))
         expect(Math.round(bottomSegmentBox.y)).toBeGreaterThanOrEqual(
           Math.round(detailBox.y + detailBox.height),
         )
@@ -258,13 +260,16 @@ test.describe('Requirements table column resizing', () => {
         const bottomSegment = page
           .locator('[data-column-resize-segment="bottom"]')
           .first()
-        const fallbackHandle = page.locator('[data-column-resize-handle]').first()
+        const fallbackHandle = page
+          .locator('[data-column-resize-handle]')
+          .first()
 
         await expect(detailCell).toBeVisible()
 
         const detailBox = await detailCell.boundingBox()
         const resizeProbeBox =
-          (await bottomSegment.boundingBox()) ?? (await fallbackHandle.boundingBox())
+          (await bottomSegment.boundingBox()) ??
+          (await fallbackHandle.boundingBox())
 
         expect(detailBox).not.toBeNull()
         if (!detailBox) {
@@ -298,7 +303,8 @@ test.describe('Requirements table column resizing', () => {
           const el = document.elementFromPoint(x, y)
 
           return {
-            resizeSegment: el?.getAttribute('data-column-resize-segment') ?? null,
+            resizeSegment:
+              el?.getAttribute('data-column-resize-segment') ?? null,
             tagName: el?.tagName ?? null,
           }
         }, probePoint)

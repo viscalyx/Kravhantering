@@ -6,6 +6,7 @@ import {
   DEFAULT_FILTERS,
   DEFAULT_REQUIREMENT_SORT,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  type FilterValues,
 } from '@/lib/requirements/list-view'
 
 const mockPush = vi.fn()
@@ -149,7 +150,7 @@ describe('RequirementsTable', () => {
   }
 
   function ControlledSearchFilterTable() {
-    const [filterValues, setFilterValues] = useState({
+    const [filterValues, setFilterValues] = useState<FilterValues>({
       ...DEFAULT_FILTERS,
       uniqueIdSearch: 'seed',
     })
@@ -565,7 +566,13 @@ describe('RequirementsTable', () => {
 
     render(<ControlledSearchFilterTable />)
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'filterBy' })[0]!)
+    const [filterButton] = screen.getAllByRole('button', { name: 'filterBy' })
+    expect(filterButton).toBeDefined()
+    if (!filterButton) {
+      throw new Error('Expected filter button to be rendered.')
+    }
+
+    fireEvent.click(filterButton)
     fireEvent.change(screen.getByRole('textbox', { name: 'uniqueId' }), {
       target: { value: 'pending-search' },
     })

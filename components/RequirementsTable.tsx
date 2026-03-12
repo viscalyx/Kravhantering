@@ -17,6 +17,7 @@ import { useTranslations } from 'next-intl'
 import {
   Fragment,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
@@ -1379,23 +1380,29 @@ export default function RequirementsTable({
     ],
   )
 
-  const handleResizePointerUp = useCallback((event: PointerEvent) => {
-    const activeResize = resizeStateRef.current
-    if (!activeResize || event.pointerId !== activeResize.pointerId) {
-      return
-    }
+  const handleResizePointerUp = useCallback(
+    (event: PointerEvent) => {
+      const activeResize = resizeStateRef.current
+      if (!activeResize || event.pointerId !== activeResize.pointerId) {
+        return
+      }
 
-    finishResizing(true)
-  }, [finishResizing])
+      finishResizing(true)
+    },
+    [finishResizing],
+  )
 
-  const handleResizePointerCancel = useCallback((event: PointerEvent) => {
-    const activeResize = resizeStateRef.current
-    if (!activeResize || event.pointerId !== activeResize.pointerId) {
-      return
-    }
+  const handleResizePointerCancel = useCallback(
+    (event: PointerEvent) => {
+      const activeResize = resizeStateRef.current
+      if (!activeResize || event.pointerId !== activeResize.pointerId) {
+        return
+      }
 
-    finishResizing(false)
-  }, [finishResizing])
+      finishResizing(false)
+    },
+    [finishResizing],
+  )
 
   const updateScrollFades = useCallback(() => {
     if (resizeStateRef.current) {
@@ -1516,7 +1523,9 @@ export default function RequirementsTable({
     }
 
     setExpandedDetailBounds(previous =>
-      areExpandedDetailBoundsEqual(previous, nextBounds) ? previous : nextBounds,
+      areExpandedDetailBoundsEqual(previous, nextBounds)
+        ? previous
+        : nextBounds,
     )
   }, [canResizeColumns, hasExpandedDetailRow])
 
@@ -1605,12 +1614,7 @@ export default function RequirementsTable({
       container.removeEventListener('scroll', handleScroll)
       resizeObserver?.disconnect()
     }
-  }, [
-    hasExpandedDetailRow,
-    updateExpandedDetailBounds,
-    updateResizeHandleOffsets,
-    updateScrollFades,
-  ])
+  }, [updateExpandedDetailBounds, updateResizeHandleOffsets, updateScrollFades])
 
   useEffect(() => {
     void scrollLayoutSignature
@@ -2158,7 +2162,7 @@ export default function RequirementsTable({
       className: interactiveResizeHandleClassName,
       'data-column-resize-handle': columnId,
       onBlur: () => setResizeHoverCursor(false),
-      onDoubleClick: event => {
+      onDoubleClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
         event.preventDefault()
         event.stopPropagation()
         resetColumnWidth(columnId)
@@ -2416,8 +2420,8 @@ export default function RequirementsTable({
                             ? onRowClick(row.id)
                             : router.push(`/kravkatalog/${row.id}`)
                         }
-                    >
-                      {columnDefinitions.map((column, columnIndex) => (
+                      >
+                        {columnDefinitions.map((column, columnIndex) => (
                           <Fragment key={column.id}>
                             {renderCell(
                               row,

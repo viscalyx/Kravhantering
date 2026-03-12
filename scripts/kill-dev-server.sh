@@ -5,6 +5,7 @@ PORT=3000
 PIDS=()
 
 usage() {
+  local code=${1:-0}
   cat <<EOF
 Usage: $0 [--port PORT] [--pid PID]...
 
@@ -13,7 +14,7 @@ Options:
   --pid PID      Kill the specified PID (can be used multiple times)
   -h, --help     Show this help
 EOF
-  exit 0
+  exit "$code"
 }
 
 if [ "$#" -eq 0 ]; then
@@ -39,11 +40,11 @@ while [ "$#" -gt 0 ]; do
       shift 2
       ;;
     -h|--help)
-      usage
+      usage 0
       ;;
     *)
       echo "Unknown argument: $1" >&2
-      usage
+      usage 2
       ;;
   esac
 done
@@ -66,7 +67,7 @@ if [ "${#PIDS[@]}" -eq 0 ]; then
           mapfile -t found < <(printf '%s' "$raw_ss_output" | node ./scripts/extract-pids.js "${PORT}" | sort -u)
         else
           # Fallback: try to join lines and extract pid tokens (may fail on wrapped names)
-          mapfile -t found < <(printf '%s' "$raw_ss_output" | tr '\n' ' ' | sed 's/ LISTEN /\nLISTEN /g' | grep ":${PORT}" || true | grep -oE 'pid=[0-9]+' | grep -oE '[0-9]+' | sort -u)
+          mapfile -t found < <(printf '%s' "$raw_ss_output" | tr '\n' ' ' | sed 's/ LISTEN /\nLISTEN /g' | grep ":${PORT}" | grep -oE 'pid=[0-9]+' | grep -oE '[0-9]+' | sort -u || true)
         fi
       else
         found=()

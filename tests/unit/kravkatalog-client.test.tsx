@@ -82,16 +82,14 @@ vi.mock('@/components/RequirementsTable', () => ({
       <div data-testid="column-widths">
         {JSON.stringify(columnWidths ?? {})}
       </div>
-      <div data-testid="row-ids">{(rows ?? []).map(row => row.uniqueId).join(',')}</div>
+      <div data-testid="row-ids">
+        {(rows ?? []).map(row => row.uniqueId).join(',')}
+      </div>
       <div data-testid="has-more">{String(hasMore ?? false)}</div>
       <div data-testid="loading">{String(loading ?? false)}</div>
       <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
       {(rows ?? []).map(row => (
-        <button
-          key={row.id}
-          onClick={() => onRowClick?.(row.id)}
-          type="button"
-        >
+        <button key={row.id} onClick={() => onRowClick?.(row.id)} type="button">
           {`row-${row.id}`}
         </button>
       ))}
@@ -177,7 +175,10 @@ function createDeferredJsonResponse<T>() {
   }
 }
 
-function makeRequirementRow(id: number, overrides: Record<string, unknown> = {}) {
+function makeRequirementRow(
+  id: number,
+  overrides: Record<string, unknown> = {},
+) {
   return {
     area: { name: 'Integration' },
     id,
@@ -447,32 +448,41 @@ describe('KravkatalogClient', () => {
       pagination: { hasMore: boolean }
       requirements: ReturnType<typeof makeRequirementRow>[]
     }>()
-    const stalePinned = createDeferredJsonResponse<
-      ReturnType<typeof makeRequirementDetail>
-    >()
-    const freshPinned = createDeferredJsonResponse<
-      ReturnType<typeof makeRequirementDetail>
-    >()
+    const stalePinned =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+    const freshPinned =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
     let pinnedFetchCount = 0
 
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = String(input)
 
       if (url.startsWith('/api/requirements?')) {
-        if (url.includes('sortBy=uniqueId') && url.includes('sortDirection=asc')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
           return initialList.promise
         }
-        if (url.includes('sortBy=status') && url.includes('sortDirection=asc')) {
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
           return staleList.promise
         }
-        if (url.includes('sortBy=uniqueId') && url.includes('sortDirection=desc')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=desc')
+        ) {
           return freshList.promise
         }
       }
 
       if (url === '/api/requirements/1') {
         pinnedFetchCount += 1
-        return pinnedFetchCount === 1 ? stalePinned.promise : freshPinned.promise
+        return pinnedFetchCount === 1
+          ? stalePinned.promise
+          : freshPinned.promise
       }
 
       const metadataResponse = mockMetadataFetch(url)
@@ -587,10 +597,16 @@ describe('KravkatalogClient', () => {
         if (url.includes('offset=1')) {
           return staleLoadMore.promise
         }
-        if (url.includes('sortBy=status') && url.includes('sortDirection=asc')) {
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
           return freshRefresh.promise
         }
-        if (url.includes('sortBy=uniqueId') && url.includes('sortDirection=asc')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
           return initialList.promise
         }
       }
