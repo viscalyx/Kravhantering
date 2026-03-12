@@ -2459,12 +2459,12 @@ export default function RequirementsTable({
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className={`flex min-h-[44px] min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                          className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
                           data-requirement-header-control={column.id}
                         >
                           {isSortable ? (
                             <button
-                              className="group inline-flex min-w-0 max-w-full items-center gap-1 text-left"
+                              className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
                               onClick={() =>
                                 handleSortToggle(
                                   column.id as RequirementSortField,

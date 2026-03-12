@@ -809,6 +809,30 @@ describe('RequirementsTable', () => {
     }
   })
 
+  it('applies the minimum header touch target to the sortable button itself', () => {
+    const { container } = render(
+      <RequirementsTable
+        filterValues={DEFAULT_FILTERS}
+        locale="sv"
+        onSortChange={vi.fn()}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const headerControl = container.querySelector(
+      '[data-requirement-header-control="uniqueId"]',
+    ) as HTMLDivElement | null
+    const sortableButton = screen
+      .getByText('uniqueId')
+      .closest('button') as HTMLButtonElement | null
+
+    expect(headerControl).toBeTruthy()
+    expect(sortableButton).toBeTruthy()
+    expect(headerControl?.className).not.toContain('min-h-[44px]')
+    expect(sortableButton?.className).toContain('min-h-[44px]')
+    expect(sortableButton?.className).toContain('min-w-[44px]')
+  })
+
   it('anchors active filter count badges to the filter icon instead of the full button shell', () => {
     const { container } = render(
       <RequirementsTable

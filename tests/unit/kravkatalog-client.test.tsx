@@ -446,6 +446,34 @@ describe('KravkatalogClient', () => {
     })
   })
 
+  it('clears the initial loading state when the first row request rejects', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return Promise.reject(new Error('Requirements fetch failed'))
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return Promise.resolve(metadataResponse)
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('requirements-card-loading')).toBeNull(),
+    )
+
+    expect(screen.getByTestId('requirements-table')).toBeTruthy()
+    expect(screen.getByTestId('row-ids').textContent).toBe('')
+    expect(screen.getByTestId('loading').textContent).toBe('false')
+  })
+
   it('hydrates saved columns and widths and sends sort params in list requests', async () => {
     const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey('sv')
 
@@ -562,6 +590,48 @@ describe('KravkatalogClient', () => {
     expect(exportRequest).not.toContain('limit=')
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:requirements-export')
+  })
+
+  it('ignores export failures without starting a download', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('format=csv')) {
+          return Promise.reject(new Error('Export failed'))
+        }
+
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'export' }))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('format=csv'),
+      ),
+    )
+
+    expect(createObjectURLMock).not.toHaveBeenCalled()
+    expect(revokeObjectURLMock).not.toHaveBeenCalled()
   })
 
   it('ignores stale refresh responses and pinned-row fetches once a newer refresh wins', async () => {
@@ -1013,6 +1083,119 @@ describe('KravkatalogClient', () => {
     expect(screen.getByTestId('row-ids').textContent).toBe('INT0002')
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0003')
     expect(screen.getByTestId('has-more').textContent).toBe('false')
+  })
+
+  it('keeps refreshed rows when the pinned-row fetch rejects', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const refreshedList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return initialList.promise
+        }
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return refreshedList.promise
+        }
+      }
+
+      if (url === '/api/requirements/1') {
+        return Promise.reject(new Error('Pinned fetch failed'))
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortBy=status'),
+      ),
+    )
+
+    refreshedList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(2)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+    expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0001')
+  })
+
+  it('resets load-more state when the next page request rejects', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (url.includes('offset=1')) {
+          return Promise.reject(new Error('Load more failed'))
+        }
+
+        return okJson({
+          pagination: { hasMore: true },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+    expect(screen.getByTestId('has-more').textContent).toBe('true')
+
+    fireEvent.click(screen.getByText('load-more'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('loading-more').textContent).toBe('false'),
+    )
+
+    expect(screen.getByTestId('row-ids').textContent).toBe('INT0001')
+    expect(screen.getByTestId('has-more').textContent).toBe('true')
   })
 
   it('falls back to default column preferences when local storage is invalid', async () => {

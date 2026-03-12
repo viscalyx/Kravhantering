@@ -135,16 +135,25 @@ export default function KravkatalogClient() {
       sort: sortState,
     })
 
-    const res = await fetch(`/api/requirements?${params}`)
-    if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
-      return
-    }
-
-    const data = (await res.json()) as {
+    let data: {
       pagination?: { hasMore?: boolean }
       requirements?: RequirementRow[]
+    } | null = null
+
+    try {
+      const res = await fetch(`/api/requirements?${params}`)
+      if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+        return
+      }
+
+      data = (await res.json()) as {
+        pagination?: { hasMore?: boolean }
+        requirements?: RequirementRow[]
+      }
+    } catch {
+      return
     }
-    if (requestId !== latestRowsRequestIdRef.current) {
+    if (!data || requestId !== latestRowsRequestIdRef.current) {
       return
     }
 
@@ -156,18 +165,24 @@ export default function KravkatalogClient() {
     let newPinnedRow: RequirementRow | null = null
 
     if (sid != null && !newRows.some(r => r.id === sid)) {
-      const singleRes = await fetch(`/api/requirements/${sid}`)
-      if (requestId !== latestRowsRequestIdRef.current) {
-        return
-      }
-
-      if (singleRes.ok) {
-        const detail = (await singleRes.json()) as RequirementDetailRowSource
+      try {
+        const singleRes = await fetch(`/api/requirements/${sid}`)
         if (requestId !== latestRowsRequestIdRef.current) {
           return
         }
 
-        newPinnedRow = mapRequirementDetailToRow(detail)
+        if (singleRes.ok) {
+          const detail = (await singleRes.json()) as RequirementDetailRowSource
+          if (requestId !== latestRowsRequestIdRef.current) {
+            return
+          }
+
+          newPinnedRow = mapRequirementDetailToRow(detail)
+        }
+      } catch {
+        if (requestId !== latestRowsRequestIdRef.current) {
+          return
+        }
       }
     }
 
@@ -206,16 +221,25 @@ export default function KravkatalogClient() {
         offset: rows.length,
         sort: sortState,
       })
-      const res = await fetch(`/api/requirements?${params}`)
-      if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
-        return
-      }
-
-      const data = (await res.json()) as {
+      let data: {
         pagination?: { hasMore?: boolean }
         requirements?: RequirementRow[]
+      } | null = null
+
+      try {
+        const res = await fetch(`/api/requirements?${params}`)
+        if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+          return
+        }
+
+        data = (await res.json()) as {
+          pagination?: { hasMore?: boolean }
+          requirements?: RequirementRow[]
+        }
+      } catch {
+        return
       }
-      if (requestId !== latestRowsRequestIdRef.current) {
+      if (!data || requestId !== latestRowsRequestIdRef.current) {
         return
       }
 
@@ -406,15 +430,19 @@ export default function KravkatalogClient() {
       sort: sortState,
     })
 
-    const res = await fetch(`/api/requirements?${params}`)
-    if (!res.ok) return
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = locale === 'sv' ? 'kravkatalog.csv' : 'requirements.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const res = await fetch(`/api/requirements?${params}`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = locale === 'sv' ? 'kravkatalog.csv' : 'requirements.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      return
+    }
   }
 
   return (
