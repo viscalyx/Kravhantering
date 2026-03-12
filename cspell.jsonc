@@ -189,7 +189,9 @@
     "videostreaming",
     "ztna",
     "pointerup",
-    "pointercancel"
+    "pointercancel",
+    "Kravtexter",
+    "Kravtexterna"
   ],
   "flagWords": [],
   "ignorePaths": [
