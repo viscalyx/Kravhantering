@@ -3,8 +3,6 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { deleteScenario, updateScenario } from '@/lib/dal/requirement-scenarios'
 import { getDb } from '@/lib/db'
 
-export const runtime = 'edge'
-
 type Params = Promise<{ id: string }>
 
 export async function PUT(
@@ -12,7 +10,7 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const body = (await request.json()) as Parameters<typeof updateScenario>[2]
   const scenario = await updateScenario(db, Number(id), body)
@@ -24,7 +22,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   await deleteScenario(db, Number(id))
   return NextResponse.json({ ok: true })

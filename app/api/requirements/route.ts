@@ -13,10 +13,8 @@ import {
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 
-export const runtime = 'edge'
-
 export async function GET(request: NextRequest) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')
@@ -162,7 +160,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')

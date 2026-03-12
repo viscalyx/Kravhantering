@@ -41,7 +41,7 @@
     "clean": "rimraf .next out .open-next",
     "test:integration:all": "npm run test:integration && npm run test:integration:preview",
     "clean:all": "rimraf .next out .open-next .wrangler && echo 'Run npm run db:setup to restore the local database'",
-    "prepreview": "rimraf .open-next .wrangler && npm run cf-typegen",
+    "prepreview": "rimraf .open-next && npm run cf-typegen",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
