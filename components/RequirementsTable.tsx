@@ -33,6 +33,7 @@ import {
   type AreaOption,
   clampRequirementColumnWidth,
   clearRequirementFiltersForHiddenColumns,
+  DEFAULT_REQUIREMENT_COLUMN_WIDTHS,
   DEFAULT_REQUIREMENT_SORT,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterOption,
@@ -48,7 +49,7 @@ import {
   type TypeCategoryOption,
 } from '@/lib/requirements/list-view'
 
-interface RequirementsTableProps {
+export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
   columnWidths?: RequirementColumnWidths
@@ -77,9 +78,9 @@ interface RequirementsTableProps {
   visibleColumns?: RequirementColumnId[]
 }
 
-type FloatingActionPillVariant = 'default' | 'primary'
+export type FloatingActionPillVariant = 'default' | 'primary'
 
-interface FloatingActionItem {
+export interface FloatingActionItem {
   ariaLabel: string
   href?: string
   icon: ReactNode
@@ -153,7 +154,9 @@ function areColumnWidthsEqual(
   right: RequirementColumnWidths,
 ) {
   return REQUIREMENT_LIST_COLUMNS.every(
-    column => left[column.id] === right[column.id],
+    column =>
+      (left[column.id] ?? DEFAULT_REQUIREMENT_COLUMN_WIDTHS[column.id]) ===
+      (right[column.id] ?? DEFAULT_REQUIREMENT_COLUMN_WIDTHS[column.id]),
   )
 }
 
@@ -460,7 +463,7 @@ function MultiSelectFilterPopover({
           >
             {value.length > 0 && (
               <button
-                className="w-full text-left px-2.5 py-1.5 text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400 border-b mb-1 pb-1.5"
+                className="min-h-[44px] w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
                 onClick={() => onChange([])}
                 type="button"
               >
@@ -470,7 +473,7 @@ function MultiSelectFilterPopover({
             )}
             {options.map(opt => (
               <label
-                className="flex items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50 cursor-pointer"
+                className="flex min-h-[44px] cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
                 key={opt.id}
               >
                 <input
@@ -592,7 +595,7 @@ function GroupedMultiSelectFilterPopover({
           >
             {value.length > 0 && (
               <button
-                className="w-full text-left px-2.5 py-1.5 text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400 border-b mb-1 pb-1.5"
+                className="min-h-[44px] w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
                 onClick={() => onChange([])}
                 type="button"
               >
@@ -609,7 +612,7 @@ function GroupedMultiSelectFilterPopover({
                   </div>
                   {children.map(child => (
                     <label
-                      className="flex items-center gap-2 pl-5 pr-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50 cursor-pointer"
+                      className="flex min-h-[44px] cursor-pointer items-center gap-2 py-1.5 pl-5 pr-2.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
                       key={child.id}
                     >
                       <input

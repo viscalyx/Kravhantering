@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import KravkatalogClient from '@/app/[locale]/kravkatalog/kravkatalog-client'
+import type { RequirementsTableProps } from '@/components/RequirementsTable'
 import {
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   getRequirementColumnWidthsStorageKey,
@@ -32,56 +33,30 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 vi.mock('@/components/RequirementsTable', () => ({
-  default: ({
-    areas,
-    categories,
-    columnWidths,
-    expandedId,
-    floatingActions,
-    hasMore,
-    loading,
-    loadingMore,
-    onColumnWidthsChange,
-    onLoadMore,
-    onRowClick,
-    onSortChange,
-    onVisibleColumnsChange,
-    renderExpanded,
-    rows,
-    sortState,
-    statusOptions,
-    typeCategories,
-    types,
-    visibleColumns,
-  }: {
-    areas?: Record<string, unknown>[]
-    categories?: Record<string, unknown>[]
-    columnWidths?: Record<string, number>
-    expandedId?: number | null
-    floatingActions?: {
-      ariaLabel: string
-      href?: string
-      id: string
-      onClick?: () => void
-      position?: 'beforeColumns' | 'afterColumns'
-      variant?: 'default' | 'primary'
-    }[]
-    hasMore?: boolean
-    loading?: boolean
-    loadingMore?: boolean
-    onColumnWidthsChange?: (value: Record<string, number>) => void
-    onLoadMore?: () => void
-    onRowClick?: (id: number) => void
-    onSortChange?: (value: { by: string; direction: 'asc' | 'desc' }) => void
-    onVisibleColumnsChange?: (value: string[]) => void
-    renderExpanded?: (id: number) => React.ReactNode
-    rows?: { id: number; uniqueId: string }[]
-    sortState?: { by: string; direction: 'asc' | 'desc' }
-    statusOptions?: Record<string, unknown>[]
-    typeCategories?: Record<string, unknown>[]
-    types?: Record<string, unknown>[]
-    visibleColumns?: string[]
-  }) => {
+  default: (props: RequirementsTableProps) => {
+    const {
+      areas,
+      categories,
+      columnWidths,
+      expandedId,
+      floatingActions,
+      hasMore,
+      loading,
+      loadingMore,
+      onColumnWidthsChange,
+      onLoadMore,
+      onRowClick,
+      onSortChange,
+      onVisibleColumnsChange,
+      renderExpanded,
+      rows,
+      sortState,
+      statusOptions,
+      typeCategories,
+      types,
+      visibleColumns,
+    } = props
+
     tableState.renderSpy({
       areas: areas ?? [],
       categories: categories ?? [],
@@ -1180,6 +1155,90 @@ describe('KravkatalogClient', () => {
     expect(screen.getByTestId('row-ids').textContent).toBe('INT0002')
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0003')
     expect(screen.getByTestId('has-more').textContent).toBe('false')
+  })
+
+  it('does not start load more while a refresh is already in flight', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const refreshedList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return refreshedList.promise
+        }
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return initialList.promise
+        }
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: true },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('has-more').textContent).toBe('true'),
+    )
+
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortBy=status'),
+      ),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('loading').textContent).toBe('true'),
+    )
+
+    fireEvent.click(screen.getByText('load-more'))
+
+    expect(
+      fetchMock.mock.calls.some(
+        ([input]) =>
+          String(input).startsWith('/api/requirements?') &&
+          String(input).includes('offset=1'),
+      ),
+    ).toBe(false)
+    expect(screen.getByTestId('loading-more').textContent).toBe('false')
+
+    refreshedList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(2)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0002'),
+    )
+    expect(screen.getByTestId('loading').textContent).toBe('false')
   })
 
   it('keeps refreshed rows when the pinned-row fetch rejects', async () => {

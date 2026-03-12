@@ -809,6 +809,82 @@ describe('RequirementsTable', () => {
     }
   })
 
+  it('applies 44px touch targets to standard filter popover actions', () => {
+    render(
+      <RequirementsTable
+        filterValues={DEFAULT_FILTERS}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+        statusOptions={[
+          {
+            color: '#22c55e',
+            id: 3,
+            nameEn: 'Published',
+            nameSv: 'Publicerad',
+          },
+        ]}
+      />,
+    )
+
+    const statusFilterButton = getHeaderFilterButton('status')
+    expect(statusFilterButton).toBeTruthy()
+    if (!statusFilterButton) {
+      throw new Error('Expected the status filter button to be rendered.')
+    }
+
+    setElementRect(statusFilterButton, { bottom: 40, left: 48, right: 92 })
+    fireEvent.click(statusFilterButton)
+
+    const popover = getOpenPopover()
+    const clearButton = popover?.querySelector('button')
+    const optionRow = popover?.querySelector('label')
+
+    expect(clearButton?.className).toContain('min-h-[44px]')
+    expect(optionRow?.className).toContain('min-h-[44px]')
+  })
+
+  it('applies 44px touch targets to grouped filter popover actions', () => {
+    render(
+      <RequirementsTable
+        filterValues={{ ...DEFAULT_FILTERS, typeCategoryIds: [2] }}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+        typeCategories={[
+          { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
+          { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
+        ]}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'typeCategory',
+        ]}
+      />,
+    )
+
+    const typeCategoryFilterButton = getHeaderFilterButton('typeCategory')
+    expect(typeCategoryFilterButton).toBeTruthy()
+    if (!typeCategoryFilterButton) {
+      throw new Error(
+        'Expected the type category filter button to be rendered.',
+      )
+    }
+
+    setElementRect(typeCategoryFilterButton, {
+      bottom: 40,
+      left: 48,
+      right: 92,
+    })
+    fireEvent.click(typeCategoryFilterButton)
+
+    const popover = getOpenPopover()
+    const clearButton = popover?.querySelector('button')
+    const optionRow = popover?.querySelector('label')
+
+    expect(clearButton?.className).toContain('min-h-[44px]')
+    expect(optionRow?.className).toContain('min-h-[44px]')
+  })
+
   it('applies the minimum header touch target to the sortable button itself', () => {
     const { container } = render(
       <RequirementsTable
@@ -1308,6 +1384,28 @@ describe('RequirementsTable', () => {
 
     expect(onColumnWidthsChange).toHaveBeenCalledTimes(1)
     expect(onColumnWidthsChange).toHaveBeenCalledWith({ description: 392 })
+  })
+
+  it('does not emit a width change when resetting an explicit default-width override', () => {
+    const onColumnWidthsChange = vi.fn()
+    const { container } = render(
+      <RequirementsTable
+        columnWidths={{ description: 360 }}
+        locale="sv"
+        onColumnWidthsChange={onColumnWidthsChange}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.doubleClick(handle as Element)
+
+    expect(onColumnWidthsChange).not.toHaveBeenCalled()
   })
 
   it('commits only the final width after rapid back-and-forth dragging', () => {

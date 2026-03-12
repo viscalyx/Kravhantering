@@ -208,7 +208,7 @@ export default function KravkatalogClient() {
   }, [refreshRows])
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return
+    if (loading || loadingMore || !hasMore) return
     const requestId = ++latestRowsRequestIdRef.current
     setLoadingMore(true)
     try {
@@ -247,7 +247,7 @@ export default function KravkatalogClient() {
     } finally {
       setLoadingMore(false)
     }
-  }, [filters, hasMore, loadingMore, locale, rows.length, sortState])
+  }, [filters, hasMore, loading, loadingMore, locale, rows.length, sortState])
 
   const getName = (opt: FilterOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
