@@ -187,8 +187,8 @@
     "versionerad",
     "videostreaming",
     "ztna",
-    "`pointerup`",
-    "`pointercancel`"
+    "pointerup",
+    "pointercancel"
   ],
   "flagWords": [],
   "ignorePaths": [
