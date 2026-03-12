@@ -60,12 +60,18 @@ test.describe('Requirements table column picker', () => {
 
         const triggerBox = await trigger.boundingBox()
         const scrollBox = await scrollContainer.boundingBox()
+        const viewportSize = page.viewportSize()
 
         expect(triggerBox).not.toBeNull()
         expect(scrollBox).not.toBeNull()
+        expect(viewportSize).not.toBeNull()
 
-        if (triggerBox && scrollBox) {
-          const expectedLeft = Math.round(scrollBox.x + scrollBox.width + 12)
+        if (triggerBox && scrollBox && viewportSize) {
+          const railMargin = 8
+          const expectedLeft = Math.min(
+            Math.max(Math.round(scrollBox.x + scrollBox.width + 12), railMargin),
+            viewportSize.width - Math.round(triggerBox.width) - railMargin,
+          )
           expect(
             Math.abs(Math.round(triggerBox.x) - expectedLeft),
           ).toBeLessThanOrEqual(1)

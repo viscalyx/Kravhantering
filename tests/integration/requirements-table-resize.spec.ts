@@ -95,10 +95,39 @@ test.describe('Requirements table column resizing', () => {
         const startX = box.x + box.width / 2
         const pointerY = box.y + Math.min(box.height / 2, 24)
         const deltas = [56, -28, 88, -20, 104, -12, 128]
+        const pointerId = 1
 
-        await page.mouse.move(startX, pointerY)
-        await page.mouse.down()
-        await page.mouse.move(startX + deltas[0], pointerY, { steps: 3 })
+        await handle.dispatchEvent('pointerdown', {
+          bubbles: true,
+          button: 0,
+          buttons: 1,
+          clientX: startX,
+          clientY: pointerY,
+          isPrimary: true,
+          pointerId,
+          pointerType: 'mouse',
+        })
+        await page.evaluate(
+          ({ endX, pointerId, pointerY }) => {
+            window.dispatchEvent(
+              new PointerEvent('pointermove', {
+                bubbles: true,
+                button: 0,
+                buttons: 1,
+                clientX: endX,
+                clientY: pointerY,
+                isPrimary: true,
+                pointerId,
+                pointerType: 'mouse',
+              }),
+            )
+          },
+          {
+            endX: startX + deltas[0],
+            pointerId,
+            pointerY,
+          },
+        )
 
         await expect
           .poll(async () => {
@@ -107,11 +136,41 @@ test.describe('Requirements table column resizing', () => {
           })
           .toBeGreaterThan(Math.round(laterDividerBox.x))
 
-        for (const delta of deltas.slice(1)) {
-          await page.mouse.move(startX + delta, pointerY, { steps: 3 })
-        }
-
-        await page.mouse.up()
+        await page.evaluate(
+          ({ deltas, pointerId, pointerY, startX }) => {
+            for (const delta of deltas) {
+              window.dispatchEvent(
+                new PointerEvent('pointermove', {
+                  bubbles: true,
+                  button: 0,
+                  buttons: 1,
+                  clientX: startX + delta,
+                  clientY: pointerY,
+                  isPrimary: true,
+                  pointerId,
+                  pointerType: 'mouse',
+                }),
+              )
+            }
+            window.dispatchEvent(
+              new PointerEvent('pointerup', {
+                bubbles: true,
+                button: 0,
+                clientX: startX + deltas[deltas.length - 1],
+                clientY: pointerY,
+                isPrimary: true,
+                pointerId,
+                pointerType: 'mouse',
+              }),
+            )
+          },
+          {
+            deltas: deltas.slice(1),
+            pointerId,
+            pointerY,
+            startX,
+          },
+        )
 
         await expect
           .poll(async () =>
