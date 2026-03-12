@@ -90,6 +90,34 @@ test.describe('Requirements table column picker', () => {
 
         await trigger.click()
 
+        const requiresTestingHeaderLabel = page.locator(
+          '[data-requirement-header-label="requiresTesting"]',
+        )
+        const versionHeaderLabel = page.locator(
+          '[data-requirement-header-label="version"]',
+        )
+
+        await expect(requiresTestingHeaderLabel).toBeVisible()
+        await expect(versionHeaderLabel).toBeVisible()
+
+        const requiresTestingLabelBox =
+          await requiresTestingHeaderLabel.boundingBox()
+        const versionLabelBox = await versionHeaderLabel.boundingBox()
+
+        expect(requiresTestingLabelBox).not.toBeNull()
+        expect(versionLabelBox).not.toBeNull()
+
+        if (requiresTestingLabelBox && versionLabelBox) {
+          const requiresTestingLabelCenterY =
+            requiresTestingLabelBox.y + requiresTestingLabelBox.height / 2
+          const versionLabelCenterY =
+            versionLabelBox.y + versionLabelBox.height / 2
+
+          expect(
+            Math.abs(requiresTestingLabelCenterY - versionLabelCenterY),
+          ).toBeLessThanOrEqual(2)
+        }
+
         const storedColumns = await page.evaluate(
           storageKey => globalThis.localStorage.getItem(storageKey) ?? '',
           COLUMN_VISIBILITY_STORAGE_KEY,

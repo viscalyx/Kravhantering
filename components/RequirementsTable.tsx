@@ -2459,7 +2459,8 @@ export default function RequirementsTable({
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                          className={`flex min-h-[44px] min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                          data-requirement-header-control={column.id}
                         >
                           {isSortable ? (
                             <button
@@ -2472,13 +2473,21 @@ export default function RequirementsTable({
                               title={sortTooltip}
                               type="button"
                             >
-                              <span className="min-w-0 flex-1 truncate">
+                              <span
+                                className="min-w-0 flex-1 truncate"
+                                data-requirement-header-label={column.id}
+                              >
                                 {label}
                               </span>
                               {getSortIcon(column.id as RequirementSortField)}
                             </button>
                           ) : (
-                            <span>{label}</span>
+                            <span
+                              className="min-w-0 truncate"
+                              data-requirement-header-label={column.id}
+                            >
+                              {label}
+                            </span>
                           )}
                           {renderFilterControl(column.id)}
                         </div>
