@@ -795,6 +795,109 @@ describe('KravkatalogClient', () => {
     )
   })
 
+  it('prepends a pinned row when status sort metadata is unavailable', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const pinnedList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const pinnedDetail =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return initialList.promise
+        }
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return pinnedList.promise
+        }
+      }
+
+      if (url === '/api/requirements/1') {
+        return pinnedDetail.promise
+      }
+      if (url === '/api/requirement-statuses') {
+        return okJson({ statuses: [] })
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortBy=status'),
+      ),
+    )
+
+    pinnedList.resolve({
+      pagination: { hasMore: false },
+      requirements: [
+        makeRequirementRow(3, {
+          version: {
+            ...makeRequirementRow(3).version,
+            status: 1,
+            statusNameEn: 'Draft',
+            statusNameSv: 'Utkast',
+          },
+        }),
+      ],
+    })
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+    )
+
+    pinnedDetail.resolve(
+      makeRequirementDetail(1, {
+        uniqueId: 'PINNED-0001',
+        versions: [
+          {
+            ...makeRequirementDetail(1).versions[0],
+            status: 3,
+          },
+        ],
+      }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe(
+        'PINNED-0001,INT0003',
+      ),
+    )
+  })
+
   it('clears a pinned row immediately when selecting a different row', async () => {
     const initialList = createDeferredJsonResponse<{
       pagination: { hasMore: boolean }
@@ -842,11 +945,11 @@ describe('KravkatalogClient', () => {
 
     initialList.resolve({
       pagination: { hasMore: false },
-      requirements: [makeRequirementRow(1)],
+      requirements: [makeRequirementRow(1), makeRequirementRow(3)],
     })
 
     await waitFor(() =>
-      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001,INT0003'),
     )
 
     fireEvent.click(screen.getByText('row-1'))
@@ -867,15 +970,9 @@ describe('KravkatalogClient', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
     )
 
-    pinnedDetail.resolve(makeRequirementDetail(1, { uniqueId: 'PINNED-0001' }))
-
-    await waitFor(() =>
-      expect(screen.getByTestId('row-ids').textContent).toContain(
-        'PINNED-0001',
-      ),
-    )
-
     fireEvent.click(screen.getByText('row-3'))
+
+    pinnedDetail.resolve(makeRequirementDetail(1, { uniqueId: 'PINNED-0001' }))
 
     await waitFor(() =>
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0003'),

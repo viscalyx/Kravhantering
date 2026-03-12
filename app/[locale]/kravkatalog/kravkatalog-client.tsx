@@ -165,23 +165,21 @@ export default function KravkatalogClient() {
     let newPinnedRow: RequirementRow | null = null
 
     if (sid != null && !newRows.some(r => r.id === sid)) {
+      const hasCurrentPinnedSelection = () =>
+        requestId === latestRowsRequestIdRef.current &&
+        selectedIdRef.current === sid
+
       try {
         const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (requestId !== latestRowsRequestIdRef.current) {
-          return
-        }
-
-        if (singleRes.ok) {
+        if (singleRes.ok && hasCurrentPinnedSelection()) {
           const detail = (await singleRes.json()) as RequirementDetailRowSource
-          if (requestId !== latestRowsRequestIdRef.current) {
-            return
+          if (hasCurrentPinnedSelection()) {
+            newPinnedRow = mapRequirementDetailToRow(detail)
           }
-
-          newPinnedRow = mapRequirementDetailToRow(detail)
         }
       } catch {
-        if (requestId !== latestRowsRequestIdRef.current) {
-          return
+        if (hasCurrentPinnedSelection()) {
+          // Ignore pinned-row fetch failures and keep the refreshed rows.
         }
       }
     }
@@ -401,6 +399,14 @@ export default function KravkatalogClient() {
 
   const displayRows = useMemo(() => {
     if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {
+      const hasStatusSortMetadata =
+        sortState.by !== 'status' ||
+        statusOptions.some(option => option.sortOrder !== undefined)
+
+      if (!hasStatusSortMetadata) {
+        return [pinnedRow, ...rows]
+      }
+
       const idx = rows.findIndex(
         row =>
           compareRequirementRows(row, pinnedRow, {

@@ -2223,9 +2223,10 @@ export default function RequirementsTable({
   const thBase =
     'relative py-2 px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
   const resizeHandleBaseClassName =
-    'group pointer-events-auto absolute left-0 z-20 m-0 min-h-[44px] min-w-[44px] -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
+    'group pointer-events-auto absolute left-0 z-20 m-0 min-w-[44px] -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
   const interactiveResizeHandleClassName = `${resizeHandleBaseClassName} focus-visible:outline-none hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400`
-  const pointerResizeSegmentClassName = `${resizeHandleBaseClassName} hover:before:bg-primary-400 dark:hover:before:bg-primary-400`
+  const fullResizeHandleClassName = `${interactiveResizeHandleClassName} min-h-[44px]`
+  const pointerResizeSegmentClassName = `${resizeHandleBaseClassName} min-h-0 hover:before:bg-primary-400 dark:hover:before:bg-primary-400`
   const resetColumnsView = () => {
     cancelResizePreviewFrame()
     pendingResizePreviewVisibleWidthsRef.current = null
@@ -2286,6 +2287,7 @@ export default function RequirementsTable({
       return (
         <button
           {...interactiveProps}
+          className={fullResizeHandleClassName}
           data-column-resize-column={columnId}
           data-column-resize-segment="full"
           key={columnId}

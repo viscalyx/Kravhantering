@@ -1163,7 +1163,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment?.style.top).toBe('240px')
     expect(bottomSegment?.style.height).toBe('48px')
     expect(bottomSegment?.className).toContain('min-w-[44px]')
-    expect(bottomSegment?.className).toContain('min-h-[44px]')
+    expect(bottomSegment?.className).toContain('min-h-0')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
     expect(
       Number.parseInt(topHandle?.style.height ?? '0', 10),
@@ -1178,6 +1178,40 @@ describe('RequirementsTable', () => {
     fireEvent.pointerDown(bottomSegment as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
+
+    expect(screen.getByTestId('column-width-state').textContent).toBe(
+      '{"description":392}',
+    )
+  })
+
+  it('keeps clipped resize segments below 44px from expanding their hit area', () => {
+    const { container } = render(<ControlledExpandedResizableTable />)
+
+    syncResizeHandleMetrics(container)
+    setExpandedDetailMetrics(container, {
+      bottom: 248,
+      contentHeight: 280,
+      top: 120,
+    })
+
+    const bottomSegment = container.querySelector(
+      '[data-column-resize-column="description"][data-column-resize-segment="bottom"]',
+    ) as HTMLDivElement | null
+
+    expect(bottomSegment).toBeTruthy()
+    expect(bottomSegment?.style.top).toBe('248px')
+    expect(bottomSegment?.style.height).toBe('32px')
+    expect(bottomSegment?.className).toContain('min-w-[44px]')
+    expect(bottomSegment?.className).toContain('min-h-0')
+    expect(bottomSegment?.className).not.toContain('min-h-[44px]')
+    expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
+
+    fireEvent.pointerDown(bottomSegment as Element, {
+      clientX: 100,
+      pointerId: 1,
+    })
+    fireEvent.pointerMove(window, { clientX: 132, pointerId: 1 })
+    fireEvent.pointerUp(window, { clientX: 132, pointerId: 1 })
 
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"description":392}',
