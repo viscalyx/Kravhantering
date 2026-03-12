@@ -249,6 +249,54 @@ describe('RequirementsTable', () => {
     )
   }
 
+  function getHeaderFilterButton(label: string) {
+    const header = screen.getByText(label).closest('th')
+    return header?.querySelector(
+      'button[aria-label="filterBy"]',
+    ) as HTMLButtonElement | null
+  }
+
+  function setElementRect(
+    element: Element,
+    {
+      bottom,
+      left,
+      right,
+      height = 40,
+      top = bottom - height,
+      width = right - left,
+    }: {
+      bottom: number
+      height?: number
+      left: number
+      right: number
+      top?: number
+      width?: number
+    },
+  ) {
+    Object.defineProperty(element, 'getBoundingClientRect', {
+      configurable: true,
+      value: () =>
+        ({
+          bottom,
+          height,
+          left,
+          right,
+          toJSON: () => ({}),
+          top,
+          width,
+          x: left,
+          y: top,
+        }) as DOMRect,
+    })
+  }
+
+  function getOpenPopover() {
+    return document.body.querySelector(
+      'div.fixed.z-50',
+    ) as HTMLDivElement | null
+  }
+
   function getFloatingActionIds(container: HTMLElement) {
     const rail =
       (container.querySelector(
@@ -708,11 +756,16 @@ describe('RequirementsTable', () => {
           { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
           { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
         ]}
-        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'typeCategory']}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'typeCategory',
+        ]}
       />,
     )
 
-    const badges = container.querySelectorAll('[data-filter-count-badge="true"]')
+    const badges = container.querySelectorAll(
+      '[data-filter-count-badge="true"]',
+    )
     expect(badges).toHaveLength(2)
 
     for (const badge of badges) {
@@ -723,6 +776,87 @@ describe('RequirementsTable', () => {
       expect(iconAnchor?.parentElement).toBe(button)
       expect(button?.getAttribute('data-filter-icon-anchor')).toBeNull()
     }
+  })
+
+  it('clamps filter popovers inside the viewport near the right edge', () => {
+    render(
+      <RequirementsTable
+        filterValues={DEFAULT_FILTERS}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        rows={[makeRow()]}
+        statusOptions={[
+          {
+            color: '#22c55e',
+            id: 3,
+            nameEn: 'Published',
+            nameSv: 'Publicerad',
+            sortOrder: 3,
+          },
+        ]}
+        typeCategories={[
+          { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
+          { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
+        ]}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'typeCategory',
+        ]}
+      />,
+    )
+
+    Object.defineProperty(window, 'innerWidth', {
+      configurable: true,
+      value: 200,
+    })
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 200,
+    })
+
+    const uniqueIdFilterButton = getHeaderFilterButton('uniqueId')
+    expect(uniqueIdFilterButton).toBeTruthy()
+    if (!uniqueIdFilterButton) {
+      throw new Error('Expected the uniqueId filter button to be rendered.')
+    }
+
+    setElementRect(uniqueIdFilterButton, { bottom: 40, left: 180, right: 224 })
+    fireEvent.click(uniqueIdFilterButton)
+
+    expect(screen.getByRole('textbox', { name: 'uniqueId' })).toBeTruthy()
+    expect(getOpenPopover()?.style.left).toBe('8px')
+
+    fireEvent.mouseDown(document.body)
+
+    const statusFilterButton = getHeaderFilterButton('status')
+    expect(statusFilterButton).toBeTruthy()
+    if (!statusFilterButton) {
+      throw new Error('Expected the status filter button to be rendered.')
+    }
+
+    setElementRect(statusFilterButton, { bottom: 40, left: 180, right: 224 })
+    fireEvent.click(statusFilterButton)
+
+    expect(getOpenPopover()?.style.left).toBe('32px')
+
+    fireEvent.mouseDown(document.body)
+
+    const typeCategoryFilterButton = getHeaderFilterButton('typeCategory')
+    expect(typeCategoryFilterButton).toBeTruthy()
+    if (!typeCategoryFilterButton) {
+      throw new Error(
+        'Expected the type category filter button to be rendered.',
+      )
+    }
+
+    setElementRect(typeCategoryFilterButton, {
+      bottom: 40,
+      left: 180,
+      right: 224,
+    })
+    fireEvent.click(typeCategoryFilterButton)
+
+    expect(getOpenPopover()?.style.left).toBe('8px')
   })
 
   it('renders resize handles whenever column resizing is enabled', () => {
@@ -1216,6 +1350,20 @@ describe('RequirementsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'INT0001' }))
 
     expect(mockPush).toHaveBeenCalledWith('/kravkatalog/1')
+  })
+
+  it('applies the minimum touch target sizing to row action buttons', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    const action = screen.getByRole('button', { name: 'INT0001' })
+    const cell = action.closest('td')
+
+    expect(action.className).toContain('min-h-[44px]')
+    expect(action.className).toContain('min-w-[44px]')
+    expect(action.className).toContain('px-2')
+    expect(action.className).toContain('py-2')
+    expect(cell?.className).not.toContain('px-2')
+    expect(cell?.className).not.toContain('py-2')
   })
 
   it('shows pending version indicator', () => {

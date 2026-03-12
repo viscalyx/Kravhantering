@@ -19,7 +19,7 @@ function normalizePort(port) {
 
 function extractPids(inputText, port) {
   const normalizedPort = normalizePort(port)
-  const re = new RegExp(`:${normalizedPort}(?=\\s|$)[\\s\\S]*?pid=(\\d+)`, 'g')
+  const re = new RegExp(`:${normalizedPort}(?=\\s|$)[^\\r\\n]*?pid=(\\d+)`, 'g')
   const found = new Set(
     [...String(inputText).matchAll(re)].map(match => match[1]),
   )

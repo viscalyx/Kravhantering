@@ -171,6 +171,41 @@ describe('requirement list view helpers', () => {
     ).toBeLessThan(0)
   })
 
+  it('uses the selected locale for text collation', () => {
+    const left = makeRow({
+      uniqueId: 'INT0001',
+      version: {
+        ...makeRow().version,
+        categoryNameEn: 'Aland',
+        categoryNameSv: 'Åska',
+      },
+    })
+    const right = makeRow({
+      id: 2,
+      uniqueId: 'INT0002',
+      version: {
+        ...makeRow().version,
+        categoryNameEn: 'Zulu',
+        categoryNameSv: 'Zulu',
+      },
+    })
+
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'sv',
+        sort: { by: 'category', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeGreaterThan(0)
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'category', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeLessThan(0)
+  })
+
   it('compares status rows by status sort order', () => {
     const left = makeRow({
       uniqueId: 'INT0001',

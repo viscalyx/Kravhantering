@@ -26,6 +26,16 @@ describe('extract-pids.js', () => {
     expect(extractPids(input, '3000')).toEqual(['101', '303'])
   })
 
+  it('does not capture a pid from a later line', () => {
+    const input = [
+      'LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node"',
+      'LISTEN 0 511 127.0.0.1:3001 0.0.0.0:* users:(("node",pid=202,fd=21))',
+      'LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:(("node",pid=303,fd=22))',
+    ].join('\n')
+
+    expect(extractPids(input, '3000')).toEqual(['303'])
+  })
+
   it('rejects invalid port expressions', () => {
     expect(() => extractPids('', '3000|.*')).toThrow(
       'PORT must be an integer between 1 and 65535.',

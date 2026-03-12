@@ -34,6 +34,7 @@ vi.mock('@/i18n/routing', () => ({
 vi.mock('@/components/RequirementsTable', () => ({
   default: ({
     columnWidths,
+    expandedId,
     floatingActions,
     hasMore,
     loading,
@@ -43,11 +44,13 @@ vi.mock('@/components/RequirementsTable', () => ({
     onRowClick,
     onSortChange,
     onVisibleColumnsChange,
+    renderExpanded,
     rows,
     sortState,
     visibleColumns,
   }: {
     columnWidths?: Record<string, number>
+    expandedId?: number | null
     floatingActions?: {
       ariaLabel: string
       href?: string
@@ -64,6 +67,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     onRowClick?: (id: number) => void
     onSortChange?: (value: { by: string; direction: 'asc' | 'desc' }) => void
     onVisibleColumnsChange?: (value: string[]) => void
+    renderExpanded?: (id: number) => React.ReactNode
     rows?: { id: number; uniqueId: string }[]
     sortState?: { by: string; direction: 'asc' | 'desc' }
     visibleColumns?: string[]
@@ -104,13 +108,12 @@ vi.mock('@/components/RequirementsTable', () => ({
         <div data-testid="loading">{String(loading ?? false)}</div>
         <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
         {(rows ?? []).map(row => (
-          <button
-            key={row.id}
-            onClick={() => onRowClick?.(row.id)}
-            type="button"
-          >
-            {`row-${row.id}`}
-          </button>
+          <div key={row.id}>
+            <button onClick={() => onRowClick?.(row.id)} type="button">
+              {`row-${row.id}`}
+            </button>
+            {expandedId === row.id ? renderExpanded?.(row.id) : null}
+          </div>
         ))}
         {(floatingActions ?? []).map(action =>
           action.href ? (
@@ -175,7 +178,20 @@ vi.mock('@/components/RequirementsTable', () => ({
 }))
 
 vi.mock('@/app/[locale]/kravkatalog/[id]/requirement-detail-client', () => ({
-  default: () => <div>detail</div>,
+  default: ({
+    onClose,
+    requirementId,
+  }: {
+    onClose?: () => void
+    requirementId?: number
+  }) => (
+    <div>
+      detail
+      <button onClick={onClose} type="button">
+        {`detail-close-${requirementId}`}
+      </button>
+    </div>
+  ),
 }))
 
 function okJson(body: unknown) {
@@ -686,6 +702,114 @@ describe('KravkatalogClient', () => {
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0002')
     expect(screen.getByTestId('row-ids').textContent).not.toContain(
       'STALE-PINNED-0001',
+    )
+  })
+
+  it('clears a pinned row immediately when the expanded detail closes', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const pinnedList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const closeRefresh = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const pinnedDetail =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+    let statusListRequestCount = 0
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return initialList.promise
+        }
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
+          statusListRequestCount += 1
+          return statusListRequestCount === 1
+            ? pinnedList.promise
+            : closeRefresh.promise
+        }
+      }
+
+      if (url === '/api/requirements/1') {
+        return pinnedDetail.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortBy=status'),
+      ),
+    )
+
+    pinnedList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(3)],
+    })
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+    )
+
+    pinnedDetail.resolve(makeRequirementDetail(1, { uniqueId: 'PINNED-0001' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toContain(
+        'PINNED-0001',
+      ),
+    )
+    expect(screen.getByTestId('row-ids').textContent).toContain('INT0003')
+
+    fireEvent.click(screen.getByText('detail-close-1'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0003'),
+    )
+    expect(screen.getByTestId('row-ids').textContent).not.toContain(
+      'PINNED-0001',
+    )
+
+    closeRefresh.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(4)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0004'),
     )
   })
 
