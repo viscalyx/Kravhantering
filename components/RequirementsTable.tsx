@@ -2094,6 +2094,7 @@ export default function RequirementsTable({
     const timer = setTimeout(() => setShowSpinner(true), 1000)
     return () => clearTimeout(timer)
   }, [loading])
+  const shouldShowEmptyState = rows.length === 0 && !loading
 
   // Infinite-scroll sentinel
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -2385,7 +2386,7 @@ export default function RequirementsTable({
             <tbody
               className={`${showSpinner ? 'opacity-40' : ''} ${loading ? 'pointer-events-none' : ''}`}
             >
-              {rows.length === 0 ? (
+              {shouldShowEmptyState ? (
                 <tr>
                   <td
                     className="py-12 text-center text-secondary-600 dark:text-secondary-400"
@@ -2394,7 +2395,7 @@ export default function RequirementsTable({
                     {tc('noResults')}
                   </td>
                 </tr>
-              ) : (
+              ) : rows.length > 0 ? (
                 rows.map((row, idx) => {
                   const isExpanded = row.id === expandedId
                   const isPinned = pinnedIds?.has(row.id) ?? false
@@ -2446,7 +2447,7 @@ export default function RequirementsTable({
                     </Fragment>
                   )
                 })
-              )}
+              ) : null}
             </tbody>
           </table>
         </div>

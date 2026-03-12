@@ -63,8 +63,10 @@ if [ "${#PIDS[@]}" -eq 0 ]; then
     if command -v ss >/dev/null 2>&1; then
       raw_ss_output=$(ss -ltnp 2>/dev/null || true)
       if [ -n "$raw_ss_output" ]; then
-        if command -v node >/dev/null 2>&1 && [ -f ./scripts/extract-pids.js ]; then
-          mapfile -t found < <(printf '%s' "$raw_ss_output" | node ./scripts/extract-pids.js "${PORT}" | sort -u)
+        if command -v node >/dev/null 2>&1 && [ -f ./scripts/check-port.js ]; then
+          # Use the checker and allow its stderr (informational message) to show.
+          # Capture only stdout (the PID list) into `found` so we don't duplicate messages.
+          mapfile -t found < <(node ./scripts/check-port.js "${PORT}" | tr ' ' '\n' | sort -u)
         else
           # Fallback: try to join lines and extract pid tokens (may fail on wrapped names)
           mapfile -t found < <(printf '%s' "$raw_ss_output" | tr '\n' ' ' | sed 's/ LISTEN /\nLISTEN /g' | grep ":${PORT}" | grep -oE 'pid=[0-9]+' | grep -oE '[0-9]+' | sort -u || true)
@@ -76,7 +78,7 @@ if [ "${#PIDS[@]}" -eq 0 ]; then
   fi
 
   if [ "${#found[@]}" -eq 0 ]; then
-    echo "No process listening on port ${PORT}"
+    # Silent exit when no PIDs found — upstream callers may handle messaging.
     exit 0
   fi
 

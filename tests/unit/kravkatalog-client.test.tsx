@@ -7,6 +7,10 @@ import {
   REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
 } from '@/lib/requirements/list-view'
 
+const tableState = vi.hoisted(() => ({
+  renderSpy: vi.fn(),
+}))
+
 const fetchMock = vi.fn()
 const printMock = vi.fn()
 const createObjectURLMock = vi.fn(() => 'blob:requirements-export')
@@ -63,91 +67,111 @@ vi.mock('@/components/RequirementsTable', () => ({
     rows?: { id: number; uniqueId: string }[]
     sortState?: { by: string; direction: 'asc' | 'desc' }
     visibleColumns?: string[]
-  }) => (
-    <div>
-      <div data-testid="floating-actions-order">
-        {(floatingActions ?? [])
-          .map(
-            action =>
-              `${action.id}:${action.position ?? 'afterColumns'}:${action.variant ?? 'default'}`,
-          )
-          .join(',')}
-      </div>
-      <div data-testid="sort-state">
-        {sortState?.by}:{sortState?.direction}
-      </div>
-      <div data-testid="visible-columns">
-        {(visibleColumns ?? []).join(',')}
-      </div>
-      <div data-testid="column-widths">
-        {JSON.stringify(columnWidths ?? {})}
-      </div>
-      <div data-testid="row-ids">
-        {(rows ?? []).map(row => row.uniqueId).join(',')}
-      </div>
-      <div data-testid="has-more">{String(hasMore ?? false)}</div>
-      <div data-testid="loading">{String(loading ?? false)}</div>
-      <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
-      {(rows ?? []).map(row => (
-        <button key={row.id} onClick={() => onRowClick?.(row.id)} type="button">
-          {`row-${row.id}`}
-        </button>
-      ))}
-      {(floatingActions ?? []).map(action =>
-        action.href ? (
-          <a
-            aria-label={action.ariaLabel}
-            data-floating-action-id={action.id}
-            data-floating-action-variant={action.variant ?? 'default'}
-            href={action.href}
-            key={action.id}
-          >
-            {action.id}
-          </a>
-        ) : (
+  }) => {
+    tableState.renderSpy({
+      columnWidths: columnWidths ?? {},
+      hasMore: hasMore ?? false,
+      loading: loading ?? false,
+      loadingMore: loadingMore ?? false,
+      rows: rows ?? [],
+      sortState,
+      visibleColumns: visibleColumns ?? [],
+    })
+
+    return (
+      <div data-testid="requirements-table">
+        <div data-testid="floating-actions-order">
+          {(floatingActions ?? [])
+            .map(
+              action =>
+                `${action.id}:${action.position ?? 'afterColumns'}:${action.variant ?? 'default'}`,
+            )
+            .join(',')}
+        </div>
+        <div data-testid="sort-state">
+          {sortState?.by}:{sortState?.direction}
+        </div>
+        <div data-testid="visible-columns">
+          {(visibleColumns ?? []).join(',')}
+        </div>
+        <div data-testid="column-widths">
+          {JSON.stringify(columnWidths ?? {})}
+        </div>
+        <div data-testid="row-ids">
+          {(rows ?? []).map(row => row.uniqueId).join(',')}
+        </div>
+        <div data-testid="has-more">{String(hasMore ?? false)}</div>
+        <div data-testid="loading">{String(loading ?? false)}</div>
+        <div data-testid="loading-more">{String(loadingMore ?? false)}</div>
+        {(rows ?? []).map(row => (
           <button
-            aria-label={action.ariaLabel}
-            data-floating-action-id={action.id}
-            data-floating-action-variant={action.variant ?? 'default'}
-            key={action.id}
-            onClick={action.onClick}
+            key={row.id}
+            onClick={() => onRowClick?.(row.id)}
             type="button"
           >
-            {action.id}
+            {`row-${row.id}`}
           </button>
-        ),
-      )}
-      <button
-        onClick={() => onSortChange?.({ by: 'status', direction: 'asc' })}
-        type="button"
-      >
-        change-sort
-      </button>
-      <button
-        onClick={() => onSortChange?.({ by: 'uniqueId', direction: 'desc' })}
-        type="button"
-      >
-        change-sort-desc
-      </button>
-      <button
-        onClick={() =>
-          onVisibleColumnsChange?.(['uniqueId', 'description', 'status'])
-        }
-        type="button"
-      >
-        change-columns
-      </button>
-      <button
-        onClick={() => onColumnWidthsChange?.({ status: 220, type: 200 })}
-        type="button"
-      >
-        change-widths
-      </button>
-      <button disabled={!hasMore} onClick={() => onLoadMore?.()} type="button">
-        load-more
-      </button>
-    </div>
-  ),
+        ))}
+        {(floatingActions ?? []).map(action =>
+          action.href ? (
+            <a
+              aria-label={action.ariaLabel}
+              data-floating-action-id={action.id}
+              data-floating-action-variant={action.variant ?? 'default'}
+              href={action.href}
+              key={action.id}
+            >
+              {action.id}
+            </a>
+          ) : (
+            <button
+              aria-label={action.ariaLabel}
+              data-floating-action-id={action.id}
+              data-floating-action-variant={action.variant ?? 'default'}
+              key={action.id}
+              onClick={action.onClick}
+              type="button"
+            >
+              {action.id}
+            </button>
+          ),
+        )}
+        <button
+          onClick={() => onSortChange?.({ by: 'status', direction: 'asc' })}
+          type="button"
+        >
+          change-sort
+        </button>
+        <button
+          onClick={() => onSortChange?.({ by: 'uniqueId', direction: 'desc' })}
+          type="button"
+        >
+          change-sort-desc
+        </button>
+        <button
+          onClick={() =>
+            onVisibleColumnsChange?.(['uniqueId', 'description', 'status'])
+          }
+          type="button"
+        >
+          change-columns
+        </button>
+        <button
+          onClick={() => onColumnWidthsChange?.({ status: 220, type: 200 })}
+          type="button"
+        >
+          change-widths
+        </button>
+        <button
+          disabled={!hasMore}
+          onClick={() => onLoadMore?.()}
+          type="button"
+        >
+          load-more
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('@/app/[locale]/kravkatalog/[id]/requirement-detail-client', () => ({
@@ -297,6 +321,7 @@ describe('KravkatalogClient', () => {
     storageGetItem.mockReset()
     storageGetItem.mockImplementation(() => null)
     storageSetItem.mockReset()
+    tableState.renderSpy.mockReset()
     Object.defineProperty(window, 'print', {
       configurable: true,
       value: printMock,
@@ -319,6 +344,74 @@ describe('KravkatalogClient', () => {
         setItem: storageSetItem,
       },
       writable: true,
+    })
+  })
+
+  it('waits for hydrated preferences and the first row response before mounting the table', async () => {
+    const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey('sv')
+    const initialRequirementsResponse = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+
+    storageGetItem.mockImplementation((key: string) => {
+      if (key === REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY) {
+        return '["area","status"]'
+      }
+      if (key === columnWidthsStorageKey) {
+        return '{"status":220}'
+      }
+      return null
+    })
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: storageGetItem,
+        setItem: storageSetItem,
+      },
+      writable: true,
+    })
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return initialRequirementsResponse.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return Promise.resolve(metadataResponse)
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    expect(screen.getByTestId('requirements-card-loading')).toBeTruthy()
+    expect(screen.getByText('loadingRequirements')).toBeTruthy()
+    expect(screen.queryByTestId('requirements-table')).toBeNull()
+    expect(tableState.renderSpy).not.toHaveBeenCalled()
+
+    initialRequirementsResponse.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('visible-columns').textContent).toBe(
+        'uniqueId,description,area,status',
+      ),
+    )
+
+    expect(screen.queryByTestId('requirements-card-loading')).toBeNull()
+    expect(tableState.renderSpy).toHaveBeenCalled()
+    expect(tableState.renderSpy.mock.calls[0]?.[0]).toMatchObject({
+      columnWidths: { status: 220 },
+      loading: false,
+      rows: [expect.objectContaining({ uniqueId: 'INT0001' })],
+      visibleColumns: ['uniqueId', 'description', 'area', 'status'],
     })
   })
 
@@ -349,7 +442,7 @@ describe('KravkatalogClient', () => {
 
     const tableCard = Array.from(container.querySelectorAll('div')).find(node =>
       node.className.includes(
-        'backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden',
+        'relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm',
       ),
     )
 

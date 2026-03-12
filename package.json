@@ -54,7 +54,7 @@
     "db:setup": "npm run db:reset && npm run db:migrate && npm run db:seed",
     "db:browse": "find .wrangler -name '*.sqlite' -print0 | xargs -0 -r code",
     "db:studio": "drizzle-kit studio",
-    "check:port": "ss -ltnp | grep ':3000' || true",
+    "check:port": "node ./scripts/check-port.js",
     "kill:port": "bash ./scripts/kill-dev-server.sh"
   },
   "dependencies": {

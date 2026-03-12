@@ -378,13 +378,36 @@ describe('RequirementsTable', () => {
     )
   })
 
-  it('renders loading state when loading is true', () => {
+  it('does not render empty state while loading with no rows', () => {
     vi.useFakeTimers()
     render(<RequirementsTable loading locale="sv" rows={[]} />)
+
+    expect(screen.queryByText('noResults')).toBeNull()
     expect(screen.queryByText('loadingRequirements')).toBeNull()
+
     act(() => vi.advanceTimersByTime(1000))
+
     expect(screen.getByText('loadingRequirements')).toBeTruthy()
-    expect(screen.queryByText('noResults')).toBeTruthy()
+    expect(screen.queryByText('noResults')).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('shows the delayed spinner during background refreshes without hiding rows', () => {
+    vi.useFakeTimers()
+    render(<RequirementsTable loading locale="sv" rows={[makeRow()]} />)
+
+    expect(screen.getByText('INT0001')).toBeTruthy()
+    expect(screen.queryByText('loadingRequirements')).toBeNull()
+    expect(screen.queryByText('noResults')).toBeNull()
+
+    act(() => vi.advanceTimersByTime(999))
+
+    expect(screen.queryByText('loadingRequirements')).toBeNull()
+
+    act(() => vi.advanceTimersByTime(1))
+
+    expect(screen.getByText('loadingRequirements')).toBeTruthy()
+    expect(screen.getByText('INT0001')).toBeTruthy()
     vi.useRealTimers()
   })
 

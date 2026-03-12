@@ -48,6 +48,8 @@ The behaviors below apply to the requirement list rendered by:
 
 - Column visibility is controlled from the columns popover.
 - Visibility preferences are persisted in `localStorage`.
+- The first visible table render waits for persisted column visibility and
+  locale-specific width preferences to hydrate from `localStorage`.
 - The reset action restores:
   - the default visible column set
   - the default width model
@@ -58,6 +60,9 @@ The behaviors below apply to the requirement list rendered by:
 - The width storage key is versioned.
   When the resize model changes materially, bump the storage key version to
   avoid reusing incompatible old width data.
+- On initial page load and hard refresh, the list stays in a card-level loading
+  state until both the persisted width model is hydrated and the first rows
+  request resolves.
 - `description` is the only grow column in the default layout.
 - If there are no manual width overrides for the currently visible columns,
   `description` absorbs spare horizontal space.
@@ -125,6 +130,14 @@ The behaviors below apply to the requirement list rendered by:
 - The right fade appears when more content exists off-screen to the right.
 - The left fade appears after the user has scrolled horizontally.
 - The fades must remain subtle enough to act as a cue, not as a primary visual element.
+
+## Loading and Empty State
+
+- The empty state is rendered only after a list request finishes with zero rows.
+- While the first rows request is pending, the table is not mounted yet and the
+  card-level loading state is shown instead.
+- During later filter or sort refreshes, the current rows stay visible and the
+  delayed in-table spinner may appear if the refresh lasts long enough.
 
 ## Contributor Guardrails
 

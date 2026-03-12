@@ -102,9 +102,13 @@ export default function KravkatalogClient() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
     useState(false)
+  const [hasResolvedInitialRows, setHasResolvedInitialRows] = useState(false)
   const [hydratedColumnWidthsStorageKey, setHydratedColumnWidthsStorageKey] =
     useState<string | null>(null)
   const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey(locale)
+  const columnPreferencesReady =
+    hasLoadedColumnPreferences &&
+    hydratedColumnWidthsStorageKey === columnWidthsStorageKey
 
   // Stable ref so the onChange callback always sees the latest selectedId
   const selectedIdRef = useRef<number | null>(null)
@@ -192,6 +196,7 @@ export default function KravkatalogClient() {
     } finally {
       if (requestId === latestFetchDataRequestIdRef.current) {
         setLoading(false)
+        setHasResolvedInitialRows(true)
       }
     }
   }, [refreshRows])
@@ -306,6 +311,8 @@ export default function KravkatalogClient() {
   }, [])
 
   useEffect(() => {
+    setHasResolvedInitialRows(false)
+
     try {
       setColumnWidths(
         parseRequirementColumnWidths(
@@ -350,12 +357,12 @@ export default function KravkatalogClient() {
   }, [columnWidths, columnWidthsStorageKey, hydratedColumnWidthsStorageKey])
 
   useEffect(() => {
-    if (!hasLoadedColumnPreferences) {
+    if (!columnPreferencesReady) {
       return
     }
 
     fetchData()
-  }, [fetchData, hasLoadedColumnPreferences])
+  }, [columnPreferencesReady, fetchData])
 
   const displayRows = useMemo(() => {
     if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {
@@ -377,6 +384,8 @@ export default function KravkatalogClient() {
     () => (pinnedRow ? new Set([pinnedRow.id]) : undefined),
     [pinnedRow],
   )
+  const shouldShowInitialLoadingState =
+    !columnPreferencesReady || !hasResolvedInitialRows
 
   const handleExport = async () => {
     const params = buildRequirementListParams({
@@ -401,76 +410,89 @@ export default function KravkatalogClient() {
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
-          <RequirementsTable
-            areas={areas}
-            categories={categories}
-            columnWidths={columnWidths}
-            expandedId={selectedId}
-            filterValues={filters}
-            floatingActions={[
-              {
-                ariaLabel: t('newRequirement'),
-                href: '/kravkatalog/ny',
-                icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                id: 'create',
-                position: 'beforeColumns',
-                variant: 'primary',
-              },
-              {
-                ariaLabel: tc('print'),
-                icon: <Printer aria-hidden="true" className="h-4 w-4" />,
-                id: 'print',
-                onClick: () => globalThis.print(),
-              },
-              {
-                ariaLabel: tc('export'),
-                icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                id: 'export',
-                onClick: handleExport,
-              },
-            ]}
-            getName={getName}
-            getStatusName={getStatusName}
-            hasMore={hasMore}
-            loading={loading}
-            loadingMore={loadingMore}
-            locale={locale}
-            onColumnWidthsChange={setColumnWidths}
-            onFilterChange={val => {
-              setFilters(val)
-              setSelectedId(null)
-              setPinnedRow(null)
-            }}
-            onLoadMore={loadMore}
-            onRowClick={id => {
-              setSelectedId(prev => {
-                const next = prev === id ? null : id
-                if (next === null) setPinnedRow(null)
-                return next
-              })
-            }}
-            onSortChange={setSortState}
-            onVisibleColumnsChange={setVisibleColumns}
-            pinnedIds={pinnedIds}
-            renderExpanded={id => (
-              <RequirementDetailClient
-                inline
-                onChange={refreshRows}
-                onClose={() => {
-                  setSelectedId(null)
-                  fetchData()
-                }}
-                requirementId={id}
-              />
-            )}
-            rows={displayRows}
-            sortState={sortState}
-            statusOptions={statusOptions}
-            typeCategories={typeCategories}
-            types={types}
-            visibleColumns={visibleColumns}
-          />
+        <div className="relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-secondary-900/60">
+          {shouldShowInitialLoadingState ? (
+            <div
+              aria-live="polite"
+              className="flex min-h-[20rem] flex-col items-center justify-center gap-3 px-6 py-16"
+              data-testid="requirements-card-loading"
+            >
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
+              <p className="text-secondary-600 dark:text-secondary-400">
+                {tc('loadingRequirements')}
+              </p>
+            </div>
+          ) : (
+            <RequirementsTable
+              areas={areas}
+              categories={categories}
+              columnWidths={columnWidths}
+              expandedId={selectedId}
+              filterValues={filters}
+              floatingActions={[
+                {
+                  ariaLabel: t('newRequirement'),
+                  href: '/kravkatalog/ny',
+                  icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                  id: 'create',
+                  position: 'beforeColumns',
+                  variant: 'primary',
+                },
+                {
+                  ariaLabel: tc('print'),
+                  icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                  id: 'print',
+                  onClick: () => globalThis.print(),
+                },
+                {
+                  ariaLabel: tc('export'),
+                  icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                  id: 'export',
+                  onClick: handleExport,
+                },
+              ]}
+              getName={getName}
+              getStatusName={getStatusName}
+              hasMore={hasMore}
+              loading={loading}
+              loadingMore={loadingMore}
+              locale={locale}
+              onColumnWidthsChange={setColumnWidths}
+              onFilterChange={val => {
+                setFilters(val)
+                setSelectedId(null)
+                setPinnedRow(null)
+              }}
+              onLoadMore={loadMore}
+              onRowClick={id => {
+                setSelectedId(prev => {
+                  const next = prev === id ? null : id
+                  if (next === null) setPinnedRow(null)
+                  return next
+                })
+              }}
+              onSortChange={setSortState}
+              onVisibleColumnsChange={setVisibleColumns}
+              pinnedIds={pinnedIds}
+              renderExpanded={id => (
+                <RequirementDetailClient
+                  inline
+                  onChange={refreshRows}
+                  onClose={() => {
+                    setSelectedId(null)
+                    fetchData()
+                  }}
+                  requirementId={id}
+                />
+              )}
+              rows={displayRows}
+              sortState={sortState}
+              statusOptions={statusOptions}
+              typeCategories={typeCategories}
+              types={types}
+              visibleColumns={visibleColumns}
+            />
+          )}
         </div>
       </div>
     </div>
