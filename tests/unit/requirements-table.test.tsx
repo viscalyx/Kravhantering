@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
   DEFAULT_FILTERS,
@@ -13,8 +13,20 @@ const mockPush = vi.fn()
 const resizeObserverObserve = vi.fn()
 const resizeObserverDisconnect = vi.fn()
 const DEFAULT_COLUMN_WIDTHS = [150, 360, 136, 152, 148, 176]
+const DEFAULT_VIEWPORT_WIDTH = 1024
 
 let resizeObserverCallback: ResizeObserverCallback | null = null
+
+function setViewportWidth(width: number) {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: width,
+  })
+  Object.defineProperty(document.documentElement, 'clientWidth', {
+    configurable: true,
+    value: width,
+  })
+}
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
@@ -36,6 +48,7 @@ describe('RequirementsTable', () => {
     resizeObserverObserve.mockReset()
     resizeObserverDisconnect.mockReset()
     resizeObserverCallback = null
+    setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -67,6 +80,10 @@ describe('RequirementsTable', () => {
         unobserve() {}
       },
     )
+  })
+
+  afterEach(() => {
+    setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
 
   function makeRow(overrides: Record<string, unknown> = {}) {
@@ -574,6 +591,24 @@ describe('RequirementsTable', () => {
     expect(screen.getByRole('checkbox', { name: 'area' })).not.toBeDisabled()
   })
 
+  it('renders minimum hit areas in the columns popover', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'columns' }))
+
+    const resetButton = screen.getByRole('button', { name: 'resetToDefault' })
+    const statusLabel = screen
+      .getByRole('checkbox', { name: 'status' })
+      .closest('label')
+
+    expect(resetButton.className).toContain('min-h-[44px]')
+    expect(resetButton.className).toContain('min-w-[44px]')
+    expect(statusLabel).toBeTruthy()
+    expect(statusLabel?.className).toContain('min-h-[44px]')
+    expect(statusLabel?.className).toContain('min-w-[44px]')
+    expect(statusLabel?.className).toContain('w-full')
+  })
+
   it('renders the floating pill outside the table header and closes on outside click', () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
@@ -605,14 +640,7 @@ describe('RequirementsTable', () => {
       throw new Error('Expected the scroll container to be rendered.')
     }
 
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      value: 320,
-    })
-    Object.defineProperty(document.documentElement, 'clientWidth', {
-      configurable: true,
-      value: 320,
-    })
+    setViewportWidth(320)
     Object.defineProperty(scrollContainer, 'getBoundingClientRect', {
       configurable: true,
       value: () =>
@@ -969,14 +997,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      value: 200,
-    })
-    Object.defineProperty(document.documentElement, 'clientWidth', {
-      configurable: true,
-      value: 200,
-    })
+    setViewportWidth(200)
 
     const uniqueIdFilterButton = getHeaderFilterButton('uniqueId')
     expect(uniqueIdFilterButton).toBeTruthy()

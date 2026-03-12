@@ -660,9 +660,10 @@ function ColumnsPopover({
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
-  const [pos, setPos] = useState<{ top: number; left: number }>({
+  const [pos, setPos] = useState<{ top: number; left: number; maxH: number }>({
     top: 0,
     left: 0,
+    maxH: 300,
   })
   const [outsidePillPos, setOutsidePillPos] = useState<{
     left: number
@@ -757,6 +758,7 @@ function ColumnsPopover({
               Math.max(rect.right - popoverWidth, minLeft),
               maxLeft,
             ),
+            maxH: Math.max(window.innerHeight - rect.bottom - 16, 44),
           })
         }
         setOpen(value => !value)
@@ -816,14 +818,18 @@ function ColumnsPopover({
       {open &&
         createPortal(
           <div
-            className="fixed z-50 min-w-56 rounded-xl border bg-white p-2 shadow-lg dark:bg-secondary-800"
+            className="fixed z-50 min-w-56 overflow-y-auto rounded-xl border bg-white p-2 shadow-lg dark:bg-secondary-800"
             data-column-picker-popover="true"
             ref={dropRef}
-            style={{ left: Math.max(pos.left, 8), top: pos.top }}
+            style={{
+              left: Math.max(pos.left, 8),
+              maxHeight: pos.maxH,
+              top: pos.top,
+            }}
           >
             <div className="mb-1 border-b pb-1">
               <button
-                className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-secondary-500 transition-colors hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200"
+                className="min-h-[44px] min-w-[44px] w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-secondary-500 transition-colors hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200"
                 onClick={() => {
                   onReset()
                   setOpen(false)
@@ -836,7 +842,7 @@ function ColumnsPopover({
             <div className="space-y-0.5">
               {columns.map(column => (
                 <label
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
+                  className={`flex min-h-[44px] min-w-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
                     !column.canHide ? 'cursor-not-allowed opacity-60' : ''
                   }`}
                   key={column.id}
