@@ -7,12 +7,11 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   test-dev-server:
@@ -115,6 +114,8 @@ jobs:
     name: Comment on PR if tests failed
     if: failure() && github.event_name == 'pull_request'
     needs: [test-dev-server, test-preview-server]
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-latest
 
     steps:
