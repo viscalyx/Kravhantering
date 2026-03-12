@@ -181,6 +181,38 @@ describe('RequirementsTable', () => {
     )
   }
 
+  function ControlledMergedSearchFilterTable() {
+    const [filterValues, setFilterValues] = useState<FilterValues>({
+      ...DEFAULT_FILTERS,
+      uniqueIdSearch: 'seed',
+    })
+
+    return (
+      <div>
+        <button
+          onClick={() =>
+            setFilterValues(previous => ({
+              ...previous,
+              areaIds: [42],
+            }))
+          }
+          type="button"
+        >
+          apply-area-filter
+        </button>
+        <div data-testid="merged-filter-state">
+          {JSON.stringify(filterValues)}
+        </div>
+        <RequirementsTable
+          filterValues={filterValues}
+          locale="sv"
+          onFilterChange={setFilterValues}
+          rows={[makeRow()]}
+        />
+      </div>
+    )
+  }
+
   function getTableContent(container: HTMLElement) {
     return container.querySelector(
       '[data-requirements-scroll-container="true"] > div:last-child',
@@ -729,6 +761,38 @@ describe('RequirementsTable', () => {
     vi.useRealTimers()
   })
 
+  it('merges pending search commits with newer filter updates', () => {
+    vi.useFakeTimers()
+
+    render(<ControlledMergedSearchFilterTable />)
+
+    const [filterButton] = screen.getAllByRole('button', { name: 'filterBy' })
+    expect(filterButton).toBeDefined()
+    if (!filterButton) {
+      throw new Error('Expected filter button to be rendered.')
+    }
+
+    fireEvent.click(filterButton)
+    fireEvent.change(screen.getByRole('textbox', { name: 'uniqueId' }), {
+      target: { value: 'pending-search' },
+    })
+
+    fireEvent.click(screen.getByText('apply-area-filter'))
+    act(() => vi.advanceTimersByTime(400))
+
+    expect(screen.getByTestId('merged-filter-state').textContent).toContain(
+      '"statuses":[3]',
+    )
+    expect(screen.getByTestId('merged-filter-state').textContent).toContain(
+      '"uniqueIdSearch":"pending-search"',
+    )
+    expect(screen.getByTestId('merged-filter-state').textContent).toContain(
+      '"areaIds":[42]',
+    )
+
+    vi.useRealTimers()
+  })
+
   it('renders filter buttons with 44px touch targets', () => {
     render(
       <RequirementsTable
@@ -872,6 +936,18 @@ describe('RequirementsTable', () => {
     expect(
       screen.getAllByRole('button', { name: 'resizeColumn' }),
     ).toHaveLength(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS.length - 1)
+    expect(getResizeHandle(container, 'description')?.className).toContain(
+      'min-w-[44px]',
+    )
+    expect(getResizeHandle(container, 'description')?.className).toContain(
+      'min-h-[44px]',
+    )
+    expect(getResizeHandle(container, 'description')?.className).toContain(
+      'before:w-px',
+    )
+    expect(getResizeHandle(container, 'description')?.className).not.toContain(
+      'w-6',
+    )
     expect(
       container.querySelector('[data-column-resize-handle="status"]'),
     ).toBeNull()
@@ -1062,6 +1138,8 @@ describe('RequirementsTable', () => {
     expect(bottomSegment).toBeTruthy()
     expect(bottomSegment?.style.top).toBe('240px')
     expect(bottomSegment?.style.height).toBe('48px')
+    expect(bottomSegment?.className).toContain('min-w-[44px]')
+    expect(bottomSegment?.className).toContain('min-h-[44px]')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
     expect(
       Number.parseInt(topHandle?.style.height ?? '0', 10),

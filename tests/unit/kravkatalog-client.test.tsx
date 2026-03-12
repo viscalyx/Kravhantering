@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import KravkatalogClient from '@/app/[locale]/kravkatalog/kravkatalog-client'
 import {
@@ -33,6 +33,8 @@ vi.mock('@/i18n/routing', () => ({
 
 vi.mock('@/components/RequirementsTable', () => ({
   default: ({
+    areas,
+    categories,
     columnWidths,
     expandedId,
     floatingActions,
@@ -47,8 +49,13 @@ vi.mock('@/components/RequirementsTable', () => ({
     renderExpanded,
     rows,
     sortState,
+    statusOptions,
+    typeCategories,
+    types,
     visibleColumns,
   }: {
+    areas?: Record<string, unknown>[]
+    categories?: Record<string, unknown>[]
     columnWidths?: Record<string, number>
     expandedId?: number | null
     floatingActions?: {
@@ -70,15 +77,23 @@ vi.mock('@/components/RequirementsTable', () => ({
     renderExpanded?: (id: number) => React.ReactNode
     rows?: { id: number; uniqueId: string }[]
     sortState?: { by: string; direction: 'asc' | 'desc' }
+    statusOptions?: Record<string, unknown>[]
+    typeCategories?: Record<string, unknown>[]
+    types?: Record<string, unknown>[]
     visibleColumns?: string[]
   }) => {
     tableState.renderSpy({
+      areas: areas ?? [],
+      categories: categories ?? [],
       columnWidths: columnWidths ?? {},
       hasMore: hasMore ?? false,
       loading: loading ?? false,
       loadingMore: loadingMore ?? false,
       rows: rows ?? [],
       sortState,
+      statusOptions: statusOptions ?? [],
+      typeCategories: typeCategories ?? [],
+      types: types ?? [],
       visibleColumns: visibleColumns ?? [],
     })
 
@@ -689,12 +704,17 @@ describe('KravkatalogClient', () => {
       ]),
     })
 
-    stalePinned.resolve(
-      makeRequirementDetail(1, { uniqueId: 'STALE-PINNED-0001' }),
-    )
+    await act(async () => {
+      stalePinned.resolve(
+        makeRequirementDetail(1, { uniqueId: 'STALE-PINNED-0001' }),
+      )
+      await Promise.resolve()
+    })
 
     await waitFor(() =>
-      expect(screen.getByTestId('row-ids').textContent).toContain('INT0003'),
+      expect(screen.getByTestId('row-ids').textContent).not.toContain(
+        'STALE-PINNED-0001',
+      ),
     )
     expect(screen.getByTestId('row-ids').textContent).toContain(
       'FRESH-PINNED-0001',
@@ -702,6 +722,96 @@ describe('KravkatalogClient', () => {
     expect(screen.getByTestId('row-ids').textContent).not.toContain('INT0002')
     expect(screen.getByTestId('row-ids').textContent).not.toContain(
       'STALE-PINNED-0001',
+    )
+  })
+
+  it('clears a pinned row immediately when selecting a different row', async () => {
+    const initialList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const pinnedList = createDeferredJsonResponse<{
+      pagination: { hasMore: boolean }
+      requirements: ReturnType<typeof makeRequirementRow>[]
+    }>()
+    const pinnedDetail =
+      createDeferredJsonResponse<ReturnType<typeof makeRequirementDetail>>()
+
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        if (
+          url.includes('sortBy=uniqueId') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return initialList.promise
+        }
+        if (
+          url.includes('sortBy=status') &&
+          url.includes('sortDirection=asc')
+        ) {
+          return pinnedList.promise
+        }
+      }
+
+      if (url === '/api/requirements/1') {
+        return pinnedDetail.promise
+      }
+
+      const metadataResponse = mockMetadataFetch(url)
+      if (metadataResponse) {
+        return metadataResponse
+      }
+
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    initialList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(1)],
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+
+    fireEvent.click(screen.getByText('row-1'))
+    fireEvent.click(screen.getByText('change-sort'))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('sortBy=status'),
+      ),
+    )
+
+    pinnedList.resolve({
+      pagination: { hasMore: false },
+      requirements: [makeRequirementRow(3)],
+    })
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirements/1'),
+    )
+
+    pinnedDetail.resolve(makeRequirementDetail(1, { uniqueId: 'PINNED-0001' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toContain(
+        'PINNED-0001',
+      ),
+    )
+
+    fireEvent.click(screen.getByText('row-3'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0003'),
+    )
+    expect(screen.getByTestId('row-ids').textContent).not.toContain(
+      'PINNED-0001',
     )
   })
 
@@ -995,6 +1105,88 @@ describe('KravkatalogClient', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/requirements?'),
       ),
+    )
+  })
+
+  it('keeps successful metadata filters when one metadata request fails', async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.startsWith('/api/requirements?')) {
+        return okJson({
+          pagination: { hasMore: false },
+          requirements: [makeRequirementRow(1)],
+        })
+      }
+
+      if (url === '/api/requirement-areas') {
+        return Promise.reject(new Error('Areas fetch failed'))
+      }
+      if (url === '/api/requirement-categories') {
+        return okJson({
+          categories: [
+            {
+              id: 11,
+              nameEn: 'Business requirement',
+              nameSv: 'Verksamhetskrav',
+            },
+          ],
+        })
+      }
+      if (url === '/api/requirement-types') {
+        return okJson({
+          types: [
+            {
+              id: 12,
+              nameEn: 'Functional',
+              nameSv: 'Funktionellt',
+            },
+          ],
+        })
+      }
+      if (url === '/api/requirement-type-categories') {
+        return okJson({
+          typeCategories: [
+            {
+              id: 13,
+              nameEn: 'Parent',
+              nameSv: 'Foralder',
+              parentId: null,
+            },
+          ],
+        })
+      }
+      if (url === '/api/requirement-statuses') {
+        return okJson({
+          statuses: [
+            {
+              color: '#22c55e',
+              id: 14,
+              nameEn: 'Published',
+              nameSv: 'Publicerad',
+              sortOrder: 14,
+            },
+          ],
+        })
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
+    )
+    await waitFor(() =>
+      expect(tableState.renderSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+        areas: [],
+        categories: [expect.objectContaining({ id: 11 })],
+        statusOptions: [expect.objectContaining({ id: 14 })],
+        typeCategories: [expect.objectContaining({ id: 13 })],
+        types: [expect.objectContaining({ id: 12 })],
+      }),
     )
   })
 })

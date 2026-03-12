@@ -69,7 +69,10 @@ test.describe('Requirements table column picker', () => {
         if (triggerBox && scrollBox && viewportSize) {
           const railMargin = 8
           const expectedLeft = Math.min(
-            Math.max(Math.round(scrollBox.x + scrollBox.width + 12), railMargin),
+            Math.max(
+              Math.round(scrollBox.x + scrollBox.width + 12),
+              railMargin,
+            ),
             viewportSize.width - Math.round(triggerBox.width) - railMargin,
           )
           expect(

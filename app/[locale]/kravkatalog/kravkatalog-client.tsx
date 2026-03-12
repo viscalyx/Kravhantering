@@ -234,6 +234,20 @@ export default function KravkatalogClient() {
     locale === 'sv' ? opt.nameSv : opt.nameEn
 
   useEffect(() => {
+    const readFilterResponse = async <T,>(
+      result: PromiseSettledResult<Response>,
+    ): Promise<T | null> => {
+      if (result.status !== 'fulfilled' || !result.value.ok) {
+        return null
+      }
+
+      try {
+        return (await result.value.json()) as T
+      } catch {
+        return null
+      }
+    }
+
     const fetchFilters = async () => {
       const [
         areasRes,
@@ -241,7 +255,7 @@ export default function KravkatalogClient() {
         typesRes,
         typeCategoriesRes,
         statusesRes,
-      ] = await Promise.all([
+      ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
@@ -249,31 +263,35 @@ export default function KravkatalogClient() {
         fetch('/api/requirement-statuses'),
       ])
 
-      if (areasRes.ok) {
-        const data = (await areasRes.json()) as { areas?: AreaOption[] }
-        setAreas(data.areas ?? [])
+      const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
+        areasRes,
+      )
+      if (areasData) {
+        setAreas(areasData.areas ?? [])
       }
-      if (categoriesRes.ok) {
-        const data = (await categoriesRes.json()) as {
-          categories?: FilterOption[]
-        }
-        setCategories(data.categories ?? [])
+      const categoriesData = await readFilterResponse<{
+        categories?: FilterOption[]
+      }>(categoriesRes)
+      if (categoriesData) {
+        setCategories(categoriesData.categories ?? [])
       }
-      if (typesRes.ok) {
-        const data = (await typesRes.json()) as { types?: FilterOption[] }
-        setTypes(data.types ?? [])
+      const typesData = await readFilterResponse<{ types?: FilterOption[] }>(
+        typesRes,
+      )
+      if (typesData) {
+        setTypes(typesData.types ?? [])
       }
-      if (typeCategoriesRes.ok) {
-        const data = (await typeCategoriesRes.json()) as {
-          typeCategories?: TypeCategoryOption[]
-        }
-        setTypeCategories(data.typeCategories ?? [])
+      const typeCategoriesData = await readFilterResponse<{
+        typeCategories?: TypeCategoryOption[]
+      }>(typeCategoriesRes)
+      if (typeCategoriesData) {
+        setTypeCategories(typeCategoriesData.typeCategories ?? [])
       }
-      if (statusesRes.ok) {
-        const data = (await statusesRes.json()) as {
-          statuses?: StatusOption[]
-        }
-        setStatusOptions(data.statuses ?? [])
+      const statusesData = await readFilterResponse<{
+        statuses?: StatusOption[]
+      }>(statusesRes)
+      if (statusesData) {
+        setStatusOptions(statusesData.statuses ?? [])
       }
     }
 
@@ -459,7 +477,7 @@ export default function KravkatalogClient() {
               onRowClick={id => {
                 setSelectedId(prev => {
                   const next = prev === id ? null : id
-                  if (next === null) setPinnedRow(null)
+                  if (prev !== id || next === null) setPinnedRow(null)
                   return next
                 })
               }}
