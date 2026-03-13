@@ -3,6 +3,7 @@
 import { Check, Palette } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
+import { applyDocumentThemeChange } from '@/lib/theme/apply-document-theme-change'
 
 const THEMES = [
   {
@@ -59,14 +60,31 @@ const THEMES = [
 
 type ThemeId = (typeof THEMES)[number]['id']
 
+function syncColorThemeAttribute(id: ThemeId) {
+  const root = document.documentElement
+  const current = root.getAttribute('data-theme')
+
+  if ((id === 'default' && current === null) || current === id) {
+    return
+  }
+
+  applyDocumentThemeChange(() => {
+    if (id === 'default') {
+      root.removeAttribute('data-theme')
+    } else {
+      root.setAttribute('data-theme', id)
+    }
+  })
+}
+
 function applyColorTheme(id: ThemeId) {
   if (id === 'default') {
-    document.documentElement.removeAttribute('data-theme')
     localStorage.removeItem('colorTheme')
   } else {
-    document.documentElement.setAttribute('data-theme', id)
     localStorage.setItem('colorTheme', id)
   }
+
+  syncColorThemeAttribute(id)
 }
 
 export default function ThemePicker() {
@@ -80,7 +98,7 @@ export default function ThemePicker() {
     const stored = localStorage.getItem('colorTheme') as ThemeId | null
     if (stored && THEMES.some(th => th.id === stored)) {
       setActive(stored)
-      document.documentElement.setAttribute('data-theme', stored)
+      syncColorThemeAttribute(stored)
     }
   }, [])
 
