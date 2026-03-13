@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useMemo, useRef, useState } from 'react'
-import { Link } from '@/i18n/routing'
+import { Link, useRouter } from '@/i18n/routing'
 import {
   getOrderedRequirementListColumns,
   getRequirementColumnDefinition,
@@ -51,6 +51,7 @@ export default function AdminClient({
   const tn = useTranslations('nav')
   const tr = useTranslations('requirement')
   const terminologyLabel = useTranslations('terminology')
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('terminology')
   const [activeLocale, setActiveLocale] = useState<UiLocale>('sv')
   const [savedTerminology, setSavedTerminology] = useState(initialTerminology)
@@ -170,6 +171,7 @@ export default function AdminClient({
       setTerminology(nextTerminology)
       setSavedTerminology(nextTerminology)
       setTerminologySaveState('saved')
+      router.refresh()
     } catch {
       if (requestToken === terminologySaveTokenRef.current) {
         setTerminologySaveState('error')
