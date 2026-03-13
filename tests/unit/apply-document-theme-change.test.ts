@@ -118,13 +118,8 @@ describe('applyDocumentThemeChange', () => {
   it('falls back to timeout cleanup when requestAnimationFrame is unavailable', () => {
     vi.useFakeTimers()
 
-    const originalRequestAnimationFrame = window.requestAnimationFrame
     const setTimeoutSpy = vi.spyOn(window, 'setTimeout')
-
-    Object.defineProperty(window, 'requestAnimationFrame', {
-      configurable: true,
-      value: undefined,
-    })
+    vi.stubGlobal('requestAnimationFrame', undefined)
 
     try {
       applyDocumentThemeChange(() => {
@@ -139,10 +134,7 @@ describe('applyDocumentThemeChange', () => {
 
       expect(getGuardStyle()).toBeNull()
     } finally {
-      Object.defineProperty(window, 'requestAnimationFrame', {
-        configurable: true,
-        value: originalRequestAnimationFrame,
-      })
+      vi.unstubAllGlobals()
       vi.useRealTimers()
     }
   })
