@@ -208,7 +208,9 @@ describe('handleRequirementsMcpRequest', () => {
         ? firstViewResource.text
         : undefined
     expect(viewText).toContain('<!doctype html>')
+    expect(viewText).toContain('MCP Requirement View')
     expect(viewText).toContain('Requirement text')
+    expect(viewText).toContain('References')
     expect(fakeService.getRequirement).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

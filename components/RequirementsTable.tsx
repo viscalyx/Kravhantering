@@ -153,6 +153,29 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   }, [hasMenu])
 
   useEffect(() => {
+    if (!hasMenu || !open) {
+      return
+    }
+
+    const firstMenuItem = menuRef.current?.querySelector('a[href]')
+    if (firstMenuItem instanceof HTMLElement) {
+      firstMenuItem.focus()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [hasMenu, open])
+
+  useEffect(() => {
     if (!hasMenu || !open || !triggerRef.current) {
       return
     }
@@ -207,8 +230,8 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     return (
       <div className="relative" ref={wrapperRef}>
         <button
+          aria-controls={open ? `floating-action-menu-${action.id}` : undefined}
           aria-expanded={open}
-          aria-haspopup="menu"
           aria-label={action.ariaLabel}
           className={getFloatingPillClassName(variant)}
           data-floating-action-id={action.id}
@@ -238,30 +261,30 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                 <div
                   className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
                   data-floating-action-menu={action.id}
+                  id={`floating-action-menu-${action.id}`}
                   ref={menuRef}
-                  role="menu"
                   style={{ maxHeight: menuPosition.maxHeight }}
                 >
-                  <div className="space-y-1">
+                  <ul className="space-y-1">
                     {action.menuItems?.map(item => (
-                      <Link
-                        className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70"
-                        href={item.href}
-                        key={item.id}
-                        onClick={() => setOpen(false)}
-                        role="menuitem"
-                      >
-                        <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                          {item.label}
-                        </div>
-                        {item.description ? (
-                          <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
-                            {item.description}
+                      <li key={item.id}>
+                        <Link
+                          className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                          href={item.href}
+                          onClick={() => setOpen(false)}
+                        >
+                          <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                            {item.label}
                           </div>
-                        ) : null}
-                      </Link>
+                          {item.description ? (
+                            <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                              {item.description}
+                            </div>
+                          ) : null}
+                        </Link>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               </div>,
               document.body,

@@ -98,6 +98,8 @@ describe('ui terminology helpers', () => {
     ])
 
     expect(terminology.area.sv.singular).toBe('Område')
+    expect(terminology.references.en.plural).toBe('References')
+    expect(terminology.mcpRequirementView.sv.singular).toBe('Kravvy från MCP')
     expect(getRequirementCsvHeaders('en', terminology)).toEqual([
       'Requirement ID',
       'Traceability marker',

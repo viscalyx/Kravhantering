@@ -21,6 +21,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Link } from '@/i18n/routing'
 import {
   getOrderedRequirementListColumns,
+  getRequirementColumnDefinition,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
 import {
@@ -115,16 +116,24 @@ export default function AdminClient({
 
   const toggleColumnVisibility = (columnId: string) => {
     setColumnDefaults(current =>
-      current.map(column =>
-        column.columnId === columnId &&
-        column.columnId !== 'uniqueId' &&
-        column.columnId !== 'description'
-          ? {
-              ...column,
-              defaultVisible: !column.defaultVisible,
-            }
-          : column,
-      ),
+      current.map(column => {
+        if (column.columnId !== columnId) {
+          return column
+        }
+
+        const definition = getRequirementColumnDefinition(column.columnId)
+        if (!definition?.canHide) {
+          return {
+            ...column,
+            defaultVisible: true,
+          }
+        }
+
+        return {
+          ...column,
+          defaultVisible: !column.defaultVisible,
+        }
+      }),
     )
     setColumnSaveState('idle')
   }
@@ -333,7 +342,7 @@ export default function AdminClient({
                 <div className="inline-flex rounded-full border border-secondary-200/80 bg-secondary-50/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-950/50">
                   {(['sv', 'en'] as const).map(locale => (
                     <button
-                      className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      className={`min-h-[44px] min-w-[44px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         activeLocale === locale
                           ? 'bg-primary-700 text-white'
                           : 'text-secondary-700 hover:bg-white dark:text-secondary-200 dark:hover:bg-secondary-800'
@@ -352,7 +361,7 @@ export default function AdminClient({
                   ta('terminologySaveError'),
                 )}
                 <button
-                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={isTerminologySaving}
                   onClick={() => {
                     setTerminology(savedTerminology)
@@ -364,7 +373,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                   disabled={isTerminologySaving}
                   onClick={saveTerminology}
                   type="button"
@@ -464,7 +473,7 @@ export default function AdminClient({
               <div className="flex items-center gap-3">
                 {renderSaveState(columnSaveState, ta('columnsSaveError'))}
                 <button
-                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={isColumnSaving}
                   onClick={() => {
                     setColumnDefaults(savedColumnDefaults)
@@ -476,7 +485,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
                   disabled={isColumnSaving}
                   onClick={saveColumns}
                   type="button"

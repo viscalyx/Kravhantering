@@ -119,6 +119,34 @@ describe('admin terminology route', () => {
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
   })
 
+  it('rejects payloads that duplicate an allowed key and omit another key', async () => {
+    const terminology = normalizeUiTerminology([])
+    const payload = buildUiTerminologyPayload(terminology)
+    const duplicateKeyPayload = payload.map((entry, index) =>
+      index === 1
+        ? {
+            ...entry,
+            key: payload[0].key,
+          }
+        : entry,
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/terminology', {
+        body: JSON.stringify({
+          terminology: duplicateKeyPayload,
+        }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { error?: string }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe(
+      'Each terminology key must be provided exactly once.',
+    )
+    expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
+  })
   it('saves a valid terminology payload and returns the normalized response body', async () => {
     const terminology = normalizeUiTerminology([
       {

@@ -260,7 +260,7 @@ function renderRequirementHtml(
     '<body>',
     '  <main>',
     '    <article class="card">',
-    `      <div class="eyebrow">${escapeHtml(locale === 'sv' ? 'Kravvy från MCP' : 'MCP Requirement View')}</div>`,
+    `      <div class="eyebrow">${escapeHtml(getLocalizedUiTerm(terminology, 'mcpRequirementView', locale, 'singular'))}</div>`,
     `      <h1>${escapeHtml(title)}</h1>`,
     '      <div class="meta">',
     `        <span class="pill">${escapeHtml(statusLabel ?? 'Unknown')}</span>`,
@@ -282,7 +282,7 @@ function renderRequirementHtml(
     '        </div>',
     '      </section>',
     '      <section class="split">',
-    `        <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Referenser' : 'References')}</h2>${referenceMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'references', locale, 'plural'))}</h2>${referenceMarkup}</section>`,
     `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'scenario', locale, 'plural'))}</h2>${scenarioMarkup}</section>`,
     '      </section>',
     '    </article>',
@@ -483,7 +483,7 @@ export function createKravhanteringMcpServer(
   uiSettings: Pick<UiSettingsLoader, 'getTerminology'> = {
     getTerminology: async () => getDefaultUiTerminology(),
   },
-) {
+): McpServer {
   const server = new McpServer(
     {
       name: 'kravhantering-mcp-server',
@@ -804,7 +804,7 @@ export function createKravhanteringMcpServer(
 export function createRequirementsMcpServerFromDb(
   db: Parameters<typeof createRequirementsService>[0],
   request: Request,
-) {
+): McpServer {
   const uiSettings = createUiSettingsLoader(db)
   const service = createRequirementsService(db, { uiSettings })
   return createKravhanteringMcpServer(service, request, uiSettings)

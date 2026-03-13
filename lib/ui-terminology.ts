@@ -12,6 +12,8 @@ export const UI_TERM_KEYS = [
   'responsibilityArea',
   'implementationType',
   'referenceData',
+  'references',
+  'mcpRequirementView',
 ] as const
 
 export type UiTermKey = (typeof UI_TERM_KEYS)[number]
@@ -93,6 +95,8 @@ const MESSAGE_BINDINGS: Record<
     ],
     singular: [['nav', 'referenceData']],
   },
+  references: {},
+  mcpRequirementView: {},
 }
 
 export const DEFAULT_UI_TERMINOLOGY: Record<
@@ -253,6 +257,30 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       definitePlural: 'Referensdata',
       plural: 'Referensdata',
       singular: 'Referensdata',
+    },
+  },
+  references: {
+    en: {
+      definitePlural: 'References',
+      plural: 'References',
+      singular: 'Reference',
+    },
+    sv: {
+      definitePlural: 'Referenserna',
+      plural: 'Referenser',
+      singular: 'Referens',
+    },
+  },
+  mcpRequirementView: {
+    en: {
+      definitePlural: 'MCP Requirement View',
+      plural: 'MCP Requirement View',
+      singular: 'MCP Requirement View',
+    },
+    sv: {
+      definitePlural: 'Kravvy från MCP',
+      plural: 'Kravvy från MCP',
+      singular: 'Kravvy från MCP',
     },
   },
 }

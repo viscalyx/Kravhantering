@@ -140,6 +140,39 @@ describe('AdminClient', () => {
     expect(terminologyTab.className).toContain('shrink-0')
   })
 
+  it('uses 44px touch targets for locale toggles and admin save/reset buttons', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const englishButton = screen.getByRole('button', { name: 'admin.english' })
+    const terminologyResetButton = screen.getByRole('button', {
+      name: 'common.resetToDefault',
+    })
+    const terminologySaveButton = screen.getByRole('button', {
+      name: 'common.save',
+    })
+
+    expect(englishButton.className).toContain('min-h-[44px]')
+    expect(englishButton.className).toContain('min-w-[44px]')
+    expect(terminologyResetButton.className).toContain('min-h-[44px]')
+    expect(terminologySaveButton.className).toContain('min-w-[44px]')
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.columns' }))
+
+    const columnResetButton = screen.getByRole('button', {
+      name: 'common.resetToDefault',
+    })
+    const columnSaveButton = screen.getByRole('button', { name: 'common.save' })
+
+    expect(columnResetButton.className).toContain('min-h-[44px]')
+    expect(columnSaveButton.className).toContain('min-w-[44px]')
+  })
   it('disables terminology controls while saving and shows an error when the save request fails', async () => {
     const pendingRequest = deferred<Response>()
     fetchMock.mockReturnValueOnce(pendingRequest.promise)

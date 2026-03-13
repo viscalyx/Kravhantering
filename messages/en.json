@@ -303,6 +303,16 @@
       "singular": "Reference data",
       "plural": "Reference data",
       "definitePlural": "Reference data"
+    },
+    "references": {
+      "singular": "Reference",
+      "plural": "References",
+      "definitePlural": "References"
+    },
+    "mcpRequirementView": {
+      "singular": "MCP Requirement View",
+      "plural": "MCP Requirement View",
+      "definitePlural": "MCP Requirement View"
     }
   },
   "footer": {

@@ -3,10 +3,13 @@ import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { getUiTerminology } from '@/lib/dal/ui-settings'
 import { getDb } from '@/lib/db'
+import { createRequirementsLogger } from '@/lib/requirements/logging'
 import { getLocalizedUiTerm, type UiLocale } from '@/lib/ui-terminology'
 import VersionDetailClient from './version-detail-client'
 
 type Params = Promise<{ id: string; locale: UiLocale; version: string }>
+
+const logger = createRequirementsLogger()
 
 export async function generateMetadata({
   params,
@@ -21,7 +24,12 @@ export async function generateMetadata({
     return {
       title: getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
     }
-  } catch {
+  } catch (err) {
+    logger.error('version_detail_page.metadata_load_failed', {
+      error: err instanceof Error ? err.message : 'Unknown metadata load error',
+      locale,
+      operation: 'getCloudflareContext -> getDb -> getUiTerminology',
+    })
     const t = await getTranslations('common')
     return { title: t('version') }
   }

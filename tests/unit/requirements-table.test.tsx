@@ -786,6 +786,49 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('renders floating action menus as semantic lists with native links and touch-target classes', async () => {
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                description: 'Open admin settings',
+                href: '/sv/admin',
+                id: 'admin',
+                label: 'Admin',
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+
+    await waitFor(() => {
+      const menu = document.querySelector(
+        '[data-floating-action-menu="manage"]',
+      ) as HTMLDivElement | null
+      const list = menu?.querySelector('ul')
+      const item = list?.querySelector('li')
+      const link = screen.getByRole('link', { name: /Admin/ })
+
+      expect(menu).toBeTruthy()
+      expect(menu?.getAttribute('role')).toBeNull()
+      expect(list).toBeTruthy()
+      expect(item).toBeTruthy()
+      expect(link.getAttribute('role')).toBeNull()
+      expect(link.className).toContain('min-h-[44px]')
+      expect(link.className).toContain('min-w-[44px]')
+      expect(link.className).toContain('focus-visible:ring-2')
+    })
+  })
   it('clears hidden column filters and resets hidden active sort', () => {
     const onFilterChange = vi.fn()
     const onSortChange = vi.fn()

@@ -303,6 +303,16 @@
       "singular": "Referensdata",
       "plural": "Referensdata",
       "definitePlural": "Referensdata"
+    },
+    "references": {
+      "singular": "Referens",
+      "plural": "Referenser",
+      "definitePlural": "Referenserna"
+    },
+    "mcpRequirementView": {
+      "singular": "Kravvy från MCP",
+      "plural": "Kravvy från MCP",
+      "definitePlural": "Kravvy från MCP"
     }
   },
   "footer": {

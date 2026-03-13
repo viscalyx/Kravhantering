@@ -30,11 +30,11 @@ applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts
 - Update both `messages/en.json` and `messages/sv.json` with fallback labels.
 - Bind all visible labels to translation keys. Do not hardcode labels in list headers, edit forms, inline detail panes, detail pages, CSV, service output, or MCP HTML.
 - If the new column introduces a new configurable term family, add it to:
-- `UI_TERM_KEYS`
-- default terminology values
-- message bindings
-- admin terminology UI expectations
-- terminology route tests
+  - `UI_TERM_KEYS`
+  - add default terminology values
+  - wire the message bindings
+  - update admin terminology UI expectations
+  - extend the terminology route tests
 
 ## Data Wiring
 
