@@ -165,16 +165,16 @@ for (const { name, viewport } of viewportVariants) {
       const categorySingularInput = categoryCard.getByLabel('Singular')
       const originalCategoryLabel = await categorySingularInput.inputValue()
       const renamedCategoryLabel = `${originalCategoryLabel} test`
-      await page.getByRole('button', { name: 'Kolumner' }).click()
+      await page.getByRole('tab', { name: 'Kolumner' }).click()
       const originalOrder = await getAdminColumnOrder(page)
       const targetOrder = swapColumns(originalOrder, 'area', 'category')
 
-      await page.getByRole('button', { name: 'Benämningar' }).click()
+      await page.getByRole('tab', { name: 'Benämningar' }).click()
       await categorySingularInput.fill(renamedCategoryLabel)
       await page.getByRole('button', { name: 'Spara' }).click()
       await expect(page.getByText('Sparat')).toBeVisible()
 
-      await page.getByRole('button', { name: 'Kolumner' }).click()
+      await page.getByRole('tab', { name: 'Kolumner' }).click()
       await setAdminColumnOrder(page, targetOrder)
       await page.getByRole('button', { name: 'Spara' }).click()
       await expect(page.getByText('Sparat')).toBeVisible()
@@ -209,7 +209,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.goto('/sv/admin')
       await expect(categorySingularInput).toHaveValue(renamedCategoryLabel)
 
-      await page.getByRole('button', { name: 'Kolumner' }).click()
+      await page.getByRole('tab', { name: 'Kolumner' }).click()
       await expect
         .poll(async () => getAdminColumnOrder(page))
         .toEqual(targetOrder)
