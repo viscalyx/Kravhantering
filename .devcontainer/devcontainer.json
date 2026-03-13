@@ -61,6 +61,7 @@
         "usernamehw.errorlens",
         "GitHub.copilot-chat",
         "openai.chatgpt",
+        "ms-playwright.playwright",
         "vitest.explorer",
         "bierner.markdown-mermaid",
         "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
