@@ -332,6 +332,46 @@ describe('handleRequirementsMcpRequest', () => {
     await Promise.allSettled([client.close(), server.close()])
   })
 
+  it('localizes empty reference and scenario sections in Swedish HTML resources', async () => {
+    const { client, transport } = await createClient()
+    const viewResource = await client.readResource({
+      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2&locale=sv',
+    })
+    const firstViewResource =
+      'contents' in viewResource ? viewResource.contents[0] : undefined
+    const viewText =
+      firstViewResource && 'text' in firstViewResource
+        ? firstViewResource.text
+        : undefined
+
+    expect(viewText).toContain('<h2>Referenser</h2><p>Inga</p>')
+    expect(viewText).toContain('<h2>Användningsscenarier</h2><p>Inga</p>')
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('localizes unnamed references in Swedish HTML resources', async () => {
+    serviceState.getService.mockReturnValue(createFakeService([{}]))
+
+    const { client, transport } = await createClient()
+    const viewResource = await client.readResource({
+      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2&locale=sv',
+    })
+    const firstViewResource =
+      'contents' in viewResource ? viewResource.contents[0] : undefined
+    const viewText =
+      firstViewResource && 'text' in firstViewResource
+        ? firstViewResource.text
+        : undefined
+
+    expect(viewText).toContain('<li>Referens</li>')
+    expect(viewText).toContain('<h2>Användningsscenarier</h2><p>Inga</p>')
+
+    await client.close()
+    await transport.close()
+  })
+
   it('renders unsafe reference URIs as plain text instead of clickable links', async () => {
     serviceState.getService.mockReturnValue(
       createFakeService([

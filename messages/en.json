@@ -24,6 +24,7 @@
     "showArchived": "Show archived",
     "clearFilters": "Clear filters",
     "none": "All",
+    "noneAvailable": "None",
     "showFilters": "Show filters",
     "hideFilters": "Hide filters",
     "ascending": "ascending",
@@ -168,7 +169,8 @@
     "name": "Name",
     "uri": "URI",
     "owner": "Reference owner",
-    "addReference": "Add reference"
+    "addReference": "Add reference",
+    "unnamed": "Reference"
   },
   "responsibilityAreaMgmt": {
     "name": "Name",

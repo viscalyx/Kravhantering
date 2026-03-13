@@ -93,9 +93,10 @@ const MESSAGE_BINDINGS: Record<
       ['nav', 'taxonomy'],
       ['nav', 'referenceData'],
     ],
-    singular: [['nav', 'referenceData']],
   },
-  references: {},
+  references: {
+    singular: [['reference', 'unnamed']],
+  },
   mcpRequirementView: {},
 }
 

@@ -17,6 +17,7 @@ import {
 } from '@/lib/ui-terminology'
 
 const fetchMock = vi.fn()
+const routerRefresh = vi.fn()
 
 vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => (key: string) =>
@@ -29,6 +30,9 @@ vi.mock('@/i18n/routing', () => ({
       {children as React.ReactNode}
     </a>
   ),
+  useRouter: () => ({
+    refresh: routerRefresh,
+  }),
 }))
 
 function okJson(body: unknown) {
@@ -60,6 +64,7 @@ function getColumnOrder(container: HTMLElement) {
 describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    routerRefresh.mockReset()
     vi.stubGlobal('fetch', fetchMock)
   })
 
@@ -122,7 +127,7 @@ describe('AdminClient', () => {
     expect(screen.getAllByRole('link')).toHaveLength(7)
   })
 
-  it('renders a horizontally scrollable admin tab rail with non-shrinking tab buttons', () => {
+  it('exposes the admin tabs through a tablist and updates selection on click', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
@@ -135,10 +140,21 @@ describe('AdminClient', () => {
     const terminologyTab = screen.getByRole('tab', {
       name: 'admin.terminology',
     })
+    const referenceDataTab = screen.getByRole('tab', {
+      name: 'admin.referenceData',
+    })
 
     expect(terminologyTab.parentElement).toHaveAttribute('role', 'tablist')
-    expect(terminologyTab.parentElement?.className).toContain('overflow-x-auto')
-    expect(terminologyTab.className).toContain('shrink-0')
+    expect(terminologyTab).toHaveAttribute('aria-selected', 'true')
+    expect(referenceDataTab).toHaveAttribute('aria-selected', 'false')
+
+    fireEvent.click(referenceDataTab)
+
+    expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'referenceData-panel',
+    )
   })
 
   it('exposes admin tabs and locale toggles with accessible selection state', () => {
@@ -183,44 +199,6 @@ describe('AdminClient', () => {
     expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
   })
 
-  it('uses 44px touch targets and responsive column action buttons', () => {
-    render(
-      <AdminClient
-        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
-        initialTerminology={buildUiTerminologyPayload(
-          getDefaultUiTerminology(),
-        )}
-      />,
-    )
-
-    const englishButton = screen.getByRole('button', { name: 'admin.english' })
-    const terminologyResetButton = screen.getByRole('button', {
-      name: 'common.resetToDefault',
-    })
-    const terminologySaveButton = screen.getByRole('button', {
-      name: 'common.save',
-    })
-
-    expect(englishButton.className).toContain('min-h-[44px]')
-    expect(englishButton.className).toContain('min-w-[44px]')
-    expect(terminologyResetButton.className).toContain('min-h-[44px]')
-    expect(terminologySaveButton.className).toContain('min-w-[44px]')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
-
-    const columnResetButton = screen.getByRole('button', {
-      name: 'common.resetToDefault',
-    })
-    const columnSaveButton = screen.getByRole('button', { name: 'common.save' })
-
-    expect(columnResetButton.parentElement?.className).toContain('flex-wrap')
-    expect(columnResetButton.className).toContain('min-h-[44px]')
-    expect(columnResetButton.className).toContain('w-full')
-    expect(columnResetButton.className).toContain('sm:min-w-[44px]')
-    expect(columnSaveButton.className).toContain('min-h-[44px]')
-    expect(columnSaveButton.className).toContain('w-full')
-    expect(columnSaveButton.className).toContain('sm:min-w-[44px]')
-  })
   it('disables terminology controls while saving and shows an error when the save request fails', async () => {
     const pendingRequest = deferred<Response>()
     fetchMock.mockReturnValueOnce(pendingRequest.promise)
@@ -256,6 +234,43 @@ describe('AdminClient', () => {
         'admin.terminologySaveError',
       ),
     )
+  })
+
+  it('refreshes the route after a successful terminology save', async () => {
+    const updatedTerminology = buildUiTerminologyPayload(
+      getDefaultUiTerminology(),
+    )
+    updatedTerminology[0] = {
+      ...updatedTerminology[0],
+      sv: {
+        ...updatedTerminology[0].sv,
+        singular: 'Ny kravtext',
+      },
+    }
+    fetchMock.mockResolvedValueOnce(okJson({ terminology: updatedTerminology }))
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.change(screen.getAllByRole('textbox')[0], {
+      target: { value: 'Ny kravtext' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/terminology', {
+      body: JSON.stringify({ terminology: updatedTerminology }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+    })
+    expect(routerRefresh).toHaveBeenCalledTimes(1)
   })
 
   it('keeps a reordered column layout after a successful save', async () => {

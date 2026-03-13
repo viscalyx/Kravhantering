@@ -24,6 +24,7 @@
     "showArchived": "Visa arkiverade",
     "clearFilters": "Rensa filter",
     "none": "Alla",
+    "noneAvailable": "Inga",
     "showFilters": "Visa filter",
     "hideFilters": "Dölj filter",
     "ascending": "stigande",
@@ -168,7 +169,8 @@
     "name": "Namn",
     "uri": "URI",
     "owner": "Referensägare",
-    "addReference": "Lägg till referens"
+    "addReference": "Lägg till referens",
+    "unnamed": "Referens"
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",

@@ -1,6 +1,7 @@
 import {
   type APIRequestContext,
   expect,
+  type Locator,
   type Page,
   test,
 } from '@playwright/test'
@@ -119,6 +120,14 @@ function swapColumns(order: string[], leftId: string, rightId: string) {
   return nextOrder
 }
 
+async function expectTouchTargetSize(locator: Locator) {
+  const box = await locator.boundingBox()
+
+  expect(box).not.toBeNull()
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
+}
+
 test.describe.configure({ mode: 'serial' })
 
 test.beforeEach(async ({ request }) => {
@@ -214,6 +223,61 @@ for (const { name, viewport } of viewportVariants) {
         .poll(async () => getAdminColumnOrder(page))
         .toEqual(targetOrder)
     })
+
+    if (name === 'mobile') {
+      test('keeps admin tabs and actions usable on mobile', async ({
+        page,
+      }) => {
+        await page.goto('/sv/admin')
+
+        const terminologyTab = page.getByRole('tab', { name: 'Benämningar' })
+        const columnsTab = page.getByRole('tab', { name: 'Kolumner' })
+        const referenceDataTab = page.getByRole('tab', {
+          name: 'Referensdata',
+        })
+        const tablist = page.getByRole('tablist', {
+          name: 'Administrationscenter',
+        })
+        const tablistMetrics = await tablist.evaluate(element => ({
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+        }))
+
+        expect(tablistMetrics.scrollWidth).toBeGreaterThan(
+          tablistMetrics.clientWidth,
+        )
+
+        await expectTouchTargetSize(terminologyTab)
+        await expectTouchTargetSize(columnsTab)
+        await expectTouchTargetSize(referenceDataTab)
+        await expectTouchTargetSize(
+          page.getByRole('button', { name: 'English' }),
+        )
+        await expectTouchTargetSize(
+          page.getByRole('button', { name: 'Återställ standardvy' }),
+        )
+        await expectTouchTargetSize(page.getByRole('button', { name: 'Spara' }))
+
+        await referenceDataTab.click()
+        await expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
+        await expect(
+          page.getByTestId('reference-data-card-areas'),
+        ).toBeVisible()
+
+        await columnsTab.click()
+        await expect(columnsTab).toHaveAttribute('aria-selected', 'true')
+
+        const columnResetButton = page.getByRole('button', {
+          name: 'Återställ standardvy',
+        })
+        const columnSaveButton = page.getByRole('button', { name: 'Spara' })
+
+        await expectTouchTargetSize(columnResetButton)
+        await expectTouchTargetSize(columnSaveButton)
+        await expect(columnResetButton).toBeVisible()
+        await expect(columnSaveButton).toBeVisible()
+      })
+    }
   })
 }
 

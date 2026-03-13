@@ -23,10 +23,18 @@ import {
   toResponseLocale,
 } from '@/lib/requirements/service'
 import {
+  applyUiTerminologyMessages,
   getDefaultUiTerminology,
   getLocalizedUiTerm,
   type UiLocale,
 } from '@/lib/ui-terminology'
+import enMessages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
+
+const HTML_BASE_MESSAGES = {
+  en: enMessages,
+  sv: svMessages,
+} satisfies Record<UiLocale, Record<string, unknown>>
 
 const PaginationSchema = z
   .object({
@@ -92,6 +100,28 @@ function getSafeReferenceHref(uri: string) {
   } catch {
     return null
   }
+}
+
+function getMessageString(
+  messages: Record<string, unknown>,
+  path: readonly string[],
+  fallback: string,
+) {
+  let current: unknown = messages
+
+  for (const segment of path) {
+    if (
+      typeof current !== 'object' ||
+      current === null ||
+      Array.isArray(current)
+    ) {
+      return fallback
+    }
+
+    current = (current as Record<string, unknown>)[segment]
+  }
+
+  return typeof current === 'string' ? current : fallback
 }
 
 function getBaseContext(request: Request, toolName?: string): RequestContext {
@@ -165,6 +195,11 @@ function renderRequirementHtml(
   locale: 'en' | 'sv',
   terminology = getDefaultUiTerminology(),
 ) {
+  const localizedMessages = applyUiTerminologyMessages(
+    HTML_BASE_MESSAGES[locale],
+    locale,
+    terminology,
+  ) as Record<string, unknown>
   const detail = payload.requirement
   const selectedVersion = payload.version ?? detail.versions[0]
 
@@ -195,6 +230,16 @@ function renderRequirementHtml(
     locale === 'sv'
       ? `Inte ${requiresTestingLabel.toLowerCase()}`
       : `Not ${requiresTestingLabel.toLowerCase()}`
+  const noneLabel = getMessageString(
+    localizedMessages,
+    ['common', 'noneAvailable'],
+    locale === 'sv' ? 'Inga' : 'None',
+  )
+  const unnamedReferenceLabel = getMessageString(
+    localizedMessages,
+    ['reference', 'unnamed'],
+    getLocalizedUiTerm(terminology, 'references', locale, 'singular'),
+  )
 
   const scenarioNames = scenarios
     .map(item =>
@@ -208,7 +253,7 @@ function renderRequirementHtml(
     references.length > 0
       ? `<ul>${references
           .map(reference => {
-            const label = escapeHtml(reference.name ?? 'Reference')
+            const label = escapeHtml(reference.name ?? unnamedReferenceLabel)
             const safeHref =
               typeof reference.uri === 'string'
                 ? getSafeReferenceHref(reference.uri)
@@ -222,14 +267,14 @@ function renderRequirementHtml(
             return `<li>${label}</li>`
           })
           .join('')}</ul>`
-      : '<p>None</p>'
+      : `<p>${escapeHtml(noneLabel)}</p>`
 
   const scenarioMarkup =
     scenarioNames.length > 0
       ? `<ul>${scenarioNames
           .map(name => `<li>${escapeHtml(name)}</li>`)
           .join('')}</ul>`
-      : '<p>None</p>'
+      : `<p>${escapeHtml(noneLabel)}</p>`
 
   return [
     '<!doctype html>',

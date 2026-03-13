@@ -112,4 +112,61 @@ describe('ui terminology helpers', () => {
       'Version',
     ])
   })
+
+  it('keeps reference-data navigation labels plural and localizes unnamed references', () => {
+    const terminology = normalizeUiTerminology([
+      {
+        en: {
+          definitePlural: 'Reference datasets',
+          plural: 'Reference datasets',
+          singular: 'Reference dataset',
+        },
+        key: 'referenceData',
+        sv: {
+          definitePlural: 'Referenssamlingarna',
+          plural: 'Referenssamlingar',
+          singular: 'Referenssamling',
+        },
+      },
+      {
+        en: {
+          definitePlural: 'Sources',
+          plural: 'Sources',
+          singular: 'Source',
+        },
+        key: 'references',
+        sv: {
+          definitePlural: 'Källorna',
+          plural: 'Källor',
+          singular: 'Källa',
+        },
+      },
+    ])
+
+    const enMessages = applyUiTerminologyMessages(
+      {
+        nav: { referenceData: 'Reference data' },
+        reference: { unnamed: 'Reference' },
+      },
+      'en',
+      terminology,
+    )
+    const svMessages = applyUiTerminologyMessages(
+      {
+        nav: { referenceData: 'Referensdata' },
+        reference: { unnamed: 'Referens' },
+      },
+      'sv',
+      terminology,
+    )
+
+    expect(enMessages).toMatchObject({
+      nav: { referenceData: 'Reference datasets' },
+      reference: { unnamed: 'Source' },
+    })
+    expect(svMessages).toMatchObject({
+      nav: { referenceData: 'Referenssamlingar' },
+      reference: { unnamed: 'Källa' },
+    })
+  })
 })
