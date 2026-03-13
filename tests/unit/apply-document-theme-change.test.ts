@@ -114,4 +114,36 @@ describe('applyDocumentThemeChange', () => {
 
     expect(getGuardStyle()).toBeNull()
   })
+
+  it('falls back to timeout cleanup when requestAnimationFrame is unavailable', () => {
+    vi.useFakeTimers()
+
+    const originalRequestAnimationFrame = window.requestAnimationFrame
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout')
+
+    Object.defineProperty(window, 'requestAnimationFrame', {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      applyDocumentThemeChange(() => {
+        document.documentElement.classList.add('dark')
+      })
+
+      expect(document.documentElement.classList.contains('dark')).toBe(true)
+      expect(getGuardStyle()).toBeTruthy()
+      expect(setTimeoutSpy).toHaveBeenCalled()
+
+      vi.runAllTimers()
+
+      expect(getGuardStyle()).toBeNull()
+    } finally {
+      Object.defineProperty(window, 'requestAnimationFrame', {
+        configurable: true,
+        value: originalRequestAnimationFrame,
+      })
+      vi.useRealTimers()
+    }
+  })
 })
