@@ -173,8 +173,8 @@
   "responsibilityAreaMgmt": {
     "name": "Namn",
     "title": "Verksamhetsobjekt",
-    "newItem": "Nytt ansvarsområde",
-    "editItem": "Redigera ansvarsområde"
+    "newItem": "Nytt verksamhetsobjekt",
+    "editItem": "Redigera verksamhetsobjekt"
   },
   "implementationTypeMgmt": {
     "name": "Namn",

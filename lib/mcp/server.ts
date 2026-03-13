@@ -233,7 +233,7 @@ function renderRequirementHtml(
 
   return [
     '<!doctype html>',
-    '<html lang="en">',
+    `<html lang="${escapeHtml(locale)}">`,
     '<head>',
     '  <meta charset="utf-8" />',
     `  <title>${escapeHtml(title)}</title>`,

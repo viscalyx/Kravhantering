@@ -104,6 +104,21 @@ describe('admin terminology route', () => {
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
   })
 
+  it('returns 400 for malformed JSON request bodies', async () => {
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/terminology', {
+        body: '{',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { error?: string }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Malformed JSON body.')
+    expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
+  })
+
   it('saves a valid terminology payload and returns the normalized response body', async () => {
     const terminology = normalizeUiTerminology([
       {

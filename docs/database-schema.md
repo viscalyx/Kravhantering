@@ -377,7 +377,7 @@ Defines the allowed state-machine transitions between statuses.
 
 ---
 
-## Status Workflow
+### Status Workflow
 
 The seeded requirement workflow is:
 

@@ -1992,6 +1992,40 @@ export default function RequirementsTable({
     }
   }
 
+  useEffect(() => {
+    const orderedColumns = orderRequirementVisibleColumns(visibleColumns, {
+      columnDefaults: normalizedColumnDefaults,
+    })
+    const hiddenColumns = allColumns
+      .map(column => column.id)
+      .filter(columnId => !orderedColumns.includes(columnId))
+    const nextFilterValues = clearRequirementFiltersForHiddenColumns(
+      fv,
+      orderedColumns,
+      { columnDefaults: normalizedColumnDefaults },
+    )
+
+    if (nextFilterValues !== fv && onFilterChange) {
+      onFilterChange(nextFilterValues)
+    }
+
+    if (
+      hiddenColumns.includes(sortState.by) &&
+      onSortChange &&
+      sortState.by !== DEFAULT_REQUIREMENT_SORT.by
+    ) {
+      onSortChange(DEFAULT_REQUIREMENT_SORT)
+    }
+  }, [
+    allColumns,
+    fv,
+    normalizedColumnDefaults,
+    onFilterChange,
+    onSortChange,
+    sortState.by,
+    visibleColumns,
+  ])
+
   const toggleColumn = (columnId: RequirementColumnId) => {
     const column = allColumns.find(item => item.id === columnId)
     if (!column?.canHide) {

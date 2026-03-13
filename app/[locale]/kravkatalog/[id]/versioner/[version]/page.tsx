@@ -13,7 +13,6 @@ export async function generateMetadata({
 }: {
   params: Params
 }): Promise<Metadata> {
-  const t = await getTranslations('common')
   const { locale } = await params
 
   try {
@@ -23,6 +22,7 @@ export async function generateMetadata({
       title: getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
     }
   } catch {
+    const t = await getTranslations('common')
     return { title: t('version') }
   }
 }

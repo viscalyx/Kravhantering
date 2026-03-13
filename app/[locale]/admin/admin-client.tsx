@@ -301,7 +301,7 @@ export default function AdminClient({
             <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70">
               {adminTabs.map(tab => (
                 <button
-                  className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
@@ -513,7 +513,7 @@ export default function AdminClient({
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
                       <button
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        className="inline-flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                         disabled={isColumnSaving || index === 0}
                         onClick={() => moveColumn(column.id, -1)}
                         type="button"
@@ -522,7 +522,7 @@ export default function AdminClient({
                         <span className="sr-only">{ta('moveUp')}</span>
                       </button>
                       <button
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                        className="inline-flex h-10 w-10 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
                         disabled={
                           isColumnSaving || index === orderedColumns.length - 1
                         }

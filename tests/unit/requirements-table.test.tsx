@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
   DEFAULT_FILTERS,
+  DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   DEFAULT_REQUIREMENT_SORT,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterValues,
@@ -814,6 +815,49 @@ describe('RequirementsTable', () => {
     ])
     expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
     expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+  })
+
+  it('clears hidden column filters and resets hidden active sort when defaults change externally', async () => {
+    const onFilterChange = vi.fn()
+    const onSortChange = vi.fn()
+    const hiddenStatusDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(
+      column =>
+        column.columnId === 'status'
+          ? { ...column, defaultVisible: false }
+          : column,
+    )
+
+    const { rerender } = render(
+      <RequirementsTable
+        columnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+      />,
+    )
+
+    onFilterChange.mockClear()
+    onSortChange.mockClear()
+
+    rerender(
+      <RequirementsTable
+        columnDefaults={hiddenStatusDefaults}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
+      expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+    })
   })
 
   it('cancels pending search commits when the controlled filter value is cleared externally', () => {

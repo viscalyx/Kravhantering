@@ -80,7 +80,7 @@ export default function Navigation() {
           <button
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? t('closeMenu') : t('openMenu')}
-            className="md:hidden p-2 rounded-xl text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800"
+            className="md:hidden min-h-[44px] min-w-[44px] rounded-xl p-2 text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
             onClick={() => setMobileOpen(!mobileOpen)}
             type="button"
           >

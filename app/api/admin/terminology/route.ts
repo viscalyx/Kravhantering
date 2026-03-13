@@ -53,7 +53,22 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const body = terminologyPayloadSchema.parse(await request.json())
+    let payload: unknown
+
+    try {
+      payload = await request.json()
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return NextResponse.json(
+          { error: 'Malformed JSON body.' },
+          { status: 400 },
+        )
+      }
+
+      throw error
+    }
+
+    const body = terminologyPayloadSchema.parse(payload)
     const uniqueKeys = new Set(body.terminology.map(entry => entry.key))
 
     if (uniqueKeys.size !== UI_TERM_KEYS.length) {

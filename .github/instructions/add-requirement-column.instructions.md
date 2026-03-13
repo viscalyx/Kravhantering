@@ -1,5 +1,5 @@
 ---
-applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.ts},tests/**/*.test.ts,tests/**/*.test.tsx,docs/*.md}"
+applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.ts},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
 ---
 
 # Add Requirement Column Or Property
