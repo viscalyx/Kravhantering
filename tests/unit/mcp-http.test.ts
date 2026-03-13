@@ -20,9 +20,11 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
+import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 function createFakeService(
   references: Array<{ name?: string; uri?: string | null }> = [],
+  requiresTesting = true,
 ) {
   return {
     getRequirement: vi.fn().mockResolvedValue({
@@ -44,7 +46,7 @@ function createFakeService(
             description: 'Support secure integration',
             id: 10,
             references,
-            requiresTesting: true,
+            requiresTesting,
             statusNameEn: 'Draft',
             statusNameSv: 'Utkast',
             type: {
@@ -75,7 +77,7 @@ function createFakeService(
         description: 'Support secure integration',
         id: 10,
         references,
-        requiresTesting: true,
+        requiresTesting,
         statusNameEn: 'Draft',
         statusNameSv: 'Utkast',
         type: {
@@ -370,6 +372,61 @@ describe('handleRequirementsMcpRequest', () => {
 
     await client.close()
     await transport.close()
+  })
+
+  it('uses the dedicated false-state terminology in Swedish HTML resources', async () => {
+    const getTerminology = vi.fn().mockResolvedValue(
+      normalizeUiTerminology([
+        {
+          en: {
+            definitePlural: 'Testable',
+            plural: 'Testable',
+            singular: 'Testable',
+          },
+          key: 'requiresTesting',
+          sv: {
+            definitePlural: 'Provbar',
+            plural: 'Provbar',
+            singular: 'Provbar',
+          },
+        },
+        {
+          en: {
+            definitePlural: 'Cannot be tested',
+            plural: 'Cannot be tested',
+            singular: 'Cannot be tested',
+          },
+          key: 'requiresTestingOff',
+          sv: {
+            definitePlural: 'Kan inte provas',
+            plural: 'Kan inte provas',
+            singular: 'Kan inte provas',
+          },
+        },
+      ]),
+    )
+    const server = createKravhanteringMcpServer(
+      createFakeService([], false) as never,
+      new Request('https://example.test/api/mcp'),
+      { getTerminology },
+    )
+
+    const { client } = await createInMemoryClient(server)
+    const viewResource = await client.readResource({
+      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2&locale=sv',
+    })
+    const firstViewResource =
+      'contents' in viewResource ? viewResource.contents[0] : undefined
+    const viewText =
+      firstViewResource && 'text' in firstViewResource
+        ? firstViewResource.text
+        : undefined
+
+    expect(viewText).toContain('<span class="pill">Kan inte provas</span>')
+    expect(viewText).not.toContain('<span class="pill">Inte provbar</span>')
+    expect(getTerminology).toHaveBeenCalledTimes(1)
+
+    await Promise.allSettled([client.close(), server.close()])
   })
 
   it('renders unsafe reference URIs as plain text instead of clickable links', async () => {

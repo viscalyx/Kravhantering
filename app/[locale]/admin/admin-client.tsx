@@ -22,9 +22,12 @@ import { Link, useRouter } from '@/i18n/routing'
 import {
   getOrderedRequirementListColumns,
   getRequirementColumnDefinition,
+  normalizeRequirementListColumnDefaults,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
 import {
+  buildUiTerminologyPayload,
+  getDefaultUiTerminology,
   UI_TERM_KEYS,
   type UiLocale,
   type UiTermTranslation,
@@ -38,6 +41,14 @@ const adminTabs: { icon: typeof Languages; id: AdminTab }[] = [
   { icon: LayoutPanelTop, id: 'columns' },
   { icon: FolderCog, id: 'referenceData' },
 ]
+
+function createShippedTerminology() {
+  return buildUiTerminologyPayload(getDefaultUiTerminology())
+}
+
+function createShippedColumnDefaults() {
+  return normalizeRequirementListColumnDefaults(null)
+}
 
 export default function AdminClient({
   initialColumnDefaults,
@@ -54,10 +65,6 @@ export default function AdminClient({
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('terminology')
   const [activeLocale, setActiveLocale] = useState<UiLocale>('sv')
-  const [savedTerminology, setSavedTerminology] = useState(initialTerminology)
-  const [savedColumnDefaults, setSavedColumnDefaults] = useState(
-    initialColumnDefaults,
-  )
   const [terminology, setTerminology] = useState(initialTerminology)
   const [columnDefaults, setColumnDefaults] = useState(initialColumnDefaults)
   const [terminologySaveState, setTerminologySaveState] =
@@ -169,7 +176,6 @@ export default function AdminClient({
 
       const nextTerminology = data.terminology ?? terminology
       setTerminology(nextTerminology)
-      setSavedTerminology(nextTerminology)
       setTerminologySaveState('saved')
       router.refresh()
     } catch {
@@ -209,7 +215,6 @@ export default function AdminClient({
 
       const nextColumns = data.columns ?? columnDefaults
       setColumnDefaults(nextColumns)
-      setSavedColumnDefaults(nextColumns)
       setColumnSaveState('saved')
     } catch {
       if (requestToken === columnSaveTokenRef.current) {
@@ -380,7 +385,7 @@ export default function AdminClient({
                   className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
                   disabled={isTerminologySaving}
                   onClick={() => {
-                    setTerminology(savedTerminology)
+                    setTerminology(createShippedTerminology())
                     setTerminologySaveState('idle')
                   }}
                   type="button"
@@ -497,7 +502,7 @@ export default function AdminClient({
                   className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 sm:w-auto sm:min-w-[44px]"
                   disabled={isColumnSaving}
                   onClick={() => {
-                    setColumnDefaults(savedColumnDefaults)
+                    setColumnDefaults(createShippedColumnDefaults())
                     setColumnSaveState('idle')
                   }}
                   type="button"

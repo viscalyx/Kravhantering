@@ -6,6 +6,7 @@ export const UI_TERM_KEYS = [
   'status',
   'typeCategory',
   'requiresTesting',
+  'requiresTestingOff',
   'version',
   'acceptanceCriteria',
   'scenario',
@@ -62,6 +63,9 @@ const MESSAGE_BINDINGS: Record<
   },
   requiresTesting: {
     singular: [['requirement', 'requiresTesting']],
+  },
+  requiresTestingOff: {
+    singular: [['requirement', 'requiresTestingOff']],
   },
   version: {
     plural: [['common', 'versions']],
@@ -186,6 +190,18 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       definitePlural: 'Verifierbara',
       plural: 'Verifierbara',
       singular: 'Verifierbar',
+    },
+  },
+  requiresTestingOff: {
+    en: {
+      definitePlural: 'Not verifiable',
+      plural: 'Not verifiable',
+      singular: 'Not verifiable',
+    },
+    sv: {
+      definitePlural: 'Inte verifierbara',
+      plural: 'Inte verifierbara',
+      singular: 'Inte verifierbar',
     },
   },
   version: {

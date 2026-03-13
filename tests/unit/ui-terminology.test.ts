@@ -80,6 +80,60 @@ describe('ui terminology helpers', () => {
     })
   })
 
+  it('overlays the dedicated false-state testing label from terminology', () => {
+    const terminology = normalizeUiTerminology([
+      {
+        en: {
+          definitePlural: 'Cannot be tested',
+          plural: 'Cannot be tested',
+          singular: 'Cannot be tested',
+        },
+        key: 'requiresTestingOff',
+        sv: {
+          definitePlural: 'Kan inte provas',
+          plural: 'Kan inte provas',
+          singular: 'Kan inte provas',
+        },
+      },
+    ])
+
+    const enMessages = applyUiTerminologyMessages(
+      {
+        requirement: { requiresTestingOff: 'Not verifiable' },
+      },
+      'en',
+      terminology,
+    )
+    const svMessages = applyUiTerminologyMessages(
+      {
+        requirement: { requiresTestingOff: 'Inte verifierbar' },
+      },
+      'sv',
+      terminology,
+    )
+
+    expect(enMessages).toMatchObject({
+      requirement: { requiresTestingOff: 'Cannot be tested' },
+      terminology: {
+        requiresTestingOff: {
+          definitePlural: 'Cannot be tested',
+          plural: 'Cannot be tested',
+          singular: 'Cannot be tested',
+        },
+      },
+    })
+    expect(svMessages).toMatchObject({
+      requirement: { requiresTestingOff: 'Kan inte provas' },
+      terminology: {
+        requiresTestingOff: {
+          definitePlural: 'Kan inte provas',
+          plural: 'Kan inte provas',
+          singular: 'Kan inte provas',
+        },
+      },
+    })
+  })
+
   it('falls back to seeded defaults for missing rows and builds CSV headers from terminology', () => {
     const terminology = normalizeUiTerminology([
       {
@@ -99,6 +153,7 @@ describe('ui terminology helpers', () => {
 
     expect(terminology.area.sv.singular).toBe('Område')
     expect(terminology.references.en.plural).toBe('References')
+    expect(terminology.requiresTestingOff.sv.singular).toBe('Inte verifierbar')
     expect(terminology.mcpRequirementView.sv.singular).toBe('Kravvy från MCP')
     expect(getRequirementCsvHeaders('en', terminology)).toEqual([
       'Requirement ID',

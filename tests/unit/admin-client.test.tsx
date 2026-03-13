@@ -273,6 +273,47 @@ describe('AdminClient', () => {
     expect(routerRefresh).toHaveBeenCalledTimes(1)
   })
 
+  it('restores shipped terminology defaults after a successful save', async () => {
+    const updatedTerminology = buildUiTerminologyPayload(
+      getDefaultUiTerminology(),
+    )
+    updatedTerminology[0] = {
+      ...updatedTerminology[0],
+      sv: {
+        ...updatedTerminology[0].sv,
+        singular: 'Ny kravtext',
+      },
+    }
+    fetchMock.mockResolvedValueOnce(okJson({ terminology: updatedTerminology }))
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const singularInput = screen.getAllByRole('textbox')[0]
+
+    fireEvent.change(singularInput, {
+      target: { value: 'Ny kravtext' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
+    expect(singularInput).toHaveValue('Ny kravtext')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'common.resetToDefault' }),
+    )
+
+    expect(singularInput).toHaveValue(
+      getDefaultUiTerminology().description.sv.singular,
+    )
+  })
+
   it('keeps a reordered column layout after a successful save', async () => {
     const reorderedColumns = normalizeRequirementListColumnDefaults([
       { columnId: 'uniqueId', defaultVisible: true, sortOrder: 0 },
@@ -330,7 +371,61 @@ describe('AdminClient', () => {
     ])
   })
 
-  it('shows an error when saving columns fails and reset returns to the last saved order', async () => {
+  it('restores shipped column defaults after a successful save', async () => {
+    const reorderedColumns = normalizeRequirementListColumnDefaults([
+      { columnId: 'uniqueId', defaultVisible: true, sortOrder: 0 },
+      { columnId: 'description', defaultVisible: true, sortOrder: 1 },
+      { columnId: 'category', defaultVisible: true, sortOrder: 2 },
+      { columnId: 'area', defaultVisible: true, sortOrder: 3 },
+      { columnId: 'type', defaultVisible: true, sortOrder: 4 },
+      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+      { columnId: 'status', defaultVisible: true, sortOrder: 6 },
+      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'version', defaultVisible: false, sortOrder: 8 },
+    ])
+    fetchMock.mockResolvedValueOnce(okJson({ columns: reorderedColumns }))
+
+    const { container } = render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+    fireEvent.click(
+      within(screen.getByTestId('admin-column-row-category')).getByRole(
+        'button',
+        { name: 'admin.moveUp' },
+      ),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
+    expect(getColumnOrder(container).slice(0, 5)).toEqual([
+      'uniqueId',
+      'description',
+      'category',
+      'area',
+      'type',
+    ])
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'common.resetToDefault' }),
+    )
+
+    expect(getColumnOrder(container).slice(0, 5)).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'category',
+      'type',
+    ])
+  })
+
+  it('shows an error when saving columns fails and reset returns to shipped defaults', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,
     } as Response)

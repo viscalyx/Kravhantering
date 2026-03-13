@@ -75,6 +75,7 @@
     "type": "Typ",
     "typeCategory": "Kvalitetsegenskap",
     "requiresTesting": "Verifierbar",
+    "requiresTestingOff": "Inte verifierbar",
     "reference": "Kravreferens",
     "scenario": "Användningsscenario",
     "newRequirement": "Nytt krav",
@@ -275,6 +276,11 @@
       "singular": "Verifierbar",
       "plural": "Verifierbara",
       "definitePlural": "Verifierbara"
+    },
+    "requiresTestingOff": {
+      "singular": "Inte verifierbar",
+      "plural": "Inte verifierbara",
+      "definitePlural": "Inte verifierbara"
     },
     "version": {
       "singular": "Version",

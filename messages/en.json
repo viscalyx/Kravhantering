@@ -75,6 +75,7 @@
     "type": "Type",
     "typeCategory": "Quality characteristic",
     "requiresTesting": "Verifiable",
+    "requiresTestingOff": "Not verifiable",
     "reference": "Requirement reference",
     "scenario": "Usage scenario",
     "newRequirement": "New requirement",
@@ -275,6 +276,11 @@
       "singular": "Verifiable",
       "plural": "Verifiable",
       "definitePlural": "Verifiable"
+    },
+    "requiresTestingOff": {
+      "singular": "Not verifiable",
+      "plural": "Not verifiable",
+      "definitePlural": "Not verifiable"
     },
     "version": {
       "singular": "Version",

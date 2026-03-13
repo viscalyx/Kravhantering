@@ -226,10 +226,12 @@ function renderRequirementHtml(
     locale,
     'singular',
   )
-  const requiresTestingOffLabel =
-    locale === 'sv'
-      ? `Inte ${requiresTestingLabel.toLowerCase()}`
-      : `Not ${requiresTestingLabel.toLowerCase()}`
+  const requiresTestingOffLabel = getLocalizedUiTerm(
+    terminology,
+    'requiresTestingOff',
+    locale,
+    'singular',
+  )
   const noneLabel = getMessageString(
     localizedMessages,
     ['common', 'noneAvailable'],
