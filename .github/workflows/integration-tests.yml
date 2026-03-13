@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.timeoutMinutes }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - server: dev
