@@ -2,10 +2,8 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { getDb } from '@/lib/db'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
 
-export const runtime = 'edge'
-
 async function handleRequest(request: Request) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   return handleRequirementsMcpRequest(request, db)
 }

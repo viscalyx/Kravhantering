@@ -8,6 +8,7 @@ that track its lifecycle. The values depend on the version's
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
+| --- | --- | --- |
 | `created_at` | TEXT NOT NULL | When the version row was first created |
 | `edited_at` | TEXT NULL | When the version content was last edited |
 | `published_at` | TEXT NULL | When the version was published (status → 3) |

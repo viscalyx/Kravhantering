@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { listOwners } from '@/lib/dal/owners'
 
-export const runtime = 'edge'
-
 export async function GET() {
   const owners = await listOwners()
   return NextResponse.json({

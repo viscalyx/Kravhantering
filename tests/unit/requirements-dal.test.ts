@@ -113,6 +113,35 @@ async function seedArchivedRequirement(
   ])
 }
 
+async function seedRequirement(
+  db: TestDb,
+  input: {
+    categoryId?: number | null
+    id: number
+    statusId: number
+    uniqueId: string
+    versionNumber: number
+  },
+) {
+  await db.insert(schema.requirements).values({
+    id: input.id,
+    isArchived: input.statusId === STATUS_ARCHIVED,
+    requirementAreaId: 1,
+    sequenceNumber: input.id,
+    uniqueId: input.uniqueId,
+  })
+
+  await db.insert(schema.requirementVersions).values({
+    createdAt: '2026-03-01T00:00:00.000Z',
+    description: `Requirement ${input.uniqueId}`,
+    publishedAt: input.statusId === 3 ? '2026-03-01T00:00:00.000Z' : undefined,
+    requirementCategoryId: input.categoryId ?? undefined,
+    requirementId: input.id,
+    statusId: input.statusId,
+    versionNumber: input.versionNumber,
+  })
+}
+
 describe('requirements DAL list semantics', () => {
   it('uses the archived version as the list display version when a newer draft or review exists', async () => {
     const { db, sqlite } = createTestDb()
@@ -206,6 +235,112 @@ describe('requirements DAL list semantics', () => {
       expect(archivedRows).toHaveLength(2)
       expect(archivedCount).toBe(2)
       expect(draftCount).toBe(0)
+    } finally {
+      sqlite.close()
+    }
+  })
+
+  it('sorts by locale-specific text columns and keeps empty values last', async () => {
+    const { db, sqlite } = createTestDb()
+
+    try {
+      await seedLookups(db)
+      await db.insert(schema.requirementCategories).values([
+        { id: 1, nameEn: 'Alpha', nameSv: 'Zulu' },
+        { id: 2, nameEn: 'Omega', nameSv: 'Alfa' },
+      ])
+      await seedRequirement(db, {
+        categoryId: 1,
+        id: 1,
+        statusId: 3,
+        uniqueId: 'ARC0001',
+        versionNumber: 1,
+      })
+      await seedRequirement(db, {
+        categoryId: 2,
+        id: 2,
+        statusId: 3,
+        uniqueId: 'ARC0002',
+        versionNumber: 1,
+      })
+      await seedRequirement(db, {
+        categoryId: null,
+        id: 3,
+        statusId: 3,
+        uniqueId: 'ARC0003',
+        versionNumber: 1,
+      })
+
+      const svRows = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        locale: 'sv',
+        sortBy: 'category',
+      })
+      const enRows = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        locale: 'en',
+        sortBy: 'category',
+      })
+
+      expect(svRows.map(row => row.uniqueId)).toEqual([
+        'ARC0002',
+        'ARC0001',
+        'ARC0003',
+      ])
+      expect(enRows.map(row => row.uniqueId)).toEqual([
+        'ARC0001',
+        'ARC0002',
+        'ARC0003',
+      ])
+    } finally {
+      sqlite.close()
+    }
+  })
+
+  it('sorts by status workflow order and version with uniqueId tie-breakers', async () => {
+    const { db, sqlite } = createTestDb()
+
+    try {
+      await seedLookups(db)
+      await seedRequirement(db, {
+        id: 1,
+        statusId: STATUS_DRAFT,
+        uniqueId: 'ARC0002',
+        versionNumber: 3,
+      })
+      await seedRequirement(db, {
+        id: 2,
+        statusId: STATUS_DRAFT,
+        uniqueId: 'ARC0001',
+        versionNumber: 3,
+      })
+      await seedRequirement(db, {
+        id: 3,
+        statusId: STATUS_REVIEW,
+        uniqueId: 'ARC0003',
+        versionNumber: 1,
+      })
+
+      const statusRows = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        sortBy: 'status',
+      })
+      const versionRows = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        sortBy: 'version',
+        sortDirection: 'desc',
+      })
+
+      expect(statusRows.map(row => row.uniqueId)).toEqual([
+        'ARC0001',
+        'ARC0002',
+        'ARC0003',
+      ])
+      expect(versionRows.map(row => row.uniqueId)).toEqual([
+        'ARC0001',
+        'ARC0002',
+        'ARC0003',
+      ])
     } finally {
       sqlite.close()
     }

@@ -4,24 +4,30 @@ import { getDb } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
+  isRequirementSortDirection,
+  isRequirementSortField,
+} from '@/lib/requirements/list-view'
+import {
   createRequirementsService,
   type RequirementListItem,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 
-export const runtime = 'edge'
-
 export async function GET(request: NextRequest) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')
 
   const url = new URL(request.url)
   const format = url.searchParams.get('format')
+  const localeParam = url.searchParams.get('locale')
+  const locale: 'en' | 'sv' = localeParam === 'sv' ? 'sv' : 'en'
   const uniqueIdSearch = url.searchParams.get('uniqueIdSearch') ?? undefined
   const descriptionSearch =
     url.searchParams.get('descriptionSearch') ?? undefined
+  const sortByParam = url.searchParams.get('sortBy')
+  const sortDirectionParam = url.searchParams.get('sortDirection')
   const areaIds = url.searchParams
     .getAll('areaIds')
     .map(Number)
@@ -56,10 +62,19 @@ export async function GET(request: NextRequest) {
       limit: url.searchParams.get('limit')
         ? Number(url.searchParams.get('limit'))
         : undefined,
+      locale,
       offset: url.searchParams.get('offset')
         ? Number(url.searchParams.get('offset'))
         : undefined,
       requiresTesting: requiresTesting.length > 0 ? requiresTesting : undefined,
+      sortBy:
+        sortByParam && isRequirementSortField(sortByParam)
+          ? sortByParam
+          : undefined,
+      sortDirection:
+        sortDirectionParam && isRequirementSortDirection(sortDirectionParam)
+          ? sortDirectionParam
+          : undefined,
       statuses: statuses.length > 0 ? statuses : undefined,
       typeCategoryIds: typeCategoryIds.length > 0 ? typeCategoryIds : undefined,
       typeIds: typeIds.length > 0 ? typeIds : undefined,
@@ -69,7 +84,6 @@ export async function GET(request: NextRequest) {
     const requirements = result.items as RequirementListItem[]
 
     if (format === 'csv') {
-      const locale = url.searchParams.get('locale') ?? 'sv'
       const isSv = locale === 'sv'
 
       const headers = isSv
@@ -146,7 +160,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')

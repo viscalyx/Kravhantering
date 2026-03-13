@@ -7,8 +7,6 @@ import {
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 
-export const runtime = 'edge'
-
 type Params = Promise<{ id: string }>
 
 export async function POST(
@@ -16,7 +14,7 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')

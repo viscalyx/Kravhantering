@@ -1,4 +1,4 @@
-name: Quality Checks
+name: Integration Tests
 
 on:
   pull_request:
@@ -6,13 +6,32 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
-  quality-checks:
+  test-server:
+    name: Test Against ${{ matrix.displayName }} Server
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeoutMinutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - server: dev
+            displayName: Dev
+            testCommand: npm run test:integration
+            timeoutMinutes: 15
+            retentionDays: 7
+          - server: preview
+            displayName: Preview
+            testCommand: npm run test:integration:preview
+            timeoutMinutes: 25
+            retentionDays: 7
 
     steps:
       - name: Checkout code
@@ -27,84 +46,63 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # cSpell:ignore typegen
-      - name: Generate Cloudflare types
-        run: npm run cf-typegen
+      - name: Clean server and database state
+        run: npm run clean:all
 
-      - name: Run formatting check
-        run: npm run format:check
+      - name: Setup local D1 database
+        run: npm run db:setup
 
-      - name: Run spell check
-        run: npm run spell:check
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
 
-      - name: Run lint check
-        run: npm run lint
+      - name: Run Playwright tests against ${{ matrix.server }} server
+        run: ${{ matrix.testCommand }}
+        env:
+          CI: true
 
-      - name: Run markdown lint check
-        run: npm run lint:md
-
-      - name: Run type check
-        run: npm run type-check
-
-      - name: Run tests and coverage
-        run: npm run test:coverage
-
-      - name: Upload test results
+      - name: Upload test results (${{ matrix.server }})
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results
-          path: ./test-results
-          retention-days: 7
+          name: playwright-report-${{ matrix.server }}
+          path: playwright-report-${{ matrix.server }}/
+          retention-days: ${{ matrix.retentionDays }}
 
-      - name: Upload code coverage
+      - name: Upload test results XML (${{ matrix.server }})
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: code-coverage
-          path: ./coverage
-          retention-days: 7
+          name: playwright-junit-${{ matrix.server }}
+          path: test-results/${{ matrix.server }}/playwright-junit.xml
+          retention-days: ${{ matrix.retentionDays }}
 
-      - name: Upload coverage to Codecov
-        if: always()
-        uses: codecov/codecov-action@v5
-        with:
-          file: ./coverage/lcov.info
-          fail_ci_if_error: false
-          verbose: true
-          token: ${{ vars.CODECOV_TOKEN }}
+  comment-on-failure:
+    name: Comment on PR if tests failed
+    if: failure() && github.event_name == 'pull_request'
+    needs: [test-server]
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
 
-      - name: Upload test results to Codecov
-        if: always() && !cancelled()
-        uses: codecov/test-results-action@v1
-        with:
-          directory: ./test-results
-          flags: components, app, lib
-          token: ${{ vars.CODECOV_TOKEN }}
-          verbose: true
-
-      - name: Comment on PR if checks failed
-        if: failure() && github.event_name == 'pull_request'
+    steps:
+      - name: Comment on PR
         uses: actions/github-script@v8
         with:
           script: |
-            const checks = [
-              { name: 'Formatting', command: 'npm run format:check' },
-              { name: 'Spell Check', command: 'npm run spell:check' },
-              { name: 'Lint', command: 'npm run lint' },
-              { name: 'Markdown Lint', command: 'npm run lint:md' },
-              { name: 'Type Check', command: 'npm run type-check' }
-            ];
+            const body = '❌ **Integration tests failed!** Please check the test results and fix any issues.\n\n' +
+                        'You can run integration tests locally with:\n' +
+                        '- `npm run test:integration` - Test against dev server\n' +
+                        '- `npm run test:integration:preview` - Test against preview server\n' +
+                        '- `npm run test:integration:ui` - Run with Playwright UI for debugging\n\n' +
+                        'Check the artifacts for detailed test reports.';
 
-            let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';
-            body += checks.map(check =>
-              `- **${check.name}**: Run \`${check.command}\` locally to see and fix issues`
-            ).join('\n');
-            body += '\n\nYou can also run `npm run check` to run all checks at once.';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            })
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } catch (error) {
+              core.error(`Failed to create PR comment: ${error.message}`);
+            }

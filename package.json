@@ -19,7 +19,6 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui --api.host=0.0.0.0 --api.port=51204",
-    "test:security": "node scripts/security-audit.js",
     "test:integration": "playwright test",
     "test:integration:preview": "playwright test --config=playwright.preview.config.ts",
     "lint": "biome check --error-on-warnings --assist-enabled=false --formatter-enabled=false .",
@@ -42,7 +41,7 @@
     "clean": "rimraf .next out .open-next",
     "test:integration:all": "npm run test:integration && npm run test:integration:preview",
     "clean:all": "rimraf .next out .open-next .wrangler && echo 'Run npm run db:setup to restore the local database'",
-    "prepreview": "rimraf .open-next .wrangler && npm run cf-typegen",
+    "prepreview": "rimraf .open-next && npm run cf-typegen",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
@@ -54,7 +53,9 @@
     "db:reset": "find .wrangler -name '*.sqlite' -delete -o -name '*.sqlite-wal' -delete -o -name '*.sqlite-shm' -delete 2>/dev/null; echo 'Local D1 database removed'",
     "db:setup": "npm run db:reset && npm run db:migrate && npm run db:seed",
     "db:browse": "find .wrangler -name '*.sqlite' -print0 | xargs -0 -r code",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "check:port": "node ./scripts/check-port.js",
+    "kill:port": "bash ./scripts/kill-dev-server.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",

@@ -3,10 +3,8 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { listTypeCategories } from '@/lib/dal/requirement-types'
 import { getDb } from '@/lib/db'
 
-export const runtime = 'edge'
-
 export async function GET(request: NextRequest) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
   const url = new URL(request.url)

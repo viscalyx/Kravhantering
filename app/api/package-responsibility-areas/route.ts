@@ -6,17 +6,15 @@ import {
 } from '@/lib/dal/package-responsibility-areas'
 import { getDb } from '@/lib/db'
 
-export const runtime = 'edge'
-
 export async function GET() {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const areas = await listPackageResponsibilityAreas(db)
   return NextResponse.json({ areas })
 }
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext()
+  const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const body = (await request.json()) as Parameters<
     typeof createPackageResponsibilityArea

@@ -317,6 +317,34 @@ describe('createRequirementsService', () => {
     })
   })
 
+  it('passes locale-aware sorting options to the DAL query', async () => {
+    const service = createRequirementsService({} as never, { logger })
+
+    await service.queryCatalog(makeContext(), {
+      catalog: 'requirements',
+      locale: 'sv',
+      sortBy: 'status',
+      sortDirection: 'desc',
+    })
+
+    expect(mocks.listRequirements).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        locale: 'sv',
+        sortBy: 'status',
+        sortDirection: 'desc',
+      }),
+    )
+    expect(mocks.countRequirements).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        locale: 'sv',
+        sortBy: 'status',
+        sortDirection: 'desc',
+      }),
+    )
+  })
+
   it('creates a requirement and syncs references', async () => {
     const service = createRequirementsService({} as never, { logger })
     const result = await service.manageRequirement(makeContext(), {

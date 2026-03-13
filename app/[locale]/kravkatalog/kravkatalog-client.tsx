@@ -1,97 +1,93 @@
 'use client'
 
-import { Plus } from 'lucide-react'
+import { Download, Plus, Printer } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import ExportButton from '@/components/ExportButton'
-import PrintButton from '@/components/PrintButton'
-import {
-  DEFAULT_FILTERS,
-  type FilterValues,
-  type StatusOption,
-} from '@/components/RequirementsFilter'
 import RequirementsTable from '@/components/RequirementsTable'
-import { Link } from '@/i18n/routing'
+import {
+  type AreaOption,
+  buildRequirementListParams,
+  clearRequirementFiltersForHiddenColumns,
+  compareRequirementRows,
+  DEFAULT_FILTERS,
+  DEFAULT_REQUIREMENT_SORT,
+  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  type FilterOption,
+  type FilterValues,
+  getRequirementColumnWidthsStorageKey,
+  parseRequirementColumnWidths,
+  parseRequirementVisibleColumns,
+  REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+  type RequirementColumnId,
+  type RequirementColumnWidths,
+  type RequirementRow,
+  type RequirementSortState,
+  type StatusOption,
+  serializeRequirementColumnWidths,
+  serializeRequirementVisibleColumns,
+  type TypeCategoryOption,
+} from '@/lib/requirements/list-view'
 import RequirementDetailClient from './[id]/requirement-detail-client'
 
-interface RequirementRow {
-  area: {
-    name: string
-  } | null
+const PAGE_SIZE = 200
+
+type RequirementDetailRowSource = {
+  area?: { name: string } | null
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
   uniqueId: string
-  version: {
+  versions?: {
+    category?: { nameEn: string; nameSv: string } | null
     description: string | null
-    categoryNameSv: string | null
-    categoryNameEn: string | null
-    typeNameSv: string | null
-    typeNameEn: string | null
-    typeCategoryNameSv: string | null
-    typeCategoryNameEn: string | null
     requiresTesting: boolean
-    versionNumber: number
     status: number
-    statusNameSv: string | null
-    statusNameEn: string | null
     statusColor: string | null
-  } | null
+    statusNameEn: string | null
+    statusNameSv: string | null
+    type?: { nameEn: string; nameSv: string } | null
+    typeCategory?: { nameEn: string; nameSv: string } | null
+    versionNumber: number
+  }[]
 }
 
-interface FilterOption {
-  id: number
-  nameEn: string
-  nameSv: string
-}
+function mapRequirementDetailToRow(
+  detail: RequirementDetailRowSource,
+): RequirementRow {
+  const version = detail.versions?.[0]
 
-interface AreaOption {
-  id: number
-  name: string
-}
-
-interface TypeCategoryOption {
-  id: number
-  nameEn: string
-  nameSv: string
-  parentId: number | null
-}
-
-const PAGE_SIZE = 200
-
-function buildFilterParams(filters: FilterValues): URLSearchParams {
-  const params = new URLSearchParams()
-  params.set('limit', String(PAGE_SIZE))
-  if (filters.uniqueIdSearch)
-    params.set('uniqueIdSearch', filters.uniqueIdSearch)
-  if (filters.descriptionSearch)
-    params.set('descriptionSearch', filters.descriptionSearch)
-  if (filters.areaIds) {
-    for (const id of filters.areaIds) params.append('areaIds', String(id))
+  return {
+    area: detail.area ?? null,
+    hasPendingVersion: detail.hasPendingVersion ?? false,
+    id: detail.id,
+    isArchived: detail.isArchived,
+    pendingVersionStatusColor: detail.pendingVersionStatusColor ?? null,
+    pendingVersionStatusId: detail.pendingVersionStatusId ?? null,
+    uniqueId: detail.uniqueId,
+    version: version
+      ? {
+          categoryNameEn: version.category?.nameEn ?? null,
+          categoryNameSv: version.category?.nameSv ?? null,
+          description: version.description,
+          requiresTesting: version.requiresTesting,
+          status: version.status,
+          statusColor: version.statusColor,
+          statusNameEn: version.statusNameEn,
+          statusNameSv: version.statusNameSv,
+          typeCategoryNameEn: version.typeCategory?.nameEn ?? null,
+          typeCategoryNameSv: version.typeCategory?.nameSv ?? null,
+          typeNameEn: version.type?.nameEn ?? null,
+          typeNameSv: version.type?.nameSv ?? null,
+          versionNumber: version.versionNumber,
+        }
+      : null,
   }
-  if (filters.categoryIds) {
-    for (const id of filters.categoryIds)
-      params.append('categoryIds', String(id))
-  }
-  if (filters.typeIds) {
-    for (const id of filters.typeIds) params.append('typeIds', String(id))
-  }
-  if (filters.typeCategoryIds) {
-    for (const id of filters.typeCategoryIds)
-      params.append('typeCategoryIds', String(id))
-  }
-  if (filters.requiresTesting) {
-    for (const v of filters.requiresTesting) params.append('requiresTesting', v)
-  }
-  if (filters.statuses) {
-    for (const s of filters.statuses) params.append('statuses', String(s))
-  }
-  return params
 }
 
 export default function KravkatalogClient() {
+  const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const locale = useLocale()
 
@@ -102,153 +98,156 @@ export default function KravkatalogClient() {
   const [typeCategories, setTypeCategories] = useState<TypeCategoryOption[]>([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
+  const [sortState, setSortState] = useState<RequirementSortState>(
+    DEFAULT_REQUIREMENT_SORT,
+  )
+  const [visibleColumns, setVisibleColumns] = useState<RequirementColumnId[]>(
+    DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  )
+  const [columnWidths, setColumnWidths] = useState<RequirementColumnWidths>({})
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
+    useState(false)
+  const [hasResolvedInitialRows, setHasResolvedInitialRows] = useState(false)
+  const [hydratedColumnWidthsStorageKey, setHydratedColumnWidthsStorageKey] =
+    useState<string | null>(null)
+  const columnWidthsStorageKey = getRequirementColumnWidthsStorageKey(locale)
+  const columnPreferencesReady =
+    hasLoadedColumnPreferences &&
+    hydratedColumnWidthsStorageKey === columnWidthsStorageKey
 
   // Stable ref so the onChange callback always sees the latest selectedId
   const selectedIdRef = useRef<number | null>(null)
+  const latestRowsRequestIdRef = useRef(0)
+  const latestFetchDataRequestIdRef = useRef(0)
   selectedIdRef.current = selectedId
 
   const refreshRows = useCallback(async () => {
-    const params = buildFilterParams(filters)
+    const requestId = ++latestRowsRequestIdRef.current
+    const params = buildRequirementListParams({
+      filters,
+      limit: PAGE_SIZE,
+      locale,
+      sort: sortState,
+    })
 
-    const res = await fetch(`/api/requirements?${params}`)
-    if (res.ok) {
-      const data = (await res.json()) as {
+    let data: {
+      pagination?: { hasMore?: boolean }
+      requirements?: RequirementRow[]
+    } | null = null
+
+    try {
+      const res = await fetch(`/api/requirements?${params}`)
+      if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+        return
+      }
+
+      data = (await res.json()) as {
         pagination?: { hasMore?: boolean }
         requirements?: RequirementRow[]
       }
-      const newRows = data.requirements ?? []
-      setHasMore(data.pagination?.hasMore ?? false)
+    } catch {
+      return
+    }
+    if (!data || requestId !== latestRowsRequestIdRef.current) {
+      return
+    }
 
-      // If an expanded row is no longer in the filtered results, pin it
-      const sid = selectedIdRef.current
-      let newPinnedRow: RequirementRow | null = null
+    const newRows = data.requirements ?? []
+    const nextHasMore = data.pagination?.hasMore ?? false
 
-      if (sid != null && !newRows.some(r => r.id === sid)) {
+    // If an expanded row is no longer in the filtered results, pin it
+    const sid = selectedIdRef.current
+    let newPinnedRow: RequirementRow | null = null
+
+    if (sid != null && !newRows.some(r => r.id === sid)) {
+      const hasCurrentPinnedSelection = () =>
+        requestId === latestRowsRequestIdRef.current &&
+        selectedIdRef.current === sid
+
+      try {
         const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (singleRes.ok) {
-          const detail = (await singleRes.json()) as {
-            id: number
-            uniqueId: string
-            isArchived: boolean
-            area?: { name: string } | null
-            requirementAreaId?: number
-            versions?: {
-              versionNumber: number
-              description: string | null
-              requiresTesting: boolean
-              category?: { nameSv: string; nameEn: string } | null
-              type?: { nameSv: string; nameEn: string } | null
-              typeCategory?: { nameSv: string; nameEn: string } | null
-              status: number
-              statusNameSv: string | null
-              statusNameEn: string | null
-              statusColor: string | null
-            }[]
-          }
-          const v = detail.versions?.[0]
-          newPinnedRow = {
-            id: detail.id,
-            uniqueId: detail.uniqueId,
-            isArchived: detail.isArchived,
-            area: detail.area ?? null,
-            version: v
-              ? {
-                  description: v.description,
-                  categoryNameSv: v.category?.nameSv ?? null,
-                  categoryNameEn: v.category?.nameEn ?? null,
-                  typeNameSv: v.type?.nameSv ?? null,
-                  typeNameEn: v.type?.nameEn ?? null,
-                  typeCategoryNameSv: v.typeCategory?.nameSv ?? null,
-                  typeCategoryNameEn: v.typeCategory?.nameEn ?? null,
-                  requiresTesting: v.requiresTesting,
-                  versionNumber: v.versionNumber,
-                  status: v.status,
-                  statusNameSv: v.statusNameSv,
-                  statusNameEn: v.statusNameEn,
-                  statusColor: v.statusColor,
-                }
-              : null,
+        if (singleRes.ok && hasCurrentPinnedSelection()) {
+          const detail = (await singleRes.json()) as RequirementDetailRowSource
+          if (hasCurrentPinnedSelection()) {
+            newPinnedRow = mapRequirementDetailToRow(detail)
           }
         }
+      } catch {
+        if (hasCurrentPinnedSelection()) {
+          // Ignore pinned-row fetch failures and keep the refreshed rows.
+        }
       }
-
-      // Batch both updates in one synchronous block to avoid intermediate renders
-      setRows(newRows)
-      setPinnedRow(newPinnedRow)
     }
-  }, [filters])
+
+    if (requestId !== latestRowsRequestIdRef.current) {
+      return
+    }
+
+    // Batch both updates in one synchronous block to avoid intermediate renders
+    setHasMore(nextHasMore)
+    setRows(newRows)
+    setPinnedRow(newPinnedRow)
+  }, [filters, locale, sortState])
 
   const fetchData = useCallback(async () => {
+    const requestId = ++latestFetchDataRequestIdRef.current
     setLoading(true)
     try {
       await refreshRows()
     } finally {
-      setLoading(false)
+      if (requestId === latestFetchDataRequestIdRef.current) {
+        setLoading(false)
+        setHasResolvedInitialRows(true)
+      }
     }
   }, [refreshRows])
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore) return
+    if (loading || loadingMore || !hasMore) return
+    const requestId = ++latestRowsRequestIdRef.current
     setLoadingMore(true)
     try {
-      const params = buildFilterParams(filters)
-      params.set('offset', String(rows.length))
-      const res = await fetch(`/api/requirements?${params}`)
-      if (res.ok) {
-        const data = (await res.json()) as {
+      const params = buildRequirementListParams({
+        filters,
+        limit: PAGE_SIZE,
+        locale,
+        offset: rows.length,
+        sort: sortState,
+      })
+      let data: {
+        pagination?: { hasMore?: boolean }
+        requirements?: RequirementRow[]
+      } | null = null
+
+      try {
+        const res = await fetch(`/api/requirements?${params}`)
+        if (!res.ok || requestId !== latestRowsRequestIdRef.current) {
+          return
+        }
+
+        data = (await res.json()) as {
           pagination?: { hasMore?: boolean }
           requirements?: RequirementRow[]
         }
-        const moreRows = data.requirements ?? []
-        setHasMore(data.pagination?.hasMore ?? false)
-        setRows(prev => [...prev, ...moreRows])
+      } catch {
+        return
       }
+      if (!data || requestId !== latestRowsRequestIdRef.current) {
+        return
+      }
+
+      const moreRows = data.requirements ?? []
+      setHasMore(data.pagination?.hasMore ?? false)
+      setRows(prev => [...prev, ...moreRows])
     } finally {
       setLoadingMore(false)
     }
-  }, [filters, hasMore, loadingMore, rows.length])
-
-  const fetchFilters = useCallback(async () => {
-    const [areasRes, categoriesRes, typesRes, typeCategoriesRes, statusesRes] =
-      await Promise.all([
-        fetch('/api/requirement-areas'),
-        fetch('/api/requirement-categories'),
-        fetch('/api/requirement-types'),
-        fetch('/api/requirement-type-categories'),
-        fetch('/api/requirement-statuses'),
-      ])
-    if (areasRes.ok) {
-      const data = (await areasRes.json()) as { areas?: AreaOption[] }
-      setAreas(data.areas ?? [])
-    }
-    if (categoriesRes.ok) {
-      const data = (await categoriesRes.json()) as {
-        categories?: FilterOption[]
-      }
-      setCategories(data.categories ?? [])
-    }
-    if (typesRes.ok) {
-      const data = (await typesRes.json()) as { types?: FilterOption[] }
-      setTypes(data.types ?? [])
-    }
-    if (typeCategoriesRes.ok) {
-      const data = (await typeCategoriesRes.json()) as {
-        typeCategories?: TypeCategoryOption[]
-      }
-      setTypeCategories(data.typeCategories ?? [])
-    }
-    if (statusesRes.ok) {
-      const data = (await statusesRes.json()) as {
-        statuses?: StatusOption[]
-      }
-      setStatusOptions(data.statuses ?? [])
-    }
-  }, [])
+  }, [filters, hasMore, loading, loadingMore, locale, rows.length, sortState])
 
   const getName = (opt: FilterOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
@@ -257,103 +256,288 @@ export default function KravkatalogClient() {
     locale === 'sv' ? opt.nameSv : opt.nameEn
 
   useEffect(() => {
-    fetchFilters()
-  }, [fetchFilters])
+    const readFilterResponse = async <T,>(
+      result: PromiseSettledResult<Response>,
+    ): Promise<T | null> => {
+      if (result.status !== 'fulfilled' || !result.value.ok) {
+        return null
+      }
+
+      try {
+        return (await result.value.json()) as T
+      } catch {
+        return null
+      }
+    }
+
+    const fetchFilters = async () => {
+      const [
+        areasRes,
+        categoriesRes,
+        typesRes,
+        typeCategoriesRes,
+        statusesRes,
+      ] = await Promise.allSettled([
+        fetch('/api/requirement-areas'),
+        fetch('/api/requirement-categories'),
+        fetch('/api/requirement-types'),
+        fetch('/api/requirement-type-categories'),
+        fetch('/api/requirement-statuses'),
+      ])
+
+      const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
+        areasRes,
+      )
+      if (areasData) {
+        setAreas(areasData.areas ?? [])
+      }
+      const categoriesData = await readFilterResponse<{
+        categories?: FilterOption[]
+      }>(categoriesRes)
+      if (categoriesData) {
+        setCategories(categoriesData.categories ?? [])
+      }
+      const typesData = await readFilterResponse<{ types?: FilterOption[] }>(
+        typesRes,
+      )
+      if (typesData) {
+        setTypes(typesData.types ?? [])
+      }
+      const typeCategoriesData = await readFilterResponse<{
+        typeCategories?: TypeCategoryOption[]
+      }>(typeCategoriesRes)
+      if (typeCategoriesData) {
+        setTypeCategories(typeCategoriesData.typeCategories ?? [])
+      }
+      const statusesData = await readFilterResponse<{
+        statuses?: StatusOption[]
+      }>(statusesRes)
+      if (statusesData) {
+        setStatusOptions(statusesData.statuses ?? [])
+      }
+    }
+
+    void fetchFilters()
+  }, [])
 
   useEffect(() => {
+    let nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS
+
+    try {
+      nextVisibleColumns = parseRequirementVisibleColumns(
+        globalThis.localStorage.getItem(
+          REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+        ),
+      )
+    } catch {
+      nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS
+    } finally {
+      setVisibleColumns(nextVisibleColumns)
+      setFilters(previousFilters =>
+        clearRequirementFiltersForHiddenColumns(
+          previousFilters,
+          nextVisibleColumns,
+        ),
+      )
+      setHasLoadedColumnPreferences(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    setHasResolvedInitialRows(false)
+
+    try {
+      setColumnWidths(
+        parseRequirementColumnWidths(
+          globalThis.localStorage.getItem(columnWidthsStorageKey),
+        ),
+      )
+    } catch {
+      setColumnWidths({})
+    } finally {
+      setHydratedColumnWidthsStorageKey(columnWidthsStorageKey)
+    }
+  }, [columnWidthsStorageKey])
+
+  useEffect(() => {
+    if (!hasLoadedColumnPreferences) {
+      return
+    }
+
+    try {
+      globalThis.localStorage.setItem(
+        REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
+        serializeRequirementVisibleColumns(visibleColumns),
+      )
+    } catch {
+      // Ignore storage failures and keep the in-memory preference.
+    }
+  }, [hasLoadedColumnPreferences, visibleColumns])
+
+  useEffect(() => {
+    if (hydratedColumnWidthsStorageKey !== columnWidthsStorageKey) {
+      return
+    }
+
+    try {
+      globalThis.localStorage.setItem(
+        columnWidthsStorageKey,
+        serializeRequirementColumnWidths(columnWidths),
+      )
+    } catch {
+      // Ignore storage failures and keep the in-memory preference.
+    }
+  }, [columnWidths, columnWidthsStorageKey, hydratedColumnWidthsStorageKey])
+
+  useEffect(() => {
+    if (!columnPreferencesReady) {
+      return
+    }
+
     fetchData()
-  }, [fetchData])
+  }, [columnPreferencesReady, fetchData])
 
   const displayRows = useMemo(() => {
     if (pinnedRow && !rows.some(r => r.id === pinnedRow.id)) {
-      // Insert at sorted position (rows are ordered by uniqueId)
+      const hasStatusSortMetadata =
+        sortState.by !== 'status' ||
+        statusOptions.some(option => option.sortOrder !== undefined)
+
+      if (!hasStatusSortMetadata) {
+        return [pinnedRow, ...rows]
+      }
+
       const idx = rows.findIndex(
-        r => r.uniqueId.localeCompare(pinnedRow.uniqueId) > 0,
+        row =>
+          compareRequirementRows(row, pinnedRow, {
+            locale,
+            sort: sortState,
+            statusOptions,
+          }) > 0,
       )
       const pos = idx === -1 ? rows.length : idx
       return [...rows.slice(0, pos), pinnedRow, ...rows.slice(pos)]
     }
     return rows
-  }, [rows, pinnedRow])
+  }, [locale, pinnedRow, rows, sortState, statusOptions])
 
   const pinnedIds = useMemo(
     () => (pinnedRow ? new Set([pinnedRow.id]) : undefined),
     [pinnedRow],
   )
+  const shouldShowInitialLoadingState =
+    !columnPreferencesReady || !hasResolvedInitialRows
 
   const handleExport = async () => {
-    const params = buildFilterParams(filters)
-    params.set('format', 'csv')
-    params.set('locale', locale)
+    const params = buildRequirementListParams({
+      filters,
+      format: 'csv',
+      locale,
+      sort: sortState,
+    })
 
-    const res = await fetch(`/api/requirements?${params}`)
-    if (!res.ok) return
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = locale === 'sv' ? 'kravkatalog.csv' : 'requirements.csv'
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const res = await fetch(`/api/requirements?${params}`)
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = locale === 'sv' ? 'kravkatalog.csv' : 'requirements.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      return
+    }
   }
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="flex flex-wrap items-center gap-3 mb-6">
-          <ExportButton onClick={handleExport} />
-          <PrintButton />
-          <Link
-            className="btn-primary inline-flex items-center gap-1.5 ml-auto"
-            href="/kravkatalog/ny"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newRequirement')}
-          </Link>
-        </div>
-
-        <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm">
-          <RequirementsTable
-            areas={areas}
-            categories={categories}
-            expandedId={selectedId}
-            filterValues={filters}
-            getName={getName}
-            getStatusName={getStatusName}
-            hasMore={hasMore}
-            loading={loading}
-            loadingMore={loadingMore}
-            locale={locale}
-            onFilterChange={val => {
-              setFilters(val)
-              setSelectedId(null)
-              setPinnedRow(null)
-            }}
-            onLoadMore={loadMore}
-            onRowClick={id => {
-              setSelectedId(prev => {
-                const next = prev === id ? null : id
-                if (next === null) setPinnedRow(null)
-                return next
-              })
-            }}
-            pinnedIds={pinnedIds}
-            renderExpanded={id => (
-              <RequirementDetailClient
-                inline
-                onChange={refreshRows}
-                onClose={() => {
-                  setSelectedId(null)
-                  fetchData()
-                }}
-                requirementId={id}
-              />
-            )}
-            rows={displayRows}
-            statusOptions={statusOptions}
-            typeCategories={typeCategories}
-            types={types}
-          />
+        <div className="relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-secondary-900/60">
+          {shouldShowInitialLoadingState ? (
+            <div
+              aria-live="polite"
+              className="flex min-h-[20rem] flex-col items-center justify-center gap-3 px-6 py-16"
+              data-testid="requirements-card-loading"
+            >
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
+              <p className="text-secondary-600 dark:text-secondary-400">
+                {tc('loadingRequirements')}
+              </p>
+            </div>
+          ) : (
+            <RequirementsTable
+              areas={areas}
+              categories={categories}
+              columnWidths={columnWidths}
+              expandedId={selectedId}
+              filterValues={filters}
+              floatingActions={[
+                {
+                  ariaLabel: t('newRequirement'),
+                  href: '/kravkatalog/ny',
+                  icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                  id: 'create',
+                  position: 'beforeColumns',
+                  variant: 'primary',
+                },
+                {
+                  ariaLabel: tc('print'),
+                  icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                  id: 'print',
+                  onClick: () => globalThis.print(),
+                },
+                {
+                  ariaLabel: tc('export'),
+                  icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                  id: 'export',
+                  onClick: handleExport,
+                },
+              ]}
+              getName={getName}
+              getStatusName={getStatusName}
+              hasMore={hasMore}
+              loading={loading}
+              loadingMore={loadingMore}
+              locale={locale}
+              onColumnWidthsChange={setColumnWidths}
+              onFilterChange={val => {
+                setFilters(val)
+                setSelectedId(null)
+                setPinnedRow(null)
+              }}
+              onLoadMore={loadMore}
+              onRowClick={id => {
+                setSelectedId(prev => {
+                  const next = prev === id ? null : id
+                  if (prev !== id || next === null) setPinnedRow(null)
+                  return next
+                })
+              }}
+              onSortChange={setSortState}
+              onVisibleColumnsChange={setVisibleColumns}
+              pinnedIds={pinnedIds}
+              renderExpanded={id => (
+                <RequirementDetailClient
+                  inline
+                  onChange={refreshRows}
+                  onClose={() => {
+                    setSelectedId(null)
+                    setPinnedRow(null)
+                    fetchData()
+                  }}
+                  requirementId={id}
+                />
+              )}
+              rows={displayRows}
+              sortState={sortState}
+              statusOptions={statusOptions}
+              typeCategories={typeCategories}
+              types={types}
+              visibleColumns={visibleColumns}
+            />
+          )}
         </div>
       </div>
     </div>

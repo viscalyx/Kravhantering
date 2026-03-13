@@ -8,6 +8,11 @@ services:
       - ..:/workspace:cached
       # Persistent npm cache for faster installs across rebuilds (commented out - not needed for infrequent rebuilds)
       # - npm-cache:/home/vscode/.npm
+      - type: bind
+        source: ${HOME}/.codex
+        target: /home/vscode/.codex
+        bind:
+          create_host_path: true
     # Keep container running
     command: sleep infinity
     # Set environment variables

@@ -1,5 +1,27 @@
 # Copilot Instructions
 
+## Stack
+
+- Next.js 16 (App Router)
+- React 19
+- TypeScript strict
+- Tailwind CSS 4
+- next-intl (`en`/`sv`)
+- Framer Motion
+- Vitest
+- Cloudflare Workers
+
+## Commands
+
+- `npm run check` - all checks (`type-check`, `format:check`,
+  `spell:check`, `lint`, `lint:md`, `test`)
+- `npm run test` - run tests
+- `npm run dev` - start dev server
+
+## General Rules
+
+- After changes, update relevant `docs/*.md` when behavior or workflows change.
+
 ## Database Schema Changes
 
 When making any changes to the database schema (`drizzle/schema.ts`) or migration files:

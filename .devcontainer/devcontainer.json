@@ -103,11 +103,11 @@
         },
 
         // TypeScript settings
-        "typescript.preferences.quoteStyle": "single",
-        "typescript.preferences.importModuleSpecifier": "relative",
-        "typescript.updateImportsOnFileMove.enabled": "always",
-        "typescript.suggest.autoImports": true,
-        "typescript.preferences.includePackageJsonAutoImports": "auto",
+        "js/ts.preferences.quoteStyle": "single",
+        "js/ts.preferences.importModuleSpecifier": "relative",
+        "js/ts.updateImportsOnFileMove.enabled": "always",
+        "js/ts.suggest.autoImports": true,
+        "js/ts.preferences.includePackageJsonAutoImports": "auto",
 
         // Tailwind CSS settings
         "tailwindCSS.includeLanguages": {
