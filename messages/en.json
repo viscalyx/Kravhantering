@@ -173,8 +173,8 @@
   "responsibilityAreaMgmt": {
     "name": "Name",
     "title": "Business objects",
-    "newItem": "New responsibility area",
-    "editItem": "Edit responsibility area"
+    "newItem": "New business object",
+    "editItem": "Edit business object"
   },
   "implementationTypeMgmt": {
     "name": "Name",

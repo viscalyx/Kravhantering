@@ -17,7 +17,9 @@ vi.mock('@/lib/requirements/service', async () => {
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
+import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 
 function createFakeService(
   references: Array<{ name?: string; uri?: string | null }> = [],
@@ -161,6 +163,22 @@ async function createClient() {
   return { client, fetch, transport }
 }
 
+async function createInMemoryClient(
+  server: ReturnType<typeof createKravhanteringMcpServer>,
+) {
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair()
+  const client = new Client({
+    name: 'test-client',
+    version: '1.0.0',
+  })
+
+  await server.connect(serverTransport)
+  await client.connect(clientTransport)
+
+  return { client, server }
+}
+
 describe('handleRequirementsMcpRequest', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -282,6 +300,36 @@ describe('handleRequirementsMcpRequest', () => {
 
     await client.close()
     await transport.close()
+  })
+
+  it('falls back to default terminology when loading stored terminology fails for the HTML resource', async () => {
+    const getTerminology = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('settings unavailable'))
+    const server = createKravhanteringMcpServer(
+      createFakeService() as never,
+      new Request('https://example.test/api/mcp'),
+      { getTerminology },
+    )
+
+    const { client } = await createInMemoryClient(server)
+    const viewResource = await client.readResource({
+      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2',
+    })
+    const firstViewResource =
+      'contents' in viewResource ? viewResource.contents[0] : undefined
+    const viewText =
+      firstViewResource && 'text' in firstViewResource
+        ? firstViewResource.text
+        : undefined
+
+    expect(viewText).toContain('<!doctype html>')
+    expect(viewText).toContain('MCP Requirement View')
+    expect(viewText).toContain('Requirement text')
+    expect(viewText).toContain('References')
+    expect(getTerminology).toHaveBeenCalledTimes(1)
+
+    await Promise.allSettled([client.close(), server.close()])
   })
 
   it('renders unsafe reference URIs as plain text instead of clickable links', async () => {

@@ -307,16 +307,24 @@ export default function AdminClient({
                 {ta('description')}
               </p>
             </div>
-            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70">
+            <div
+              aria-label={ta('title')}
+              className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
+              role="tablist"
+            >
               {adminTabs.map(tab => (
                 <button
+                  aria-controls={`${tab.id}-panel`}
+                  aria-selected={activeTab === tab.id}
                   className={`inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
                   }`}
+                  id={`${tab.id}-tab`}
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
+                  role="tab"
                   type="button"
                 >
                   <tab.icon aria-hidden="true" className="h-4 w-4" />
@@ -328,7 +336,12 @@ export default function AdminClient({
         </section>
 
         {activeTab === 'terminology' ? (
-          <section className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+          <section
+            aria-labelledby="terminology-tab"
+            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            id="terminology-panel"
+            role="tabpanel"
+          >
             <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
@@ -342,6 +355,7 @@ export default function AdminClient({
                 <div className="inline-flex rounded-full border border-secondary-200/80 bg-secondary-50/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-950/50">
                   {(['sv', 'en'] as const).map(locale => (
                     <button
+                      aria-pressed={activeLocale === locale}
                       className={`min-h-[44px] min-w-[44px] rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                         activeLocale === locale
                           ? 'bg-primary-700 text-white'
@@ -460,7 +474,12 @@ export default function AdminClient({
         ) : null}
 
         {activeTab === 'columns' ? (
-          <section className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+          <section
+            aria-labelledby="columns-tab"
+            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            id="columns-panel"
+            role="tabpanel"
+          >
             <div className="flex flex-col gap-4 border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
@@ -470,10 +489,10 @@ export default function AdminClient({
                   {ta('columnsDescription')}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 {renderSaveState(columnSaveState, ta('columnsSaveError'))}
                 <button
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800 sm:w-auto sm:min-w-[44px]"
                   disabled={isColumnSaving}
                   onClick={() => {
                     setColumnDefaults(savedColumnDefaults)
@@ -485,7 +504,7 @@ export default function AdminClient({
                   {tc('resetToDefault')}
                 </button>
                 <button
-                  className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
+                  className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60 sm:w-auto sm:min-w-[44px]"
                   disabled={isColumnSaving}
                   onClick={saveColumns}
                   type="button"
@@ -562,7 +581,12 @@ export default function AdminClient({
         ) : null}
 
         {activeTab === 'referenceData' ? (
-          <section className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80">
+          <section
+            aria-labelledby="referenceData-tab"
+            className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            id="referenceData-panel"
+            role="tabpanel"
+          >
             <div className="border-b border-secondary-200/70 pb-5 dark:border-secondary-700/60">
               <h2 className="text-xl font-semibold text-secondary-950 dark:text-secondary-50">
                 {ta('referenceData')}

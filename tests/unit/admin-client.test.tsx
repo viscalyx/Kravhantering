@@ -73,7 +73,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'admin.referenceData' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.referenceData' }))
 
     expect(screen.getByTestId('reference-data-card-areas')).toHaveAttribute(
       'href',
@@ -132,15 +132,58 @@ describe('AdminClient', () => {
       />,
     )
 
-    const terminologyTab = screen.getByRole('button', {
+    const terminologyTab = screen.getByRole('tab', {
       name: 'admin.terminology',
     })
 
+    expect(terminologyTab.parentElement).toHaveAttribute('role', 'tablist')
     expect(terminologyTab.parentElement?.className).toContain('overflow-x-auto')
     expect(terminologyTab.className).toContain('shrink-0')
   })
 
-  it('uses 44px touch targets for locale toggles and admin save/reset buttons', () => {
+  it('exposes admin tabs and locale toggles with accessible selection state', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const terminologyTab = screen.getByRole('tab', {
+      name: 'admin.terminology',
+    })
+    const columnsTab = screen.getByRole('tab', { name: 'admin.columns' })
+    const swedishButton = screen.getByRole('button', { name: 'admin.swedish' })
+    const englishButton = screen.getByRole('button', { name: 'admin.english' })
+
+    expect(terminologyTab).toHaveAttribute('aria-controls', 'terminology-panel')
+    expect(terminologyTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'terminology-panel',
+    )
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'aria-labelledby',
+      'terminology-tab',
+    )
+    expect(swedishButton).toHaveAttribute('aria-pressed', 'true')
+    expect(englishButton).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(englishButton)
+
+    expect(swedishButton).toHaveAttribute('aria-pressed', 'false')
+    expect(englishButton).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(columnsTab)
+
+    expect(columnsTab).toHaveAttribute('aria-controls', 'columns-panel')
+    expect(columnsTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+  })
+
+  it('uses 44px touch targets and responsive column action buttons', () => {
     render(
       <AdminClient
         initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
@@ -163,15 +206,20 @@ describe('AdminClient', () => {
     expect(terminologyResetButton.className).toContain('min-h-[44px]')
     expect(terminologySaveButton.className).toContain('min-w-[44px]')
 
-    fireEvent.click(screen.getByRole('button', { name: 'admin.columns' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
 
     const columnResetButton = screen.getByRole('button', {
       name: 'common.resetToDefault',
     })
     const columnSaveButton = screen.getByRole('button', { name: 'common.save' })
 
+    expect(columnResetButton.parentElement?.className).toContain('flex-wrap')
     expect(columnResetButton.className).toContain('min-h-[44px]')
-    expect(columnSaveButton.className).toContain('min-w-[44px]')
+    expect(columnResetButton.className).toContain('w-full')
+    expect(columnResetButton.className).toContain('sm:min-w-[44px]')
+    expect(columnSaveButton.className).toContain('min-h-[44px]')
+    expect(columnSaveButton.className).toContain('w-full')
+    expect(columnSaveButton.className).toContain('sm:min-w-[44px]')
   })
   it('disables terminology controls while saving and shows an error when the save request fails', async () => {
     const pendingRequest = deferred<Response>()
@@ -233,7 +281,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'admin.columns' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
     fireEvent.click(
       within(screen.getByTestId('admin-column-row-category')).getByRole(
         'button',
@@ -281,7 +329,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'admin.columns' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
     fireEvent.click(
       within(screen.getByTestId('admin-column-row-category')).getByRole(
         'button',
@@ -333,7 +381,7 @@ describe('AdminClient', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'admin.columns' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
 
     const categoryRow = screen.getByTestId('admin-column-row-category')
     const moveUpButton = within(categoryRow).getByRole('button', {

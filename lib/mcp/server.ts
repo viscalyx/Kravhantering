@@ -576,7 +576,13 @@ export function createKravhanteringMcpServer(
           view: versionNumber ? 'version' : 'detail',
         },
       )
-      const terminology = await uiSettings.getTerminology()
+      let terminology = getDefaultUiTerminology()
+
+      try {
+        terminology = await uiSettings.getTerminology()
+      } catch {
+        // Keep the HTML resource readable when stored UI settings are unavailable.
+      }
 
       return {
         contents: [

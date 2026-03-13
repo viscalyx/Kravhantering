@@ -380,7 +380,7 @@ export function getLocalizedUiTerm(
   key: UiTermKey,
   locale: UiLocale,
   form: UiTermForm,
-) {
+): string {
   return (
     terminology[key]?.[locale]?.[form] ??
     DEFAULT_UI_TERMINOLOGY[key][locale][form]
@@ -389,14 +389,14 @@ export function getLocalizedUiTerm(
 
 export function buildUiTerminologyPayload(
   terminology: Record<UiTermKey, UiTermTranslation>,
-) {
+): UiTermTranslation[] {
   return UI_TERM_KEYS.map(key => terminology[key])
 }
 
 export function createUiTerminologyMessageOverrides(
   locale: UiLocale,
   terminology: Record<UiTermKey, UiTermTranslation>,
-) {
+): MessagesObject {
   const overrides: MessagesObject = {}
 
   for (const key of UI_TERM_KEYS) {
@@ -433,7 +433,7 @@ export function applyUiTerminologyMessages(
   baseMessages: MessagesObject,
   locale: UiLocale,
   terminology: Record<UiTermKey, UiTermTranslation>,
-) {
+): MessagesObject {
   return mergeMessages(
     baseMessages,
     createUiTerminologyMessageOverrides(locale, terminology),
@@ -443,7 +443,7 @@ export function applyUiTerminologyMessages(
 export function getRequirementCsvHeaders(
   locale: UiLocale,
   terminology: Record<UiTermKey, UiTermTranslation>,
-) {
+): string[] {
   return [
     locale === 'sv' ? 'Krav-ID' : 'Requirement ID',
     getLocalizedUiTerm(terminology, 'description', locale, 'singular'),
@@ -469,7 +469,7 @@ export function getCatalogTitle(
     | 'types',
   locale: UiLocale,
   terminology: Record<UiTermKey, UiTermTranslation>,
-) {
+): string {
   switch (catalog) {
     case 'areas':
       return getLocalizedUiTerm(terminology, 'area', locale, 'plural')
