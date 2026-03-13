@@ -14,10 +14,23 @@ permissions:
   contents: read
 
 jobs:
-  test-dev-server:
-    name: Test Against Dev Server
+  test-server:
+    name: Test Against ${{ matrix.displayName }} Server
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.timeoutMinutes }}
+    strategy:
+      matrix:
+        include:
+          - server: dev
+            displayName: Dev
+            testCommand: npm run test:integration
+            timeoutMinutes: 15
+            retentionDays: 7
+          - server: preview
+            displayName: Preview
+            testCommand: npm run test:integration:preview
+            timeoutMinutes: 25
+            retentionDays: 7
 
     steps:
       - name: Checkout code
@@ -41,79 +54,31 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests against dev server
-        run: npm run test:integration
+      - name: Run Playwright tests against ${{ matrix.server }} server
+        run: ${{ matrix.testCommand }}
         env:
           CI: true
 
-      - name: Upload test results (dev)
+      - name: Upload test results (${{ matrix.server }})
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-dev
-          path: playwright-report-dev/
-          retention-days: 7
+          name: playwright-report-${{ matrix.server }}
+          path: playwright-report-${{ matrix.server }}/
+          retention-days: ${{ matrix.retentionDays }}
 
-      - name: Upload test results XML (dev)
+      - name: Upload test results XML (${{ matrix.server }})
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-junit-dev
-          path: test-results/dev/playwright-junit.xml
-          retention-days: 7
-
-  test-preview-server:
-    name: Test Against Preview Server
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Clean server and database state
-        run: npm run clean:all
-
-      - name: Setup local D1 database
-        run: npm run db:setup
-
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run Playwright tests against preview server
-        run: npm run test:integration:preview
-        env:
-          CI: true
-
-      - name: Upload test results (preview)
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report-preview
-          path: playwright-report-preview/
-          retention-days: 7
-
-      - name: Upload test results XML (preview)
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-junit-preview
-          path: test-results/preview/playwright-junit.xml
-          retention-days: 7
+          name: playwright-junit-${{ matrix.server }}
+          path: test-results/${{ matrix.server }}/playwright-junit.xml
+          retention-days: ${{ matrix.retentionDays }}
 
   comment-on-failure:
     name: Comment on PR if tests failed
     if: failure() && github.event_name == 'pull_request'
-    needs: [test-dev-server, test-preview-server]
+    needs: [test-server]
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
