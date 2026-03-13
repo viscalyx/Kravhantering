@@ -60,8 +60,8 @@ The behaviors below apply to the requirement list rendered by:
 - Browser `localStorage` defines each user’s personal overrides for:
   - visible column subset
   - column widths
-- If a user already has saved visibility preferences, the list still renders
-  those columns in the current admin-managed order.
+- If a user has saved visibility preferences, the list still displays those
+  columns in the current admin-managed order.
 - The list reset action restores:
   - the admin-managed default visible columns
   - the admin-managed default order

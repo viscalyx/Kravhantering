@@ -124,6 +124,14 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   const hasMenu = (action.menuItems?.length ?? 0) > 0
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState<{
+    left: number
+    maxHeight: number
+    top: number
+    width: number
+  } | null>(null)
 
   useEffect(() => {
     if (!hasMenu) {
@@ -131,7 +139,11 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     }
 
     const handlePointerDown = (event: MouseEvent) => {
-      if (!wrapperRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node
+      if (
+        !wrapperRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
         setOpen(false)
       }
     }
@@ -139,6 +151,57 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     document.addEventListener('mousedown', handlePointerDown)
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [hasMenu])
+
+  useEffect(() => {
+    if (!hasMenu || !open || !triggerRef.current) {
+      return
+    }
+
+    const updatePosition = () => {
+      if (!triggerRef.current || typeof window === 'undefined') {
+        return
+      }
+
+      const rect = triggerRef.current.getBoundingClientRect()
+      const viewportWidth = Math.max(
+        window.innerWidth,
+        document.documentElement.clientWidth,
+      )
+      const viewportHeight = Math.max(
+        window.innerHeight,
+        document.documentElement.clientHeight,
+      )
+      const width = Math.min(288, Math.max(viewportWidth - 16, 160))
+      const top = Math.min(
+        rect.top,
+        Math.max(POPOVER_VIEWPORT_MARGIN, viewportHeight - 56),
+      )
+
+      setMenuPosition({
+        left: clampPopoverLeft(rect.left - width - 12, width),
+        maxHeight: Math.max(viewportHeight - top - POPOVER_VIEWPORT_MARGIN, 44),
+        top,
+        width,
+      })
+    }
+
+    updatePosition()
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => updatePosition())
+
+    resizeObserver?.observe(triggerRef.current)
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [hasMenu, open])
 
   if (hasMenu) {
     return (
@@ -153,6 +216,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           data-floating-action-menu-trigger={action.id}
           data-floating-action-variant={variant}
           onClick={() => setOpen(value => !value)}
+          ref={triggerRef}
           title={action.ariaLabel}
           type="button"
         >
@@ -161,34 +225,48 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           </span>
           <span className="sr-only">{action.ariaLabel}</span>
         </button>
-        {open ? (
-          <div
-            className="absolute right-[calc(100%+12px)] top-0 z-40 w-72 rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
-            data-floating-action-menu={action.id}
-            role="menu"
-          >
-            <div className="space-y-1">
-              {action.menuItems?.map(item => (
-                <Link
-                  className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70"
-                  href={item.href}
-                  key={item.id}
-                  onClick={() => setOpen(false)}
-                  role="menuitem"
+        {open && menuPosition && typeof document !== 'undefined'
+          ? createPortal(
+              <div
+                className="fixed z-40"
+                style={{
+                  left: menuPosition.left,
+                  top: menuPosition.top,
+                  width: menuPosition.width,
+                }}
+              >
+                <div
+                  className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
+                  data-floating-action-menu={action.id}
+                  ref={menuRef}
+                  role="menu"
+                  style={{ maxHeight: menuPosition.maxHeight }}
                 >
-                  <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                    {item.label}
+                  <div className="space-y-1">
+                    {action.menuItems?.map(item => (
+                      <Link
+                        className="block rounded-xl px-3 py-2.5 transition-colors hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70"
+                        href={item.href}
+                        key={item.id}
+                        onClick={() => setOpen(false)}
+                        role="menuitem"
+                      >
+                        <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                          {item.label}
+                        </div>
+                        {item.description ? (
+                          <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                            {item.description}
+                          </div>
+                        ) : null}
+                      </Link>
+                    ))}
                   </div>
-                  {item.description ? (
-                    <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
-                      {item.description}
-                    </div>
-                  ) : null}
-                </Link>
-              ))}
-            </div>
-          </div>
-        ) : null}
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     )
   }

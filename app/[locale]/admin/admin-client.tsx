@@ -17,7 +17,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from '@/i18n/routing'
 import {
   getOrderedRequirementListColumns,
@@ -61,10 +61,14 @@ export default function AdminClient({
   const [terminologySaveState, setTerminologySaveState] =
     useState<SaveState>('idle')
   const [columnSaveState, setColumnSaveState] = useState<SaveState>('idle')
+  const terminologySaveTokenRef = useRef(0)
+  const columnSaveTokenRef = useRef(0)
   const orderedColumns = useMemo(
     () => getOrderedRequirementListColumns(columnDefaults),
     [columnDefaults],
   )
+  const isTerminologySaving = terminologySaveState === 'saving'
+  const isColumnSaving = columnSaveState === 'saving'
 
   const updateTermValue = (
     key: UiTermTranslation['key'],
@@ -126,29 +130,47 @@ export default function AdminClient({
   }
 
   const saveTerminology = async () => {
+    const requestToken = terminologySaveTokenRef.current + 1
+    terminologySaveTokenRef.current = requestToken
     setTerminologySaveState('saving')
 
-    const response = await fetch('/api/admin/terminology', {
-      body: JSON.stringify({ terminology }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PUT',
-    })
+    try {
+      const response = await fetch('/api/admin/terminology', {
+        body: JSON.stringify({ terminology }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT',
+      })
 
-    if (!response.ok) {
-      setTerminologySaveState('idle')
-      return
-    }
+      if (requestToken !== terminologySaveTokenRef.current) {
+        return
+      }
 
-    const data = (await response.json()) as {
-      terminology?: UiTermTranslation[]
+      if (!response.ok) {
+        setTerminologySaveState('error')
+        return
+      }
+
+      const data = (await response.json()) as {
+        terminology?: UiTermTranslation[]
+      }
+      if (requestToken !== terminologySaveTokenRef.current) {
+        return
+      }
+
+      const nextTerminology = data.terminology ?? terminology
+      setTerminology(nextTerminology)
+      setSavedTerminology(nextTerminology)
+      setTerminologySaveState('saved')
+    } catch {
+      if (requestToken === terminologySaveTokenRef.current) {
+        setTerminologySaveState('error')
+      }
     }
-    const nextTerminology = data.terminology ?? terminology
-    setTerminology(nextTerminology)
-    setSavedTerminology(nextTerminology)
-    setTerminologySaveState('saved')
   }
 
   const saveColumns = async () => {
+    const requestToken = columnSaveTokenRef.current + 1
+    columnSaveTokenRef.current = requestToken
     setColumnSaveState('saving')
 
     try {
@@ -158,6 +180,10 @@ export default function AdminClient({
         method: 'PUT',
       })
 
+      if (requestToken !== columnSaveTokenRef.current) {
+        return
+      }
+
       if (!response.ok) {
         setColumnSaveState('error')
         return
@@ -166,12 +192,18 @@ export default function AdminClient({
       const data = (await response.json()) as {
         columns?: RequirementListColumnDefault[]
       }
+      if (requestToken !== columnSaveTokenRef.current) {
+        return
+      }
+
       const nextColumns = data.columns ?? columnDefaults
       setColumnDefaults(nextColumns)
       setSavedColumnDefaults(nextColumns)
       setColumnSaveState('saved')
     } catch {
-      setColumnSaveState('error')
+      if (requestToken === columnSaveTokenRef.current) {
+        setColumnSaveState('error')
+      }
     }
   }
 
@@ -227,25 +259,22 @@ export default function AdminClient({
     },
   ]
 
-  const renderSaveState = (value: SaveState) =>
-    value === 'saved' ? (
-      <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
-        {ta('saved')}
-      </span>
-    ) : null
-
-  const renderColumnSaveState = (value: SaveState) => {
+  const renderSaveState = (value: SaveState, errorMessage?: string) => {
     if (value === 'saved') {
-      return renderSaveState(value)
+      return (
+        <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          {ta('saved')}
+        </span>
+      )
     }
 
-    if (value === 'error') {
+    if (value === 'error' && errorMessage) {
       return (
         <span
           className="text-sm font-medium text-red-700 dark:text-red-400"
           role="alert"
         >
-          {ta('columnsSaveError')}
+          {errorMessage}
         </span>
       )
     }
@@ -269,10 +298,10 @@ export default function AdminClient({
                 {ta('description')}
               </p>
             </div>
-            <div className="inline-flex rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70">
+            <div className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70">
               {adminTabs.map(tab => (
                 <button
-                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
@@ -309,6 +338,7 @@ export default function AdminClient({
                           ? 'bg-primary-700 text-white'
                           : 'text-secondary-700 hover:bg-white dark:text-secondary-200 dark:hover:bg-secondary-800'
                       }`}
+                      disabled={isTerminologySaving}
                       key={locale}
                       onClick={() => setActiveLocale(locale)}
                       type="button"
@@ -317,9 +347,13 @@ export default function AdminClient({
                     </button>
                   ))}
                 </div>
-                {renderSaveState(terminologySaveState)}
+                {renderSaveState(
+                  terminologySaveState,
+                  ta('terminologySaveError'),
+                )}
                 <button
                   className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  disabled={isTerminologySaving}
                   onClick={() => {
                     setTerminology(savedTerminology)
                     setTerminologySaveState('idle')
@@ -331,14 +365,12 @@ export default function AdminClient({
                 </button>
                 <button
                   className="inline-flex items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
-                  disabled={terminologySaveState === 'saving'}
+                  disabled={isTerminologySaving}
                   onClick={saveTerminology}
                   type="button"
                 >
                   <Save aria-hidden="true" className="h-4 w-4" />
-                  {terminologySaveState === 'saving'
-                    ? tc('loading')
-                    : tc('save')}
+                  {isTerminologySaving ? tc('loading') : tc('save')}
                 </button>
               </div>
             </div>
@@ -373,6 +405,7 @@ export default function AdminClient({
                         </span>
                         <input
                           className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                          disabled={isTerminologySaving}
                           onChange={event =>
                             updateTermValue(key, 'singular', event.target.value)
                           }
@@ -385,6 +418,7 @@ export default function AdminClient({
                         </span>
                         <input
                           className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                          disabled={isTerminologySaving}
                           onChange={event =>
                             updateTermValue(key, 'plural', event.target.value)
                           }
@@ -397,6 +431,7 @@ export default function AdminClient({
                         </span>
                         <input
                           className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                          disabled={isTerminologySaving}
                           onChange={event =>
                             updateTermValue(
                               key,
@@ -427,9 +462,10 @@ export default function AdminClient({
                 </p>
               </div>
               <div className="flex items-center gap-3">
-                {renderColumnSaveState(columnSaveState)}
+                {renderSaveState(columnSaveState, ta('columnsSaveError'))}
                 <button
                   className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                  disabled={isColumnSaving}
                   onClick={() => {
                     setColumnDefaults(savedColumnDefaults)
                     setColumnSaveState('idle')
@@ -441,12 +477,12 @@ export default function AdminClient({
                 </button>
                 <button
                   className="inline-flex items-center gap-2 rounded-full bg-primary-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-800 disabled:opacity-60"
-                  disabled={columnSaveState === 'saving'}
+                  disabled={isColumnSaving}
                   onClick={saveColumns}
                   type="button"
                 >
                   <Save aria-hidden="true" className="h-4 w-4" />
-                  {columnSaveState === 'saving' ? tc('loading') : tc('save')}
+                  {isColumnSaving ? tc('loading') : tc('save')}
                 </button>
               </div>
             </div>
@@ -478,7 +514,7 @@ export default function AdminClient({
                     <div className="flex flex-wrap items-center gap-3">
                       <button
                         className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                        disabled={index === 0}
+                        disabled={isColumnSaving || index === 0}
                         onClick={() => moveColumn(column.id, -1)}
                         type="button"
                       >
@@ -487,7 +523,9 @@ export default function AdminClient({
                       </button>
                       <button
                         className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-secondary-200 bg-white text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-40 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                        disabled={index === orderedColumns.length - 1}
+                        disabled={
+                          isColumnSaving || index === orderedColumns.length - 1
+                        }
                         onClick={() => moveColumn(column.id, 1)}
                         type="button"
                       >
@@ -497,7 +535,7 @@ export default function AdminClient({
                       <label className="inline-flex items-center gap-2 rounded-full border border-secondary-200 bg-white px-3 py-2 text-sm dark:border-secondary-700 dark:bg-secondary-900">
                         <input
                           checked={columnState?.defaultVisible ?? false}
-                          disabled={!column.canHide}
+                          disabled={isColumnSaving || !column.canHide}
                           onChange={() => toggleColumnVisibility(column.id)}
                           type="checkbox"
                         />

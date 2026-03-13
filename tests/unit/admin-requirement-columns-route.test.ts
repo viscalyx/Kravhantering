@@ -164,4 +164,20 @@ describe('admin requirement columns route', () => {
     expect(response.status).toBe(500)
     expect(body.error).toBe('Failed to save requirement column defaults.')
   })
+
+  it('returns a validation error for malformed JSON payloads', async () => {
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/requirement-columns', {
+        body: '{"columns": [',
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { error?: string }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Malformed JSON body.')
+    expect(
+      routeState.updateRequirementListColumnDefaults,
+    ).not.toHaveBeenCalled()
+  })
 })

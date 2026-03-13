@@ -56,7 +56,9 @@
     "iso25010": "Quality characteristics",
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
-    "admin": "Admin"
+    "admin": "Admin",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "notFound": {
     "title": "404",
@@ -227,11 +229,12 @@
     "locked": "Locked",
     "saved": "Saved",
     "columnsSaveError": "Could not save the column settings.",
+    "terminologySaveError": "Could not save the terminology.",
     "areasDescription": "Manage areas and their prefixes.",
     "typesDescription": "View types and their quality hierarchy.",
     "scenariosDescription": "Manage usage scenarios linked to requirements.",
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
-    "qualityAttributesDescription": "View quality characteristics from ISO/IEC 25010.",
+    "qualityAttributesDescription": "View quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirement packages.",
     "implementationTypesDescription": "Manage implementation types for requirement packages."
   },

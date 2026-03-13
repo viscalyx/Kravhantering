@@ -3,10 +3,11 @@ import { join } from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
 import { asc } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import * as schema from '@/drizzle/schema'
 import {
   getRequirementListColumnDefaults,
+  getUiTerminology,
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
 import type { Database as AppDatabase } from '@/lib/db'
@@ -114,6 +115,46 @@ describe('ui settings DAL', () => {
       ])
     } finally {
       sqlite.close()
+    }
+  })
+
+  it('rethrows terminology storage failures instead of silently substituting defaults', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failingDb = {
+      select: () => ({
+        from: () => {
+          throw new Error('terminology unavailable')
+        },
+      }),
+    } as unknown as AppDatabase
+
+    try {
+      await expect(getUiTerminology(failingDb)).rejects.toThrow(
+        'terminology unavailable',
+      )
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('rethrows column-default storage failures instead of silently substituting defaults', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const failingDb = {
+      select: () => ({
+        from: () => ({
+          orderBy: () => {
+            throw new Error('column defaults unavailable')
+          },
+        }),
+      }),
+    } as unknown as AppDatabase
+
+    try {
+      await expect(getRequirementListColumnDefaults(failingDb)).rejects.toThrow(
+        'column defaults unavailable',
+      )
+    } finally {
+      consoleError.mockRestore()
     }
   })
 })

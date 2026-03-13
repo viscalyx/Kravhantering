@@ -48,8 +48,26 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  let jsonBody: unknown
+
   try {
-    const body = columnDefaultsPayloadSchema.parse(await request.json())
+    jsonBody = await request.json()
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: 'Malformed JSON body.' },
+        { status: 400 },
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to read requirement column defaults payload.' },
+      { status: 500 },
+    )
+  }
+
+  try {
+    const body = columnDefaultsPayloadSchema.parse(jsonBody)
     const uniqueColumnIds = new Set(body.columns.map(column => column.columnId))
     const uniqueSortOrders = new Set(
       body.columns.map(column => column.sortOrder),

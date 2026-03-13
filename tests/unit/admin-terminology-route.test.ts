@@ -103,4 +103,74 @@ describe('admin terminology route', () => {
     expect(response.status).toBe(400)
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
   })
+
+  it('saves a valid terminology payload and returns the normalized response body', async () => {
+    const terminology = normalizeUiTerminology([
+      {
+        en: {
+          definitePlural: 'Requirement texts',
+          plural: 'Requirement texts',
+          singular: 'Requirement text',
+        },
+        key: 'description',
+        sv: {
+          definitePlural: 'Kravtexterna',
+          plural: 'Kravtexter',
+          singular: 'Kravtext',
+        },
+      },
+    ])
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/terminology', {
+        body: JSON.stringify({
+          terminology: buildUiTerminologyPayload(terminology),
+        }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { terminology?: unknown[] }
+
+    expect(response.status).toBe(200)
+    expect(routeState.updateUiTerminology).toHaveBeenCalledWith(
+      { db: true },
+      buildUiTerminologyPayload(terminology),
+    )
+    expect(body.terminology).toEqual(buildUiTerminologyPayload(terminology))
+  })
+
+  it('returns a structured error response when saving terminology fails', async () => {
+    routeState.updateUiTerminology.mockRejectedValueOnce(
+      new Error('write failed'),
+    )
+
+    const terminology = normalizeUiTerminology([
+      {
+        en: {
+          definitePlural: 'Requirement texts',
+          plural: 'Requirement texts',
+          singular: 'Requirement text',
+        },
+        key: 'description',
+        sv: {
+          definitePlural: 'Kravtexterna',
+          plural: 'Kravtexter',
+          singular: 'Kravtext',
+        },
+      },
+    ])
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/terminology', {
+        body: JSON.stringify({
+          terminology: buildUiTerminologyPayload(terminology),
+        }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as { error?: string }
+
+    expect(response.status).toBe(500)
+    expect(body.error).toBe('Failed to save terminology.')
+  })
 })

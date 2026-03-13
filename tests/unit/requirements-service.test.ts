@@ -179,6 +179,13 @@ function makeContext() {
   }
 }
 
+function makeUiSettings() {
+  return {
+    getColumnDefaults: vi.fn(),
+    getTerminology: vi.fn(async () => normalizeUiTerminology([])),
+  }
+}
+
 describe('createRequirementsService', () => {
   const logger = {
     error: vi.fn(),
@@ -242,7 +249,10 @@ describe('createRequirementsService', () => {
     ])
     mocks.countRequirements.mockResolvedValue(3)
 
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
       limit: 1,
@@ -299,7 +309,10 @@ describe('createRequirementsService', () => {
     ])
     mocks.countRequirements.mockResolvedValue(1)
 
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
     const result = await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
     })
@@ -319,7 +332,10 @@ describe('createRequirementsService', () => {
   })
 
   it('passes locale-aware sorting options to the DAL query', async () => {
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
 
     await service.queryCatalog(makeContext(), {
       catalog: 'requirements',
@@ -392,7 +408,10 @@ describe('createRequirementsService', () => {
   })
 
   it('creates a requirement and syncs references', async () => {
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
     const result = await service.manageRequirement(makeContext(), {
       operation: 'create',
       requirement: {
@@ -437,7 +456,10 @@ describe('createRequirementsService', () => {
       },
     ])
 
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'restore_version',
@@ -457,7 +479,10 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValueOnce(
       makeRequirementRecordWithPublishedVersion(),
     )
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
 
     const result = await service.getRequirement(makeContext(), {
       id: 1,
@@ -478,7 +503,10 @@ describe('createRequirementsService', () => {
     mocks.getRequirementById.mockResolvedValueOnce(
       makeRequirementRecordWithPublishedVersion(),
     )
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
 
     const result = await service.getRequirement(makeContext(), {
       id: 1,
@@ -498,7 +526,10 @@ describe('createRequirementsService', () => {
   })
 
   it('returns not_found when no published version exists for the default detail view', async () => {
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
 
     await expect(
       service.getRequirement(makeContext(), {
@@ -513,7 +544,10 @@ describe('createRequirementsService', () => {
   })
 
   it('returns not_found when a requested version is missing', async () => {
-    const service = createRequirementsService({} as never, { logger })
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
 
     await expect(
       service.getRequirement(makeContext(), {

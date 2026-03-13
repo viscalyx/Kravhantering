@@ -44,9 +44,11 @@ describe('Navigation', () => {
   it('shows a global settings link and removes reference data from the desktop navigation', () => {
     render(<Navigation />)
 
-    expect(
-      screen.getByRole('link', { name: 'admin.settings' }),
-    ).toHaveAttribute('href', '/admin')
+    const settingsLink = screen.getByRole('link', { name: 'admin.settings' })
+
+    expect(settingsLink).toHaveAttribute('href', '/admin')
+    expect(settingsLink.className).toContain('min-h-[44px]')
+    expect(settingsLink.className).toContain('min-w-[44px]')
     expect(screen.queryByText('nav.taxonomy')).toBeNull()
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.getByRole('link', { name: 'nav.catalog' })).toHaveAttribute(
@@ -62,7 +64,7 @@ describe('Navigation', () => {
   it('keeps mobile navigation limited to the primary items', () => {
     render(<Navigation />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Öppna meny' }))
+    fireEvent.click(screen.getByRole('button', { name: 'nav.openMenu' }))
 
     expect(
       screen

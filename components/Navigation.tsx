@@ -65,7 +65,7 @@ export default function Navigation() {
           <ThemeToggle />
           <Link
             aria-label={ta('settings')}
-            className={`inline-flex items-center justify-center rounded-full p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
+            className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
               isAdminActive
                 ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
                 : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'
@@ -79,7 +79,7 @@ export default function Navigation() {
           {/* Mobile menu button */}
           <button
             aria-expanded={mobileOpen}
-            aria-label={mobileOpen ? 'Stäng meny' : 'Öppna meny'}
+            aria-label={mobileOpen ? t('closeMenu') : t('openMenu')}
             className="md:hidden p-2 rounded-xl text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800"
             onClick={() => setMobileOpen(!mobileOpen)}
             type="button"

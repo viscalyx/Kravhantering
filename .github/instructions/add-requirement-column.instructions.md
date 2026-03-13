@@ -38,15 +38,15 @@ applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts
 
 ## Data Wiring
 
-- Add the underlying field to the correct backend shape. Do not add a UI-only property without real data wiring.
-- If the property represents requirement data, wire it through the DAL, service layer, detail payloads, edit payloads, `RequirementRow`, and any form or detail component that shows it.
-- If the property appears in the edit or create flow, update `components/RequirementForm.tsx` and any request payload validation.
-- If the property appears in the inline detail pane or dedicated requirement detail view, update those renderers and their tests.
-- If the property is shown as a list column, update table rendering and column config.
-- If the property is filterable, add filter state, parsing, clearing-on-hide, and UI controls.
-- If the property is sortable, implement backend sorting before exposing sort in the table config.
-- If the property should export to CSV, update `app/api/requirements/route.ts`.
-- If the property name or value appears in MCP or service-generated human text, update `lib/requirements/service.ts` and `lib/mcp/server.ts`.
+- Add the field to the correct backend shape. Do not add UI-only properties without real data wiring.
+- Wire requirement data through the DAL, service layer, detail/edit payloads, `RequirementRow`, and any form or detail component that shows it.
+- Update `components/RequirementForm.tsx` and request payload validation for create/edit flows.
+- Update the inline detail pane and dedicated requirement detail view renderers and tests.
+- Add the table column config and renderer when the property appears in the list.
+- Implement filter state, parsing, clear-on-hide behavior, and UI controls when the property is filterable.
+- Implement backend sorting before exposing table sort when the property is sortable.
+- Add CSV export handling in `app/api/requirements/route.ts` when needed.
+- Update human-text generators in `lib/requirements/service.ts` and `lib/mcp/server.ts` when the property name or value appears there.
 
 ## Persistence
 
@@ -56,12 +56,12 @@ applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts
 
 ## Verification
 
-- Update `tests/unit/requirement-list-view.test.ts` for order, visibility, parsing, reset, and filter-clearing behavior when the property is a list column.
-- Update `tests/unit/requirements-table.test.tsx` if list rendering, resize, filter, or popover behavior changes.
-- Update `tests/unit/kravkatalog-client.test.tsx` for first render, local overrides, and floating actions if needed.
+- Update `tests/unit/requirement-list-view.test.ts` for order, visibility, parsing, reset, and filter-clearing when the property is a list column.
+- Update `tests/unit/requirements-table.test.tsx` for list rendering, resize, filter, or popover changes.
+- Update `tests/unit/kravkatalog-client.test.tsx` for first render, local overrides, and floating actions when needed.
 - Update `tests/unit/requirement-detail-client.test.tsx` when the inline detail pane or detail view changes.
-- Update `tests/unit/requirements-route.test.ts` if CSV headers or exported fields change.
-- Update `tests/unit/requirements-service.test.ts` and `tests/unit/mcp-http.test.ts` if service or MCP output changes.
-- Update `tests/integration/requirements-table-hydration.spec.ts` if default visible headers change.
-- Update `tests/integration/admin-entrypoint.spec.ts` if the admin settings flow changes.
+- Update `tests/unit/requirements-route.test.ts` for CSV header or export field changes.
+- Update `tests/unit/requirements-service.test.ts` and `tests/unit/mcp-http.test.ts` for service or MCP output changes.
+- Update `tests/integration/requirements-table-hydration.spec.ts` when default visible headers change.
+- Update `tests/integration/admin-entrypoint.spec.ts` when the admin settings flow changes.
 - Update `docs/kravkatalog-ui-behaviour.md` when visible table, form, or inline detail behavior changes.

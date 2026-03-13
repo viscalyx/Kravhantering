@@ -85,6 +85,15 @@ function escapeHtml(value: string) {
     .replaceAll("'", '&#39;')
 }
 
+function getSafeReferenceHref(uri: string) {
+  try {
+    const parsed = new URL(uri)
+    return ['http:', 'https:', 'mailto:'].includes(parsed.protocol) ? uri : null
+  } catch {
+    return null
+  }
+}
+
 function getBaseContext(request: Request, toolName?: string): RequestContext {
   return createRequestContext(request, 'mcp', toolName)
 }
@@ -200,8 +209,15 @@ function renderRequirementHtml(
       ? `<ul>${references
           .map(reference => {
             const label = escapeHtml(reference.name ?? 'Reference')
+            const safeHref =
+              typeof reference.uri === 'string'
+                ? getSafeReferenceHref(reference.uri)
+                : null
+            if (safeHref) {
+              return `<li><a href="${escapeHtml(safeHref)}">${label}</a></li>`
+            }
             if (reference.uri) {
-              return `<li><a href="${escapeHtml(reference.uri)}">${label}</a></li>`
+              return `<li>${label}: ${escapeHtml(reference.uri)}</li>`
             }
             return `<li>${label}</li>`
           })

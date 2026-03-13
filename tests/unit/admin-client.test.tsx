@@ -38,6 +38,17 @@ function okJson(body: unknown) {
   } as Response
 }
 
+function deferred<T>() {
+  let reject!: (reason?: unknown) => void
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return { promise, reject, resolve }
+}
+
 function getColumnOrder(container: HTMLElement) {
   return Array.from(
     container.querySelectorAll('[data-testid^="admin-column-row-"]'),
@@ -109,6 +120,61 @@ describe('AdminClient', () => {
     ).toBeTruthy()
 
     expect(screen.getAllByRole('link')).toHaveLength(7)
+  })
+
+  it('renders a horizontally scrollable admin tab rail with non-shrinking tab buttons', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const terminologyTab = screen.getByRole('button', {
+      name: 'admin.terminology',
+    })
+
+    expect(terminologyTab.parentElement?.className).toContain('overflow-x-auto')
+    expect(terminologyTab.className).toContain('shrink-0')
+  })
+
+  it('disables terminology controls while saving and shows an error when the save request fails', async () => {
+    const pendingRequest = deferred<Response>()
+    fetchMock.mockReturnValueOnce(pendingRequest.promise)
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const localeToggle = screen.getByRole('button', { name: 'admin.english' })
+    const resetButton = screen.getByRole('button', {
+      name: 'common.resetToDefault',
+    })
+    const saveButton = screen.getByRole('button', { name: 'common.save' })
+    const inputs = screen.getAllByRole('textbox')
+
+    fireEvent.click(saveButton)
+
+    await waitFor(() => expect(saveButton).toBeDisabled())
+
+    expect(localeToggle).toBeDisabled()
+    expect(resetButton).toBeDisabled()
+    expect(inputs[0]).toBeDisabled()
+
+    pendingRequest.reject(new Error('network failed'))
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'admin.terminologySaveError',
+      ),
+    )
   })
 
   it('keeps a reordered column layout after a successful save', async () => {
@@ -219,5 +285,45 @@ describe('AdminClient', () => {
       'category',
       'type',
     ])
+  })
+
+  it('disables column controls while a save is in progress', async () => {
+    const pendingRequest = deferred<Response>()
+    fetchMock.mockReturnValueOnce(pendingRequest.promise)
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'admin.columns' }))
+
+    const categoryRow = screen.getByTestId('admin-column-row-category')
+    const moveUpButton = within(categoryRow).getByRole('button', {
+      name: 'admin.moveUp',
+    })
+    const defaultVisibleCheckbox = within(categoryRow).getByRole('checkbox')
+    const resetButton = screen.getByRole('button', {
+      name: 'common.resetToDefault',
+    })
+    const saveButton = screen.getByRole('button', { name: 'common.save' })
+
+    fireEvent.click(saveButton)
+
+    await waitFor(() => expect(saveButton).toBeDisabled())
+
+    expect(moveUpButton).toBeDisabled()
+    expect(defaultVisibleCheckbox).toBeDisabled()
+    expect(resetButton).toBeDisabled()
+
+    pendingRequest.resolve(
+      okJson({ columns: DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS }),
+    )
+
+    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
   })
 })

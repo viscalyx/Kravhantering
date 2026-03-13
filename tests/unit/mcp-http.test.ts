@@ -19,7 +19,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
 
-function createFakeService() {
+function createFakeService(
+  references: Array<{ name?: string; uri?: string | null }> = [],
+) {
   return {
     getRequirement: vi.fn().mockResolvedValue({
       message: 'Requirement detail',
@@ -39,7 +41,7 @@ function createFakeService() {
             },
             description: 'Support secure integration',
             id: 10,
-            references: [],
+            references,
             requiresTesting: true,
             statusNameEn: 'Draft',
             statusNameSv: 'Utkast',
@@ -70,7 +72,7 @@ function createFakeService() {
         },
         description: 'Support secure integration',
         id: 10,
-        references: [],
+        references,
         requiresTesting: true,
         statusNameEn: 'Draft',
         statusNameSv: 'Utkast',
@@ -275,6 +277,34 @@ describe('handleRequirementsMcpRequest', () => {
       text: 'Error: Boom',
       type: 'text',
     })
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('renders unsafe reference URIs as plain text instead of clickable links', async () => {
+    serviceState.getService.mockReturnValue(
+      createFakeService([
+        {
+          name: 'Dangerous reference',
+          uri: 'javascript:alert(1)',
+        },
+      ]),
+    )
+
+    const { client, transport } = await createClient()
+    const viewResource = await client.readResource({
+      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2',
+    })
+    const firstViewResource =
+      'contents' in viewResource ? viewResource.contents[0] : undefined
+    const viewText =
+      firstViewResource && 'text' in firstViewResource
+        ? firstViewResource.text
+        : undefined
+
+    expect(viewText).toContain('Dangerous reference: javascript:alert(1)')
+    expect(viewText).not.toContain('href="javascript:alert(1)"')
 
     await client.close()
     await transport.close()

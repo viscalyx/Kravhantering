@@ -76,6 +76,9 @@ export async function PUT(request: Request) {
       return validationError
     }
 
-    throw error
+    return NextResponse.json(
+      { error: 'Failed to save terminology.' },
+      { status: 500 },
+    )
   }
 }

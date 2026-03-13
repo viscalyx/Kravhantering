@@ -16,7 +16,7 @@ The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
 4. [UI Settings Tables](#ui-settings-tables)
 5. [Core Domain Tables](#core-domain-tables)
 6. [Join / Bridge Tables](#join--bridge-tables)
-7. [Status Workflow](status-workflow)
+7. [Status Workflow](#status-workflow)
 
 ---
 
@@ -372,6 +372,17 @@ Defines the allowed state-machine transitions between statuses.
 | Granskning (2) | Publicerad (3) |
 | Granskning (2) | Utkast (1) |
 | Publicerad (3) | Arkiverad (4) |
+
+---
+
+## Status Workflow
+
+The seeded requirement workflow is:
+
+`Utkast` → `Granskning` → `Publicerad` → `Arkiverad`
+
+The schema also allows the review step to move back to `Utkast` before
+publication.
 
 ---
 

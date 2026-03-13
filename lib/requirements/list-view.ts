@@ -151,7 +151,7 @@ export const DEFAULT_REQUIREMENT_SORT: RequirementSortState = {
 }
 
 export const REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY =
-  'kravkatalog.visibleColumns.v1'
+  'kravkatalog.visibleColumns.v2'
 export const REQUIREMENT_COLUMN_WIDTHS_STORAGE_KEY_PREFIX =
   'kravkatalog.columnWidths.v2'
 

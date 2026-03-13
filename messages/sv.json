@@ -56,7 +56,9 @@
     "iso25010": "Kvalitetsegenskaper",
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
-    "admin": "Administration"
+    "admin": "Administration",
+    "openMenu": "Öppna meny",
+    "closeMenu": "Stäng meny"
   },
   "notFound": {
     "title": "404",
@@ -227,11 +229,12 @@
     "locked": "Låst",
     "saved": "Sparat",
     "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
+    "terminologySaveError": "Det gick inte att spara benämningarna.",
     "areasDescription": "Hantera områden och deras prefix.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
     "scenariosDescription": "Hantera användningsscenarier som kan kopplas till krav.",
     "statusesDescription": "Hantera livscykelstatusar och deras ordning.",
-    "qualityAttributesDescription": "Visa kvalitetsegenskaper enligt ISO/IEC 25010.",
+    "qualityAttributesDescription": "Visa kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravpaket.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravpaket."
   },

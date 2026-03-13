@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
@@ -732,6 +732,57 @@ describe('RequirementsTable', () => {
       screen.getByRole('button', { name: 'columns' }).dataset
         .floatingActionVariant,
     ).toBe('default')
+  })
+
+  it('clamps floating action menus inside the viewport on narrow screens', async () => {
+    setViewportWidth(320)
+
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                href: '/sv/admin',
+                id: 'admin',
+                label: 'Admin',
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    setElementRect(trigger, {
+      bottom: 140,
+      left: 280,
+      right: 324,
+      top: 96,
+      width: 44,
+    })
+
+    fireEvent.click(trigger)
+
+    await waitFor(() => {
+      const menu = document.querySelector(
+        '[data-floating-action-menu="manage"]',
+      ) as HTMLDivElement | null
+      const menuContainer = menu?.parentElement as HTMLDivElement | null
+      const left = Number.parseInt(menuContainer?.style.left ?? '0', 10)
+      const width = Number.parseInt(menuContainer?.style.width ?? '0', 10)
+
+      expect(menu).toBeTruthy()
+      expect(left).toBeGreaterThanOrEqual(8)
+      expect(left + width).toBeLessThanOrEqual(312)
+      expect(menuContainer?.style.width).toBe('288px')
+      expect(menu?.className).not.toContain('w-72')
+    })
   })
 
   it('clears hidden column filters and resets hidden active sort', () => {
