@@ -68,6 +68,12 @@ describe('applyDocumentThemeChange', () => {
 
     expect(document.documentElement.classList.contains('dark')).toBe(true)
     expect(getGuardStyle()).toBeInstanceOf(HTMLStyleElement)
+    expect(getGuardStyle()?.textContent).toContain(
+      'animation: none !important;',
+    )
+    expect(getGuardStyle()?.textContent).toContain(
+      'transition: none !important;',
+    )
     expect(animationFrame.requestSpy).toHaveBeenCalledTimes(1)
   })
 

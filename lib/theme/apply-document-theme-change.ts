@@ -1,6 +1,10 @@
 const TRANSITION_GUARD_ATTRIBUTE = 'data-theme-transition-guard'
 const TRANSITION_GUARD_CSS = `
 *, *::before, *::after {
+  -webkit-animation: none !important;
+  animation: none !important;
+  -webkit-animation-play-state: paused !important;
+  animation-play-state: paused !important;
   -webkit-transition: none !important;
   transition: none !important;
 }
