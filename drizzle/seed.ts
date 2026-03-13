@@ -32,12 +32,12 @@ DELETE FROM requirement_statuses WHERE id BETWEEN 1 AND 10;
 -- ─── UI Terminology ──────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO ui_terminology (
   key,
-  sv_singular,
-  sv_plural,
-  sv_definite_plural,
-  en_singular,
-  en_plural,
-  en_definite_plural,
+  singular_sv,
+  plural_sv,
+  definite_plural_sv,
+  singular_en,
+  plural_en,
+  definite_plural_en,
   updated_at
 ) VALUES
   ('description', 'Kravtext', 'Kravtexter', 'Kravtexterna', 'Requirement text', 'Requirement texts', 'Requirement texts', datetime('now')),
@@ -55,132 +55,132 @@ INSERT OR IGNORE INTO ui_terminology (
   ('referenceData', 'Referensdata', 'Referensdata', 'Referensdata', 'Reference data', 'Reference data', 'Reference data', datetime('now'));
 
 UPDATE ui_terminology SET
-  sv_singular = 'Kravtext',
-  sv_plural = 'Kravtexter',
-  sv_definite_plural = 'Kravtexterna',
-  en_singular = 'Requirement text',
-  en_plural = 'Requirement texts',
-  en_definite_plural = 'Requirement texts',
+  singular_sv = 'Kravtext',
+  plural_sv = 'Kravtexter',
+  definite_plural_sv = 'Kravtexterna',
+  singular_en = 'Requirement text',
+  plural_en = 'Requirement texts',
+  definite_plural_en = 'Requirement texts',
   updated_at = datetime('now')
 WHERE key = 'description';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Område',
-  sv_plural = 'Områden',
-  sv_definite_plural = 'Områdena',
-  en_singular = 'Area',
-  en_plural = 'Areas',
-  en_definite_plural = 'Areas',
+  singular_sv = 'Område',
+  plural_sv = 'Områden',
+  definite_plural_sv = 'Områdena',
+  singular_en = 'Area',
+  plural_en = 'Areas',
+  definite_plural_en = 'Areas',
   updated_at = datetime('now')
 WHERE key = 'area';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Kategori',
-  sv_plural = 'Kategorier',
-  sv_definite_plural = 'Kategorierna',
-  en_singular = 'Category',
-  en_plural = 'Categories',
-  en_definite_plural = 'Categories',
+  singular_sv = 'Kategori',
+  plural_sv = 'Kategorier',
+  definite_plural_sv = 'Kategorierna',
+  singular_en = 'Category',
+  plural_en = 'Categories',
+  definite_plural_en = 'Categories',
   updated_at = datetime('now')
 WHERE key = 'category';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Typ',
-  sv_plural = 'Typer',
-  sv_definite_plural = 'Typerna',
-  en_singular = 'Type',
-  en_plural = 'Types',
-  en_definite_plural = 'Types',
+  singular_sv = 'Typ',
+  plural_sv = 'Typer',
+  definite_plural_sv = 'Typerna',
+  singular_en = 'Type',
+  plural_en = 'Types',
+  definite_plural_en = 'Types',
   updated_at = datetime('now')
 WHERE key = 'type';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Status',
-  sv_plural = 'Statusar',
-  sv_definite_plural = 'Statusarna',
-  en_singular = 'Status',
-  en_plural = 'Statuses',
-  en_definite_plural = 'Statuses',
+  singular_sv = 'Status',
+  plural_sv = 'Statusar',
+  definite_plural_sv = 'Statusarna',
+  singular_en = 'Status',
+  plural_en = 'Statuses',
+  definite_plural_en = 'Statuses',
   updated_at = datetime('now')
 WHERE key = 'status';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Kvalitetsegenskap',
-  sv_plural = 'Kvalitetsegenskaper',
-  sv_definite_plural = 'Kvalitetsegenskaperna',
-  en_singular = 'Quality characteristic',
-  en_plural = 'Quality characteristics',
-  en_definite_plural = 'Quality characteristics',
+  singular_sv = 'Kvalitetsegenskap',
+  plural_sv = 'Kvalitetsegenskaper',
+  definite_plural_sv = 'Kvalitetsegenskaperna',
+  singular_en = 'Quality characteristic',
+  plural_en = 'Quality characteristics',
+  definite_plural_en = 'Quality characteristics',
   updated_at = datetime('now')
 WHERE key = 'typeCategory';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Verifierbar',
-  sv_plural = 'Verifierbara',
-  sv_definite_plural = 'Verifierbara',
-  en_singular = 'Verifiable',
-  en_plural = 'Verifiable',
-  en_definite_plural = 'Verifiable',
+  singular_sv = 'Verifierbar',
+  plural_sv = 'Verifierbara',
+  definite_plural_sv = 'Verifierbara',
+  singular_en = 'Verifiable',
+  plural_en = 'Verifiable',
+  definite_plural_en = 'Verifiable',
   updated_at = datetime('now')
 WHERE key = 'requiresTesting';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Version',
-  sv_plural = 'Versioner',
-  sv_definite_plural = 'Versionerna',
-  en_singular = 'Version',
-  en_plural = 'Versions',
-  en_definite_plural = 'Versions',
+  singular_sv = 'Version',
+  plural_sv = 'Versioner',
+  definite_plural_sv = 'Versionerna',
+  singular_en = 'Version',
+  plural_en = 'Versions',
+  definite_plural_en = 'Versions',
   updated_at = datetime('now')
 WHERE key = 'version';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Acceptanskriterium',
-  sv_plural = 'Acceptanskriterier',
-  sv_definite_plural = 'Acceptanskriterierna',
-  en_singular = 'Acceptance criterion',
-  en_plural = 'Acceptance criteria',
-  en_definite_plural = 'Acceptance criteria',
+  singular_sv = 'Acceptanskriterium',
+  plural_sv = 'Acceptanskriterier',
+  definite_plural_sv = 'Acceptanskriterierna',
+  singular_en = 'Acceptance criterion',
+  plural_en = 'Acceptance criteria',
+  definite_plural_en = 'Acceptance criteria',
   updated_at = datetime('now')
 WHERE key = 'acceptanceCriteria';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Användningsscenario',
-  sv_plural = 'Användningsscenarier',
-  sv_definite_plural = 'Användningsscenarierna',
-  en_singular = 'Usage scenario',
-  en_plural = 'Usage scenarios',
-  en_definite_plural = 'Usage scenarios',
+  singular_sv = 'Användningsscenario',
+  plural_sv = 'Användningsscenarier',
+  definite_plural_sv = 'Användningsscenarierna',
+  singular_en = 'Usage scenario',
+  plural_en = 'Usage scenarios',
+  definite_plural_en = 'Usage scenarios',
   updated_at = datetime('now')
 WHERE key = 'scenario';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Verksamhetsobjekt',
-  sv_plural = 'Verksamhetsobjekt',
-  sv_definite_plural = 'Verksamhetsobjekten',
-  en_singular = 'Business object',
-  en_plural = 'Business objects',
-  en_definite_plural = 'Business objects',
+  singular_sv = 'Verksamhetsobjekt',
+  plural_sv = 'Verksamhetsobjekt',
+  definite_plural_sv = 'Verksamhetsobjekten',
+  singular_en = 'Business object',
+  plural_en = 'Business objects',
+  definite_plural_en = 'Business objects',
   updated_at = datetime('now')
 WHERE key = 'responsibilityArea';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Genomförandeform',
-  sv_plural = 'Genomförandeformer',
-  sv_definite_plural = 'Genomförandeformerna',
-  en_singular = 'Implementation type',
-  en_plural = 'Implementation types',
-  en_definite_plural = 'Implementation types',
+  singular_sv = 'Genomförandeform',
+  plural_sv = 'Genomförandeformer',
+  definite_plural_sv = 'Genomförandeformerna',
+  singular_en = 'Implementation type',
+  plural_en = 'Implementation types',
+  definite_plural_en = 'Implementation types',
   updated_at = datetime('now')
 WHERE key = 'implementationType';
 
 UPDATE ui_terminology SET
-  sv_singular = 'Referensdata',
-  sv_plural = 'Referensdata',
-  sv_definite_plural = 'Referensdata',
-  en_singular = 'Reference data',
-  en_plural = 'Reference data',
-  en_definite_plural = 'Reference data',
+  singular_sv = 'Referensdata',
+  plural_sv = 'Referensdata',
+  definite_plural_sv = 'Referensdata',
+  singular_en = 'Reference data',
+  plural_en = 'Reference data',
+  definite_plural_en = 'Reference data',
   updated_at = datetime('now')
 WHERE key = 'referenceData';
 
@@ -188,7 +188,7 @@ WHERE key = 'referenceData';
 INSERT OR IGNORE INTO requirement_list_column_defaults (
   column_id,
   sort_order,
-  default_visible,
+  is_default_visible,
   updated_at
 ) VALUES
   ('uniqueId', 0, 1, datetime('now')),
@@ -203,109 +203,109 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 9,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'uniqueId';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 10,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'description';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 11,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'area';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 12,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'category';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 13,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'type';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 14,
-  default_visible = 0,
+  is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'typeCategory';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 15,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'status';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 16,
-  default_visible = 0,
+  is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'requiresTesting';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 17,
-  default_visible = 0,
+  is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'version';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'uniqueId';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 1,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'description';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 2,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'area';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 3,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'category';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 4,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'type';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 5,
-  default_visible = 0,
+  is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'typeCategory';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 6,
-  default_visible = 1,
+  is_default_visible = 1,
   updated_at = datetime('now')
 WHERE column_id = 'status';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 7,
-  default_visible = 0,
+  is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'requiresTesting';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 8,
-  default_visible = 0,
+  is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'version';
 

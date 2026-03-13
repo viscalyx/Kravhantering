@@ -26,15 +26,15 @@ function mapUiTerminologyRow(
 ): UiTermTranslation {
   return {
     en: {
-      definitePlural: row.enDefinitePlural,
-      plural: row.enPlural,
-      singular: row.enSingular,
+      definitePlural: row.definitePluralEn,
+      plural: row.pluralEn,
+      singular: row.singularEn,
     },
     key: row.key as UiTermKey,
     sv: {
-      definitePlural: row.svDefinitePlural,
-      plural: row.svPlural,
-      singular: row.svSingular,
+      definitePlural: row.definitePluralSv,
+      plural: row.pluralSv,
+      singular: row.singularSv,
     },
   } as UiTermTranslation
 }
@@ -64,7 +64,7 @@ async function loadColumnDefaults(db: Database) {
     return normalizeRequirementListColumnDefaults(
       rows.map(row => ({
         columnId: row.columnId as RequirementColumnId,
-        defaultVisible: row.defaultVisible,
+        defaultVisible: row.isDefaultVisible,
         sortOrder: row.sortOrder,
       })),
     )
@@ -116,24 +116,24 @@ export async function updateUiTerminology(
     await db
       .insert(uiTerminology)
       .values({
-        enDefinitePlural: entry.en.definitePlural,
-        enPlural: entry.en.plural,
-        enSingular: entry.en.singular,
+        definitePluralEn: entry.en.definitePlural,
+        pluralEn: entry.en.plural,
+        singularEn: entry.en.singular,
         key: entry.key,
-        svDefinitePlural: entry.sv.definitePlural,
-        svPlural: entry.sv.plural,
-        svSingular: entry.sv.singular,
+        definitePluralSv: entry.sv.definitePlural,
+        pluralSv: entry.sv.plural,
+        singularSv: entry.sv.singular,
         updatedAt,
       })
       .onConflictDoUpdate({
         target: uiTerminology.key,
         set: {
-          enDefinitePlural: entry.en.definitePlural,
-          enPlural: entry.en.plural,
-          enSingular: entry.en.singular,
-          svDefinitePlural: entry.sv.definitePlural,
-          svPlural: entry.sv.plural,
-          svSingular: entry.sv.singular,
+          definitePluralEn: entry.en.definitePlural,
+          pluralEn: entry.en.plural,
+          singularEn: entry.en.singular,
+          definitePluralSv: entry.sv.definitePlural,
+          pluralSv: entry.sv.plural,
+          singularSv: entry.sv.singular,
           updatedAt,
         },
       })
@@ -155,14 +155,14 @@ export async function updateRequirementListColumnDefaults(
       .insert(requirementListColumnDefaults)
       .values({
         columnId: entry.columnId,
-        defaultVisible: entry.defaultVisible,
+        isDefaultVisible: entry.defaultVisible,
         sortOrder: entry.sortOrder + temporarySortOrderOffset,
         updatedAt,
       })
       .onConflictDoUpdate({
         target: requirementListColumnDefaults.columnId,
         set: {
-          defaultVisible: entry.defaultVisible,
+          isDefaultVisible: entry.defaultVisible,
           sortOrder: entry.sortOrder + temporarySortOrderOffset,
           updatedAt,
         },
@@ -174,14 +174,14 @@ export async function updateRequirementListColumnDefaults(
       .insert(requirementListColumnDefaults)
       .values({
         columnId: entry.columnId,
-        defaultVisible: entry.defaultVisible,
+        isDefaultVisible: entry.defaultVisible,
         sortOrder: entry.sortOrder,
         updatedAt,
       })
       .onConflictDoUpdate({
         target: requirementListColumnDefaults.columnId,
         set: {
-          defaultVisible: entry.defaultVisible,
+          isDefaultVisible: entry.defaultVisible,
           sortOrder: entry.sortOrder,
           updatedAt,
         },

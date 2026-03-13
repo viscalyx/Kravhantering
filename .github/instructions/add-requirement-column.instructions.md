@@ -20,7 +20,7 @@ applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts
 
 - Treat list order and default visibility as org-managed defaults, not hardcoded UI state.
 - Ensure the new column flows through `DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS` via the list-view registry.
-- Seed `requirement_list_column_defaults` in `drizzle/seed.ts` with the new column id, `sort_order`, and `default_visible`.
+- Seed `requirement_list_column_defaults` in `drizzle/seed.ts` with the new column id, `sort_order`, and `is_default_visible`.
 - If the column is persisted in the admin API payload, ensure `app/api/admin/requirement-columns/route.ts` still validates the full column set.
 - Reset actions must return to admin-managed defaults, not stale local defaults.
 

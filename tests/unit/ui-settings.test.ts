@@ -19,10 +19,17 @@ import {
 
 function createTestDb() {
   const sqlite = new BetterSqlite3(':memory:')
-  const migrationFiles = [
-    'drizzle/migrations/0000_woozy_silvermane.sql',
-    'drizzle/migrations/0001_pink_pixie.sql',
-  ]
+  const journal = JSON.parse(
+    readFileSync(
+      join(process.cwd(), 'drizzle/migrations/meta/_journal.json'),
+      'utf8',
+    ),
+  ) as {
+    entries: Array<{ tag: string }>
+  }
+  const migrationFiles = journal.entries.map(
+    entry => `drizzle/migrations/${entry.tag}.sql`,
+  )
 
   for (const migrationFile of migrationFiles) {
     const migrationSql = readFileSync(
@@ -100,18 +107,19 @@ describe('ui settings DAL', () => {
       expect(
         persistedRows.map(row => ({
           columnId: row.columnId,
+          isDefaultVisible: row.isDefaultVisible,
           sortOrder: row.sortOrder,
         })),
       ).toEqual([
-        { columnId: 'uniqueId', sortOrder: 0 },
-        { columnId: 'description', sortOrder: 1 },
-        { columnId: 'category', sortOrder: 2 },
-        { columnId: 'area', sortOrder: 3 },
-        { columnId: 'type', sortOrder: 4 },
-        { columnId: 'typeCategory', sortOrder: 5 },
-        { columnId: 'status', sortOrder: 6 },
-        { columnId: 'requiresTesting', sortOrder: 7 },
-        { columnId: 'version', sortOrder: 8 },
+        { columnId: 'uniqueId', isDefaultVisible: true, sortOrder: 0 },
+        { columnId: 'description', isDefaultVisible: true, sortOrder: 1 },
+        { columnId: 'category', isDefaultVisible: true, sortOrder: 2 },
+        { columnId: 'area', isDefaultVisible: true, sortOrder: 3 },
+        { columnId: 'type', isDefaultVisible: true, sortOrder: 4 },
+        { columnId: 'typeCategory', isDefaultVisible: false, sortOrder: 5 },
+        { columnId: 'status', isDefaultVisible: true, sortOrder: 6 },
+        { columnId: 'requiresTesting', isDefaultVisible: false, sortOrder: 7 },
+        { columnId: 'version', isDefaultVisible: false, sortOrder: 8 },
       ])
     } finally {
       sqlite.close()

@@ -499,27 +499,33 @@ export const requirementPackageItemsRelations = relations(
 
 // ─── UI Terminology ──────────────────────────────────────────────────────────
 
-export const uiTerminology = sqliteTable('ui_terminology', {
-  key: text('key').primaryKey(),
-  svSingular: text('sv_singular').notNull(),
-  svPlural: text('sv_plural').notNull(),
-  svDefinitePlural: text('sv_definite_plural').notNull(),
-  enSingular: text('en_singular').notNull(),
-  enPlural: text('en_plural').notNull(),
-  enDefinitePlural: text('en_definite_plural').notNull(),
-  updatedAt: text('updated_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-})
+export const uiTerminology = sqliteTable(
+  'ui_terminology',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    key: text('key').notNull(),
+    singularSv: text('singular_sv').notNull(),
+    pluralSv: text('plural_sv').notNull(),
+    definitePluralSv: text('definite_plural_sv').notNull(),
+    singularEn: text('singular_en').notNull(),
+    pluralEn: text('plural_en').notNull(),
+    definitePluralEn: text('definite_plural_en').notNull(),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [uniqueIndex('uq_ui_terminology_key').on(table.key)],
+)
 
 // ─── Requirement List Column Defaults ────────────────────────────────────────
 
 export const requirementListColumnDefaults = sqliteTable(
   'requirement_list_column_defaults',
   {
-    columnId: text('column_id').primaryKey(),
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    columnId: text('column_id').notNull(),
     sortOrder: integer('sort_order').notNull(),
-    defaultVisible: integer('default_visible', { mode: 'boolean' })
+    isDefaultVisible: integer('is_default_visible', { mode: 'boolean' })
       .notNull()
       .default(true),
     updatedAt: text('updated_at')
@@ -527,6 +533,9 @@ export const requirementListColumnDefaults = sqliteTable(
       .$defaultFn(() => new Date().toISOString()),
   },
   table => [
+    uniqueIndex('uq_requirement_list_column_defaults_column_id').on(
+      table.columnId,
+    ),
     uniqueIndex('uq_requirement_list_column_defaults_sort_order').on(
       table.sortOrder,
     ),

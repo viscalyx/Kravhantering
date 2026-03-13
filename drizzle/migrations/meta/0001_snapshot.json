@@ -206,10 +206,17 @@
     "requirement_list_column_defaults": {
       "name": "requirement_list_column_defaults",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
         "column_id": {
           "name": "column_id",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -220,8 +227,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "default_visible": {
-          "name": "default_visible",
+        "is_default_visible": {
+          "name": "is_default_visible",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -237,6 +244,11 @@
         }
       },
       "indexes": {
+        "uq_requirement_list_column_defaults_column_id": {
+          "name": "uq_requirement_list_column_defaults_column_id",
+          "columns": ["column_id"],
+          "isUnique": true
+        },
         "uq_requirement_list_column_defaults_sort_order": {
           "name": "uq_requirement_list_column_defaults_sort_order",
           "columns": ["sort_order"],
@@ -1083,50 +1095,57 @@
     "ui_terminology": {
       "name": "ui_terminology",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
         "key": {
           "name": "key",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "sv_singular": {
-          "name": "sv_singular",
+        "singular_sv": {
+          "name": "singular_sv",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "sv_plural": {
-          "name": "sv_plural",
+        "plural_sv": {
+          "name": "plural_sv",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "sv_definite_plural": {
-          "name": "sv_definite_plural",
+        "definite_plural_sv": {
+          "name": "definite_plural_sv",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "en_singular": {
-          "name": "en_singular",
+        "singular_en": {
+          "name": "singular_en",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "en_plural": {
-          "name": "en_plural",
+        "plural_en": {
+          "name": "plural_en",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "en_definite_plural": {
-          "name": "en_definite_plural",
+        "definite_plural_en": {
+          "name": "definite_plural_en",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -1140,7 +1159,13 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "uq_ui_terminology_key": {
+          "name": "uq_ui_terminology_key",
+          "columns": ["key"],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
