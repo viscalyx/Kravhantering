@@ -3,6 +3,9 @@
 This document explains the intended behavior of the Kravkatalog list UI so
 contributors can change the table without breaking user expectations.
 
+For the admin-managed source of terminology and default column settings, see
+[admin-center.md](./admin-center.md).
+
 ## Scope
 
 The behaviors below apply to the requirement list rendered by:
@@ -17,13 +20,10 @@ The behaviors below apply to the requirement list rendered by:
   Do not replace it with a table library unless there is a clear product
   decision to do so.
 - `uniqueId` and `description` are locked columns. They are always visible.
-- The default visible columns are:
-  - `uniqueId`
-  - `description`
-  - `area`
-  - `category`
-  - `type`
-  - `status`
+- The organization-wide default column order and default visible column set are
+  loaded from admin-managed settings.
+- `uniqueId` and `description` remain locked, but their relative order still
+  follows the admin-managed default order.
 - Optional columns can be shown from the columns popover.
 - The current last visible column does not render an extra resize divider
   after its right edge.
@@ -47,11 +47,24 @@ The behaviors below apply to the requirement list rendered by:
 ## Column Visibility
 
 - Column visibility is controlled from the columns popover.
-- Visibility preferences are persisted in `localStorage`.
+- Default visibility is controlled by admin-managed settings.
+- Per-browser visibility preferences are persisted in `localStorage`.
 - The first visible table render waits for persisted column visibility and
   locale-specific width preferences to hydrate from `localStorage`.
-- The reset action restores:
-  - the default visible column set
+
+## Admin Defaults vs Personal Overrides
+
+- Admin settings define the organization-wide baseline for:
+  - column order
+  - default visible columns
+- Browser `localStorage` defines each user’s personal overrides for:
+  - visible column subset
+  - column widths
+- If a user already has saved visibility preferences, the list still renders
+  those columns in the current admin-managed order.
+- The list reset action restores:
+  - the admin-managed default visible columns
+  - the admin-managed default order
   - the default width model
 
 ## Width Model

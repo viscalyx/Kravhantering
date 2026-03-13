@@ -111,13 +111,13 @@ describe('requirements route CSV locale fallback', () => {
 
     expect(firstExportCall?.[0]).toEqual([
       'Requirement ID',
-      'Description',
-      'Requirement area',
-      'Requirement category',
-      'Requirement type',
-      'ISO category',
+      'Requirement text',
+      'Area',
+      'Category',
+      'Type',
+      'Quality characteristic',
       'Status',
-      'Testable',
+      'Verifiable',
       'Version',
     ])
     expect(response.headers.get('Content-Disposition')).toContain(

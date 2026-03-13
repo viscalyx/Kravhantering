@@ -11,15 +11,17 @@ import {
   compareRequirementRows,
   DEFAULT_FILTERS,
   DEFAULT_REQUIREMENT_SORT,
-  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterOption,
   type FilterValues,
+  getDefaultVisibleRequirementColumns,
   getRequirementColumnWidthsStorageKey,
+  normalizeRequirementListColumnDefaults,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
   REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
   type RequirementColumnId,
   type RequirementColumnWidths,
+  type RequirementListColumnDefault,
   type RequirementRow,
   type RequirementSortState,
   type StatusOption,
@@ -86,10 +88,22 @@ function mapRequirementDetailToRow(
   }
 }
 
-export default function KravkatalogClient() {
+export default function KravkatalogClient({
+  initialColumnDefaults,
+}: {
+  initialColumnDefaults?: RequirementListColumnDefault[]
+}) {
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const locale = useLocale()
+  const normalizedColumnDefaults = useMemo(
+    () => normalizeRequirementListColumnDefaults(initialColumnDefaults),
+    [initialColumnDefaults],
+  )
+  const defaultVisibleColumns = useMemo(
+    () => getDefaultVisibleRequirementColumns(normalizedColumnDefaults),
+    [normalizedColumnDefaults],
+  )
 
   const [rows, setRows] = useState<RequirementRow[]>([])
   const [areas, setAreas] = useState<AreaOption[]>([])
@@ -102,7 +116,7 @@ export default function KravkatalogClient() {
     DEFAULT_REQUIREMENT_SORT,
   )
   const [visibleColumns, setVisibleColumns] = useState<RequirementColumnId[]>(
-    DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+    defaultVisibleColumns,
   )
   const [columnWidths, setColumnWidths] = useState<RequirementColumnWidths>({})
   const [loading, setLoading] = useState(true)
@@ -321,27 +335,29 @@ export default function KravkatalogClient() {
   }, [])
 
   useEffect(() => {
-    let nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS
+    let nextVisibleColumns = defaultVisibleColumns
 
     try {
       nextVisibleColumns = parseRequirementVisibleColumns(
         globalThis.localStorage.getItem(
           REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
         ),
+        { columnDefaults: normalizedColumnDefaults },
       )
     } catch {
-      nextVisibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS
+      nextVisibleColumns = defaultVisibleColumns
     } finally {
       setVisibleColumns(nextVisibleColumns)
       setFilters(previousFilters =>
         clearRequirementFiltersForHiddenColumns(
           previousFilters,
           nextVisibleColumns,
+          { columnDefaults: normalizedColumnDefaults },
         ),
       )
       setHasLoadedColumnPreferences(true)
     }
-  }, [])
+  }, [defaultVisibleColumns, normalizedColumnDefaults])
 
   useEffect(() => {
     setHasResolvedInitialRows(false)
@@ -367,12 +383,14 @@ export default function KravkatalogClient() {
     try {
       globalThis.localStorage.setItem(
         REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
-        serializeRequirementVisibleColumns(visibleColumns),
+        serializeRequirementVisibleColumns(visibleColumns, {
+          columnDefaults: normalizedColumnDefaults,
+        }),
       )
     } catch {
       // Ignore storage failures and keep the in-memory preference.
     }
-  }, [hasLoadedColumnPreferences, visibleColumns])
+  }, [hasLoadedColumnPreferences, normalizedColumnDefaults, visibleColumns])
 
   useEffect(() => {
     if (hydratedColumnWidthsStorageKey !== columnWidthsStorageKey) {
@@ -470,6 +488,7 @@ export default function KravkatalogClient() {
             <RequirementsTable
               areas={areas}
               categories={categories}
+              columnDefaults={normalizedColumnDefaults}
               columnWidths={columnWidths}
               expandedId={selectedId}
               filterValues={filters}

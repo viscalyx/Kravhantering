@@ -26,7 +26,7 @@ async function expectHydratedTable(page: Page) {
           ),
         ),
     )
-    .toEqual(['Krav-ID', 'Beskrivning', 'Kravområde', 'Kravstatus'])
+    .toEqual(['Krav-ID', 'Kravtext', 'Område', 'Status'])
 
   await expect
     .poll(async () =>

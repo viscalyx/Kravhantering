@@ -41,19 +41,22 @@
     "resetToDefault": "Reset to default",
     "restoreVersion": "Restore version",
     "createdAt": "Created",
-    "updatedAt": "Updated"
+    "updatedAt": "Updated",
+    "error": "Something went wrong"
   },
   "nav": {
     "catalog": "Requirements Catalog",
-    "areas": "Requirement Areas",
+    "areas": "Areas",
     "packages": "Requirement Packages",
-    "scenarios": "Requirement Scenarios",
-    "statuses": "Requirement Statuses",
-    "types": "Requirement Types",
-    "taxonomy": "Taxonomy",
-    "iso25010": "ISO 25010",
-    "responsibilityAreas": "Responsibility Areas",
-    "implementationTypes": "Implementation Types"
+    "scenarios": "Usage Scenarios",
+    "statuses": "Statuses",
+    "types": "Types",
+    "taxonomy": "Reference data",
+    "referenceData": "Reference data",
+    "iso25010": "Quality characteristics",
+    "responsibilityAreas": "Business objects",
+    "implementationTypes": "Implementation types",
+    "admin": "Admin"
   },
   "notFound": {
     "title": "404",
@@ -62,15 +65,15 @@
   },
   "requirement": {
     "uniqueId": "Requirement ID",
-    "description": "Description",
-    "acceptanceCriteria": "Acceptance criteria",
-    "area": "Requirement area",
-    "category": "Requirement category",
-    "type": "Requirement type",
-    "typeCategory": "ISO category",
-    "requiresTesting": "Testable",
+    "description": "Requirement text",
+    "acceptanceCriteria": "Acceptance criterion",
+    "area": "Area",
+    "category": "Category",
+    "type": "Type",
+    "typeCategory": "Quality characteristic",
+    "requiresTesting": "Verifiable",
     "reference": "Requirement reference",
-    "scenario": "Requirement scenario",
+    "scenario": "Usage scenario",
     "newRequirement": "New requirement",
     "editRequirement": "Edit requirement",
     "status": "Status",
@@ -135,7 +138,7 @@
   },
   "package": {
     "name": "Name",
-    "responsibilityArea": "Responsibility area",
+    "responsibilityArea": "Business object",
     "implementationType": "Implementation type",
     "needsReference": "Needs reference",
     "newPackage": "New requirement package",
@@ -167,13 +170,13 @@
   },
   "responsibilityAreaMgmt": {
     "name": "Name",
-    "title": "Responsibility Areas",
+    "title": "Business objects",
     "newItem": "New responsibility area",
     "editItem": "Edit responsibility area"
   },
   "implementationTypeMgmt": {
     "name": "Name",
-    "title": "Implementation Types",
+    "title": "Implementation types",
     "newItem": "New implementation type",
     "editItem": "Edit implementation type"
   },
@@ -200,6 +203,104 @@
     "sv": "Svenska",
     "en": "English",
     "switchTo": "Switch language"
+  },
+  "admin": {
+    "title": "Admin center",
+    "description": "Manage UI terminology, default columns, and shortcuts into reference data without changing route slugs or API field names.",
+    "settings": "Settings",
+    "adminCenter": "Admin center",
+    "adminCenterDescription": "Update terminology and default column settings.",
+    "terminology": "Terminology",
+    "terminologyDescription": "Edit singular, plural, and definite plural forms for the labels already used in the interface.",
+    "columns": "Columns",
+    "columnsDescription": "Control the default order and visibility of the requirements list columns.",
+    "referenceData": "Reference data",
+    "referenceDataDescription": "Open the existing reference-data pages with their current route slugs.",
+    "swedish": "Svenska",
+    "english": "English",
+    "singular": "Singular",
+    "plural": "Plural",
+    "definitePlural": "Definite plural",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "defaultVisible": "Visible by default",
+    "locked": "Locked",
+    "saved": "Saved",
+    "columnsSaveError": "Could not save the column settings.",
+    "areasDescription": "Manage areas and their prefixes.",
+    "typesDescription": "View types and their quality hierarchy.",
+    "scenariosDescription": "Manage usage scenarios linked to requirements.",
+    "statusesDescription": "Manage lifecycle statuses and their ordering.",
+    "qualityAttributesDescription": "View quality characteristics from ISO/IEC 25010.",
+    "responsibilityAreasDescription": "Manage business objects for requirement packages.",
+    "implementationTypesDescription": "Manage implementation types for requirement packages."
+  },
+  "terminology": {
+    "description": {
+      "singular": "Requirement text",
+      "plural": "Requirement texts",
+      "definitePlural": "Requirement texts"
+    },
+    "area": {
+      "singular": "Area",
+      "plural": "Areas",
+      "definitePlural": "Areas"
+    },
+    "category": {
+      "singular": "Category",
+      "plural": "Categories",
+      "definitePlural": "Categories"
+    },
+    "type": {
+      "singular": "Type",
+      "plural": "Types",
+      "definitePlural": "Types"
+    },
+    "status": {
+      "singular": "Status",
+      "plural": "Statuses",
+      "definitePlural": "Statuses"
+    },
+    "typeCategory": {
+      "singular": "Quality characteristic",
+      "plural": "Quality characteristics",
+      "definitePlural": "Quality characteristics"
+    },
+    "requiresTesting": {
+      "singular": "Verifiable",
+      "plural": "Verifiable",
+      "definitePlural": "Verifiable"
+    },
+    "version": {
+      "singular": "Version",
+      "plural": "Versions",
+      "definitePlural": "Versions"
+    },
+    "acceptanceCriteria": {
+      "singular": "Acceptance criterion",
+      "plural": "Acceptance criteria",
+      "definitePlural": "Acceptance criteria"
+    },
+    "scenario": {
+      "singular": "Usage scenario",
+      "plural": "Usage scenarios",
+      "definitePlural": "Usage scenarios"
+    },
+    "responsibilityArea": {
+      "singular": "Business object",
+      "plural": "Business objects",
+      "definitePlural": "Business objects"
+    },
+    "implementationType": {
+      "singular": "Implementation type",
+      "plural": "Implementation types",
+      "definitePlural": "Implementation types"
+    },
+    "referenceData": {
+      "singular": "Reference data",
+      "plural": "Reference data",
+      "definitePlural": "Reference data"
+    }
   },
   "footer": {
     "copyright": "© {year} Contributors to Requirements Management. All rights reserved."

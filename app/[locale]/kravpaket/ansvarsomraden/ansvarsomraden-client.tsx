@@ -98,7 +98,7 @@ export default function AnsvarsomradenClient() {
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newItem')}
+            {tc('create')}
           </button>
         </div>
 
@@ -108,7 +108,7 @@ export default function AnsvarsomradenClient() {
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
-              {editId ? t('editItem') : t('newItem')}
+              {editId ? tc('edit') : tc('create')}
             </h2>
             <div>
               <label

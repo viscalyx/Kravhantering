@@ -29,6 +29,50 @@ DELETE FROM requirement_types WHERE id IN (1, 2);
 DELETE FROM requirement_categories WHERE id IN (1, 2, 3);
 DELETE FROM requirement_status_transitions WHERE id BETWEEN 1 AND 10;
 DELETE FROM requirement_statuses WHERE id BETWEEN 1 AND 10;
+DELETE FROM requirement_list_column_defaults;
+DELETE FROM ui_terminology;
+
+-- ─── UI Terminology ──────────────────────────────────────────────────────────
+INSERT INTO ui_terminology (
+  key,
+  sv_singular,
+  sv_plural,
+  sv_definite_plural,
+  en_singular,
+  en_plural,
+  en_definite_plural,
+  updated_at
+) VALUES
+  ('description', 'Kravtext', 'Kravtexter', 'Kravtexterna', 'Requirement text', 'Requirement texts', 'Requirement texts', datetime('now')),
+  ('area', 'Område', 'Områden', 'Områdena', 'Area', 'Areas', 'Areas', datetime('now')),
+  ('category', 'Kategori', 'Kategorier', 'Kategorierna', 'Category', 'Categories', 'Categories', datetime('now')),
+  ('type', 'Typ', 'Typer', 'Typerna', 'Type', 'Types', 'Types', datetime('now')),
+  ('status', 'Status', 'Statusar', 'Statusarna', 'Status', 'Statuses', 'Statuses', datetime('now')),
+  ('typeCategory', 'Kvalitetsegenskap', 'Kvalitetsegenskaper', 'Kvalitetsegenskaperna', 'Quality characteristic', 'Quality characteristics', 'Quality characteristics', datetime('now')),
+  ('requiresTesting', 'Verifierbar', 'Verifierbara', 'Verifierbara', 'Verifiable', 'Verifiable', 'Verifiable', datetime('now')),
+  ('version', 'Version', 'Versioner', 'Versionerna', 'Version', 'Versions', 'Versions', datetime('now')),
+  ('acceptanceCriteria', 'Acceptanskriterium', 'Acceptanskriterier', 'Acceptanskriterierna', 'Acceptance criterion', 'Acceptance criteria', 'Acceptance criteria', datetime('now')),
+  ('scenario', 'Användningsscenario', 'Användningsscenarier', 'Användningsscenarierna', 'Usage scenario', 'Usage scenarios', 'Usage scenarios', datetime('now')),
+  ('responsibilityArea', 'Verksamhetsobjekt', 'Verksamhetsobjekt', 'Verksamhetsobjekten', 'Business object', 'Business objects', 'Business objects', datetime('now')),
+  ('implementationType', 'Genomförandeform', 'Genomförandeformer', 'Genomförandeformerna', 'Implementation type', 'Implementation types', 'Implementation types', datetime('now')),
+  ('referenceData', 'Referensdata', 'Referensdata', 'Referensdata', 'Reference data', 'Reference data', 'Reference data', datetime('now'));
+
+-- ─── Requirement List Column Defaults ────────────────────────────────────────
+INSERT INTO requirement_list_column_defaults (
+  column_id,
+  sort_order,
+  default_visible,
+  updated_at
+) VALUES
+  ('uniqueId', 0, 1, datetime('now')),
+  ('description', 1, 1, datetime('now')),
+  ('area', 2, 1, datetime('now')),
+  ('category', 3, 1, datetime('now')),
+  ('type', 4, 1, datetime('now')),
+  ('typeCategory', 5, 0, datetime('now')),
+  ('status', 6, 1, datetime('now')),
+  ('requiresTesting', 7, 0, datetime('now')),
+  ('version', 8, 0, datetime('now'));
 
 -- ─── Requirement Statuses ────────────────────────────────────────────────────
 -- 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad

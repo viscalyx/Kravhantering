@@ -4,6 +4,10 @@ import {
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as z from 'zod'
 import {
+  createUiSettingsLoader,
+  type UiSettingsLoader,
+} from '@/lib/dal/ui-settings'
+import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
@@ -18,6 +22,11 @@ import {
   toResponseFormat,
   toResponseLocale,
 } from '@/lib/requirements/service'
+import {
+  getDefaultUiTerminology,
+  getLocalizedUiTerm,
+  type UiLocale,
+} from '@/lib/ui-terminology'
 
 const PaginationSchema = z
   .object({
@@ -145,6 +154,7 @@ function createRequirementResourceLink(
 function renderRequirementHtml(
   payload: Awaited<ReturnType<RequirementsService['getRequirement']>>,
   locale: 'en' | 'sv',
+  terminology = getDefaultUiTerminology(),
 ) {
   const detail = payload.requirement
   const selectedVersion = payload.version ?? detail.versions[0]
@@ -166,6 +176,16 @@ function renderRequirementHtml(
     locale === 'sv'
       ? (selectedVersion?.statusNameSv as string | undefined)
       : (selectedVersion?.statusNameEn as string | undefined)
+  const requiresTestingLabel = getLocalizedUiTerm(
+    terminology,
+    'requiresTesting',
+    locale,
+    'singular',
+  )
+  const requiresTestingOffLabel =
+    locale === 'sv'
+      ? `Inte ${requiresTestingLabel.toLowerCase()}`
+      : `Not ${requiresTestingLabel.toLowerCase()}`
 
   const scenarioNames = scenarios
     .map(item =>
@@ -229,25 +249,25 @@ function renderRequirementHtml(
     '      <div class="meta">',
     `        <span class="pill">${escapeHtml(statusLabel ?? 'Unknown')}</span>`,
     `        <span class="pill">${escapeHtml(String(detail.area?.name ?? 'No area'))}</span>`,
-    `        <span class="pill">${selectedVersion?.requiresTesting ? escapeHtml(locale === 'sv' ? 'Kräver testning' : 'Testing required') : escapeHtml(locale === 'sv' ? 'Ingen testning krävs' : 'No testing required')}</span>`,
+    `        <span class="pill">${selectedVersion?.requiresTesting ? escapeHtml(requiresTestingLabel) : escapeHtml(requiresTestingOffLabel)}</span>`,
     '      </div>',
     '      <section class="split">',
     '        <div>',
-    `          <h2>${escapeHtml(locale === 'sv' ? 'Beskrivning' : 'Description')}</h2>`,
+    `          <h2>${escapeHtml(getLocalizedUiTerm(terminology, 'description', locale, 'singular'))}</h2>`,
     `          <p class="body-text">${escapeHtml(String(selectedVersion?.description ?? ''))}</p>`,
-    `          <h2>${escapeHtml(locale === 'sv' ? 'Acceptanskriterier' : 'Acceptance Criteria')}</h2>`,
+    `          <h2>${escapeHtml(getLocalizedUiTerm(terminology, 'acceptanceCriteria', locale, 'singular'))}</h2>`,
     `          <p class="body-text">${escapeHtml(String(selectedVersion?.acceptanceCriteria ?? ''))}</p>`,
     '        </div>',
     '        <div class="grid">',
-    `          <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Kategori' : 'Category')}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.category?.nameSv : selectedVersion?.category?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Typ' : 'Type')}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.type?.nameSv : selectedVersion?.type?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Typkategori' : 'Type Category')}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.typeCategory?.nameSv : selectedVersion?.typeCategory?.nameEn) ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Version' : 'Version')}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'category', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.category?.nameSv : selectedVersion?.category?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'type', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.type?.nameSv : selectedVersion?.type?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'typeCategory', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.typeCategory?.nameSv : selectedVersion?.typeCategory?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'version', locale, 'singular'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
     '        </div>',
     '      </section>',
     '      <section class="split">',
     `        <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Referenser' : 'References')}</h2>${referenceMarkup}</section>`,
-    `        <section class="panel"><h2>${escapeHtml(locale === 'sv' ? 'Scenarier' : 'Scenarios')}</h2>${scenarioMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'scenario', locale, 'plural'))}</h2>${scenarioMarkup}</section>`,
     '      </section>',
     '    </article>',
     '  </main>',
@@ -444,6 +464,9 @@ function getRequirementLinkPayload(
 export function createKravhanteringMcpServer(
   service: RequirementsService,
   request: Request,
+  uiSettings: Pick<UiSettingsLoader, 'getTerminology'> = {
+    getTerminology: async () => getDefaultUiTerminology(),
+  },
 ) {
   const server = new McpServer(
     {
@@ -537,12 +560,17 @@ export function createKravhanteringMcpServer(
           view: versionNumber ? 'version' : 'detail',
         },
       )
+      const terminology = await uiSettings.getTerminology()
 
       return {
         contents: [
           {
             mimeType: 'text/html',
-            text: renderRequirementHtml(payload, locale),
+            text: renderRequirementHtml(
+              payload,
+              locale as UiLocale,
+              terminology,
+            ),
             uri: uri.toString(),
           },
         ],
@@ -761,6 +789,7 @@ export function createRequirementsMcpServerFromDb(
   db: Parameters<typeof createRequirementsService>[0],
   request: Request,
 ) {
-  const service = createRequirementsService(db)
-  return createKravhanteringMcpServer(service, request)
+  const uiSettings = createUiSettingsLoader(db)
+  const service = createRequirementsService(db, { uiSettings })
+  return createKravhanteringMcpServer(service, request, uiSettings)
 }

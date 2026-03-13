@@ -5,6 +5,7 @@ import type { RequirementsTableProps } from '@/components/RequirementsTable'
 import {
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   getRequirementColumnWidthsStorageKey,
+  normalizeRequirementListColumnDefaults,
   REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
 } from '@/lib/requirements/list-view'
 
@@ -1443,6 +1444,45 @@ describe('KravkatalogClient', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/requirements?'),
+      ),
+    )
+  })
+
+  it('applies the admin-managed column order when browser preferences already include the reordered columns', async () => {
+    storageGetItem.mockImplementation((key: string) => {
+      if (key === REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY) {
+        return '["area","category"]'
+      }
+      return null
+    })
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem: storageGetItem,
+        setItem: storageSetItem,
+      },
+      writable: true,
+    })
+
+    mockCommonFetches()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const reorderedDefaults = normalizeRequirementListColumnDefaults([
+      { columnId: 'uniqueId', defaultVisible: true, sortOrder: 0 },
+      { columnId: 'description', defaultVisible: true, sortOrder: 1 },
+      { columnId: 'category', defaultVisible: true, sortOrder: 2 },
+      { columnId: 'area', defaultVisible: true, sortOrder: 3 },
+      { columnId: 'type', defaultVisible: true, sortOrder: 4 },
+      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+      { columnId: 'status', defaultVisible: true, sortOrder: 6 },
+      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'version', defaultVisible: false, sortOrder: 8 },
+    ])
+
+    render(<KravkatalogClient initialColumnDefaults={reorderedDefaults} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('visible-columns').textContent).toBe(
+        'uniqueId,description,category,area',
       ),
     )
   })

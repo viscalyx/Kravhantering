@@ -41,19 +41,22 @@
     "resetToDefault": "Återställ standardvy",
     "restoreVersion": "Återskapa version",
     "createdAt": "Skapad",
-    "updatedAt": "Uppdaterad"
+    "updatedAt": "Uppdaterad",
+    "error": "Ett fel uppstod"
   },
   "nav": {
     "catalog": "Kravkatalog",
-    "areas": "Kravområden",
+    "areas": "Områden",
     "packages": "Kravpaket",
-    "scenarios": "Kravscenarier",
-    "statuses": "Kravstatusar",
-    "types": "Kravtyper",
-    "taxonomy": "Taxonomi",
-    "iso25010": "ISO 25010",
-    "responsibilityAreas": "Ansvarsområden",
-    "implementationTypes": "Genomförandeformer"
+    "scenarios": "Användningsscenarier",
+    "statuses": "Statusar",
+    "types": "Typer",
+    "taxonomy": "Referensdata",
+    "referenceData": "Referensdata",
+    "iso25010": "Kvalitetsegenskaper",
+    "responsibilityAreas": "Verksamhetsobjekt",
+    "implementationTypes": "Genomförandeformer",
+    "admin": "Administration"
   },
   "notFound": {
     "title": "404",
@@ -62,18 +65,18 @@
   },
   "requirement": {
     "uniqueId": "Krav-ID",
-    "description": "Beskrivning",
-    "acceptanceCriteria": "Acceptanskriterie",
-    "area": "Kravområde",
-    "category": "Kravkategori",
-    "type": "Kravtyp",
-    "typeCategory": "ISO-kategori",
-    "requiresTesting": "Testbar",
+    "description": "Kravtext",
+    "acceptanceCriteria": "Acceptanskriterium",
+    "area": "Område",
+    "category": "Kategori",
+    "type": "Typ",
+    "typeCategory": "Kvalitetsegenskap",
+    "requiresTesting": "Verifierbar",
     "reference": "Kravreferens",
-    "scenario": "Kravscenario",
+    "scenario": "Användningsscenario",
     "newRequirement": "Nytt krav",
     "editRequirement": "Redigera krav",
-    "status": "Kravstatus",
+    "status": "Status",
     "hasPendingVersionDraft": "Det arbetas på en ny version",
     "hasPendingVersionReview": "Det finns en nyare version som är under granskning",
     "statusLabel": {
@@ -135,7 +138,7 @@
   },
   "package": {
     "name": "Namn",
-    "responsibilityArea": "Ansvarsområde",
+    "responsibilityArea": "Verksamhetsobjekt",
     "implementationType": "Genomförandeform",
     "needsReference": "Behovsreferens",
     "newPackage": "Nytt kravpaket",
@@ -167,7 +170,7 @@
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",
-    "title": "Ansvarsområden",
+    "title": "Verksamhetsobjekt",
     "newItem": "Nytt ansvarsområde",
     "editItem": "Redigera ansvarsområde"
   },
@@ -200,6 +203,104 @@
     "sv": "Svenska",
     "en": "English",
     "switchTo": "Byt språk"
+  },
+  "admin": {
+    "title": "Administrationscenter",
+    "description": "Hantera benämningar, standardkolumner och länkar till referensdata utan att ändra route-sluggar eller API-fält.",
+    "settings": "Inställningar",
+    "adminCenter": "Administrationscenter",
+    "adminCenterDescription": "Uppdatera benämningar och standardkolumner.",
+    "terminology": "Benämningar",
+    "terminologyDescription": "Ändra singular, plural och bestämd plural för de benämningar som redan används i gränssnittet.",
+    "columns": "Kolumner",
+    "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
+    "referenceData": "Referensdata",
+    "referenceDataDescription": "Öppna de befintliga referensdatasidorna med oförändrade route-sluggar.",
+    "swedish": "Svenska",
+    "english": "English",
+    "singular": "Singular",
+    "plural": "Plural",
+    "definitePlural": "Bestämd plural",
+    "moveUp": "Flytta upp",
+    "moveDown": "Flytta ned",
+    "defaultVisible": "Synlig som standard",
+    "locked": "Låst",
+    "saved": "Sparat",
+    "columnsSaveError": "Det gick inte att spara kolumninställningarna.",
+    "areasDescription": "Hantera områden och deras prefix.",
+    "typesDescription": "Visa typer och deras kvalitetsstruktur.",
+    "scenariosDescription": "Hantera användningsscenarier som kan kopplas till krav.",
+    "statusesDescription": "Hantera livscykelstatusar och deras ordning.",
+    "qualityAttributesDescription": "Visa kvalitetsegenskaper enligt ISO/IEC 25010.",
+    "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravpaket.",
+    "implementationTypesDescription": "Hantera genomförandeformer för kravpaket."
+  },
+  "terminology": {
+    "description": {
+      "singular": "Kravtext",
+      "plural": "Kravtexter",
+      "definitePlural": "Kravtexterna"
+    },
+    "area": {
+      "singular": "Område",
+      "plural": "Områden",
+      "definitePlural": "Områdena"
+    },
+    "category": {
+      "singular": "Kategori",
+      "plural": "Kategorier",
+      "definitePlural": "Kategorierna"
+    },
+    "type": {
+      "singular": "Typ",
+      "plural": "Typer",
+      "definitePlural": "Typerna"
+    },
+    "status": {
+      "singular": "Status",
+      "plural": "Statusar",
+      "definitePlural": "Statusarna"
+    },
+    "typeCategory": {
+      "singular": "Kvalitetsegenskap",
+      "plural": "Kvalitetsegenskaper",
+      "definitePlural": "Kvalitetsegenskaperna"
+    },
+    "requiresTesting": {
+      "singular": "Verifierbar",
+      "plural": "Verifierbara",
+      "definitePlural": "Verifierbara"
+    },
+    "version": {
+      "singular": "Version",
+      "plural": "Versioner",
+      "definitePlural": "Versionerna"
+    },
+    "acceptanceCriteria": {
+      "singular": "Acceptanskriterium",
+      "plural": "Acceptanskriterier",
+      "definitePlural": "Acceptanskriterierna"
+    },
+    "scenario": {
+      "singular": "Användningsscenario",
+      "plural": "Användningsscenarier",
+      "definitePlural": "Användningsscenarierna"
+    },
+    "responsibilityArea": {
+      "singular": "Verksamhetsobjekt",
+      "plural": "Verksamhetsobjekt",
+      "definitePlural": "Verksamhetsobjekten"
+    },
+    "implementationType": {
+      "singular": "Genomförandeform",
+      "plural": "Genomförandeformer",
+      "definitePlural": "Genomförandeformerna"
+    },
+    "referenceData": {
+      "singular": "Referensdata",
+      "plural": "Referensdata",
+      "definitePlural": "Referensdata"
+    }
   },
   "footer": {
     "copyright": "© {year} Bidragsgivare till Kravhantering. Alla rättigheter förbehållna."
