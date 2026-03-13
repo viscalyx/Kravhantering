@@ -3,6 +3,7 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
+import { applyDocumentThemeChange } from '@/lib/theme/apply-document-theme-change'
 
 type Mode = 'light' | 'dark' | 'auto'
 
@@ -10,8 +11,16 @@ function getSystemDark() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
 
-function applyDarkClass(isDark: boolean) {
-  document.documentElement.classList.toggle('dark', isDark)
+function syncDarkClass(isDark: boolean) {
+  const root = document.documentElement
+
+  if (root.classList.contains('dark') === isDark) {
+    return
+  }
+
+  applyDocumentThemeChange(() => {
+    root.classList.toggle('dark', isDark)
+  })
 }
 
 export default function ThemeToggle() {
@@ -20,9 +29,9 @@ export default function ThemeToggle() {
 
   const applyMode = useCallback((m: Mode) => {
     if (m === 'auto') {
-      applyDarkClass(getSystemDark())
+      syncDarkClass(getSystemDark())
     } else {
-      applyDarkClass(m === 'dark')
+      syncDarkClass(m === 'dark')
     }
   }, [])
 
@@ -39,7 +48,7 @@ export default function ThemeToggle() {
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     const handler = () => {
-      if (mode === 'auto') applyDarkClass(mq.matches)
+      if (mode === 'auto') syncDarkClass(mq.matches)
     }
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
