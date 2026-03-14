@@ -57,11 +57,11 @@ The `npm run purge:install` script uses a **two-phase install**:
 2. Delete `package-lock.json`, run `npm install` again
    (regenerates a clean lockfile with `node_modules` present)
 
+<!-- cSpell:ignore EBADPLATFORM -->
 This works around an npm bug where platform-specific optional
-dependencies (e.g. `@esbuild/openharmony-arm64`) are written to
-the lockfile as `"extraneous"` instead of `"optional"` when
-`node_modules` is absent during resolution. A corrupt lockfile
-causes `npm ci` in CI to fail with `EBADPLATFORM`.
+dependencies are written to the lockfile as `"extraneous"` instead
+of `"optional"` when `node_modules` is absent during resolution.
+A corrupt lockfile causes `npm ci` in CI to fail with `EBADPLATFORM`.
 
 Do **not** simplify `purge:install` into a single
 `rm -rf node_modules package-lock.json && npm install` — that
