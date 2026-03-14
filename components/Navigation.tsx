@@ -53,7 +53,7 @@ export default function Navigation() {
                     : 'text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800'
                 }`}
                 data-developer-mode-name="nav link"
-                data-developer-mode-value={t(item.labelKey)}
+                data-developer-mode-value={item.labelKey}
                 href={item.href}
                 key={item.href}
               >
@@ -76,7 +76,7 @@ export default function Navigation() {
                 : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'
             }`}
             data-developer-mode-name="link"
-            data-developer-mode-value={ta('settings')}
+            data-developer-mode-value="settings"
             href="/admin"
             title={ta('settings')}
           >

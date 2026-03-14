@@ -73,16 +73,16 @@ export interface DeveloperModeTarget extends DeveloperModeDescriptor {
   payload: string
 }
 
-function clamp(value: number, min: number, max: number) {
+function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-function toNumber(value: string | undefined, fallback: number) {
+function toNumber(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(value ?? '', 10)
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
-export function normalizeDeveloperModeText(value: string | null | undefined) {
+export function normalizeDeveloperModeText(value: string | null | undefined): string | undefined {
   if (!value) {
     return undefined
   }
@@ -95,7 +95,7 @@ export function buildDeveloperModeCopyText({
   context,
   name,
   value,
-}: Pick<DeveloperModeDescriptor, 'context' | 'name' | 'value'>) {
+}: Pick<DeveloperModeDescriptor, 'context' | 'name' | 'value'>): string {
   if (context && value) {
     return `${context} > ${name}: ${value}`
   }
@@ -114,7 +114,7 @@ export function buildDeveloperModeCopyText({
 export function buildDeveloperModeChipLabel({
   name,
   value,
-}: Pick<DeveloperModeDescriptor, 'name' | 'value'>) {
+}: Pick<DeveloperModeDescriptor, 'name' | 'value'>): string {
   return value ? `${name}: ${value}` : name
 }
 
@@ -123,7 +123,7 @@ export function matchesDeveloperModeShortcut(
     KeyboardEvent,
     'altKey' | 'code' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'
   >,
-) {
+): boolean {
   if (!event.altKey || !event.shiftKey || !(event.metaKey || event.ctrlKey)) {
     return false
   }
@@ -138,7 +138,7 @@ export function matchesDeveloperModeShortcut(
   )
 }
 
-export function getRequirementColumnDeveloperModeLabel(columnId: string) {
+export function getRequirementColumnDeveloperModeLabel(columnId: string): string {
   return (
     REQUIREMENT_COLUMN_LABELS[columnId] ?? humanizeIdentifier(columnId)
   )
@@ -240,10 +240,13 @@ function getFallbackContextFromAncestors(element: HTMLElement) {
         continue
       }
 
-      return buildDeveloperModeChipLabel({
+      const ancestorContext = normalizeDeveloperModeText(current.dataset.developerModeContext)
+      const label = buildDeveloperModeChipLabel({
         name,
         value: normalizeDeveloperModeText(current.dataset.developerModeValue),
       })
+
+      return ancestorContext ? `${ancestorContext} > ${label}` : label
     }
 
     const role = normalizeDeveloperModeText(current.getAttribute('role'))

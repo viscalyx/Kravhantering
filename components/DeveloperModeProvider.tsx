@@ -30,8 +30,8 @@ async function copyTextToClipboard(text: string) {
     // Fall through to the legacy copy path.
   }
 
+  const textarea = document.createElement('textarea')
   try {
-    const textarea = document.createElement('textarea')
     textarea.value = text
     textarea.setAttribute('readonly', 'true')
     textarea.style.position = 'fixed'
@@ -40,10 +40,11 @@ async function copyTextToClipboard(text: string) {
     document.body.appendChild(textarea)
     textarea.select()
     const didCopy = document.execCommand('copy')
-    textarea.remove()
     return didCopy
   } catch {
     return false
+  } finally {
+    textarea.remove()
   }
 }
 
@@ -241,7 +242,10 @@ export default function DeveloperModeProvider({
             ) : null}
 
             {enabled ? (
-              <div className="pointer-events-none fixed right-4 top-20 rounded-full border border-primary-300/70 bg-white/92 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700 shadow-sm backdrop-blur-sm dark:border-primary-700/60 dark:bg-secondary-900/92 dark:text-primary-300">
+              <div
+                className="pointer-events-none fixed right-4 top-20 rounded-full border border-primary-300/70 bg-white/92 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-primary-700 shadow-sm backdrop-blur-sm dark:border-primary-700/60 dark:bg-secondary-900/92 dark:text-primary-300"
+                data-testid="developer-mode-badge"
+              >
                 {t('badge')}
               </div>
             ) : null}
@@ -250,7 +254,7 @@ export default function DeveloperModeProvider({
               ? targets.map(target => (
                   <button
                     aria-label={target.payload}
-                    className="pointer-events-auto fixed max-w-48 truncate rounded-full border border-primary-300/80 bg-white/96 px-2.5 py-1 text-[11px] font-medium text-primary-900 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.65)] backdrop-blur-sm transition hover:-translate-y-px hover:z-10 hover:border-primary-500 hover:bg-primary-50 focus-visible:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-primary-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-700/70 dark:bg-secondary-900/96 dark:text-primary-200 dark:hover:bg-secondary-800"
+                    className="pointer-events-auto fixed min-h-11 min-w-11 max-w-48 truncate rounded-full border border-primary-300/80 bg-white/96 px-2.5 py-1 text-[11px] font-medium text-primary-900 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.65)] backdrop-blur-sm transition hover:-translate-y-px hover:z-10 hover:border-primary-500 hover:bg-primary-50 focus-visible:outline-none focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-primary-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-700/70 dark:bg-secondary-900/96 dark:text-primary-200 dark:hover:bg-secondary-800"
                     data-developer-mode-overlay-chip="true"
                     data-developer-mode-overlay-label={target.label}
                     key={target.id}

@@ -1,7 +1,7 @@
 # Developer Mode Overlay
 
-Developer Mode is the hidden developer-help overlay for naming visible UI elements so
-AI prompts can refer to them consistently.
+Developer Mode is the hidden developer-help overlay for naming visible
+UI elements so AI prompts can refer to them consistently.
 
 ## Shortcut
 
@@ -27,7 +27,7 @@ AI prompts can refer to them consistently.
   - `context > name`
   - `name: value`
   - `name`
-- Curated `data-agent-*` markers win over fallback heuristics.
+- Curated `data-developer-mode-*` markers win over fallback heuristics.
 - Fallback order is: bespoke `data-*` hooks, ARIA roles, `aria-label`, stable
   visible text, then `data-testid`.
 
@@ -35,10 +35,10 @@ AI prompts can refer to them consistently.
 
 Use these attributes on curated targets:
 
-- `data-agent-name`: canonical English element name
-- `data-agent-context`: optional English context string
-- `data-agent-value`: optional English or runtime value
-- `data-agent-priority`: optional numeric priority; higher values win collisions
+- `data-developer-mode-name`: canonical English element name
+- `data-developer-mode-context`: optional English context string
+- `data-developer-mode-value`: optional English or runtime value
+- `data-developer-mode-priority`: optional numeric priority; higher values win collisions
 
 ## Seed Glossary
 
@@ -85,7 +85,7 @@ Developer Mode is covered by:
 If you change visible UI elements, labels, roles, or layout surfaces that a
 human or AI might need to reference:
 
-- update the relevant curated `data-agent-*` markers or scan heuristics
+- update the relevant curated `data-developer-mode-*` markers or scan heuristics
 - update this document when the naming model, shortcut, or glossary changes
 - update the affected unit and integration tests
 - update repo instructions if the maintenance rule itself changes

@@ -503,7 +503,8 @@ function SearchFilterPopover({
       <button
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        data-developer-mode-name="filter button"
+        data-developer-mode-name={`filter button — ${label}`}
+        data-developer-mode-priority="300"
         onClick={e => {
           e.stopPropagation()
           if (!open && btnRef.current) {
@@ -644,7 +645,8 @@ function MultiSelectFilterPopover({
       <button
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        data-developer-mode-name="filter button"
+        data-developer-mode-name={`filter button — ${label}`}
+        data-developer-mode-priority="300"
         onClick={openDropdown}
         ref={btnRef}
         title={tc('filterBy', { label })}
@@ -777,7 +779,8 @@ function GroupedMultiSelectFilterPopover({
       <button
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        data-developer-mode-name="filter button"
+        data-developer-mode-name={`filter button — ${label}`}
+        data-developer-mode-priority="300"
         onClick={openDropdown}
         ref={btnRef}
         title={tc('filterBy', { label })}
@@ -2570,7 +2573,8 @@ export default function RequirementsTable({
       'aria-label': tc('resizeColumn', { label }),
       className: interactiveResizeHandleClassName,
       'data-column-resize-handle': columnId,
-      'data-developer-mode-name': 'resize handle',
+      'data-developer-mode-name': `resize handle — ${label}`,
+      'data-developer-mode-priority': '300',
       onBlur: () => setResizeHoverCursor(false),
       onDoubleClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
         event.preventDefault()
@@ -2785,7 +2789,8 @@ export default function RequirementsTable({
                           {isSortable ? (
                             <button
                               className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
-                              data-developer-mode-name="sort button"
+                              data-developer-mode-name={`sort button — ${getRequirementColumnDeveloperModeLabel(column.id)}`}
+                              data-developer-mode-priority="300"
                               onClick={() =>
                                 handleSortToggle(
                                   column.id as RequirementSortField,
