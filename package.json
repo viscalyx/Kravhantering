@@ -45,7 +45,7 @@
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
-    "purge:install": "rimraf node_modules package-lock.json && npm cache clean --force && npm install",
+    "purge:install": "rimraf node_modules && npm cache clean --force && npm install && rimraf package-lock.json && npm install",
     "bundle:analyze": "node scripts/analyze-bundle.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "yes | wrangler d1 migrations apply kravhantering-db --local",
