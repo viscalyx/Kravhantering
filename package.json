@@ -111,7 +111,8 @@
   "//overrides": [
     "Overrides pin transitive dependencies to patched versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
-    "undici: jsdom@28.1.0 declares undici@^7.21.0 and wrangler@4.73.0 -> miniflare@4.20260312.0 declares undici@7.18.2; versions below 7.24.0 match GHSA-f269-vfmq-vjvj, GHSA-2mjp-6q6p-2qxm, GHSA-vrm6-8vpv-qv8q, GHSA-v9p9-hfj2-hcw8, GHSA-4992-7rv2-5pvq, and GHSA-phc3-fgpg-7m6h. Override to 7.24.2, the latest patched version.",
+    "undici: overrides.undici pins 7.24.2 because jsdom@28.1.0 declares undici@^7.21.0 and wrangler@4.73.0 -> miniflare@4.20260312.0 declares undici@7.18.2; versions below 7.24.0 match GHSA-f269-vfmq-vjvj, GHSA-2mjp-6q6p-2qxm, GHSA-vrm6-8vpv-qv8q, GHSA-v9p9-hfj2-hcw8, GHSA-4992-7rv2-5pvq, and GHSA-phc3-fgpg-7m6h. Verified on 2026-03-14.",
+    "undici: package-lock.json was checked to confirm the overrides.undici pin resolves transitive undici requests to node_modules/undici@7.24.2.",
     "Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict."
   ]
 }
