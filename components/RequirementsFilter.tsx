@@ -29,8 +29,8 @@ interface RequirementsFilterProps {
 export {
   DEFAULT_FILTERS,
   DEFAULT_PUBLISHED_STATUS_ID,
-  hasActiveFilters,
   type FilterValues,
+  hasActiveFilters,
   type StatusOption,
 }
 
