@@ -101,7 +101,7 @@ export default function KravomradenClient() {
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newArea')}
+            {tc('create')}
           </button>
         </div>
 
@@ -111,7 +111,7 @@ export default function KravomradenClient() {
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
-              {editId ? t('editArea') : t('newArea')}
+              {editId ? tc('edit') : tc('create')}
             </h2>
             <div>
               <label

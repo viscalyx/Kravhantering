@@ -4,7 +4,10 @@ import {
   clearRequirementFiltersForHiddenColumns,
   compareRequirementRows,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  getDefaultVisibleRequirementColumns,
+  getRequirementColumnOrder,
   getRequirementColumnWidthsStorageKey,
+  normalizeRequirementListColumnDefaults,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
   serializeRequirementColumnWidths,
@@ -75,6 +78,40 @@ describe('requirement list view helpers', () => {
       'area',
       'status',
     ])
+  })
+
+  it('applies admin-managed column order and visibility defaults', () => {
+    const columnDefaults = normalizeRequirementListColumnDefaults([
+      { columnId: 'description', defaultVisible: true, sortOrder: 0 },
+      { columnId: 'uniqueId', defaultVisible: true, sortOrder: 1 },
+      { columnId: 'status', defaultVisible: true, sortOrder: 2 },
+      { columnId: 'area', defaultVisible: false, sortOrder: 3 },
+      { columnId: 'category', defaultVisible: false, sortOrder: 4 },
+      { columnId: 'type', defaultVisible: false, sortOrder: 5 },
+      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 6 },
+      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'version', defaultVisible: false, sortOrder: 8 },
+    ])
+
+    expect(getRequirementColumnOrder(columnDefaults)).toEqual([
+      'description',
+      'uniqueId',
+      'status',
+      'area',
+      'category',
+      'type',
+      'typeCategory',
+      'requiresTesting',
+      'version',
+    ])
+    expect(getDefaultVisibleRequirementColumns(columnDefaults)).toEqual([
+      'description',
+      'uniqueId',
+      'status',
+    ])
+    expect(
+      parseRequirementVisibleColumns('["status"]', { columnDefaults }),
+    ).toEqual(['description', 'uniqueId', 'status'])
   })
 
   it('falls back to defaults when stored columns are invalid', () => {

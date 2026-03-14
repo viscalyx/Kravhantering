@@ -496,3 +496,48 @@ export const requirementPackageItemsRelations = relations(
     }),
   }),
 )
+
+// ─── UI Terminology ──────────────────────────────────────────────────────────
+
+export const uiTerminology = sqliteTable(
+  'ui_terminology',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    key: text('key').notNull(),
+    singularSv: text('singular_sv').notNull(),
+    pluralSv: text('plural_sv').notNull(),
+    definitePluralSv: text('definite_plural_sv').notNull(),
+    singularEn: text('singular_en').notNull(),
+    pluralEn: text('plural_en').notNull(),
+    definitePluralEn: text('definite_plural_en').notNull(),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [uniqueIndex('uq_ui_terminology_key').on(table.key)],
+)
+
+// ─── Requirement List Column Defaults ────────────────────────────────────────
+
+export const requirementListColumnDefaults = sqliteTable(
+  'requirement_list_column_defaults',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    columnId: text('column_id').notNull(),
+    sortOrder: integer('sort_order').notNull(),
+    isDefaultVisible: integer('is_default_visible', { mode: 'boolean' })
+      .notNull()
+      .default(true),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    uniqueIndex('uq_requirement_list_column_defaults_column_id').on(
+      table.columnId,
+    ),
+    uniqueIndex('uq_requirement_list_column_defaults_sort_order').on(
+      table.sortOrder,
+    ),
+  ],
+)

@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
+import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
 import { getDb } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
 import { createRequestContext } from '@/lib/requirements/auth'
@@ -12,11 +13,13 @@ import {
   type RequirementListItem,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
+import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
 export async function GET(request: NextRequest) {
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const service = createRequirementsService(db)
+  const uiSettings = createUiSettingsLoader(db)
+  const service = createRequirementsService(db, { uiSettings })
   const context = createRequestContext(request, 'rest')
 
   const url = new URL(request.url)
@@ -85,30 +88,8 @@ export async function GET(request: NextRequest) {
 
     if (format === 'csv') {
       const isSv = locale === 'sv'
-
-      const headers = isSv
-        ? [
-            'Krav-ID',
-            'Beskrivning',
-            'Kravområde',
-            'Kravkategori',
-            'Kravtyp',
-            'ISO-kategori',
-            'Kravstatus',
-            'Kräver testning',
-            'Version',
-          ]
-        : [
-            'Requirement ID',
-            'Description',
-            'Requirement area',
-            'Requirement category',
-            'Requirement type',
-            'ISO category',
-            'Status',
-            'Testable',
-            'Version',
-          ]
+      const terminology = await uiSettings.getTerminology()
+      const headers = getRequirementCsvHeaders(locale, terminology)
 
       const data = requirements.map(r => {
         const values = [

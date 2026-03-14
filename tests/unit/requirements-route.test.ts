@@ -2,6 +2,10 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
+  createUiSettingsLoader: vi.fn(() => ({
+    getColumnDefaults: vi.fn(),
+    getTerminology: vi.fn(async () => ({})),
+  })),
   createRequestContext: vi.fn(() => ({ actor: 'tester' })),
   createRequirementsService: vi.fn(),
   exportToCsv: vi.fn((headers: string[], data: unknown[]) => {
@@ -20,6 +24,10 @@ vi.mock('@opennextjs/cloudflare', () => ({
 
 vi.mock('@/lib/db', () => ({
   getDb: routeState.getDb,
+}))
+
+vi.mock('@/lib/dal/ui-settings', () => ({
+  createUiSettingsLoader: routeState.createUiSettingsLoader,
 }))
 
 vi.mock('@/lib/export-csv', () => ({
@@ -111,13 +119,13 @@ describe('requirements route CSV locale fallback', () => {
 
     expect(firstExportCall?.[0]).toEqual([
       'Requirement ID',
-      'Description',
-      'Requirement area',
-      'Requirement category',
-      'Requirement type',
-      'ISO category',
+      'Requirement text',
+      'Area',
+      'Category',
+      'Type',
+      'Quality characteristic',
       'Status',
-      'Testable',
+      'Verifiable',
       'Version',
     ])
     expect(response.headers.get('Content-Disposition')).toContain(

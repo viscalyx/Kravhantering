@@ -18,6 +18,10 @@ import {
   restoreVersion,
   transitionStatus,
 } from '@/lib/dal/requirements'
+import {
+  createUiSettingsLoader,
+  type UiSettingsLoader,
+} from '@/lib/dal/ui-settings'
 import type { Database } from '@/lib/db'
 import {
   AllowAllAuthorizationService,
@@ -38,6 +42,7 @@ import {
   createRequirementsLogger,
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
+import { getCatalogTitle } from '@/lib/ui-terminology'
 
 export type ResponseFormat = 'json' | 'markdown'
 export type ResponseLocale = 'en' | 'sv'
@@ -474,9 +479,11 @@ export function createRequirementsService(
   {
     authorization = new AllowAllAuthorizationService(),
     logger = createRequirementsLogger(),
+    uiSettings = createUiSettingsLoader(db),
   }: {
     authorization?: AuthorizationService
     logger?: RequirementsLogger
+    uiSettings?: UiSettingsLoader
   } = {},
 ): RequirementsService {
   return {
@@ -497,6 +504,8 @@ export function createRequirementsService(
         'requirements.query_catalog',
         { catalog },
         async () => {
+          const terminology = await uiSettings.getTerminology()
+
           if (catalog === 'requirements') {
             const limit = clampLimit(input.limit)
             const offset = clampOffset(input.offset)
@@ -527,7 +536,7 @@ export function createRequirementsService(
               catalog,
               items,
               message: createServiceMessage(
-                'Requirements',
+                getCatalogTitle('requirements', locale, terminology),
                 items.map(item => {
                   const statusName =
                     locale === 'sv'
@@ -554,7 +563,7 @@ export function createRequirementsService(
               catalog,
               items: areas,
               message: createServiceMessage(
-                'Requirement Areas',
+                getCatalogTitle('areas', locale, terminology),
                 areas.map(area => `${area.prefix}: ${area.name}`),
                 responseFormat,
               ),
@@ -568,7 +577,7 @@ export function createRequirementsService(
               catalog,
               items: categories,
               message: createServiceMessage(
-                'Requirement Categories',
+                getCatalogTitle('categories', locale, terminology),
                 categories.map(category =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
@@ -584,7 +593,7 @@ export function createRequirementsService(
               catalog,
               items: types,
               message: createServiceMessage(
-                'Requirement Types',
+                getCatalogTitle('types', locale, terminology),
                 types.map(type =>
                   locale === 'sv' ? type.nameSv : type.nameEn,
                 ),
@@ -600,7 +609,7 @@ export function createRequirementsService(
               catalog,
               items: typeCategories,
               message: createServiceMessage(
-                'Requirement Type Categories',
+                getCatalogTitle('type_categories', locale, terminology),
                 typeCategories.map(category =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
@@ -616,7 +625,7 @@ export function createRequirementsService(
               catalog,
               items: statuses,
               message: createServiceMessage(
-                'Requirement Statuses',
+                getCatalogTitle('statuses', locale, terminology),
                 statuses.map(status =>
                   locale === 'sv' ? status.nameSv : status.nameEn,
                 ),
@@ -632,7 +641,7 @@ export function createRequirementsService(
               catalog,
               items: scenarios,
               message: createServiceMessage(
-                'Requirement Scenarios',
+                getCatalogTitle('scenarios', locale, terminology),
                 scenarios.map(scenario =>
                   locale === 'sv' ? scenario.nameSv : scenario.nameEn,
                 ),
@@ -647,7 +656,7 @@ export function createRequirementsService(
             catalog,
             items: transitions,
             message: createServiceMessage(
-              'Requirement Transitions',
+              getCatalogTitle('transitions', locale, terminology),
               transitions.map(transition => {
                 const fromName =
                   locale === 'sv'

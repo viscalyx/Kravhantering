@@ -1,6 +1,6 @@
 import { expect, type Page, test } from '@playwright/test'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'kravkatalog.visibleColumns.v1'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'kravkatalog.visibleColumns.v2'
 const COLUMN_WIDTHS_STORAGE_KEY = 'kravkatalog.columnWidths.v2.sv'
 
 async function expectInitialLoadingState(page: Page) {
@@ -26,7 +26,7 @@ async function expectHydratedTable(page: Page) {
           ),
         ),
     )
-    .toEqual(['Krav-ID', 'Beskrivning', 'Kravområde', 'Kravstatus'])
+    .toEqual(['Krav-ID', 'Kravtext', 'Område', 'Status'])
 
   await expect
     .poll(async () =>

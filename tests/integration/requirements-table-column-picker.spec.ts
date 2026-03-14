@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'kravkatalog.visibleColumns.v1'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'kravkatalog.visibleColumns.v2'
 
 const viewportVariants = [
   {

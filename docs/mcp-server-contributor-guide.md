@@ -9,6 +9,9 @@ tool surface.
 For end-user setup and client examples, see
 [mcp-server-user-guide.md](./mcp-server-user-guide.md).
 
+For admin-managed UI terminology and default column settings, see
+[admin-center.md](./admin-center.md).
+
 ## Server Contract
 
 - Server name: `kravhantering-mcp-server`
@@ -33,6 +36,11 @@ For end-user setup and client examples, see
   and connects the server instance.
 - `lib/mcp/server.ts`
   Registers the four tools, the JSON resource, and the HTML UI resource.
+- `lib/dal/ui-settings.ts`
+  Loads DB-backed UI terminology and default column settings.
+- `lib/ui-terminology.ts`
+  Maps stored terminology onto translation keys used by the app, CSV export,
+  and MCP human-readable output.
 - `lib/requirements/service.ts`
   Shared application service used by both MCP and REST routes. Holds lookup,
   detail, mutation, transition, pagination, logging, and auth hook logic.
@@ -149,6 +157,9 @@ It owns:
 - logging
 - authorization hook calls
 - REST-friendly error mapping via `toHttpErrorPayload`
+
+Human-readable MCP labels should stay aligned with the app and CSV output by
+using the shared UI terminology layer rather than hardcoded English-only text.
 
 ## Lifecycle Normalization
 

@@ -128,7 +128,7 @@ export default function KravstatusarClient() {
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newStatus')}
+            {tc('create')}
           </button>
         </div>
 
@@ -138,7 +138,7 @@ export default function KravstatusarClient() {
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
-              {editId ? t('editStatus') : t('newStatus')}
+              {editId ? tc('edit') : tc('create')}
             </h2>
             <div>
               <label

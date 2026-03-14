@@ -35,13 +35,16 @@ import {
   clearRequirementFiltersForHiddenColumns,
   DEFAULT_REQUIREMENT_COLUMN_WIDTHS,
   DEFAULT_REQUIREMENT_SORT,
-  DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterOption,
   type FilterValues,
+  getDefaultVisibleRequirementColumns,
+  getOrderedRequirementListColumns,
   getRequirementColumnWidth,
-  REQUIREMENT_LIST_COLUMNS,
+  normalizeRequirementListColumnDefaults,
+  orderRequirementVisibleColumns,
   type RequirementColumnId,
   type RequirementColumnWidths,
+  type RequirementListColumnDefault,
   type RequirementRow,
   type RequirementSortField,
   type RequirementSortState,
@@ -52,6 +55,7 @@ import {
 export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
+  columnDefaults?: RequirementListColumnDefault[]
   columnWidths?: RequirementColumnWidths
   expandedId?: number | null
   filterValues?: FilterValues
@@ -80,11 +84,19 @@ export interface RequirementsTableProps {
 
 export type FloatingActionPillVariant = 'default' | 'primary'
 
+export interface FloatingActionMenuItem {
+  description?: string
+  href: string
+  id: string
+  label: string
+}
+
 export interface FloatingActionItem {
   ariaLabel: string
   href?: string
   icon: ReactNode
   id: string
+  menuItems?: FloatingActionMenuItem[]
   onClick?: () => void
   position?: 'beforeColumns' | 'afterColumns'
   variant?: FloatingActionPillVariant
@@ -109,6 +121,178 @@ function getFloatingPillClassName(
 
 function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   const variant = action.variant ?? 'default'
+  const hasMenu = (action.menuItems?.length ?? 0) > 0
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPosition, setMenuPosition] = useState<{
+    left: number
+    maxHeight: number
+    top: number
+    width: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (!hasMenu) {
+      return
+    }
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        !wrapperRef.current?.contains(target) &&
+        !menuRef.current?.contains(target)
+      ) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [hasMenu])
+
+  useEffect(() => {
+    if (!hasMenu || !open) {
+      return
+    }
+
+    const firstMenuItem = menuRef.current?.querySelector('a[href]')
+    if (firstMenuItem instanceof HTMLElement) {
+      firstMenuItem.focus()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [hasMenu, open])
+
+  useEffect(() => {
+    if (!hasMenu || !open || !triggerRef.current) {
+      return
+    }
+
+    const updatePosition = () => {
+      if (!triggerRef.current || typeof window === 'undefined') {
+        return
+      }
+
+      const rect = triggerRef.current.getBoundingClientRect()
+      const viewportWidth = Math.max(
+        window.innerWidth,
+        document.documentElement.clientWidth,
+      )
+      const viewportHeight = Math.max(
+        window.innerHeight,
+        document.documentElement.clientHeight,
+      )
+      const width = Math.min(288, Math.max(viewportWidth - 16, 160))
+      const top = Math.min(
+        rect.top,
+        Math.max(POPOVER_VIEWPORT_MARGIN, viewportHeight - 56),
+      )
+
+      setMenuPosition({
+        left: clampPopoverLeft(rect.left - width - 12, width),
+        maxHeight: Math.max(viewportHeight - top - POPOVER_VIEWPORT_MARGIN, 44),
+        top,
+        width,
+      })
+    }
+
+    updatePosition()
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => updatePosition())
+
+    resizeObserver?.observe(triggerRef.current)
+    window.addEventListener('resize', updatePosition)
+    window.addEventListener('scroll', updatePosition, true)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updatePosition)
+      window.removeEventListener('scroll', updatePosition, true)
+    }
+  }, [hasMenu, open])
+
+  if (hasMenu) {
+    return (
+      <div className="relative" ref={wrapperRef}>
+        <button
+          aria-controls={open ? `floating-action-menu-${action.id}` : undefined}
+          aria-expanded={open}
+          aria-label={action.ariaLabel}
+          className={getFloatingPillClassName(variant)}
+          data-floating-action-id={action.id}
+          data-floating-action-item="true"
+          data-floating-action-menu-trigger={action.id}
+          data-floating-action-variant={variant}
+          onClick={() => setOpen(value => !value)}
+          ref={triggerRef}
+          title={action.ariaLabel}
+          type="button"
+        >
+          <span aria-hidden="true" className="flex items-center justify-center">
+            {action.icon}
+          </span>
+          <span className="sr-only">{action.ariaLabel}</span>
+        </button>
+        {open && menuPosition && typeof document !== 'undefined'
+          ? createPortal(
+              <div
+                className="fixed z-40"
+                style={{
+                  left: menuPosition.left,
+                  top: menuPosition.top,
+                  width: menuPosition.width,
+                }}
+              >
+                <div
+                  className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
+                  data-floating-action-menu={action.id}
+                  id={`floating-action-menu-${action.id}`}
+                  ref={menuRef}
+                  style={{ maxHeight: menuPosition.maxHeight }}
+                >
+                  <ul className="space-y-1">
+                    {action.menuItems?.map(item => (
+                      <li key={item.id}>
+                        <Link
+                          className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                          href={item.href}
+                          onClick={() => setOpen(false)}
+                        >
+                          <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                            {item.label}
+                          </div>
+                          {item.description ? (
+                            <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                              {item.description}
+                            </div>
+                          ) : null}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
+      </div>
+    )
+  }
 
   if (action.href) {
     return (
@@ -153,7 +337,7 @@ function areColumnWidthsEqual(
   left: RequirementColumnWidths,
   right: RequirementColumnWidths,
 ) {
-  return REQUIREMENT_LIST_COLUMNS.every(
+  return getOrderedRequirementListColumns().every(
     column =>
       (left[column.id] ?? DEFAULT_REQUIREMENT_COLUMN_WIDTHS[column.id]) ===
       (right[column.id] ?? DEFAULT_REQUIREMENT_COLUMN_WIDTHS[column.id]),
@@ -935,6 +1119,7 @@ function FilterChips({
 export default function RequirementsTable({
   areas = [],
   categories = [],
+  columnDefaults,
   columnWidths = {},
   expandedId,
   filterValues,
@@ -958,11 +1143,14 @@ export default function RequirementsTable({
   statusOptions = [],
   typeCategories = [],
   types = [],
-  visibleColumns = DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+  visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const router = useRouter()
+  const normalizedColumnDefaults =
+    normalizeRequirementListColumnDefaults(columnDefaults)
+  const allColumns = getOrderedRequirementListColumns(normalizedColumnDefaults)
 
   const fv = filterValues ?? {}
   const latestFilterValuesRef = useRef(fv)
@@ -975,9 +1163,9 @@ export default function RequirementsTable({
   latestFilterValuesRef.current = fv
   const columnPickerBadgeLabel =
     visibleColumnSet.size > 0
-      ? `${visibleColumnSet.size}/${REQUIREMENT_LIST_COLUMNS.length}`
+      ? `${visibleColumnSet.size}/${allColumns.length}`
       : null
-  const columnDefinitions = REQUIREMENT_LIST_COLUMNS.filter(column =>
+  const columnDefinitions = allColumns.filter(column =>
     visibleColumnSet.has(column.id),
   )
   const configuredColumnWidths = Object.fromEntries(
@@ -1160,7 +1348,7 @@ export default function RequirementsTable({
   )
 
   const getColumnLabel = (columnId: RequirementColumnId) => {
-    const column = REQUIREMENT_LIST_COLUMNS.find(item => item.id === columnId)
+    const column = allColumns.find(item => item.id === columnId)
     if (!column) {
       return columnId
     }
@@ -1244,9 +1432,7 @@ export default function RequirementsTable({
 
       for (const columnId of visibleColumnIdsRef.current) {
         const width = visibleWidths[columnId]
-        const column = REQUIREMENT_LIST_COLUMNS.find(
-          item => item.id === columnId,
-        )
+        const column = allColumns.find(item => item.id === columnId)
 
         if (typeof width !== 'number' || !column?.resizable) {
           continue
@@ -1262,7 +1448,7 @@ export default function RequirementsTable({
 
       return nextWidths
     },
-    [],
+    [allColumns],
   )
 
   const syncResizeHandlePositions = useCallback(
@@ -1795,21 +1981,27 @@ export default function RequirementsTable({
       return
     }
 
-    const normalizedColumns = REQUIREMENT_LIST_COLUMNS.filter(
-      column =>
-        nextVisibleColumns.includes(column.id) ||
-        column.id === 'uniqueId' ||
-        column.id === 'description',
-    ).map(column => column.id)
+    const normalizedColumns = allColumns
+      .filter(
+        column =>
+          nextVisibleColumns.includes(column.id) ||
+          column.id === 'uniqueId' ||
+          column.id === 'description',
+      )
+      .map(column => column.id)
+    const orderedColumns = orderRequirementVisibleColumns(normalizedColumns, {
+      columnDefaults: normalizedColumnDefaults,
+    })
     const hiddenColumns = columnDefinitions
       .map(column => column.id)
-      .filter(columnId => !normalizedColumns.includes(columnId))
+      .filter(columnId => !orderedColumns.includes(columnId))
     const nextFilterValues = clearRequirementFiltersForHiddenColumns(
       fv,
-      normalizedColumns,
+      orderedColumns,
+      { columnDefaults: normalizedColumnDefaults },
     )
 
-    onVisibleColumnsChange(normalizedColumns)
+    onVisibleColumnsChange(orderedColumns)
 
     if (nextFilterValues !== fv && onFilterChange) {
       onFilterChange(nextFilterValues)
@@ -1823,8 +2015,42 @@ export default function RequirementsTable({
     }
   }
 
+  useEffect(() => {
+    const orderedColumns = orderRequirementVisibleColumns(visibleColumns, {
+      columnDefaults: normalizedColumnDefaults,
+    })
+    const hiddenColumns = allColumns
+      .map(column => column.id)
+      .filter(columnId => !orderedColumns.includes(columnId))
+    const nextFilterValues = clearRequirementFiltersForHiddenColumns(
+      fv,
+      orderedColumns,
+      { columnDefaults: normalizedColumnDefaults },
+    )
+
+    if (nextFilterValues !== fv && onFilterChange) {
+      onFilterChange(nextFilterValues)
+    }
+
+    if (
+      hiddenColumns.includes(sortState.by) &&
+      onSortChange &&
+      sortState.by !== DEFAULT_REQUIREMENT_SORT.by
+    ) {
+      onSortChange(DEFAULT_REQUIREMENT_SORT)
+    }
+  }, [
+    allColumns,
+    fv,
+    normalizedColumnDefaults,
+    onFilterChange,
+    onSortChange,
+    sortState.by,
+    visibleColumns,
+  ])
+
   const toggleColumn = (columnId: RequirementColumnId) => {
-    const column = REQUIREMENT_LIST_COLUMNS.find(item => item.id === columnId)
+    const column = allColumns.find(item => item.id === columnId)
     if (!column?.canHide) {
       return
     }
@@ -2240,7 +2466,9 @@ export default function RequirementsTable({
     cancelResizePreviewFrame()
     pendingResizePreviewVisibleWidthsRef.current = null
     resizePreviewVisibleWidthsRef.current = null
-    applyVisibleColumns([...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS])
+    applyVisibleColumns(
+      getDefaultVisibleRequirementColumns(normalizedColumnDefaults),
+    )
     onColumnWidthsChange?.({})
   }
   const columnsPopover = (
@@ -2248,7 +2476,7 @@ export default function RequirementsTable({
       actions={floatingActions}
       anchorRef={scrollContainerRef}
       badgeLabel={columnPickerBadgeLabel}
-      columns={REQUIREMENT_LIST_COLUMNS.map(column => ({
+      columns={allColumns.map(column => ({
         canHide: column.canHide,
         id: column.id,
         label: getColumnLabel(column.id),

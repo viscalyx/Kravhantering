@@ -13,9 +13,10 @@ The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
 1. [Database Naming Standard](#database-naming-standard)
 2. [Entity-Relationship Diagram](#entity-relationship-diagram)
 3. [Lookup / Taxonomy Tables](#lookup--taxonomy-tables)
-4. [Core Domain Tables](#core-domain-tables)
-5. [Join / Bridge Tables](#join--bridge-tables)
-6. [Status Workflow](status-workflow)
+4. [UI Settings Tables](#ui-settings-tables)
+5. [Core Domain Tables](#core-domain-tables)
+6. [Join / Bridge Tables](#join--bridge-tables)
+7. [Status Workflow](#status-workflow)
 
 ---
 
@@ -135,6 +136,26 @@ erDiagram
         integer to_requirement_status_id FK
     }
 
+    ui_terminology {
+        integer id PK
+        text key UK
+        text singular_sv
+        text plural_sv
+        text definite_plural_sv
+        text singular_en
+        text plural_en
+        text definite_plural_en
+        text updated_at
+    }
+
+    requirement_list_column_defaults {
+        integer id PK
+        text column_id UK
+        integer sort_order UK
+        integer is_default_visible "boolean"
+        text updated_at
+    }
+
     requirements {
         integer id PK
         text unique_id UK "e.g. INT0001"
@@ -247,6 +268,9 @@ These tables store reference data (categories, types,
 statuses). All user-facing text columns are localized
 with `_sv` (Swedish) and `_en` (English) suffixes.
 
+These are business-domain reference-data tables. UI configuration is documented
+separately under [UI Settings Tables](#ui-settings-tables).
+
 ### `requirement_categories`
 
 High-level classification of a requirement's origin.
@@ -353,6 +377,17 @@ Defines the allowed state-machine transitions between statuses.
 
 ---
 
+### Status Workflow
+
+The seeded requirement workflow is:
+
+`Utkast` → `Granskning` → `Publicerad` → `Arkiverad`
+
+The schema also allows the review step to move back to `Utkast` before
+publication.
+
+---
+
 ### `requirement_scenarios`
 
 Describes operational scenarios (e.g. "High load",
@@ -404,6 +439,72 @@ Describes how a requirement package will be implemented
 
 **Seed values:** Upphandling (Procurement),
 Utveckling (Development).
+
+---
+
+## UI Settings Tables
+
+These tables store contributor- and admin-managed UI configuration.
+
+They are not business-domain reference data. They control terminology and
+organization-wide UI defaults used by the app, CSV export, and MCP
+human-readable output.
+
+### `ui_terminology`
+
+Localized UI terminology overrides for the term families managed from the admin
+center.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `key` | text, unique | Stable terminology key used in the app overlay layer |
+| `singular_sv` | text | Swedish singular form |
+| `plural_sv` | text | Swedish plural form |
+| `definite_plural_sv` | text | Swedish definite plural form |
+| `singular_en` | text | English singular form |
+| `plural_en` | text | English plural form |
+| `definite_plural_en` | text | English definite plural form |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Purpose:**
+
+- contributor/admin-managed naming
+- bilingual label overrides for the UI
+- shared human-readable terminology for CSV export
+- shared human-readable terminology for MCP responses
+
+**Unique index:**
+`uq_ui_terminology_key`.
+
+---
+
+### `requirement_list_column_defaults`
+
+Organization-wide default layout for the requirements list.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `column_id` | text, unique | Stable requirement-list column identifier |
+| `sort_order` | integer, unique | Organization-wide default position in the list |
+| `is_default_visible` | boolean (integer) | Whether the column is visible by default |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Purpose:**
+
+- organization-wide default column order
+- organization-wide default visible column set
+- baseline settings layered underneath per-browser visibility and width
+  overrides
+
+**Unique indexes:**
+`uq_requirement_list_column_defaults_column_id`,
+`uq_requirement_list_column_defaults_sort_order`.
 
 ---
 
@@ -594,6 +695,9 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_statuses_name_sv` | `requirement_statuses` | `name_sv` | Prevents duplicate Swedish status names |
 | `uq_requirement_statuses_name_en` | `requirement_statuses` | `name_en` | Prevents duplicate English status names |
 | `uq_requirement_status_transitions_from_to` | `requirement_status_transitions` | `(from_requirement_status_id, to_requirement_status_id)` | Prevents duplicate transition rules |
+| `uq_ui_terminology_key` | `ui_terminology` | `key` | Prevents duplicate terminology overlays for the same UI term family |
+| `uq_requirement_list_column_defaults_column_id` | `requirement_list_column_defaults` | `column_id` | Ensures each requirement-list column has one org-managed default row |
+| `uq_requirement_list_column_defaults_sort_order` | `requirement_list_column_defaults` | `sort_order` | Ensures each default list position is assigned to exactly one column |
 | `uq_requirements_unique_id` | `requirements` | `unique_id` | Ensures each requirement has a distinct human-readable ID |
 | `uq_requirement_versions_requirement_id_version_number` | `requirement_versions` | `(requirement_id, version_number)` | Ensures version numbers are unique per requirement |
 | `uq_package_responsibility_areas_name_sv` | `package_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |

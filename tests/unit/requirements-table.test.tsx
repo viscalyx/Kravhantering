@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
   DEFAULT_FILTERS,
+  DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   DEFAULT_REQUIREMENT_SORT,
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
   type FilterValues,
@@ -734,6 +735,100 @@ describe('RequirementsTable', () => {
     ).toBe('default')
   })
 
+  it('clamps floating action menus inside the viewport on narrow screens', async () => {
+    setViewportWidth(320)
+
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                href: '/sv/admin',
+                id: 'admin',
+                label: 'Admin',
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'manage' })
+    setElementRect(trigger, {
+      bottom: 140,
+      left: 280,
+      right: 324,
+      top: 96,
+      width: 44,
+    })
+
+    fireEvent.click(trigger)
+
+    await waitFor(() => {
+      const menu = document.querySelector(
+        '[data-floating-action-menu="manage"]',
+      ) as HTMLDivElement | null
+      const menuContainer = menu?.parentElement as HTMLDivElement | null
+      const left = Number.parseInt(menuContainer?.style.left ?? '0', 10)
+      const width = Number.parseInt(menuContainer?.style.width ?? '0', 10)
+
+      expect(menu).toBeTruthy()
+      expect(left).toBeGreaterThanOrEqual(8)
+      expect(left + width).toBeLessThanOrEqual(312)
+      expect(menuContainer?.style.width).toBe('288px')
+      expect(menu?.className).not.toContain('w-72')
+    })
+  })
+
+  it('renders floating action menus as semantic lists with native links and touch-target classes', async () => {
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                description: 'Open admin settings',
+                href: '/sv/admin',
+                id: 'admin',
+                label: 'Admin',
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+
+    await waitFor(() => {
+      const menu = document.querySelector(
+        '[data-floating-action-menu="manage"]',
+      ) as HTMLDivElement | null
+      const list = menu?.querySelector('ul')
+      const item = list?.querySelector('li')
+      const link = screen.getByRole('link', { name: /Admin/ })
+
+      expect(menu).toBeTruthy()
+      expect(menu?.getAttribute('role')).toBeNull()
+      expect(list).toBeTruthy()
+      expect(item).toBeTruthy()
+      expect(link.getAttribute('role')).toBeNull()
+      expect(link.className).toContain('min-h-[44px]')
+      expect(link.className).toContain('min-w-[44px]')
+      expect(link.className).toContain('focus-visible:ring-2')
+    })
+  })
   it('clears hidden column filters and resets hidden active sort', () => {
     const onFilterChange = vi.fn()
     const onSortChange = vi.fn()
@@ -763,6 +858,49 @@ describe('RequirementsTable', () => {
     ])
     expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
     expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+  })
+
+  it('clears hidden column filters and resets hidden active sort when defaults change externally', async () => {
+    const onFilterChange = vi.fn()
+    const onSortChange = vi.fn()
+    const hiddenStatusDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(
+      column =>
+        column.columnId === 'status'
+          ? { ...column, defaultVisible: false }
+          : column,
+    )
+
+    const { rerender } = render(
+      <RequirementsTable
+        columnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+      />,
+    )
+
+    onFilterChange.mockClear()
+    onSortChange.mockClear()
+
+    rerender(
+      <RequirementsTable
+        columnDefaults={hiddenStatusDefaults}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
+      expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+    })
   })
 
   it('cancels pending search commits when the controlled filter value is cleared externally', () => {

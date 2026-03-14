@@ -124,7 +124,7 @@ export default function KravscenarierClient() {
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newScenario')}
+            {tc('create')}
           </button>
         </div>
 
@@ -134,7 +134,7 @@ export default function KravscenarierClient() {
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
-              {editId ? t('editScenario') : t('newScenario')}
+              {editId ? tc('edit') : tc('create')}
             </h2>
             <div>
               <label

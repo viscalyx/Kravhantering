@@ -135,6 +135,12 @@ export interface RequirementColumnDefinition {
   resizable: boolean
 }
 
+export interface RequirementListColumnDefault {
+  columnId: RequirementColumnId
+  defaultVisible: boolean
+  sortOrder: number
+}
+
 export type RequirementColumnWidths = Partial<
   Record<RequirementColumnId, number>
 >
@@ -145,7 +151,7 @@ export const DEFAULT_REQUIREMENT_SORT: RequirementSortState = {
 }
 
 export const REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY =
-  'kravkatalog.visibleColumns.v1'
+  'kravkatalog.visibleColumns.v2'
 export const REQUIREMENT_COLUMN_WIDTHS_STORAGE_KEY_PREFIX =
   'kravkatalog.columnWidths.v2'
 
@@ -270,14 +276,111 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
   },
 ] as const
 
+const REQUIREMENT_COLUMN_BY_ID = Object.fromEntries(
+  REQUIREMENT_LIST_COLUMNS.map(column => [column.id, column]),
+) as Record<RequirementColumnId, RequirementColumnDefinition>
+
 export const LOCKED_REQUIREMENT_COLUMNS = REQUIREMENT_LIST_COLUMNS.filter(
   column => !column.canHide,
 ).map(column => column.id)
 
-export const DEFAULT_VISIBLE_REQUIREMENT_COLUMNS =
-  REQUIREMENT_LIST_COLUMNS.filter(column => column.defaultVisible).map(
-    column => column.id,
+export const DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS =
+  REQUIREMENT_LIST_COLUMNS.map((column, index) => ({
+    columnId: column.id,
+    defaultVisible: column.defaultVisible,
+    sortOrder: index,
+  })) as RequirementListColumnDefault[]
+
+export function normalizeRequirementListColumnDefaults(
+  values: readonly Partial<RequirementListColumnDefault>[] | null | undefined,
+): RequirementListColumnDefault[] {
+  const byId = new Map<RequirementColumnId, RequirementListColumnDefault>(
+    DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => [
+      column.columnId,
+      { ...column },
+    ]),
   )
+
+  const seenColumnIds = new Set<RequirementColumnId>()
+  const seenSortOrders = new Set<number>()
+
+  for (const value of values ?? []) {
+    if (
+      !value.columnId ||
+      !isRequirementColumnId(value.columnId) ||
+      typeof value.sortOrder !== 'number' ||
+      !Number.isInteger(value.sortOrder) ||
+      value.sortOrder < 0 ||
+      typeof value.defaultVisible !== 'boolean'
+    ) {
+      continue
+    }
+
+    if (
+      seenColumnIds.has(value.columnId) ||
+      seenSortOrders.has(value.sortOrder)
+    ) {
+      return DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => ({
+        ...column,
+      }))
+    }
+
+    seenColumnIds.add(value.columnId)
+    seenSortOrders.add(value.sortOrder)
+    byId.set(value.columnId, {
+      columnId: value.columnId,
+      defaultVisible:
+        value.defaultVisible ||
+        LOCKED_REQUIREMENT_COLUMNS.includes(value.columnId),
+      sortOrder: value.sortOrder,
+    })
+  }
+
+  const normalized = Array.from(byId.values()).sort(
+    (left, right) => left.sortOrder - right.sortOrder,
+  )
+
+  if (normalized.length !== REQUIREMENT_COLUMN_ORDER.length) {
+    return DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => ({
+      ...column,
+    }))
+  }
+
+  return normalized.map((column, index) => ({
+    columnId: column.columnId,
+    defaultVisible:
+      column.defaultVisible ||
+      LOCKED_REQUIREMENT_COLUMNS.includes(column.columnId),
+    sortOrder: index,
+  }))
+}
+
+export function getRequirementColumnOrder(
+  values?: readonly Partial<RequirementListColumnDefault>[] | null,
+) {
+  return normalizeRequirementListColumnDefaults(values).map(
+    column => column.columnId,
+  )
+}
+
+export function getDefaultVisibleRequirementColumns(
+  values?: readonly Partial<RequirementListColumnDefault>[] | null,
+) {
+  return normalizeRequirementListColumnDefaults(values)
+    .filter(column => column.defaultVisible)
+    .map(column => column.columnId)
+}
+
+export const DEFAULT_VISIBLE_REQUIREMENT_COLUMNS =
+  getDefaultVisibleRequirementColumns()
+
+export function getOrderedRequirementListColumns(
+  values?: readonly Partial<RequirementListColumnDefault>[] | null,
+) {
+  return getRequirementColumnOrder(values).map(
+    columnId => REQUIREMENT_COLUMN_BY_ID[columnId],
+  )
+}
 
 export const DEFAULT_REQUIREMENT_COLUMN_WIDTHS = Object.fromEntries(
   REQUIREMENT_LIST_COLUMNS.map(column => [column.id, column.defaultWidthPx]),
@@ -286,7 +389,7 @@ export const DEFAULT_REQUIREMENT_COLUMN_WIDTHS = Object.fromEntries(
 export function getRequirementColumnDefinition(
   columnId: RequirementColumnId,
 ): RequirementColumnDefinition | undefined {
-  return REQUIREMENT_LIST_COLUMNS.find(column => column.id === columnId)
+  return REQUIREMENT_COLUMN_BY_ID[columnId]
 }
 
 export function isRequirementColumnId(
@@ -309,9 +412,14 @@ export function isRequirementSortField(
 
 export function normalizeRequirementVisibleColumns(
   columns: readonly string[] | null | undefined,
+  options?: {
+    columnDefaults?: readonly Partial<RequirementListColumnDefault>[] | null
+  },
 ): RequirementColumnId[] {
+  const orderedColumns = getRequirementColumnOrder(options?.columnDefaults)
+
   if (!columns || columns.length === 0) {
-    return [...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS]
+    return getDefaultVisibleRequirementColumns(options?.columnDefaults)
   }
 
   const requested = new Set(
@@ -324,42 +432,72 @@ export function normalizeRequirementVisibleColumns(
     requested.add(lockedColumn)
   }
 
-  return REQUIREMENT_COLUMN_ORDER.filter(column => requested.has(column))
+  return orderedColumns.filter(column => requested.has(column))
+}
+
+export function orderRequirementVisibleColumns(
+  columns: readonly string[] | null | undefined,
+  options?: {
+    columnDefaults?: readonly Partial<RequirementListColumnDefault>[] | null
+  },
+) {
+  const orderedColumns = getRequirementColumnOrder(options?.columnDefaults)
+  const requested = new Set(
+    (columns ?? []).filter((column): column is RequirementColumnId =>
+      isRequirementColumnId(column),
+    ),
+  )
+
+  for (const lockedColumn of LOCKED_REQUIREMENT_COLUMNS) {
+    requested.add(lockedColumn)
+  }
+
+  return orderedColumns.filter(column => requested.has(column))
 }
 
 export function parseRequirementVisibleColumns(
   raw: string | null | undefined,
+  options?: {
+    columnDefaults?: readonly Partial<RequirementListColumnDefault>[] | null
+  },
 ): RequirementColumnId[] {
   if (!raw) {
-    return [...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS]
+    return getDefaultVisibleRequirementColumns(options?.columnDefaults)
   }
 
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) {
-      return [...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS]
+      return getDefaultVisibleRequirementColumns(options?.columnDefaults)
     }
 
     return normalizeRequirementVisibleColumns(
       parsed.filter((value): value is string => typeof value === 'string'),
+      options,
     )
   } catch {
-    return [...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS]
+    return getDefaultVisibleRequirementColumns(options?.columnDefaults)
   }
 }
 
 export function serializeRequirementVisibleColumns(
   columns: readonly RequirementColumnId[],
+  options?: {
+    columnDefaults?: readonly Partial<RequirementListColumnDefault>[] | null
+  },
 ): string {
-  return JSON.stringify(normalizeRequirementVisibleColumns(columns))
+  return JSON.stringify(orderRequirementVisibleColumns(columns, options))
 }
 
 export function clearRequirementFiltersForHiddenColumns(
   values: FilterValues,
   visibleColumns: readonly RequirementColumnId[],
+  options?: {
+    columnDefaults?: readonly Partial<RequirementListColumnDefault>[] | null
+  },
 ): FilterValues {
   const visibleColumnSet = new Set(
-    normalizeRequirementVisibleColumns(visibleColumns),
+    orderRequirementVisibleColumns(visibleColumns, options),
   )
   let nextValues = values
 

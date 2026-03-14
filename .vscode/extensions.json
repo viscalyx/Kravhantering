@@ -34,5 +34,6 @@
     "openai.chatgpt",
 
     // Testing
+    "ms-playwright.playwright",
     "vitest.explorer"  ]
 }
