@@ -98,6 +98,13 @@
     "vitest": "^4.1.0",
     "wrangler": "^4.73.0"
   },
+  "//purge:install": [
+    "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
+    "then the lockfile is deleted and regenerated with node_modules present.",
+    "This works around an npm bug where platform-specific optional deps (e.g. @esbuild/openharmony-arm64)",
+    "are written as 'extraneous' instead of 'optional' when node_modules is absent during resolution,",
+    "which causes 'npm ci' to fail with EBADPLATFORM in CI."
+  ],
   "overrides": {
     "undici": "7.24.2"
   },

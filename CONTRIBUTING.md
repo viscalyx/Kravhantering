@@ -46,6 +46,27 @@ docs/             Project documentation
 tests/            Unit and integration tests
 ```
 
+## Dependency Management
+
+### Purge Install
+
+The `npm run purge:install` script uses a **two-phase install**:
+
+1. Delete `node_modules`, clean cache, run `npm install`
+   (rebuilds the tree but may produce a corrupt lockfile)
+2. Delete `package-lock.json`, run `npm install` again
+   (regenerates a clean lockfile with `node_modules` present)
+
+This works around an npm bug where platform-specific optional
+dependencies (e.g. `@esbuild/openharmony-arm64`) are written to
+the lockfile as `"extraneous"` instead of `"optional"` when
+`node_modules` is absent during resolution. A corrupt lockfile
+causes `npm ci` in CI to fail with `EBADPLATFORM`.
+
+Do **not** simplify `purge:install` into a single
+`rm -rf node_modules package-lock.json && npm install` — that
+reproduces the bug.
+
 ## MCP Server
 
 The repository includes an MCP server for requirements management. Use these
