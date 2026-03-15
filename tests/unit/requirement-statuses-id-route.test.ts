@@ -1,0 +1,55 @@
+import { NextRequest } from 'next/server'
+import { describe, expect, it, vi } from 'vitest'
+
+const mockUpdateStatus = vi.fn()
+const mockDeleteStatus = vi.fn()
+
+vi.mock('@opennextjs/cloudflare', () => ({
+  getCloudflareContext: async () => ({ env: { DB: {} } }),
+}))
+
+vi.mock('@/lib/db', () => ({
+  getDb: () => ({}),
+}))
+
+vi.mock('@/lib/dal/requirement-statuses', () => ({
+  updateStatus: (...args: unknown[]) => mockUpdateStatus(...args),
+  deleteStatus: (...args: unknown[]) => mockDeleteStatus(...args),
+}))
+
+import { DELETE, PUT } from '@/app/api/requirement-statuses/[id]/route'
+
+function makeParams(id: string) {
+  return { params: Promise.resolve({ id }) }
+}
+
+describe('requirement-statuses/[id] route', () => {
+  it('PUT updates status', async () => {
+    mockUpdateStatus.mockResolvedValue({ id: 1, nameSv: 'X', nameEn: 'X' })
+    const req = new NextRequest('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({ nameSv: 'X', nameEn: 'X' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const res = await PUT(req, makeParams('1'))
+    const json = (await res.json()) as { id: number }
+    expect(json.id).toBe(1)
+  })
+
+  it('DELETE deletes status', async () => {
+    mockDeleteStatus.mockResolvedValue(undefined)
+    const req = new NextRequest('http://localhost', { method: 'DELETE' })
+    const res = await DELETE(req, makeParams('1'))
+    const json = (await res.json()) as { ok: boolean }
+    expect(json.ok).toBe(true)
+  })
+
+  it('DELETE returns error on failure', async () => {
+    mockDeleteStatus.mockRejectedValue(new Error('Cannot delete'))
+    const req = new NextRequest('http://localhost', { method: 'DELETE' })
+    const res = await DELETE(req, makeParams('1'))
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as { error: string }
+    expect(json.error).toBe('Cannot delete')
+  })
+})

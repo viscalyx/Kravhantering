@@ -582,4 +582,294 @@ describe('createRequirementsService', () => {
     })
     expect(authorization.assertAuthorized).toHaveBeenCalled()
   })
+
+  it('queries areas catalog', async () => {
+    mocks.listAreas.mockResolvedValue([{ id: 1, prefix: 'A', name: 'Area A' }])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'areas',
+    })
+    expect(result.catalog).toBe('areas')
+    expect(result.items).toHaveLength(1)
+    expect(result.pagination).toBeNull()
+  })
+
+  it('queries categories catalog', async () => {
+    mocks.listCategories.mockResolvedValue([
+      { id: 1, nameSv: 'Kat', nameEn: 'Cat' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'categories',
+    })
+    expect(result.catalog).toBe('categories')
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('queries types catalog', async () => {
+    mocks.listTypes.mockResolvedValue([
+      { id: 1, nameSv: 'Typ', nameEn: 'Type' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'types',
+    })
+    expect(result.catalog).toBe('types')
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('queries type_categories catalog', async () => {
+    mocks.listTypeCategories.mockResolvedValue([
+      { id: 1, nameSv: 'TK', nameEn: 'TC' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'type_categories',
+      typeId: 1,
+    })
+    expect(result.catalog).toBe('type_categories')
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('queries statuses catalog', async () => {
+    mocks.listStatuses.mockResolvedValue([
+      { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'statuses',
+    })
+    expect(result.catalog).toBe('statuses')
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('queries scenarios catalog', async () => {
+    mocks.listScenarios.mockResolvedValue([
+      { id: 1, nameSv: 'Scen', nameEn: 'Scene' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'scenarios',
+    })
+    expect(result.catalog).toBe('scenarios')
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('queries transitions catalog', async () => {
+    mocks.listTransitions.mockResolvedValue([
+      {
+        id: 1,
+        fromStatus: { nameSv: 'Utkast', nameEn: 'Draft' },
+        toStatus: { nameSv: 'Granskning', nameEn: 'Review' },
+      },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'transitions',
+    })
+    expect(result.catalog).toBe('transitions')
+    expect(result.items).toHaveLength(1)
+  })
+
+  it('edits a requirement', async () => {
+    mocks.editRequirement.mockResolvedValue({ id: 11 })
+    mocks.replaceReferencesForVersion.mockResolvedValue(undefined)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'edit',
+      requirement: { description: 'Updated text' },
+    })
+    expect(result.operation).toBe('edit')
+    expect(mocks.editRequirement).toHaveBeenCalled()
+  })
+
+  it('archives a requirement', async () => {
+    mocks.archiveRequirement.mockResolvedValue(undefined)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'archive',
+    })
+    expect(result.operation).toBe('archive')
+    expect(mocks.archiveRequirement).toHaveBeenCalled()
+  })
+
+  it('deletes a draft', async () => {
+    mocks.deleteDraftVersion.mockResolvedValue({ deleted: 'requirement' })
+    mocks.getRequirementById
+      .mockResolvedValueOnce(makeRequirementRecord())
+      .mockResolvedValueOnce(null)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'delete_draft',
+    })
+    expect(result.operation).toBe('delete_draft')
+  })
+
+  it('reactivates a requirement', async () => {
+    mocks.reactivateRequirement.mockResolvedValue(undefined)
+    mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'reactivate',
+    })
+    expect(result.operation).toBe('reactivate')
+  })
+
+  it('transitions a requirement', async () => {
+    mocks.transitionStatus.mockResolvedValue(undefined)
+    mocks.getRequirementById.mockResolvedValue(
+      makeRequirementRecordWithPublishedVersion(),
+    )
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.transitionRequirement(makeContext(), {
+      id: 1,
+      toStatusId: 2,
+    })
+    expect(result.detail.uniqueId).toBe('INT0001')
+    expect(result.version).toBeDefined()
+  })
+
+  it('returns history view with all versions', async () => {
+    mocks.getRequirementByUniqueId.mockResolvedValue(
+      makeRequirementRecordWithPublishedVersion(),
+    )
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.getRequirement(makeContext(), {
+      uniqueId: 'INT0001',
+      view: 'history',
+    })
+    expect(result.versions).toHaveLength(2)
+    expect(result.message).toContain('History')
+  })
+
+  it('uses sv locale in catalog messages', async () => {
+    mocks.listStatuses.mockResolvedValue([
+      { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'statuses',
+      locale: 'sv',
+    })
+    expect(result.message).toContain('Utkast')
+  })
+
+  it('returns json format message', async () => {
+    mocks.listStatuses.mockResolvedValue([
+      { id: 1, nameSv: 'Utkast', nameEn: 'Draft' },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.queryCatalog(makeContext(), {
+      catalog: 'statuses',
+      responseFormat: 'json',
+    })
+    const parsed = JSON.parse(result.message)
+    expect(parsed).toHaveProperty('title')
+    expect(parsed).toHaveProperty('lines')
+  })
+
+  it('rejects edit without description', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: {},
+      }),
+    ).rejects.toMatchObject({ code: 'internal' })
+  })
+
+  it('rejects create without areaId', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    await expect(
+      service.manageRequirement(makeContext(), {
+        operation: 'create',
+        requirement: { description: 'test' },
+      }),
+    ).rejects.toMatchObject({ code: 'internal' })
+  })
+
+  it('rejects restore_version when version not found', async () => {
+    mocks.getVersionHistory.mockResolvedValue([{ id: 10, versionNumber: 1 }])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'restore_version',
+        versionNumber: 99,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+  })
+
+  it('resolves requirement by id for transition', async () => {
+    mocks.getRequirementById.mockResolvedValue(null)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    await expect(
+      service.transitionRequirement(makeContext(), {
+        id: 999,
+        toStatusId: 2,
+      }),
+    ).rejects.toMatchObject({ code: 'not_found' })
+  })
 })

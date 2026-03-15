@@ -1,0 +1,130 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import BetterSqlite3 from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { beforeEach, describe, expect, it } from 'vitest'
+import * as schema from '@/drizzle/schema'
+import {
+  createType,
+  deleteType,
+  listTypeCategories,
+  listTypes,
+  updateType,
+} from '@/lib/dal/requirement-types'
+import type { Database as AppDatabase } from '@/lib/db'
+
+function createTestDb() {
+  const sqlite = new BetterSqlite3(':memory:')
+  const migDir = join(process.cwd(), 'drizzle', 'migrations')
+  const files = readdirSync(migDir)
+    .filter(f => f.endsWith('.sql'))
+    .sort()
+  for (const f of files) {
+    const sql = readFileSync(join(migDir, f), 'utf-8')
+    sqlite.exec(sql)
+  }
+  return drizzle(sqlite, { schema }) as unknown as AppDatabase
+}
+
+describe('requirement-types DAL', () => {
+  let db: AppDatabase
+
+  beforeEach(() => {
+    db = createTestDb()
+  })
+
+  describe('createType', () => {
+    it('creates a type and returns it', async () => {
+      const t = await createType(db, {
+        nameSv: 'Funktionella',
+        nameEn: 'Functional',
+      })
+      expect(t.id).toBeDefined()
+      expect(t.nameSv).toBe('Funktionella')
+      expect(t.nameEn).toBe('Functional')
+    })
+  })
+
+  describe('listTypes', () => {
+    it('returns types ordered by nameSv with categories', async () => {
+      const t1 = await createType(db, {
+        nameSv: 'B-typ',
+        nameEn: 'B-type',
+      })
+      await createType(db, {
+        nameSv: 'A-typ',
+        nameEn: 'A-type',
+      })
+      // Add a category to t1
+      await db.insert(schema.requirementTypeCategories).values({
+        nameSv: 'Kat',
+        nameEn: 'Cat',
+        requirementTypeId: t1.id,
+      })
+
+      const list = await listTypes(db)
+      expect(list.length).toBe(2)
+      // ordered by nameSv: A-typ before B-typ
+      expect(list[0].nameEn).toBe('A-type')
+      expect(list[1].nameEn).toBe('B-type')
+      expect(list[1].typeCategories.length).toBe(1)
+    })
+  })
+
+  describe('listTypeCategories', () => {
+    it('returns all categories when no typeId given', async () => {
+      const t = await createType(db, {
+        nameSv: 'Typ',
+        nameEn: 'Type',
+      })
+      await db.insert(schema.requirementTypeCategories).values([
+        { nameSv: 'K1', nameEn: 'C1', requirementTypeId: t.id },
+        { nameSv: 'K2', nameEn: 'C2', requirementTypeId: t.id },
+      ])
+      const cats = await listTypeCategories(db)
+      expect(cats.length).toBe(2)
+    })
+
+    it('filters by typeId', async () => {
+      const t1 = await createType(db, {
+        nameSv: 'T1',
+        nameEn: 'T1e',
+      })
+      const t2 = await createType(db, {
+        nameSv: 'T2',
+        nameEn: 'T2e',
+      })
+      await db.insert(schema.requirementTypeCategories).values([
+        { nameSv: 'A', nameEn: 'A', requirementTypeId: t1.id },
+        { nameSv: 'B', nameEn: 'B', requirementTypeId: t2.id },
+      ])
+      const cats = await listTypeCategories(db, t1.id)
+      expect(cats.length).toBe(1)
+      expect(cats[0].nameEn).toBe('A')
+    })
+  })
+
+  describe('updateType', () => {
+    it('updates a type and returns updated row', async () => {
+      const t = await createType(db, {
+        nameSv: 'Orig',
+        nameEn: 'Orig',
+      })
+      const updated = await updateType(db, t.id, { nameSv: 'Ny' })
+      expect(updated.nameSv).toBe('Ny')
+      expect(updated.nameEn).toBe('Orig')
+    })
+  })
+
+  describe('deleteType', () => {
+    it('removes the type', async () => {
+      const t = await createType(db, {
+        nameSv: 'Del',
+        nameEn: 'Del',
+      })
+      await deleteType(db, t.id)
+      const list = await listTypes(db)
+      expect(list.length).toBe(0)
+    })
+  })
+})
