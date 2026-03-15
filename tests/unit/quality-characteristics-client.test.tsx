@@ -1,10 +1,22 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const confirmMock = vi.fn().mockResolvedValue(true)
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
+}))
+
+vi.mock('@/components/ConfirmModal', () => ({
+  useConfirmModal: () => ({ confirm: confirmMock }),
 }))
 
 function okJson(body: unknown) {
@@ -40,6 +52,7 @@ describe('QualityCharacteristicsClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmMock.mockResolvedValue(true)
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/requirement-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
@@ -49,7 +62,7 @@ describe('QualityCharacteristicsClient', () => {
     })
   })
 
-  it('renders heading and ISO subtitle', async () => {
+  it('renders heading, ISO subtitle, and create button', async () => {
     render(<QualityCharacteristicsClient />)
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
@@ -57,6 +70,9 @@ describe('QualityCharacteristicsClient', () => {
       )
     })
     expect(screen.getByText(/ISO\/IEC 25010:2023/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.create/ }),
+    ).toBeInTheDocument()
   })
 
   it('fetches and displays types with categories in grid', async () => {
@@ -72,5 +88,30 @@ describe('QualityCharacteristicsClient', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     render(<QualityCharacteristicsClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
+  })
+
+  it('opens create form when create button is clicked', async () => {
+    render(<QualityCharacteristicsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Quality')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
+    expect(screen.getByLabelText(/SV/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/EN/)).toBeInTheDocument()
+  })
+
+  it('shows edit and delete buttons for parent characteristics', async () => {
+    const { container } = render(<QualityCharacteristicsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Maintainability')).toBeInTheDocument()
+    })
+    const editButtons = container.querySelectorAll(
+      '[data-developer-mode-name="table action"][data-developer-mode-value="edit"]',
+    )
+    const deleteButtons = container.querySelectorAll(
+      '[data-developer-mode-name="table action"][data-developer-mode-value="delete"]',
+    )
+    expect(editButtons.length).toBeGreaterThanOrEqual(2)
+    expect(deleteButtons.length).toBeGreaterThanOrEqual(2)
   })
 })

@@ -158,6 +158,12 @@
     "newScenario": "New requirement scenario",
     "editScenario": "Edit requirement scenario"
   },
+  "qualityCharacteristicMgmt": {
+    "name": "Name",
+    "type": "Type",
+    "parent": "Parent characteristic",
+    "topLevel": "Top-level (no parent)"
+  },
   "statusMgmt": {
     "name": "Name",
     "color": "Color",
@@ -245,7 +251,7 @@
     "typesDescription": "View types and their quality hierarchy.",
     "scenariosDescription": "Manage usage scenarios linked to requirements.",
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
-    "qualityAttributesDescription": "View quality characteristics from ISO/IEC 25010:2023.",
+    "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirement packages.",
     "implementationTypesDescription": "Manage implementation types for requirement packages.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas."

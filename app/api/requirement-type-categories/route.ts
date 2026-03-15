@@ -1,6 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
-import { listTypeCategories } from '@/lib/dal/requirement-types'
+import {
+  createTypeCategory,
+  listTypeCategories,
+} from '@/lib/dal/requirement-types'
 import { getDb } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -15,4 +18,14 @@ export async function GET(request: NextRequest) {
     typeId ? Number(typeId) : undefined,
   )
   return NextResponse.json({ typeCategories })
+}
+
+export async function POST(request: Request) {
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+  const body = (await request.json()) as Parameters<
+    typeof createTypeCategory
+  >[1]
+  const category = await createTypeCategory(db, body)
+  return NextResponse.json(category, { status: 201 })
 }
