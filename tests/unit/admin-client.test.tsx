@@ -80,56 +80,59 @@ describe('AdminClient', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'admin.referenceData' }))
 
-    expect(screen.getByTestId('reference-data-card-areas')).toHaveAttribute(
+    const panel = within(screen.getByRole('tabpanel'))
+
+    expect(panel.getByTestId('reference-data-card-areas')).toHaveAttribute(
       'href',
       '/kravomraden',
     )
-    expect(screen.getByTestId('reference-data-icon-areas')).toBeTruthy()
+    expect(panel.getByTestId('reference-data-icon-areas')).toBeTruthy()
 
-    expect(screen.getByTestId('reference-data-card-types')).toHaveAttribute(
+    expect(panel.getByTestId('reference-data-card-types')).toHaveAttribute(
       'href',
       '/kravtyper',
     )
-    expect(screen.getByTestId('reference-data-icon-types')).toBeTruthy()
+    expect(panel.getByTestId('reference-data-icon-types')).toBeTruthy()
 
-    expect(screen.getByTestId('reference-data-card-scenarios')).toHaveAttribute(
+    expect(panel.getByTestId('reference-data-card-scenarios')).toHaveAttribute(
       'href',
       '/kravscenarier',
     )
-    expect(screen.getByTestId('reference-data-icon-scenarios')).toBeTruthy()
+    expect(panel.getByTestId('reference-data-icon-scenarios')).toBeTruthy()
 
-    expect(screen.getByTestId('reference-data-card-statuses')).toHaveAttribute(
+    expect(panel.getByTestId('reference-data-card-statuses')).toHaveAttribute(
       'href',
       '/kravstatusar',
     )
-    expect(screen.getByTestId('reference-data-icon-statuses')).toBeTruthy()
+    expect(panel.getByTestId('reference-data-icon-statuses')).toBeTruthy()
 
-    expect(screen.getByTestId('reference-data-card-iso25010')).toHaveAttribute(
+    expect(panel.getByTestId('reference-data-card-iso25010')).toHaveAttribute(
       'href',
       '/iso25010',
     )
-    expect(screen.getByTestId('reference-data-icon-iso25010')).toBeTruthy()
+    expect(panel.getByTestId('reference-data-icon-iso25010')).toBeTruthy()
 
     expect(
-      screen.getByTestId('reference-data-card-responsibilityAreas'),
+      panel.getByTestId('reference-data-card-responsibilityAreas'),
     ).toHaveAttribute('href', '/kravpaket/ansvarsomraden')
     expect(
-      screen.getByTestId('reference-data-icon-responsibilityAreas'),
+      panel.getByTestId('reference-data-icon-responsibilityAreas'),
     ).toBeTruthy()
 
     expect(
-      screen.getByTestId('reference-data-card-implementationTypes'),
+      panel.getByTestId('reference-data-card-implementationTypes'),
     ).toHaveAttribute('href', '/kravpaket/genomforandeformer')
     expect(
-      screen.getByTestId('reference-data-icon-implementationTypes'),
+      panel.getByTestId('reference-data-icon-implementationTypes'),
     ).toBeTruthy()
 
-    expect(
-      screen.getByTestId('reference-data-card-areaOwners'),
-    ).toHaveAttribute('href', '/omradesagare')
-    expect(screen.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
+    expect(panel.getByTestId('reference-data-card-areaOwners')).toHaveAttribute(
+      'href',
+      '/omradesagare',
+    )
+    expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
 
-    expect(screen.getAllByRole('link')).toHaveLength(8)
+    expect(panel.getAllByRole('link')).toHaveLength(8)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {
