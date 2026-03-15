@@ -56,8 +56,8 @@ export async function updateOwner(
   db: Database,
   id: number,
   data: { firstName?: string; lastName?: string; email?: string },
-) {
-  const [updated] = await db
+): Promise<Owner | null> {
+  const rows = await db
     .update(owners)
     .set({
       ...data,
@@ -65,7 +65,13 @@ export async function updateOwner(
     })
     .where(eq(owners.id, id))
     .returning()
-  return updated
+  if (!rows[0]) return null
+  return {
+    id: rows[0].id,
+    firstName: rows[0].firstName,
+    lastName: rows[0].lastName,
+    email: rows[0].email,
+  }
 }
 
 export async function deleteOwner(db: Database, id: number) {

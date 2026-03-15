@@ -203,7 +203,7 @@ export default function KravscenarierClient() {
                 {tc('save')}
               </button>
               <button
-                className="px-4 py-2.5 rounded-xl border text-sm"
+                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                 onClick={() => setShowForm(false)}
                 type="button"
               >
@@ -239,14 +239,14 @@ export default function KravscenarierClient() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3"
+                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
                         onClick={() => handleEdit(s)}
                         type="button"
                       >
                         {tc('edit')}
                       </button>
                       <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline"
+                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
                         onClick={e =>
                           handleDelete(s.id, e.currentTarget as HTMLElement)
                         }

@@ -118,7 +118,8 @@
     "reviewVersionAvailableBanner": "A version in review (v{version}) is available",
     "draftVersionAvailableBanner": "A draft version (v{version}) is available",
     "viewingOlderVersion": "Viewing version {version}",
-    "backToLatest": "Back to latest version"
+    "backToLatest": "Back to latest version",
+    "areaOwner": "owner"
   },
   "requirementsTable": {
     "clear": "Clear",

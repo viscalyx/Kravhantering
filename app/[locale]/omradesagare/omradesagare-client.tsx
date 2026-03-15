@@ -19,6 +19,7 @@ export default function OmradesagareClient() {
 
   const [items, setItems] = useState<Owner[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({
@@ -29,10 +30,13 @@ export default function OmradesagareClient() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/owners/all')
-    if (res.ok)
-      setItems(((await res.json()) as { owners?: Owner[] }).owners ?? [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/owners/all')
+      if (res.ok)
+        setItems(((await res.json()) as { owners?: Owner[] }).owners ?? [])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -41,17 +45,24 @@ export default function OmradesagareClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const method = editId ? 'PUT' : 'POST'
-    const url = editId ? `/api/owners/${editId}` : '/api/owners'
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    setShowForm(false)
-    setEditId(null)
-    setForm({ firstName: '', lastName: '', email: '' })
-    fetchItems()
+    setSubmitting(true)
+    try {
+      const method = editId ? 'PUT' : 'POST'
+      const url = editId ? `/api/owners/${editId}` : '/api/owners'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (res.ok) {
+        setShowForm(false)
+        setEditId(null)
+        setForm({ firstName: '', lastName: '', email: '' })
+        fetchItems()
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleEdit = (item: Owner) => {
@@ -160,11 +171,15 @@ export default function OmradesagareClient() {
               />
             </div>
             <div className="flex gap-3">
-              <button className="btn-primary" type="submit">
-                {tc('save')}
+              <button
+                className="btn-primary"
+                disabled={submitting}
+                type="submit"
+              >
+                {submitting ? tc('loading') : tc('save')}
               </button>
               <button
-                className="px-4 py-2.5 rounded-xl border text-sm"
+                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                 onClick={() => setShowForm(false)}
                 type="button"
               >
@@ -180,48 +195,53 @@ export default function OmradesagareClient() {
           </p>
         ) : (
           <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                  <th className="py-3 px-4 font-medium">{t('name')}</th>
-                  <th className="py-3 px-4 font-medium">{t('email')}</th>
-                  <th className="py-3 px-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(item => (
-                  <tr
-                    className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={item.id}
-                  >
-                    <td className="py-3 px-4 font-medium">
-                      {item.firstName} {item.lastName}
-                    </td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {item.email}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3"
-                        onClick={() => handleEdit(item)}
-                        type="button"
-                      >
-                        {tc('edit')}
-                      </button>
-                      <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline"
-                        onClick={e =>
-                          handleDelete(item.id, e.currentTarget as HTMLElement)
-                        }
-                        type="button"
-                      >
-                        {tc('delete')}
-                      </button>
-                    </td>
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
+                    <th className="py-3 px-4 font-medium">{t('name')}</th>
+                    <th className="py-3 px-4 font-medium">{t('email')}</th>
+                    <th className="py-3 px-4" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map(item => (
+                    <tr
+                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                      key={item.id}
+                    >
+                      <td className="py-3 px-4 font-medium">
+                        {item.firstName} {item.lastName}
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                        {item.email}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                          onClick={() => handleEdit(item)}
+                          type="button"
+                        >
+                          {tc('edit')}
+                        </button>
+                        <button
+                          className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                          onClick={e =>
+                            handleDelete(
+                              item.id,
+                              e.currentTarget as HTMLElement,
+                            )
+                          }
+                          type="button"
+                        >
+                          {tc('delete')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

@@ -665,7 +665,12 @@ export default function RequirementDetailClient({
                 </div>
 
                 {inline && req.area && (
-                  <div>
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="area"
+                  >
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                       {t('area')}
                     </h3>
@@ -674,7 +679,7 @@ export default function RequirementDetailClient({
                     </p>
                     {req.area.ownerName && (
                       <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                        {t('area')} — ägare: {req.area.ownerName}
+                        {t('area')} — {t('areaOwner')}: {req.area.ownerName}
                       </p>
                     )}
                   </div>
@@ -933,7 +938,7 @@ export default function RequirementDetailClient({
                   <span className="font-medium">{req.area?.name ?? '—'}</span>
                   {req.area?.ownerName && (
                     <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                      {t('area')} — ägare: {req.area.ownerName}
+                      {t('area')} — {t('areaOwner')}: {req.area.ownerName}
                     </p>
                   )}
                 </div>

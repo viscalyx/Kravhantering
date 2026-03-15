@@ -118,7 +118,8 @@
     "reviewVersionAvailableBanner": "Det finns en version under granskning (v{version})",
     "draftVersionAvailableBanner": "Det finns en utkastsversion (v{version})",
     "viewingOlderVersion": "Visar version {version}",
-    "backToLatest": "Tillbaka till senaste versionen"
+    "backToLatest": "Tillbaka till senaste versionen",
+    "areaOwner": "ägare"
   },
   "requirementsTable": {
     "clear": "Rensa",

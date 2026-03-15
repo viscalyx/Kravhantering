@@ -38,17 +38,20 @@ export default function KravomradenClient() {
 
   const fetchAreas = useCallback(async () => {
     setLoading(true)
-    const [areasRes, ownersRes] = await Promise.all([
-      fetch('/api/requirement-areas'),
-      fetch('/api/owners'),
-    ])
-    if (areasRes.ok)
-      setAreas(((await areasRes.json()) as { areas?: Area[] }).areas ?? [])
-    if (ownersRes.ok)
-      setOwners(
-        ((await ownersRes.json()) as { owners?: OwnerOption[] }).owners ?? [],
-      )
-    setLoading(false)
+    try {
+      const [areasRes, ownersRes] = await Promise.all([
+        fetch('/api/requirement-areas'),
+        fetch('/api/owners'),
+      ])
+      if (areasRes.ok)
+        setAreas(((await areasRes.json()) as { areas?: Area[] }).areas ?? [])
+      if (ownersRes.ok)
+        setOwners(
+          ((await ownersRes.json()) as { owners?: OwnerOption[] }).owners ?? [],
+        )
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -208,7 +211,7 @@ export default function KravomradenClient() {
                 {tc('save')}
               </button>
               <button
-                className="px-4 py-2.5 rounded-xl border text-sm"
+                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                 onClick={() => setShowForm(false)}
                 type="button"
               >
@@ -252,14 +255,14 @@ export default function KravomradenClient() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3"
+                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
                         onClick={() => handleEdit(area)}
                         type="button"
                       >
                         {tc('edit')}
                       </button>
                       <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline"
+                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
                         onClick={e =>
                           handleDelete(area.id, e.currentTarget as HTMLElement)
                         }

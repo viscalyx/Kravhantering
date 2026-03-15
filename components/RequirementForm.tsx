@@ -174,7 +174,7 @@ export default function RequirementForm({
         </select>
         {form.areaId && (
           <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-            {t('area')} — ägare:{' '}
+            {t('area')} — {t('areaOwner')}:{' '}
             {areas.find(a => String(a.id) === form.areaId)?.ownerName ?? '—'}
           </p>
         )}

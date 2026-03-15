@@ -249,7 +249,7 @@ erDiagram
     }
 
     %% Relationships
-    owners ||--o{ requirement_areas : "owns"
+    owners |o--o{ requirement_areas : "owns"
     requirement_areas ||--o{ requirements : "has many"
     requirements ||--o{ requirement_versions : "has many versions"
     requirement_versions }o--|| requirement_statuses : "has status"
