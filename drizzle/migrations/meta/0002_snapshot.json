@@ -53,9 +53,7 @@
       "indexes": {
         "uq_owners_email": {
           "name": "uq_owners_email",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -92,16 +90,12 @@
       "indexes": {
         "uq_package_implementation_types_name_sv": {
           "name": "uq_package_implementation_types_name_sv",
-          "columns": [
-            "name_sv"
-          ],
+          "columns": ["name_sv"],
           "isUnique": true
         },
         "uq_package_implementation_types_name_en": {
           "name": "uq_package_implementation_types_name_en",
-          "columns": [
-            "name_en"
-          ],
+          "columns": ["name_en"],
           "isUnique": true
         }
       },
@@ -138,16 +132,12 @@
       "indexes": {
         "uq_package_responsibility_areas_name_sv": {
           "name": "uq_package_responsibility_areas_name_sv",
-          "columns": [
-            "name_sv"
-          ],
+          "columns": ["name_sv"],
           "isUnique": true
         },
         "uq_package_responsibility_areas_name_en": {
           "name": "uq_package_responsibility_areas_name_en",
-          "columns": [
-            "name_en"
-          ],
+          "columns": ["name_en"],
           "isUnique": true
         }
       },
@@ -220,9 +210,7 @@
       "indexes": {
         "uq_requirement_areas_prefix": {
           "name": "uq_requirement_areas_prefix",
-          "columns": [
-            "prefix"
-          ],
+          "columns": ["prefix"],
           "isUnique": true
         }
       },
@@ -231,12 +219,8 @@
           "name": "requirement_areas_owner_id_owners_id_fk",
           "tableFrom": "requirement_areas",
           "tableTo": "owners",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -273,16 +257,12 @@
       "indexes": {
         "uq_requirement_categories_name_sv": {
           "name": "uq_requirement_categories_name_sv",
-          "columns": [
-            "name_sv"
-          ],
+          "columns": ["name_sv"],
           "isUnique": true
         },
         "uq_requirement_categories_name_en": {
           "name": "uq_requirement_categories_name_en",
-          "columns": [
-            "name_en"
-          ],
+          "columns": ["name_en"],
           "isUnique": true
         }
       },
@@ -334,16 +314,12 @@
       "indexes": {
         "uq_requirement_list_column_defaults_column_id": {
           "name": "uq_requirement_list_column_defaults_column_id",
-          "columns": [
-            "column_id"
-          ],
+          "columns": ["column_id"],
           "isUnique": true
         },
         "uq_requirement_list_column_defaults_sort_order": {
           "name": "uq_requirement_list_column_defaults_sort_order",
-          "columns": [
-            "sort_order"
-          ],
+          "columns": ["sort_order"],
           "isUnique": true
         }
       },
@@ -401,16 +377,12 @@
       "indexes": {
         "idx_requirement_package_items_requirement_package_id": {
           "name": "idx_requirement_package_items_requirement_package_id",
-          "columns": [
-            "requirement_package_id"
-          ],
+          "columns": ["requirement_package_id"],
           "isUnique": false
         },
         "idx_requirement_package_items_requirement_id": {
           "name": "idx_requirement_package_items_requirement_id",
-          "columns": [
-            "requirement_id"
-          ],
+          "columns": ["requirement_id"],
           "isUnique": false
         }
       },
@@ -419,12 +391,8 @@
           "name": "requirement_package_items_requirement_package_id_requirement_packages_id_fk",
           "tableFrom": "requirement_package_items",
           "tableTo": "requirement_packages",
-          "columnsFrom": [
-            "requirement_package_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_package_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -432,12 +400,8 @@
           "name": "requirement_package_items_requirement_id_requirements_id_fk",
           "tableFrom": "requirement_package_items",
           "tableTo": "requirements",
-          "columnsFrom": [
-            "requirement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -445,12 +409,8 @@
           "name": "requirement_package_items_requirement_version_id_requirement_versions_id_fk",
           "tableFrom": "requirement_package_items",
           "tableTo": "requirement_versions",
-          "columnsFrom": [
-            "requirement_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_version_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -518,12 +478,8 @@
           "name": "requirement_packages_package_responsibility_area_id_package_responsibility_areas_id_fk",
           "tableFrom": "requirement_packages",
           "tableTo": "package_responsibility_areas",
-          "columnsFrom": [
-            "package_responsibility_area_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_responsibility_area_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -531,12 +487,8 @@
           "name": "requirement_packages_package_implementation_type_id_package_implementation_types_id_fk",
           "tableFrom": "requirement_packages",
           "tableTo": "package_implementation_types",
-          "columnsFrom": [
-            "package_implementation_type_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["package_implementation_type_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -594,9 +546,7 @@
       "indexes": {
         "idx_requirement_references_requirement_version_id": {
           "name": "idx_requirement_references_requirement_version_id",
-          "columns": [
-            "requirement_version_id"
-          ],
+          "columns": ["requirement_version_id"],
           "isUnique": false
         }
       },
@@ -605,12 +555,8 @@
           "name": "requirement_references_requirement_version_id_requirement_versions_id_fk",
           "tableFrom": "requirement_references",
           "tableTo": "requirement_versions",
-          "columnsFrom": [
-            "requirement_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_version_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -713,10 +659,7 @@
       "indexes": {
         "uq_requirement_status_transitions_from_to": {
           "name": "uq_requirement_status_transitions_from_to",
-          "columns": [
-            "from_requirement_status_id",
-            "to_requirement_status_id"
-          ],
+          "columns": ["from_requirement_status_id", "to_requirement_status_id"],
           "isUnique": true
         }
       },
@@ -725,12 +668,8 @@
           "name": "requirement_status_transitions_from_requirement_status_id_requirement_statuses_id_fk",
           "tableFrom": "requirement_status_transitions",
           "tableTo": "requirement_statuses",
-          "columnsFrom": [
-            "from_requirement_status_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["from_requirement_status_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -738,12 +677,8 @@
           "name": "requirement_status_transitions_to_requirement_status_id_requirement_statuses_id_fk",
           "tableFrom": "requirement_status_transitions",
           "tableTo": "requirement_statuses",
-          "columnsFrom": [
-            "to_requirement_status_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["to_requirement_status_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -803,16 +738,12 @@
       "indexes": {
         "uq_requirement_statuses_name_sv": {
           "name": "uq_requirement_statuses_name_sv",
-          "columns": [
-            "name_sv"
-          ],
+          "columns": ["name_sv"],
           "isUnique": true
         },
         "uq_requirement_statuses_name_en": {
           "name": "uq_requirement_statuses_name_en",
-          "columns": [
-            "name_en"
-          ],
+          "columns": ["name_en"],
           "isUnique": true
         }
       },
@@ -863,16 +794,12 @@
       "indexes": {
         "idx_requirement_type_categories_requirement_type_id": {
           "name": "idx_requirement_type_categories_requirement_type_id",
-          "columns": [
-            "requirement_type_id"
-          ],
+          "columns": ["requirement_type_id"],
           "isUnique": false
         },
         "idx_requirement_type_categories_parent_category_id": {
           "name": "idx_requirement_type_categories_parent_category_id",
-          "columns": [
-            "parent_category_id"
-          ],
+          "columns": ["parent_category_id"],
           "isUnique": false
         }
       },
@@ -881,12 +808,8 @@
           "name": "requirement_type_categories_requirement_type_id_requirement_types_id_fk",
           "tableFrom": "requirement_type_categories",
           "tableTo": "requirement_types",
-          "columnsFrom": [
-            "requirement_type_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_type_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -923,16 +846,12 @@
       "indexes": {
         "uq_requirement_types_name_sv": {
           "name": "uq_requirement_types_name_sv",
-          "columns": [
-            "name_sv"
-          ],
+          "columns": ["name_sv"],
           "isUnique": true
         },
         "uq_requirement_types_name_en": {
           "name": "uq_requirement_types_name_en",
-          "columns": [
-            "name_en"
-          ],
+          "columns": ["name_en"],
           "isUnique": true
         }
       },
@@ -965,12 +884,8 @@
           "name": "requirement_version_scenarios_requirement_version_id_requirement_versions_id_fk",
           "tableFrom": "requirement_version_scenarios",
           "tableTo": "requirement_versions",
-          "columnsFrom": [
-            "requirement_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_version_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -978,22 +893,15 @@
           "name": "requirement_version_scenarios_requirement_scenario_id_requirement_scenarios_id_fk",
           "tableFrom": "requirement_version_scenarios",
           "tableTo": "requirement_scenarios",
-          "columnsFrom": [
-            "requirement_scenario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_scenario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
         "requirement_version_scenarios_requirement_version_id_requirement_scenario_id_pk": {
-          "columns": [
-            "requirement_version_id",
-            "requirement_scenario_id"
-          ],
+          "columns": ["requirement_version_id", "requirement_scenario_id"],
           "name": "requirement_version_scenarios_requirement_version_id_requirement_scenario_id_pk"
         }
       },
@@ -1113,17 +1021,12 @@
       "indexes": {
         "idx_requirement_versions_requirement_id": {
           "name": "idx_requirement_versions_requirement_id",
-          "columns": [
-            "requirement_id"
-          ],
+          "columns": ["requirement_id"],
           "isUnique": false
         },
         "uq_requirement_versions_requirement_id_version_number": {
           "name": "uq_requirement_versions_requirement_id_version_number",
-          "columns": [
-            "requirement_id",
-            "version_number"
-          ],
+          "columns": ["requirement_id", "version_number"],
           "isUnique": true
         }
       },
@@ -1132,12 +1035,8 @@
           "name": "requirement_versions_requirement_id_requirements_id_fk",
           "tableFrom": "requirement_versions",
           "tableTo": "requirements",
-          "columnsFrom": [
-            "requirement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1145,12 +1044,8 @@
           "name": "requirement_versions_requirement_category_id_requirement_categories_id_fk",
           "tableFrom": "requirement_versions",
           "tableTo": "requirement_categories",
-          "columnsFrom": [
-            "requirement_category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_category_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1158,12 +1053,8 @@
           "name": "requirement_versions_requirement_type_id_requirement_types_id_fk",
           "tableFrom": "requirement_versions",
           "tableTo": "requirement_types",
-          "columnsFrom": [
-            "requirement_type_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_type_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1171,12 +1062,8 @@
           "name": "requirement_versions_requirement_type_category_id_requirement_type_categories_id_fk",
           "tableFrom": "requirement_versions",
           "tableTo": "requirement_type_categories",
-          "columnsFrom": [
-            "requirement_type_category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_type_category_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1184,12 +1071,8 @@
           "name": "requirement_versions_requirement_status_id_requirement_statuses_id_fk",
           "tableFrom": "requirement_versions",
           "tableTo": "requirement_statuses",
-          "columnsFrom": [
-            "requirement_status_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_status_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1248,23 +1131,17 @@
       "indexes": {
         "uq_requirements_unique_id": {
           "name": "uq_requirements_unique_id",
-          "columns": [
-            "unique_id"
-          ],
+          "columns": ["unique_id"],
           "isUnique": true
         },
         "idx_requirements_requirement_area_id": {
           "name": "idx_requirements_requirement_area_id",
-          "columns": [
-            "requirement_area_id"
-          ],
+          "columns": ["requirement_area_id"],
           "isUnique": false
         },
         "idx_requirements_is_archived": {
           "name": "idx_requirements_is_archived",
-          "columns": [
-            "is_archived"
-          ],
+          "columns": ["is_archived"],
           "isUnique": false
         }
       },
@@ -1273,12 +1150,8 @@
           "name": "requirements_requirement_area_id_requirement_areas_id_fk",
           "tableFrom": "requirements",
           "tableTo": "requirement_areas",
-          "columnsFrom": [
-            "requirement_area_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["requirement_area_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1357,9 +1230,7 @@
       "indexes": {
         "uq_ui_terminology_key": {
           "name": "uq_ui_terminology_key",
-          "columns": [
-            "key"
-          ],
+          "columns": ["key"],
           "isUnique": true
         }
       },

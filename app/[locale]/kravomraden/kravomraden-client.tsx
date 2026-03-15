@@ -43,9 +43,7 @@ export default function KravomradenClient() {
       fetch('/api/owners'),
     ])
     if (areasRes.ok)
-      setAreas(
-        ((await areasRes.json()) as { areas?: Area[] }).areas ?? [],
-      )
+      setAreas(((await areasRes.json()) as { areas?: Area[] }).areas ?? [])
     if (ownersRes.ok)
       setOwners(
         ((await ownersRes.json()) as { owners?: OwnerOption[] }).owners ?? [],

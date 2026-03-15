@@ -31,9 +31,7 @@ export default function OmradesagareClient() {
     setLoading(true)
     const res = await fetch('/api/owners/all')
     if (res.ok)
-      setItems(
-        ((await res.json()) as { owners?: Owner[] }).owners ?? [],
-      )
+      setItems(((await res.json()) as { owners?: Owner[] }).owners ?? [])
     setLoading(false)
   }, [])
 
@@ -155,9 +153,7 @@ export default function OmradesagareClient() {
               <input
                 className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
                 id="owner-email"
-                onChange={e =>
-                  setForm(f => ({ ...f, email: e.target.value }))
-                }
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                 required
                 type="email"
                 value={form.email}

@@ -124,7 +124,12 @@ describe('AdminClient', () => {
       screen.getByTestId('reference-data-icon-implementationTypes'),
     ).toBeTruthy()
 
-    expect(screen.getAllByRole('link')).toHaveLength(7)
+    expect(
+      screen.getByTestId('reference-data-card-areaOwners'),
+    ).toHaveAttribute('href', '/omradesagare')
+    expect(screen.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
+
+    expect(screen.getAllByRole('link')).toHaveLength(8)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {
