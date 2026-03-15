@@ -54,7 +54,7 @@
     "types": "Typer",
     "taxonomy": "Referensdata",
     "referenceData": "Referensdata",
-    "iso25010": "Kvalitetsegenskaper",
+    "qualityCharacteristics": "Kvalitetsegenskaper",
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
     "areaOwners": "Områdesägare",

@@ -54,7 +54,7 @@
     "types": "Types",
     "taxonomy": "Reference data",
     "referenceData": "Reference data",
-    "iso25010": "Quality characteristics",
+    "qualityCharacteristics": "Quality characteristics",
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
     "areaOwners": "Area owners",

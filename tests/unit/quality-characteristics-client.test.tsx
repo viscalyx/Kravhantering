@@ -14,7 +14,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import Iso25010Client from '@/app/[locale]/iso25010/iso25010-client'
+import QualityCharacteristicsClient from '@/app/[locale]/quality-characteristics/quality-characteristics-client'
 
 const sampleTypes = [{ id: 1, nameSv: 'Typ sv', nameEn: 'Quality' }]
 
@@ -35,7 +35,7 @@ const sampleCategories = [
   },
 ]
 
-describe('Iso25010Client', () => {
+describe('QualityCharacteristicsClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
@@ -50,17 +50,17 @@ describe('Iso25010Client', () => {
   })
 
   it('renders heading and ISO subtitle', async () => {
-    render(<Iso25010Client />)
+    render(<QualityCharacteristicsClient />)
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-        'nav.iso25010',
+        'nav.qualityCharacteristics',
       )
     })
     expect(screen.getByText(/ISO\/IEC 25010:2023/)).toBeInTheDocument()
   })
 
   it('fetches and displays types with categories in grid', async () => {
-    render(<Iso25010Client />)
+    render(<QualityCharacteristicsClient />)
     await waitFor(() => {
       expect(screen.getByText('Quality')).toBeInTheDocument()
     })
@@ -70,7 +70,7 @@ describe('Iso25010Client', () => {
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<Iso25010Client />)
+    render(<QualityCharacteristicsClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 })

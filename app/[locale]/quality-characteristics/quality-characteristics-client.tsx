@@ -17,7 +17,7 @@ interface Type {
   nameSv: string
 }
 
-export default function Iso25010Client() {
+export default function QualityCharacteristicsClient() {
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
@@ -67,7 +67,7 @@ export default function Iso25010Client() {
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
         <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100 mb-2">
-          {tn('iso25010')}
+          {tn('qualityCharacteristics')}
         </h1>
         <p className="text-secondary-600 dark:text-secondary-400 text-sm mb-6">
           ISO/IEC 25010:2023 — Systems and software Quality Requirements and

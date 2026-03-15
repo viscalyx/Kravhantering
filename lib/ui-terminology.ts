@@ -58,7 +58,7 @@ const MESSAGE_BINDINGS: Record<
     singular: [['requirement', 'status']],
   },
   typeCategory: {
-    plural: [['nav', 'iso25010']],
+    plural: [['nav', 'qualityCharacteristics']],
     singular: [['requirement', 'typeCategory']],
   },
   requiresTesting: {
