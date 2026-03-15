@@ -498,6 +498,16 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Funktionellt')).toBeInTheDocument()
     expect(screen.getByText('Quality characteristic')).toBeInTheDocument()
     expect(screen.getByText('Underhållbarhet')).toBeInTheDocument()
+    expect(
+      screen
+        .getByText('Type')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'type')
+    expect(
+      screen
+        .getByText('Quality characteristic')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
   })
 
   it('renders the empty modal state when the requirement request fails', async () => {
