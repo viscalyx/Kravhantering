@@ -1381,9 +1381,10 @@ export default function RequirementsTable({
         return
       }
 
-      router.push(`/kravkatalog/${id}`)
+      const row = rows.find(r => r.id === id)
+      router.push(`/kravkatalog/${row?.uniqueId ?? id}`)
     },
-    [onRowClick, router],
+    [onRowClick, router, rows],
   )
   const handleBodyRowClick = useCallback(
     (event: ReactMouseEvent<HTMLTableRowElement>, id: number) => {

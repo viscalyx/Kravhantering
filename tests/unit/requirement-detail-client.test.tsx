@@ -578,7 +578,7 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Verksamhet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
-      '/kravkatalog/123/redigera',
+      '/kravkatalog/REQ-123/redigera',
     )
     expect(screen.queryByText('No')).toBeNull()
     expect(screen.getByTestId('status-stepper')).toHaveTextContent(
@@ -685,7 +685,7 @@ describe('RequirementDetailClient', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
-      '/kravkatalog/123/redigera',
+      '/kravkatalog/REQ-123/redigera',
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'v2' }))

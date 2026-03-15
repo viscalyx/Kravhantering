@@ -91,7 +91,7 @@ describe('RequirementForm', () => {
 
   it('submits create form and navigates', async () => {
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
-      if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 42 }))
+      if (opts?.method === 'POST') return Promise.resolve(okJson({ requirement: { id: 42, uniqueId: 'TST0042' }, version: {} }))
       if (typeof url === 'string' && url.includes('/api/requirement-areas'))
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (
@@ -135,7 +135,7 @@ describe('RequirementForm', () => {
     expect(body).not.toHaveProperty('typeCategoryId')
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/kravkatalog/42')
+      expect(pushMock).toHaveBeenCalledWith('/kravkatalog?selected=TST0042')
     })
   })
 

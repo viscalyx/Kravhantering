@@ -17,7 +17,7 @@ interface VersionData {
 }
 
 interface VersionDetailClientProps {
-  requirementId: number
+  requirementId: number | string
   versionNumber: number
 }
 

@@ -17,7 +17,7 @@ interface FormData {
 interface RequirementFormProps {
   initialData?: Partial<FormData>
   mode: 'create' | 'edit'
-  requirementId?: number
+  requirementId?: number | string
 }
 
 interface Option {
@@ -58,6 +58,20 @@ export default function RequirementForm({
     QualityCharacteristicOption[]
   >([])
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
+    () => {
+      try {
+        const stored = globalThis.localStorage?.getItem(
+          'requirement-save-destination',
+        )
+        if (stored === 'page') return 'page'
+      } catch {
+        // ignore
+      }
+      return 'inline'
+    },
+  )
 
   const [form, setForm] = useState<FormData>({
     areaId: initialData?.areaId ?? '',
@@ -118,6 +132,7 @@ export default function RequirementForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setError(null)
 
     try {
       const url =
@@ -141,8 +156,25 @@ export default function RequirementForm({
       })
 
       if (res.ok) {
-        const data = (await res.json()) as { id?: number }
-        router.push(`/kravkatalog/${data.id ?? requirementId}`)
+        const data = (await res.json()) as {
+          id?: number
+          uniqueId?: string
+          requirement?: { id: number; uniqueId: string }
+        }
+        const targetUniqueId =
+          mode === 'create'
+            ? data.requirement?.uniqueId
+            : (data.uniqueId ?? requirementId)
+        if (saveDestination === 'page') {
+          router.push(`/kravkatalog/${targetUniqueId}`)
+        } else {
+          router.push(`/kravkatalog?selected=${targetUniqueId}`)
+        }
+      } else {
+        const err = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        setError(err?.error ?? res.statusText)
       }
     } finally {
       setSubmitting(false)
@@ -297,17 +329,58 @@ export default function RequirementForm({
         {t('requiresTesting')}
       </label>
 
-      <div className="flex items-center gap-3 pt-4 border-t">
-        <button className="btn-primary" disabled={submitting} type="submit">
-          {submitting ? tc('loading') : tc('save')}
-        </button>
-        <button
-          className="px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
-          onClick={() => router.back()}
-          type="button"
-        >
-          {tc('cancel')}
-        </button>
+      {error && (
+        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-3 pt-4 border-t">
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" disabled={submitting} type="submit">
+            {submitting ? tc('loading') : tc('save')}
+          </button>
+          <button
+            className="px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
+            onClick={() => router.back()}
+            type="button"
+          >
+            {tc('cancel')}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-secondary-600 dark:text-secondary-400">
+          <span>{t('afterSave')}</span>
+          <div className="inline-flex rounded-lg border overflow-hidden text-xs font-medium">
+            <button
+              className={`px-3 py-1.5 transition-colors ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              onClick={() => {
+                setSaveDestination('inline')
+                try {
+                  localStorage.setItem('requirement-save-destination', 'inline')
+                } catch {
+                  // ignore
+                }
+              }}
+              type="button"
+            >
+              {t('afterSaveInline')}
+            </button>
+            <button
+              className={`px-3 py-1.5 transition-colors ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              onClick={() => {
+                setSaveDestination('page')
+                try {
+                  localStorage.setItem('requirement-save-destination', 'page')
+                } catch {
+                  // ignore
+                }
+              }}
+              type="button"
+            >
+              {t('afterSavePage')}
+            </button>
+          </div>
+        </div>
       </div>
     </form>
   )

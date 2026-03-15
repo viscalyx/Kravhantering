@@ -15,5 +15,5 @@ export default async function EditRequirementPage({
   params: Params
 }) {
   const { id } = await params
-  return <EditRequirementClient requirementId={Number(id)} />
+  return <EditRequirementClient requirementId={id} />
 }

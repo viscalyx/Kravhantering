@@ -44,7 +44,9 @@
     "restoreVersion": "Återskapa version",
     "createdAt": "Skapad",
     "updatedAt": "Uppdaterad",
-    "error": "Ett fel uppstod"
+    "error": "Ett fel uppstod",
+    "share": "Dela",
+    "copied": "Kopierad"
   },
   "nav": {
     "catalog": "Kravkatalog",
@@ -120,7 +122,13 @@
     "draftVersionAvailableBanner": "Det finns en utkastsversion (v{version})",
     "viewingOlderVersion": "Visar version {version}",
     "backToLatest": "Tillbaka till senaste versionen",
-    "areaOwner": "ägare"
+    "areaOwner": "ägare",
+    "shareLinkInline": "Kopiera länk (listvy)",
+    "shareLinkPage": "Kopiera länk (detaljsida)",
+    "afterSave": "Gå till efter sparning",
+    "afterSaveInline": "Listvy",
+    "afterSavePage": "Detaljsida",
+    "noPublishedVersion": "Det finns ingen publicerad version av detta krav."
   },
   "requirementsTable": {
     "clear": "Rensa",

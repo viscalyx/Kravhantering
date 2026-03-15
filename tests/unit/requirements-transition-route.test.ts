@@ -49,7 +49,7 @@ describe('requirements/[id]/transition route', () => {
   })
 
   it('transitions requirement successfully', async () => {
-    mockTransitionRequirement.mockResolvedValue({ version: 3 })
+    mockTransitionRequirement.mockResolvedValue({ detail: { id: 1, uniqueId: 'TST0001' }, version: 3 })
     const req = new NextRequest('http://localhost', {
       method: 'POST',
       body: JSON.stringify({ statusId: 5 }),

@@ -3,9 +3,11 @@
 import {
   AlertCircle,
   Archive,
+  Check,
   Clock,
   Edit,
   RotateCcw,
+  Share2,
   TestTube2,
   Trash2,
   X,
@@ -62,13 +64,15 @@ interface RequirementDetail {
 }
 
 interface RequirementDetailClientProps {
+  defaultVersion?: number
   inline?: boolean
   onChange?: () => void | Promise<void>
   onClose?: () => void
-  requirementId: number
+  requirementId: number | string
 }
 
 export default function RequirementDetailClient({
+  defaultVersion,
   inline,
   onChange,
   onClose,
@@ -88,6 +92,9 @@ export default function RequirementDetailClient({
   const [loading, setLoading] = useState(true)
   const [transitions, setTransitions] = useState<TransitionTarget[]>([])
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
+  const [showShareMenu, setShowShareMenu] = useState(false)
+  const shareMenuRef = useRef<HTMLDivElement>(null)
   const [statuses, setStatuses] = useState<StatusInfo[]>([])
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
@@ -143,12 +150,25 @@ export default function RequirementDetailClient({
   const STATUS_ARCHIVED = 4
   const displayVersionNumber = useMemo(() => {
     if (!req) return null
+    // If an explicit version was requested (via ?v= param), use it
+    if (defaultVersion != null) {
+      const match = req.versions.find(v => v.versionNumber === defaultVersion)
+      if (match) return match.versionNumber
+    }
+    // For the full-page view (not inline) without explicit version,
+    // only show published version — return null if none exists so we
+    // can display a "no published version" message.
+    if (!inline) {
+      const published = req.versions.find(v => v.status === STATUS_PUBLISHED)
+      return published?.versionNumber ?? null
+    }
+    // Inline view: published > archived > latest
     const dv =
       req.versions.find(v => v.status === STATUS_PUBLISHED) ??
       req.versions.find(v => v.status === STATUS_ARCHIVED) ??
       req.versions[0]
     return dv?.versionNumber ?? null
-  }, [req])
+  }, [req, defaultVersion, inline])
 
   // Reset selected version when requirement data changes
   useEffect(() => {
@@ -256,6 +276,21 @@ export default function RequirementDetailClient({
       }
     }
   }, [selectedVersionNumber])
+
+  // Close share menu when clicking outside
+  useEffect(() => {
+    if (!showShareMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        shareMenuRef.current &&
+        !shareMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowShareMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showShareMenu])
 
   if (loading) {
     const loadingContent = (
@@ -538,6 +573,51 @@ export default function RequirementDetailClient({
       body: JSON.stringify({ versionNumber }),
     })
     await Promise.all([fetchRequirement(), onChange?.()])
+  }
+
+  const handleShare = async (mode: 'inline' | 'page') => {
+    const url = new URL(window.location.href)
+    url.search = ''
+    const shareUniqueId = req.uniqueId
+    if (mode === 'inline') {
+      url.pathname = url.pathname.replace(/\/kravkatalog(\/.*)?$/, '/kravkatalog')
+      url.searchParams.set('selected', shareUniqueId)
+      if (selectedVersionNumber != null) {
+        url.searchParams.set('v', String(selectedVersionNumber))
+      }
+    } else {
+      url.pathname = url.pathname.replace(
+        /\/kravkatalog(\/.*)?$/,
+        `/kravkatalog/${shareUniqueId}`,
+      )
+      if (selectedVersionNumber != null) {
+        url.searchParams.set('v', String(selectedVersionNumber))
+      }
+    }
+    await navigator.clipboard.writeText(url.toString())
+    setCopied(mode)
+    setShowShareMenu(false)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  // Full-page view without explicit version: if no published version exists,
+  // show a notice instead of the requirement content.
+  if (!inline && defaultVersion == null && selectedVersion == null) {
+    const noPublishedContent = (
+      <div className="py-12 text-center space-y-4">
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+          {req.uniqueId}
+        </h1>
+        <p className="text-secondary-600 dark:text-secondary-400">
+          {t('noPublishedVersion')}
+        </p>
+      </div>
+    )
+    return (
+      <div className="section-padding px-4 sm:px-6 lg:px-8">
+        <div className="container-custom">{noPublishedContent}</div>
+      </div>
+    )
   }
 
   const content = (
@@ -825,6 +905,49 @@ export default function RequirementDetailClient({
 
               {/* Action buttons column */}
               <div className="flex flex-col gap-2 shrink-0">
+                <div className="relative" ref={shareMenuRef}>
+                  <button
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                    onClick={() => setShowShareMenu(prev => !prev)}
+                    title={tc('share')}
+                    type="button"
+                  >
+                    {copied ? (
+                      <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Share2 aria-hidden="true" className="h-4 w-4" />
+                    )}
+                    {copied ? tc('copied') : tc('share')}
+                  </button>
+                  {showShareMenu && (
+                    <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        onClick={() => handleShare('inline')}
+                        type="button"
+                      >
+                        {copied === 'inline' ? (
+                          <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Share2 aria-hidden="true" className="h-4 w-4" />
+                        )}
+                        {t('shareLinkInline')}
+                      </button>
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        onClick={() => handleShare('page')}
+                        type="button"
+                      >
+                        {copied === 'page' ? (
+                          <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Share2 aria-hidden="true" className="h-4 w-4" />
+                        )}
+                        {t('shareLinkPage')}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {isViewingHistory ? (
                   <>
                     <button
@@ -892,7 +1015,7 @@ export default function RequirementDetailClient({
                         data-developer-mode-name="detail action"
                         data-developer-mode-priority="360"
                         data-developer-mode-value="edit"
-                        href={`/kravkatalog/${req.id}/redigera`}
+                        href={`/kravkatalog/${req.uniqueId}/redigera`}
                         title={tc('editTooltip')}
                       >
                         <Edit aria-hidden="true" className="h-4 w-4" />

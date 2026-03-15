@@ -43,7 +43,7 @@ export default async function VersionDetailPage({
   const { id, version } = await params
   return (
     <VersionDetailClient
-      requirementId={Number(id)}
+      requirementId={id}
       versionNumber={Number(version)}
     />
   )

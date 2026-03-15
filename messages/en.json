@@ -44,7 +44,9 @@
     "restoreVersion": "Restore version",
     "createdAt": "Created",
     "updatedAt": "Updated",
-    "error": "Something went wrong"
+    "error": "Something went wrong",
+    "share": "Share",
+    "copied": "Copied"
   },
   "nav": {
     "catalog": "Requirements Catalog",
@@ -120,7 +122,13 @@
     "draftVersionAvailableBanner": "A draft version (v{version}) is available",
     "viewingOlderVersion": "Viewing version {version}",
     "backToLatest": "Back to latest version",
-    "areaOwner": "owner"
+    "areaOwner": "owner",
+    "shareLinkInline": "Copy link (list view)",
+    "shareLinkPage": "Copy link (detail page)",
+    "afterSave": "After save, go to",
+    "afterSaveInline": "List view",
+    "afterSavePage": "Detail page",
+    "noPublishedVersion": "There is no published version of this requirement."
   },
   "requirementsTable": {
     "clear": "Clear",

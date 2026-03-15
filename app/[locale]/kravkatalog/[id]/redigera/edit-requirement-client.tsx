@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import RequirementForm from '@/components/RequirementForm'
 
 interface EditRequirementClientProps {
-  requirementId: number
+  requirementId: number | string
 }
 
 export default function EditRequirementClient({
