@@ -13,6 +13,7 @@ import {
   normalizeRequirementListColumnDefaults,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
+  REQUIREMENT_LIST_COLUMNS,
   serializeRequirementColumnWidths,
   serializeRequirementVisibleColumns,
 } from '@/lib/requirements/list-view'
@@ -312,7 +313,7 @@ describe('requirement list view helpers', () => {
       { columnId: 'uniqueId', defaultVisible: true, sortOrder: 1 },
     ])
     expect(result[0].columnId).toBe('uniqueId')
-    expect(result.length).toBe(9)
+    expect(result.length).toBe(REQUIREMENT_LIST_COLUMNS.length)
   })
 
   it('compares rows by description', () => {
@@ -406,6 +407,13 @@ describe('requirement list view helpers', () => {
         statusOptions: [],
       }),
     ).toBeLessThan(0)
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'sv',
+        sort: { by: 'qualityCharacteristic', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeGreaterThan(0)
   })
 
   it('compares rows by version number', () => {

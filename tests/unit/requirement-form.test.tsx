@@ -125,6 +125,15 @@ describe('RequirementForm', () => {
       )
     })
 
+    const postCall = fetchMock.mock.calls.find(
+      (c: unknown[]) =>
+        c[0] === '/api/requirements' &&
+        (c[1] as RequestInit)?.method === 'POST',
+    )
+    const body = JSON.parse((postCall?.[1] as RequestInit).body as string)
+    expect(body).toHaveProperty('requiresTesting', false)
+    expect(body).not.toHaveProperty('typeCategoryId')
+
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/kravkatalog/42')
     })
@@ -240,6 +249,10 @@ describe('RequirementForm', () => {
         screen.getByLabelText(/requirement\.qualityCharacteristic/),
       ).toBeInTheDocument()
     })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/quality-characteristics?typeId=1'),
+    )
   })
 
   it('toggles requiresTesting checkbox', async () => {

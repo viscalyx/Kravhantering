@@ -2080,6 +2080,7 @@ describe('RequirementsTable', () => {
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
     let observedElement: Element | null = null
     let observerCallback: IntersectionObserverCallback | null = null
+    const OriginalIntersectionObserver = globalThis.IntersectionObserver
 
     vi.stubGlobal(
       'IntersectionObserver',
@@ -2098,24 +2099,28 @@ describe('RequirementsTable', () => {
       },
     )
 
-    const onLoadMore = vi.fn()
-    render(
-      <RequirementsTable
-        hasMore
-        locale="sv"
-        onLoadMore={onLoadMore}
-        rows={[makeRow()]}
-      />,
-    )
-
-    expect(observedElement).toBeTruthy()
-
-    act(() => {
-      observerCallback?.(
-        [{ isIntersecting: true } as IntersectionObserverEntry],
-        {} as IntersectionObserver,
+    try {
+      const onLoadMore = vi.fn()
+      render(
+        <RequirementsTable
+          hasMore
+          locale="sv"
+          onLoadMore={onLoadMore}
+          rows={[makeRow()]}
+        />,
       )
-    })
-    expect(onLoadMore).toHaveBeenCalledTimes(1)
+
+      expect(observedElement).toBeTruthy()
+
+      act(() => {
+        observerCallback?.(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        )
+      })
+      expect(onLoadMore).toHaveBeenCalledTimes(1)
+    } finally {
+      globalThis.IntersectionObserver = OriginalIntersectionObserver
+    }
   })
 })

@@ -141,5 +141,14 @@ describe('quality-characteristics/[id] route', () => {
       const json = (await res.json()) as { error: string }
       expect(json.error).toBe('Internal server error')
     })
+
+    it('returns 500 on non-Error rejection', async () => {
+      mockDeleteQualityCharacteristic.mockRejectedValue('string rejection')
+      const req = new NextRequest('http://localhost', { method: 'DELETE' })
+      const res = await DELETE(req, makeParams('1'))
+      expect(res.status).toBe(500)
+      const json = (await res.json()) as { error: string }
+      expect(json.error).toBe('Internal server error')
+    })
   })
 })
