@@ -473,6 +473,33 @@ describe('RequirementDetailClient', () => {
     )
   })
 
+  it('shows type and quality characteristic in the inline detail view when present', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Test description',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        type: { nameEn: 'Functional', nameSv: 'Funktionellt' },
+        qualityCharacteristic: {
+          nameEn: 'Maintainability',
+          nameSv: 'Underhållbarhet',
+        },
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    expect(await screen.findByText('Test description')).toBeInTheDocument()
+    expect(screen.getByText('Type')).toBeInTheDocument()
+    expect(screen.getByText('Funktionellt')).toBeInTheDocument()
+    expect(screen.getByText('Quality characteristic')).toBeInTheDocument()
+    expect(screen.getByText('Underhållbarhet')).toBeInTheDocument()
+  })
+
   it('renders the empty modal state when the requirement request fails', async () => {
     const onClose = vi.fn()
 

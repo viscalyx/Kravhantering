@@ -664,26 +664,63 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                {inline && req.area && (
-                  <div
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="detail section"
-                    data-developer-mode-priority="350"
-                    data-developer-mode-value="area"
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('area')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {req.area.name}
-                    </p>
-                    {req.area.ownerName && (
-                      <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                        {t('area')} — {t('areaOwner')}: {req.area.ownerName}
-                      </p>
-                    )}
-                  </div>
-                )}
+                {inline &&
+                  (req.area ||
+                    selectedVersion?.type ||
+                    selectedVersion?.qualityCharacteristic) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {req.area && (
+                        <div
+                          data-developer-mode-context={detailContext}
+                          data-developer-mode-name="detail section"
+                          data-developer-mode-priority="350"
+                          data-developer-mode-value="area"
+                        >
+                          <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                            {t('area')}
+                          </h3>
+                          <p className="text-secondary-900 dark:text-secondary-100">
+                            {req.area.name}
+                          </p>
+                          {req.area.ownerName && (
+                            <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                              {t('areaOwner')}: {req.area.ownerName}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {selectedVersion?.type && (
+                        <div
+                          data-developer-mode-context={detailContext}
+                          data-developer-mode-name="detail section"
+                          data-developer-mode-priority="350"
+                          data-developer-mode-value="type"
+                        >
+                          <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                            {t('type')}
+                          </h3>
+                          <p className="text-secondary-900 dark:text-secondary-100">
+                            {localName(selectedVersion.type)}
+                          </p>
+                        </div>
+                      )}
+                      {selectedVersion?.qualityCharacteristic && (
+                        <div
+                          data-developer-mode-context={detailContext}
+                          data-developer-mode-name="detail section"
+                          data-developer-mode-priority="350"
+                          data-developer-mode-value="quality characteristic"
+                        >
+                          <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                            {t('qualityCharacteristic')}
+                          </h3>
+                          <p className="text-secondary-900 dark:text-secondary-100">
+                            {localName(selectedVersion.qualityCharacteristic)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                 {selectedVersion?.references &&
                   selectedVersion.references.length > 0 && (

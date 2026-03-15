@@ -11,8 +11,9 @@ in this fixed order:
 
 1. Requirement text (description) — always first
 2. Acceptance criteria — always second
-3. Metadata properties — area (with owner), references, scenarios, and any
-   future properties come after the two primary text sections
+3. Metadata properties — area (with owner), type, quality characteristic,
+   references, scenarios, and any future properties come after the two
+   primary text sections
 
 This order applies to both the inline detail pane expanded inside the
 requirements table and the full-page requirement detail view.
