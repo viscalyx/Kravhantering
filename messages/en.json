@@ -57,6 +57,7 @@
     "iso25010": "Quality characteristics",
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
+    "areaOwners": "Area owners",
     "admin": "Admin",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
@@ -173,6 +174,12 @@
     "addReference": "Add reference",
     "unnamed": "Reference"
   },
+  "ownerMgmt": {
+    "name": "Name",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "email": "Email"
+  },
   "responsibilityAreaMgmt": {
     "name": "Name",
     "title": "Business objects",
@@ -239,7 +246,8 @@
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
     "qualityAttributesDescription": "View quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirement packages.",
-    "implementationTypesDescription": "Manage implementation types for requirement packages."
+    "implementationTypesDescription": "Manage implementation types for requirement packages.",
+    "areaOwnersDescription": "Manage owners that can be assigned to requirement areas."
   },
   "terminology": {
     "description": {

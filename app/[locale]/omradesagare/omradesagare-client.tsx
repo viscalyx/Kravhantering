@@ -5,85 +5,63 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 
-interface Area {
-  description: string | null
+interface Owner {
+  email: string
+  firstName: string
   id: number
-  name: string
-  ownerId: number | null
-  ownerName: string | null
-  prefix: string
+  lastName: string
 }
 
-interface OwnerOption {
-  id: number
-  name: string
-}
-
-export default function KravomradenClient() {
-  const t = useTranslations('area')
+export default function OmradesagareClient() {
+  const t = useTranslations('ownerMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
 
-  const [areas, setAreas] = useState<Area[]>([])
-  const [owners, setOwners] = useState<OwnerOption[]>([])
+  const [items, setItems] = useState<Owner[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({
-    prefix: '',
-    name: '',
-    description: '',
-    ownerId: '',
+    firstName: '',
+    lastName: '',
+    email: '',
   })
 
-  const fetchAreas = useCallback(async () => {
+  const fetchItems = useCallback(async () => {
     setLoading(true)
-    const [areasRes, ownersRes] = await Promise.all([
-      fetch('/api/requirement-areas'),
-      fetch('/api/owners'),
-    ])
-    if (areasRes.ok)
-      setAreas(
-        ((await areasRes.json()) as { areas?: Area[] }).areas ?? [],
-      )
-    if (ownersRes.ok)
-      setOwners(
-        ((await ownersRes.json()) as { owners?: OwnerOption[] }).owners ?? [],
+    const res = await fetch('/api/owners/all')
+    if (res.ok)
+      setItems(
+        ((await res.json()) as { owners?: Owner[] }).owners ?? [],
       )
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    fetchAreas()
-  }, [fetchAreas])
+    fetchItems()
+  }, [fetchItems])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const method = editId ? 'PUT' : 'POST'
-    const url = editId
-      ? `/api/requirement-areas/${editId}`
-      : '/api/requirement-areas'
+    const url = editId ? `/api/owners/${editId}` : '/api/owners'
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...form,
-        ownerId: form.ownerId ? Number(form.ownerId) : undefined,
-      }),
+      body: JSON.stringify(form),
     })
     setShowForm(false)
     setEditId(null)
-    setForm({ prefix: '', name: '', description: '', ownerId: '' })
-    fetchAreas()
+    setForm({ firstName: '', lastName: '', email: '' })
+    fetchItems()
   }
 
-  const handleEdit = (area: Area) => {
-    setEditId(area.id)
+  const handleEdit = (item: Owner) => {
+    setEditId(item.id)
     setForm({
-      prefix: area.prefix,
-      name: area.name,
-      description: area.description ?? '',
-      ownerId: area.ownerId != null ? String(area.ownerId) : '',
+      firstName: item.firstName,
+      lastName: item.lastName,
+      email: item.email,
     })
     setShowForm(true)
   }
@@ -100,8 +78,8 @@ export default function KravomradenClient() {
       }))
     )
       return
-    await fetch(`/api/requirement-areas/${id}`, { method: 'DELETE' })
-    fetchAreas()
+    await fetch(`/api/owners/${id}`, { method: 'DELETE' })
+    fetchItems()
   }
 
   return (
@@ -109,14 +87,14 @@ export default function KravomradenClient() {
       <div className="container-custom">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('areas')}
+            {tn('areaOwners')}
           </h1>
           <button
             className="btn-primary inline-flex items-center gap-1.5"
             onClick={() => {
               setShowForm(true)
               setEditId(null)
-              setForm({ prefix: '', name: '', description: '', ownerId: '' })
+              setForm({ firstName: '', lastName: '', email: '' })
             }}
             type="button"
           >
@@ -136,74 +114,54 @@ export default function KravomradenClient() {
             <div>
               <label
                 className="block text-sm font-medium mb-1"
-                htmlFor="area-prefix"
+                htmlFor="owner-first-name"
               >
-                {t('prefix')} *
+                {t('firstName')} *
               </label>
               <input
                 className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-prefix"
-                maxLength={10}
+                id="owner-first-name"
                 onChange={e =>
-                  setForm(f => ({ ...f, prefix: e.target.value.toUpperCase() }))
+                  setForm(f => ({ ...f, firstName: e.target.value }))
                 }
                 required
-                value={form.prefix}
+                value={form.firstName}
               />
             </div>
             <div>
               <label
                 className="block text-sm font-medium mb-1"
-                htmlFor="area-name"
+                htmlFor="owner-last-name"
               >
-                {t('name')} *
+                {t('lastName')} *
               </label>
               <input
                 className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-name"
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                id="owner-last-name"
+                onChange={e =>
+                  setForm(f => ({ ...f, lastName: e.target.value }))
+                }
                 required
-                value={form.name}
+                value={form.lastName}
               />
             </div>
             <div>
               <label
                 className="block text-sm font-medium mb-1"
-                htmlFor="area-desc"
+                htmlFor="owner-email"
               >
-                {t('description')}
+                {t('email')} *
               </label>
-              <textarea
+              <input
                 className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-desc"
+                id="owner-email"
                 onChange={e =>
-                  setForm(f => ({ ...f, description: e.target.value }))
+                  setForm(f => ({ ...f, email: e.target.value }))
                 }
-                value={form.description}
+                required
+                type="email"
+                value={form.email}
               />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="area-owner"
-              >
-                {t('owner')}
-              </label>
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-owner"
-                onChange={e =>
-                  setForm(f => ({ ...f, ownerId: e.target.value }))
-                }
-                value={form.ownerId}
-              >
-                <option value="">{t('owner')}...</option>
-                {owners.map(o => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
             </div>
             <div className="flex gap-3">
               <button className="btn-primary" type="submit">
@@ -229,33 +187,27 @@ export default function KravomradenClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                  <th className="py-3 px-4 font-medium">{t('prefix')}</th>
                   <th className="py-3 px-4 font-medium">{t('name')}</th>
-                  <th className="py-3 px-4 font-medium">{t('description')}</th>
-                  <th className="py-3 px-4 font-medium">{t('owner')}</th>
+                  <th className="py-3 px-4 font-medium">{t('email')}</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
-                {areas.map(area => (
+                {items.map(item => (
                   <tr
                     className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={area.id}
+                    key={item.id}
                   >
-                    <td className="py-3 px-4 font-mono font-medium">
-                      {area.prefix}
-                    </td>
-                    <td className="py-3 px-4">{area.name}</td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 truncate max-w-xs">
-                      {area.description ?? '—'}
+                    <td className="py-3 px-4 font-medium">
+                      {item.firstName} {item.lastName}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {area.ownerName ?? '—'}
+                      {item.email}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
                         className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3"
-                        onClick={() => handleEdit(area)}
+                        onClick={() => handleEdit(item)}
                         type="button"
                       >
                         {tc('edit')}
@@ -263,7 +215,7 @@ export default function KravomradenClient() {
                       <button
                         className="text-sm text-red-700 dark:text-red-400 hover:underline"
                         onClick={e =>
-                          handleDelete(area.id, e.currentTarget as HTMLElement)
+                          handleDelete(item.id, e.currentTarget as HTMLElement)
                         }
                         type="button"
                       >

@@ -144,6 +144,33 @@ The behaviors below apply to the requirement list rendered by:
 - The left fade appears after the user has scrolled horizontally.
 - The fades must remain subtle enough to act as a cue, not as a primary visual element.
 
+## Inline Detail Pane
+
+The inline detail pane is expanded inside the requirements table when a row is
+clicked.
+
+### Content Order
+
+The detail card renders sections in this fixed order:
+
+1. **Requirement text** (description) — always first
+2. **Acceptance criteria** — always second
+3. **Area** with owner — shown after the primary text sections
+4. **References** — if any exist
+5. **Scenarios** — if any exist
+
+Requirement text and acceptance criteria are the primary content. Classification
+metadata (area, owner, category, type, etc.) must not push the main content
+down.
+
+### Area Owner
+
+- The area owner is a property of the area, not of the requirement itself.
+- In the inline pane, the area and its owner are displayed as a metadata section
+  after the two primary text sections.
+- In the full-page detail sidebar, the area owner is shown as small text below
+  the area name.
+
 ## Loading and Empty State
 
 - The empty state is rendered only after a list request finishes with zero rows.

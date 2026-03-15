@@ -1,13 +1,21 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
+import { listOwners } from '@/lib/dal/owners'
 import { createArea, listAreas } from '@/lib/dal/requirement-areas'
 import { getDb } from '@/lib/db'
 
 export async function GET() {
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const areas = await listAreas(db)
-  return NextResponse.json({ areas })
+  const [areas, owners] = await Promise.all([listAreas(db), listOwners(db)])
+  const ownerMap = new Map(
+    owners.map(o => [o.id, `${o.firstName} ${o.lastName}`]),
+  )
+  const enriched = areas.map(a => ({
+    ...a,
+    ownerName: a.ownerId ? (ownerMap.get(a.ownerId) ?? null) : null,
+  }))
+  return NextResponse.json({ areas: enriched })
 }
 
 export async function POST(request: Request) {

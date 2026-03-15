@@ -120,7 +120,7 @@ reference-data pages.
 
 It links to the existing stable routes for:
 
-- areas
+- areas (including owner assignment)
 - types
 - scenarios
 - statuses
@@ -130,6 +130,16 @@ It links to the existing stable routes for:
 
 The admin center does not rename or move those routes. It only centralizes how
 users reach them.
+
+### Area Owner
+
+Each requirement area can have an assigned owner. The owner is selected from an
+external owners list when creating or editing an area in the area reference data
+page. The owner name is displayed:
+
+- in the area reference data table
+- as small text under the area dropdown in the requirement create/edit form
+- in the requirement detail pane (inline and full-page sidebar)
 
 ## Contributor Notes
 

@@ -24,6 +24,7 @@ DELETE FROM requirement_versions WHERE id BETWEEN 101 AND 502;
 DELETE FROM requirement_scenarios WHERE id IN (1, 2, 3);
 DELETE FROM requirements WHERE id BETWEEN 1 AND 367;
 DELETE FROM requirement_areas WHERE id BETWEEN 1 AND 10;
+DELETE FROM owners WHERE id BETWEEN 1 AND 3;
 DELETE FROM requirement_type_categories WHERE id BETWEEN 1 AND 48;
 DELETE FROM requirement_types WHERE id IN (1, 2);
 DELETE FROM requirement_categories WHERE id IN (1, 2, 3);
@@ -418,18 +419,24 @@ INSERT OR IGNORE INTO requirement_type_categories (id, name_sv, name_en, require
   (47, 'Felsäkert beteende', 'Fail safe', 2, 44),
   (48, 'Riskvarning', 'Hazard warning', 2, 44);
 
+-- ─── Owners ─────────────────────────────────────────────────────────────────
+INSERT OR IGNORE INTO owners (id, first_name, last_name, email, created_at, updated_at) VALUES
+  (1, 'Anna',  'Johansson', 'anna.johansson@example.com',  datetime('now'), datetime('now')),
+  (2, 'Erik',  'Lindberg',  'erik.lindberg@example.com',   datetime('now'), datetime('now')),
+  (3, 'Maria', 'Svensson',  'maria.svensson@example.com',  datetime('now'), datetime('now'));
+
 -- ─── Requirement Areas ───────────────────────────────────────────────────────
 INSERT OR IGNORE INTO requirement_areas (id, prefix, name, description, owner_id, next_sequence, created_at, updated_at) VALUES
-  (1,  'INT', 'Integration',   'Krav relaterade till systemintegration och gränssnitt',             'owner-1', 39, datetime('now'), datetime('now')),
-  (2,  'SÄK', 'Säkerhet',     'Krav relaterade till informationssäkerhet och åtkomstkontroll',     'owner-2', 41, datetime('now'), datetime('now')),
-  (3,  'PRE', 'Prestanda',    'Krav relaterade till systemets prestanda och svarstider',           'owner-1', 38, datetime('now'), datetime('now')),
-  (4,  'ANV', 'Användbarhet', 'Krav relaterade till användargränssnitt och användarupplevelse',    'owner-3', 37, datetime('now'), datetime('now')),
-  (5,  'LAG', 'Lagring',      'Krav relaterade till datalagring, backup och arkivering',           'owner-1', 38, datetime('now'), datetime('now')),
-  (6,  'BEH', 'Behörighet',   'Krav relaterade till behörigheter och åtkomstkontroll',             'owner-2', 37, datetime('now'), datetime('now')),
-  (7,  'IDN', 'Identitet',    'Krav relaterade till identitetshantering och autentisering',        'owner-2', 37, datetime('now'), datetime('now')),
-  (8,  'LOG', 'Loggning',     'Krav relaterade till loggning, spårbarhet och övervakning',         'owner-1', 38, datetime('now'), datetime('now')),
-  (9,  'DRF', 'Drift',        'Krav relaterade till driftsättning, underhåll och operativa rutiner','owner-3', 36, datetime('now'), datetime('now')),
-  (10, 'DAT', 'Data',         'Krav relaterade till datahantering, kvalitet och migration',        'owner-1', 36, datetime('now'), datetime('now'));
+  (1,  'INT', 'Integration',   'Krav relaterade till systemintegration och gränssnitt',             1, 39, datetime('now'), datetime('now')),
+  (2,  'SÄK', 'Säkerhet',     'Krav relaterade till informationssäkerhet och åtkomstkontroll',     2, 41, datetime('now'), datetime('now')),
+  (3,  'PRE', 'Prestanda',    'Krav relaterade till systemets prestanda och svarstider',           1, 38, datetime('now'), datetime('now')),
+  (4,  'ANV', 'Användbarhet', 'Krav relaterade till användargränssnitt och användarupplevelse',    3, 37, datetime('now'), datetime('now')),
+  (5,  'LAG', 'Lagring',      'Krav relaterade till datalagring, backup och arkivering',           1, 38, datetime('now'), datetime('now')),
+  (6,  'BEH', 'Behörighet',   'Krav relaterade till behörigheter och åtkomstkontroll',             2, 37, datetime('now'), datetime('now')),
+  (7,  'IDN', 'Identitet',    'Krav relaterade till identitetshantering och autentisering',        2, 37, datetime('now'), datetime('now')),
+  (8,  'LOG', 'Loggning',     'Krav relaterade till loggning, spårbarhet och övervakning',         1, 38, datetime('now'), datetime('now')),
+  (9,  'DRF', 'Drift',        'Krav relaterade till driftsättning, underhåll och operativa rutiner',3, 36, datetime('now'), datetime('now')),
+  (10, 'DAT', 'Data',         'Krav relaterade till datahantering, kvalitet och migration',        1, 36, datetime('now'), datetime('now'));
 
 -- ─── Requirements (62 total) ─────────────────────────────────────────────────
 -- Areas: INT(1), SÄK(2), PRE(3), ANV(4), LAG(5), BEH(6), IDN(7), LOG(8), DRF(9), DAT(10)

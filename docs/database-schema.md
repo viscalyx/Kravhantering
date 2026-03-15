@@ -90,12 +90,21 @@ Apply these rules to all schema objects.
 
 ```mermaid
 erDiagram
+    owners {
+        integer id PK
+        text first_name
+        text last_name
+        text email UK
+        text created_at
+        text updated_at
+    }
+
     requirement_areas {
         integer id PK
         text prefix UK "e.g. INT, SAK, PRE"
         text name
         text description
-        text owner_id
+        integer owner_id FK
         integer next_sequence
         text created_at
         text updated_at
@@ -240,6 +249,7 @@ erDiagram
     }
 
     %% Relationships
+    owners ||--o{ requirement_areas : "owns"
     requirement_areas ||--o{ requirements : "has many"
     requirements ||--o{ requirement_versions : "has many versions"
     requirement_versions }o--|| requirement_statuses : "has status"
@@ -510,6 +520,26 @@ Organization-wide default layout for the requirements list.
 
 ## Core Domain Tables
 
+### `owners`
+
+People who can be assigned as responsible owners for requirement areas.
+Managed via the area owners reference data page.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `first_name` | text | First name |
+| `last_name` | text | Last name |
+| `email` | text, unique | Email address |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Unique index:** `uq_owners_email`.
+
+---
+
 ### `requirement_areas`
 
 Groups requirements into logical domains
@@ -524,11 +554,15 @@ requirement IDs.
 | `prefix` | text, unique | Short code (e.g. `INT`, `SÄK`, `PRE`) used in `unique_id` |
 | `name` | text | Area display name |
 | `description` | text | Purpose of the area |
-| `owner_id` | text | Identifier of the responsible owner |
+| `owner_id` | integer FK → `owners.id` | Responsible owner (nullable) |
 | `next_sequence` | integer (default 1) | Next sequence number to assign within this area |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
+
+**Owner:** `owner_id` is a foreign key to the `owners` table. The owner is
+assigned via the area reference data management page and is displayed alongside
+the area in the requirement detail views and create/edit form.
 
 ---
 
@@ -702,6 +736,7 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_versions_requirement_id_version_number` | `requirement_versions` | `(requirement_id, version_number)` | Ensures version numbers are unique per requirement |
 | `uq_package_responsibility_areas_name_sv` | `package_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
 | `uq_package_responsibility_areas_name_en` | `package_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
+| `uq_owners_email` | `owners` | `email` | Prevents duplicate owner email addresses |
 | `uq_package_implementation_types_name_sv` | `package_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_package_implementation_types_name_en` | `package_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
 <!-- markdownlint-enable MD013 -->
@@ -736,6 +771,7 @@ graph LR
     end
 
     subgraph Core Tables
+        OW[owners]
         RA[requirement_areas]
         R[requirements]
         RV[requirement_versions]
@@ -753,6 +789,8 @@ graph LR
         RVS[requirement_version_scenarios]
     end
 
+    OW -- "uq_owners_email\n(email)" --> OW
+    RA -- "FK owner_id" --> OW
     RA -- "uq_requirement_areas_prefix\n(prefix)" --> RA
     R -- "uq_requirements_unique_id\n(unique_id)" --> R
     R -- "idx_requirements_requirement_area_id\n(requirement_area_id)" --> RA
