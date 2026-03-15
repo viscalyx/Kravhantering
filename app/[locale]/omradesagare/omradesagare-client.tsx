@@ -124,7 +124,7 @@ export default function OmradesagareClient() {
             data-developer-mode-value={editId ? 'edit' : 'create'}
             onSubmit={handleSubmit}
           >
-            <fieldset disabled={submitting}>
+            <fieldset className="space-y-5" disabled={submitting}>
               <h2 className="text-lg font-semibold">
                 {editId ? tc('edit') : tc('create')}
               </h2>
