@@ -271,7 +271,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
                   data-developer-mode-context={
                     developerModeValue
-                      ? `requirements table > floating pill: ${developerModeValue}`
+                      ? `${developerModeContext ?? 'requirements table'} > floating pill: ${developerModeValue}`
                       : developerModeContext
                   }
                   data-developer-mode-name="floating pill menu"
