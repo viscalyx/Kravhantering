@@ -10,6 +10,7 @@
     "edit": "Edit",
     "create": "Create new",
     "search": "Search",
+    "clearSearch": "Clear search",
     "filter": "Filter",
     "filterBy": "Filter by {label}",
     "columns": "Columns",

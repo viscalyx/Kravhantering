@@ -147,6 +147,9 @@ describe('KravscenarierClient', () => {
     fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-scenarios/1',
         expect.objectContaining({ method: 'DELETE' }),

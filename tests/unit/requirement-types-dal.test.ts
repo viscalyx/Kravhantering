@@ -21,7 +21,10 @@ function createTestDb() {
     .sort()
   for (const f of files) {
     const sql = readFileSync(join(migDir, f), 'utf-8')
-    sqlite.exec(sql)
+    for (const statement of sql.split('--> statement-breakpoint')) {
+      const s = statement.trim()
+      if (s) sqlite.exec(s)
+    }
   }
   return drizzle(sqlite, { schema }) as unknown as AppDatabase
 }

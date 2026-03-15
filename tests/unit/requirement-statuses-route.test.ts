@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockListStatuses = vi.fn()
 const mockListTransitions = vi.fn()
@@ -21,6 +21,10 @@ vi.mock('@/lib/dal/requirement-statuses', () => ({
 import { GET, POST } from '@/app/api/requirement-statuses/route'
 
 describe('requirement-statuses route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('GET returns statuses and transitions', async () => {
     mockListStatuses.mockResolvedValue([{ id: 1 }])
     mockListTransitions.mockResolvedValue([])

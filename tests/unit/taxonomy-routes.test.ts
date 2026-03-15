@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /* ── shared Cloudflare / DB mocks ────────────────────────────────── */
 
@@ -127,6 +127,10 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
 /* ── tests ───────────────────────────────────────────────────────── */
 
 describe('package-implementation-types routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('GET returns types', async () => {
     const r = await getImplTypes()
     const j = (await r.json()) as { types: { id: number }[] }
@@ -161,6 +165,10 @@ describe('package-implementation-types routes', () => {
 })
 
 describe('package-responsibility-areas routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('GET returns areas', async () => {
     const r = await getAreas()
     const j = (await r.json()) as { areas: { id: number }[] }
@@ -195,6 +203,10 @@ describe('package-responsibility-areas routes', () => {
 })
 
 describe('requirement-areas/[id] routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('PUT updates', async () => {
     mockUpdateReqArea.mockResolvedValue({ id: 1 })
     const r = await putReqArea(jsonReq('PUT', { name: 'X' }), makeParams('1'))
@@ -211,6 +223,10 @@ describe('requirement-areas/[id] routes', () => {
 })
 
 describe('requirement-packages routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('GET returns packages', async () => {
     const r = await getPkgs()
     const j = (await r.json()) as { packages: { id: number }[] }
@@ -242,6 +258,10 @@ describe('requirement-packages routes', () => {
 })
 
 describe('requirement-scenarios routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('GET returns scenarios', async () => {
     const r = await getScenarios()
     const j = (await r.json()) as { scenarios: { id: number }[] }
@@ -273,6 +293,10 @@ describe('requirement-scenarios routes', () => {
 })
 
 describe('read-only taxonomy routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('requirement-types GET returns types', async () => {
     const r = await getTypes()
     const j = (await r.json()) as { types: { id: number }[] }

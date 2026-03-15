@@ -236,6 +236,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('disables form fields while submitting', async () => {
+    let resolveFetch: ((v: unknown) => void) | undefined
     render(<OmradesagareClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
@@ -243,10 +244,28 @@ describe('OmradesagareClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    const fieldset = screen
-      .getByLabelText(/ownerMgmt\.firstName/)
-      .closest('fieldset')
-    expect(fieldset).toBeInTheDocument()
+    const firstNameInput = screen.getByLabelText(/ownerMgmt\.firstName/)
+    const lastNameInput = screen.getByLabelText(/ownerMgmt\.lastName/)
+    const emailInput = screen.getByLabelText(/ownerMgmt\.email/)
+    fireEvent.change(firstNameInput, { target: { value: 'Test' } })
+    fireEvent.change(lastNameInput, { target: { value: 'User' } })
+    fireEvent.change(emailInput, { target: { value: 'test@test.com' } })
+
+    fetchMock.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          resolveFetch = resolve
+        }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      const fieldset = firstNameInput.closest('fieldset')
+      expect(fieldset).toBeDisabled()
+    })
+
+    resolveFetch?.(okJson({ id: 99 }))
   })
 
   it('shows sr-only actions header in table', async () => {

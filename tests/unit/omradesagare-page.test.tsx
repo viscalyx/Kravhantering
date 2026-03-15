@@ -24,6 +24,10 @@ import OmradesagarePage, {
 } from '@/app/[locale]/omradesagare/page'
 
 describe('omradesagare page', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('generateMetadata returns title', async () => {
     const meta = await generateMetadata()
     expect(meta.title).toBe('areaOwners')

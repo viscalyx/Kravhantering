@@ -179,6 +179,9 @@ describe('KravpaketClient', () => {
     fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-packages/1',
         expect.objectContaining({ method: 'DELETE' }),

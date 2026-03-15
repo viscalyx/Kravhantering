@@ -150,6 +150,9 @@ describe('AnsvarsomradenClient', () => {
     fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/package-responsibility-areas/1',
         expect.objectContaining({ method: 'DELETE' }),

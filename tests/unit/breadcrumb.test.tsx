@@ -49,8 +49,7 @@ describe('Breadcrumb', () => {
         ]}
       />,
     )
-    const link = screen.getByText('Kravkatalog')
-    expect(link.tagName).toBe('A')
+    const link = screen.getByRole('link', { name: 'Kravkatalog' })
     expect(link).toHaveAttribute('href', '/kravkatalog')
   })
 })

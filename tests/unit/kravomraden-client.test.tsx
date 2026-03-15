@@ -222,7 +222,7 @@ describe('KravomradenClient', () => {
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'danger' }),
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
     })
 

@@ -45,7 +45,7 @@ export default function SearchBar({ value, onChange }: SearchBarProps) {
       />
       {localValue && (
         <button
-          aria-label="Rensa sökning"
+          aria-label={t('clearSearch')}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary-400 hover:text-secondary-600"
           onClick={handleClear}
           type="button"

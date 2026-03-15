@@ -857,9 +857,10 @@ describe('createRequirementsService', () => {
         versionNumber: 99,
       }),
     ).rejects.toMatchObject({ code: 'not_found' })
+    expect(mocks.restoreVersion).not.toHaveBeenCalled()
   })
 
-  it('resolves requirement by id for transition', async () => {
+  it('rejects transition when requirement not found', async () => {
     mocks.getRequirementById.mockResolvedValue(null)
     const service = createRequirementsService({} as never, {
       logger,
@@ -871,5 +872,6 @@ describe('createRequirementsService', () => {
         toStatusId: 2,
       }),
     ).rejects.toMatchObject({ code: 'not_found' })
+    expect(mocks.transitionStatus).not.toHaveBeenCalled()
   })
 })

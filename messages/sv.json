@@ -10,6 +10,7 @@
     "edit": "Redigera",
     "create": "Skapa ny",
     "search": "Sök",
+    "clearSearch": "Rensa sökning",
     "filter": "Filtrera",
     "filterBy": "Filtrera efter {label}",
     "columns": "Kolumner",

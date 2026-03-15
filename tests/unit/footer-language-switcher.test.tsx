@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Footer from '@/components/Footer'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 
@@ -16,6 +16,10 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 describe('Footer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('renders copyright text', () => {
     render(<Footer />)
     expect(screen.getByText(/copyright/i)).toBeInTheDocument()
@@ -23,6 +27,10 @@ describe('Footer', () => {
 })
 
 describe('LanguageSwitcher', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('renders switch button', () => {
     render(<LanguageSwitcher />)
     const btn = screen.getByRole('button', { name: 'switchTo' })

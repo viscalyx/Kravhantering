@@ -8,6 +8,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pushMock = vi.fn()
+const backMock = vi.fn()
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -16,7 +17,7 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('@/i18n/routing', () => ({
-  useRouter: () => ({ push: pushMock, back: vi.fn() }),
+  useRouter: () => ({ push: pushMock, back: backMock }),
 }))
 
 function okJson(body: unknown) {
@@ -179,5 +180,6 @@ describe('RequirementForm', () => {
     })
     const cancelBtn = screen.getByRole('button', { name: /common\.cancel/i })
     fireEvent.click(cancelBtn)
+    expect(backMock).toHaveBeenCalled()
   })
 })

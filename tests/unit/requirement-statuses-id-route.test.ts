@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUpdateStatus = vi.fn()
 const mockDeleteStatus = vi.fn()
@@ -24,6 +24,10 @@ function makeParams(id: string) {
 }
 
 describe('requirement-statuses/[id] route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('PUT updates status', async () => {
     mockUpdateStatus.mockResolvedValue({ id: 1, nameSv: 'X', nameEn: 'X' })
     const req = new NextRequest('http://localhost', {

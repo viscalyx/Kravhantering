@@ -166,6 +166,9 @@ describe('KravstatusarClient', () => {
     fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-statuses/10',
         expect.objectContaining({ method: 'DELETE' }),
@@ -188,7 +191,9 @@ describe('KravstatusarClient', () => {
     fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledTimes(2)
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
     })
   })
 })

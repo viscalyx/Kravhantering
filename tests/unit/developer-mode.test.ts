@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildDeveloperModeChipLabel,
   buildDeveloperModeCopyText,
@@ -42,6 +42,7 @@ function mockRect(
 
 describe('developer mode utilities', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     document.body.innerHTML = ''
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,

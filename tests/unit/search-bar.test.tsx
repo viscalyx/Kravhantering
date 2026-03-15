@@ -25,7 +25,7 @@ describe('SearchBar', () => {
   it('clears input on clear button click', () => {
     const onChange = vi.fn()
     render(<SearchBar onChange={onChange} value="test" />)
-    const clearBtn = screen.getByRole('button', { name: /rensa/i })
+    const clearBtn = screen.getByRole('button', { name: /clearSearch/i })
     fireEvent.click(clearBtn)
     expect(onChange).toHaveBeenCalledWith('')
   })

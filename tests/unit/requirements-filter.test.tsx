@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl', () => ({
   useTranslations: (ns?: string) => (key: string) =>
@@ -47,6 +47,10 @@ function renderFilter(overrides: Record<string, unknown> = {}) {
 }
 
 describe('RequirementsFilter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   afterEach(cleanup)
 
   it('renders area, category, and type dropdowns', () => {

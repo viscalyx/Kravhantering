@@ -1,5 +1,5 @@
 import { render, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const confirmMock = vi.fn().mockResolvedValue(true)
 
@@ -168,6 +168,10 @@ const pages: MarkerSpec[] = [
 ]
 
 describe.each(pages)('$label developer-mode markers', spec => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it(`renders markers with context "${spec.context}"`, async () => {
     const responses = spec.fetchResponse()
     const queue = Array.isArray(responses) ? [...responses] : [responses]
@@ -175,38 +179,40 @@ describe.each(pages)('$label developer-mode markers', spec => {
       .spyOn(globalThis, 'fetch')
       .mockImplementation(async () => (queue.shift() ?? okJson({})) as Response)
 
-    const mod = await spec.factory()
-    const Component = mod.default
-    const { container } = render(<Component />)
+    try {
+      const mod = await spec.factory()
+      const Component = mod.default
+      const { container } = render(<Component />)
 
-    await waitFor(() => {
-      expect(
-        container.querySelector(
-          `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
-        ),
-      ).toBeInTheDocument()
-    })
+      await waitFor(() => {
+        expect(
+          container.querySelector(
+            `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
+          ),
+        ).toBeInTheDocument()
+      })
 
-    for (const marker of spec.expectedMarkers) {
-      const el = container.querySelector(
-        `[data-developer-mode-name="${marker}"][data-developer-mode-context="${spec.context}"]`,
+      for (const marker of spec.expectedMarkers) {
+        const el = container.querySelector(
+          `[data-developer-mode-name="${marker}"][data-developer-mode-context="${spec.context}"]`,
+        )
+        expect(
+          el,
+          `expected marker "${marker}" with context "${spec.context}"`,
+        ).toBeInTheDocument()
+      }
+
+      const createBtn = container.querySelector(
+        `[data-developer-mode-name="create button"][data-developer-mode-context="${spec.context}"]`,
       )
-      expect(
-        el,
-        `expected marker "${marker}" with context "${spec.context}"`,
-      ).toBeInTheDocument()
+      expect(createBtn).toHaveAttribute('data-developer-mode-priority', '350')
+
+      const crudTable = container.querySelector(
+        `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
+      )
+      expect(crudTable).toHaveAttribute('data-developer-mode-priority', '340')
+    } finally {
+      fetchSpy.mockRestore()
     }
-
-    const createBtn = container.querySelector(
-      `[data-developer-mode-name="create button"][data-developer-mode-context="${spec.context}"]`,
-    )
-    expect(createBtn).toHaveAttribute('data-developer-mode-priority', '350')
-
-    const crudTable = container.querySelector(
-      `[data-developer-mode-name="crud table"][data-developer-mode-context="${spec.context}"]`,
-    )
-    expect(crudTable).toHaveAttribute('data-developer-mode-priority', '340')
-
-    fetchSpy.mockRestore()
   })
 })

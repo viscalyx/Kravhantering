@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockTransitionRequirement = vi.fn()
 
@@ -32,6 +32,10 @@ function makeParams(id: string) {
 }
 
 describe('requirements/[id]/transition route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('returns 400 for missing statusId', async () => {
     const req = new NextRequest('http://localhost', {
       method: 'POST',

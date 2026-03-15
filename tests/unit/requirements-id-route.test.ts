@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockGetRequirement = vi.fn()
 const mockManageRequirement = vi.fn()
@@ -39,6 +39,10 @@ function makeParams(id: string) {
 }
 
 describe('requirements/[id] route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   describe('GET', () => {
     it('returns requirement with owner name', async () => {
       mockGetRequirement.mockResolvedValue({
