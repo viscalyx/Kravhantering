@@ -43,6 +43,7 @@ describe('requirement-statuses/[id] route', () => {
       nameEn: string
     }
     expect(json).toEqual({ id: 1, nameSv: 'X', nameEn: 'X' })
+    expect(mockUpdateStatus).toHaveBeenCalledTimes(1)
     expect(mockUpdateStatus).toHaveBeenCalledWith(expect.anything(), 1, {
       nameSv: 'X',
       nameEn: 'X',
