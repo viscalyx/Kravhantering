@@ -9,9 +9,9 @@ applyTo: "app/[locale]/kravkatalog/[id]/requirement-detail-client.tsx"
 The detail pane card (both inline and full-page) must render content sections
 in this fixed order:
 
-1. **Requirement text** (description) — always first
-2. **Acceptance criteria** — always second
-3. **Metadata properties** — area (with owner), references, scenarios, and any
+1. Requirement text (description) — always first
+2. Acceptance criteria — always second
+3. Metadata properties — area (with owner), references, scenarios, and any
    future properties come after the two primary text sections
 
 This order applies to both the inline detail pane expanded inside the
