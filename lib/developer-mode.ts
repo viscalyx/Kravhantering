@@ -461,15 +461,27 @@ function buildGenericDescriptor(
   }
 
   if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+    const inputType = (element.getAttribute('type') ?? 'text').toLowerCase()
+    const isTextual =
+      tagName === 'TEXTAREA' ||
+      inputType === 'text' ||
+      inputType === 'search' ||
+      inputType === 'email' ||
+      inputType === 'password' ||
+      inputType === 'tel' ||
+      inputType === 'url' ||
+      inputType === 'number'
+
     return {
       context: getFallbackContextFromAncestors(element),
-      name: 'text field',
+      name: isTextual ? 'text field' : inputType,
       priority: TEXT_PRIORITY,
-      value:
-        normalizeDeveloperModeText(element.getAttribute('placeholder')) ??
-        normalizeDeveloperModeText(element.getAttribute('name')) ??
-        normalizeDeveloperModeText(element.getAttribute('type')) ??
-        text,
+      value: isTextual
+        ? (normalizeDeveloperModeText(element.getAttribute('placeholder')) ??
+          normalizeDeveloperModeText(element.getAttribute('name')) ??
+          normalizeDeveloperModeText(element.getAttribute('type')) ??
+          text)
+        : (normalizeDeveloperModeText(element.getAttribute('name')) ?? text),
     }
   }
 
