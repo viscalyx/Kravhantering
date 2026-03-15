@@ -74,6 +74,7 @@ export async function updateOwner(
   }
 }
 
-export async function deleteOwner(db: Database, id: number) {
-  await db.delete(owners).where(eq(owners.id, id))
+export async function deleteOwner(db: Database, id: number): Promise<boolean> {
+  const rows = await db.delete(owners).where(eq(owners.id, id)).returning()
+  return rows.length > 0
 }
