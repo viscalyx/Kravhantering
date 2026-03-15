@@ -18,6 +18,7 @@ import {
   normalizeRequirementListColumnDefaults,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
+  type QualityCharacteristicOption,
   REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
   type RequirementColumnId,
   type RequirementColumnWidths,
@@ -27,7 +28,6 @@ import {
   type StatusOption,
   serializeRequirementColumnWidths,
   serializeRequirementVisibleColumns,
-  type TypeCategoryOption,
 } from '@/lib/requirements/list-view'
 import RequirementDetailClient from './[id]/requirement-detail-client'
 
@@ -50,7 +50,7 @@ type RequirementDetailRowSource = {
     statusNameEn: string | null
     statusNameSv: string | null
     type?: { nameEn: string; nameSv: string } | null
-    typeCategory?: { nameEn: string; nameSv: string } | null
+    qualityCharacteristic?: { nameEn: string; nameSv: string } | null
     versionNumber: number
   }[]
 }
@@ -78,8 +78,10 @@ function mapRequirementDetailToRow(
           statusColor: version.statusColor,
           statusNameEn: version.statusNameEn,
           statusNameSv: version.statusNameSv,
-          typeCategoryNameEn: version.typeCategory?.nameEn ?? null,
-          typeCategoryNameSv: version.typeCategory?.nameSv ?? null,
+          qualityCharacteristicNameEn:
+            version.qualityCharacteristic?.nameEn ?? null,
+          qualityCharacteristicNameSv:
+            version.qualityCharacteristic?.nameSv ?? null,
           typeNameEn: version.type?.nameEn ?? null,
           typeNameSv: version.type?.nameSv ?? null,
           versionNumber: version.versionNumber,
@@ -109,7 +111,9 @@ export default function KravkatalogClient({
   const [areas, setAreas] = useState<AreaOption[]>([])
   const [categories, setCategories] = useState<FilterOption[]>([])
   const [types, setTypes] = useState<FilterOption[]>([])
-  const [typeCategories, setTypeCategories] = useState<TypeCategoryOption[]>([])
+  const [qualityCharacteristics, setQualityCharacteristics] = useState<
+    QualityCharacteristicOption[]
+  >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
   const [sortState, setSortState] = useState<RequirementSortState>(
@@ -289,13 +293,13 @@ export default function KravkatalogClient({
         areasRes,
         categoriesRes,
         typesRes,
-        typeCategoriesRes,
+        qualityCharacteristicsRes,
         statusesRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
-        fetch('/api/requirement-type-categories'),
+        fetch('/api/quality-characteristics'),
         fetch('/api/requirement-statuses'),
       ])
 
@@ -317,11 +321,13 @@ export default function KravkatalogClient({
       if (typesData) {
         setTypes(typesData.types ?? [])
       }
-      const typeCategoriesData = await readFilterResponse<{
-        typeCategories?: TypeCategoryOption[]
-      }>(typeCategoriesRes)
-      if (typeCategoriesData) {
-        setTypeCategories(typeCategoriesData.typeCategories ?? [])
+      const qualityCharacteristicsData = await readFilterResponse<{
+        qualityCharacteristics?: QualityCharacteristicOption[]
+      }>(qualityCharacteristicsRes)
+      if (qualityCharacteristicsData) {
+        setQualityCharacteristics(
+          qualityCharacteristicsData.qualityCharacteristics ?? [],
+        )
       }
       const statusesData = await readFilterResponse<{
         statuses?: StatusOption[]
@@ -543,6 +549,7 @@ export default function KravkatalogClient({
               onSortChange={setSortState}
               onVisibleColumnsChange={setVisibleColumns}
               pinnedIds={pinnedIds}
+              qualityCharacteristics={qualityCharacteristics}
               renderExpanded={id => (
                 <RequirementDetailClient
                   inline
@@ -558,7 +565,6 @@ export default function KravkatalogClient({
               rows={displayRows}
               sortState={sortState}
               statusOptions={statusOptions}
-              typeCategories={typeCategories}
               types={types}
               visibleColumns={visibleColumns}
             />

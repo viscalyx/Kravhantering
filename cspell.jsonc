@@ -197,7 +197,10 @@
     "contenteditable",
     "labelledby",
     "rescans",
-    "WCAG"
+    "WCAG",
+    "kravberoende",
+    "kravberoenden",
+    "normreferens"
   ],
   "flagWords": [],
   "ignorePaths": [

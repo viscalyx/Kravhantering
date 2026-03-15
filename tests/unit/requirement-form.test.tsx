@@ -1,0 +1,285 @@
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const pushMock = vi.fn()
+const backMock = vi.fn()
+
+vi.mock('next-intl', () => ({
+  useLocale: () => 'en',
+  useTranslations: (ns?: string) => (key: string) =>
+    ns ? `${ns}.${key}` : key,
+}))
+
+vi.mock('@/i18n/routing', () => ({
+  useRouter: () => ({ push: pushMock, back: backMock }),
+}))
+
+function okJson(body: unknown) {
+  return { ok: true, json: async () => body }
+}
+
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
+
+import RequirementForm from '@/components/RequirementForm'
+
+const sampleAreas = [{ id: 1, name: 'Area 1', ownerName: 'Owner' }]
+const sampleCategories = [{ id: 1, nameSv: 'Kat', nameEn: 'Cat' }]
+const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
+
+describe('RequirementForm', () => {
+  afterEach(cleanup)
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    fetchMock.mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+  })
+
+  it('renders create mode form', async () => {
+    const { container } = render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(container.querySelector('form')).toBeInTheDocument()
+    })
+    expect(
+      screen.getByRole('button', { name: /common\.save/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders edit mode form', async () => {
+    const { container } = render(
+      <RequirementForm
+        initialData={{ description: 'Test desc' }}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+    await waitFor(() => {
+      expect(container.querySelector('form')).toBeInTheDocument()
+    })
+  })
+
+  it('fetches options on mount', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-categories')
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-types')
+    })
+  })
+
+  it('submits create form and navigates', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 42 }))
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { container } = render(<RequirementForm mode="create" />)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+    })
+
+    const form = container.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+
+    const postCall = fetchMock.mock.calls.find(
+      (c: unknown[]) =>
+        c[0] === '/api/requirements' &&
+        (c[1] as RequestInit)?.method === 'POST',
+    )
+    const body = JSON.parse((postCall?.[1] as RequestInit).body as string)
+    expect(body).toHaveProperty('requiresTesting', false)
+    expect(body).not.toHaveProperty('typeCategoryId')
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/kravkatalog/42')
+    })
+  })
+
+  it('submits edit form targeting correct URL', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT') return Promise.resolve(okJson({ id: 5 }))
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { container } = render(
+      <RequirementForm
+        initialData={{ description: 'Existing' }}
+        mode="edit"
+        requirementId={5}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+    })
+
+    const form = container.querySelector('form') as HTMLFormElement
+    fireEvent.submit(form)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirements/5',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+  })
+
+  it('navigates back on cancel', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas')
+    })
+    const cancelBtn = screen.getByRole('button', { name: /common\.cancel/i })
+    fireEvent.click(cancelBtn)
+    expect(backMock).toHaveBeenCalled()
+  })
+
+  it('displays area owner when area is selected', async () => {
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1' }}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText(/Owner/)).toBeInTheDocument()
+    })
+  })
+
+  it('renders select options for categories and types', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/requirement\.category/)).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/requirement\.type/)).toBeInTheDocument()
+  })
+
+  it('fetches quality characteristics when typeId is set', async () => {
+    const sampleQC = [
+      { id: 10, nameSv: 'Qc sv', nameEn: 'Qc en', parentId: null },
+      { id: 11, nameSv: 'Child sv', nameEn: 'Child en', parentId: 10 },
+    ]
+    fetchMock.mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: sampleQC }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ typeId: '1' }}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/requirement\.qualityCharacteristic/),
+      ).toBeInTheDocument()
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/api/quality-characteristics?typeId=1'),
+    )
+  })
+
+  it('toggles requiresTesting checkbox', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/requirement\.requiresTesting/),
+      ).toBeInTheDocument()
+    })
+    const checkbox = screen.getByLabelText(/requirement\.requiresTesting/)
+    fireEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+  })
+
+  it('changes description and acceptanceCriteria fields', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/requirement\.description/),
+      ).toBeInTheDocument()
+    })
+    const desc = screen.getByLabelText(/requirement\.description/)
+    fireEvent.change(desc, { target: { value: 'My desc' } })
+    expect(desc).toHaveValue('My desc')
+
+    const ac = screen.getByLabelText(/requirement\.acceptanceCriteria/)
+    fireEvent.change(ac, { target: { value: 'My criteria' } })
+    expect(ac).toHaveValue('My criteria')
+  })
+})

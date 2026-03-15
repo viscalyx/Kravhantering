@@ -43,6 +43,7 @@ import {
   getRequirementColumnWidth,
   normalizeRequirementListColumnDefaults,
   orderRequirementVisibleColumns,
+  type QualityCharacteristicOption,
   type RequirementColumnId,
   type RequirementColumnWidths,
   type RequirementListColumnDefault,
@@ -50,7 +51,6 @@ import {
   type RequirementSortField,
   type RequirementSortState,
   type StatusOption,
-  type TypeCategoryOption,
 } from '@/lib/requirements/list-view'
 
 export interface RequirementsTableProps {
@@ -74,11 +74,11 @@ export interface RequirementsTableProps {
   onSortChange?: (value: RequirementSortState) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
+  qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   rows: RequirementRow[]
   sortState?: RequirementSortState
   statusOptions?: StatusOption[]
-  typeCategories?: TypeCategoryOption[]
   types?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
 }
@@ -716,10 +716,10 @@ function GroupedMultiSelectFilterPopover({
   value,
 }: {
   activeCount: number
-  getLabel: (opt: TypeCategoryOption) => string
+  getLabel: (opt: QualityCharacteristicOption) => string
   label: string
   onChange: (ids: number[]) => void
-  options: TypeCategoryOption[]
+  options: QualityCharacteristicOption[]
   value: number[]
 }) {
   const tc = useTranslations('common')
@@ -1197,7 +1197,7 @@ export default function RequirementsTable({
   rows,
   sortState = DEFAULT_REQUIREMENT_SORT,
   statusOptions = [],
-  typeCategories = [],
+  qualityCharacteristics = [],
   types = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
 }: RequirementsTableProps) {
@@ -1357,7 +1357,7 @@ export default function RequirementsTable({
     return t ? getName(t) : String(id)
   }
   const typeCatLabel = (id: number) => {
-    const tc = typeCategories.find(tc => tc.id === id)
+    const tc = qualityCharacteristics.find(tc => tc.id === id)
     return tc ? getName(tc) : String(id)
   }
   const statusLabel = (id: number) => {
@@ -2183,19 +2183,19 @@ export default function RequirementsTable({
             value={fv.typeIds ?? []}
           />
         )
-      case 'typeCategory':
+      case 'qualityCharacteristic':
         return (
           <GroupedMultiSelectFilterPopover
-            activeCount={(fv.typeCategoryIds ?? []).length}
+            activeCount={(fv.qualityCharacteristicIds ?? []).length}
             getLabel={option => typeCatLabel(option.id)}
-            label={t('typeCategory')}
+            label={t('qualityCharacteristic')}
             onChange={ids =>
               updateFilter({
-                typeCategoryIds: ids.length > 0 ? ids : undefined,
+                qualityCharacteristicIds: ids.length > 0 ? ids : undefined,
               })
             }
-            options={typeCategories}
-            value={fv.typeCategoryIds ?? []}
+            options={qualityCharacteristics}
+            value={fv.qualityCharacteristicIds ?? []}
           />
         )
       case 'status':
@@ -2291,19 +2291,19 @@ export default function RequirementsTable({
             values={fv.typeIds ?? []}
           />
         )
-      case 'typeCategory':
+      case 'qualityCharacteristic':
         return (
           <FilterChips
             developerModeContext={developerModeContext}
             getLabel={typeCatLabel}
             onRemove={id =>
               updateFilter({
-                typeCategoryIds: (fv.typeCategoryIds ?? []).filter(
-                  value => value !== id,
-                ),
+                qualityCharacteristicIds: (
+                  fv.qualityCharacteristicIds ?? []
+                ).filter(value => value !== id),
               })
             }
-            values={fv.typeCategoryIds ?? []}
+            values={fv.qualityCharacteristicIds ?? []}
           />
         )
       case 'status':
@@ -2417,14 +2417,14 @@ export default function RequirementsTable({
               : row.version?.typeNameEn) ?? '—'}
           </td>
         )
-      case 'typeCategory':
+      case 'qualityCharacteristic':
         return (
           <td
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
           >
             {(locale === 'sv'
-              ? row.version?.typeCategoryNameSv
-              : row.version?.typeCategoryNameEn) ?? '—'}
+              ? row.version?.qualityCharacteristicNameSv
+              : row.version?.qualityCharacteristicNameEn) ?? '—'}
           </td>
         )
       case 'status':

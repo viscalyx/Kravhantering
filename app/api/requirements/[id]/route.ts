@@ -92,8 +92,8 @@ export async function PUT(
               .map(value => Number(value))
               .filter(value => !Number.isNaN(value))
           : undefined,
-        typeCategoryId: body.typeCategoryId
-          ? Number(body.typeCategoryId)
+        qualityCharacteristicId: body.qualityCharacteristicId
+          ? Number(body.qualityCharacteristicId)
           : undefined,
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },

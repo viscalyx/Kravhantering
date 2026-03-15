@@ -106,11 +106,12 @@ describe('AdminClient', () => {
     )
     expect(panel.getByTestId('reference-data-icon-statuses')).toBeTruthy()
 
-    expect(panel.getByTestId('reference-data-card-iso25010')).toHaveAttribute(
-      'href',
-      '/iso25010',
-    )
-    expect(panel.getByTestId('reference-data-icon-iso25010')).toBeTruthy()
+    expect(
+      panel.getByTestId('reference-data-card-qualityCharacteristics'),
+    ).toHaveAttribute('href', '/quality-characteristics')
+    expect(
+      panel.getByTestId('reference-data-icon-qualityCharacteristics'),
+    ).toBeTruthy()
 
     expect(
       panel.getByTestId('reference-data-card-responsibilityAreas'),
@@ -329,7 +330,11 @@ describe('AdminClient', () => {
       { columnId: 'category', defaultVisible: true, sortOrder: 2 },
       { columnId: 'area', defaultVisible: true, sortOrder: 3 },
       { columnId: 'type', defaultVisible: true, sortOrder: 4 },
-      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+      {
+        columnId: 'qualityCharacteristic',
+        defaultVisible: false,
+        sortOrder: 5,
+      },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
@@ -386,7 +391,11 @@ describe('AdminClient', () => {
       { columnId: 'category', defaultVisible: true, sortOrder: 2 },
       { columnId: 'area', defaultVisible: true, sortOrder: 3 },
       { columnId: 'type', defaultVisible: true, sortOrder: 4 },
-      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+      {
+        columnId: 'qualityCharacteristic',
+        defaultVisible: false,
+        sortOrder: 5,
+      },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },

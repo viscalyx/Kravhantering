@@ -39,14 +39,14 @@ test.describe('Requirements table column picker', () => {
 
         const popover = page.locator('[data-column-picker-popover="true"]')
         const checkboxes = popover.locator('input[type="checkbox"]')
-        const typeCategoryCheckbox = checkboxes.nth(5)
+        const qualityCharacteristicCheckbox = checkboxes.nth(5)
         const requiresTestingCheckbox = checkboxes.nth(7)
         const versionCheckbox = checkboxes.nth(8)
 
         await expect(popover).toBeVisible()
 
-        if (!(await typeCategoryCheckbox.isChecked())) {
-          await typeCategoryCheckbox.check()
+        if (!(await qualityCharacteristicCheckbox.isChecked())) {
+          await qualityCharacteristicCheckbox.check()
         }
         if (!(await requiresTestingCheckbox.isChecked())) {
           await requiresTestingCheckbox.check()
@@ -123,7 +123,7 @@ test.describe('Requirements table column picker', () => {
           COLUMN_VISIBILITY_STORAGE_KEY,
         )
 
-        expect(storedColumns).toContain('"typeCategory"')
+        expect(storedColumns).toContain('"qualityCharacteristic"')
         expect(storedColumns).toContain('"requiresTesting"')
         expect(storedColumns).toContain('"version"')
       })

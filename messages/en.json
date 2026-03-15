@@ -10,6 +10,7 @@
     "edit": "Edit",
     "create": "Create new",
     "search": "Search",
+    "clearSearch": "Clear search",
     "filter": "Filter",
     "filterBy": "Filter by {label}",
     "columns": "Columns",
@@ -54,7 +55,7 @@
     "types": "Types",
     "taxonomy": "Reference data",
     "referenceData": "Reference data",
-    "iso25010": "Quality characteristics",
+    "qualityCharacteristics": "Quality characteristics",
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
     "areaOwners": "Area owners",
@@ -74,7 +75,7 @@
     "area": "Area",
     "category": "Category",
     "type": "Type",
-    "typeCategory": "Quality characteristic",
+    "qualityCharacteristic": "Quality characteristic",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
     "reference": "Requirement reference",
@@ -157,6 +158,13 @@
     "owner": "Scenario owner",
     "newScenario": "New requirement scenario",
     "editScenario": "Edit requirement scenario"
+  },
+  "qualityCharacteristicMgmt": {
+    "name": "Name",
+    "type": "Type",
+    "parent": "Parent characteristic",
+    "topLevel": "Top-level (no parent)",
+    "subtitle": "ISO/IEC 25010:2023 — Systems and software Quality Requirements and Evaluation (SQuaRE)"
   },
   "statusMgmt": {
     "name": "Name",
@@ -245,7 +253,7 @@
     "typesDescription": "View types and their quality hierarchy.",
     "scenariosDescription": "Manage usage scenarios linked to requirements.",
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
-    "qualityAttributesDescription": "View quality characteristics from ISO/IEC 25010:2023.",
+    "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirement packages.",
     "implementationTypesDescription": "Manage implementation types for requirement packages.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas."
@@ -276,7 +284,7 @@
       "plural": "Statuses",
       "definitePlural": "Statuses"
     },
-    "typeCategory": {
+    "qualityCharacteristic": {
       "singular": "Quality characteristic",
       "plural": "Quality characteristics",
       "definitePlural": "Quality characteristics"

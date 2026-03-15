@@ -3,7 +3,10 @@ import { listCategories } from '@/lib/dal/requirement-categories'
 import { replaceReferencesForVersion } from '@/lib/dal/requirement-references'
 import { listScenarios } from '@/lib/dal/requirement-scenarios'
 import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
-import { listTypeCategories, listTypes } from '@/lib/dal/requirement-types'
+import {
+  listQualityCharacteristics,
+  listTypes,
+} from '@/lib/dal/requirement-types'
 import {
   archiveRequirement,
   countRequirements,
@@ -51,7 +54,7 @@ export type CatalogKind =
   | 'areas'
   | 'categories'
   | 'types'
-  | 'type_categories'
+  | 'quality_characteristics'
   | 'statuses'
   | 'scenarios'
   | 'transitions'
@@ -69,10 +72,10 @@ export interface RequirementMutationInput {
   categoryId?: number
   createdBy?: string
   description?: string
+  qualityCharacteristicId?: number
   references?: RequirementReferenceInput[]
   requiresTesting?: boolean
   scenarioIds?: number[]
-  typeCategoryId?: number
   typeId?: number
 }
 
@@ -90,12 +93,12 @@ export interface QueryCatalogInput {
   limit?: number
   locale?: ResponseLocale
   offset?: number
+  qualityCharacteristicIds?: number[]
   requiresTesting?: boolean[]
   responseFormat?: ResponseFormat
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
-  typeCategoryIds?: number[]
   typeId?: number
   typeIds?: number[]
   uniqueIdSearch?: string
@@ -213,9 +216,9 @@ function formatRequirementListItem(
       statusColor: item.statusColor,
       statusNameEn: item.statusNameEn,
       statusNameSv: item.statusNameSv,
-      typeCategoryId: item.requirementTypeCategoryId,
-      typeCategoryNameEn: item.typeCategoryNameEn,
-      typeCategoryNameSv: item.typeCategoryNameSv,
+      qualityCharacteristicId: item.qualityCharacteristicId,
+      qualityCharacteristicNameEn: item.qualityCharacteristicNameEn,
+      qualityCharacteristicNameSv: item.qualityCharacteristicNameSv,
       typeId: item.requirementTypeId,
       typeNameEn: item.typeNameEn,
       typeNameSv: item.typeNameSv,
@@ -278,11 +281,11 @@ function formatRequirementDetail(
             nameSv: version.type.nameSv,
           }
         : null,
-      typeCategory: version.typeCategory
+      qualityCharacteristic: version.qualityCharacteristic
         ? {
-            id: version.typeCategory.id,
-            nameEn: version.typeCategory.nameEn,
-            nameSv: version.typeCategory.nameSv,
+            id: version.qualityCharacteristic.id,
+            nameEn: version.qualityCharacteristic.nameEn,
+            nameSv: version.qualityCharacteristic.nameSv,
           }
         : null,
       versionNumber: version.versionNumber,
@@ -521,7 +524,7 @@ export function createRequirementsService(
               sortBy: input.sortBy,
               sortDirection: input.sortDirection,
               statuses: input.statuses,
-              typeCategoryIds: input.typeCategoryIds,
+              qualityCharacteristicIds: input.qualityCharacteristicIds,
               typeIds: input.typeIds,
               uniqueIdSearch: input.uniqueIdSearch,
             }
@@ -603,14 +606,17 @@ export function createRequirementsService(
             }
           }
 
-          if (catalog === 'type_categories') {
-            const typeCategories = await listTypeCategories(db, input.typeId)
+          if (catalog === 'quality_characteristics') {
+            const qualityCharacteristics = await listQualityCharacteristics(
+              db,
+              input.typeId,
+            )
             return {
               catalog,
-              items: typeCategories,
+              items: qualityCharacteristics,
               message: createServiceMessage(
-                getCatalogTitle('type_categories', locale, terminology),
-                typeCategories.map(category =>
+                getCatalogTitle('quality_characteristics', locale, terminology),
+                qualityCharacteristics.map(category =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
                 responseFormat,
@@ -859,7 +865,7 @@ export function createRequirementsService(
               description: payload.description,
               requirementAreaId: payload.areaId,
               requirementCategoryId: payload.categoryId,
-              requirementTypeCategoryId: payload.typeCategoryId,
+              qualityCharacteristicId: payload.qualityCharacteristicId,
               requirementTypeId: payload.typeId,
               requiresTesting: payload.requiresTesting,
               scenarioIds: payload.scenarioIds,
@@ -917,7 +923,7 @@ export function createRequirementsService(
               description: payload.description,
               requirementAreaId: payload.areaId,
               requirementCategoryId: payload.categoryId,
-              requirementTypeCategoryId: payload.typeCategoryId,
+              qualityCharacteristicId: payload.qualityCharacteristicId,
               requirementTypeId: payload.typeId,
               requiresTesting: payload.requiresTesting,
               scenarioIds: payload.scenarioIds,

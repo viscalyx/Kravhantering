@@ -54,7 +54,7 @@ function createFakeService(
               nameEn: 'Functional',
               nameSv: 'Funktionellt',
             },
-            typeCategory: {
+            qualityCharacteristic: {
               id: 9,
               nameEn: 'Security',
               nameSv: 'Sakerhet',
@@ -85,7 +85,7 @@ function createFakeService(
           nameEn: 'Functional',
           nameSv: 'Funktionellt',
         },
-        typeCategory: {
+        qualityCharacteristic: {
           id: 9,
           nameEn: 'Security',
           nameSv: 'Sakerhet',

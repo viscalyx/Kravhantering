@@ -92,14 +92,14 @@ export const requirementTypes = sqliteTable(
 export const requirementTypesRelations = relations(
   requirementTypes,
   ({ many }) => ({
-    typeCategories: many(requirementTypeCategories),
+    qualityCharacteristics: many(qualityCharacteristics),
   }),
 )
 
-// ─── Requirement Type Categories (ISO/IEC 25010:2023) ────────────────────────
+// ─── Quality Characteristics (ISO/IEC 25010:2023) ───────────────────────────
 
-export const requirementTypeCategories = sqliteTable(
-  'requirement_type_categories',
+export const qualityCharacteristics = sqliteTable(
+  'quality_characteristics',
   {
     id: integer('id').primaryKey({ autoIncrement: true }),
     nameSv: text('name_sv').notNull(),
@@ -107,31 +107,29 @@ export const requirementTypeCategories = sqliteTable(
     requirementTypeId: integer('requirement_type_id')
       .notNull()
       .references(() => requirementTypes.id),
-    parentId: integer('parent_category_id'),
+    parentId: integer('parent_id'),
   },
   table => [
-    index('idx_requirement_type_categories_requirement_type_id').on(
+    index('idx_quality_characteristics_requirement_type_id').on(
       table.requirementTypeId,
     ),
-    index('idx_requirement_type_categories_parent_category_id').on(
-      table.parentId,
-    ),
+    index('idx_quality_characteristics_parent_id').on(table.parentId),
   ],
 )
 
-export const requirementTypeCategoriesRelations = relations(
-  requirementTypeCategories,
+export const qualityCharacteristicsRelations = relations(
+  qualityCharacteristics,
   ({ one, many }) => ({
     requirementType: one(requirementTypes, {
-      fields: [requirementTypeCategories.requirementTypeId],
+      fields: [qualityCharacteristics.requirementTypeId],
       references: [requirementTypes.id],
     }),
-    parent: one(requirementTypeCategories, {
-      fields: [requirementTypeCategories.parentId],
-      references: [requirementTypeCategories.id],
+    parent: one(qualityCharacteristics, {
+      fields: [qualityCharacteristics.parentId],
+      references: [qualityCharacteristics.id],
       relationName: 'parentChild',
     }),
-    children: many(requirementTypeCategories, {
+    children: many(qualityCharacteristics, {
       relationName: 'parentChild',
     }),
   }),
@@ -262,9 +260,9 @@ export const requirementVersions = sqliteTable(
     requirementTypeId: integer('requirement_type_id').references(
       () => requirementTypes.id,
     ),
-    requirementTypeCategoryId: integer(
-      'requirement_type_category_id',
-    ).references(() => requirementTypeCategories.id),
+    qualityCharacteristicId: integer('quality_characteristic_id').references(
+      () => qualityCharacteristics.id,
+    ),
     statusId: integer('requirement_status_id')
       .notNull()
       .references(() => requirementStatuses.id),
@@ -308,9 +306,9 @@ export const requirementVersionsRelations = relations(
       fields: [requirementVersions.requirementTypeId],
       references: [requirementTypes.id],
     }),
-    typeCategory: one(requirementTypeCategories, {
-      fields: [requirementVersions.requirementTypeCategoryId],
-      references: [requirementTypeCategories.id],
+    qualityCharacteristic: one(qualityCharacteristics, {
+      fields: [requirementVersions.qualityCharacteristicId],
+      references: [qualityCharacteristics.id],
     }),
     references: many(requirementReferences),
     versionScenarios: many(requirementVersionScenarios),

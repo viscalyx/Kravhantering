@@ -10,13 +10,13 @@ import {
   sql,
 } from 'drizzle-orm'
 import {
+  qualityCharacteristics,
   requirementAreas,
   requirementCategories,
   requirementReferences,
   requirementStatuses,
   requirementStatusTransitions,
   requirements,
-  requirementTypeCategories,
   requirementTypes,
   requirementVersionScenarios,
   requirementVersions,
@@ -49,7 +49,7 @@ type ListRequirementsOptions = {
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
-  typeCategoryIds?: number[]
+  qualityCharacteristicIds?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
 }
@@ -107,11 +107,14 @@ function buildRequirementListConditions(opts: ListRequirementsOptions) {
       inArray(requirementVersions.requirementTypeId, opts.typeIds),
     )
   }
-  if (opts.typeCategoryIds && opts.typeCategoryIds.length > 0) {
+  if (
+    opts.qualityCharacteristicIds &&
+    opts.qualityCharacteristicIds.length > 0
+  ) {
     conditions.push(
       inArray(
-        requirementVersions.requirementTypeCategoryId,
-        opts.typeCategoryIds,
+        requirementVersions.qualityCharacteristicId,
+        opts.qualityCharacteristicIds,
       ),
     )
   }
@@ -245,7 +248,7 @@ export async function listRequirements(
       acceptanceCriteria: requirementVersions.acceptanceCriteria,
       requirementCategoryId: requirementVersions.requirementCategoryId,
       requirementTypeId: requirementVersions.requirementTypeId,
-      requirementTypeCategoryId: requirementVersions.requirementTypeCategoryId,
+      qualityCharacteristicId: requirementVersions.qualityCharacteristicId,
       status: effectiveStatusSql.as('effective_status'),
       statusNameSv: sql<
         string | null
@@ -269,8 +272,8 @@ export async function listRequirements(
       categoryNameEn: requirementCategories.nameEn,
       typeNameSv: requirementTypes.nameSv,
       typeNameEn: requirementTypes.nameEn,
-      typeCategoryNameSv: requirementTypeCategories.nameSv,
-      typeCategoryNameEn: requirementTypeCategories.nameEn,
+      qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
+      qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
       maxVersion: latestVersions.maxVersion,
       pendingVersionStatusColor: sql<string | null>`(
         SELECT CASE WHEN rv.requirement_status_id = ${STATUS_ARCHIVED} THEN NULL
@@ -321,10 +324,10 @@ export async function listRequirements(
       eq(requirementVersions.requirementTypeId, requirementTypes.id),
     )
     .leftJoin(
-      requirementTypeCategories,
+      qualityCharacteristics,
       eq(
-        requirementVersions.requirementTypeCategoryId,
-        requirementTypeCategories.id,
+        requirementVersions.qualityCharacteristicId,
+        qualityCharacteristics.id,
       ),
     )
     .$dynamic()
@@ -366,12 +369,12 @@ export async function listRequirements(
         ),
       )
       break
-    case 'typeCategory':
+    case 'qualityCharacteristic':
       query = query.orderBy(
         ...orderByText(
           locale === 'sv'
-            ? requirementTypeCategories.nameSv
-            : requirementTypeCategories.nameEn,
+            ? qualityCharacteristics.nameSv
+            : qualityCharacteristics.nameEn,
           sortDirection,
         ),
       )
@@ -462,7 +465,7 @@ export async function getRequirementById(db: Database, id: number) {
         with: {
           category: true,
           type: true,
-          typeCategory: true,
+          qualityCharacteristic: true,
           status: true,
           references: true,
           versionScenarios: {
@@ -506,7 +509,7 @@ export async function createRequirement(
     acceptanceCriteria?: string
     requirementCategoryId?: number
     requirementTypeId?: number
-    requirementTypeCategoryId?: number
+    qualityCharacteristicId?: number
     requiresTesting?: boolean
     createdBy?: string
     referenceIds?: number[]
@@ -548,7 +551,7 @@ export async function createRequirement(
       acceptanceCriteria: data.acceptanceCriteria,
       requirementCategoryId: data.requirementCategoryId,
       requirementTypeId: data.requirementTypeId,
-      requirementTypeCategoryId: data.requirementTypeCategoryId,
+      qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
       createdBy: data.createdBy,
@@ -578,7 +581,7 @@ export async function editRequirement(
     acceptanceCriteria?: string
     requirementCategoryId?: number
     requirementTypeId?: number
-    requirementTypeCategoryId?: number
+    qualityCharacteristicId?: number
     requiresTesting?: boolean
     createdBy?: string
     scenarioIds?: number[]
@@ -636,7 +639,7 @@ export async function editRequirement(
         acceptanceCriteria: data.acceptanceCriteria,
         requirementCategoryId: data.requirementCategoryId,
         requirementTypeId: data.requirementTypeId,
-        requirementTypeCategoryId: data.requirementTypeCategoryId,
+        qualityCharacteristicId: data.qualityCharacteristicId,
         requiresTesting: data.requiresTesting ?? false,
         editedAt: now,
       })
@@ -681,7 +684,7 @@ export async function editRequirement(
       acceptanceCriteria: data.acceptanceCriteria,
       requirementCategoryId: data.requirementCategoryId,
       requirementTypeId: data.requirementTypeId,
-      requirementTypeCategoryId: data.requirementTypeCategoryId,
+      qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
       editedAt: now,
@@ -984,7 +987,7 @@ export async function restoreVersion(
       acceptanceCriteria: oldVersion.acceptanceCriteria,
       requirementCategoryId: oldVersion.requirementCategoryId,
       requirementTypeId: oldVersion.requirementTypeId,
-      requirementTypeCategoryId: oldVersion.requirementTypeCategoryId,
+      qualityCharacteristicId: oldVersion.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: oldVersion.requiresTesting,
       createdBy: createdBy ?? oldVersion.createdBy,
@@ -1023,7 +1026,7 @@ export async function getVersionHistory(db: Database, requirementId: number) {
     with: {
       category: true,
       type: true,
-      typeCategory: true,
+      qualityCharacteristic: true,
       status: true,
       references: true,
       versionScenarios: {

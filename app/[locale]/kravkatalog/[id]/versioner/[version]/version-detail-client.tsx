@@ -10,9 +10,9 @@ interface VersionData {
   description: string | null
   id: number
   ownerName: string | null
+  qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requiresTesting: boolean
   type: { nameSv: string; nameEn: string } | null
-  typeCategory: { nameSv: string; nameEn: string } | null
   versionNumber: number
 }
 
@@ -116,9 +116,9 @@ export default function VersionDetailClient({
             </div>
             <div>
               <span className="text-secondary-600 dark:text-secondary-400">
-                {t('typeCategory')}:
+                {t('qualityCharacteristic')}:
               </span>{' '}
-              {localName(v.typeCategory) ?? '—'}
+              {localName(v.qualityCharacteristic) ?? '—'}
             </div>
             <div>
               <span className="text-secondary-600 dark:text-secondary-400">

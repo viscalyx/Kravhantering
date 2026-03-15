@@ -44,7 +44,7 @@ interface RequirementDetail {
     requiresTesting: boolean
     category: { nameSv: string; nameEn: string } | null
     type: { nameSv: string; nameEn: string } | null
-    typeCategory: { nameSv: string; nameEn: string } | null
+    qualityCharacteristic: { nameSv: string; nameEn: string } | null
     ownerName: string | null
     status: number
     statusNameSv: string | null
@@ -960,10 +960,10 @@ export default function RequirementDetailClient({
                 </div>
                 <div>
                   <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('typeCategory')}:
+                    {t('qualityCharacteristic')}:
                   </span>{' '}
                   <span className="font-medium">
-                    {localName(selectedVersion?.typeCategory) ?? '—'}
+                    {localName(selectedVersion?.qualityCharacteristic) ?? '—'}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">

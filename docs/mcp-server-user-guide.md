@@ -324,7 +324,7 @@ tool. For requirement lists, it supports:
 - `areaIds`
 - `categoryIds`
 - `typeIds`
-- `typeCategoryIds`
+- `qualityCharacteristicIds`
 - `statuses`
 - `requiresTesting`
 

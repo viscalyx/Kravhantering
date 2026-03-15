@@ -10,8 +10,8 @@ import {
   type FilterOption,
   type FilterValues,
   hasActiveFilters,
+  type QualityCharacteristicOption,
   type StatusOption,
-  type TypeCategoryOption,
 } from '@/lib/requirements/list-view'
 
 interface RequirementsFilterProps {
@@ -20,8 +20,8 @@ interface RequirementsFilterProps {
   getName: (opt: FilterOption) => string
   getStatusName: (opt: StatusOption) => string
   onChange: (values: FilterValues) => void
+  qualityCharacteristics: QualityCharacteristicOption[]
   statusOptions: StatusOption[]
-  typeCategories: TypeCategoryOption[]
   types: FilterOption[]
   values: FilterValues
 }
@@ -39,7 +39,7 @@ export default function RequirementsFilter({
   categories,
   getName,
   getStatusName,
-  typeCategories,
+  qualityCharacteristics,
   types,
   statusOptions,
   values,
@@ -149,26 +149,26 @@ export default function RequirementsFilter({
       </div>
 
       <div className="flex flex-col gap-1">
-        <span className={labelClass}>{t('typeCategory')}</span>
+        <span className={labelClass}>{t('qualityCharacteristic')}</span>
         <select
-          aria-label={t('typeCategory')}
+          aria-label={t('qualityCharacteristic')}
           className={selectClass}
           onChange={e =>
             onChange({
               ...values,
-              typeCategoryIds: e.target.value
+              qualityCharacteristicIds: e.target.value
                 ? [Number(e.target.value)]
                 : undefined,
             })
           }
-          value={values.typeCategoryIds?.[0] ?? ''}
+          value={values.qualityCharacteristicIds?.[0] ?? ''}
         >
           <option value="">{tc('none')}</option>
-          {typeCategories
+          {qualityCharacteristics
             .filter(tc => !tc.parentId)
             .map(parent => (
               <optgroup key={parent.id} label={getName(parent)}>
-                {typeCategories
+                {qualityCharacteristics
                   .filter(c => c.parentId === parent.id)
                   .map(c => (
                     <option key={c.id} value={c.id}>

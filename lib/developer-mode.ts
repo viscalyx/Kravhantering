@@ -43,7 +43,7 @@ const REQUIREMENT_COLUMN_LABELS: Record<string, string> = {
   requiresTesting: 'verifiable',
   status: 'status',
   type: 'type',
-  typeCategory: 'quality characteristic',
+  qualityCharacteristic: 'quality characteristic',
   uniqueId: 'requirement id',
   version: 'version',
 }

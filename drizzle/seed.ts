@@ -25,7 +25,7 @@ DELETE FROM requirement_scenarios WHERE id IN (1, 2, 3);
 DELETE FROM requirements WHERE id BETWEEN 1 AND 367;
 DELETE FROM requirement_areas WHERE id BETWEEN 1 AND 10;
 DELETE FROM owners WHERE id BETWEEN 1 AND 3;
-DELETE FROM requirement_type_categories WHERE id BETWEEN 1 AND 48;
+DELETE FROM quality_characteristics WHERE id BETWEEN 1 AND 48;
 DELETE FROM requirement_types WHERE id IN (1, 2);
 DELETE FROM requirement_categories WHERE id IN (1, 2, 3);
 DELETE FROM requirement_status_transitions WHERE id BETWEEN 1 AND 10;
@@ -46,7 +46,7 @@ INSERT OR IGNORE INTO ui_terminology (
   ('category', 'Kategori', 'Kategorier', 'Kategorierna', 'Category', 'Categories', 'Categories', datetime('now')),
   ('type', 'Typ', 'Typer', 'Typerna', 'Type', 'Types', 'Types', datetime('now')),
   ('status', 'Status', 'Statusar', 'Statusarna', 'Status', 'Statuses', 'Statuses', datetime('now')),
-  ('typeCategory', 'Kvalitetsegenskap', 'Kvalitetsegenskaper', 'Kvalitetsegenskaperna', 'Quality characteristic', 'Quality characteristics', 'Quality characteristics', datetime('now')),
+  ('qualityCharacteristic', 'Kvalitetsegenskap', 'Kvalitetsegenskaper', 'Kvalitetsegenskaperna', 'Quality characteristic', 'Quality characteristics', 'Quality characteristics', datetime('now')),
   ('requiresTesting', 'Verifierbar', 'Verifierbara', 'Verifierbara', 'Verifiable', 'Verifiable', 'Verifiable', datetime('now')),
   ('version', 'Version', 'Versioner', 'Versionerna', 'Version', 'Versions', 'Versions', datetime('now')),
   ('acceptanceCriteria', 'Acceptanskriterium', 'Acceptanskriterier', 'Acceptanskriterierna', 'Acceptance criterion', 'Acceptance criteria', 'Acceptance criteria', datetime('now')),
@@ -113,7 +113,7 @@ UPDATE ui_terminology SET
   plural_en = 'Quality characteristics',
   definite_plural_en = 'Quality characteristics',
   updated_at = datetime('now')
-WHERE key = 'typeCategory';
+WHERE key = 'qualityCharacteristic';
 
 UPDATE ui_terminology SET
   singular_sv = 'Verifierbar',
@@ -197,64 +197,10 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('area', 2, 1, datetime('now')),
   ('category', 3, 1, datetime('now')),
   ('type', 4, 1, datetime('now')),
-  ('typeCategory', 5, 0, datetime('now')),
+  ('qualityCharacteristic', 5, 0, datetime('now')),
   ('status', 6, 1, datetime('now')),
   ('requiresTesting', 7, 0, datetime('now')),
   ('version', 8, 0, datetime('now'));
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 9,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'uniqueId';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 10,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'description';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 11,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'area';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 12,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'category';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 13,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'type';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 14,
-  is_default_visible = 0,
-  updated_at = datetime('now')
-WHERE column_id = 'typeCategory';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 15,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'status';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 16,
-  is_default_visible = 0,
-  updated_at = datetime('now')
-WHERE column_id = 'requiresTesting';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 17,
-  is_default_visible = 0,
-  updated_at = datetime('now')
-WHERE column_id = 'version';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
@@ -290,7 +236,7 @@ UPDATE requirement_list_column_defaults SET
   sort_order = 5,
   is_default_visible = 0,
   updated_at = datetime('now')
-WHERE column_id = 'typeCategory';
+WHERE column_id = 'qualityCharacteristic';
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 6,
@@ -348,9 +294,9 @@ INSERT OR IGNORE INTO requirement_types (id, name_sv, name_en) VALUES
 UPDATE requirement_types SET name_sv = 'Funktionellt', name_en = 'Functional' WHERE id = 1;
 UPDATE requirement_types SET name_sv = 'Icke-funktionellt', name_en = 'Non-functional' WHERE id = 2;
 
--- ─── Requirement Type Categories (ISO/IEC 25010:2023) ────────────────────────
+-- ─── Quality Characteristics (ISO/IEC 25010:2023) ────────────────────────────
 -- Type 1 = Funktionellt
-INSERT OR IGNORE INTO requirement_type_categories (id, name_sv, name_en, requirement_type_id, parent_category_id) VALUES
+INSERT OR IGNORE INTO quality_characteristics (id, name_sv, name_en, requirement_type_id, parent_id) VALUES
   -- Functional suitability (top-level)
   (1, 'Funktionell lämplighet', 'Functional suitability', 1, NULL),
   (2, 'Funktionell fullständighet', 'Functional completeness', 1, 1),
@@ -358,7 +304,7 @@ INSERT OR IGNORE INTO requirement_type_categories (id, name_sv, name_en, require
   (4, 'Funktionell ändamålsenlighet', 'Functional appropriateness', 1, 1);
 
 -- Type 2 = Icke-funktionellt
-INSERT OR IGNORE INTO requirement_type_categories (id, name_sv, name_en, requirement_type_id, parent_category_id) VALUES
+INSERT OR IGNORE INTO quality_characteristics (id, name_sv, name_en, requirement_type_id, parent_id) VALUES
   -- Performance efficiency
   (5, 'Prestandaeffektivitet', 'Performance efficiency', 2, NULL),
   (6, 'Tidsbeteende', 'Time behavior', 2, 5),
@@ -523,14 +469,14 @@ INSERT OR IGNORE INTO requirements (id, unique_id, requirement_area_id, sequence
 
 -- ─── Requirement Versions ────────────────────────────────────────────────────
 -- Format: id, requirement_id, version_number, description, acceptance_criteria,
---         requirement_category_id, requirement_type_id, requirement_type_category_id,
+--         requirement_category_id, requirement_type_id, quality_characteristic_id,
 --         requirement_status_id, is_testing_required, created_at, created_by, published_at, archived_at
 -- requirement_status_id: 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad
 -- published_at: set only for status 3 & 4; archived_at: set only for status 4
 -- Constraint: created_at < published_at < archived_at
 
 -- === Original requirements (IDs 1-11) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (1,  1, 1, 'Systemet ska stödja REST API för datautbyte med externa system [Version 1 testdata]', 'API:et svarar med korrekt JSON-format och statuskod 200 [Version 1 testdata]', 2, 1, 1, 3, 1, datetime('now', '-30 days'), 'seed', datetime('now', '-28 days'), datetime('now', '-27 days'), NULL),
   (2,  1, 2, 'Systemet ska stödja REST API (version 2) för datautbyte med externa system inklusive autentisering via OAuth2 [Version 2 testdata]', 'API:et svarar med korrekt JSON-format, statuskod 200, och kräver giltig OAuth2-token [Version 2 testdata]', 2, 1, 1, 1, 1, datetime('now', '-10 days'), 'seed', datetime('now', '-8 days'), NULL, NULL),
   (3,  2, 1, 'Filimport ska stödja CSV-format med UTF-8-kodning [Version 1 testdata]', 'Importfunktionen hanterar filer med svenska tecken (å, ä, ö) korrekt [Version 1 testdata]', 2, 1, 2, 3, 0, datetime('now', '-20 days'), 'seed', datetime('now', '-18 days'), datetime('now', '-17 days'), NULL),
@@ -544,7 +490,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (11, 9, 1, 'Batchjobb ska köras inom 2 timmar (utgått) [Version 1 testdata]', 'Batchjobb slutförs inom tidsgränsen under normal datamängd [Version 1 testdata]', 2, 2, 6, 4, 0, datetime('now', '-120 days'), 'seed', datetime('now', '-116 days'), datetime('now', '-115 days'), datetime('now', '-100 days'));
 
 -- === New Integration requirements (IDs 12-18) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (12, 10, 1, 'Systemet ska stödja asynkron meddelandehantering via RabbitMQ [Version 1 testdata]', 'Meddelanden tas emot och processas utan dataförlust [Version 1 testdata]', 2, 1, 2, 3, 1, datetime('now', '-22 days'), 'seed', datetime('now', '-20 days'), datetime('now', '-19 days'), NULL),
   (13, 11, 1, 'GraphQL-gränssnitt ska tillhandahållas för frontend-applikationer [Version 1 testdata]', 'GraphQL-schema validerar queries och returnerar korrekt data [Version 1 testdata]', 2, 1, 3, 3, 1, datetime('now', '-19 days'), 'seed', datetime('now', '-17 days'), datetime('now', '-16 days'), NULL),
   (14, 12, 1, 'Webhooks ska kunna konfigureras för händelsenotifiering till externa system [Version 1 testdata]', 'Webhook-anrop levereras inom 5 sekunder efter händelse [Version 1 testdata]', 3, 1, 4, 2, 1, datetime('now', '-8 days'), 'seed', datetime('now', '-6 days'), NULL, NULL),
@@ -552,7 +498,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (16, 14, 1, 'Systemet ska stödja SOAP-integration för äldre system [Version 1 testdata]', 'WSDL-kontrakt valideras och svar returneras i XML-format [Version 1 testdata]', 3, 1, 2, 1, 0, datetime('now', '-3 days'), 'seed', datetime('now', '-1 days'), NULL, NULL);
 
 -- === New Säkerhet requirements (IDs 17-24) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (17, 15, 1, 'All datatrafik ska krypteras med TLS 1.3 eller högre [Version 1 testdata]', 'Inga anslutningar tillåts med TLS-version lägre än 1.3 [Version 1 testdata]', 2, 2, 27, 3, 1, datetime('now', '-28 days'), 'seed', datetime('now', '-26 days'), datetime('now', '-25 days'), NULL),
   (18, 16, 1, 'Säkerhetssårbarhetsskanning ska genomföras automatiskt vid varje deployment [Version 1 testdata]', 'Inga kritiska sårbarheter (CVSS >= 9.0) tillåts i produktion [Version 1 testdata]', 2, 2, 32, 3, 1, datetime('now', '-26 days'), 'seed', datetime('now', '-24 days'), datetime('now', '-23 days'), NULL),
   (19, 17, 1, 'Alla privilegierade operationer ska loggas med oförneklig spårbarhet [Version 1 testdata]', 'Loggposter innehåller tidsstämpel, användare, operation och resultat [Version 1 testdata]', 2, 2, 29, 3, 0, datetime('now', '-24 days'), 'security-admin', datetime('now', '-22 days'), datetime('now', '-21 days'), NULL),
@@ -561,11 +507,11 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (22, 20, 1, 'Alla databastransaktioner ska kunna spåras till enskild användare [Version 1 testdata]', 'Varje databasändring har en audit trail-post med användar-ID [Version 1 testdata]', 1, 2, 30, 1, 0, datetime('now', '-7 days'), 'seed', datetime('now', '-5 days'), NULL, NULL);
 
 -- === SÄK0010 — Long-text requirement for identity & access management ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (101, 67, 1, 'Systemet ska implementera en heltäckande lösning för hantering av digitala identiteter och åtkomsträttigheter som möjliggör centraliserad administration av användarkonton, roller och behörigheter över samtliga anslutna delsystem. Lösningen ska stödja automatiserad provisionering och avprovisionering av konton baserat på händelser i HR-systemet samt integration med extern identitetsleverantör via SCIM-protokollet. [Version 1 testdata]', 'Nya användarkonton skapas automatiskt inom 15 minuter efter registrering i HR-systemet och tilldelas korrekta roller baserat på organisatorisk tillhörighet och befattning. Vid avslutad anställning avaktiveras samtliga konton och behörigheter inom 60 minuter. Systemet ska logga alla provisioneringsåtgärder med fullständig spårbarhet inklusive tidsstämpel, källa och genomförd förändring för revisionsändamål. [Version 1 testdata]', 2, 1, 2, 3, 1, datetime('now', '-13 days'), 'security-admin', datetime('now', '-11 days'), datetime('now', '-10 days'), NULL);
 
 -- === New Prestanda requirements (IDs 23-29) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (23, 21, 1, 'Databasen ska hantera minst 10 000 samtidiga läsoperationer [Version 1 testdata]', 'Lasttester visar stabil prestanda vid 10 000 samtidiga SELECT-frågor [Version 1 testdata]', 2, 2, 8, 3, 1, datetime('now', '-17 days'), 'seed', datetime('now', '-15 days'), datetime('now', '-14 days'), NULL),
   (24, 22, 1, 'Sidladdningstiden ska understiga 2 sekunder för 95% av förfrågningarna [Version 1 testdata]', 'Lighthouse-performance score >= 90 [Version 1 testdata]', 1, 2, 6, 3, 1, datetime('now', '-16 days'), 'seed', datetime('now', '-14 days'), datetime('now', '-13 days'), NULL),
   (25, 23, 1, 'CPU-användning ska inte överstiga 70% vid normal last [Version 1 testdata]', 'Övervakningsdata visar CPU < 70% under dagtid [Version 1 testdata]', 2, 2, 7, 2, 0, datetime('now', '-9 days'), 'seed', datetime('now', '-7 days'), NULL, NULL),
@@ -573,7 +519,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (27, 25, 1, 'Cache-invalidering ska ske inom 5 sekunder efter dataändring [Version 1 testdata]', 'Klienter ser uppdaterad data inom 5 sekunder [Version 1 testdata]', 2, 2, 6, 1, 1, datetime('now', '-4 days'), 'seed', datetime('now', '-2 days'), NULL, NULL);
 
 -- === New Användbarhet requirements (IDs 28-33) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (28, 26, 1, 'Systemet ska uppfylla WCAG 2.1 nivå AA för tillgänglighet [Version 1 testdata]', 'Automatiserad tillgänglighetsrevision visar inga AA-överträdelser [Version 1 testdata]', 1, 2, 18, 3, 1, datetime('now', '-23 days'), 'seed', datetime('now', '-21 days'), datetime('now', '-20 days'), NULL),
   (29, 27, 1, 'Felmeddelanden ska vara beskrivande och ge användaren vägledning [Version 1 testdata]', 'Alla felmeddelanden innehåller beskrivning och föreslagna åtgärder [Version 1 testdata]', 1, 2, 16, 3, 0, datetime('now', '-21 days'), 'seed', datetime('now', '-19 days'), datetime('now', '-18 days'), NULL),
   (30, 28, 1, 'Nya användare ska kunna slutföra onboardingen inom 5 minuter [Version 1 testdata]', 'Usability-test visar att 90% av användarna klarar onboarding < 5 min [Version 1 testdata]', 1, 2, 14, 2, 1, datetime('now', '-11 days'), 'seed', datetime('now', '-9 days'), NULL, NULL),
@@ -582,7 +528,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (102, 30, 2, 'Gränssnittet ska följa Sveriges myndigheters uppdaterade designmönster [Version 2 testdata]', 'Ny granskning mot aktuell designguide genomförs innan kravet publiceras igen [Version 2 testdata]', 1, 2, 13, 1, 0, datetime('now', '-2 days'), 'seed', datetime('now', '-1 days'), NULL, NULL);
 
 -- === Lagring requirements (IDs 33-39) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (33, 32, 1, 'Backup ska utföras dagligen med minst 30 dagars retention [Version 1 testdata]', 'Återställning från backup genomförs framgångsrikt inom RTO [Version 1 testdata]', 2, 2, 25, 3, 1, datetime('now', '-27 days'), 'seed', datetime('now', '-25 days'), datetime('now', '-24 days'), NULL),
   (34, 33, 1, 'Fillagring ska stödja objekt upp till 5 GB [Version 1 testdata]', 'Uppladdning och nedladdning av 5 GB-fil genomförs utan fel [Version 1 testdata]', 2, 2, 8, 3, 1, datetime('now', '-22 days'), 'seed', datetime('now', '-20 days'), datetime('now', '-19 days'), NULL),
   (35, 34, 1, 'Data ska lagras geografiskt inom EU enligt GDPR [Version 1 testdata]', 'Infrastrukturrapport bekräftar att all data finns i EU-region [Version 1 testdata]', 3, 2, 27, 3, 0, datetime('now', '-30 days'), 'seed', datetime('now', '-28 days'), datetime('now', '-27 days'), NULL),
@@ -591,7 +537,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (38, 37, 1, 'Systemet ska stödja versionering av alla lagrade dokument [Version 1 testdata]', 'Tidigare versioner av dokument kan återställas via gränssnittet [Version 1 testdata]', 2, 1, 2, 3, 1, datetime('now', '-15 days'), 'seed', datetime('now', '-13 days'), datetime('now', '-12 days'), NULL);
 
 -- === Behörighet requirements (IDs 39-44) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (39, 38, 1, 'Rollbaserad åtkomstkontroll (RBAC) ska implementeras för alla resurser [Version 1 testdata]', 'Användare utan korrekt roll får HTTP 403 vid åtkomstförsök [Version 1 testdata]', 2, 1, 2, 3, 1, datetime('now', '-25 days'), 'seed', datetime('now', '-23 days'), datetime('now', '-22 days'), NULL),
   (40, 39, 1, 'Administratörsbehörigheter ska kräva godkännande av två personer [Version 1 testdata]', 'Admin-rollen kan inte tilldelas utan sekundär godkännare [Version 1 testdata]', 1, 1, 3, 3, 1, datetime('now', '-20 days'), 'security-admin', datetime('now', '-18 days'), datetime('now', '-17 days'), NULL),
   (41, 40, 1, 'Behörighetsändringar ska träda i kraft inom 60 sekunder [Version 1 testdata]', 'Borttagen behörighet blockerar åtkomst inom 60 sekunder [Version 1 testdata]', 2, 2, 6, 2, 1, datetime('now', '-6 days'), 'seed', datetime('now', '-4 days'), NULL, NULL),
@@ -600,7 +546,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (44, 43, 1, 'Leverantörsåtkomst ska begränsas med tidsbegränsade tokens [Version 1 testdata]', 'Tokens upphör automatiskt efter konfigurerad tid [Version 1 testdata]', 3, 2, 31, 3, 1, datetime('now', '-17 days'), 'seed', datetime('now', '-15 days'), datetime('now', '-14 days'), NULL);
 
 -- === Identitet requirements (IDs 45-50) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (45, 45, 1, 'Systemet ska stödja federerad inloggning via SAML 2.0 och OIDC [Version 1 testdata]', 'Användare kan logga in via extern IdP utan att skapa lokalt konto [Version 1 testdata]', 2, 1, 2, 3, 1, datetime('now', '-24 days'), 'seed', datetime('now', '-22 days'), datetime('now', '-21 days'), NULL),
   (46, 46, 1, 'Sessioner ska tidsbegränsas till max 8 timmar med möjlighet till förnyelse [Version 1 testdata]', 'Session upphör efter 8 timmar och användaren omdirigeras till inloggning [Version 1 testdata]', 2, 2, 31, 3, 1, datetime('now', '-22 days'), 'seed', datetime('now', '-20 days'), datetime('now', '-19 days'), NULL),
   (47, 47, 1, 'Kontospärr ska aktiveras efter 5 misslyckade inloggningsförsök [Version 1 testdata]', 'Kontot spärras i 30 minuter efter 5 felaktiga lösenord [Version 1 testdata]', 2, 2, 32, 3, 1, datetime('now', '-20 days'), 'seed', datetime('now', '-18 days'), datetime('now', '-17 days'), NULL),
@@ -608,7 +554,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (49, 49, 1, 'Utfasad LDAP-autentisering (ersatt av OIDC) [Version 1 testdata]', 'LDAP-bind lyckas mot katalogserver [Version 1 testdata]', 2, 2, 31, 4, 0, datetime('now', '-100 days'), 'seed', datetime('now', '-96 days'), datetime('now', '-95 days'), datetime('now', '-80 days'));
 
 -- === Loggning requirements (IDs 50-56) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (50, 51, 1, 'Alla systemhändelser ska loggas i strukturerat JSON-format [Version 1 testdata]', 'Logghändelser parsas korrekt av centralt loggsystem [Version 1 testdata]', 2, 2, 36, 3, 0, datetime('now', '-26 days'), 'seed', datetime('now', '-24 days'), datetime('now', '-23 days'), NULL),
   (51, 52, 1, 'Loggdata ska bevaras i minst 12 månader [Version 1 testdata]', 'Loggar äldre än 12 månader finns tillgängliga i arkivet [Version 1 testdata]', 3, 2, 30, 3, 0, datetime('now', '-25 days'), 'seed', datetime('now', '-23 days'), datetime('now', '-22 days'), NULL),
   (52, 53, 1, 'Realtidsövervakning ska implementeras för kritiska tjänster [Version 1 testdata]', 'Larm triggas inom 60 sekunder vid anomali [Version 1 testdata]', 2, 2, 23, 3, 1, datetime('now', '-23 days'), 'seed', datetime('now', '-21 days'), datetime('now', '-20 days'), NULL),
@@ -617,7 +563,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (55, 56, 1, 'Syslog-integration för äldre övervakningssystem (utgått) [Version 1 testdata]', 'Syslog-meddelanden mottas av central server [Version 1 testdata]', 3, 2, 11, 4, 0, datetime('now', '-80 days'), 'seed', datetime('now', '-76 days'), datetime('now', '-75 days'), datetime('now', '-60 days'));
 
 -- === Drift requirements (IDs 56-60) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (56, 57, 1, 'Driftsättning ska kunna genomföras utan avbrott (zero-downtime deployment) [Version 1 testdata]', 'Deployment genomförs utan HTTP 5xx-fel under processen [Version 1 testdata]', 2, 2, 23, 3, 1, datetime('now', '-24 days'), 'seed', datetime('now', '-22 days'), datetime('now', '-21 days'), NULL),
   (57, 58, 1, 'Systemet ska stödja automatisk rollback vid misslyckad deployment [Version 1 testdata]', 'Rollback triggas automatiskt om health check misslyckas [Version 1 testdata]', 2, 2, 24, 3, 1, datetime('now', '-20 days'), 'seed', datetime('now', '-18 days'), datetime('now', '-17 days'), NULL),
   (58, 59, 1, 'Infrastruktur ska definieras som kod (IaC) med versionskontroll [Version 1 testdata]', 'All infrastruktur kan återskapas från Git-repo [Version 1 testdata]', 3, 2, 37, 3, 0, datetime('now', '-19 days'), 'devops-lead', datetime('now', '-17 days'), datetime('now', '-16 days'), NULL),
@@ -625,7 +571,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (60, 61, 1, 'Systemplattformen ska stödja containerbaserad driftsättning med Kubernetes [Version 1 testdata]', 'Samtliga tjänster körs i Kubernetes-kluster med definierade resource limits [Version 1 testdata]', 3, 2, 42, 1, 0, datetime('now', '-2 days'), 'devops-lead', datetime('now', '-0 days'), NULL, NULL);
 
 -- === Data requirements (IDs 61-65) ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (61, 62, 1, 'Datamigrering ska kunna genomföras utan dataförlust [Version 1 testdata]', 'Verifiering visar 100% dataintegritet efter migrering [Version 1 testdata]', 2, 1, 3, 3, 1, datetime('now', '-22 days'), 'seed', datetime('now', '-20 days'), datetime('now', '-19 days'), NULL),
   (62, 63, 1, 'Systemet ska stödja datakvalitetsvalidering vid import [Version 1 testdata]', 'Felaktig data avvisas med detaljerad felrapport [Version 1 testdata]', 2, 1, 3, 3, 1, datetime('now', '-20 days'), 'seed', datetime('now', '-18 days'), datetime('now', '-17 days'), NULL),
   (63, 64, 1, 'Personuppgifter ska kunna raderas helt enligt rätten att bli glömd [Version 1 testdata]', 'Efter radering finns inga spår av personuppgifterna i systemet [Version 1 testdata]', 1, 1, 2, 3, 1, datetime('now', '-19 days'), 'seed', datetime('now', '-17 days'), datetime('now', '-16 days'), NULL),
@@ -637,7 +583,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 -- === LAG0001 (req 31) — 5 versions: Storage backup policy evolution ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (66, 31, 1, 'Backup ska utföras veckovis med 7 dagars retention [Version 1 testdata]', 'Veckobackup verifierad genom återställningstest [Version 1 testdata]', 2, 2, 25, 4, 1, datetime('now', '-180 days'), 'storage-admin', datetime('now', '-176 days'), datetime('now', '-175 days'), datetime('now', '-145 days')),
   (67, 31, 2, 'Backup ska utföras dagligen med 14 dagars retention [Version 2 testdata]', 'Daglig backup verifieras automatiskt, retention 14 dagar bekräftad [Version 2 testdata]', 2, 2, 25, 4, 1, datetime('now', '-140 days'), 'storage-admin', datetime('now', '-136 days'), datetime('now', '-135 days'), datetime('now', '-95 days')),
   (68, 31, 3, 'Backup ska utföras dagligen med 30 dagars retention och replikering till sekundär site [Version 3 testdata]', 'Backup replikeras inom 1 timme till DR-site [Version 3 testdata]', 2, 2, 25, 4, 1, datetime('now', '-90 days'), 'devops-lead', datetime('now', '-86 days'), datetime('now', '-85 days'), datetime('now', '-50 days')),
@@ -645,7 +591,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (70, 31, 5, 'Backup ska utföras dagligen med 90 dagars retention, geo-redundant replikering och kryptering. Point-in-time recovery ska stödjas. [Version 5 testdata]', 'PITR inom 15 minuters granularitet, geo-redundant replikering verifierad [Version 5 testdata]', 2, 2, 25, 1, 1, datetime('now', '-3 days'), 'storage-admin', datetime('now', '-1 days'), NULL, NULL);
 
 -- === IDN0001 (req 44) — 10 versions: Authentication requirement evolution ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (71, 44, 1, 'Användare ska autentiseras med användarnamn och lösenord [Version 1 testdata]', 'Inloggning med korrekta uppgifter ger åtkomst, felaktiga avvisas [Version 1 testdata]', 2, 2, 31, 4, 1, datetime('now', '-365 days'), 'seed', datetime('now', '-361 days'), datetime('now', '-360 days'), datetime('now', '-305 days')),
   (72, 44, 2, 'Lösenord ska ha minst 8 tecken med krav på siffror och bokstäver [Version 2 testdata]', 'Lösenordspolicyn valideras vid registrering och ändring [Version 2 testdata]', 2, 2, 31, 4, 1, datetime('now', '-300 days'), 'seed', datetime('now', '-296 days'), datetime('now', '-295 days'), datetime('now', '-255 days')),
   (73, 44, 3, 'Tvåfaktorsautentisering (2FA) ska erbjudas som tillval via SMS [Version 3 testdata]', '2FA-kod via SMS valideras vid inloggning [Version 3 testdata]', 2, 2, 31, 4, 1, datetime('now', '-250 days'), 'security-admin', datetime('now', '-246 days'), datetime('now', '-245 days'), datetime('now', '-205 days')),
@@ -658,7 +604,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (80, 44, 10, 'Riskbaserad autentisering ska implementeras — step-up auth vid ovanliga inloggningsförsök [Version 10 testdata]', 'Step-up auth triggas vid ny enhet, nytt land, eller avvikande tid [Version 10 testdata]', 2, 2, 31, 1, 1, datetime('now', '-2 days'), 'security-admin', datetime('now', '-0 days'), NULL, NULL);
 
 -- === LOG0001 (req 50) — 15 versions: Central logging requirement evolution ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (81,  50, 1,  'Applikationsloggar ska skrivas till lokal fil [Version 1 testdata]', 'Loggfil skapas och innehåller applikationshändelser [Version 1 testdata]', 2, 2, 36, 4, 0, datetime('now', '-540 days'), 'seed', datetime('now', '-536 days'), datetime('now', '-535 days'), datetime('now', '-505 days')),
   (82,  50, 2,  'Loggar ska ha tre nivåer: ERROR, WARN, INFO [Version 2 testdata]', 'Logghändelser filtreras korrekt baserat på nivå [Version 2 testdata]', 2, 2, 36, 4, 0, datetime('now', '-500 days'), 'seed', datetime('now', '-496 days'), datetime('now', '-495 days'), datetime('now', '-465 days')),
   (83,  50, 3,  'Strukturerat loggformat (JSON) ska användas [Version 3 testdata]', 'Loggar parsas korrekt som JSON [Version 3 testdata]', 2, 2, 36, 4, 0, datetime('now', '-460 days'), 'devops-lead', datetime('now', '-456 days'), datetime('now', '-455 days'), datetime('now', '-425 days')),
@@ -993,7 +939,7 @@ INSERT OR IGNORE INTO requirements (id, unique_id, requirement_area_id, sequence
   (367, 'DAT0035', 10, 35, 0, datetime('now'));
 
 -- === New Integration versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (103, 68, 1, 'gRPC-integration för intern mikrotjänstkommunikation [Version 1 testdata]', 'gRPC-anrop mellan tjänster returnerar korrekt data [Version 1 testdata]', 1, 1, 2, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (104, 69, 1, 'Event-driven arkitektur med Apache Kafka [Version 1 testdata]', 'Kafka-meddelanden konsumeras i rätt ordning utan duplicering [Version 1 testdata]', 2, 2, 3, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (105, 70, 1, 'API-versionshantering med semantisk versionering [Version 1 testdata]', 'Bakåtkompatibla API-ändringar bryter inte befintliga klienter [Version 1 testdata]', 2, 2, 4, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1036,7 +982,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (142, 97, 1, 'Async API-specifikation för event-drivna gränssnitt [Version 1 testdata]', 'AsyncAPI-dokument genereras för alla event-kanaler [Version 1 testdata]', 2, 2, 37, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Säkerhet versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (143, 98, 1, 'Penetrationstestning ska genomföras kvartalsvis [Version 1 testdata]', 'Penetrationstest-rapport dokumenterar inga kritiska brister [Version 1 testdata]', 1, 1, 26, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (144, 99, 1, 'Web Application Firewall (WAF) ska skydda alla publika endpoints [Version 1 testdata]', 'WAF blockerar OWASP Top 10-attacker [Version 1 testdata]', 2, 2, 27, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (145, 100, 1, 'Content Security Policy (CSP) ska implementeras på alla webbsidor [Version 1 testdata]', 'CSP-header returneras med strikt policy [Version 1 testdata]', 2, 2, 28, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1079,7 +1025,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (182, 127, 1, 'Privacy by Design-principer ska implementeras i alla nya system [Version 1 testdata]', 'DPIA genomförs och dokumenteras för alla nya tjänster [Version 1 testdata]', 2, 2, 27, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Prestanda versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (183, 128, 1, 'CDN-distribution för statiskt innehåll [Version 1 testdata]', 'Statiska resurser serveras från edge-noder med < 50ms latens [Version 1 testdata]', 1, 1, 5, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (184, 129, 1, 'Connection pooling för databasanslutningar [Version 1 testdata]', 'Databas-pool hanterar 500 samtidiga anslutningar stabilt [Version 1 testdata]', 2, 2, 6, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (185, 130, 1, 'Lazy loading av tunga resurser i frontend [Version 1 testdata]', 'Initial laddningstid reduceras med minst 40% [Version 1 testdata]', 2, 2, 7, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1122,7 +1068,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (222, 157, 1, 'Throttling av bakgrundsprocesser vid hög last [Version 1 testdata]', 'Bakgrundsjobb pausas automatiskt vid CPU > 80% [Version 1 testdata]', 2, 2, 41, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Användbarhet versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (223, 158, 1, 'Dark mode-stöd i hela applikationen [Version 1 testdata]', 'Alla vyer har korrekt dark mode med tillräcklig kontrast [Version 1 testdata]', 1, 1, 12, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (224, 159, 1, 'Tangentbordsnavigering för alla interaktiva element [Version 1 testdata]', 'Tab-ordning följer logisk visuell ordning [Version 1 testdata]', 2, 2, 13, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (225, 160, 1, 'Flerspråksstöd med dynamisk språkväxling [Version 1 testdata]', 'Språkbyte sker utan sidladdning och bevarar kontext [Version 1 testdata]', 2, 2, 14, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1165,7 +1111,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (262, 187, 1, 'Snabb åtkomst via kommandopalett (Command Palette) [Version 1 testdata]', 'Ctrl+K öppnar sökbar kommandolista med alla åtgärder [Version 1 testdata]', 2, 2, 14, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Lagring versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (263, 188, 1, 'Objektlagring med S3-kompatibelt API [Version 1 testdata]', 'Filer lagras och hämtas via S3-protokollet utan fel [Version 1 testdata]', 1, 1, 21, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (264, 189, 1, 'Automatisk tiering av data baserat på åtkomstmönster [Version 1 testdata]', 'Sällan åtkomstdata flyttas till billigare lagringsnivå [Version 1 testdata]', 2, 2, 24, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (265, 190, 1, 'Deduplicering av identiska filer vid uppladdning [Version 1 testdata]', 'Identiska filer lagras bara en gång med referensräkning [Version 1 testdata]', 2, 2, 25, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1208,7 +1154,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (302, 217, 1, 'Datamigration mellan lagringssystem utan avbrott [Version 1 testdata]', 'Migreringsprocessen har noll nedtid för läsoperationer [Version 1 testdata]', 2, 2, 30, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Behörighet versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (303, 218, 1, 'Fine-grained permissions på resurs- och fältnivå [Version 1 testdata]', 'Användare kan bara se fält de har behörighet till [Version 1 testdata]', 1, 1, 27, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (304, 219, 1, 'Dynamisk rollhantering med självbetjäning [Version 1 testdata]', 'Chefer kan tilldela roller till sina teammedlemmar [Version 1 testdata]', 2, 2, 30, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (305, 220, 1, 'Temporal access med automatisk revokering [Version 1 testdata]', 'Tillfällig åtkomst upphör automatiskt efter angiven tid [Version 1 testdata]', 2, 2, 31, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1251,7 +1197,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (342, 247, 1, 'Automatiserad compliance-kontroll av behörigheter [Version 1 testdata]', 'System varnar vid behörigheter som bryter compliance-regler [Version 1 testdata]', 2, 2, 2, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Identitet versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (343, 248, 1, 'Lösenordsfri autentisering med passkeys [Version 1 testdata]', 'Användare kan logga in med passkey utan lösenord [Version 1 testdata]', 1, 1, 31, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (344, 249, 1, 'Identity federation med flera externa IdP:er [Version 1 testdata]', 'Inloggning fungerar med Azure AD, Okta och Google [Version 1 testdata]', 2, 2, 32, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (345, 250, 1, 'Adaptiv autentisering baserat på riskbedömning [Version 1 testdata]', 'Hög-risk-inloggningar kräver ytterligare verifiering [Version 1 testdata]', 2, 2, 27, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1294,7 +1240,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (382, 277, 1, 'TOTP och HOTP-stöd med backup-koder [Version 1 testdata]', 'Användare kan generera backup-koder för MFA-återställning [Version 1 testdata]', 2, 2, 2, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Loggning versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (383, 278, 1, 'Distribuerad tracing med OpenTelemetry [Version 1 testdata]', 'Traces propageras genom samtliga mikrotjänster [Version 1 testdata]', 1, 1, 36, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (384, 279, 1, 'Loggnivå-dynamisk ändring utan omstart [Version 1 testdata]', 'Loggnivå ändras via API utan att starta om tjänsten [Version 1 testdata]', 2, 2, 23, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (385, 280, 1, 'Centraliserad loggaggregering med Grafana Loki [Version 1 testdata]', 'Loggar från alla tjänster sökbara i Grafana inom 15s [Version 1 testdata]', 2, 2, 22, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1337,7 +1283,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (422, 307, 1, 'Post-mortem-loggning efter incidenter [Version 1 testdata]', 'Automatisk sammanfattning av relevanta loggar vid incident [Version 1 testdata]', 2, 2, 37, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Drift versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (423, 308, 1, 'Blue-green deployment för riskfri utrullning [Version 1 testdata]', 'Trafik skiftar mellan blue/green utan nedtid [Version 1 testdata]', 1, 1, 23, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (424, 309, 1, 'Canary releases med automatisk rollback [Version 1 testdata]', 'Canary-release rullas tillbaka om error rate överstiger 1% [Version 1 testdata]', 2, 2, 24, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (425, 310, 1, 'GitOps-baserad deployment med ArgoCD [Version 1 testdata]', 'Deployment triggas automatiskt vid merge till main [Version 1 testdata]', 2, 2, 25, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),
@@ -1380,7 +1326,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (462, 337, 1, 'Drift-dokumentation med automatiserad uppdatering [Version 1 testdata]', 'Driftdokumentation genereras från infrastrukturkod [Version 1 testdata]', 2, 2, 42, 3, 1, datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- === New Data versions ===
-INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, requirement_type_category_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
+INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, created_at, created_by, edited_at, published_at, archived_at) VALUES
   (463, 338, 1, 'Datakatalog med automatisk metadata-insamling [Version 1 testdata]', 'Metadata indexeras automatiskt för alla datatillgångar [Version 1 testdata]', 1, 1, 2, 3, 0, datetime('now', '-200 days'), 'seed', datetime('now', '-198 days'), datetime('now', '-197 days'), NULL),
   (464, 339, 1, 'Data lineage-spårning end-to-end [Version 1 testdata]', 'Data kan spåras från källa till destination genom alla transformationer [Version 1 testdata]', 2, 2, 3, 1, 1, datetime('now', '-195 days'), 'security-admin', datetime('now', '-193 days'), NULL, NULL),
   (465, 340, 1, 'Datakvalitetsvalidering med Great Expectations [Version 1 testdata]', 'Datakvalitets-checks körs automatiskt i pipeline [Version 1 testdata]', 2, 2, 28, 2, 1, datetime('now', '-190 days'), 'devops-lead', datetime('now', '-188 days'), NULL, NULL),

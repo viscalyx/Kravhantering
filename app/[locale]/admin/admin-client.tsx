@@ -261,10 +261,10 @@ export default function AdminClient({
     },
     {
       description: ta('qualityAttributesDescription'),
-      href: '/iso25010',
+      href: '/quality-characteristics',
       icon: ShieldCheck,
-      id: 'iso25010',
-      label: tn('iso25010'),
+      id: 'qualityCharacteristics',
+      label: tn('qualityCharacteristics'),
     },
     {
       description: ta('responsibilityAreasDescription'),
