@@ -8,6 +8,25 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
+// ─── Owners ─────────────────────────────────────────────────────────────────
+
+export const owners = sqliteTable(
+  'owners',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    firstName: text('first_name').notNull(),
+    lastName: text('last_name').notNull(),
+    email: text('email').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [uniqueIndex('uq_owners_email').on(table.email)],
+)
+
 // ─── Requirement Areas ───────────────────────────────────────────────────────
 
 export const requirementAreas = sqliteTable(
@@ -17,7 +36,7 @@ export const requirementAreas = sqliteTable(
     prefix: text('prefix').notNull(),
     name: text('name').notNull(),
     description: text('description'),
-    ownerId: text('owner_id'),
+    ownerId: integer('owner_id').references(() => owners.id),
     nextSequence: integer('next_sequence').notNull().default(1),
     createdAt: text('created_at')
       .notNull()
@@ -31,7 +50,11 @@ export const requirementAreas = sqliteTable(
 
 export const requirementAreasRelations = relations(
   requirementAreas,
-  ({ many }) => ({
+  ({ one, many }) => ({
+    owner: one(owners, {
+      fields: [requirementAreas.ownerId],
+      references: [owners.id],
+    }),
     requirements: many(requirements),
   }),
 )

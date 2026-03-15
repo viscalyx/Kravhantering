@@ -1,12 +1,24 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
-import { listOwners } from '@/lib/dal/owners'
+import { createOwner, listOwners } from '@/lib/dal/owners'
+import { getDb } from '@/lib/db'
 
 export async function GET() {
-  const owners = await listOwners()
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+  const ownersList = await listOwners(db)
   return NextResponse.json({
-    owners: owners.map(o => ({
+    owners: ownersList.map(o => ({
       id: o.id,
       name: `${o.firstName} ${o.lastName}`,
     })),
   })
+}
+
+export async function POST(request: Request) {
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+  const body = (await request.json()) as Parameters<typeof createOwner>[1]
+  const owner = await createOwner(db, body)
+  return NextResponse.json(owner, { status: 201 })
 }

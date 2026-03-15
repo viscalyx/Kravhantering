@@ -9,7 +9,6 @@ interface FormData {
   areaId: string
   categoryId: string
   description: string
-  ownerId: string
   requiresTesting: boolean
   typeCategoryId: string
   typeId: string
@@ -30,6 +29,7 @@ interface Option {
 interface AreaOption {
   id: number
   name: string
+  ownerName: string | null
 }
 
 interface TypeCategoryOption {
@@ -55,7 +55,6 @@ export default function RequirementForm({
   const [categories, setCategories] = useState<Option[]>([])
   const [types, setTypes] = useState<Option[]>([])
   const [typeCategories, setTypeCategories] = useState<TypeCategoryOption[]>([])
-  const [owners, setOwners] = useState<AreaOption[]>([])
   const [submitting, setSubmitting] = useState(false)
 
   const [form, setForm] = useState<FormData>({
@@ -66,15 +65,13 @@ export default function RequirementForm({
     description: initialData?.description ?? '',
     acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
     requiresTesting: initialData?.requiresTesting ?? false,
-    ownerId: initialData?.ownerId ?? '',
   })
 
   const fetchOptions = useCallback(async () => {
-    const [areasRes, catRes, typesRes, ownersRes] = await Promise.all([
+    const [areasRes, catRes, typesRes] = await Promise.all([
       fetch('/api/requirement-areas'),
       fetch('/api/requirement-categories'),
       fetch('/api/requirement-types'),
-      fetch('/api/owners'),
     ])
     if (areasRes.ok)
       setAreas(
@@ -86,10 +83,6 @@ export default function RequirementForm({
       )
     if (typesRes.ok)
       setTypes(((await typesRes.json()) as { types?: Option[] }).types ?? [])
-    if (ownersRes.ok)
-      setOwners(
-        ((await ownersRes.json()) as { owners?: AreaOption[] }).owners ?? [],
-      )
   }, [])
 
   const fetchTypeCategories = useCallback(async (typeId: string) => {
@@ -139,7 +132,6 @@ export default function RequirementForm({
           description: form.description || undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
           requiresTesting: form.requiresTesting,
-          ownerId: form.ownerId || undefined,
         }),
       })
 
@@ -180,6 +172,12 @@ export default function RequirementForm({
             </option>
           ))}
         </select>
+        {form.areaId && (
+          <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+            {t('area')} — ägare:{' '}
+            {areas.find(a => String(a.id) === form.areaId)?.ownerName ?? '—'}
+          </p>
+        )}
       </div>
 
       <div>
@@ -281,27 +279,6 @@ export default function RequirementForm({
           </select>
         </div>
       )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="ownerId">
-            {t('area')} — ägare
-          </label>
-          <select
-            className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-            id="ownerId"
-            onChange={e => handleChange('ownerId', e.target.value)}
-            value={form.ownerId}
-          >
-            <option value="">Välj ägare...</option>
-            {owners.map(o => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
 
       <label className="flex items-center gap-2 text-sm">
         <input
