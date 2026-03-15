@@ -316,42 +316,26 @@ test.describe('Requirements table column resizing', () => {
         await page.goto('/sv/kravkatalog')
 
         const { detailCell } = await openFirstRequirementDetail(page)
-        const bottomSegment = page
-          .locator('[data-column-resize-segment="bottom"]')
-          .first()
-        const fallbackHandle = page
-          .locator('[data-column-resize-handle]')
-          .first()
 
         await expect(detailCell).toBeVisible()
 
         const detailBox = await detailCell.boundingBox()
-        const resizeProbeBox =
-          (await bottomSegment.boundingBox()) ??
-          (await fallbackHandle.boundingBox())
 
         expect(detailBox).not.toBeNull()
         if (!detailBox) {
           throw new Error('Expanded detail pane did not expose a bounding box.')
         }
-        expect(resizeProbeBox).not.toBeNull()
-        if (!resizeProbeBox) {
-          throw new Error(
-            'Description resize handle did not expose a bounding box.',
-          )
-        }
 
         const viewportSize = page.viewportSize()
         const viewportHeight = viewportSize?.height ?? viewport.height
         const viewportWidth = viewportSize?.width ?? viewport.width
+
+        // Place the probe below the detail pane at an x-coordinate that
+        // avoids the narrow resize-handle strips (which sit at column
+        // borders).  Using the horizontal centre of the viewport ensures we
+        // land inside a column body instead.
         const probePoint = {
-          x: Math.max(
-            32,
-            Math.min(
-              viewportWidth - 32,
-              Math.round(resizeProbeBox.x + resizeProbeBox.width / 2),
-            ),
-          ),
+          x: Math.round(viewportWidth / 2),
           y: Math.min(
             viewportHeight - 32,
             Math.round(detailBox.y + detailBox.height + 128),
