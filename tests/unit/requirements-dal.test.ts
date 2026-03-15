@@ -353,4 +353,145 @@ describe('requirements DAL list semantics', () => {
       sqlite.close()
     }
   })
+
+  it('filters by descriptionSearch, typeIds, qualityCharacteristicIds, and requiresTesting', async () => {
+    const { db, sqlite } = createTestDb()
+
+    try {
+      await seedLookups(db)
+      await db.insert(schema.requirementTypes).values({
+        id: 1,
+        nameEn: 'Functional',
+        nameSv: 'Funktionellt',
+      })
+      await db.insert(schema.qualityCharacteristics).values({
+        id: 1,
+        nameEn: 'Maintainability',
+        nameSv: 'Underhållbarhet',
+        requirementTypeId: 1,
+      })
+
+      await db.insert(schema.requirements).values({
+        id: 1,
+        isArchived: false,
+        requirementAreaId: 1,
+        sequenceNumber: 1,
+        uniqueId: 'ARC0001',
+      })
+      await db.insert(schema.requirementVersions).values({
+        description: 'Secure integration test',
+        qualityCharacteristicId: 1,
+        requirementId: 1,
+        requirementTypeId: 1,
+        requiresTesting: true,
+        statusId: 3,
+        publishedAt: '2026-03-01T00:00:00.000Z',
+        versionNumber: 1,
+      })
+
+      await db.insert(schema.requirements).values({
+        id: 2,
+        isArchived: false,
+        requirementAreaId: 1,
+        sequenceNumber: 2,
+        uniqueId: 'ARC0002',
+      })
+      await db.insert(schema.requirementVersions).values({
+        description: 'General requirement',
+        requirementId: 2,
+        requiresTesting: false,
+        statusId: 3,
+        publishedAt: '2026-03-01T00:00:00.000Z',
+        versionNumber: 1,
+      })
+
+      const byDesc = await listRequirements(db as unknown as AppDatabase, {
+        descriptionSearch: 'Secure',
+        includeArchived: true,
+      })
+      expect(byDesc).toHaveLength(1)
+      expect(byDesc[0].uniqueId).toBe('ARC0001')
+
+      const byType = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        typeIds: [1],
+      })
+      expect(byType).toHaveLength(1)
+      expect(byType[0].uniqueId).toBe('ARC0001')
+
+      const byQc = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        qualityCharacteristicIds: [1],
+      })
+      expect(byQc).toHaveLength(1)
+      expect(byQc[0].uniqueId).toBe('ARC0001')
+
+      const byTesting = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        requiresTesting: [true],
+      })
+      expect(byTesting).toHaveLength(1)
+      expect(byTesting[0].uniqueId).toBe('ARC0001')
+    } finally {
+      sqlite.close()
+    }
+  })
+
+  it('sorts by description and area with empty values last', async () => {
+    const { db, sqlite } = createTestDb()
+
+    try {
+      await seedLookups(db)
+
+      await db.insert(schema.requirementAreas).values({
+        id: 2,
+        name: 'Zulu area',
+        prefix: 'ZUL',
+      })
+
+      await db.insert(schema.requirements).values({
+        id: 1,
+        isArchived: false,
+        requirementAreaId: 1,
+        sequenceNumber: 1,
+        uniqueId: 'ARC0001',
+      })
+      await db.insert(schema.requirementVersions).values({
+        description: 'Zulu description',
+        requirementId: 1,
+        statusId: 3,
+        publishedAt: '2026-03-01T00:00:00.000Z',
+        versionNumber: 1,
+      })
+
+      await db.insert(schema.requirements).values({
+        id: 2,
+        isArchived: false,
+        requirementAreaId: 2,
+        sequenceNumber: 2,
+        uniqueId: 'ARC0002',
+      })
+      await db.insert(schema.requirementVersions).values({
+        description: 'Alpha description',
+        requirementId: 2,
+        statusId: 3,
+        publishedAt: '2026-03-01T00:00:00.000Z',
+        versionNumber: 1,
+      })
+
+      const descRows = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        sortBy: 'description',
+      })
+      expect(descRows.map(r => r.uniqueId)).toEqual(['ARC0002', 'ARC0001'])
+
+      const areaRows = await listRequirements(db as unknown as AppDatabase, {
+        includeArchived: true,
+        sortBy: 'area',
+      })
+      expect(areaRows.map(r => r.uniqueId)).toEqual(['ARC0001', 'ARC0002'])
+    } finally {
+      sqlite.close()
+    }
+  })
 })

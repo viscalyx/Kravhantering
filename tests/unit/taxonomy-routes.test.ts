@@ -65,6 +65,7 @@ vi.mock('@/lib/dal/requirement-scenarios', () => ({
 vi.mock('@/lib/dal/requirement-types', () => ({
   listTypes: async () => [{ id: 1 }],
   listQualityCharacteristics: async () => [{ id: 10 }],
+  createQualityCharacteristic: async () => ({ id: 20 }),
 }))
 
 vi.mock('@/lib/dal/requirement-categories', () => ({
@@ -89,7 +90,10 @@ import {
   GET as getAreas,
   POST as postArea,
 } from '@/app/api/package-responsibility-areas/route'
-import { GET as getTypeCats } from '@/app/api/quality-characteristics/route'
+import {
+  GET as getTypeCats,
+  POST as postTypeCat,
+} from '@/app/api/quality-characteristics/route'
 import {
   DELETE as deleteReqArea,
   PUT as putReqArea,
@@ -344,6 +348,62 @@ describe('read-only taxonomy routes', () => {
     const r = await getTypeCats(req)
     const j = (await r.json()) as { qualityCharacteristics: { id: number }[] }
     expect(j.qualityCharacteristics).toHaveLength(1)
+  })
+
+  it('quality-characteristics GET returns 400 for invalid typeId', async () => {
+    const req = new NextRequest(
+      'http://l/api/quality-characteristics?typeId=abc',
+    )
+    const r = await getTypeCats(req)
+    expect(r.status).toBe(400)
+    const j = (await r.json()) as { error: string }
+    expect(j.error).toBe('Invalid typeId')
+  })
+
+  it('quality-characteristics POST creates with 201', async () => {
+    const r = await postTypeCat(
+      new Request('http://l', {
+        method: 'POST',
+        body: JSON.stringify({
+          nameSv: 'Sv',
+          nameEn: 'En',
+          requirementTypeId: 1,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(201)
+  })
+
+  it('quality-characteristics POST returns 400 for invalid payload', async () => {
+    const r = await postTypeCat(
+      new Request('http://l', {
+        method: 'POST',
+        body: JSON.stringify({ nameSv: 'Sv' }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(400)
+    const j = (await r.json()) as { error: string }
+    expect(j.error).toBe('Invalid payload')
+  })
+
+  it('quality-characteristics POST returns 400 for invalid parentId', async () => {
+    const r = await postTypeCat(
+      new Request('http://l', {
+        method: 'POST',
+        body: JSON.stringify({
+          nameSv: 'Sv',
+          nameEn: 'En',
+          requirementTypeId: 1,
+          parentId: 'abc',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(400)
+    const j = (await r.json()) as { error: string }
+    expect(j.error).toBe('Invalid payload')
   })
 
   it('requirement-categories GET returns categories', async () => {

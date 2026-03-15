@@ -95,7 +95,7 @@ describe('requirements route', () => {
 
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
-        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true',
+        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4',
       )
       await GET(req as never)
       expect(mockQueryCatalog).toHaveBeenCalledWith(
@@ -105,6 +105,9 @@ describe('requirements route', () => {
           sortDirection: 'desc',
           limit: 10,
           offset: 5,
+          categoryIds: [2],
+          typeIds: [3],
+          qualityCharacteristicIds: [4],
         }),
       )
     })

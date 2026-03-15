@@ -182,4 +182,91 @@ describe('RequirementForm', () => {
     fireEvent.click(cancelBtn)
     expect(backMock).toHaveBeenCalled()
   })
+
+  it('displays area owner when area is selected', async () => {
+    render(
+      <RequirementForm
+        initialData={{ areaId: '1' }}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText(/Owner/)).toBeInTheDocument()
+    })
+  })
+
+  it('renders select options for categories and types', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(screen.getByLabelText(/requirement\.category/)).toBeInTheDocument()
+    })
+    expect(screen.getByLabelText(/requirement\.type/)).toBeInTheDocument()
+  })
+
+  it('fetches quality characteristics when typeId is set', async () => {
+    const sampleQC = [
+      { id: 10, nameSv: 'Qc sv', nameEn: 'Qc en', parentId: null },
+      { id: 11, nameSv: 'Child sv', nameEn: 'Child en', parentId: 10 },
+    ]
+    fetchMock.mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: sampleQC }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(
+      <RequirementForm
+        initialData={{ typeId: '1' }}
+        mode="edit"
+        requirementId={1}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/requirement\.qualityCharacteristic/),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('toggles requiresTesting checkbox', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/requirement\.requiresTesting/),
+      ).toBeInTheDocument()
+    })
+    const checkbox = screen.getByLabelText(/requirement\.requiresTesting/)
+    fireEvent.click(checkbox)
+    expect(checkbox).toBeChecked()
+  })
+
+  it('changes description and acceptanceCriteria fields', async () => {
+    render(<RequirementForm mode="create" />)
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/requirement\.description/),
+      ).toBeInTheDocument()
+    })
+    const desc = screen.getByLabelText(/requirement\.description/)
+    fireEvent.change(desc, { target: { value: 'My desc' } })
+    expect(desc).toHaveValue('My desc')
+
+    const ac = screen.getByLabelText(/requirement\.acceptanceCriteria/)
+    fireEvent.change(ac, { target: { value: 'My criteria' } })
+    expect(ac).toHaveValue('My criteria')
+  })
 })

@@ -7,6 +7,9 @@ import {
   getDefaultVisibleRequirementColumns,
   getRequirementColumnOrder,
   getRequirementColumnWidthsStorageKey,
+  hasActiveFilters,
+  isRequirementSortDirection,
+  isRequirementSortField,
   normalizeRequirementListColumnDefaults,
   parseRequirementColumnWidths,
   parseRequirementVisibleColumns,
@@ -268,5 +271,177 @@ describe('requirement list view helpers', () => {
         ],
       }),
     ).toBeLessThan(0)
+  })
+
+  it('hasActiveFilters returns false for default filters', () => {
+    expect(hasActiveFilters({ statuses: [3] })).toBe(false)
+  })
+
+  it('hasActiveFilters returns true when statuses differ from default', () => {
+    expect(hasActiveFilters({})).toBe(true)
+  })
+
+  it('hasActiveFilters returns true for non-default filters', () => {
+    expect(hasActiveFilters({ areaIds: [1] })).toBe(true)
+    expect(hasActiveFilters({ categoryIds: [2] })).toBe(true)
+    expect(hasActiveFilters({ typeIds: [1] })).toBe(true)
+    expect(hasActiveFilters({ qualityCharacteristicIds: [1] })).toBe(true)
+    expect(hasActiveFilters({ requiresTesting: ['true'] })).toBe(true)
+    expect(hasActiveFilters({ uniqueIdSearch: 'INT' })).toBe(true)
+    expect(hasActiveFilters({ descriptionSearch: 'test' })).toBe(true)
+    expect(hasActiveFilters({ statuses: [1, 2] })).toBe(true)
+  })
+
+  it('isRequirementSortField validates field names', () => {
+    expect(isRequirementSortField('uniqueId')).toBe(true)
+    expect(isRequirementSortField('description')).toBe(true)
+    expect(isRequirementSortField('area')).toBe(true)
+    expect(isRequirementSortField('qualityCharacteristic')).toBe(true)
+    expect(isRequirementSortField('invalid')).toBe(false)
+  })
+
+  it('isRequirementSortDirection validates direction values', () => {
+    expect(isRequirementSortDirection('asc')).toBe(true)
+    expect(isRequirementSortDirection('desc')).toBe(true)
+    expect(isRequirementSortDirection('invalid')).toBe(false)
+  })
+
+  it('normalizeRequirementListColumnDefaults rejects duplicated column ids', () => {
+    const result = normalizeRequirementListColumnDefaults([
+      { columnId: 'uniqueId', defaultVisible: true, sortOrder: 0 },
+      { columnId: 'uniqueId', defaultVisible: true, sortOrder: 1 },
+    ])
+    expect(result[0].columnId).toBe('uniqueId')
+    expect(result.length).toBe(9)
+  })
+
+  it('compares rows by description', () => {
+    const left = makeRow({
+      version: { ...makeRow().version, description: 'Alpha' },
+    })
+    const right = makeRow({
+      id: 2,
+      uniqueId: 'INT0002',
+      version: { ...makeRow().version, description: 'Zulu' },
+    })
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'description', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeLessThan(0)
+  })
+
+  it('compares rows by area', () => {
+    const left = makeRow({ area: { name: 'AAA' } })
+    const right = makeRow({
+      id: 2,
+      uniqueId: 'INT0002',
+      area: { name: 'ZZZ' },
+    })
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'area', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeLessThan(0)
+  })
+
+  it('compares rows by type using locale', () => {
+    const left = makeRow({
+      version: {
+        ...makeRow().version,
+        typeNameEn: 'Alpha',
+        typeNameSv: 'Zulu',
+      },
+    })
+    const right = makeRow({
+      id: 2,
+      uniqueId: 'INT0002',
+      version: {
+        ...makeRow().version,
+        typeNameEn: 'Zulu',
+        typeNameSv: 'Alpha',
+      },
+    })
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'type', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeLessThan(0)
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'sv',
+        sort: { by: 'type', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeGreaterThan(0)
+  })
+
+  it('compares rows by qualityCharacteristic', () => {
+    const left = makeRow({
+      version: {
+        ...makeRow().version,
+        qualityCharacteristicNameEn: 'Alpha',
+        qualityCharacteristicNameSv: 'Zulu',
+      },
+    })
+    const right = makeRow({
+      id: 2,
+      uniqueId: 'INT0002',
+      version: {
+        ...makeRow().version,
+        qualityCharacteristicNameEn: 'Zulu',
+        qualityCharacteristicNameSv: 'Alpha',
+      },
+    })
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'qualityCharacteristic', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeLessThan(0)
+  })
+
+  it('compares rows by version number', () => {
+    const left = makeRow({
+      version: { ...makeRow().version, versionNumber: 1 },
+    })
+    const right = makeRow({
+      id: 2,
+      uniqueId: 'INT0002',
+      version: { ...makeRow().version, versionNumber: 3 },
+    })
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'version', direction: 'asc' },
+        statusOptions: [],
+      }),
+    ).toBeLessThan(0)
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'version', direction: 'desc' },
+        statusOptions: [],
+      }),
+    ).toBeGreaterThan(0)
+  })
+
+  it('compares rows by uniqueId', () => {
+    const left = makeRow({ uniqueId: 'INT0001' })
+    const right = makeRow({ id: 2, uniqueId: 'INT0002' })
+    expect(
+      compareRequirementRows(left, right, {
+        locale: 'en',
+        sort: { by: 'uniqueId', direction: 'desc' },
+        statusOptions: [],
+      }),
+    ).toBeGreaterThan(0)
   })
 })

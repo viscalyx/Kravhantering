@@ -2011,4 +2011,111 @@ describe('RequirementsTable', () => {
     expect(trs[0]?.className).not.toContain('bg-secondary-50/40')
     expect(trs[1]?.className).toContain('bg-secondary-50/40')
   })
+
+  it('renders filter chips for all filterable columns when filter values are active', () => {
+    render(
+      <RequirementsTable
+        areas={[{ id: 10, name: 'Payments' }]}
+        categories={[{ id: 20, nameEn: 'Business', nameSv: 'Verksamhet' }]}
+        filterValues={{
+          areaIds: [10],
+          categoryIds: [20],
+          descriptionSearch: 'search-term',
+          qualityCharacteristicIds: [40],
+          requiresTesting: ['true'],
+          statuses: [3],
+          typeIds: [30],
+        }}
+        getName={opt => opt.nameSv}
+        getStatusName={opt => opt.nameSv}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        qualityCharacteristics={[
+          {
+            id: 40,
+            nameEn: 'Reliability',
+            nameSv: 'Tillforlitlighet',
+            parentId: null,
+          },
+        ]}
+        rows={[makeRow()]}
+        statusOptions={[
+          {
+            color: '#22c55e',
+            id: 3,
+            nameEn: 'Published',
+            nameSv: 'Publicerad',
+          },
+        ]}
+        types={[{ id: 30, nameEn: 'Functional', nameSv: 'Funktionellt' }]}
+        visibleColumns={[
+          'uniqueId',
+          'description',
+          'area',
+          'category',
+          'type',
+          'qualityCharacteristic',
+          'status',
+          'requiresTesting',
+        ]}
+      />,
+    )
+
+    const chips = document.querySelectorAll(
+      '[data-developer-mode-name="header chip"]',
+    )
+    expect(chips.length).toBeGreaterThanOrEqual(6)
+
+    const chipValues = Array.from(chips).map(chip =>
+      chip.getAttribute('data-developer-mode-value'),
+    )
+    expect(chipValues).toContain('Payments')
+    expect(chipValues).toContain('Verksamhet')
+    expect(chipValues).toContain('Funktionellt')
+    expect(chipValues).toContain('Tillforlitlighet')
+    expect(chipValues).toContain('Publicerad')
+    expect(chipValues).toContain('search-term')
+  })
+
+  it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
+    let observedElement: Element | null = null
+    let observerCallback: IntersectionObserverCallback | null = null
+
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class MockIntersectionObserver {
+        constructor(callback: IntersectionObserverCallback) {
+          observerCallback = callback
+        }
+
+        disconnect() {}
+
+        observe(target: Element) {
+          observedElement = target
+        }
+
+        unobserve() {}
+      },
+    )
+
+    const onLoadMore = vi.fn()
+    render(
+      <RequirementsTable
+        hasMore
+        locale="sv"
+        onLoadMore={onLoadMore}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(observedElement).toBeTruthy()
+
+    act(() => {
+      observerCallback?.(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(onLoadMore).toHaveBeenCalledTimes(1)
+  })
 })
