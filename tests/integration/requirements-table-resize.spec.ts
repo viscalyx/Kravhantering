@@ -316,47 +316,70 @@ test.describe('Requirements table column resizing', () => {
         await page.goto('/sv/kravkatalog')
 
         const { detailCell } = await openFirstRequirementDetail(page)
-        const bottomSegment = page
-          .locator('[data-column-resize-segment="bottom"]')
-          .first()
-        const fallbackHandle = page
-          .locator('[data-column-resize-handle]')
-          .first()
 
         await expect(detailCell).toBeVisible()
 
         const detailBox = await detailCell.boundingBox()
-        const resizeProbeBox =
-          (await bottomSegment.boundingBox()) ??
-          (await fallbackHandle.boundingBox())
 
         expect(detailBox).not.toBeNull()
         if (!detailBox) {
           throw new Error('Expanded detail pane did not expose a bounding box.')
         }
-        expect(resizeProbeBox).not.toBeNull()
-        if (!resizeProbeBox) {
-          throw new Error(
-            'Description resize handle did not expose a bounding box.',
-          )
-        }
 
         const viewportSize = page.viewportSize()
         const viewportHeight = viewportSize?.height ?? viewport.height
         const viewportWidth = viewportSize?.width ?? viewport.width
-        const probePoint = {
-          x: Math.max(
-            32,
-            Math.min(
-              viewportWidth - 32,
-              Math.round(resizeProbeBox.x + resizeProbeBox.width / 2),
-            ),
-          ),
-          y: Math.min(
-            viewportHeight - 32,
-            Math.round(detailBox.y + detailBox.height + 128),
-          ),
-        }
+
+        // Find a probe point below the detail pane that does not overlap
+        // any bottom resize-segment strip.  Segments are narrow vertical
+        // strips at column borders; we query their actual positions so the
+        // probe is placed in a clear gap between them.
+        const probePoint = await page.evaluate(
+          ({ detailBottom, vpHeight, vpWidth }) => {
+            const bottomSegments = Array.from(
+              document.querySelectorAll(
+                '[data-column-resize-segment="bottom"]',
+              ),
+            )
+            const rects = bottomSegments.map(s => {
+              const r = s.getBoundingClientRect()
+              return {
+                bottom: r.bottom,
+                left: r.left,
+                right: r.right,
+                top: r.top,
+              }
+            })
+            const maxSegBottom = rects.reduce(
+              (m, r) => Math.max(m, r.bottom),
+              0,
+            )
+
+            // Pick y below the tallest bottom segment, clamped to viewport.
+            const candidateY =
+              maxSegBottom > 0
+                ? Math.round(maxSegBottom + 16)
+                : Math.round(detailBottom + 128)
+            const y = Math.min(vpHeight - 32, candidateY)
+
+            // Pick x in the horizontal centre; if that overlaps a segment
+            // at the chosen y, nudge right past its right edge.
+            let x = Math.round(vpWidth / 2)
+            for (const r of rects) {
+              if (y >= r.top && y <= r.bottom && x >= r.left && x <= r.right) {
+                x = Math.round(r.right + 8)
+                break
+              }
+            }
+
+            return { x: Math.min(x, vpWidth - 32), y }
+          },
+          {
+            detailBottom: detailBox.y + detailBox.height,
+            vpHeight: viewportHeight,
+            vpWidth: viewportWidth,
+          },
+        )
 
         const targetAtProbe = await page.evaluate(({ x, y }) => {
           const el = document.elementFromPoint(x, y)

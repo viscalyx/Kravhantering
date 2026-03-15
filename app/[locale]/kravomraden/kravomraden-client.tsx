@@ -9,8 +9,14 @@ interface Area {
   description: string | null
   id: number
   name: string
-  ownerId: string | null
+  ownerId: number | null
+  ownerName: string | null
   prefix: string
+}
+
+interface OwnerOption {
+  id: number
+  name: string
 }
 
 export default function KravomradenClient() {
@@ -19,6 +25,7 @@ export default function KravomradenClient() {
   const tc = useTranslations('common')
 
   const [areas, setAreas] = useState<Area[]>([])
+  const [owners, setOwners] = useState<OwnerOption[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
@@ -31,9 +38,20 @@ export default function KravomradenClient() {
 
   const fetchAreas = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/requirement-areas')
-    if (res.ok) setAreas(((await res.json()) as { areas?: Area[] }).areas ?? [])
-    setLoading(false)
+    try {
+      const [areasRes, ownersRes] = await Promise.all([
+        fetch('/api/requirement-areas'),
+        fetch('/api/owners'),
+      ])
+      if (areasRes.ok)
+        setAreas(((await areasRes.json()) as { areas?: Area[] }).areas ?? [])
+      if (ownersRes.ok)
+        setOwners(
+          ((await ownersRes.json()) as { owners?: OwnerOption[] }).owners ?? [],
+        )
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -49,7 +67,10 @@ export default function KravomradenClient() {
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        ownerId: form.ownerId ? Number(form.ownerId) : undefined,
+      }),
     })
     setShowForm(false)
     setEditId(null)
@@ -63,7 +84,7 @@ export default function KravomradenClient() {
       prefix: area.prefix,
       name: area.name,
       description: area.description ?? '',
-      ownerId: area.ownerId ?? '',
+      ownerId: area.ownerId != null ? String(area.ownerId) : '',
     })
     setShowForm(true)
   }
@@ -93,6 +114,9 @@ export default function KravomradenClient() {
           </h1>
           <button
             className="btn-primary inline-flex items-center gap-1.5"
+            data-developer-mode-context="areas"
+            data-developer-mode-name="create button"
+            data-developer-mode-priority="350"
             onClick={() => {
               setShowForm(true)
               setEditId(null)
@@ -108,6 +132,10 @@ export default function KravomradenClient() {
         {showForm && (
           <form
             className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
+            data-developer-mode-context="areas"
+            data-developer-mode-name="crud form"
+            data-developer-mode-priority="340"
+            data-developer-mode-value={editId ? 'edit' : 'create'}
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
@@ -162,12 +190,35 @@ export default function KravomradenClient() {
                 value={form.description}
               />
             </div>
+            <div>
+              <label
+                className="block text-sm font-medium mb-1"
+                htmlFor="area-owner"
+              >
+                {t('owner')}
+              </label>
+              <select
+                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                id="area-owner"
+                onChange={e =>
+                  setForm(f => ({ ...f, ownerId: e.target.value }))
+                }
+                value={form.ownerId}
+              >
+                <option value="">{t('owner')}...</option>
+                {owners.map(o => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-3">
               <button className="btn-primary" type="submit">
                 {tc('save')}
               </button>
               <button
-                className="px-4 py-2.5 rounded-xl border text-sm"
+                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                 onClick={() => setShowForm(false)}
                 type="button"
               >
@@ -182,13 +233,19 @@ export default function KravomradenClient() {
             {tc('loading')}
           </p>
         ) : (
-          <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
+          <div
+            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
+            data-developer-mode-context="areas"
+            data-developer-mode-name="crud table"
+            data-developer-mode-priority="340"
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
                   <th className="py-3 px-4 font-medium">{t('prefix')}</th>
                   <th className="py-3 px-4 font-medium">{t('name')}</th>
                   <th className="py-3 px-4 font-medium">{t('description')}</th>
+                  <th className="py-3 px-4 font-medium">{t('owner')}</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
@@ -205,16 +262,25 @@ export default function KravomradenClient() {
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 truncate max-w-xs">
                       {area.description ?? '—'}
                     </td>
+                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                      {area.ownerName ?? '—'}
+                    </td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3"
+                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                        data-developer-mode-context="areas"
+                        data-developer-mode-name="table action"
+                        data-developer-mode-value="edit"
                         onClick={() => handleEdit(area)}
                         type="button"
                       >
                         {tc('edit')}
                       </button>
                       <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline"
+                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                        data-developer-mode-context="areas"
+                        data-developer-mode-name="table action"
+                        data-developer-mode-value="delete"
                         onClick={e =>
                           handleDelete(area.id, e.currentTarget as HTMLElement)
                         }

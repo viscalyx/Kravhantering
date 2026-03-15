@@ -32,7 +32,7 @@ interface TransitionTarget {
 }
 
 interface RequirementDetail {
-  area: { name: string } | null
+  area: { name: string; ownerName: string | null } | null
   id: number
   isArchived: boolean
   uniqueId: string
@@ -664,6 +664,27 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
+                {inline && req.area && (
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="area"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('area')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {req.area.name}
+                    </p>
+                    {req.area.ownerName && (
+                      <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                        {t('area')} — {t('areaOwner')}: {req.area.ownerName}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 {selectedVersion?.references &&
                   selectedVersion.references.length > 0 && (
                     <div
@@ -915,6 +936,11 @@ export default function RequirementDetailClient({
                     {t('area')}:
                   </span>{' '}
                   <span className="font-medium">{req.area?.name ?? '—'}</span>
+                  {req.area?.ownerName && (
+                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                      {t('area')} — {t('areaOwner')}: {req.area.ownerName}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <span className="text-secondary-600 dark:text-secondary-400">

@@ -57,7 +57,7 @@ press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
 See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the full
 behavior and maintenance rules.
 
-- `data-agent-*` markers or scanner heuristics
+- `data-developer-mode-*` markers or scanner heuristics
 - [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md)
 - unit and integration tests that cover the affected surface
 - repo instructions if the maintenance rule itself changes

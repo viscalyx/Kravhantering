@@ -22,7 +22,7 @@ export async function createArea(
     prefix: string
     name: string
     description?: string
-    ownerId?: string
+    ownerId?: number
   },
 ) {
   const [area] = await db
@@ -44,7 +44,7 @@ export async function updateArea(
   data: {
     name?: string
     description?: string
-    ownerId?: string
+    ownerId?: number
   },
 ) {
   const [updated] = await db

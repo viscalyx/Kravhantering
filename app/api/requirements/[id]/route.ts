@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
+import { getOwnerById } from '@/lib/dal/owners'
 import { getDb } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
@@ -24,7 +25,16 @@ export async function GET(
       id: Number(id),
       view: 'history',
     })
-    return NextResponse.json(result.requirement)
+    const req = result.requirement
+    let areaOwnerName: string | null = null
+    if (req.area?.ownerId) {
+      const owner = await getOwnerById(db, req.area.ownerId)
+      if (owner) areaOwnerName = `${owner.firstName} ${owner.lastName}`
+    }
+    return NextResponse.json({
+      ...req,
+      area: req.area ? { ...req.area, ownerName: areaOwnerName } : null,
+    })
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })

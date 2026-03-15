@@ -14,6 +14,7 @@ import {
   Save,
   ShieldCheck,
   Theater,
+  UserCog,
   Wrench,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -278,6 +279,13 @@ export default function AdminClient({
       icon: Wrench,
       id: 'implementationTypes',
       label: tn('implementationTypes'),
+    },
+    {
+      description: ta('areaOwnersDescription'),
+      href: '/omradesagare',
+      icon: UserCog,
+      id: 'areaOwners',
+      label: tn('areaOwners'),
     },
   ]
 

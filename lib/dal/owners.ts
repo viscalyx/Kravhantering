@@ -1,55 +1,80 @@
-import fallbackData from '@/lib/owners-fallback.json'
+import { eq } from 'drizzle-orm'
+import { owners } from '@/drizzle/schema'
+import type { Database } from '@/lib/db'
 
 export interface Owner {
   email: string
   firstName: string
-  id: string
+  id: number
   lastName: string
 }
 
-interface OwnerApiResponse {
-  email: string
-  first_name: string
-  id: string
-  last_name: string
-}
-
-export async function listOwners(): Promise<Owner[]> {
-  const apiUrl = process.env.OWNERS_API_URL
-
-  if (apiUrl) {
-    const response = await fetch(apiUrl, {
-      headers: { Accept: 'application/json' },
-      next: { revalidate: 300 },
-    })
-
-    if (!response.ok) {
-      console.error(`Owner API returned ${response.status}`)
-      return mapFallback()
-    }
-
-    const data: OwnerApiResponse[] = await response.json()
-    return data.map(o => ({
-      id: o.id,
-      firstName: o.first_name,
-      lastName: o.last_name,
-      email: o.email,
-    }))
-  }
-
-  return mapFallback()
-}
-
-function mapFallback(): Owner[] {
-  return fallbackData.map(o => ({
+export async function listOwners(db: Database): Promise<Owner[]> {
+  const rows = await db.query.owners.findMany({
+    orderBy: [owners.lastName, owners.firstName],
+  })
+  return rows.map(o => ({
     id: o.id,
-    firstName: o.first_name,
-    lastName: o.last_name,
+    firstName: o.firstName,
+    lastName: o.lastName,
     email: o.email,
   }))
 }
 
-export async function getOwnerById(id: string): Promise<Owner | null> {
-  const owners = await listOwners()
-  return owners.find(o => o.id === id) ?? null
+export async function getOwnerById(
+  db: Database,
+  id: number,
+): Promise<Owner | null> {
+  const row = await db.query.owners.findFirst({
+    where: eq(owners.id, id),
+  })
+  if (!row) return null
+  return {
+    id: row.id,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    email: row.email,
+  }
+}
+
+export async function createOwner(
+  db: Database,
+  data: { firstName: string; lastName: string; email: string },
+) {
+  const [row] = await db
+    .insert(owners)
+    .values({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+    })
+    .returning()
+  return row
+}
+
+export async function updateOwner(
+  db: Database,
+  id: number,
+  data: { firstName?: string; lastName?: string; email?: string },
+): Promise<Owner | null> {
+  const rows = await db
+    .update(owners)
+    .set({
+      ...data,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(owners.id, id))
+    .returning()
+  if (!rows[0]) return null
+  return {
+    id: rows[0].id,
+    firstName: rows[0].firstName,
+    lastName: rows[0].lastName,
+    email: rows[0].email,
+  }
+}
+
+export async function deleteOwner(db: Database, id: number): Promise<boolean> {
+  const rows = await db.delete(owners).where(eq(owners.id, id)).returning()
+  return rows.length > 0
 }
