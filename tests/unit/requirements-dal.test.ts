@@ -443,11 +443,10 @@ describe('requirements DAL list semantics', () => {
     try {
       await seedLookups(db)
 
-      await db.insert(schema.requirementAreas).values({
-        id: 2,
-        name: 'Zulu area',
-        prefix: 'ZUL',
-      })
+      await db.insert(schema.requirementAreas).values([
+        { id: 2, name: 'Zulu area', prefix: 'ZUL' },
+        { id: 3, name: '', prefix: 'EMP' },
+      ])
 
       await db.insert(schema.requirements).values({
         id: 1,
@@ -479,17 +478,40 @@ describe('requirements DAL list semantics', () => {
         versionNumber: 1,
       })
 
+      await db.insert(schema.requirements).values({
+        id: 3,
+        isArchived: false,
+        requirementAreaId: 3,
+        sequenceNumber: 3,
+        uniqueId: 'ARC0003',
+      })
+      await db.insert(schema.requirementVersions).values({
+        description: '',
+        requirementId: 3,
+        statusId: 3,
+        publishedAt: '2026-03-01T00:00:00.000Z',
+        versionNumber: 1,
+      })
+
       const descRows = await listRequirements(db as unknown as AppDatabase, {
         includeArchived: true,
         sortBy: 'description',
       })
-      expect(descRows.map(r => r.uniqueId)).toEqual(['ARC0002', 'ARC0001'])
+      expect(descRows.map(r => r.uniqueId)).toEqual([
+        'ARC0002',
+        'ARC0001',
+        'ARC0003',
+      ])
 
       const areaRows = await listRequirements(db as unknown as AppDatabase, {
         includeArchived: true,
         sortBy: 'area',
       })
-      expect(areaRows.map(r => r.uniqueId)).toEqual(['ARC0001', 'ARC0002'])
+      expect(areaRows.map(r => r.uniqueId)).toEqual([
+        'ARC0001',
+        'ARC0002',
+        'ARC0003',
+      ])
     } finally {
       sqlite.close()
     }

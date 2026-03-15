@@ -36,8 +36,13 @@ describe('requirement-statuses/[id] route', () => {
       headers: { 'Content-Type': 'application/json' },
     })
     const res = await PUT(req, makeParams('1'))
-    const json = (await res.json()) as { id: number }
-    expect(json.id).toBe(1)
+    expect(res.status).toBe(200)
+    const json = (await res.json()) as {
+      id: number
+      nameSv: string
+      nameEn: string
+    }
+    expect(json).toEqual({ id: 1, nameSv: 'X', nameEn: 'X' })
     expect(mockUpdateStatus).toHaveBeenCalledWith(expect.anything(), 1, {
       nameSv: 'X',
       nameEn: 'X',

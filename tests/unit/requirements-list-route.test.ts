@@ -105,9 +105,12 @@ describe('requirements route', () => {
           sortDirection: 'desc',
           limit: 10,
           offset: 5,
+          areaIds: [1],
           categoryIds: [2],
           typeIds: [3],
           qualityCharacteristicIds: [4],
+          statuses: [1],
+          requiresTesting: [true],
         }),
       )
     })

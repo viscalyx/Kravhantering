@@ -137,6 +137,7 @@ describe('requirement list view helpers', () => {
         {
           areaIds: [1],
           descriptionSearch: 'secure',
+          qualityCharacteristicIds: [5],
           statuses: [3],
           uniqueIdSearch: 'INT',
         },
@@ -145,6 +146,7 @@ describe('requirement list view helpers', () => {
     ).toEqual({
       areaIds: undefined,
       descriptionSearch: 'secure',
+      qualityCharacteristicIds: undefined,
       statuses: undefined,
       uniqueIdSearch: 'INT',
     })
