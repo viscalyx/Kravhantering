@@ -325,5 +325,10 @@
   },
   "footer": {
     "copyright": "© {year} Contributors to Requirements Management. All rights reserved."
+  },
+  "developerMode": {
+    "badge": "Developer Mode",
+    "copied": "Copied",
+    "copyFailed": "Copy failed"
   }
 }

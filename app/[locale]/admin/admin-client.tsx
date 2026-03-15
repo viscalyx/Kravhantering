@@ -42,6 +42,12 @@ const adminTabs: { icon: typeof Languages; id: AdminTab }[] = [
   { icon: FolderCog, id: 'referenceData' },
 ]
 
+const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
+  columns: 'columns',
+  referenceData: 'reference data',
+  terminology: 'terminology',
+}
+
 function createShippedTerminology() {
   return buildUiTerminologyPayload(getDefaultUiTerminology())
 }
@@ -317,6 +323,9 @@ export default function AdminClient({
             <div
               aria-label={ta('title')}
               className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
+              data-developer-mode-name="navigation"
+              data-developer-mode-priority="320"
+              data-developer-mode-value="admin center tabs"
               role="tablist"
             >
               {adminTabs.map(tab => (
@@ -328,6 +337,12 @@ export default function AdminClient({
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
                   }`}
+                  data-developer-mode-context="admin center"
+                  data-developer-mode-name="edge tab"
+                  data-developer-mode-priority="360"
+                  data-developer-mode-value={
+                    ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id]
+                  }
                   id={`${tab.id}-tab`}
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -346,6 +361,10 @@ export default function AdminClient({
           <section
             aria-labelledby="terminology-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            data-developer-mode-context="admin center"
+            data-developer-mode-name="tab panel"
+            data-developer-mode-priority="340"
+            data-developer-mode-value="terminology"
             id="terminology-panel"
             role="tabpanel"
           >
@@ -484,6 +503,10 @@ export default function AdminClient({
           <section
             aria-labelledby="columns-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            data-developer-mode-context="admin center"
+            data-developer-mode-name="tab panel"
+            data-developer-mode-priority="340"
+            data-developer-mode-value="columns"
             id="columns-panel"
             role="tabpanel"
           >
@@ -591,6 +614,10 @@ export default function AdminClient({
           <section
             aria-labelledby="referenceData-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
+            data-developer-mode-context="admin center"
+            data-developer-mode-name="tab panel"
+            data-developer-mode-priority="340"
+            data-developer-mode-value="reference data"
             id="referenceData-panel"
             role="tabpanel"
           >

@@ -139,6 +139,8 @@ export default function ThemePicker() {
         aria-haspopup="true"
         aria-label={t('pickColor')}
         className="p-2 rounded-xl text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-all duration-200"
+        data-developer-mode-name="button"
+        data-developer-mode-value={t('pickColor')}
         onClick={() => setOpen(!open)}
         title={t('pickColor')}
         type="button"

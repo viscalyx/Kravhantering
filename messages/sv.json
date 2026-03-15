@@ -325,5 +325,10 @@
   },
   "footer": {
     "copyright": "© {year} Bidragsgivare till Kravhantering. Alla rättigheter förbehållna."
+  },
+  "developerMode": {
+    "badge": "Developer Mode",
+    "copied": "Kopierad",
+    "copyFailed": "Kopiering misslyckades"
   }
 }

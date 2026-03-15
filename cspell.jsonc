@@ -192,7 +192,12 @@
     "pointerup",
     "pointercancel",
     "Kravtexter",
-    "Kravtexterna"
+    "Kravtexterna",
+    "viewports",
+    "contenteditable",
+    "labelledby",
+    "rescans",
+    "WCAG"
   ],
   "flagWords": [],
   "ignorePaths": [

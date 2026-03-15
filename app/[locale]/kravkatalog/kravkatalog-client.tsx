@@ -494,6 +494,8 @@ export default function KravkatalogClient({
               filterValues={filters}
               floatingActions={[
                 {
+                  developerModeContext: 'requirements table',
+                  developerModeValue: 'new requirement',
                   ariaLabel: t('newRequirement'),
                   href: '/kravkatalog/ny',
                   icon: <Plus aria-hidden="true" className="h-4 w-4" />,
@@ -502,12 +504,16 @@ export default function KravkatalogClient({
                   variant: 'primary',
                 },
                 {
+                  developerModeContext: 'requirements table',
+                  developerModeValue: 'print',
                   ariaLabel: tc('print'),
                   icon: <Printer aria-hidden="true" className="h-4 w-4" />,
                   id: 'print',
                   onClick: () => globalThis.print(),
                 },
                 {
+                  developerModeContext: 'requirements table',
+                  developerModeValue: 'export',
                   ariaLabel: tc('export'),
                   icon: <Download aria-hidden="true" className="h-4 w-4" />,
                   id: 'export',

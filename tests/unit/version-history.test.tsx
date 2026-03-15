@@ -256,4 +256,69 @@ describe('VersionHistory', () => {
     expect(screen.queryByTitle('Hide newer versions')).toBeNull()
     expect(container.querySelector('[data-version-number="1"]')).toBeNull()
   })
+
+  it('exposes developer-mode metadata for version history pills and toggles', () => {
+    const versions = [
+      makeVersion(10),
+      makeVersion(9),
+      makeVersion(8),
+      makeVersion(7),
+      makeVersion(6),
+      makeVersion(5),
+      makeVersion(4, {
+        archivedAt: '2026-03-04',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(3, {
+        archivedAt: '2026-03-03',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(2, {
+        archivedAt: '2026-03-02',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(1, {
+        archivedAt: '2026-03-01',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+    ]
+
+    const { container } = render(
+      <VersionHistory
+        developerModeContext="requirements table > inline detail pane: REQ-123"
+        onVersionSelect={vi.fn()}
+        selectedVersionNumber={10}
+        versions={versions}
+      />,
+    )
+
+    expect(
+      container.querySelector('[data-developer-mode-name="version history"]'),
+    ).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirements table > inline detail pane: REQ-123',
+    )
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="version pill"][data-developer-mode-value="v10"]',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="version history toggle"][data-developer-mode-value="show older versions"]',
+      ),
+    ).toBeInTheDocument()
+  })
 })

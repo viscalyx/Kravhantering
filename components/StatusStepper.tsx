@@ -46,10 +46,16 @@ function sliderClipPath(isFirst: boolean) {
 
 interface StatusStepperProps {
   currentStatusId: number
+  developerModeContext?: string
   statuses?: StatusStep[]
 }
 
+function getStatusStepDeveloperModeValue(step: StatusStep) {
+  return step.nameEn.toLowerCase()
+}
+
 export default function StatusStepper({
+  developerModeContext,
   currentStatusId,
   statuses,
 }: StatusStepperProps) {
@@ -88,11 +94,21 @@ export default function StatusStepper({
   }, [targetIndex])
 
   return (
-    <div className="flex w-full relative" ref={containerRef}>
+    <div
+      className="flex w-full relative"
+      data-developer-mode-context={developerModeContext}
+      data-developer-mode-name="status stepper"
+      data-developer-mode-priority="330"
+      ref={containerRef}
+    >
       {/* Background (inactive) steps */}
       {steps.map((step, i) => (
         <div
           className="flex-1 min-w-0"
+          data-developer-mode-context={developerModeContext}
+          data-developer-mode-name="status step"
+          data-developer-mode-priority="340"
+          data-developer-mode-value={getStatusStepDeveloperModeValue(step)}
           key={step.id}
           ref={el => {
             stepRefs.current[i] = el

@@ -21,6 +21,8 @@
 ## General Rules
 
 - After changes, update relevant `docs/*.md` when behavior or workflows change.
+- If you change visible UI elements, labels, roles, or layout surfaces, also update the Developer Mode developer help in `docs/developer-mode-overlay.md`, the related `data-developer-mode-*` markers or scanner heuristics, and the relevant tests.
+- Developer Mode is a desktop-only developer tool. Its overlay, chips, badge, and toast do **not** need to follow WCAG touch-target sizes, mobile responsiveness, or accessibility guidelines. Keep chips compact so they don't obscure the underlying UI.
 
 ## Database Schema Changes
 

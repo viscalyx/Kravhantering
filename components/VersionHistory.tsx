@@ -21,6 +21,7 @@ interface Version {
 
 interface VersionHistoryProps {
   archivedStatusId?: number
+  developerModeContext?: string
   onVersionSelect: (versionNumber: number) => void
   selectedVersionNumber: number
   versions: Version[]
@@ -29,9 +30,30 @@ interface VersionHistoryProps {
 /** Max total versions before collapse logic kicks in */
 const MAX_VISIBLE_WITHOUT_COLLAPSE = 8
 
+function getVersionHistoryToggleDeveloperModeValue(
+  side: 'before' | 'after',
+  expanded: boolean,
+) {
+  if (side === 'before') {
+    return expanded ? 'hide newer versions' : 'show newer versions'
+  }
+
+  return expanded ? 'hide older versions' : 'show older versions'
+}
+
+function getVersionPillDeveloperModeValue(versionNumber: number) {
+  return `v${versionNumber}`
+}
+
 const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
   function VersionHistory(
-    { archivedStatusId = 4, versions, selectedVersionNumber, onVersionSelect },
+    {
+      developerModeContext,
+      archivedStatusId = 4,
+      versions,
+      selectedVersionNumber,
+      onVersionSelect,
+    },
     ref,
   ) {
     const t = useTranslations('requirement')
@@ -182,7 +204,12 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
       'inline-flex items-center gap-0.5 text-xs px-2 py-1 rounded-full border border-dashed border-secondary-300 dark:border-secondary-600 text-secondary-500 dark:text-secondary-400 hover:border-secondary-400 dark:hover:border-secondary-500 hover:text-secondary-700 dark:hover:text-secondary-300 transition-colors cursor-pointer'
 
     return (
-      <div ref={ref}>
+      <div
+        data-developer-mode-context={developerModeContext}
+        data-developer-mode-name="version history"
+        data-developer-mode-priority="330"
+        ref={ref}
+      >
         <div className="flex flex-wrap items-center gap-1.5">
           <Clock
             aria-hidden="true"
@@ -201,6 +228,13 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
               return (
                 <button
                   className={toggleClasses}
+                  data-developer-mode-context={developerModeContext}
+                  data-developer-mode-name="version history toggle"
+                  data-developer-mode-priority="340"
+                  data-developer-mode-value={getVersionHistoryToggleDeveloperModeValue(
+                    item.side,
+                    item.expanded,
+                  )}
                   key={item.id}
                   onClick={item.onToggle}
                   title={t(titleKey)}
@@ -236,6 +270,12 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                     ? 'shadow-sm'
                     : 'border-secondary-200 dark:border-secondary-700 hover:border-secondary-300 dark:hover:border-secondary-600'
                 } ${isSelected ? 'ring-1' : ''}`}
+                data-developer-mode-context={developerModeContext}
+                data-developer-mode-name="version pill"
+                data-developer-mode-priority="350"
+                data-developer-mode-value={getVersionPillDeveloperModeValue(
+                  v.versionNumber,
+                )}
                 data-version-number={v.versionNumber}
                 key={v.id}
                 onClick={() => onVersionSelect(v.versionNumber)}

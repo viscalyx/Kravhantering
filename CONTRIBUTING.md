@@ -46,6 +46,22 @@ docs/             Project documentation
 tests/            Unit and integration tests
 ```
 
+## Developer Mode / Developer Help
+
+The hidden Developer Mode overlay is a maintained developer-help surface for AI
+agents and humans who need stable UI names. If you change visible UI elements,
+labels, layout surfaces, or interaction patterns, update the relevant:
+
+To enable Developer Mode in a browser, focus a non-editable part of the page and
+press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
+See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the full
+behavior and maintenance rules.
+
+- `data-agent-*` markers or scanner heuristics
+- [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md)
+- unit and integration tests that cover the affected surface
+- repo instructions if the maintenance rule itself changes
+
 ## Dependency Management
 
 ### Purge Install

@@ -354,7 +354,7 @@ test.describe('Requirements table column resizing', () => {
           ),
           y: Math.min(
             viewportHeight - 32,
-            Math.round(detailBox.y + detailBox.height + 64),
+            Math.round(detailBox.y + detailBox.height + 128),
           ),
         }
 

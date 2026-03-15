@@ -169,3 +169,10 @@ The behaviors below apply to the requirement list rendered by:
   - `lib/requirements/list-view.ts`
   - `tests/unit/requirement-list-view.test.ts`
   - `tests/unit/kravkatalog-client.test.tsx`
+- If you change table labels, named table surfaces, floating pills, or the
+  inline detail pane used by Developer Mode, also update:
+  - `docs/developer-mode-overlay.md`
+  - `tests/unit/developer-mode.test.ts`
+  - `tests/unit/developer-mode-provider.test.tsx`
+  - `tests/unit/requirements-table.test.tsx`
+  - `tests/integration/developer-mode-overlay.spec.ts`

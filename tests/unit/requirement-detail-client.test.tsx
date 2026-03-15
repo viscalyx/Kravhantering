@@ -86,13 +86,18 @@ vi.mock('@/i18n/routing', () => ({
 
 vi.mock('@/components/StatusStepper', () => ({
   default: ({
+    developerModeContext,
     currentStatusId,
     statuses,
   }: {
+    developerModeContext?: string
     currentStatusId: number
     statuses: { id: number }[]
   }) => (
-    <div data-testid="status-stepper">
+    <div
+      data-developer-mode-context={developerModeContext}
+      data-testid="status-stepper"
+    >
       {`status:${currentStatusId};count:${statuses.length}`}
     </div>
   ),
@@ -104,16 +109,22 @@ vi.mock('@/components/VersionHistory', () => {
   return {
     default: React.forwardRef(function MockVersionHistory(
       {
+        developerModeContext,
         onVersionSelect,
         versions,
       }: {
+        developerModeContext?: string
         onVersionSelect: (versionNumber: number) => void
         versions: { id: number; versionNumber: number }[]
       },
       ref: ForwardedRef<HTMLDivElement>,
     ) {
       return (
-        <div data-testid="version-history" ref={ref}>
+        <div
+          data-developer-mode-context={developerModeContext}
+          data-testid="version-history"
+          ref={ref}
+        >
           {versions.map(version => (
             <button
               data-version-number={version.versionNumber}
@@ -378,6 +389,88 @@ describe('RequirementDetailClient', () => {
     renderSubject({ inline: true })
 
     expect(screen.getByText('Loading')).toBeInTheDocument()
+  })
+
+  it('exposes developer-mode metadata for inline detail sections, actions, and nested surfaces', async () => {
+    const requirement = makeRequirement([
+      makeVersion(3, {
+        description: 'Draft description',
+        requiresTesting: false,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+      makeVersion(2, {
+        acceptanceCriteria: 'Published acceptance',
+        description: 'Published description',
+        publishedAt: '2026-03-02',
+        references: [
+          { id: 1, name: 'API spec', uri: 'https://example.com/spec' },
+        ],
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        versionScenarios: [
+          {
+            scenario: { id: 1, nameEn: 'Ordering', nameSv: 'Bestallning' },
+          },
+        ],
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+
+    renderSubject({ inline: true })
+
+    expect(await screen.findByText('Published description')).toBeInTheDocument()
+
+    const detailContext = 'requirements table > inline detail pane: REQ-123'
+    expect(
+      screen
+        .getByText('Published description')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-context', detailContext)
+    expect(
+      screen
+        .getByText('Published description')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'requirement text')
+    expect(
+      screen
+        .getByText('Published acceptance')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'acceptance criteria')
+    expect(
+      screen
+        .getByText('API spec')
+        .closest('[data-developer-mode-name="reference item"]'),
+    ).toHaveAttribute(
+      'data-developer-mode-context',
+      `${detailContext} > detail section: references`,
+    )
+    expect(
+      screen
+        .getByText('Bestallning')
+        .closest('[data-developer-mode-name="scenario chip"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'Ordering')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'data-developer-mode-name',
+      'detail action',
+    )
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'data-developer-mode-value',
+      'edit',
+    )
+    expect(screen.getByTestId('status-stepper')).toHaveAttribute(
+      'data-developer-mode-context',
+      detailContext,
+    )
+    expect(screen.getByTestId('version-history')).toHaveAttribute(
+      'data-developer-mode-context',
+      detailContext,
+    )
   })
 
   it('renders the empty modal state when the requirement request fails', async () => {
