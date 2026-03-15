@@ -196,7 +196,8 @@
     "viewports",
     "contenteditable",
     "labelledby",
-    "rescans"
+    "rescans",
+    "WCAG"
   ],
   "flagWords": [],
   "ignorePaths": [
