@@ -64,4 +64,15 @@ describe('requirement-statuses/[id] route', () => {
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })
+
+  it('DELETE returns fallback message for non-Error rejection', async () => {
+    mockDeleteStatus.mockRejectedValue('unexpected')
+    const req = new NextRequest('http://localhost', { method: 'DELETE' })
+    const res = await DELETE(req, makeParams('1'))
+    expect(res.status).toBe(400)
+    const json = (await res.json()) as { error: string }
+    expect(json.error).toBe('Failed to delete status')
+    expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
+    expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+  })
 })
