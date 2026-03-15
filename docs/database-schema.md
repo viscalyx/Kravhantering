@@ -538,6 +538,21 @@ Managed via the area owners reference data page.
 
 **Unique index:** `uq_owners_email`.
 
+**Seed data:**
+
+<!-- markdownlint-disable MD013 MD034 -->
+| id | first\_name | last\_name | email |
+| --- | --- | --- | --- |
+| 1 | Anna | Johansson | anna.johansson@example.com |
+| 2 | Erik | Lindberg | erik.lindberg@example.com |
+| 3 | Maria | Svensson | maria.svensson@example.com |
+<!-- markdownlint-enable MD013 MD034 -->
+
+These owners are assigned to requirement areas via `owner_id`:
+Anna (1) → Integration, Prestanda, Lagring, Loggning, Data;
+Erik (2) → Säkerhet, Behörighet, Identitet;
+Maria (3) → Användbarhet, Drift.
+
 ---
 
 ### `requirement_areas`
