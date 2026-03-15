@@ -124,75 +124,79 @@ export default function OmradesagareClient() {
             data-developer-mode-value={editId ? 'edit' : 'create'}
             onSubmit={handleSubmit}
           >
-            <h2 className="text-lg font-semibold">
-              {editId ? tc('edit') : tc('create')}
-            </h2>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="owner-first-name"
-              >
-                {t('firstName')} *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="owner-first-name"
-                onChange={e =>
-                  setForm(f => ({ ...f, firstName: e.target.value }))
-                }
-                required
-                value={form.firstName}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="owner-last-name"
-              >
-                {t('lastName')} *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="owner-last-name"
-                onChange={e =>
-                  setForm(f => ({ ...f, lastName: e.target.value }))
-                }
-                required
-                value={form.lastName}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="owner-email"
-              >
-                {t('email')} *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="owner-email"
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                required
-                type="email"
-                value={form.email}
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                className="btn-primary"
-                disabled={submitting}
-                type="submit"
-              >
-                {submitting ? tc('loading') : tc('save')}
-              </button>
-              <button
-                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                onClick={() => setShowForm(false)}
-                type="button"
-              >
-                {tc('cancel')}
-              </button>
-            </div>
+            <fieldset disabled={submitting}>
+              <h2 className="text-lg font-semibold">
+                {editId ? tc('edit') : tc('create')}
+              </h2>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="owner-first-name"
+                >
+                  {t('firstName')} *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="owner-first-name"
+                  onChange={e =>
+                    setForm(f => ({ ...f, firstName: e.target.value }))
+                  }
+                  required
+                  value={form.firstName}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="owner-last-name"
+                >
+                  {t('lastName')} *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="owner-last-name"
+                  onChange={e =>
+                    setForm(f => ({ ...f, lastName: e.target.value }))
+                  }
+                  required
+                  value={form.lastName}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="owner-email"
+                >
+                  {t('email')} *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="owner-email"
+                  onChange={e =>
+                    setForm(f => ({ ...f, email: e.target.value }))
+                  }
+                  required
+                  type="email"
+                  value={form.email}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  className="btn-primary"
+                  disabled={submitting}
+                  type="submit"
+                >
+                  {submitting ? tc('loading') : tc('save')}
+                </button>
+                <button
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  onClick={() => setShowForm(false)}
+                  type="button"
+                >
+                  {tc('cancel')}
+                </button>
+              </div>
+            </fieldset>
           </form>
         )}
 
@@ -213,7 +217,9 @@ export default function OmradesagareClient() {
                   <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
                     <th className="py-3 px-4 font-medium">{t('name')}</th>
                     <th className="py-3 px-4 font-medium">{t('email')}</th>
-                    <th className="py-3 px-4" />
+                    <th className="py-3 px-4">
+                      <span className="sr-only">{tc('actions')}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
