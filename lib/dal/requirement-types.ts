@@ -94,7 +94,9 @@ export async function updateQualityCharacteristic(
 }
 
 export async function deleteQualityCharacteristic(db: Database, id: number) {
-  await db
+  const deleted = await db
     .delete(qualityCharacteristics)
     .where(eq(qualityCharacteristics.id, id))
+    .returning()
+  return deleted.length > 0
 }

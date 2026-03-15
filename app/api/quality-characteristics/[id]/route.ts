@@ -20,10 +20,18 @@ export async function PUT(
   }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const body = (await request.json()) as Parameters<
-    typeof updateQualityCharacteristic
-  >[2]
-  const category = await updateQualityCharacteristic(db, numericId, body)
+  const body = (await request.json()) as Record<string, unknown>
+  if (
+    (body.nameSv != null && typeof body.nameSv !== 'string') ||
+    (body.nameEn != null && typeof body.nameEn !== 'string')
+  ) {
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+  }
+  const category = await updateQualityCharacteristic(
+    db,
+    numericId,
+    body as Parameters<typeof updateQualityCharacteristic>[2],
+  )
   if (!category) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -52,7 +60,10 @@ export async function DELETE(
   }
 
   try {
-    await deleteQualityCharacteristic(db, numericId)
+    const deleted = await deleteQualityCharacteristic(db, numericId)
+    if (!deleted) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
   } catch {
     return NextResponse.json(
       { error: 'In use by requirements' },

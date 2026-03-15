@@ -71,7 +71,9 @@ describe('QualityCharacteristicsClient', () => {
         'nav.qualityCharacteristics',
       )
     })
-    expect(screen.getByText(/ISO\/IEC 25010:2023/)).toBeInTheDocument()
+    expect(
+      screen.getByText('qualityCharacteristicMgmt.subtitle'),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /common\.create/ }),
     ).toBeInTheDocument()

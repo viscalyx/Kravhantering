@@ -23,9 +23,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const body = (await request.json()) as Parameters<
-    typeof createQualityCharacteristic
-  >[1]
-  const category = await createQualityCharacteristic(db, body)
+  const body = (await request.json()) as Record<string, unknown>
+  if (
+    typeof body.nameSv !== 'string' ||
+    typeof body.nameEn !== 'string' ||
+    typeof body.requirementTypeId !== 'number'
+  ) {
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+  }
+  const category = await createQualityCharacteristic(
+    db,
+    body as unknown as Parameters<typeof createQualityCharacteristic>[1],
+  )
   return NextResponse.json(category, { status: 201 })
 }

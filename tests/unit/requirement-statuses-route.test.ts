@@ -50,5 +50,11 @@ describe('requirement-statuses route', () => {
     })
     const res = await POST(req)
     expect(res.status).toBe(201)
+    const json = (await res.json()) as {
+      id: number
+      nameSv: string
+      nameEn: string
+    }
+    expect(json).toEqual({ id: 2, nameSv: 'Ny', nameEn: 'New' })
   })
 })

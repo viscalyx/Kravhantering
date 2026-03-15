@@ -163,7 +163,8 @@
     "name": "Namn",
     "type": "Typ",
     "parent": "Överordnad egenskap",
-    "topLevel": "Toppnivå (ingen överordnad)"
+    "topLevel": "Toppnivå (ingen överordnad)",
+    "subtitle": "ISO/IEC 25010:2023 — Systems and software Quality Requirements and Evaluation (SQuaRE)"
   },
   "statusMgmt": {
     "name": "Namn",

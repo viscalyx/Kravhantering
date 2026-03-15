@@ -38,6 +38,10 @@ describe('requirement-statuses/[id] route', () => {
     const res = await PUT(req, makeParams('1'))
     const json = (await res.json()) as { id: number }
     expect(json.id).toBe(1)
+    expect(mockUpdateStatus).toHaveBeenCalledWith(expect.anything(), 1, {
+      nameSv: 'X',
+      nameEn: 'X',
+    })
   })
 
   it('DELETE deletes status', async () => {

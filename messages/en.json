@@ -163,7 +163,8 @@
     "name": "Name",
     "type": "Type",
     "parent": "Parent characteristic",
-    "topLevel": "Top-level (no parent)"
+    "topLevel": "Top-level (no parent)",
+    "subtitle": "ISO/IEC 25010:2023 — Systems and software Quality Requirements and Evaluation (SQuaRE)"
   },
   "statusMgmt": {
     "name": "Name",

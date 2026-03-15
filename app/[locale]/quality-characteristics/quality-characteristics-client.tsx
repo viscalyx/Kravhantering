@@ -30,6 +30,7 @@ export default function QualityCharacteristicsClient() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState({
     nameSv: '',
     nameEn: '',
@@ -72,26 +73,42 @@ export default function QualityCharacteristicsClient() {
     fetchData()
   }, [fetchData])
 
+  const { confirm } = useConfirmModal()
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
     const method = editId ? 'PUT' : 'POST'
     const url = editId
       ? `/api/quality-characteristics/${editId}`
       : '/api/quality-characteristics'
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nameSv: form.nameSv,
-        nameEn: form.nameEn,
-        requirementTypeId: Number(form.requirementTypeId),
-        parentId: form.parentId ? Number(form.parentId) : null,
-      }),
-    })
-    setShowForm(false)
-    setEditId(null)
-    setForm(resetForm())
-    fetchData()
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nameSv: form.nameSv,
+          nameEn: form.nameEn,
+          requirementTypeId: Number(form.requirementTypeId),
+          parentId: form.parentId ? Number(form.parentId) : null,
+        }),
+      })
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string }
+        await confirm({
+          message: data.error ?? tc('error'),
+          showCancel: false,
+          icon: 'warning',
+        })
+        return
+      }
+      setShowForm(false)
+      setEditId(null)
+      setForm(resetForm())
+      fetchData()
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleEdit = (cat: TypeCategory) => {
@@ -104,8 +121,6 @@ export default function QualityCharacteristicsClient() {
     })
     setShowForm(true)
   }
-
-  const { confirm } = useConfirmModal()
 
   const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
     if (
@@ -135,6 +150,7 @@ export default function QualityCharacteristicsClient() {
   const parentOptions = categories.filter(
     c =>
       c.parentId === null &&
+      c.id !== editId &&
       (form.requirementTypeId
         ? c.requirementTypeId === Number(form.requirementTypeId)
         : true),
@@ -164,8 +180,7 @@ export default function QualityCharacteristicsClient() {
           </button>
         </div>
         <p className="text-secondary-600 dark:text-secondary-400 text-sm mb-6">
-          ISO/IEC 25010:2023 — Systems and software Quality Requirements and
-          Evaluation (SQuaRE)
+          {t('subtitle')}
         </p>
 
         {showForm && (
@@ -262,7 +277,11 @@ export default function QualityCharacteristicsClient() {
               </select>
             </div>
             <div className="flex gap-3">
-              <button className="btn-primary" type="submit">
+              <button
+                className="btn-primary"
+                disabled={isSubmitting}
+                type="submit"
+              >
                 {tc('save')}
               </button>
               <button

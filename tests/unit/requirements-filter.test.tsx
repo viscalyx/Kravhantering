@@ -109,5 +109,18 @@ describe('RequirementsFilter', () => {
     const checkbox = screen.getByRole('checkbox')
     fireEvent.click(checkbox)
     expect(onChange).toHaveBeenCalled()
+    const arg = onChange.mock.calls[0][0]
+    expect(arg.statuses).toContain(1)
+  })
+
+  it('calls onChange when type changes', () => {
+    const { onChange } = renderFilter()
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'requirement.type' }),
+      { target: { value: '1' } },
+    )
+    expect(onChange).toHaveBeenCalled()
+    const arg = onChange.mock.calls[0][0]
+    expect(arg.typeIds).toEqual([1])
   })
 })

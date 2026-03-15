@@ -5,10 +5,13 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { beforeEach, describe, expect, it } from 'vitest'
 import * as schema from '@/drizzle/schema'
 import {
+  createQualityCharacteristic,
   createType,
+  deleteQualityCharacteristic,
   deleteType,
   listQualityCharacteristics,
   listTypes,
+  updateQualityCharacteristic,
   updateType,
 } from '@/lib/dal/requirement-types'
 import type { Database as AppDatabase } from '@/lib/db'
@@ -128,6 +131,81 @@ describe('requirement-types DAL', () => {
       await deleteType(db, t.id)
       const list = await listTypes(db)
       expect(list.length).toBe(0)
+    })
+  })
+
+  describe('createQualityCharacteristic', () => {
+    it('creates a quality characteristic and returns it', async () => {
+      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
+      const qc = await createQualityCharacteristic(db, {
+        nameSv: 'Säkerhet',
+        nameEn: 'Security',
+        requirementTypeId: t.id,
+      })
+      expect(qc.id).toBeDefined()
+      expect(qc.nameSv).toBe('Säkerhet')
+      expect(qc.nameEn).toBe('Security')
+      expect(qc.requirementTypeId).toBe(t.id)
+      expect(qc.parentId).toBeNull()
+    })
+
+    it('creates a child characteristic with parentId', async () => {
+      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
+      const parent = await createQualityCharacteristic(db, {
+        nameSv: 'Förälder',
+        nameEn: 'Parent',
+        requirementTypeId: t.id,
+      })
+      const child = await createQualityCharacteristic(db, {
+        nameSv: 'Barn',
+        nameEn: 'Child',
+        requirementTypeId: t.id,
+        parentId: parent.id,
+      })
+      expect(child.parentId).toBe(parent.id)
+    })
+  })
+
+  describe('updateQualityCharacteristic', () => {
+    it('updates and returns the updated row', async () => {
+      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
+      const qc = await createQualityCharacteristic(db, {
+        nameSv: 'Orig',
+        nameEn: 'Orig',
+        requirementTypeId: t.id,
+      })
+      const updated = await updateQualityCharacteristic(db, qc.id, {
+        nameSv: 'Ny',
+      })
+      expect(updated?.nameSv).toBe('Ny')
+      expect(updated?.nameEn).toBe('Orig')
+    })
+
+    it('returns null for non-existent id', async () => {
+      const result = await updateQualityCharacteristic(db, 9999, {
+        nameSv: 'X',
+      })
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('deleteQualityCharacteristic', () => {
+    it('deletes an existing characteristic and returns true', async () => {
+      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
+      const qc = await createQualityCharacteristic(db, {
+        nameSv: 'Del',
+        nameEn: 'Del',
+        requirementTypeId: t.id,
+      })
+      const result = await deleteQualityCharacteristic(db, qc.id)
+      expect(result).toBe(true)
+      const list = await listQualityCharacteristics(db)
+      expect(list.length).toBe(0)
+    })
+
+    it('returns false for non-existent id', async () => {
+      const result = await deleteQualityCharacteristic(db, 9999)
+      expect(result).toBe(false)
     })
   })
 })
