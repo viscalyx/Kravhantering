@@ -7,8 +7,16 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('@/components/RequirementForm', () => ({
-  default: (props: { mode: string; requirementId?: number }) => (
-    <div data-mode={props.mode} data-testid="req-form" />
+  default: (props: {
+    mode: string
+    requirementId?: number
+    initialData?: Record<string, string | boolean>
+  }) => (
+    <div
+      data-initial-data={JSON.stringify(props.initialData)}
+      data-mode={props.mode}
+      data-testid="req-form"
+    />
   ),
 }))
 
@@ -57,5 +65,32 @@ describe('EditRequirementClient', () => {
     })
     expect(screen.getByTestId('req-form')).toHaveAttribute('data-mode', 'edit')
     expect(screen.getByText(/REQ-001/)).toBeInTheDocument()
+  })
+
+  it('pre-fills qualityCharacteristicId from latest version', async () => {
+    fetchMock.mockResolvedValue(
+      okJson({
+        uniqueId: 'REQ-002',
+        requirementAreaId: 1,
+        versions: [
+          {
+            description: 'Desc',
+            requirementCategoryId: 2,
+            requirementTypeId: 3,
+            qualityCharacteristicId: 42,
+            acceptanceCriteria: 'AC',
+            requiresTesting: false,
+          },
+        ],
+      }),
+    )
+    render(<EditRequirementClient requirementId={2} />)
+    await waitFor(() => {
+      expect(screen.getByTestId('req-form')).toBeInTheDocument()
+    })
+    const initialData = JSON.parse(
+      screen.getByTestId('req-form').getAttribute('data-initial-data') ?? '{}',
+    ) as Record<string, string | boolean>
+    expect(initialData.qualityCharacteristicId).toBe('42')
   })
 })

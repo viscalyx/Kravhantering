@@ -203,60 +203,6 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('version', 8, 0, datetime('now'));
 
 UPDATE requirement_list_column_defaults SET
-  sort_order = 9,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'uniqueId';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 10,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'description';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 11,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'area';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 12,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'category';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 13,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'type';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 14,
-  is_default_visible = 0,
-  updated_at = datetime('now')
-WHERE column_id = 'qualityCharacteristic';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 15,
-  is_default_visible = 1,
-  updated_at = datetime('now')
-WHERE column_id = 'status';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 16,
-  is_default_visible = 0,
-  updated_at = datetime('now')
-WHERE column_id = 'requiresTesting';
-
-UPDATE requirement_list_column_defaults SET
-  sort_order = 17,
-  is_default_visible = 0,
-  updated_at = datetime('now')
-WHERE column_id = 'version';
-
-UPDATE requirement_list_column_defaults SET
   sort_order = 0,
   is_default_visible = 1,
   updated_at = datetime('now')
@@ -348,7 +294,7 @@ INSERT OR IGNORE INTO requirement_types (id, name_sv, name_en) VALUES
 UPDATE requirement_types SET name_sv = 'Funktionellt', name_en = 'Functional' WHERE id = 1;
 UPDATE requirement_types SET name_sv = 'Icke-funktionellt', name_en = 'Non-functional' WHERE id = 2;
 
--- ─── Requirement Type Categories (ISO/IEC 25010:2023) ────────────────────────
+-- ─── Quality Characteristics (ISO/IEC 25010:2023) ────────────────────────────
 -- Type 1 = Funktionellt
 INSERT OR IGNORE INTO quality_characteristics (id, name_sv, name_en, requirement_type_id, parent_id) VALUES
   -- Functional suitability (top-level)

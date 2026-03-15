@@ -40,6 +40,10 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
   deleteArea: (...a: unknown[]) => mockDeleteReqArea(...a),
 }))
 
+vi.mock('@/lib/dal/owners', () => ({
+  listOwners: async () => [],
+}))
+
 const mockUpdatePkg = vi.fn()
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirement-packages', () => ({
@@ -90,6 +94,10 @@ import {
   DELETE as deleteReqArea,
   PUT as putReqArea,
 } from '@/app/api/requirement-areas/[id]/route'
+import {
+  GET as getReqAreas,
+  POST as postReqArea,
+} from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
 import {
   DELETE as deletePkg,
@@ -198,6 +206,28 @@ describe('package-responsibility-areas routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+})
+
+describe('requirement-areas routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('GET returns areas', async () => {
+    const r = await getReqAreas()
+    const j = (await r.json()) as { areas: { id: number }[] }
+    expect(j.areas).toHaveLength(1)
+  })
+  it('POST creates with 201', async () => {
+    const r = await postReqArea(
+      new Request('http://l', {
+        method: 'POST',
+        body: '{"name":"Test area"}',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(201)
   })
 })
 

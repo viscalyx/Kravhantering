@@ -13,10 +13,16 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const typeId = url.searchParams.get('typeId')
 
-  const qualityCharacteristics = await listQualityCharacteristics(
-    db,
-    typeId ? Number(typeId) : undefined,
-  )
+  if (typeId != null) {
+    const parsed = Number(typeId)
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      return NextResponse.json({ error: 'Invalid typeId' }, { status: 400 })
+    }
+    const qualityCharacteristics = await listQualityCharacteristics(db, parsed)
+    return NextResponse.json({ qualityCharacteristics })
+  }
+
+  const qualityCharacteristics = await listQualityCharacteristics(db)
   return NextResponse.json({ qualityCharacteristics })
 }
 
@@ -27,7 +33,8 @@ export async function POST(request: Request) {
   if (
     typeof body.nameSv !== 'string' ||
     typeof body.nameEn !== 'string' ||
-    typeof body.requirementTypeId !== 'number'
+    typeof body.requirementTypeId !== 'number' ||
+    (body.parentId != null && typeof body.parentId !== 'number')
   ) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
   }

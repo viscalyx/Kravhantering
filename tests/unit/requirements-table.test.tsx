@@ -1034,7 +1034,7 @@ describe('RequirementsTable', () => {
     expect(qualityCharacteristicFilterButton).toBeTruthy()
     if (!qualityCharacteristicFilterButton) {
       throw new Error(
-        'Expected the type category filter button to be rendered.',
+        'Expected the quality characteristic filter button to be rendered.',
       )
     }
 
@@ -1172,7 +1172,7 @@ describe('RequirementsTable', () => {
     expect(qualityCharacteristicFilterButton).toBeTruthy()
     if (!qualityCharacteristicFilterButton) {
       throw new Error(
-        'Expected the type category filter button to be rendered.',
+        'Expected the quality characteristic filter button to be rendered.',
       )
     }
 

@@ -15,7 +15,7 @@ export async function PUT(
 ) {
   const { id } = await params
   const numericId = Number(id)
-  if (!Number.isFinite(numericId) || numericId < 1) {
+  if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
   const { env } = await getCloudflareContext({ async: true })
@@ -44,7 +44,7 @@ export async function DELETE(
 ) {
   const { id } = await params
   const numericId = Number(id)
-  if (!Number.isFinite(numericId) || numericId < 1) {
+  if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
   const { env } = await getCloudflareContext({ async: true })
@@ -64,10 +64,17 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (/foreign.key/i.test(message) || /constraint/i.test(message)) {
+      return NextResponse.json(
+        { error: 'In use by requirements' },
+        { status: 409 },
+      )
+    }
     return NextResponse.json(
-      { error: 'In use by requirements' },
-      { status: 409 },
+      { error: 'Internal server error' },
+      { status: 500 },
     )
   }
   return NextResponse.json({ ok: true })

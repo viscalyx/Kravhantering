@@ -55,7 +55,7 @@ vi.mock('next-intl', () => ({
       'requirement.transitionToPublicerad': 'Publish',
       'requirement.transitionToUtkast': 'Send back to draft',
       'requirement.type': 'Type',
-      'requirement.qualityCharacteristic': 'Type category',
+      'requirement.qualityCharacteristic': 'Quality characteristic',
       'requirement.viewingOlderVersion': values =>
         `Viewing older version v${values?.version}`,
     }

@@ -50,6 +50,8 @@ describe('requirement-statuses/[id] route', () => {
     const res = await DELETE(req, makeParams('1'))
     const json = (await res.json()) as { ok: boolean }
     expect(json.ok).toBe(true)
+    expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
+    expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })
 
   it('DELETE returns error on failure', async () => {
@@ -59,5 +61,7 @@ describe('requirement-statuses/[id] route', () => {
     expect(res.status).toBe(400)
     const json = (await res.json()) as { error: string }
     expect(json.error).toBe('Cannot delete')
+    expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
+    expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })
 })
