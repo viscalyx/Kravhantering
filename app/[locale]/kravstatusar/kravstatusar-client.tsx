@@ -115,6 +115,9 @@ export default function KravstatusarClient() {
           </h1>
           <button
             className="btn-primary inline-flex items-center gap-1.5"
+            data-developer-mode-context="statuses"
+            data-developer-mode-name="create button"
+            data-developer-mode-priority="350"
             onClick={() => {
               setShowForm(true)
               setEditId(null)
@@ -135,6 +138,10 @@ export default function KravstatusarClient() {
         {showForm && (
           <form
             className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
+            data-developer-mode-context="statuses"
+            data-developer-mode-name="crud form"
+            data-developer-mode-priority="340"
+            data-developer-mode-value={editId ? 'edit' : 'create'}
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
@@ -234,7 +241,12 @@ export default function KravstatusarClient() {
             {tc('loading')}
           </p>
         ) : (
-          <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
+          <div
+            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
+            data-developer-mode-context="statuses"
+            data-developer-mode-name="crud table"
+            data-developer-mode-priority="340"
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
@@ -272,6 +284,9 @@ export default function KravstatusarClient() {
                     <td className="py-3 px-4 text-right">
                       <button
                         className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                        data-developer-mode-context="statuses"
+                        data-developer-mode-name="table action"
+                        data-developer-mode-value="edit"
                         onClick={() => handleEdit(s)}
                         type="button"
                       >
@@ -280,6 +295,9 @@ export default function KravstatusarClient() {
                       {!s.isSystem && (
                         <button
                           className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                          data-developer-mode-context="statuses"
+                          data-developer-mode-name="table action"
+                          data-developer-mode-value="delete"
                           onClick={e =>
                             handleDelete(s.id, e.currentTarget as HTMLElement)
                           }
