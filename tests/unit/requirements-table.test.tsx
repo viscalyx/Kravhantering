@@ -102,8 +102,8 @@ describe('RequirementsTable', () => {
         statusColor: '#22c55e',
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
-        typeCategoryNameEn: null,
-        typeCategoryNameSv: null,
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
         typeNameEn: 'Functional',
         typeNameSv: 'Funktionellt',
         versionNumber: 2,
@@ -1013,35 +1013,37 @@ describe('RequirementsTable', () => {
   it('applies 44px touch targets to grouped filter popover actions', () => {
     render(
       <RequirementsTable
-        filterValues={{ ...DEFAULT_FILTERS, typeCategoryIds: [2] }}
+        filterValues={{ ...DEFAULT_FILTERS, qualityCharacteristicIds: [2] }}
         locale="sv"
         onFilterChange={vi.fn()}
-        rows={[makeRow()]}
-        typeCategories={[
+        qualityCharacteristics={[
           { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
           { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
         ]}
+        rows={[makeRow()]}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
-          'typeCategory',
+          'qualityCharacteristic',
         ]}
       />,
     )
 
-    const typeCategoryFilterButton = getHeaderFilterButton('typeCategory')
-    expect(typeCategoryFilterButton).toBeTruthy()
-    if (!typeCategoryFilterButton) {
+    const qualityCharacteristicFilterButton = getHeaderFilterButton(
+      'qualityCharacteristic',
+    )
+    expect(qualityCharacteristicFilterButton).toBeTruthy()
+    if (!qualityCharacteristicFilterButton) {
       throw new Error(
         'Expected the type category filter button to be rendered.',
       )
     }
 
-    setElementRect(typeCategoryFilterButton, {
+    setElementRect(qualityCharacteristicFilterButton, {
       bottom: 40,
       left: 48,
       right: 92,
     })
-    fireEvent.click(typeCategoryFilterButton)
+    fireEvent.click(qualityCharacteristicFilterButton)
 
     const popover = getOpenPopover()
     const clearButton = popover?.querySelector('button')
@@ -1078,17 +1080,17 @@ describe('RequirementsTable', () => {
   it('anchors active filter count badges to the filter icon instead of the full button shell', () => {
     const { container } = render(
       <RequirementsTable
-        filterValues={{ statuses: [3], typeCategoryIds: [2] }}
+        filterValues={{ statuses: [3], qualityCharacteristicIds: [2] }}
         locale="sv"
         onFilterChange={vi.fn()}
-        rows={[makeRow()]}
-        typeCategories={[
+        qualityCharacteristics={[
           { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
           { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
         ]}
+        rows={[makeRow()]}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
-          'typeCategory',
+          'qualityCharacteristic',
         ]}
       />,
     )
@@ -1114,6 +1116,10 @@ describe('RequirementsTable', () => {
         filterValues={DEFAULT_FILTERS}
         locale="sv"
         onFilterChange={vi.fn()}
+        qualityCharacteristics={[
+          { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
+          { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
+        ]}
         rows={[makeRow()]}
         statusOptions={[
           {
@@ -1124,13 +1130,9 @@ describe('RequirementsTable', () => {
             sortOrder: 3,
           },
         ]}
-        typeCategories={[
-          { id: 1, nameEn: 'Parent', nameSv: 'Foralder', parentId: null },
-          { id: 2, nameEn: 'Child', nameSv: 'Barn', parentId: 1 },
-        ]}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
-          'typeCategory',
+          'qualityCharacteristic',
         ]}
       />,
     )
@@ -1164,20 +1166,22 @@ describe('RequirementsTable', () => {
 
     fireEvent.mouseDown(document.body)
 
-    const typeCategoryFilterButton = getHeaderFilterButton('typeCategory')
-    expect(typeCategoryFilterButton).toBeTruthy()
-    if (!typeCategoryFilterButton) {
+    const qualityCharacteristicFilterButton = getHeaderFilterButton(
+      'qualityCharacteristic',
+    )
+    expect(qualityCharacteristicFilterButton).toBeTruthy()
+    if (!qualityCharacteristicFilterButton) {
       throw new Error(
         'Expected the type category filter button to be rendered.',
       )
     }
 
-    setElementRect(typeCategoryFilterButton, {
+    setElementRect(qualityCharacteristicFilterButton, {
       bottom: 40,
       left: 180,
       right: 224,
     })
-    fireEvent.click(typeCategoryFilterButton)
+    fireEvent.click(qualityCharacteristicFilterButton)
 
     expect(getOpenPopover()?.style.left).toBe('8px')
   })
@@ -1671,7 +1675,7 @@ describe('RequirementsTable', () => {
         rows={[makeRow()]}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
-          'typeCategory',
+          'qualityCharacteristic',
           'requiresTesting',
           'version',
         ]}
@@ -1805,8 +1809,8 @@ describe('RequirementsTable', () => {
           categoryNameEn: null,
           typeNameSv: null,
           typeNameEn: null,
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
+          qualityCharacteristicNameSv: null,
+          qualityCharacteristicNameEn: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -1844,8 +1848,8 @@ describe('RequirementsTable', () => {
           categoryNameEn: null,
           typeNameSv: null,
           typeNameEn: null,
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
+          qualityCharacteristicNameSv: null,
+          qualityCharacteristicNameEn: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -1880,8 +1884,8 @@ describe('RequirementsTable', () => {
           categoryNameEn: null,
           typeNameSv: null,
           typeNameEn: null,
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
+          qualityCharacteristicNameSv: null,
+          qualityCharacteristicNameEn: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -1968,8 +1972,8 @@ describe('RequirementsTable', () => {
           categoryNameEn: null,
           typeNameSv: null,
           typeNameEn: null,
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
+          qualityCharacteristicNameSv: null,
+          qualityCharacteristicNameEn: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,
@@ -1989,8 +1993,8 @@ describe('RequirementsTable', () => {
           categoryNameEn: null,
           typeNameSv: null,
           typeNameEn: null,
-          typeCategoryNameSv: null,
-          typeCategoryNameEn: null,
+          qualityCharacteristicNameSv: null,
+          qualityCharacteristicNameEn: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,

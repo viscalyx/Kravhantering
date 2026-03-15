@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   listScenarios: vi.fn(),
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
-  listTypeCategories: vi.fn(),
+  listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
   reactivateRequirement: vi.fn(),
   replaceReferencesForVersion: vi.fn(),
@@ -49,7 +49,7 @@ vi.mock('@/lib/dal/requirement-statuses', () => ({
 }))
 
 vi.mock('@/lib/dal/requirement-types', () => ({
-  listTypeCategories: mocks.listTypeCategories,
+  listQualityCharacteristics: mocks.listQualityCharacteristics,
   listTypes: mocks.listTypes,
 }))
 
@@ -115,7 +115,7 @@ function makeRequirementRecord() {
           nameEn: 'Functional',
           nameSv: 'Funktionellt',
         },
-        typeCategory: {
+        qualityCharacteristic: {
           id: 9,
           nameEn: 'Security',
           nameSv: 'Sakerhet',
@@ -230,15 +230,15 @@ describe('createRequirementsService', () => {
         pendingVersionStatusId: 2,
         requirementAreaId: 1,
         requirementCategoryId: 1,
-        requirementTypeCategoryId: 9,
+        qualityCharacteristicId: 9,
         requirementTypeId: 1,
         requiresTesting: true,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
-        typeCategoryNameEn: 'Security',
-        typeCategoryNameSv: 'Sakerhet',
+        qualityCharacteristicNameEn: 'Security',
+        qualityCharacteristicNameSv: 'Sakerhet',
         typeNameEn: 'Functional',
         typeNameSv: 'Funktionellt',
         uniqueId: 'INT0001',
@@ -290,15 +290,15 @@ describe('createRequirementsService', () => {
         pendingVersionStatusId: 1,
         requirementAreaId: 1,
         requirementCategoryId: null,
-        requirementTypeCategoryId: null,
+        qualityCharacteristicId: null,
         requirementTypeId: null,
         requiresTesting: false,
         status: 4,
         statusColor: '#6b7280',
         statusNameEn: 'Archived',
         statusNameSv: 'Arkiverad',
-        typeCategoryNameEn: null,
-        typeCategoryNameSv: null,
+        qualityCharacteristicNameEn: null,
+        qualityCharacteristicNameSv: null,
         typeNameEn: null,
         typeNameSv: null,
         uniqueId: 'INT0002',
@@ -627,8 +627,8 @@ describe('createRequirementsService', () => {
     expect(result.items).toHaveLength(1)
   })
 
-  it('queries type_categories catalog', async () => {
-    mocks.listTypeCategories.mockResolvedValue([
+  it('queries quality_characteristics catalog', async () => {
+    mocks.listQualityCharacteristics.mockResolvedValue([
       { id: 1, nameSv: 'TK', nameEn: 'TC' },
     ])
     const service = createRequirementsService({} as never, {
@@ -636,10 +636,10 @@ describe('createRequirementsService', () => {
       uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
-      catalog: 'type_categories',
+      catalog: 'quality_characteristics',
       typeId: 1,
     })
-    expect(result.catalog).toBe('type_categories')
+    expect(result.catalog).toBe('quality_characteristics')
     expect(result.items).toHaveLength(1)
   })
 

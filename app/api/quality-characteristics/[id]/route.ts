@@ -1,9 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  deleteTypeCategory,
-  listTypeCategories,
-  updateTypeCategory,
+  deleteQualityCharacteristic,
+  listQualityCharacteristics,
+  updateQualityCharacteristic,
 } from '@/lib/dal/requirement-types'
 import { getDb } from '@/lib/db'
 
@@ -21,9 +21,9 @@ export async function PUT(
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const body = (await request.json()) as Parameters<
-    typeof updateTypeCategory
+    typeof updateQualityCharacteristic
   >[2]
-  const category = await updateTypeCategory(db, numericId, body)
+  const category = await updateQualityCharacteristic(db, numericId, body)
   if (!category) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -42,7 +42,7 @@ export async function DELETE(
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
-  const allCategories = await listTypeCategories(db)
+  const allCategories = await listQualityCharacteristics(db)
   const hasChildren = allCategories.some(c => c.parentId === numericId)
   if (hasChildren) {
     return NextResponse.json(
@@ -52,7 +52,7 @@ export async function DELETE(
   }
 
   try {
-    await deleteTypeCategory(db, numericId)
+    await deleteQualityCharacteristic(db, numericId)
   } catch {
     return NextResponse.json(
       { error: 'In use by requirements' },

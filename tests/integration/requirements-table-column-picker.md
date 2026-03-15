@@ -25,7 +25,7 @@ browser storage on both mobile and desktop layouts.
   "category",
   "type",
   "status",
-  "typeCategory",
+  "qualityCharacteristic",
   "requiresTesting",
   "version"
 ]
@@ -38,7 +38,7 @@ flowchart TD
     A[Start viewport variant] --> B[Clear localStorage]
     B --> C[Open /sv/kravkatalog]
     C --> D[Open floating column picker]
-    D --> E[Enable typeCategory and requiresTesting]
+    D --> E[Enable qualityCharacteristic and requiresTesting]
     E --> F[Close picker and scroll table right]
     F --> G{Floating pill still visible?}
     G -- Yes --> H[Reopen picker]
@@ -75,7 +75,7 @@ persists the expected visible-column list.
 3. Open `/sv/kravkatalog`.
 4. Locate the floating column-picker trigger and the scroll container.
 5. Open the popover with the floating trigger.
-6. Ensure the `typeCategory` and `requiresTesting` checkboxes are enabled.
+6. Ensure the `qualityCharacteristic` and `requiresTesting` checkboxes are enabled.
 7. Close the popover from the trigger.
 8. Scroll the requirements container all the way to the right.
 9. Assert that the floating trigger is still visible and aligned with the
@@ -84,7 +84,7 @@ persists the expected visible-column list.
 11. Enable the `version` checkbox.
 12. Close the popover and read `COLUMN_VISIBILITY_STORAGE_KEY` from
     `localStorage`.
-13. Assert that the stored value contains `typeCategory`,
+13. Assert that the stored value contains `qualityCharacteristic`,
     `requiresTesting`, and `version`.
 
 ### Sequence Diagram
@@ -102,7 +102,7 @@ sequenceDiagram
     P->>T: Render floating column pill and scroll container
     U->>T: Click floating pill
     T->>Pop: Open column picker
-    U->>Pop: Check typeCategory and requiresTesting
+    U->>Pop: Check qualityCharacteristic and requiresTesting
     Pop->>S: Persist visible columns
     U->>T: Close picker and scroll horizontally
     Note over T: ✓ Floating pill stays visible at the rail edge
@@ -110,14 +110,15 @@ sequenceDiagram
     T->>Pop: Reopen column picker
     U->>Pop: Check version
     Pop->>S: Persist updated visible columns
-    Note over S: ✓ Stored value contains typeCategory, requiresTesting, version
+    Note over S: ✓ Stored value contains qualityCharacteristic,
+    Note over S: requiresTesting, version
 ```
 
 ### Supplementary Flowchart
 
 ```mermaid
 flowchart LR
-    A[Open picker] --> B[Enable typeCategory]
+    A[Open picker] --> B[Enable qualityCharacteristic]
     B --> C[Enable requiresTesting]
     C --> D[Scroll table right]
     D --> E[Reopen picker]

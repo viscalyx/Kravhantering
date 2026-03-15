@@ -40,8 +40,8 @@ export default function EditRequirementClient({
           typeId: latest.requirementTypeId
             ? String(latest.requirementTypeId)
             : '',
-          typeCategoryId: latest.requirementTypeCategoryId
-            ? String(latest.requirementTypeCategoryId)
+          qualityCharacteristicId: latest.qualityCharacteristicId
+            ? String(latest.qualityCharacteristicId)
             : '',
           description: String(latest.description ?? ''),
           acceptanceCriteria: String(latest.acceptanceCriteria ?? ''),

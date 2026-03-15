@@ -186,9 +186,9 @@ describe('developer mode utilities', () => {
       expect(getRequirementColumnDeveloperModeLabel('uniqueId')).toBe(
         'requirement id',
       )
-      expect(getRequirementColumnDeveloperModeLabel('typeCategory')).toBe(
-        'quality characteristic',
-      )
+      expect(
+        getRequirementColumnDeveloperModeLabel('qualityCharacteristic'),
+      ).toBe('quality characteristic')
     })
 
     it('humanizes unknown column id', () => {

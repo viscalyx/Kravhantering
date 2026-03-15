@@ -9,8 +9,8 @@ interface FormData {
   areaId: string
   categoryId: string
   description: string
+  qualityCharacteristicId: string
   requiresTesting: boolean
-  typeCategoryId: string
   typeId: string
 }
 
@@ -32,7 +32,7 @@ interface AreaOption {
   ownerName: string | null
 }
 
-interface TypeCategoryOption {
+interface QualityCharacteristicOption {
   id: number
   nameEn: string
   nameSv: string
@@ -54,14 +54,16 @@ export default function RequirementForm({
   const [areas, setAreas] = useState<AreaOption[]>([])
   const [categories, setCategories] = useState<Option[]>([])
   const [types, setTypes] = useState<Option[]>([])
-  const [typeCategories, setTypeCategories] = useState<TypeCategoryOption[]>([])
+  const [qualityCharacteristics, setQualityCharacteristics] = useState<
+    QualityCharacteristicOption[]
+  >([])
   const [submitting, setSubmitting] = useState(false)
 
   const [form, setForm] = useState<FormData>({
     areaId: initialData?.areaId ?? '',
     categoryId: initialData?.categoryId ?? '',
     typeId: initialData?.typeId ?? '',
-    typeCategoryId: initialData?.typeCategoryId ?? '',
+    qualityCharacteristicId: initialData?.qualityCharacteristicId ?? '',
     description: initialData?.description ?? '',
     acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
     requiresTesting: initialData?.requiresTesting ?? false,
@@ -85,16 +87,19 @@ export default function RequirementForm({
       setTypes(((await typesRes.json()) as { types?: Option[] }).types ?? [])
   }, [])
 
-  const fetchTypeCategories = useCallback(async (typeId: string) => {
+  const fetchQualityCharacteristics = useCallback(async (typeId: string) => {
     if (!typeId) {
-      setTypeCategories([])
+      setQualityCharacteristics([])
       return
     }
-    const res = await fetch(`/api/requirement-type-categories?typeId=${typeId}`)
+    const res = await fetch(`/api/quality-characteristics?typeId=${typeId}`)
     if (res.ok)
-      setTypeCategories(
-        ((await res.json()) as { typeCategories?: TypeCategoryOption[] })
-          .typeCategories ?? [],
+      setQualityCharacteristics(
+        (
+          (await res.json()) as {
+            qualityCharacteristics?: QualityCharacteristicOption[]
+          }
+        ).qualityCharacteristics ?? [],
       )
   }, [])
 
@@ -103,8 +108,8 @@ export default function RequirementForm({
   }, [fetchOptions])
 
   useEffect(() => {
-    fetchTypeCategories(form.typeId)
-  }, [form.typeId, fetchTypeCategories])
+    fetchQualityCharacteristics(form.typeId)
+  }, [form.typeId, fetchQualityCharacteristics])
 
   const handleChange = (key: keyof FormData, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -126,8 +131,8 @@ export default function RequirementForm({
           areaId: form.areaId ? Number(form.areaId) : undefined,
           categoryId: form.categoryId ? Number(form.categoryId) : undefined,
           typeId: form.typeId ? Number(form.typeId) : undefined,
-          typeCategoryId: form.typeCategoryId
-            ? Number(form.typeCategoryId)
+          qualityCharacteristicId: form.qualityCharacteristicId
+            ? Number(form.qualityCharacteristicId)
             : undefined,
           description: form.description || undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
@@ -144,9 +149,9 @@ export default function RequirementForm({
     }
   }
 
-  const topLevelCategories = typeCategories.filter(tc => !tc.parentId)
-  const childCategories = typeCategories.filter(tc => tc.parentId)
-  const getTypeCategoryName = (c: TypeCategoryOption) =>
+  const topLevelCategories = qualityCharacteristics.filter(tc => !tc.parentId)
+  const childCategories = qualityCharacteristics.filter(tc => tc.parentId)
+  const getQualityCharacteristicName = (c: QualityCharacteristicOption) =>
     locale === 'sv' ? c.nameSv : c.nameEn
 
   return (
@@ -250,28 +255,30 @@ export default function RequirementForm({
         </div>
       </div>
 
-      {typeCategories.length > 0 && (
+      {qualityCharacteristics.length > 0 && (
         <div>
           <label
             className="block text-sm font-medium mb-1"
-            htmlFor="typeCategoryId"
+            htmlFor="qualityCharacteristicId"
           >
-            {t('typeCategory')}
+            {t('qualityCharacteristic')}
           </label>
           <select
             className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-            id="typeCategoryId"
-            onChange={e => handleChange('typeCategoryId', e.target.value)}
-            value={form.typeCategoryId}
+            id="qualityCharacteristicId"
+            onChange={e =>
+              handleChange('qualityCharacteristicId', e.target.value)
+            }
+            value={form.qualityCharacteristicId}
           >
-            <option value="">{t('typeCategory')}...</option>
+            <option value="">{t('qualityCharacteristic')}...</option>
             {topLevelCategories.map(tc => (
-              <optgroup key={tc.id} label={getTypeCategoryName(tc)}>
+              <optgroup key={tc.id} label={getQualityCharacteristicName(tc)}>
                 {childCategories
                   .filter(c => c.parentId === tc.id)
                   .map(c => (
                     <option key={c.id} value={c.id}>
-                      {getTypeCategoryName(c)}
+                      {getQualityCharacteristicName(c)}
                     </option>
                   ))}
               </optgroup>

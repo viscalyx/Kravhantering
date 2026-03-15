@@ -48,9 +48,9 @@ describe('RequirementForm', () => {
         return Promise.resolve(okJson({ categories: sampleCategories }))
       if (
         typeof url === 'string' &&
-        url.includes('/api/requirement-type-categories')
+        url.includes('/api/quality-characteristics')
       )
-        return Promise.resolve(okJson({ typeCategories: [] }))
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
       if (typeof url === 'string' && url.includes('/api/requirement-types'))
         return Promise.resolve(okJson({ types: sampleTypes }))
       return Promise.resolve(okJson({}))
@@ -101,9 +101,9 @@ describe('RequirementForm', () => {
         return Promise.resolve(okJson({ categories: sampleCategories }))
       if (
         typeof url === 'string' &&
-        url.includes('/api/requirement-type-categories')
+        url.includes('/api/quality-characteristics')
       )
-        return Promise.resolve(okJson({ typeCategories: [] }))
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
       if (typeof url === 'string' && url.includes('/api/requirement-types'))
         return Promise.resolve(okJson({ types: sampleTypes }))
       return Promise.resolve(okJson({}))
@@ -142,9 +142,9 @@ describe('RequirementForm', () => {
         return Promise.resolve(okJson({ categories: sampleCategories }))
       if (
         typeof url === 'string' &&
-        url.includes('/api/requirement-type-categories')
+        url.includes('/api/quality-characteristics')
       )
-        return Promise.resolve(okJson({ typeCategories: [] }))
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
       if (typeof url === 'string' && url.includes('/api/requirement-types'))
         return Promise.resolve(okJson({ types: sampleTypes }))
       return Promise.resolve(okJson({}))

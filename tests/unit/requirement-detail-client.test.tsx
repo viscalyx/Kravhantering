@@ -55,7 +55,7 @@ vi.mock('next-intl', () => ({
       'requirement.transitionToPublicerad': 'Publish',
       'requirement.transitionToUtkast': 'Send back to draft',
       'requirement.type': 'Type',
-      'requirement.typeCategory': 'Type category',
+      'requirement.qualityCharacteristic': 'Type category',
       'requirement.viewingOlderVersion': values =>
         `Viewing older version v${values?.version}`,
     }
@@ -157,7 +157,7 @@ function makeVersion(
     statusNameEn: string | null
     statusNameSv: string | null
     type: { nameEn: string; nameSv: string } | null
-    typeCategory: { nameEn: string; nameSv: string } | null
+    qualityCharacteristic: { nameEn: string; nameSv: string } | null
     versionScenarios: {
       scenario: { id: number; nameEn: string; nameSv: string }
     }[]
@@ -180,7 +180,7 @@ function makeVersion(
     statusNameEn: 'Draft',
     statusNameSv: 'Utkast',
     type: null,
-    typeCategory: null,
+    qualityCharacteristic: null,
     versionNumber,
     versionScenarios: [],
     ...overrides,
@@ -513,7 +513,7 @@ describe('RequirementDetailClient', () => {
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
         type: { nameEn: 'Functional', nameSv: 'Funktionell' },
-        typeCategory: { nameEn: 'Business', nameSv: 'Verksamhet' },
+        qualityCharacteristic: { nameEn: 'Business', nameSv: 'Verksamhet' },
         versionScenarios: [
           {
             scenario: { id: 1, nameEn: 'Ordering', nameSv: 'Bestallning' },

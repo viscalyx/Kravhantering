@@ -25,7 +25,7 @@ const sampleVersion = {
     acceptanceCriteria: 'Must pass',
     category: { nameSv: 'Kat', nameEn: 'Category' },
     type: { nameSv: 'Typ', nameEn: 'ReqType' },
-    typeCategory: { nameSv: 'TC', nameEn: 'TypeCat' },
+    qualityCharacteristic: { nameSv: 'TC', nameEn: 'TypeCat' },
     requiresTesting: true,
     ownerName: null,
     createdAt: '2024-01-15T00:00:00Z',

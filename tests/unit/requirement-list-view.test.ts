@@ -29,8 +29,8 @@ function makeRow(overrides: Record<string, unknown> = {}) {
       statusColor: '#22c55e',
       statusNameEn: 'Published',
       statusNameSv: 'Publicerad',
-      typeCategoryNameEn: null,
-      typeCategoryNameSv: null,
+      qualityCharacteristicNameEn: null,
+      qualityCharacteristicNameSv: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 2,
@@ -88,7 +88,11 @@ describe('requirement list view helpers', () => {
       { columnId: 'area', defaultVisible: false, sortOrder: 3 },
       { columnId: 'category', defaultVisible: false, sortOrder: 4 },
       { columnId: 'type', defaultVisible: false, sortOrder: 5 },
-      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 6 },
+      {
+        columnId: 'qualityCharacteristic',
+        defaultVisible: false,
+        sortOrder: 6,
+      },
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
@@ -100,7 +104,7 @@ describe('requirement list view helpers', () => {
       'area',
       'category',
       'type',
-      'typeCategory',
+      'qualityCharacteristic',
       'requiresTesting',
       'version',
     ])

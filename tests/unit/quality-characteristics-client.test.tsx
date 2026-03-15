@@ -56,8 +56,10 @@ describe('QualityCharacteristicsClient', () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/requirement-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
-      if (url === '/api/requirement-type-categories')
-        return Promise.resolve(okJson({ typeCategories: sampleCategories }))
+      if (url === '/api/quality-characteristics')
+        return Promise.resolve(
+          okJson({ qualityCharacteristics: sampleCategories }),
+        )
       return Promise.resolve(okJson({}))
     })
   })

@@ -15,7 +15,7 @@ const types = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const statusOptions = [
   { id: 1, nameSv: 'Utkast', nameEn: 'Draft', color: '#3b82f6' },
 ]
-const typeCategories = [
+const qualityCharacteristics = [
   {
     id: 10,
     nameSv: 'TC sv',
@@ -37,8 +37,8 @@ function renderFilter(overrides: Record<string, unknown> = {}) {
       getName={getName}
       getStatusName={getStatusName}
       onChange={onChange}
+      qualityCharacteristics={qualityCharacteristics}
       statusOptions={statusOptions}
-      typeCategories={typeCategories}
       types={types}
       values={values}
     />,

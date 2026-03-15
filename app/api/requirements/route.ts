@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
     .getAll('typeIds')
     .map(Number)
     .filter(n => !Number.isNaN(n))
-  const typeCategoryIds = url.searchParams
-    .getAll('typeCategoryIds')
+  const qualityCharacteristicIds = url.searchParams
+    .getAll('qualityCharacteristicIds')
     .map(Number)
     .filter(n => !Number.isNaN(n))
   const requiresTestingParams = url.searchParams.getAll('requiresTesting')
@@ -79,7 +79,10 @@ export async function GET(request: NextRequest) {
           ? sortDirectionParam
           : undefined,
       statuses: statuses.length > 0 ? statuses : undefined,
-      typeCategoryIds: typeCategoryIds.length > 0 ? typeCategoryIds : undefined,
+      qualityCharacteristicIds:
+        qualityCharacteristicIds.length > 0
+          ? qualityCharacteristicIds
+          : undefined,
       typeIds: typeIds.length > 0 ? typeIds : undefined,
       uniqueIdSearch,
     })
@@ -101,8 +104,8 @@ export async function GET(request: NextRequest) {
             : (r.version?.categoryNameEn ?? ''),
           isSv ? (r.version?.typeNameSv ?? '') : (r.version?.typeNameEn ?? ''),
           isSv
-            ? (r.version?.typeCategoryNameSv ?? '')
-            : (r.version?.typeCategoryNameEn ?? ''),
+            ? (r.version?.qualityCharacteristicNameSv ?? '')
+            : (r.version?.qualityCharacteristicNameEn ?? ''),
           isSv
             ? (r.version?.statusNameSv ?? '')
             : (r.version?.statusNameEn ?? ''),
@@ -186,8 +189,8 @@ export async function POST(request: NextRequest) {
               .map(value => Number(value))
               .filter(value => !Number.isNaN(value))
           : undefined,
-        typeCategoryId: body.typeCategoryId
-          ? Number(body.typeCategoryId)
+        qualityCharacteristicId: body.qualityCharacteristicId
+          ? Number(body.qualityCharacteristicId)
           : undefined,
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },

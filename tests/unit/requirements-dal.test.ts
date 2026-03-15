@@ -15,15 +15,23 @@ import type { Database as AppDatabase } from '@/lib/db'
 
 function createTestDb() {
   const sqlite = new BetterSqlite3(':memory:')
-  const migrationSql = readFileSync(
-    join(process.cwd(), 'drizzle/migrations/0000_woozy_silvermane.sql'),
-    'utf8',
-  )
+  const migrationFiles = [
+    '0000_woozy_silvermane.sql',
+    '0001_pink_pixie.sql',
+    '0002_blue_menace.sql',
+    '0003_rename_quality_characteristics.sql',
+  ]
 
-  for (const statement of migrationSql.split('--> statement-breakpoint')) {
-    const sql = statement.trim()
-    if (sql) {
-      sqlite.exec(sql)
+  for (const file of migrationFiles) {
+    const migrationSql = readFileSync(
+      join(process.cwd(), `drizzle/migrations/${file}`),
+      'utf8',
+    )
+    for (const statement of migrationSql.split('--> statement-breakpoint')) {
+      const sql = statement.trim()
+      if (sql) {
+        sqlite.exec(sql)
+      }
     }
   }
 

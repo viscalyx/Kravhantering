@@ -54,14 +54,14 @@ export default function QualityCharacteristicsClient() {
     try {
       const [typesRes, catRes] = await Promise.all([
         fetch('/api/requirement-types'),
-        fetch('/api/requirement-type-categories'),
+        fetch('/api/quality-characteristics'),
       ])
       if (typesRes.ok)
         setTypes(((await typesRes.json()) as { types?: Type[] }).types ?? [])
       if (catRes.ok)
         setCategories(
-          ((await catRes.json()) as { typeCategories?: TypeCategory[] })
-            .typeCategories ?? [],
+          ((await catRes.json()) as { qualityCharacteristics?: TypeCategory[] })
+            .qualityCharacteristics ?? [],
         )
     } finally {
       setLoading(false)
@@ -76,8 +76,8 @@ export default function QualityCharacteristicsClient() {
     e.preventDefault()
     const method = editId ? 'PUT' : 'POST'
     const url = editId
-      ? `/api/requirement-type-categories/${editId}`
-      : '/api/requirement-type-categories'
+      ? `/api/quality-characteristics/${editId}`
+      : '/api/quality-characteristics'
     await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -117,7 +117,7 @@ export default function QualityCharacteristicsClient() {
       }))
     )
       return
-    const res = await fetch(`/api/requirement-type-categories/${id}`, {
+    const res = await fetch(`/api/quality-characteristics/${id}`, {
       method: 'DELETE',
     })
     if (!res.ok) {

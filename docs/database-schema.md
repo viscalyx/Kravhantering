@@ -122,12 +122,12 @@ erDiagram
         text name_en UK
     }
 
-    requirement_type_categories {
+    quality_characteristics {
         integer id PK
         text name_sv
         text name_en
         integer requirement_type_id FK
-        integer parent_category_id FK "self-referencing"
+        integer parent_id FK "self-referencing"
     }
 
     requirement_statuses {
@@ -182,7 +182,7 @@ erDiagram
         text acceptance_criteria
         integer requirement_category_id FK
         integer requirement_type_id FK
-        integer requirement_type_category_id FK
+        integer quality_characteristic_id FK
         integer requirement_status_id FK
         integer is_testing_required "boolean"
         text created_at
@@ -255,12 +255,12 @@ erDiagram
     requirement_versions }o--|| requirement_statuses : "has status"
     requirement_versions }o--o| requirement_categories : "categorized as"
     requirement_versions }o--o| requirement_types : "typed as"
-    requirement_versions }o--o| requirement_type_categories : "sub-typed as"
+    requirement_versions }o--o| quality_characteristics : "sub-typed as"
     requirement_versions ||--o{ requirement_references : "has many"
     requirement_versions ||--o{ requirement_version_scenarios : "linked via"
     requirement_scenarios ||--o{ requirement_version_scenarios : "linked via"
-    requirement_types ||--o{ requirement_type_categories : "has many"
-    requirement_type_categories ||--o{ requirement_type_categories : "parent-child"
+    requirement_types ||--o{ quality_characteristics : "has many"
+    quality_characteristics ||--o{ quality_characteristics : "parent-child"
     requirement_statuses ||--o{ requirement_status_transitions : "from"
     requirement_statuses ||--o{ requirement_status_transitions : "to"
     requirement_packages ||--o{ requirement_package_items : "contains"
@@ -311,7 +311,7 @@ Whether a requirement is functional or non-functional.
 
 ---
 
-### `requirement_type_categories`
+### `quality_characteristics`
 
 Quality characteristics from **ISO/IEC 25010:2023**.
 Forms a self-referencing tree: top-level categories
@@ -325,12 +325,12 @@ Forms a self-referencing tree: top-level categories
 | `name_sv` | text | Swedish display name |
 | `name_en` | text | English display name |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Which type this category belongs to |
-| `parent_category_id` | integer FK → `requirement_type_categories.id` | Parent category (NULL for top-level) |
+| `parent_id` | integer FK → `quality_characteristics.id` | Parent category (NULL for top-level) |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:**
-`idx_requirement_type_categories_requirement_type_id`,
-`idx_requirement_type_categories_parent_category_id`.
+`idx_quality_characteristics_requirement_type_id`,
+`idx_quality_characteristics_parent_id`.
 
 ---
 
@@ -620,7 +620,7 @@ complete audit history.
 | `acceptance_criteria` | text | How to verify the requirement is fulfilled |
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Business / IT / Supplier classification (nullable) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
-| `requirement_type_category_id` | integer FK → `requirement_type_categories.id` | ISO 25010 quality characteristic (nullable) |
+| `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived) |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `created_at` | text (ISO 8601) | When this version was created |
@@ -761,8 +761,8 @@ its purpose and the table/column(s) it covers.
 <!-- markdownlint-disable MD013 -->
 | Index Name | Table | Column(s) | Purpose |
 | ---------- | ----- | --------- | ------- |
-| `idx_requirement_type_categories_requirement_type_id` | `requirement_type_categories` | `requirement_type_id` | Speed up lookups of categories belonging to a type |
-| `idx_requirement_type_categories_parent_category_id` | `requirement_type_categories` | `parent_category_id` | Speed up tree traversal (parent → children) |
+| `idx_quality_characteristics_requirement_type_id` | `quality_characteristics` | `requirement_type_id` | Speed up lookups of categories belonging to a type |
+| `idx_quality_characteristics_parent_id` | `quality_characteristics` | `parent_id` | Speed up tree traversal (parent → children) |
 | `idx_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | Speed up listing requirements by area |
 | `idx_requirements_is_archived` | `requirements` | `is_archived` | Speed up filtering active vs archived requirements |
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
@@ -779,7 +779,7 @@ graph LR
     subgraph Lookup Tables
         RC[requirement_categories]
         RT[requirement_types]
-        RTC[requirement_type_categories]
+        RTC[quality_characteristics]
         RS[requirement_statuses]
         RST[requirement_status_transitions]
         RSC[requirement_scenarios]
@@ -817,7 +817,7 @@ graph LR
     RR -- "idx_..._requirement_version_id\n(requirement_version_id)" --> RV
 
     RTC -- "idx_..._requirement_type_id\n(requirement_type_id)" --> RT
-    RTC -- "idx_..._parent_category_id\n(parent_category_id)" --> RTC
+    RTC -- "idx_..._parent_id\n(parent_id)" --> RTC
 
     RST -- "uq_..._from_to\n(from, to)" --> RS
 

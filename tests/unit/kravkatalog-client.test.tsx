@@ -53,7 +53,7 @@ vi.mock('@/components/RequirementsTable', () => ({
       rows,
       sortState,
       statusOptions,
-      typeCategories,
+      qualityCharacteristics,
       types,
       visibleColumns,
     } = props
@@ -68,7 +68,7 @@ vi.mock('@/components/RequirementsTable', () => ({
       rows: rows ?? [],
       sortState,
       statusOptions: statusOptions ?? [],
-      typeCategories: typeCategories ?? [],
+      qualityCharacteristics: qualityCharacteristics ?? [],
       types: types ?? [],
       visibleColumns: visibleColumns ?? [],
     })
@@ -224,8 +224,8 @@ function makeRequirementRow(
       statusColor: '#22c55e',
       statusNameEn: 'Published',
       statusNameSv: 'Publicerad',
-      typeCategoryNameEn: null,
-      typeCategoryNameSv: null,
+      qualityCharacteristicNameEn: null,
+      qualityCharacteristicNameSv: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 1,
@@ -253,7 +253,7 @@ function makeRequirementDetail(
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
         type: { nameEn: 'Functional', nameSv: 'Funktionellt' },
-        typeCategory: null,
+        qualityCharacteristic: null,
         versionNumber: 1,
       },
     ],
@@ -271,8 +271,8 @@ function mockMetadataFetch(url: string) {
   if (url === '/api/requirement-types') {
     return okJson({ types: [] })
   }
-  if (url === '/api/requirement-type-categories') {
-    return okJson({ typeCategories: [] })
+  if (url === '/api/quality-characteristics') {
+    return okJson({ qualityCharacteristics: [] })
   }
   if (url === '/api/requirement-statuses') {
     return okJson({
@@ -1423,8 +1423,8 @@ describe('KravkatalogClient', () => {
       if (url === '/api/requirement-types') {
         return okJson({ types: [] })
       }
-      if (url === '/api/requirement-type-categories') {
-        return okJson({ typeCategories: [] })
+      if (url === '/api/quality-characteristics') {
+        return okJson({ qualityCharacteristics: [] })
       }
       if (url === '/api/requirement-statuses') {
         return okJson({ statuses: [] })
@@ -1472,7 +1472,11 @@ describe('KravkatalogClient', () => {
       { columnId: 'category', defaultVisible: true, sortOrder: 2 },
       { columnId: 'area', defaultVisible: true, sortOrder: 3 },
       { columnId: 'type', defaultVisible: true, sortOrder: 4 },
-      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+      {
+        columnId: 'qualityCharacteristic',
+        defaultVisible: false,
+        sortOrder: 5,
+      },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
@@ -1523,9 +1527,9 @@ describe('KravkatalogClient', () => {
           ],
         })
       }
-      if (url === '/api/requirement-type-categories') {
+      if (url === '/api/quality-characteristics') {
         return okJson({
-          typeCategories: [
+          qualityCharacteristics: [
             {
               id: 13,
               nameEn: 'Parent',
@@ -1563,7 +1567,7 @@ describe('KravkatalogClient', () => {
         areas: [],
         categories: [expect.objectContaining({ id: 11 })],
         statusOptions: [expect.objectContaining({ id: 14 })],
-        typeCategories: [expect.objectContaining({ id: 13 })],
+        qualityCharacteristics: [expect.objectContaining({ id: 13 })],
         types: [expect.objectContaining({ id: 12 })],
       }),
     )

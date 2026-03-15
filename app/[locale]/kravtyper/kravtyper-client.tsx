@@ -23,7 +23,9 @@ export default function KravtyperClient() {
   const locale = useLocale()
 
   const [types, setTypes] = useState<Type[]>([])
-  const [typeCategories, setTypeCategories] = useState<TypeCategory[]>([])
+  const [qualityCharacteristics, setQualityCharacteristics] = useState<
+    TypeCategory[]
+  >([])
   const [loading, setLoading] = useState(true)
 
   const getName = (cat: TypeCategory) =>
@@ -35,14 +37,14 @@ export default function KravtyperClient() {
     setLoading(true)
     const [typesRes, catRes] = await Promise.all([
       fetch('/api/requirement-types'),
-      fetch('/api/requirement-type-categories'),
+      fetch('/api/quality-characteristics'),
     ])
     if (typesRes.ok)
       setTypes(((await typesRes.json()) as { types?: Type[] }).types ?? [])
     if (catRes.ok)
-      setTypeCategories(
-        ((await catRes.json()) as { typeCategories?: TypeCategory[] })
-          .typeCategories ?? [],
+      setQualityCharacteristics(
+        ((await catRes.json()) as { qualityCharacteristics?: TypeCategory[] })
+          .qualityCharacteristics ?? [],
       )
     setLoading(false)
   }, [])
@@ -72,7 +74,7 @@ export default function KravtyperClient() {
 
         <div className="space-y-8">
           {types.map(type => {
-            const topLevel = typeCategories.filter(
+            const topLevel = qualityCharacteristics.filter(
               c => c.requirementTypeId === type.id && !c.parentId,
             )
             return (
@@ -90,7 +92,7 @@ export default function KravtyperClient() {
                 ) : (
                   <div className="space-y-3">
                     {topLevel.map(parent => {
-                      const children = typeCategories.filter(
+                      const children = qualityCharacteristics.filter(
                         c => c.parentId === parent.id,
                       )
                       return (

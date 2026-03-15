@@ -75,7 +75,7 @@
     "area": "Area",
     "category": "Category",
     "type": "Type",
-    "typeCategory": "Quality characteristic",
+    "qualityCharacteristic": "Quality characteristic",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
     "reference": "Requirement reference",
@@ -283,7 +283,7 @@
       "plural": "Statuses",
       "definitePlural": "Statuses"
     },
-    "typeCategory": {
+    "qualityCharacteristic": {
       "singular": "Quality characteristic",
       "plural": "Quality characteristics",
       "definitePlural": "Quality characteristics"

@@ -60,7 +60,7 @@ vi.mock('@/lib/dal/requirement-scenarios', () => ({
 
 vi.mock('@/lib/dal/requirement-types', () => ({
   listTypes: async () => [{ id: 1 }],
-  listTypeCategories: async () => [{ id: 10 }],
+  listQualityCharacteristics: async () => [{ id: 10 }],
 }))
 
 vi.mock('@/lib/dal/requirement-categories', () => ({
@@ -85,7 +85,7 @@ import {
   GET as getAreas,
   POST as postArea,
 } from '@/app/api/package-responsibility-areas/route'
-
+import { GET as getTypeCats } from '@/app/api/quality-characteristics/route'
 import {
   DELETE as deleteReqArea,
   PUT as putReqArea,
@@ -107,7 +107,6 @@ import {
   GET as getScenarios,
   POST as postScenario,
 } from '@/app/api/requirement-scenarios/route'
-import { GET as getTypeCats } from '@/app/api/requirement-type-categories/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
 
 /* ── helpers ─────────────────────────────────────────────────────── */
@@ -303,20 +302,18 @@ describe('read-only taxonomy routes', () => {
     expect(j.types).toHaveLength(1)
   })
 
-  it('requirement-type-categories GET returns categories', async () => {
-    const req = new NextRequest('http://l/api/requirement-type-categories')
+  it('quality-characteristics GET returns categories', async () => {
+    const req = new NextRequest('http://l/api/quality-characteristics')
     const r = await getTypeCats(req)
-    const j = (await r.json()) as { typeCategories: { id: number }[] }
-    expect(j.typeCategories).toHaveLength(1)
+    const j = (await r.json()) as { qualityCharacteristics: { id: number }[] }
+    expect(j.qualityCharacteristics).toHaveLength(1)
   })
 
-  it('requirement-type-categories GET with typeId filter', async () => {
-    const req = new NextRequest(
-      'http://l/api/requirement-type-categories?typeId=1',
-    )
+  it('quality-characteristics GET with typeId filter', async () => {
+    const req = new NextRequest('http://l/api/quality-characteristics?typeId=1')
     const r = await getTypeCats(req)
-    const j = (await r.json()) as { typeCategories: { id: number }[] }
-    expect(j.typeCategories).toHaveLength(1)
+    const j = (await r.json()) as { qualityCharacteristics: { id: number }[] }
+    expect(j.qualityCharacteristics).toHaveLength(1)
   })
 
   it('requirement-categories GET returns categories', async () => {

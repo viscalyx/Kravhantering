@@ -4,7 +4,7 @@ export const UI_TERM_KEYS = [
   'category',
   'type',
   'status',
-  'typeCategory',
+  'qualityCharacteristic',
   'requiresTesting',
   'requiresTestingOff',
   'version',
@@ -57,9 +57,9 @@ const MESSAGE_BINDINGS: Record<
     plural: [['nav', 'statuses']],
     singular: [['requirement', 'status']],
   },
-  typeCategory: {
+  qualityCharacteristic: {
     plural: [['nav', 'qualityCharacteristics']],
-    singular: [['requirement', 'typeCategory']],
+    singular: [['requirement', 'qualityCharacteristic']],
   },
   requiresTesting: {
     singular: [['requirement', 'requiresTesting']],
@@ -168,7 +168,7 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       singular: 'Status',
     },
   },
-  typeCategory: {
+  qualityCharacteristic: {
     en: {
       definitePlural: 'Quality characteristics',
       plural: 'Quality characteristics',
@@ -467,7 +467,12 @@ export function getRequirementCsvHeaders(
     getLocalizedUiTerm(terminology, 'area', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'category', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'type', locale, 'singular'),
-    getLocalizedUiTerm(terminology, 'typeCategory', locale, 'singular'),
+    getLocalizedUiTerm(
+      terminology,
+      'qualityCharacteristic',
+      locale,
+      'singular',
+    ),
     getLocalizedUiTerm(terminology, 'status', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'requiresTesting', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
@@ -482,7 +487,7 @@ export function getCatalogTitle(
     | 'scenarios'
     | 'statuses'
     | 'transitions'
-    | 'type_categories'
+    | 'quality_characteristics'
     | 'types',
   locale: UiLocale,
   terminology: Record<UiTermKey, UiTermTranslation>,
@@ -494,8 +499,13 @@ export function getCatalogTitle(
       return getLocalizedUiTerm(terminology, 'category', locale, 'plural')
     case 'types':
       return getLocalizedUiTerm(terminology, 'type', locale, 'plural')
-    case 'type_categories':
-      return getLocalizedUiTerm(terminology, 'typeCategory', locale, 'plural')
+    case 'quality_characteristics':
+      return getLocalizedUiTerm(
+        terminology,
+        'qualityCharacteristic',
+        locale,
+        'plural',
+      )
     case 'statuses':
       return getLocalizedUiTerm(terminology, 'status', locale, 'plural')
     case 'scenarios':

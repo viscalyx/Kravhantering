@@ -75,7 +75,7 @@
     "area": "Område",
     "category": "Kategori",
     "type": "Typ",
-    "typeCategory": "Kvalitetsegenskap",
+    "qualityCharacteristic": "Kvalitetsegenskap",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
     "reference": "Kravreferens",
@@ -283,7 +283,7 @@
       "plural": "Statusar",
       "definitePlural": "Statusarna"
     },
-    "typeCategory": {
+    "qualityCharacteristic": {
       "singular": "Kvalitetsegenskap",
       "plural": "Kvalitetsegenskaper",
       "definitePlural": "Kvalitetsegenskaperna"

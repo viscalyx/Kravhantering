@@ -2,9 +2,9 @@ export interface FilterValues {
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
+  qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
   statuses?: number[]
-  typeCategoryIds?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
 }
@@ -20,7 +20,7 @@ export interface AreaOption {
   name: string
 }
 
-export interface TypeCategoryOption {
+export interface QualityCharacteristicOption {
   id: number
   nameEn: string
   nameSv: string
@@ -54,8 +54,8 @@ export interface RequirementRow {
     statusColor: string | null
     statusNameEn: string | null
     statusNameSv: string | null
-    typeCategoryNameEn: string | null
-    typeCategoryNameSv: string | null
+    qualityCharacteristicNameEn: string | null
+    qualityCharacteristicNameSv: string | null
     typeNameEn: string | null
     typeNameSv: string | null
     versionNumber: number
@@ -80,7 +80,8 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.categoryIds && values.categoryIds.length > 0) ||
     (values.requiresTesting && values.requiresTesting.length > 0) ||
     (values.typeIds && values.typeIds.length > 0) ||
-    (values.typeCategoryIds && values.typeCategoryIds.length > 0) ||
+    (values.qualityCharacteristicIds &&
+      values.qualityCharacteristicIds.length > 0) ||
     values.uniqueIdSearch ||
     values.descriptionSearch ||
     statusesDiffer
@@ -93,7 +94,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'area',
   'category',
   'type',
-  'typeCategory',
+  'qualityCharacteristic',
   'status',
   'requiresTesting',
   'version',
@@ -107,7 +108,7 @@ export const REQUIREMENT_SORT_FIELDS = [
   'area',
   'category',
   'type',
-  'typeCategory',
+  'qualityCharacteristic',
   'status',
   'version',
 ] as const
@@ -228,8 +229,8 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     canSort: true,
     defaultVisible: false,
     defaultWidthPx: 152,
-    id: 'typeCategory',
-    labelKey: 'typeCategory',
+    id: 'qualityCharacteristic',
+    labelKey: 'qualityCharacteristic',
     labelNamespace: 'requirement',
     maxWidthPx: 280,
     minWidthPx: 132,
@@ -519,7 +520,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('area', 'areaIds')
   clearIfHidden('category', 'categoryIds')
   clearIfHidden('type', 'typeIds')
-  clearIfHidden('typeCategory', 'typeCategoryIds')
+  clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
 
@@ -663,9 +664,9 @@ export function buildRequirementListParams({
       params.append('typeIds', String(id))
     }
   }
-  if (filters.typeCategoryIds) {
-    for (const id of filters.typeCategoryIds) {
-      params.append('typeCategoryIds', String(id))
+  if (filters.qualityCharacteristicIds) {
+    for (const id of filters.qualityCharacteristicIds) {
+      params.append('qualityCharacteristicIds', String(id))
     }
   }
   if (filters.requiresTesting) {
@@ -792,14 +793,14 @@ export function compareRequirementRows(
         locale,
       )
       break
-    case 'typeCategory':
+    case 'qualityCharacteristic':
       result = compareNullableText(
         locale === 'sv'
-          ? left.version?.typeCategoryNameSv
-          : left.version?.typeCategoryNameEn,
+          ? left.version?.qualityCharacteristicNameSv
+          : left.version?.qualityCharacteristicNameEn,
         locale === 'sv'
-          ? right.version?.typeCategoryNameSv
-          : right.version?.typeCategoryNameEn,
+          ? right.version?.qualityCharacteristicNameSv
+          : right.version?.qualityCharacteristicNameEn,
         sort.direction,
         locale,
       )

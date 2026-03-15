@@ -35,7 +35,7 @@ describe('EditRequirementClient', () => {
             description: 'Desc',
             requirementCategoryId: 2,
             requirementTypeId: 3,
-            requirementTypeCategoryId: null,
+            qualityCharacteristicId: null,
             acceptanceCriteria: 'AC',
             requiresTesting: true,
           },

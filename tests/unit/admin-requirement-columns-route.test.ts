@@ -35,7 +35,11 @@ describe('admin requirement columns route', () => {
       { columnId: 'area', defaultVisible: true, sortOrder: 3 },
       { columnId: 'category', defaultVisible: true, sortOrder: 4 },
       { columnId: 'type', defaultVisible: true, sortOrder: 5 },
-      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 6 },
+      {
+        columnId: 'qualityCharacteristic',
+        defaultVisible: false,
+        sortOrder: 6,
+      },
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
@@ -58,7 +62,7 @@ describe('admin requirement columns route', () => {
       'area',
       'category',
       'type',
-      'typeCategory',
+      'qualityCharacteristic',
       'requiresTesting',
       'version',
     ])
@@ -93,7 +97,11 @@ describe('admin requirement columns route', () => {
       { columnId: 'category', defaultVisible: true, sortOrder: 2 },
       { columnId: 'area', defaultVisible: true, sortOrder: 3 },
       { columnId: 'type', defaultVisible: true, sortOrder: 4 },
-      { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+      {
+        columnId: 'qualityCharacteristic',
+        defaultVisible: false,
+        sortOrder: 5,
+      },
       { columnId: 'status', defaultVisible: true, sortOrder: 6 },
       { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
@@ -125,7 +133,7 @@ describe('admin requirement columns route', () => {
       'category',
       'area',
       'type',
-      'typeCategory',
+      'qualityCharacteristic',
       'status',
       'requiresTesting',
       'version',
@@ -146,7 +154,11 @@ describe('admin requirement columns route', () => {
             { columnId: 'category', defaultVisible: true, sortOrder: 2 },
             { columnId: 'area', defaultVisible: true, sortOrder: 3 },
             { columnId: 'type', defaultVisible: true, sortOrder: 4 },
-            { columnId: 'typeCategory', defaultVisible: false, sortOrder: 5 },
+            {
+              columnId: 'qualityCharacteristic',
+              defaultVisible: false,
+              sortOrder: 5,
+            },
             { columnId: 'status', defaultVisible: true, sortOrder: 6 },
             {
               columnId: 'requiresTesting',

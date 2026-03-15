@@ -1,28 +1,31 @@
 import { eq } from 'drizzle-orm'
-import { requirementTypeCategories, requirementTypes } from '@/drizzle/schema'
+import { qualityCharacteristics, requirementTypes } from '@/drizzle/schema'
 import type { Database } from '@/lib/db'
 
 export async function listTypes(db: Database) {
   return db.query.requirementTypes.findMany({
     orderBy: [requirementTypes.nameSv],
     with: {
-      typeCategories: {
-        orderBy: [requirementTypeCategories.nameSv],
+      qualityCharacteristics: {
+        orderBy: [qualityCharacteristics.nameSv],
       },
     },
   })
 }
 
-export async function listTypeCategories(db: Database, typeId?: number) {
+export async function listQualityCharacteristics(
+  db: Database,
+  typeId?: number,
+) {
   if (typeId != null) {
-    return db.query.requirementTypeCategories.findMany({
-      where: eq(requirementTypeCategories.requirementTypeId, typeId),
-      orderBy: [requirementTypeCategories.nameSv],
+    return db.query.qualityCharacteristics.findMany({
+      where: eq(qualityCharacteristics.requirementTypeId, typeId),
+      orderBy: [qualityCharacteristics.nameSv],
     })
   }
 
-  return db.query.requirementTypeCategories.findMany({
-    orderBy: [requirementTypeCategories.nameSv],
+  return db.query.qualityCharacteristics.findMany({
+    orderBy: [qualityCharacteristics.nameSv],
   })
 }
 
@@ -51,7 +54,7 @@ export async function deleteType(db: Database, id: number) {
   await db.delete(requirementTypes).where(eq(requirementTypes.id, id))
 }
 
-export async function createTypeCategory(
+export async function createQualityCharacteristic(
   db: Database,
   data: {
     nameSv: string
@@ -61,7 +64,7 @@ export async function createTypeCategory(
   },
 ) {
   const [category] = await db
-    .insert(requirementTypeCategories)
+    .insert(qualityCharacteristics)
     .values({
       nameSv: data.nameSv,
       nameEn: data.nameEn,
@@ -72,7 +75,7 @@ export async function createTypeCategory(
   return category
 }
 
-export async function updateTypeCategory(
+export async function updateQualityCharacteristic(
   db: Database,
   id: number,
   data: {
@@ -83,15 +86,15 @@ export async function updateTypeCategory(
   },
 ) {
   const rows = await db
-    .update(requirementTypeCategories)
+    .update(qualityCharacteristics)
     .set(data)
-    .where(eq(requirementTypeCategories.id, id))
+    .where(eq(qualityCharacteristics.id, id))
     .returning()
   return rows[0] ?? null
 }
 
-export async function deleteTypeCategory(db: Database, id: number) {
+export async function deleteQualityCharacteristic(db: Database, id: number) {
   await db
-    .delete(requirementTypeCategories)
-    .where(eq(requirementTypeCategories.id, id))
+    .delete(qualityCharacteristics)
+    .where(eq(qualityCharacteristics.id, id))
 }

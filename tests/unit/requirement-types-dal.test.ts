@@ -7,7 +7,7 @@ import * as schema from '@/drizzle/schema'
 import {
   createType,
   deleteType,
-  listTypeCategories,
+  listQualityCharacteristics,
   listTypes,
   updateType,
 } from '@/lib/dal/requirement-types'
@@ -59,7 +59,7 @@ describe('requirement-types DAL', () => {
         nameEn: 'A-type',
       })
       // Add a category to t1
-      await db.insert(schema.requirementTypeCategories).values({
+      await db.insert(schema.qualityCharacteristics).values({
         nameSv: 'Kat',
         nameEn: 'Cat',
         requirementTypeId: t1.id,
@@ -70,21 +70,21 @@ describe('requirement-types DAL', () => {
       // ordered by nameSv: A-typ before B-typ
       expect(list[0].nameEn).toBe('A-type')
       expect(list[1].nameEn).toBe('B-type')
-      expect(list[1].typeCategories.length).toBe(1)
+      expect(list[1].qualityCharacteristics.length).toBe(1)
     })
   })
 
-  describe('listTypeCategories', () => {
+  describe('listQualityCharacteristics', () => {
     it('returns all categories when no typeId given', async () => {
       const t = await createType(db, {
         nameSv: 'Typ',
         nameEn: 'Type',
       })
-      await db.insert(schema.requirementTypeCategories).values([
+      await db.insert(schema.qualityCharacteristics).values([
         { nameSv: 'K1', nameEn: 'C1', requirementTypeId: t.id },
         { nameSv: 'K2', nameEn: 'C2', requirementTypeId: t.id },
       ])
-      const cats = await listTypeCategories(db)
+      const cats = await listQualityCharacteristics(db)
       expect(cats.length).toBe(2)
     })
 
@@ -97,11 +97,11 @@ describe('requirement-types DAL', () => {
         nameSv: 'T2',
         nameEn: 'T2e',
       })
-      await db.insert(schema.requirementTypeCategories).values([
+      await db.insert(schema.qualityCharacteristics).values([
         { nameSv: 'A', nameEn: 'A', requirementTypeId: t1.id },
         { nameSv: 'B', nameEn: 'B', requirementTypeId: t2.id },
       ])
-      const cats = await listTypeCategories(db, t1.id)
+      const cats = await listQualityCharacteristics(db, t1.id)
       expect(cats.length).toBe(1)
       expect(cats[0].nameEn).toBe('A')
     })
