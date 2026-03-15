@@ -53,6 +53,7 @@ describe('requirement-statuses/[id] route', () => {
     mockDeleteStatus.mockResolvedValue(undefined)
     const req = new NextRequest('http://localhost', { method: 'DELETE' })
     const res = await DELETE(req, makeParams('1'))
+    expect(res.status).toBe(200)
     const json = (await res.json()) as { ok: boolean }
     expect(json.ok).toBe(true)
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
