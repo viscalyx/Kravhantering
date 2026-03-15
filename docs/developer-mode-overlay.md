@@ -69,6 +69,10 @@ The current canonical labels include:
 - `dialog`
 - `tab panel`
 - `navigation`
+- `create button`
+- `crud form`
+- `crud table`
+- `table action`
 
 ## Testing
 
@@ -80,6 +84,7 @@ Developer Mode is covered by:
 - `tests/unit/status-stepper.test.tsx`
 - `tests/unit/version-history.test.tsx`
 - `tests/unit/requirements-table.test.tsx`
+- `tests/unit/reference-data-developer-mode.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
 
 ## Contributor Guardrails
