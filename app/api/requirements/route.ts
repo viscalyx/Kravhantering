@@ -184,6 +184,9 @@ export async function POST(request: NextRequest) {
               }))
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
+        verificationMethod: body.verificationMethod
+          ? String(body.verificationMethod)
+          : undefined,
         scenarioIds: Array.isArray(body.scenarioIds)
           ? body.scenarioIds
               .map(value => Number(value))

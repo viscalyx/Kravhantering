@@ -26,26 +26,29 @@ export default function EditRequirementClient({
     if (res.ok) {
       const data = (await res.json()) as {
         uniqueId: string
-        requirementAreaId?: number
+        area?: { id: number } | null
         versions?: Record<string, unknown>[]
       }
       setUniqueId(data.uniqueId)
       const latest = data.versions?.[0]
       if (latest) {
         setInitialData({
-          areaId: data.requirementAreaId ? String(data.requirementAreaId) : '',
-          categoryId: latest.requirementCategoryId
-            ? String(latest.requirementCategoryId)
+          areaId: data.area?.id ? String(data.area.id) : '',
+          categoryId: (latest.category as { id?: number } | null)?.id
+            ? String((latest.category as { id: number }).id)
             : '',
-          typeId: latest.requirementTypeId
-            ? String(latest.requirementTypeId)
+          typeId: (latest.type as { id?: number } | null)?.id
+            ? String((latest.type as { id: number }).id)
             : '',
-          qualityCharacteristicId: latest.qualityCharacteristicId
-            ? String(latest.qualityCharacteristicId)
+          qualityCharacteristicId: (
+            latest.qualityCharacteristic as { id?: number } | null
+          )?.id
+            ? String((latest.qualityCharacteristic as { id: number }).id)
             : '',
           description: String(latest.description ?? ''),
           acceptanceCriteria: String(latest.acceptanceCriteria ?? ''),
           requiresTesting: Boolean(latest.requiresTesting ?? false),
+          verificationMethod: String(latest.verificationMethod ?? ''),
           ownerId: String(latest.createdBy ?? ''),
         })
       }

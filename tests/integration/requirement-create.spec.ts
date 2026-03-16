@@ -29,9 +29,7 @@ test.describe('Requirement creation', () => {
     }
     expect(created.requirement.id).toBeGreaterThan(0)
     expect(created.requirement.uniqueId).toBeTruthy()
-    expect(created.version.description).toBe(
-      'Integration test requirement',
-    )
+    expect(created.version.description).toBe('Integration test requirement')
 
     // Verify it persists — fetch it back
     const getRes = await request.get(
@@ -46,35 +44,46 @@ test.describe('Requirement creation', () => {
     expect(fetched.uniqueId).toBe(created.requirement.uniqueId)
   })
 
-  test('form submit redirects to list with inline detail open', async ({
-    page,
-    request,
-  }) => {
-    // Get a valid area for selection
-    const areasRes = await request.get('/api/requirement-areas')
-    const areasData = (await areasRes.json()) as {
-      areas: { id: number; name: string }[]
-    }
-    const area = areasData.areas[0]
+  for (const viewport of [
+    { width: 375, height: 812, label: 'mobile' },
+    { width: 1280, height: 800, label: 'desktop' },
+  ]) {
+    test(`form submit redirects to list with inline detail open (${viewport.label})`, async ({
+      page,
+      request,
+    }) => {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      })
+      // Get a valid area for selection
+      const areasRes = await request.get('/api/requirement-areas')
+      const areasData = (await areasRes.json()) as {
+        areas: { id: number; name: string }[]
+      }
+      const area = areasData.areas[0]
 
-    await page.goto('/sv/kravkatalog/ny')
+      await page.goto('/sv/kravkatalog/ny')
 
-    // Select area
-    await page.selectOption('#areaId', String(area.id))
+      // Select area
+      await page.selectOption('#areaId', String(area.id))
 
-    // Fill description
-    await page.fill('#description', 'Playwright UI test requirement')
+      // Fill description
+      await page.fill('#description', 'Playwright UI test requirement')
 
-    // Submit the form
-    await page.click('button[type="submit"]')
+      // Submit the form
+      await page.click('button[type="submit"]')
 
-    // Should redirect to the list (not /kravkatalog/undefined)
-    await page.waitForURL(/\/sv\/kravkatalog(?:\?|$)/, { timeout: 10000 })
-    expect(page.url()).not.toContain('undefined')
+      // Should redirect to the list (not /kravkatalog/undefined)
+      await page.waitForURL(/\/sv\/kravkatalog(?:\?|$)/, { timeout: 10000 })
+      expect(page.url()).not.toContain('undefined')
 
-    // The inline detail panel should be visible with the requirement description
-    await expect(
-      page.getByText('Playwright UI test requirement'),
-    ).toBeVisible({ timeout: 10000 })
-  })
+      // The inline detail panel should be visible with the requirement description
+      await expect(
+        page.getByText('Playwright UI test requirement'),
+      ).toBeVisible({
+        timeout: 10000,
+      })
+    })
+  }
 })

@@ -36,7 +36,11 @@ export async function POST(
       responseFormat: 'json',
       toStatusId: statusId,
     })
-    return NextResponse.json({ id: result.detail.id, uniqueId: result.detail.uniqueId, version: result.version })
+    return NextResponse.json({
+      id: result.detail.id,
+      uniqueId: result.detail.uniqueId,
+      version: result.version,
+    })
   } catch (error) {
     const { body: errorBody, status } = toHttpErrorPayload(error)
     return NextResponse.json(errorBody, { status })

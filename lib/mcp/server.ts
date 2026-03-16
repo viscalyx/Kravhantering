@@ -313,6 +313,9 @@ function renderRequirementHtml(
     `        <span class="pill">${escapeHtml(statusLabel ?? 'Unknown')}</span>`,
     `        <span class="pill">${escapeHtml(String(detail.area?.name ?? 'No area'))}</span>`,
     `        <span class="pill">${selectedVersion?.requiresTesting ? escapeHtml(requiresTestingLabel) : escapeHtml(requiresTestingOffLabel)}</span>`,
+    selectedVersion?.verificationMethod
+      ? `        <span class="pill">${escapeHtml(selectedVersion.verificationMethod)}</span>`
+      : '',
     '      </div>',
     '      <section class="split">',
     '        <div>',
@@ -403,6 +406,7 @@ const RequirementMutationSchema = z
     description: z.string().max(4000).optional(),
     references: z.array(ReferenceInputSchema).optional(),
     requiresTesting: z.boolean().optional(),
+    verificationMethod: z.string().max(4000).optional(),
     scenarioIds: z.array(z.number().int().positive()).optional(),
     qualityCharacteristicId: z.number().int().positive().optional(),
     typeId: z.number().int().positive().optional(),

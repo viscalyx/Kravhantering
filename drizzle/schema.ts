@@ -270,6 +270,7 @@ export const requirementVersions = sqliteTable(
     requiresTesting: integer('is_testing_required', { mode: 'boolean' })
       .notNull()
       .default(false),
+    verificationMethod: text('verification_method'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),

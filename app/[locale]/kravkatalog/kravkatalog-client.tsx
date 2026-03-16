@@ -1,8 +1,8 @@
 'use client'
 
 import { Download, Plus, Printer } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
@@ -219,10 +219,12 @@ export default function KravkatalogClient({
                 resolvedNumericId = detail.id
               }
             }
+          } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+            selectedIdRef.current = null
           }
         } catch {
           if (hasCurrentPinnedSelection()) {
-            // Ignore pinned-row fetch failures and keep the refreshed rows.
+            selectedIdRef.current = null
           }
         }
       }
@@ -336,7 +338,7 @@ export default function KravkatalogClient({
     const url = new URL(window.location.href)
     url.searchParams.delete('selected')
     window.history.replaceState({}, '', url.toString())
-  }, [searchParams])
+  }, [searchParams, refreshRows])
 
   // Scroll to the selected requirement once the expanded detail row is in the
   // DOM. This effect runs after React commits a render that includes the new
@@ -344,6 +346,7 @@ export default function KravkatalogClient({
   // We also depend on hasResolvedInitialRows because the table is hidden behind
   // a loading spinner until that flag is true — without it the effect could fire
   // when rows/pinnedRow are set but before the table is actually rendered.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentional triggers to re-run scroll check when DOM updates
   useEffect(() => {
     const id = scrollToIdRef.current
     if (id == null) return

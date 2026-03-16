@@ -27,6 +27,8 @@ vi.mock('next-intl', () => ({
       'common.noResults': 'No results',
       'common.reactivate': 'Reactivate',
       'common.restoreVersion': 'Restore version',
+      'common.copied': 'Copied',
+      'common.share': 'Share',
       'common.version': 'Version',
       'requirement.acceptanceCriteria': 'Acceptance criteria',
       'requirement.archiveConfirm': 'Archive this requirement?',
@@ -42,6 +44,8 @@ vi.mock('next-intl', () => ({
         `Pending version v${values?.version} ${values?.status}`,
       'requirement.publishedVersionAvailableBanner': values =>
         `Published version v${values?.version} is available`,
+      'requirement.noPublishedVersion':
+        'There is no published version of this requirement.',
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm': 'Reactivate this requirement?',
       'requirement.reference': 'Reference',
@@ -50,6 +54,8 @@ vi.mock('next-intl', () => ({
       'requirement.requiresTesting': 'Requires testing',
       'requirement.restoreConfirm': 'Restore this version?',
       'requirement.scenario': 'Scenario',
+      'requirement.shareLinkInline': 'Copy link (list view)',
+      'requirement.shareLinkPage': 'Copy link (detail page)',
       'requirement.sendBackToDraftConfirm': 'Send back to draft?',
       'requirement.transitionToGranskning': 'Send to review',
       'requirement.transitionToPublicerad': 'Publish',
@@ -985,5 +991,66 @@ describe('RequirementDetailClient', () => {
       ),
     )
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('renders share button and menu with developer mode markers', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Shareable requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Shareable requirement')
+
+    const shareBtn = screen.getByRole('button', { name: /Share/ })
+    expect(shareBtn).toBeInTheDocument()
+    expect(shareBtn).toHaveAttribute('data-developer-mode-name', 'share toggle')
+
+    await userEvent.click(shareBtn)
+
+    expect(screen.getByText('Copy link (list view)')).toBeInTheDocument()
+    expect(screen.getByText('Copy link (detail page)')).toBeInTheDocument()
+
+    const inlineOption = screen
+      .getByText('Copy link (list view)')
+      .closest('button')
+    expect(inlineOption).toHaveAttribute(
+      'data-developer-mode-name',
+      'share option',
+    )
+    expect(inlineOption).toHaveAttribute(
+      'data-developer-mode-value',
+      'share inline',
+    )
+  })
+
+  it('renders noPublishedVersion fallback for full-page view without published version', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only a draft',
+        publishedAt: null,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: false })
+
+    expect(
+      await screen.findByText(
+        'There is no published version of this requirement.',
+      ),
+    ).toBeInTheDocument()
   })
 })

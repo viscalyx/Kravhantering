@@ -44,6 +44,7 @@ interface RequirementDetail {
     description: string | null
     acceptanceCriteria: string | null
     requiresTesting: boolean
+    verificationMethod: string | null
     category: { nameSv: string; nameEn: string } | null
     type: { nameSv: string; nameEn: string } | null
     qualityCharacteristic: { nameSv: string; nameEn: string } | null
@@ -580,20 +581,25 @@ export default function RequirementDetailClient({
     url.search = ''
     const shareUniqueId = req.uniqueId
     if (mode === 'inline') {
-      url.pathname = url.pathname.replace(/\/kravkatalog(\/.*)?$/, '/kravkatalog')
+      url.pathname = url.pathname.replace(
+        /\/kravkatalog(\/.*)?$/,
+        '/kravkatalog',
+      )
       url.searchParams.set('selected', shareUniqueId)
     } else {
       const versionSuffix =
-        selectedVersionNumber != null
-          ? `/${selectedVersionNumber}`
-          : ''
+        selectedVersionNumber != null ? `/${selectedVersionNumber}` : ''
       url.pathname = url.pathname.replace(
         /\/kravkatalog(\/.*)?$/,
         `/kravkatalog/${shareUniqueId}${versionSuffix}`,
       )
     }
-    await navigator.clipboard.writeText(url.toString())
-    setCopied(mode)
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      setCopied(mode)
+    } catch {
+      setCopied(null)
+    }
     setShowShareMenu(false)
     setTimeout(() => setCopied(null), 2000)
   }
@@ -742,63 +748,88 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                {inline &&
-                  (req.area ||
-                    selectedVersion?.type ||
-                    selectedVersion?.qualityCharacteristic) && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {req.area && (
-                        <div
-                          data-developer-mode-context={detailContext}
-                          data-developer-mode-name="detail section"
-                          data-developer-mode-priority="350"
-                          data-developer-mode-value="area"
-                        >
-                          <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                            {t('area')}
-                          </h3>
-                          <p className="text-secondary-900 dark:text-secondary-100">
-                            {req.area.name}
+                {inline && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {req.area && (
+                      <div
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail section"
+                        data-developer-mode-priority="350"
+                        data-developer-mode-value="area"
+                      >
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                          {t('area')}
+                        </h3>
+                        <p className="text-secondary-900 dark:text-secondary-100">
+                          {req.area.name}
+                        </p>
+                        {req.area.ownerName && (
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                            {t('areaOwner')}: {req.area.ownerName}
                           </p>
-                          {req.area.ownerName && (
-                            <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                              {t('areaOwner')}: {req.area.ownerName}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      {selectedVersion?.type && (
-                        <div
-                          data-developer-mode-context={detailContext}
-                          data-developer-mode-name="detail section"
-                          data-developer-mode-priority="350"
-                          data-developer-mode-value="type"
-                        >
-                          <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                            {t('type')}
-                          </h3>
-                          <p className="text-secondary-900 dark:text-secondary-100">
-                            {localName(selectedVersion.type)}
-                          </p>
-                        </div>
-                      )}
-                      {selectedVersion?.qualityCharacteristic && (
-                        <div
-                          data-developer-mode-context={detailContext}
-                          data-developer-mode-name="detail section"
-                          data-developer-mode-priority="350"
-                          data-developer-mode-value="quality characteristic"
-                        >
-                          <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                            {t('qualityCharacteristic')}
-                          </h3>
-                          <p className="text-secondary-900 dark:text-secondary-100">
-                            {localName(selectedVersion.qualityCharacteristic)}
-                          </p>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    )}
+                    {selectedVersion?.type && (
+                      <div
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail section"
+                        data-developer-mode-priority="350"
+                        data-developer-mode-value="type"
+                      >
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                          {t('type')}
+                        </h3>
+                        <p className="text-secondary-900 dark:text-secondary-100">
+                          {localName(selectedVersion.type)}
+                        </p>
+                      </div>
+                    )}
+                    {selectedVersion?.qualityCharacteristic && (
+                      <div
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail section"
+                        data-developer-mode-priority="350"
+                        data-developer-mode-value="quality characteristic"
+                      >
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                          {t('qualityCharacteristic')}
+                        </h3>
+                        <p className="text-secondary-900 dark:text-secondary-100">
+                          {localName(selectedVersion.qualityCharacteristic)}
+                        </p>
+                      </div>
+                    )}
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="requires testing"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('requiresTesting')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {selectedVersion?.requiresTesting
+                          ? tc('yes')
+                          : tc('no')}
+                      </p>
                     </div>
-                  )}
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="verification method"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('verificationMethod')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {selectedVersion?.verificationMethod || '—'}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {selectedVersion?.references &&
                   selectedVersion.references.length > 0 && (
@@ -906,12 +937,19 @@ export default function RequirementDetailClient({
                 <div className="relative" ref={shareMenuRef}>
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="share toggle"
+                    data-developer-mode-priority="300"
+                    data-developer-mode-value="share"
                     onClick={() => setShowShareMenu(prev => !prev)}
                     title={tc('share')}
                     type="button"
                   >
                     {copied ? (
-                      <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+                      <Check
+                        aria-hidden="true"
+                        className="h-4 w-4 text-green-500"
+                      />
                     ) : (
                       <Share2 aria-hidden="true" className="h-4 w-4" />
                     )}
@@ -920,24 +958,38 @@ export default function RequirementDetailClient({
                   {showShareMenu && (
                     <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
                       <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="share option"
+                        data-developer-mode-priority="310"
+                        data-developer-mode-value="share inline"
                         onClick={() => handleShare('inline')}
                         type="button"
                       >
                         {copied === 'inline' ? (
-                          <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+                          <Check
+                            aria-hidden="true"
+                            className="h-4 w-4 text-green-500"
+                          />
                         ) : (
                           <Share2 aria-hidden="true" className="h-4 w-4" />
                         )}
                         {t('shareLinkInline')}
                       </button>
                       <button
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="share option"
+                        data-developer-mode-priority="310"
+                        data-developer-mode-value="share page"
                         onClick={() => handleShare('page')}
                         type="button"
                       >
                         {copied === 'page' ? (
-                          <Check aria-hidden="true" className="h-4 w-4 text-green-500" />
+                          <Check
+                            aria-hidden="true"
+                            className="h-4 w-4 text-green-500"
+                          />
                         ) : (
                           <Share2 aria-hidden="true" className="h-4 w-4" />
                         )}
@@ -1133,6 +1185,14 @@ export default function RequirementDetailClient({
                   ) : (
                     <span className="font-medium">{tc('no')}</span>
                   )}
+                </div>
+                <div>
+                  <span className="text-secondary-600 dark:text-secondary-400">
+                    {t('verificationMethod')}:
+                  </span>{' '}
+                  <span className="font-medium">
+                    {selectedVersion?.verificationMethod || '—'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-secondary-600 dark:text-secondary-400">

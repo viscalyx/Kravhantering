@@ -42,9 +42,6 @@ export default async function VersionDetailPage({
 }) {
   const { id, version } = await params
   return (
-    <VersionDetailClient
-      requirementId={id}
-      versionNumber={Number(version)}
-    />
+    <VersionDetailClient requirementId={id} versionNumber={Number(version)} />
   )
 }

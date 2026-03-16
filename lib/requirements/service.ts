@@ -77,6 +77,7 @@ export interface RequirementMutationInput {
   requiresTesting?: boolean
   scenarioIds?: number[]
   typeId?: number
+  verificationMethod?: string
 }
 
 export interface RequirementRefInput {
@@ -270,6 +271,7 @@ function formatRequirementDetail(
         uri: reference.uri,
       })),
       requiresTesting: version.requiresTesting,
+      verificationMethod: version.verificationMethod,
       status: version.status,
       statusColor: version.statusColor,
       statusNameEn: version.statusNameEn,
@@ -868,6 +870,7 @@ export function createRequirementsService(
               qualityCharacteristicId: payload.qualityCharacteristicId,
               requirementTypeId: payload.typeId,
               requiresTesting: payload.requiresTesting,
+              verificationMethod: payload.verificationMethod,
               scenarioIds: payload.scenarioIds,
             })
             await syncReferences(db, created.version.id, payload.references)
@@ -926,6 +929,7 @@ export function createRequirementsService(
               qualityCharacteristicId: payload.qualityCharacteristicId,
               requirementTypeId: payload.typeId,
               requiresTesting: payload.requiresTesting,
+              verificationMethod: payload.verificationMethod,
               scenarioIds: payload.scenarioIds,
             })
             await syncReferences(db, version.id, payload.references)

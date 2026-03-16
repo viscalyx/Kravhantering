@@ -13,6 +13,7 @@ interface VersionData {
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requiresTesting: boolean
   type: { nameSv: string; nameEn: string } | null
+  verificationMethod: string | null
   versionNumber: number
 }
 
@@ -125,6 +126,12 @@ export default function VersionDetailClient({
                 {t('requiresTesting')}:
               </span>{' '}
               {v.requiresTesting ? tc('yes') : tc('no')}
+            </div>
+            <div>
+              <span className="text-secondary-600 dark:text-secondary-400">
+                {t('verificationMethod')}:
+              </span>{' '}
+              {v.verificationMethod || '—'}
             </div>
           </div>
         </div>

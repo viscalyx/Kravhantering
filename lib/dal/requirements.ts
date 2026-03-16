@@ -511,6 +511,7 @@ export async function createRequirement(
     requirementTypeId?: number
     qualityCharacteristicId?: number
     requiresTesting?: boolean
+    verificationMethod?: string
     createdBy?: string
     referenceIds?: number[]
     scenarioIds?: number[]
@@ -554,6 +555,7 @@ export async function createRequirement(
       qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
+      verificationMethod: data.verificationMethod,
       createdBy: data.createdBy,
       editedAt: now,
     })
@@ -583,6 +585,7 @@ export async function editRequirement(
     requirementTypeId?: number
     qualityCharacteristicId?: number
     requiresTesting?: boolean
+    verificationMethod?: string
     createdBy?: string
     scenarioIds?: number[]
   },
@@ -641,6 +644,7 @@ export async function editRequirement(
         requirementTypeId: data.requirementTypeId,
         qualityCharacteristicId: data.qualityCharacteristicId,
         requiresTesting: data.requiresTesting ?? false,
+        verificationMethod: data.verificationMethod,
         editedAt: now,
       })
       .where(eq(requirementVersions.id, currentVersion.id))
@@ -687,6 +691,7 @@ export async function editRequirement(
       qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
+      verificationMethod: data.verificationMethod,
       editedAt: now,
       createdBy: data.createdBy,
     })
@@ -990,6 +995,7 @@ export async function restoreVersion(
       qualityCharacteristicId: oldVersion.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: oldVersion.requiresTesting,
+      verificationMethod: oldVersion.verificationMethod,
       createdBy: createdBy ?? oldVersion.createdBy,
       editedAt: now,
     })

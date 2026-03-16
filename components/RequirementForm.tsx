@@ -1,7 +1,8 @@
 'use client'
 
+import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
 import { useRouter } from '@/i18n/routing'
 
 interface FormData {
@@ -12,6 +13,7 @@ interface FormData {
   qualityCharacteristicId: string
   requiresTesting: boolean
   typeId: string
+  verificationMethod: string
 }
 
 interface RequirementFormProps {
@@ -39,6 +41,8 @@ interface QualityCharacteristicOption {
   parentId: number | null
 }
 
+const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
+
 export default function RequirementForm({
   initialData,
   requirementId,
@@ -59,6 +63,7 @@ export default function RequirementForm({
   >([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
     () => {
       try {
@@ -81,7 +86,20 @@ export default function RequirementForm({
     description: initialData?.description ?? '',
     acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
     requiresTesting: initialData?.requiresTesting ?? false,
+    verificationMethod: initialData?.verificationMethod ?? '',
   })
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(prev => {
+      const next = new Set(prev)
+      if (next.has(field)) {
+        next.delete(field)
+      } else {
+        next.add(field)
+      }
+      return next
+    })
+  }
 
   const fetchOptions = useCallback(async () => {
     const [areasRes, catRes, typesRes] = await Promise.all([
@@ -126,7 +144,13 @@ export default function RequirementForm({
   }, [form.typeId, fetchQualityCharacteristics])
 
   const handleChange = (key: keyof FormData, value: string | boolean) => {
-    setForm(prev => ({ ...prev, [key]: value }))
+    setForm(prev => {
+      const next = { ...prev, [key]: value }
+      if (key === 'requiresTesting' && !value) {
+        next.verificationMethod = ''
+      }
+      return next
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -152,6 +176,9 @@ export default function RequirementForm({
           description: form.description || undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
           requiresTesting: form.requiresTesting,
+          verificationMethod: form.requiresTesting
+            ? form.verificationMethod || undefined
+            : undefined,
         }),
       })
 
@@ -182,6 +209,8 @@ export default function RequirementForm({
         } | null
         setError(err?.error ?? res.statusText)
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setSubmitting(false)
     }
@@ -192,15 +221,38 @@ export default function RequirementForm({
   const getQualityCharacteristicName = (c: QualityCharacteristicOption) =>
     locale === 'sv' ? c.nameSv : c.nameEn
 
+  const helpButton = (field: string) => (
+    <button
+      aria-expanded={openHelp.has(field)}
+      aria-label={tc('help')}
+      className="text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+      onClick={() => toggleHelp(field)}
+      type="button"
+    >
+      <HelpCircle className="h-3.5 w-3.5" />
+    </button>
+  )
+
+  const helpPanel = (helpKey: string, field: string) =>
+    openHelp.has(field) && (
+      <p className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700">
+        {t.rich(helpKey, richTags)}
+      </p>
+    )
+
   return (
     <form
       className="space-y-5 max-w-2xl animate-fade-in-up"
       onSubmit={handleSubmit}
     >
       <div>
-        <label className="block text-sm font-medium mb-1" htmlFor="areaId">
-          {t('area')} *
-        </label>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-sm font-medium" htmlFor="areaId">
+            {t('area')} *
+          </label>
+          {helpButton('areaId')}
+        </div>
+        {helpPanel('areaHelp', 'areaId')}
         <select
           className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
           id="areaId"
@@ -224,24 +276,30 @@ export default function RequirementForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1" htmlFor="description">
-          {t('description')}
-        </label>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-sm font-medium" htmlFor="description">
+            {t('description')} *
+          </label>
+          {helpButton('description')}
+        </div>
+        {helpPanel('descriptionHelp', 'description')}
         <textarea
           className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]"
           id="description"
           onChange={e => handleChange('description', e.target.value)}
+          required
           value={form.description}
         />
       </div>
 
       <div>
-        <label
-          className="block text-sm font-medium mb-1"
-          htmlFor="acceptanceCriteria"
-        >
-          {t('acceptanceCriteria')}
-        </label>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-sm font-medium" htmlFor="acceptanceCriteria">
+            {t('acceptanceCriteria')}
+          </label>
+          {helpButton('acceptanceCriteria')}
+        </div>
+        {helpPanel('acceptanceCriteriaHelp', 'acceptanceCriteria')}
         <textarea
           className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]"
           id="acceptanceCriteria"
@@ -252,12 +310,13 @@ export default function RequirementForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label
-            className="block text-sm font-medium mb-1"
-            htmlFor="categoryId"
-          >
-            {t('category')}
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="text-sm font-medium" htmlFor="categoryId">
+              {t('category')}
+            </label>
+            {helpButton('categoryId')}
+          </div>
+          {helpPanel('categoryHelp', 'categoryId')}
           <select
             className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
             id="categoryId"
@@ -274,9 +333,13 @@ export default function RequirementForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="typeId">
-            {t('type')}
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="text-sm font-medium" htmlFor="typeId">
+              {t('type')}
+            </label>
+            {helpButton('typeId')}
+          </div>
+          {helpPanel('typeHelp', 'typeId')}
           <select
             className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
             id="typeId"
@@ -295,12 +358,16 @@ export default function RequirementForm({
 
       {qualityCharacteristics.length > 0 && (
         <div>
-          <label
-            className="block text-sm font-medium mb-1"
-            htmlFor="qualityCharacteristicId"
-          >
-            {t('qualityCharacteristic')}
-          </label>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label
+              className="text-sm font-medium"
+              htmlFor="qualityCharacteristicId"
+            >
+              {t('qualityCharacteristic')}
+            </label>
+            {helpButton('qualityCharacteristicId')}
+          </div>
+          {helpPanel('qualityCharacteristicHelp', 'qualityCharacteristicId')}
           <select
             className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
             id="qualityCharacteristicId"
@@ -325,15 +392,38 @@ export default function RequirementForm({
         </div>
       )}
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          checked={form.requiresTesting}
-          className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-          onChange={e => handleChange('requiresTesting', e.target.checked)}
-          type="checkbox"
-        />
-        {t('requiresTesting')}
-      </label>
+      <div className="flex items-center gap-2 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            checked={form.requiresTesting}
+            className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+            onChange={e => handleChange('requiresTesting', e.target.checked)}
+            type="checkbox"
+          />
+          {t('requiresTesting')}
+        </label>
+        {helpButton('requiresTesting')}
+      </div>
+      {helpPanel('requiresTestingHelp', 'requiresTesting')}
+
+      {form.requiresTesting && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <label className="text-sm font-medium" htmlFor="verificationMethod">
+              {t('verificationMethod')} *
+            </label>
+            {helpButton('verificationMethod')}
+          </div>
+          {helpPanel('verificationMethodHelp', 'verificationMethod')}
+          <textarea
+            className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]"
+            id="verificationMethod"
+            onChange={e => handleChange('verificationMethod', e.target.value)}
+            required
+            value={form.verificationMethod}
+          />
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-red-600 dark:text-red-400" role="alert">
@@ -348,6 +438,7 @@ export default function RequirementForm({
           </button>
           <button
             className="px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
+            disabled={submitting}
             onClick={() => router.back()}
             type="button"
           >
@@ -359,6 +450,7 @@ export default function RequirementForm({
           <div className="inline-flex rounded-lg border overflow-hidden text-xs font-medium">
             <button
               className={`px-3 py-1.5 transition-colors ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              disabled={submitting}
               onClick={() => {
                 setSaveDestination('inline')
                 try {
@@ -373,6 +465,7 @@ export default function RequirementForm({
             </button>
             <button
               className={`px-3 py-1.5 transition-colors ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              disabled={submitting}
               onClick={() => {
                 setSaveDestination('page')
                 try {

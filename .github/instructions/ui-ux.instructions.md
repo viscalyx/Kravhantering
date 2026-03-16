@@ -18,6 +18,7 @@ applyTo: '{components,app}/**/*.tsx'
 
 ## Accessibility
 
+- Follow Web Content Accessibility Guidelines (WCAG) 2.2 level AAA compliance
 - Semantic HTML elements over `<div>`/`<span>` + ARIA roles (Biome `a11y/useSemanticElements`)
 - Proper heading order (`h1` > `h2` > `h3`)
 - ARIA labels on all interactive elements

@@ -38,6 +38,7 @@ describe('RequirementForm', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.removeItem('requirement-save-destination')
     fetchMock.mockImplementation((url: string) => {
       if (typeof url === 'string' && url.includes('/api/requirement-areas'))
         return Promise.resolve(okJson({ areas: sampleAreas }))
@@ -91,7 +92,10 @@ describe('RequirementForm', () => {
 
   it('submits create form and navigates', async () => {
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
-      if (opts?.method === 'POST') return Promise.resolve(okJson({ requirement: { id: 42, uniqueId: 'TST0042' }, version: {} }))
+      if (opts?.method === 'POST')
+        return Promise.resolve(
+          okJson({ requirement: { id: 42, uniqueId: 'TST0042' }, version: {} }),
+        )
       if (typeof url === 'string' && url.includes('/api/requirement-areas'))
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (

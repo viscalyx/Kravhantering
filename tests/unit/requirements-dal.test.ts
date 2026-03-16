@@ -20,6 +20,7 @@ function createTestDb() {
     '0001_pink_pixie.sql',
     '0002_blue_menace.sql',
     '0003_rename_quality_characteristics.sql',
+    '0004_add_verification_method.sql',
   ]
 
   for (const file of migrationFiles) {
