@@ -57,6 +57,7 @@ const mockUpdateScenario = vi.fn()
 const mockDeleteScenario = vi.fn()
 vi.mock('@/lib/dal/usage-scenarios', () => ({
   listScenarios: async () => [{ id: 1 }],
+  countLinkedRequirements: async () => ({}),
   createScenario: async () => ({ id: 2 }),
   updateScenario: (...a: unknown[]) => mockUpdateScenario(...a),
   deleteScenario: (...a: unknown[]) => mockDeleteScenario(...a),
