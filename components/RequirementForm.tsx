@@ -245,6 +245,7 @@ export default function RequirementForm({
 
   const helpButton = (field: string, label: string) => (
     <button
+      aria-controls={`help-${field}`}
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
       className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
@@ -257,7 +258,10 @@ export default function RequirementForm({
 
   const helpPanel = (helpKey: string, field: string) =>
     openHelp.has(field) && (
-      <p className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700">
+      <p
+        className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700"
+        id={`help-${field}`}
+      >
         {t.rich(helpKey, richTags)}
       </p>
     )
@@ -514,7 +518,7 @@ export default function RequirementForm({
             {submitting ? tc('loading') : tc('save')}
           </button>
           <button
-            className="px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
+            className="px-4 py-2.5 rounded-xl border text-sm font-medium min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
             disabled={submitting}
             onClick={() => router.back()}
             type="button"

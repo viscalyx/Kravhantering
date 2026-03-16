@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import StatusBadge from '@/components/StatusBadge'
 import { Link } from '@/i18n/routing'
@@ -90,9 +90,12 @@ export default function KravscenarierClient() {
     }
   }, [])
 
+  const linkedReqRequestId = useRef(0)
+
   const fetchLinkedRequirements = useCallback(async (scenarioId: number) => {
+    const requestId = ++linkedReqRequestId.current
     const res = await fetch(`/api/usage-scenarios/${scenarioId}`)
-    if (res.ok) {
+    if (res.ok && requestId === linkedReqRequestId.current) {
       const data = (await res.json()) as {
         linkedRequirements?: LinkedRequirement[]
       }
@@ -121,7 +124,7 @@ export default function KravscenarierClient() {
           nameEn: form.nameEn,
           descriptionSv: form.descriptionSv || undefined,
           descriptionEn: form.descriptionEn || undefined,
-          ownerId: form.ownerId ? Number(form.ownerId) : undefined,
+          ownerId: form.ownerId ? Number(form.ownerId) : null,
         }),
       })
       if (!res.ok) return
@@ -329,6 +332,7 @@ export default function KravscenarierClient() {
                   </button>
                   <button
                     className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                    disabled={submitting}
                     onClick={() => {
                       setShowForm(false)
                       setLinkedRequirements([])
@@ -350,7 +354,7 @@ export default function KravscenarierClient() {
                       {tc('noneAvailable')}
                     </p>
                   ) : (
-                    <div className="rounded-xl border overflow-hidden">
+                    <div className="rounded-xl border overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
@@ -384,7 +388,7 @@ export default function KravscenarierClient() {
                                 <td className="py-2 px-3 font-medium">
                                   <Link
                                     className="text-primary-700 dark:text-primary-300 hover:underline"
-                                    href={`/kravkatalog/${req.uniqueId}`}
+                                    href={`/kravkatalog/${req.uniqueId}/${req.versionNumber}`}
                                   >
                                     {req.uniqueId}
                                   </Link>
@@ -431,7 +435,7 @@ export default function KravscenarierClient() {
           </p>
         ) : (
           <div
-            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
+            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-x-auto"
             data-developer-mode-context="scenarios"
             data-developer-mode-name="crud table"
             data-developer-mode-priority="340"
