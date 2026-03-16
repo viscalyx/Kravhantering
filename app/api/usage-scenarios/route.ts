@@ -1,13 +1,25 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
-import { createScenario, listScenarios } from '@/lib/dal/requirement-scenarios'
+import {
+  countLinkedRequirements,
+  createScenario,
+  listScenarios,
+} from '@/lib/dal/usage-scenarios'
 import { getDb } from '@/lib/db'
 
 export async function GET() {
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const scenarios = await listScenarios(db)
-  return NextResponse.json({ scenarios })
+  const [scenarios, counts] = await Promise.all([
+    listScenarios(db),
+    countLinkedRequirements(db),
+  ])
+  return NextResponse.json({
+    scenarios: scenarios.map(s => ({
+      ...s,
+      linkedRequirementCount: counts[s.id] ?? 0,
+    })),
+  })
 }
 
 export async function POST(request: Request) {

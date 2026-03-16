@@ -1,7 +1,6 @@
 import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import { replaceReferencesForVersion } from '@/lib/dal/requirement-references'
-import { listScenarios } from '@/lib/dal/requirement-scenarios'
 import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
 import {
   listQualityCharacteristics,
@@ -25,6 +24,7 @@ import {
   createUiSettingsLoader,
   type UiSettingsLoader,
 } from '@/lib/dal/ui-settings'
+import { listScenarios } from '@/lib/dal/usage-scenarios'
 import type { Database } from '@/lib/db'
 import {
   AllowAllAuthorizationService,
@@ -77,7 +77,7 @@ export interface RequirementMutationInput {
   requiresTesting?: boolean
   scenarioIds?: number[]
   typeId?: number
-  verificationMethod?: string
+  verificationMethod?: string | null
 }
 
 export interface RequirementRefInput {
@@ -103,6 +103,7 @@ export interface QueryCatalogInput {
   typeId?: number
   typeIds?: number[]
   uniqueIdSearch?: string
+  usageScenarioIds?: number[]
 }
 
 export interface GetRequirementInput extends RequirementRefInput {
@@ -295,10 +296,10 @@ function formatRequirementDetail(
         scenario: {
           descriptionEn: versionScenario.scenario?.descriptionEn ?? null,
           descriptionSv: versionScenario.scenario?.descriptionSv ?? null,
-          id: versionScenario.scenario?.id ?? versionScenario.scenarioId,
+          id: versionScenario.scenario?.id ?? versionScenario.usageScenarioId,
           nameEn: versionScenario.scenario?.nameEn ?? null,
           nameSv: versionScenario.scenario?.nameSv ?? null,
-          owner: versionScenario.scenario?.owner ?? null,
+          ownerId: versionScenario.scenario?.ownerId ?? null,
         },
       })),
     })),
@@ -529,6 +530,7 @@ export function createRequirementsService(
               qualityCharacteristicIds: input.qualityCharacteristicIds,
               typeIds: input.typeIds,
               uniqueIdSearch: input.uniqueIdSearch,
+              usageScenarioIds: input.usageScenarioIds,
             }
             const [rows, total] = await Promise.all([
               listRequirements(db, query),

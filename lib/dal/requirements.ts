@@ -18,8 +18,8 @@ import {
   requirementStatusTransitions,
   requirements,
   requirementTypes,
-  requirementVersionScenarios,
   requirementVersions,
+  requirementVersionUsageScenarios,
 } from '@/drizzle/schema'
 import type { Database } from '@/lib/db'
 import {
@@ -52,6 +52,7 @@ type ListRequirementsOptions = {
   qualityCharacteristicIds?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
+  usageScenarioIds?: number[]
 }
 
 // Effective status uses priority: Published > Archived > Review > Draft.
@@ -121,6 +122,19 @@ function buildRequirementListConditions(opts: ListRequirementsOptions) {
   if (opts.requiresTesting && opts.requiresTesting.length > 0) {
     conditions.push(
       inArray(requirementVersions.requiresTesting, opts.requiresTesting),
+    )
+  }
+  if (opts.usageScenarioIds && opts.usageScenarioIds.length > 0) {
+    const ids = sql.join(
+      opts.usageScenarioIds.map(id => sql`${id}`),
+      sql`, `,
+    )
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM requirement_version_usage_scenarios vus
+        WHERE vus.requirement_version_id = ${requirementVersions.id}
+        AND vus.usage_scenario_id IN (${ids})
+      )`,
     )
   }
 
@@ -511,7 +525,7 @@ export async function createRequirement(
     requirementTypeId?: number
     qualityCharacteristicId?: number
     requiresTesting?: boolean
-    verificationMethod?: string
+    verificationMethod?: string | null
     createdBy?: string
     referenceIds?: number[]
     scenarioIds?: number[]
@@ -555,7 +569,7 @@ export async function createRequirement(
       qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
-      verificationMethod: data.verificationMethod,
+      verificationMethod: data.verificationMethod ?? null,
       createdBy: data.createdBy,
       editedAt: now,
     })
@@ -563,10 +577,10 @@ export async function createRequirement(
 
   // Link scenarios
   if (data.scenarioIds?.length) {
-    await db.insert(requirementVersionScenarios).values(
-      data.scenarioIds.map(scenarioId => ({
+    await db.insert(requirementVersionUsageScenarios).values(
+      data.scenarioIds.map(usageScenarioId => ({
         requirementVersionId: version.id,
-        scenarioId,
+        usageScenarioId,
       })),
     )
   }
@@ -585,7 +599,7 @@ export async function editRequirement(
     requirementTypeId?: number
     qualityCharacteristicId?: number
     requiresTesting?: boolean
-    verificationMethod?: string
+    verificationMethod?: string | null
     createdBy?: string
     scenarioIds?: number[]
   },
@@ -644,23 +658,26 @@ export async function editRequirement(
         requirementTypeId: data.requirementTypeId,
         qualityCharacteristicId: data.qualityCharacteristicId,
         requiresTesting: data.requiresTesting ?? false,
-        verificationMethod: data.verificationMethod,
+        verificationMethod: data.verificationMethod ?? null,
         editedAt: now,
       })
       .where(eq(requirementVersions.id, currentVersion.id))
 
     // Replace scenarios: delete existing, then insert new
     await db
-      .delete(requirementVersionScenarios)
+      .delete(requirementVersionUsageScenarios)
       .where(
-        eq(requirementVersionScenarios.requirementVersionId, currentVersion.id),
+        eq(
+          requirementVersionUsageScenarios.requirementVersionId,
+          currentVersion.id,
+        ),
       )
 
     if (data.scenarioIds?.length) {
-      await db.insert(requirementVersionScenarios).values(
-        data.scenarioIds.map(scenarioId => ({
+      await db.insert(requirementVersionUsageScenarios).values(
+        data.scenarioIds.map(usageScenarioId => ({
           requirementVersionId: currentVersion.id,
-          scenarioId,
+          usageScenarioId,
         })),
       )
     }
@@ -699,10 +716,10 @@ export async function editRequirement(
 
   // Link scenarios
   if (data.scenarioIds?.length) {
-    await db.insert(requirementVersionScenarios).values(
-      data.scenarioIds.map(scenarioId => ({
+    await db.insert(requirementVersionUsageScenarios).values(
+      data.scenarioIds.map(usageScenarioId => ({
         requirementVersionId: version.id,
-        scenarioId,
+        usageScenarioId,
       })),
     )
   }
@@ -777,9 +794,12 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     .delete(requirementReferences)
     .where(eq(requirementReferences.requirementVersionId, latestVersion.id))
   await db
-    .delete(requirementVersionScenarios)
+    .delete(requirementVersionUsageScenarios)
     .where(
-      eq(requirementVersionScenarios.requirementVersionId, latestVersion.id),
+      eq(
+        requirementVersionUsageScenarios.requirementVersionId,
+        latestVersion.id,
+      ),
     )
 
   // Delete the draft version
@@ -1014,10 +1034,10 @@ export async function restoreVersion(
   }
 
   if (oldVersion.versionScenarios.length > 0) {
-    await db.insert(requirementVersionScenarios).values(
+    await db.insert(requirementVersionUsageScenarios).values(
       oldVersion.versionScenarios.map(versionScenario => ({
         requirementVersionId: newVersion.id,
-        scenarioId: versionScenario.scenarioId,
+        usageScenarioId: versionScenario.usageScenarioId,
       })),
     )
   }

@@ -90,6 +90,7 @@
     "typeHelp": "<strong>Select the type that best describes the requirement.</strong>\nThe type determines which quality characteristics can be linked to the requirement.",
     "qualityCharacteristicHelp": "<strong>Select the quality characteristic the requirement contributes to.</strong>\nQuality characteristics follow ISO/IEC 25010:2023 and help categorize requirements by quality aspect.",
     "requiresTestingHelp": "<strong>Indicate whether the requirement should be verified.</strong>\nIf the requirement is marked as verifiable, you also need to specify a verification method.",
+    "scenarioHelp": "<strong>Select one or more usage scenarios that apply to this requirement.</strong>\nUsage scenarios describe operational contexts (e.g. high load, disaster recovery) that help clarify when and how the requirement is relevant.",
     "reference": "Requirement reference",
     "scenario": "Usage scenario",
     "newRequirement": "New requirement",
@@ -174,8 +175,10 @@
     "name": "Name",
     "description": "Description",
     "owner": "Scenario owner",
-    "newScenario": "New requirement scenario",
-    "editScenario": "Edit requirement scenario"
+    "newScenario": "New usage scenario",
+    "editScenario": "Edit usage scenario",
+    "linkedRequirements": "Linked requirements",
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
   },
   "qualityCharacteristicMgmt": {
     "name": "Name",

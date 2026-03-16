@@ -17,11 +17,11 @@ DELETE FROM requirement_package_items WHERE id IN (1, 2, 3, 4);
 DELETE FROM requirement_packages WHERE id IN (1, 2);
 DELETE FROM package_responsibility_areas WHERE id IN (1, 2, 3, 4, 5);
 DELETE FROM package_implementation_types WHERE id IN (1, 2);
-DELETE FROM requirement_version_scenarios WHERE requirement_version_id IN (2, 5, 7, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100);
+DELETE FROM requirement_version_usage_scenarios WHERE requirement_version_id IN (2, 5, 7, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100);
 DELETE FROM requirement_references WHERE id IN (1, 2, 3);
 DELETE FROM requirement_versions WHERE id BETWEEN 1 AND 100;
 DELETE FROM requirement_versions WHERE id BETWEEN 101 AND 502;
-DELETE FROM requirement_scenarios WHERE id IN (1, 2, 3);
+DELETE FROM usage_scenarios WHERE id IN (1, 2, 3);
 DELETE FROM requirements WHERE id BETWEEN 1 AND 367;
 DELETE FROM requirement_areas WHERE id BETWEEN 1 AND 10;
 DELETE FROM owners WHERE id BETWEEN 1 AND 3;
@@ -1368,18 +1368,18 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (501, 366, 1, 'Syntetisk testdata-generering [Version 1 testdata]', 'Realistisk testdata genereras automatiskt utan produktionsdata [Version 1 testdata]', 3, 2, 37, 1, 1, 'Automatiserade datavalideringstester med verifiering av integritet och format', datetime('now', '-60 days'), 'data-admin', datetime('now', '-58 days'), NULL, NULL),
   (502, 367, 1, 'Data observability med anomalidetektering [Version 1 testdata]', 'Dataanomalier (volym, schema, freshness) detekteras automatiskt [Version 1 testdata]', 2, 2, 27, 3, 1, 'Utvärdering av ML-modell med kända anomalier och mätning av false positive rate', datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
--- ─── Requirement Scenarios (sample) ──────────────────────────────────────────
-INSERT OR IGNORE INTO requirement_scenarios (id, name_sv, name_en, description_sv, description_en, owner, created_at, updated_at) VALUES
-  (1, 'Normal driftscenario', 'Normal operation scenario', 'Systemet körs under normal belastning med typiskt antal samtidiga användare', 'The system runs under normal load with a typical number of concurrent users', 'owner-1', datetime('now'), datetime('now')),
-  (2, 'Hög belastning', 'High load', 'Systemet utsätts för maximal förväntad belastning under topptider', 'The system is subjected to maximum expected load during peak times', 'owner-1', datetime('now'), datetime('now')),
-  (3, 'Katastrofåterställning', 'Disaster recovery', 'Systemet återställs efter ett allvarligt avbrott', 'The system is restored after a serious interruption', 'owner-2', datetime('now'), datetime('now'));
+-- ─── Usage Scenarios (sample) ────────────────────────────────────────────────
+INSERT OR IGNORE INTO usage_scenarios (id, name_sv, name_en, description_sv, description_en, owner_id, created_at, updated_at) VALUES
+  (1, 'Normal driftscenario', 'Normal operation scenario', 'Systemet körs under normal belastning med typiskt antal samtidiga användare', 'The system runs under normal load with a typical number of concurrent users', 1, datetime('now'), datetime('now')),
+  (2, 'Hög belastning', 'High load', 'Systemet utsätts för maximal förväntad belastning under topptider', 'The system is subjected to maximum expected load during peak times', 1, datetime('now'), datetime('now')),
+  (3, 'Katastrofåterställning', 'Disaster recovery', 'Systemet återställs efter ett allvarligt avbrott', 'The system is restored after a serious interruption', 2, datetime('now'), datetime('now'));
 
-UPDATE requirement_scenarios SET name_sv = 'Normal driftscenario', name_en = 'Normal operation scenario', description_sv = 'Systemet körs under normal belastning med typiskt antal samtidiga användare', description_en = 'The system runs under normal load with a typical number of concurrent users' WHERE id = 1;
-UPDATE requirement_scenarios SET name_sv = 'Hög belastning', name_en = 'High load', description_sv = 'Systemet utsätts för maximal förväntad belastning under topptider', description_en = 'The system is subjected to maximum expected load during peak times' WHERE id = 2;
-UPDATE requirement_scenarios SET name_sv = 'Katastrofåterställning', name_en = 'Disaster recovery', description_sv = 'Systemet återställs efter ett allvarligt avbrott', description_en = 'The system is restored after a serious interruption' WHERE id = 3;
+UPDATE usage_scenarios SET name_sv = 'Normal driftscenario', name_en = 'Normal operation scenario', description_sv = 'Systemet körs under normal belastning med typiskt antal samtidiga användare', description_en = 'The system runs under normal load with a typical number of concurrent users' WHERE id = 1;
+UPDATE usage_scenarios SET name_sv = 'Hög belastning', name_en = 'High load', description_sv = 'Systemet utsätts för maximal förväntad belastning under topptider', description_en = 'The system is subjected to maximum expected load during peak times' WHERE id = 2;
+UPDATE usage_scenarios SET name_sv = 'Katastrofåterställning', name_en = 'Disaster recovery', description_sv = 'Systemet återställs efter ett allvarligt avbrott', description_en = 'The system is restored after a serious interruption' WHERE id = 3;
 
--- ─── Requirement Version ↔ Scenario links ────────────────────────────────────
-INSERT OR IGNORE INTO requirement_version_scenarios (requirement_version_id, requirement_scenario_id) VALUES
+-- ─── Requirement Version ↔ Usage Scenario links ─────────────────────────────
+INSERT OR IGNORE INTO requirement_version_usage_scenarios (requirement_version_id, usage_scenario_id) VALUES
   (2, 1),
   (5, 1),
   (7, 1),

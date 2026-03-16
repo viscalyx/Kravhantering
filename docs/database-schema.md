@@ -81,7 +81,7 @@ Apply these rules to all schema objects.
 <!-- markdownlint-disable MD013 -->
 | Rule | Exception | Rationale |
 | ---- | --------- | --------- |
-| 4 | `requirement_version_scenarios` uses composite PK `(requirement_version_id, requirement_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. SQLite does not support adding a PK via `ALTER TABLE`. |
+| 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. SQLite does not support adding a PK via `ALTER TABLE`. |
 <!-- markdownlint-enable MD013 -->
 
 ---
@@ -201,20 +201,20 @@ erDiagram
         text created_at
     }
 
-    requirement_scenarios {
+    usage_scenarios {
         integer id PK
         text name_sv
         text name_en
         text description_sv
         text description_en
-        text owner
+        integer owner_id FK
         text created_at
         text updated_at
     }
 
-    requirement_version_scenarios {
+    requirement_version_usage_scenarios {
         integer requirement_version_id FK, PK
-        integer requirement_scenario_id FK, PK
+        integer usage_scenario_id FK, PK
     }
 
     package_responsibility_areas {
@@ -257,8 +257,9 @@ erDiagram
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
     requirement_versions ||--o{ requirement_references : "has many"
-    requirement_versions ||--o{ requirement_version_scenarios : "linked via"
-    requirement_scenarios ||--o{ requirement_version_scenarios : "linked via"
+    requirement_versions ||--o{ requirement_version_usage_scenarios : "linked via"
+    usage_scenarios ||--o{ requirement_version_usage_scenarios : "linked via"
+    owners |o--o{ usage_scenarios : "owns"
     requirement_types ||--o{ quality_characteristics : "has many"
     quality_characteristics ||--o{ quality_characteristics : "parent-child"
     requirement_statuses ||--o{ requirement_status_transitions : "from"
@@ -398,12 +399,13 @@ publication.
 
 ---
 
-### `requirement_scenarios`
+### `usage_scenarios`
 
 Describes operational scenarios (e.g. "High load",
 "Disaster recovery") that requirement versions can be
 linked to.
 
+<!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
@@ -411,9 +413,10 @@ linked to.
 | `name_en` | text | English name |
 | `description_sv` | text | Swedish description |
 | `description_en` | text | English description |
-| `owner` | text | Responsible party |
+| `owner_id` | integer FK → `owners.id` | Responsible owner (nullable) |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -689,19 +692,19 @@ specific procurement or project.
 
 ## Join / Bridge Tables
 
-### `requirement_version_scenarios`
+### `requirement_version_usage_scenarios`
 
-Many-to-many link between requirement versions and scenarios.
+Many-to-many link between requirement versions and usage scenarios.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Composite PK part 1 |
-| `requirement_scenario_id` | integer FK → `requirement_scenarios.id` | Composite PK part 2 |
+| `usage_scenario_id` | integer FK → `usage_scenarios.id` | Composite PK part 2 |
 <!-- markdownlint-enable MD013 -->
 
 **Primary key:**
-`(requirement_version_id, requirement_scenario_id)`.
+`(requirement_version_id, usage_scenario_id)`.
 
 ---
 
@@ -782,7 +785,7 @@ graph LR
         RTC[quality_characteristics]
         RS[requirement_statuses]
         RST[requirement_status_transitions]
-        RSC[requirement_scenarios]
+        RSC[usage_scenarios]
     end
 
     subgraph Core Tables
@@ -801,7 +804,7 @@ graph LR
     end
 
     subgraph Join Tables
-        RVS[requirement_version_scenarios]
+        RVS[requirement_version_usage_scenarios]
     end
 
     OW -- "uq_owners_email\n(email)" --> OW
@@ -831,7 +834,7 @@ graph LR
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
 
-    RVS -. "composite PK\n(requirement_version_id,\nrequirement_scenario_id)" .-> RV
+    RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
     RVS -. "composite PK" .-> RSC
 ```
 <!-- markdownlint-enable MD013 -->

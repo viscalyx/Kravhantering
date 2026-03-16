@@ -90,6 +90,7 @@
     "typeHelp": "<strong>Välj den typ som bäst beskriver kravet.</strong>\nTypen bestämmer vilka kvalitetsegenskaper som kan kopplas till kravet.",
     "qualityCharacteristicHelp": "<strong>Välj den kvalitetsegenskap som kravet bidrar till.</strong>\nKvalitetsegenskaper följer ISO/IEC 25010:2023 och hjälper till att kategorisera kraven efter kvalitetsaspekt.",
     "requiresTestingHelp": "<strong>Ange om kravet ska verifieras.</strong>\nOm kravet markeras som verifierbart behöver du även ange en verifieringsmetod.",
+    "scenarioHelp": "<strong>Välj ett eller flera användningsscenarier som gäller för detta krav.</strong>\nAnvändningsscenarier beskriver driftsituationer (t.ex. hög belastning, katastrofåterställning) som förtydligar när och hur kravet är relevant.",
     "reference": "Kravreferens",
     "scenario": "Användningsscenario",
     "newRequirement": "Nytt krav",
@@ -173,9 +174,11 @@
   "scenario": {
     "name": "Namn",
     "description": "Beskrivning",
-    "owner": "Kravscenarioägare",
-    "newScenario": "Nytt kravscenario",
-    "editScenario": "Redigera kravscenario"
+    "owner": "Scenarioägare",
+    "newScenario": "Nytt användningsscenario",
+    "editScenario": "Redigera användningsscenario",
+    "linkedRequirements": "Kopplade krav",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
   },
   "qualityCharacteristicMgmt": {
     "name": "Namn",

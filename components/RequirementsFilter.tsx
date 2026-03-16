@@ -23,6 +23,7 @@ interface RequirementsFilterProps {
   qualityCharacteristics: QualityCharacteristicOption[]
   statusOptions: StatusOption[]
   types: FilterOption[]
+  usageScenarios: FilterOption[]
   values: FilterValues
 }
 
@@ -41,6 +42,7 @@ export default function RequirementsFilter({
   getStatusName,
   qualityCharacteristics,
   types,
+  usageScenarios,
   statusOptions,
   values,
   onChange,
@@ -48,12 +50,20 @@ export default function RequirementsFilter({
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const [statusOpen, setStatusOpen] = useState(false)
+  const [scenarioOpen, setScenarioOpen] = useState(false)
   const statusRef = useRef<HTMLDivElement>(null)
+  const scenarioRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (statusRef.current && !statusRef.current.contains(e.target as Node)) {
         setStatusOpen(false)
+      }
+      if (
+        scenarioRef.current &&
+        !scenarioRef.current.contains(e.target as Node)
+      ) {
+        setScenarioOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -62,6 +72,17 @@ export default function RequirementsFilter({
 
   const handleChange = (key: keyof FilterValues, value: string | boolean) => {
     onChange({ ...values, [key]: value || undefined })
+  }
+
+  const selectedScenarios = values.usageScenarioIds ?? []
+  const handleScenarioToggle = (scenarioId: number) => {
+    const next = selectedScenarios.includes(scenarioId)
+      ? selectedScenarios.filter(s => s !== scenarioId)
+      : [...selectedScenarios, scenarioId]
+    onChange({
+      ...values,
+      usageScenarioIds: next.length > 0 ? next : undefined,
+    })
   }
 
   const selectedStatuses = values.statuses ?? []
@@ -204,6 +225,52 @@ export default function RequirementsFilter({
           <X aria-hidden="true" className="h-3.5 w-3.5" />
           {tc('clearFilters')}
         </button>
+      )}
+
+      {usageScenarios.length > 0 && (
+        <div className="flex flex-col gap-1 relative" ref={scenarioRef}>
+          <span className={labelClass}>{t('scenario')}</span>
+          <button
+            aria-label={t('scenario')}
+            className={`${selectClass} flex items-center gap-2 min-w-40 text-left`}
+            onClick={() => setScenarioOpen(v => !v)}
+            type="button"
+          >
+            <span className="flex-1 truncate">
+              {selectedScenarios.length === 0
+                ? tc('none')
+                : selectedScenarios
+                    .map(id => {
+                      const opt = usageScenarios.find(o => o.id === id)
+                      return opt ? getName(opt) : ''
+                    })
+                    .filter(Boolean)
+                    .join(', ')}
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={`h-3.5 w-3.5 shrink-0 transition-transform ${scenarioOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {scenarioOpen && (
+            <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-secondary-800 border rounded-xl shadow-lg py-1 min-w-45">
+              {usageScenarios.map(s => (
+                <label
+                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-secondary-50 dark:hover:bg-secondary-700/50 cursor-pointer text-sm"
+                  key={s.id}
+                >
+                  <input
+                    checked={selectedScenarios.includes(s.id)}
+                    className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                    onChange={() => handleScenarioToggle(s.id)}
+                    type="checkbox"
+                  />
+                  {getName(s)}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="flex flex-col gap-1 ml-auto relative" ref={statusRef}>

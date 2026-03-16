@@ -142,7 +142,7 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       await seedStatuses(db)
       const area = await seedArea(db)
       const [scenario] = await db
-        .insert(schema.requirementScenarios)
+        .insert(schema.usageScenarios)
         .values({ nameSv: 'Scen', nameEn: 'Scene' })
         .returning()
 

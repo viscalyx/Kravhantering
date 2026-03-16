@@ -55,7 +55,7 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
 
 const mockUpdateScenario = vi.fn()
 const mockDeleteScenario = vi.fn()
-vi.mock('@/lib/dal/requirement-scenarios', () => ({
+vi.mock('@/lib/dal/usage-scenarios', () => ({
   listScenarios: async () => [{ id: 1 }],
   createScenario: async () => ({ id: 2 }),
   updateScenario: (...a: unknown[]) => mockUpdateScenario(...a),
@@ -111,15 +111,15 @@ import {
   GET as getPkgs,
   POST as postPkg,
 } from '@/app/api/requirement-packages/route'
+import { GET as getTypes } from '@/app/api/requirement-types/route'
 import {
   DELETE as deleteScen,
   PUT as putScen,
-} from '@/app/api/requirement-scenarios/[id]/route'
+} from '@/app/api/usage-scenarios/[id]/route'
 import {
   GET as getScenarios,
   POST as postScenario,
-} from '@/app/api/requirement-scenarios/route'
-import { GET as getTypes } from '@/app/api/requirement-types/route'
+} from '@/app/api/usage-scenarios/route'
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 
@@ -290,7 +290,7 @@ describe('requirement-packages routes', () => {
   })
 })
 
-describe('requirement-scenarios routes', () => {
+describe('usage-scenarios routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

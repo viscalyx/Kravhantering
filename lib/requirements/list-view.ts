@@ -7,6 +7,7 @@ export interface FilterValues {
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
+  usageScenarioIds?: number[]
 }
 
 export interface FilterOption {
@@ -84,6 +85,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
       values.qualityCharacteristicIds.length > 0) ||
     values.uniqueIdSearch ||
     values.descriptionSearch ||
+    (values.usageScenarioIds && values.usageScenarioIds.length > 0) ||
     statusesDiffer
   )
 }
@@ -677,6 +679,11 @@ export function buildRequirementListParams({
   if (filters.statuses) {
     for (const status of filters.statuses) {
       params.append('statuses', String(status))
+    }
+  }
+  if (filters.usageScenarioIds) {
+    for (const id of filters.usageScenarioIds) {
+      params.append('usageScenarioIds', String(id))
     }
   }
 

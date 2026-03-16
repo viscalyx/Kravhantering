@@ -15,13 +15,7 @@ import type { Database as AppDatabase } from '@/lib/db'
 
 function createTestDb() {
   const sqlite = new BetterSqlite3(':memory:')
-  const migrationFiles = [
-    '0000_woozy_silvermane.sql',
-    '0001_pink_pixie.sql',
-    '0002_blue_menace.sql',
-    '0003_rename_quality_characteristics.sql',
-    '0004_add_verification_method.sql',
-  ]
+  const migrationFiles = ['0000_violet_thunderbolts.sql']
 
   for (const file of migrationFiles) {
     const migrationSql = readFileSync(

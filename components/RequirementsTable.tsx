@@ -80,6 +80,7 @@ export interface RequirementsTableProps {
   sortState?: RequirementSortState
   statusOptions?: StatusOption[]
   types?: FilterOption[]
+  usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
 }
 
@@ -1199,6 +1200,7 @@ export default function RequirementsTable({
   statusOptions = [],
   qualityCharacteristics = [],
   types = [],
+  usageScenarios = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
@@ -1363,6 +1365,10 @@ export default function RequirementsTable({
   const statusLabel = (id: number) => {
     const s = statusOptions.find(s => s.id === id)
     return s ? getStatusName(s) : String(id)
+  }
+  const _scenarioLabel = (id: number) => {
+    const s = usageScenarios.find(s => s.id === id)
+    return s ? getName(s) : String(id)
   }
 
   const requiresTestingOptions = [
@@ -2689,6 +2695,49 @@ export default function RequirementsTable({
         </output>
       )}
       {columnsPopover}
+      {usageScenarios.length > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 border-b text-sm">
+          <span className="text-xs font-medium text-secondary-600 dark:text-secondary-400 shrink-0">
+            {t('scenario')}:
+          </span>
+          <div className="flex flex-wrap gap-1">
+            {usageScenarios.map(s => {
+              const active = (fv.usageScenarioIds ?? []).includes(s.id)
+              return (
+                <button
+                  className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                    active
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
+                  }`}
+                  key={s.id}
+                  onClick={() => {
+                    const current = fv.usageScenarioIds ?? []
+                    const next = active
+                      ? current.filter(id => id !== s.id)
+                      : [...current, s.id]
+                    updateFilter({
+                      usageScenarioIds: next.length > 0 ? next : undefined,
+                    })
+                  }}
+                  type="button"
+                >
+                  {getName(s)}
+                </button>
+              )
+            })}
+          </div>
+          {(fv.usageScenarioIds ?? []).length > 0 && (
+            <button
+              className="text-xs text-secondary-400 hover:text-red-500 transition-colors"
+              onClick={() => updateFilter({ usageScenarioIds: undefined })}
+              type="button"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      )}
       <div
         className="relative overflow-x-auto"
         data-developer-mode-context="requirements table"

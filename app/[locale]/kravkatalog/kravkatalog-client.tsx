@@ -116,6 +116,7 @@ export default function KravkatalogClient({
     QualityCharacteristicOption[]
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
+  const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
   const [sortState, setSortState] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
@@ -221,10 +222,14 @@ export default function KravkatalogClient({
             }
           } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
             selectedIdRef.current = null
+            setSelectedId(null)
+            scrollToIdRef.current = null
           }
         } catch {
           if (hasCurrentPinnedSelection()) {
             selectedIdRef.current = null
+            setSelectedId(null)
+            scrollToIdRef.current = null
           }
         }
       }
@@ -379,12 +384,14 @@ export default function KravkatalogClient({
         typesRes,
         qualityCharacteristicsRes,
         statusesRes,
+        scenariosRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
         fetch('/api/quality-characteristics'),
         fetch('/api/requirement-statuses'),
+        fetch('/api/usage-scenarios'),
       ])
 
       const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
@@ -418,6 +425,12 @@ export default function KravkatalogClient({
       }>(statusesRes)
       if (statusesData) {
         setStatusOptions(statusesData.statuses ?? [])
+      }
+      const scenariosData = await readFilterResponse<{
+        scenarios?: FilterOption[]
+      }>(scenariosRes)
+      if (scenariosData) {
+        setUsageScenarios(scenariosData.scenarios ?? [])
       }
     }
 
@@ -650,6 +663,7 @@ export default function KravkatalogClient({
               sortState={sortState}
               statusOptions={statusOptions}
               types={types}
+              usageScenarios={usageScenarios}
               visibleColumns={visibleColumns}
             />
           )}

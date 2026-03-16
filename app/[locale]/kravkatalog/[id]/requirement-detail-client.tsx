@@ -872,35 +872,39 @@ export default function RequirementDetailClient({
                     </div>
                   )}
 
-                {selectedVersion?.versionScenarios &&
-                  selectedVersion.versionScenarios.length > 0 && (
-                    <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="scenarios"
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('scenario')}
-                      </h3>
-                      <ul className="flex flex-wrap gap-2">
-                        {selectedVersion.versionScenarios.map(vs => (
-                          <li
-                            className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
-                            data-developer-mode-context={buildDetailSectionContext(
-                              'scenarios',
-                            )}
-                            data-developer-mode-name="scenario chip"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value={vs.scenario.nameEn}
-                            key={vs.scenario.id}
-                          >
-                            {localName(vs.scenario)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                <div
+                  data-developer-mode-context={detailContext}
+                  data-developer-mode-name="detail section"
+                  data-developer-mode-priority="350"
+                  data-developer-mode-value="scenarios"
+                >
+                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                    {t('scenario')}
+                  </h3>
+                  {selectedVersion?.versionScenarios &&
+                  selectedVersion.versionScenarios.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2">
+                      {selectedVersion.versionScenarios.map(vs => (
+                        <li
+                          className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
+                          data-developer-mode-context={buildDetailSectionContext(
+                            'scenarios',
+                          )}
+                          data-developer-mode-name="scenario chip"
+                          data-developer-mode-priority="360"
+                          data-developer-mode-value={vs.scenario.nameEn}
+                          key={vs.scenario.id}
+                        >
+                          {localName(vs.scenario)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                      {tc('noneAvailable')}
+                    </p>
                   )}
+                </div>
 
                 {/* Downward triangle indicator pointing to selected version pill */}
                 {triangleLeft !== null && (
@@ -936,7 +940,7 @@ export default function RequirementDetailClient({
               <div className="flex flex-col gap-2 shrink-0">
                 <div className="relative" ref={shareMenuRef}>
                   <button
-                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
                     data-developer-mode-context={detailContext}
                     data-developer-mode-name="share toggle"
                     data-developer-mode-priority="300"
