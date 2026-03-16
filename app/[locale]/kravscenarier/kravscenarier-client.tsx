@@ -67,18 +67,27 @@ export default function KravscenarierClient() {
 
   const fetchScenarios = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/usage-scenarios')
-    if (res.ok)
-      setScenarios(
-        ((await res.json()) as { scenarios?: Scenario[] }).scenarios ?? [],
-      )
-    setLoading(false)
+    try {
+      const res = await fetch('/api/usage-scenarios')
+      if (res.ok)
+        setScenarios(
+          ((await res.json()) as { scenarios?: Scenario[] }).scenarios ?? [],
+        )
+    } catch {
+      setScenarios([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   const fetchOwners = useCallback(async () => {
-    const res = await fetch('/api/owners/all')
-    if (res.ok)
-      setOwners(((await res.json()) as { owners?: Owner[] }).owners ?? [])
+    try {
+      const res = await fetch('/api/owners/all')
+      if (res.ok)
+        setOwners(((await res.json()) as { owners?: Owner[] }).owners ?? [])
+    } catch {
+      setOwners([])
+    }
   }, [])
 
   const fetchLinkedRequirements = useCallback(async (scenarioId: number) => {

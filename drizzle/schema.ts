@@ -391,6 +391,7 @@ export const requirementVersionUsageScenarios = sqliteTable(
   },
   table => [
     primaryKey({
+      name: 'pk_requirement_version_usage_scenarios',
       columns: [table.requirementVersionId, table.usageScenarioId],
     }),
     index('idx_requirement_version_usage_scenarios_usage_scenario_id').on(

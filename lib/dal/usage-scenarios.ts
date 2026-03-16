@@ -75,7 +75,6 @@ export async function getLinkedRequirements(db: Database, scenarioId: number) {
       eq(requirementVersions.requirementId, requirements.id),
     )
     .where(eq(requirementVersionUsageScenarios.usageScenarioId, scenarioId))
-    .groupBy(requirements.id)
     .orderBy(requirements.uniqueId)
   return rows
 }

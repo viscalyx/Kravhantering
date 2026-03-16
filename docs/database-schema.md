@@ -779,6 +779,7 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_references_requirement_version_id` | `requirement_references` | `requirement_version_id` | Speed up fetching references for a version |
 | `idx_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | Speed up listing items in a package |
 | `idx_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | Speed up finding which packages contain a requirement |
+| `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
