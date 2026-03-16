@@ -160,13 +160,19 @@ export default function RequirementForm({
           id?: number
           uniqueId?: string
           requirement?: { id: number; uniqueId: string }
+          version?: { versionNumber: number } | number
         }
         const targetUniqueId =
           mode === 'create'
             ? data.requirement?.uniqueId
             : (data.uniqueId ?? requirementId)
         if (saveDestination === 'page') {
-          router.push(`/kravkatalog/${targetUniqueId}`)
+          const versionNumber =
+            typeof data.version === 'object'
+              ? data.version?.versionNumber
+              : data.version
+          const versionSuffix = versionNumber ? `/${versionNumber}` : ''
+          router.push(`/kravkatalog/${targetUniqueId}${versionSuffix}`)
         } else {
           router.push(`/kravkatalog?selected=${targetUniqueId}`)
         }

@@ -150,7 +150,7 @@ export default function RequirementDetailClient({
   const STATUS_ARCHIVED = 4
   const displayVersionNumber = useMemo(() => {
     if (!req) return null
-    // If an explicit version was requested (via ?v= param), use it
+    // If an explicit version was requested (via URL path segment), use it
     if (defaultVersion != null) {
       const match = req.versions.find(v => v.versionNumber === defaultVersion)
       if (match) return match.versionNumber
@@ -582,17 +582,15 @@ export default function RequirementDetailClient({
     if (mode === 'inline') {
       url.pathname = url.pathname.replace(/\/kravkatalog(\/.*)?$/, '/kravkatalog')
       url.searchParams.set('selected', shareUniqueId)
-      if (selectedVersionNumber != null) {
-        url.searchParams.set('v', String(selectedVersionNumber))
-      }
     } else {
+      const versionSuffix =
+        selectedVersionNumber != null
+          ? `/${selectedVersionNumber}`
+          : ''
       url.pathname = url.pathname.replace(
         /\/kravkatalog(\/.*)?$/,
-        `/kravkatalog/${shareUniqueId}`,
+        `/kravkatalog/${shareUniqueId}${versionSuffix}`,
       )
-      if (selectedVersionNumber != null) {
-        url.searchParams.set('v', String(selectedVersionNumber))
-      }
     }
     await navigator.clipboard.writeText(url.toString())
     setCopied(mode)
@@ -602,7 +600,7 @@ export default function RequirementDetailClient({
 
   // Full-page view without explicit version: if no published version exists,
   // show a notice instead of the requirement content.
-  if (!inline && defaultVersion == null && selectedVersion == null) {
+  if (!inline && defaultVersion == null && displayVersionNumber == null) {
     const noPublishedContent = (
       <div className="py-12 text-center space-y-4">
         <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">

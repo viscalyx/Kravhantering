@@ -127,9 +127,6 @@ export default function KravkatalogClient({
   const [loading, setLoading] = useState(true)
   const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [selectedDefaultVersion, setSelectedDefaultVersion] = useState<
-    number | undefined
-  >(undefined)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -149,7 +146,9 @@ export default function KravkatalogClient({
   const latestRowsRequestIdRef = useRef(0)
   const latestFetchDataRequestIdRef = useRef(0)
   const scrollToIdRef = useRef<number | null>(null)
-  selectedIdRef.current = selectedId
+  if (typeof selectedIdRef.current !== 'string') {
+    selectedIdRef.current = selectedId
+  }
 
   const refreshRows = useCallback(async () => {
     const requestId = ++latestRowsRequestIdRef.current
@@ -319,13 +318,6 @@ export default function KravkatalogClient({
     const sel = searchParams.get('selected')
     if (!sel) return
 
-    // Parse optional version param
-    const v = searchParams.get('v')
-    const vNum = v ? Number(v) : undefined
-    if (vNum != null && !Number.isNaN(vNum)) {
-      setSelectedDefaultVersion(vNum)
-    }
-
     const numId = Number(sel)
     if (!Number.isNaN(numId) && Number.isInteger(numId) && numId > 0) {
       // Numeric id — set synchronously
@@ -343,7 +335,6 @@ export default function KravkatalogClient({
     // Clean up the params to avoid re-opening on manual refresh
     const url = new URL(window.location.href)
     url.searchParams.delete('selected')
-    url.searchParams.delete('v')
     window.history.replaceState({}, '', url.toString())
   }, [searchParams])
 
@@ -642,12 +633,10 @@ export default function KravkatalogClient({
               qualityCharacteristics={qualityCharacteristics}
               renderExpanded={id => (
                 <RequirementDetailClient
-                  defaultVersion={selectedDefaultVersion}
                   inline
                   onChange={refreshRows}
                   onClose={() => {
                     setSelectedId(null)
-                    setSelectedDefaultVersion(undefined)
                     setPinnedRow(null)
                     fetchData()
                   }}

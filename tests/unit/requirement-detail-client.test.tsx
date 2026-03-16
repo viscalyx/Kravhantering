@@ -687,7 +687,7 @@ describe('RequirementDetailClient', () => {
       transitionNextRequirement: requirement,
     })
 
-    renderSubject()
+    renderSubject({ defaultVersion: 1 })
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
     expect(
@@ -820,7 +820,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({ initialRequirement: requirement })
 
-    renderSubject()
+    renderSubject({ defaultVersion: 8 })
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
 
@@ -854,7 +854,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({ initialRequirement: requirement })
 
-    renderSubject()
+    renderSubject({ defaultVersion: 8 })
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
 
@@ -902,7 +902,7 @@ describe('RequirementDetailClient', () => {
       transitionNextRequirement: initialRequirement,
     })
 
-    renderSubject({ onChange })
+    renderSubject({ defaultVersion: 2, onChange })
 
     expect(await screen.findByText('Draft description')).toBeInTheDocument()
 
@@ -951,7 +951,7 @@ describe('RequirementDetailClient', () => {
       transitionNextRequirement: requirement,
     })
 
-    renderSubject({ onChange })
+    renderSubject({ defaultVersion: 2, onChange })
 
     expect(await screen.findByText('Review description')).toBeInTheDocument()
 
