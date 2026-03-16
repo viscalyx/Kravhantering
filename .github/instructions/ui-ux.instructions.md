@@ -18,12 +18,18 @@ applyTo: '{components,app}/**/*.tsx'
 
 ## Accessibility
 
-- Follow Web Content Accessibility Guidelines (WCAG) 2.2 level AAA compliance
+- Follow Web Content Accessibility Guidelines (WCAG) 2.2 Level AA compliance (AAA as an aspirational goal where feasible)
 - Semantic HTML elements over `<div>`/`<span>` + ARIA roles (Biome `a11y/useSemanticElements`)
 - Proper heading order (`h1` > `h2` > `h3`)
 - ARIA labels on all interactive elements
 - Visible focus rings on keyboard-navigable elements
 - Decorative icons: `aria-hidden="true"`
+
+## Form Help Texts
+
+- Every form field that accepts user input must include a help text button (the `?` icon) and a corresponding translatable help text in both `messages/en.json` and `messages/sv.json`
+- The help text should explain the purpose of the field and guide the user on what to enter
+- See `RequirementForm.tsx` for the pattern using `helpButton()` and `helpPanel()`
 
 ## Discoverability
 
