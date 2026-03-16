@@ -37,13 +37,13 @@ describe('EditRequirementClient', () => {
     fetchMock.mockResolvedValue(
       okJson({
         uniqueId: 'REQ-001',
-        requirementAreaId: 1,
+        area: { id: 1 },
         versions: [
           {
             description: 'Desc',
-            requirementCategoryId: 2,
-            requirementTypeId: 3,
-            qualityCharacteristicId: null,
+            category: { id: 2 },
+            type: { id: 3 },
+            qualityCharacteristic: null,
             acceptanceCriteria: 'AC',
             requiresTesting: true,
           },
@@ -71,13 +71,13 @@ describe('EditRequirementClient', () => {
     fetchMock.mockResolvedValue(
       okJson({
         uniqueId: 'REQ-002',
-        requirementAreaId: 1,
+        area: { id: 1 },
         versions: [
           {
             description: 'Desc',
-            requirementCategoryId: 2,
-            requirementTypeId: 3,
-            qualityCharacteristicId: 42,
+            category: { id: 2 },
+            type: { id: 3 },
+            qualityCharacteristic: { id: 42 },
             acceptanceCriteria: 'AC',
             requiresTesting: false,
           },

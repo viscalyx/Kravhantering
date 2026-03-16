@@ -15,8 +15,20 @@ vi.mock('next-intl', () => ({
     ns ? `${ns}.${key}` : key,
 }))
 
+vi.mock('@/i18n/routing', () => ({
+  Link: ({ children, href, ...props }: Record<string, unknown>) => (
+    <a href={href as string} {...props}>
+      {children as React.ReactNode}
+    </a>
+  ),
+}))
+
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
+}))
+
+vi.mock('@/components/StatusBadge', () => ({
+  default: ({ label }: { label: string }) => <span>{label}</span>,
 }))
 
 function okJson(body: unknown) {
@@ -101,7 +113,7 @@ describe('KravscenarierClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-scenarios',
+        '/api/usage-scenarios',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -151,7 +163,7 @@ describe('KravscenarierClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-scenarios/1',
+        '/api/usage-scenarios/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

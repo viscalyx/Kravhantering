@@ -40,6 +40,7 @@ function renderFilter(overrides: Record<string, unknown> = {}) {
       qualityCharacteristics={qualityCharacteristics}
       statusOptions={statusOptions}
       types={types}
+      usageScenarios={[]}
       values={values}
     />,
   )

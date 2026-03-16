@@ -9,6 +9,14 @@ vi.mock('next-intl', () => ({
     ns ? `${ns}.${key}` : key,
 }))
 
+vi.mock('@/i18n/routing', () => ({
+  Link: ({ children, href, ...props }: Record<string, unknown>) => (
+    <a href={href as string} {...props}>
+      {children as React.ReactNode}
+    </a>
+  ),
+}))
+
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
 }))

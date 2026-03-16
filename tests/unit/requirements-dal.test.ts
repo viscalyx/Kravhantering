@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
@@ -15,18 +15,13 @@ import type { Database as AppDatabase } from '@/lib/db'
 
 function createTestDb() {
   const sqlite = new BetterSqlite3(':memory:')
-  const migrationFiles = [
-    '0000_woozy_silvermane.sql',
-    '0001_pink_pixie.sql',
-    '0002_blue_menace.sql',
-    '0003_rename_quality_characteristics.sql',
-  ]
+  const migrationsDir = join(process.cwd(), 'drizzle/migrations')
+  const migrationFiles = readdirSync(migrationsDir)
+    .filter(f => f.endsWith('.sql'))
+    .sort()
 
   for (const file of migrationFiles) {
-    const migrationSql = readFileSync(
-      join(process.cwd(), `drizzle/migrations/${file}`),
-      'utf8',
-    )
+    const migrationSql = readFileSync(join(migrationsDir, file), 'utf8')
     for (const statement of migrationSql.split('--> statement-breakpoint')) {
       const sql = statement.trim()
       if (sql) {

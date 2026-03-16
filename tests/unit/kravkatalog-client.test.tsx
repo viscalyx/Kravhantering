@@ -287,6 +287,9 @@ function mockMetadataFetch(url: string) {
       ],
     })
   }
+  if (url === '/api/usage-scenarios') {
+    return okJson([])
+  }
 
   return null
 }

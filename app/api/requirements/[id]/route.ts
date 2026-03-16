@@ -10,6 +10,8 @@ import {
 
 type Params = Promise<{ id: string }>
 
+import { parseRequirementRef } from '../parse-requirement-ref'
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
@@ -21,8 +23,9 @@ export async function GET(
   const context = createRequestContext(_request, 'rest')
 
   try {
+    const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
-      id: Number(id),
+      ...ref,
       view: 'history',
     })
     const req = result.requirement
@@ -53,8 +56,9 @@ export async function PUT(
   const body = (await request.json()) as Record<string, unknown>
 
   try {
+    const ref = parseRequirementRef(id)
     const result = await service.manageRequirement(context, {
-      id: Number(id),
+      ...ref,
       operation: 'edit',
       requirement: {
         acceptanceCriteria: body.acceptanceCriteria
@@ -87,6 +91,9 @@ export async function PUT(
               }))
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
+        verificationMethod: body.verificationMethod
+          ? String(body.verificationMethod)
+          : undefined,
         scenarioIds: Array.isArray(body.scenarioIds)
           ? body.scenarioIds
               .map(value => Number(value))
@@ -98,7 +105,11 @@ export async function PUT(
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },
     })
-    return NextResponse.json({ id: Number(id), version: result.result })
+    return NextResponse.json({
+      id: result.detail?.id ?? ref.id ?? Number(id),
+      uniqueId: result.detail?.uniqueId,
+      version: result.result,
+    })
   } catch (error) {
     const { body: errorBody, status } = toHttpErrorPayload(error)
     return NextResponse.json(errorBody, { status })
@@ -116,8 +127,9 @@ export async function DELETE(
   const context = createRequestContext(_request, 'rest')
 
   try {
+    const ref = parseRequirementRef(id)
     await service.manageRequirement(context, {
-      id: Number(id),
+      ...ref,
       operation: 'archive',
     })
     return NextResponse.json({ ok: true })

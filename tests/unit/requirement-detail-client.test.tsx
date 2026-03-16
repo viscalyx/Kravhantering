@@ -27,6 +27,8 @@ vi.mock('next-intl', () => ({
       'common.noResults': 'No results',
       'common.reactivate': 'Reactivate',
       'common.restoreVersion': 'Restore version',
+      'common.copied': 'Copied',
+      'common.share': 'Share',
       'common.version': 'Version',
       'requirement.acceptanceCriteria': 'Acceptance criteria',
       'requirement.archiveConfirm': 'Archive this requirement?',
@@ -42,6 +44,8 @@ vi.mock('next-intl', () => ({
         `Pending version v${values?.version} ${values?.status}`,
       'requirement.publishedVersionAvailableBanner': values =>
         `Published version v${values?.version} is available`,
+      'requirement.noPublishedVersion':
+        'There is no published version of this requirement.',
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm': 'Reactivate this requirement?',
       'requirement.reference': 'Reference',
@@ -50,6 +54,8 @@ vi.mock('next-intl', () => ({
       'requirement.requiresTesting': 'Requires testing',
       'requirement.restoreConfirm': 'Restore this version?',
       'requirement.scenario': 'Scenario',
+      'requirement.shareLinkInline': 'Copy link (list view)',
+      'requirement.shareLinkPage': 'Copy link (detail page)',
       'requirement.sendBackToDraftConfirm': 'Send back to draft?',
       'requirement.transitionToGranskning': 'Send to review',
       'requirement.transitionToPublicerad': 'Publish',
@@ -473,6 +479,43 @@ describe('RequirementDetailClient', () => {
     )
   })
 
+  it('shows type and quality characteristic in the inline detail view when present', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Test description',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        type: { nameEn: 'Functional', nameSv: 'Funktionellt' },
+        qualityCharacteristic: {
+          nameEn: 'Maintainability',
+          nameSv: 'Underhållbarhet',
+        },
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    expect(await screen.findByText('Test description')).toBeInTheDocument()
+    expect(screen.getByText('Type')).toBeInTheDocument()
+    expect(screen.getByText('Funktionellt')).toBeInTheDocument()
+    expect(screen.getByText('Quality characteristic')).toBeInTheDocument()
+    expect(screen.getByText('Underhållbarhet')).toBeInTheDocument()
+    expect(
+      screen
+        .getByText('Type')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'type')
+    expect(
+      screen
+        .getByText('Quality characteristic')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
+  })
+
   it('renders the empty modal state when the requirement request fails', async () => {
     const onClose = vi.fn()
 
@@ -551,7 +594,7 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Verksamhet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
-      '/kravkatalog/123/redigera',
+      '/kravkatalog/REQ-123/redigera',
     )
     expect(screen.queryByText('No')).toBeNull()
     expect(screen.getByTestId('status-stepper')).toHaveTextContent(
@@ -650,7 +693,7 @@ describe('RequirementDetailClient', () => {
       transitionNextRequirement: requirement,
     })
 
-    renderSubject()
+    renderSubject({ defaultVersion: 1 })
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
     expect(
@@ -658,7 +701,7 @@ describe('RequirementDetailClient', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
-      '/kravkatalog/123/redigera',
+      '/kravkatalog/REQ-123/redigera',
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'v2' }))
@@ -783,7 +826,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({ initialRequirement: requirement })
 
-    renderSubject()
+    renderSubject({ defaultVersion: 8 })
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
 
@@ -817,7 +860,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({ initialRequirement: requirement })
 
-    renderSubject()
+    renderSubject({ defaultVersion: 8 })
 
     expect(await screen.findByText('Archived description')).toBeInTheDocument()
 
@@ -865,7 +908,7 @@ describe('RequirementDetailClient', () => {
       transitionNextRequirement: initialRequirement,
     })
 
-    renderSubject({ onChange })
+    renderSubject({ defaultVersion: 2, onChange })
 
     expect(await screen.findByText('Draft description')).toBeInTheDocument()
 
@@ -914,7 +957,7 @@ describe('RequirementDetailClient', () => {
       transitionNextRequirement: requirement,
     })
 
-    renderSubject({ onChange })
+    renderSubject({ defaultVersion: 2, onChange })
 
     expect(await screen.findByText('Review description')).toBeInTheDocument()
 
@@ -948,5 +991,66 @@ describe('RequirementDetailClient', () => {
       ),
     )
     expect(onChange).toHaveBeenCalled()
+  })
+
+  it('renders share button and menu with developer mode markers', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Shareable requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Shareable requirement')
+
+    const shareBtn = screen.getByRole('button', { name: /Share/ })
+    expect(shareBtn).toBeInTheDocument()
+    expect(shareBtn).toHaveAttribute('data-developer-mode-name', 'share toggle')
+
+    await userEvent.click(shareBtn)
+
+    expect(screen.getByText('Copy link (list view)')).toBeInTheDocument()
+    expect(screen.getByText('Copy link (detail page)')).toBeInTheDocument()
+
+    const inlineOption = screen
+      .getByText('Copy link (list view)')
+      .closest('button')
+    expect(inlineOption).toHaveAttribute(
+      'data-developer-mode-name',
+      'share option',
+    )
+    expect(inlineOption).toHaveAttribute(
+      'data-developer-mode-value',
+      'share inline',
+    )
+  })
+
+  it('renders noPublishedVersion fallback for full-page view without published version', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Only a draft',
+        publishedAt: null,
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: false })
+
+    expect(
+      await screen.findByText(
+        'There is no published version of this requirement.',
+      ),
+    ).toBeInTheDocument()
   })
 })

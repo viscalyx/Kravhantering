@@ -39,7 +39,7 @@ vi.mock('@/lib/dal/requirement-references', () => ({
   replaceReferencesForVersion: mocks.replaceReferencesForVersion,
 }))
 
-vi.mock('@/lib/dal/requirement-scenarios', () => ({
+vi.mock('@/lib/dal/usage-scenarios', () => ({
   listScenarios: mocks.listScenarios,
 }))
 
@@ -129,7 +129,7 @@ function makeRequirementRecord() {
               id: 7,
               nameEn: 'Login',
               nameSv: 'Inloggning',
-              owner: 'Product',
+              ownerId: 1,
             },
           },
         ],

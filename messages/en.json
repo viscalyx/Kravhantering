@@ -5,6 +5,7 @@
     "loading": "Loading...",
     "loadingRequirements": "Fetching requirements…",
     "save": "Save",
+    "saving": "Saving…",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
@@ -44,7 +45,10 @@
     "restoreVersion": "Restore version",
     "createdAt": "Created",
     "updatedAt": "Updated",
-    "error": "Something went wrong"
+    "error": "Something went wrong",
+    "share": "Share",
+    "copied": "Copied",
+    "help": "Help"
   },
   "nav": {
     "catalog": "Requirements Catalog",
@@ -78,6 +82,16 @@
     "qualityCharacteristic": "Quality characteristic",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
+    "verificationMethod": "Verification method",
+    "verificationMethodHelp": "<strong>Specify how the acceptance criteria will be verified.</strong>\nChoose or describe an appropriate method, such as inspection, analysis/simulation, demonstration, or test, in line with ISO/IEC/IEEE 29148:2018.",
+    "areaHelp": "<strong>Select the area this requirement belongs to.</strong>\nThe area controls the requirement ID prefix and links the requirement to a responsible owner.",
+    "descriptionHelp": "<strong>Formulate the requirement clearly, concretely, and verifiably.</strong>\nDescribe who or what the requirement applies to and what should be achieved. Focus on what should apply, not how the solution should be implemented. Where relevant, specify measurable conditions such as time, threshold, precision, or capacity so the requirement can be understood and verified. Avoid vague words like fast, simple, appropriate, or as needed. This follows the principles in ISO/IEC/IEEE 29148:2018 for clear and unambiguous requirements and ISO/IEC 25030:2019 for measurable quality requirements.\n\nExamples:\nGood: The system shall display search results within 2 seconds.\nLess good: The system should be fast and user-friendly.",
+    "acceptanceCriteriaHelp": "<strong>Specify the objective conditions that must be met for the requirement to be accepted.</strong>\nWrite clearly, concretely, and measurably where relevant, such as time, threshold, precision, capacity, or observable outcome. Describe what should be fulfilled, not how it should be tested. The formulation should follow the principles in ISO/IEC 25010:2023, ISO/IEC 25030:2019, and ISO/IEC/IEEE 29148:2018.",
+    "categoryHelp": "<strong>Select the category that best describes the nature of the requirement.</strong>\nThe category helps classify and filter requirements.",
+    "typeHelp": "<strong>Select the type that best describes the requirement.</strong>\nThe type determines which quality characteristics can be linked to the requirement.",
+    "qualityCharacteristicHelp": "<strong>Select the quality characteristic the requirement contributes to.</strong>\nQuality characteristics follow ISO/IEC 25010:2023 and help categorize requirements by quality aspect.",
+    "requiresTestingHelp": "<strong>Indicate whether the requirement should be verified.</strong>\nIf the requirement is marked as verifiable, you also need to specify a verification method.",
+    "scenarioHelp": "<strong>Select one or more usage scenarios that apply to this requirement.</strong>\nUsage scenarios describe operational contexts (e.g. high load, disaster recovery) that help clarify when and how the requirement is relevant.",
     "reference": "Requirement reference",
     "scenario": "Usage scenario",
     "newRequirement": "New requirement",
@@ -120,7 +134,13 @@
     "draftVersionAvailableBanner": "A draft version (v{version}) is available",
     "viewingOlderVersion": "Viewing version {version}",
     "backToLatest": "Back to latest version",
-    "areaOwner": "owner"
+    "areaOwner": "owner",
+    "shareLinkInline": "Copy link (list view)",
+    "shareLinkPage": "Copy link (detail page)",
+    "afterSave": "After save, go to",
+    "afterSaveInline": "List view",
+    "afterSavePage": "Detail page",
+    "noPublishedVersion": "There is no published version of this requirement."
   },
   "requirementsTable": {
     "clear": "Clear",
@@ -156,8 +176,10 @@
     "name": "Name",
     "description": "Description",
     "owner": "Scenario owner",
-    "newScenario": "New requirement scenario",
-    "editScenario": "Edit requirement scenario"
+    "newScenario": "New usage scenario",
+    "editScenario": "Edit usage scenario",
+    "linkedRequirements": "Linked requirements",
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
   },
   "qualityCharacteristicMgmt": {
     "name": "Name",

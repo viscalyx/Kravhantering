@@ -200,7 +200,11 @@
     "WCAG",
     "kravberoende",
     "kravberoenden",
-    "normreferens"
+    "normreferens",
+    "Responsivitetstestning",
+    "propagering",
+    "datapropagering",
+    "övervakningsresponser"
   ],
   "flagWords": [],
   "ignorePaths": [

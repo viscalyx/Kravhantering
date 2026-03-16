@@ -1756,8 +1756,8 @@ describe('RequirementsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'INT0001' }))
 
     expect(mockPush.mock.calls).toEqual([
-      ['/kravkatalog/1'],
-      ['/kravkatalog/1'],
+      ['/kravkatalog/INT0001'],
+      ['/kravkatalog/INT0001'],
     ])
   })
 

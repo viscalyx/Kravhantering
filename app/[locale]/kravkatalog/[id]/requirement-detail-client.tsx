@@ -3,9 +3,11 @@
 import {
   AlertCircle,
   Archive,
+  Check,
   Clock,
   Edit,
   RotateCcw,
+  Share2,
   TestTube2,
   Trash2,
   X,
@@ -42,6 +44,7 @@ interface RequirementDetail {
     description: string | null
     acceptanceCriteria: string | null
     requiresTesting: boolean
+    verificationMethod: string | null
     category: { nameSv: string; nameEn: string } | null
     type: { nameSv: string; nameEn: string } | null
     qualityCharacteristic: { nameSv: string; nameEn: string } | null
@@ -62,13 +65,15 @@ interface RequirementDetail {
 }
 
 interface RequirementDetailClientProps {
+  defaultVersion?: number
   inline?: boolean
   onChange?: () => void | Promise<void>
   onClose?: () => void
-  requirementId: number
+  requirementId: number | string
 }
 
 export default function RequirementDetailClient({
+  defaultVersion,
   inline,
   onChange,
   onClose,
@@ -88,6 +93,9 @@ export default function RequirementDetailClient({
   const [loading, setLoading] = useState(true)
   const [transitions, setTransitions] = useState<TransitionTarget[]>([])
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
+  const [showShareMenu, setShowShareMenu] = useState(false)
+  const shareMenuRef = useRef<HTMLDivElement>(null)
   const [statuses, setStatuses] = useState<StatusInfo[]>([])
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
@@ -143,12 +151,25 @@ export default function RequirementDetailClient({
   const STATUS_ARCHIVED = 4
   const displayVersionNumber = useMemo(() => {
     if (!req) return null
+    // If an explicit version was requested (via URL path segment), use it
+    if (defaultVersion != null) {
+      const match = req.versions.find(v => v.versionNumber === defaultVersion)
+      if (match) return match.versionNumber
+    }
+    // For the full-page view (not inline) without explicit version,
+    // only show published version — return null if none exists so we
+    // can display a "no published version" message.
+    if (!inline) {
+      const published = req.versions.find(v => v.status === STATUS_PUBLISHED)
+      return published?.versionNumber ?? null
+    }
+    // Inline view: published > archived > latest
     const dv =
       req.versions.find(v => v.status === STATUS_PUBLISHED) ??
       req.versions.find(v => v.status === STATUS_ARCHIVED) ??
       req.versions[0]
     return dv?.versionNumber ?? null
-  }, [req])
+  }, [req, defaultVersion, inline])
 
   // Reset selected version when requirement data changes
   useEffect(() => {
@@ -256,6 +277,21 @@ export default function RequirementDetailClient({
       }
     }
   }, [selectedVersionNumber])
+
+  // Close share menu when clicking outside
+  useEffect(() => {
+    if (!showShareMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        shareMenuRef.current &&
+        !shareMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowShareMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showShareMenu])
 
   if (loading) {
     const loadingContent = (
@@ -540,6 +576,54 @@ export default function RequirementDetailClient({
     await Promise.all([fetchRequirement(), onChange?.()])
   }
 
+  const handleShare = async (mode: 'inline' | 'page') => {
+    const url = new URL(window.location.href)
+    url.search = ''
+    const shareUniqueId = req.uniqueId
+    if (mode === 'inline') {
+      url.pathname = url.pathname.replace(
+        /\/kravkatalog(\/.*)?$/,
+        '/kravkatalog',
+      )
+      url.searchParams.set('selected', shareUniqueId)
+    } else {
+      const versionSuffix =
+        selectedVersionNumber != null ? `/${selectedVersionNumber}` : ''
+      url.pathname = url.pathname.replace(
+        /\/kravkatalog(\/.*)?$/,
+        `/kravkatalog/${shareUniqueId}${versionSuffix}`,
+      )
+    }
+    try {
+      await navigator.clipboard.writeText(url.toString())
+      setCopied(mode)
+    } catch {
+      setCopied(null)
+    }
+    setShowShareMenu(false)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  // Full-page view without explicit version: if no published version exists,
+  // show a notice instead of the requirement content.
+  if (!inline && defaultVersion == null && displayVersionNumber == null) {
+    const noPublishedContent = (
+      <div className="py-12 text-center space-y-4">
+        <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+          {req.uniqueId}
+        </h1>
+        <p className="text-secondary-600 dark:text-secondary-400">
+          {t('noPublishedVersion')}
+        </p>
+      </div>
+    )
+    return (
+      <div className="section-padding px-4 sm:px-6 lg:px-8">
+        <div className="container-custom">{noPublishedContent}</div>
+      </div>
+    )
+  }
+
   const content = (
     <div
       className={
@@ -664,24 +748,86 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                {inline && req.area && (
-                  <div
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="detail section"
-                    data-developer-mode-priority="350"
-                    data-developer-mode-value="area"
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('area')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {req.area.name}
-                    </p>
-                    {req.area.ownerName && (
-                      <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                        {t('area')} — {t('areaOwner')}: {req.area.ownerName}
-                      </p>
+                {inline && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {req.area && (
+                      <div
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail section"
+                        data-developer-mode-priority="350"
+                        data-developer-mode-value="area"
+                      >
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                          {t('area')}
+                        </h3>
+                        <p className="text-secondary-900 dark:text-secondary-100">
+                          {req.area.name}
+                        </p>
+                        {req.area.ownerName && (
+                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                            {t('areaOwner')}: {req.area.ownerName}
+                          </p>
+                        )}
+                      </div>
                     )}
+                    {selectedVersion?.type && (
+                      <div
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail section"
+                        data-developer-mode-priority="350"
+                        data-developer-mode-value="type"
+                      >
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                          {t('type')}
+                        </h3>
+                        <p className="text-secondary-900 dark:text-secondary-100">
+                          {localName(selectedVersion.type)}
+                        </p>
+                      </div>
+                    )}
+                    {selectedVersion?.qualityCharacteristic && (
+                      <div
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail section"
+                        data-developer-mode-priority="350"
+                        data-developer-mode-value="quality characteristic"
+                      >
+                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                          {t('qualityCharacteristic')}
+                        </h3>
+                        <p className="text-secondary-900 dark:text-secondary-100">
+                          {localName(selectedVersion.qualityCharacteristic)}
+                        </p>
+                      </div>
+                    )}
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="requires testing"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('requiresTesting')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {selectedVersion?.requiresTesting
+                          ? tc('yes')
+                          : tc('no')}
+                      </p>
+                    </div>
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="verification method"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('verificationMethod')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {selectedVersion?.verificationMethod || '—'}
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -726,35 +872,39 @@ export default function RequirementDetailClient({
                     </div>
                   )}
 
-                {selectedVersion?.versionScenarios &&
-                  selectedVersion.versionScenarios.length > 0 && (
-                    <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="scenarios"
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('scenario')}
-                      </h3>
-                      <ul className="flex flex-wrap gap-2">
-                        {selectedVersion.versionScenarios.map(vs => (
-                          <li
-                            className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
-                            data-developer-mode-context={buildDetailSectionContext(
-                              'scenarios',
-                            )}
-                            data-developer-mode-name="scenario chip"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value={vs.scenario.nameEn}
-                            key={vs.scenario.id}
-                          >
-                            {localName(vs.scenario)}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                <div
+                  data-developer-mode-context={detailContext}
+                  data-developer-mode-name="detail section"
+                  data-developer-mode-priority="350"
+                  data-developer-mode-value="scenarios"
+                >
+                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                    {t('scenario')}
+                  </h3>
+                  {selectedVersion?.versionScenarios &&
+                  selectedVersion.versionScenarios.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2">
+                      {selectedVersion.versionScenarios.map(vs => (
+                        <li
+                          className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
+                          data-developer-mode-context={buildDetailSectionContext(
+                            'scenarios',
+                          )}
+                          data-developer-mode-name="scenario chip"
+                          data-developer-mode-priority="360"
+                          data-developer-mode-value={vs.scenario.nameEn}
+                          key={vs.scenario.id}
+                        >
+                          {localName(vs.scenario)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                      {tc('noneAvailable')}
+                    </p>
                   )}
+                </div>
 
                 {/* Downward triangle indicator pointing to selected version pill */}
                 {triangleLeft !== null && (
@@ -788,6 +938,70 @@ export default function RequirementDetailClient({
 
               {/* Action buttons column */}
               <div className="flex flex-col gap-2 shrink-0">
+                <div className="relative" ref={shareMenuRef}>
+                  <button
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="share toggle"
+                    data-developer-mode-priority="300"
+                    data-developer-mode-value="share"
+                    onClick={() => setShowShareMenu(prev => !prev)}
+                    title={tc('share')}
+                    type="button"
+                  >
+                    {copied ? (
+                      <Check
+                        aria-hidden="true"
+                        className="h-4 w-4 text-green-500"
+                      />
+                    ) : (
+                      <Share2 aria-hidden="true" className="h-4 w-4" />
+                    )}
+                    {copied ? tc('copied') : tc('share')}
+                  </button>
+                  {showShareMenu && (
+                    <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="share option"
+                        data-developer-mode-priority="310"
+                        data-developer-mode-value="share inline"
+                        onClick={() => handleShare('inline')}
+                        type="button"
+                      >
+                        {copied === 'inline' ? (
+                          <Check
+                            aria-hidden="true"
+                            className="h-4 w-4 text-green-500"
+                          />
+                        ) : (
+                          <Share2 aria-hidden="true" className="h-4 w-4" />
+                        )}
+                        {t('shareLinkInline')}
+                      </button>
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="share option"
+                        data-developer-mode-priority="310"
+                        data-developer-mode-value="share page"
+                        onClick={() => handleShare('page')}
+                        type="button"
+                      >
+                        {copied === 'page' ? (
+                          <Check
+                            aria-hidden="true"
+                            className="h-4 w-4 text-green-500"
+                          />
+                        ) : (
+                          <Share2 aria-hidden="true" className="h-4 w-4" />
+                        )}
+                        {t('shareLinkPage')}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {isViewingHistory ? (
                   <>
                     <button
@@ -855,7 +1069,7 @@ export default function RequirementDetailClient({
                         data-developer-mode-name="detail action"
                         data-developer-mode-priority="360"
                         data-developer-mode-value="edit"
-                        href={`/kravkatalog/${req.id}/redigera`}
+                        href={`/kravkatalog/${req.uniqueId}/redigera`}
                         title={tc('editTooltip')}
                       >
                         <Edit aria-hidden="true" className="h-4 w-4" />
@@ -975,6 +1189,14 @@ export default function RequirementDetailClient({
                   ) : (
                     <span className="font-medium">{tc('no')}</span>
                   )}
+                </div>
+                <div>
+                  <span className="text-secondary-600 dark:text-secondary-400">
+                    {t('verificationMethod')}:
+                  </span>{' '}
+                  <span className="font-medium">
+                    {selectedVersion?.verificationMethod || '—'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-secondary-600 dark:text-secondary-400">

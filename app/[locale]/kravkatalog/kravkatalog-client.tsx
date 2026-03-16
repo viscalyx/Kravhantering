@@ -1,6 +1,7 @@
 'use client'
 
 import { Download, Plus, Printer } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import RequirementsTable from '@/components/RequirementsTable'
@@ -115,6 +116,7 @@ export default function KravkatalogClient({
     QualityCharacteristicOption[]
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
+  const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
   const [sortState, setSortState] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
@@ -124,6 +126,7 @@ export default function KravkatalogClient({
   )
   const [columnWidths, setColumnWidths] = useState<RequirementColumnWidths>({})
   const [loading, setLoading] = useState(true)
+  const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
   const [hasMore, setHasMore] = useState(false)
@@ -138,11 +141,15 @@ export default function KravkatalogClient({
     hasLoadedColumnPreferences &&
     hydratedColumnWidthsStorageKey === columnWidthsStorageKey
 
-  // Stable ref so the onChange callback always sees the latest selectedId
-  const selectedIdRef = useRef<number | null>(null)
+  // Stable ref so the onChange callback always sees the latest selectedId.
+  // Can temporarily hold a uniqueId string when resolving from URL params.
+  const selectedIdRef = useRef<number | string | null>(null)
   const latestRowsRequestIdRef = useRef(0)
   const latestFetchDataRequestIdRef = useRef(0)
-  selectedIdRef.current = selectedId
+  const scrollToIdRef = useRef<number | null>(null)
+  if (typeof selectedIdRef.current !== 'string') {
+    selectedIdRef.current = selectedId
+  }
 
   const refreshRows = useCallback(async () => {
     const requestId = ++latestRowsRequestIdRef.current
@@ -178,32 +185,65 @@ export default function KravkatalogClient({
     const newRows = data.requirements ?? []
     const nextHasMore = data.pagination?.hasMore ?? false
 
-    // If an expanded row is no longer in the filtered results, pin it
+    // If an expanded row is no longer in the filtered results, pin it.
+    // sid can be a numeric id or a uniqueId string (from ?selected= URL param).
     const sid = selectedIdRef.current
     let newPinnedRow: RequirementRow | null = null
+    let resolvedNumericId: number | null = null
 
-    if (sid != null && !newRows.some(r => r.id === sid)) {
-      const hasCurrentPinnedSelection = () =>
-        requestId === latestRowsRequestIdRef.current &&
-        selectedIdRef.current === sid
+    if (sid != null) {
+      const inResults =
+        typeof sid === 'number'
+          ? newRows.some(r => r.id === sid)
+          : newRows.some(r => r.uniqueId === sid)
 
-      try {
-        const singleRes = await fetch(`/api/requirements/${sid}`)
-        if (singleRes.ok && hasCurrentPinnedSelection()) {
-          const detail = (await singleRes.json()) as RequirementDetailRowSource
-          if (hasCurrentPinnedSelection()) {
-            newPinnedRow = mapRequirementDetailToRow(detail)
+      // If sid is a uniqueId string, resolve the numeric id from the results
+      if (typeof sid === 'string' && inResults) {
+        const match = newRows.find(r => r.uniqueId === sid)
+        if (match) resolvedNumericId = match.id
+      }
+
+      if (!inResults) {
+        const hasCurrentPinnedSelection = () =>
+          requestId === latestRowsRequestIdRef.current &&
+          selectedIdRef.current === sid
+
+        try {
+          const singleRes = await fetch(`/api/requirements/${sid}`)
+          if (singleRes.ok && hasCurrentPinnedSelection()) {
+            const detail =
+              (await singleRes.json()) as RequirementDetailRowSource
+            if (hasCurrentPinnedSelection()) {
+              newPinnedRow = mapRequirementDetailToRow(detail)
+              // Resolve uniqueId string → numeric id
+              if (typeof sid === 'string') {
+                resolvedNumericId = detail.id
+              }
+            }
+          } else if (!singleRes.ok && hasCurrentPinnedSelection()) {
+            selectedIdRef.current = null
+            setSelectedId(null)
+            scrollToIdRef.current = null
           }
-        }
-      } catch {
-        if (hasCurrentPinnedSelection()) {
-          // Ignore pinned-row fetch failures and keep the refreshed rows.
+        } catch {
+          if (hasCurrentPinnedSelection()) {
+            selectedIdRef.current = null
+            setSelectedId(null)
+            scrollToIdRef.current = null
+          }
         }
       }
     }
 
     if (requestId !== latestRowsRequestIdRef.current) {
       return
+    }
+
+    // If we resolved a uniqueId → numeric id, update selectedId state and refs
+    if (resolvedNumericId != null) {
+      selectedIdRef.current = resolvedNumericId
+      setSelectedId(resolvedNumericId)
+      scrollToIdRef.current = resolvedNumericId
     }
 
     // Batch both updates in one synchronous block to avoid intermediate renders
@@ -273,6 +313,55 @@ export default function KravkatalogClient({
   const getStatusName = (opt: StatusOption) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
 
+  // Sync ?selected= param from URL into selectedId state.
+  // The param can be a numeric id or a uniqueId string (e.g. "DRF0036").
+  // Setting selectedIdRef.current synchronously here is critical: React fires
+  // effects in definition order, so when the fetchData effect fires next it
+  // calls refreshRows which reads selectedIdRef.current. By setting the ref
+  // here (before fetchData runs), refreshRows' own pinning logic will fetch
+  // the selected requirement and pin it — even if it's filtered out by the
+  // default Published-only status filter.
+  useEffect(() => {
+    const sel = searchParams.get('selected')
+    if (!sel) return
+
+    const numId = Number(sel)
+    if (!Number.isNaN(numId) && Number.isInteger(numId) && numId > 0) {
+      // Numeric id — set synchronously
+      setSelectedId(numId)
+      selectedIdRef.current = numId
+      scrollToIdRef.current = numId
+    } else {
+      // UniqueId string — set ref for the pinning logic; the numeric id
+      // will be resolved in refreshRows once the requirement is fetched.
+      selectedIdRef.current = sel
+    }
+
+    refreshRows()
+
+    // Clean up the params to avoid re-opening on manual refresh
+    const url = new URL(window.location.href)
+    url.searchParams.delete('selected')
+    window.history.replaceState({}, '', url.toString())
+  }, [searchParams, refreshRows])
+
+  // Scroll to the selected requirement once the expanded detail row is in the
+  // DOM. This effect runs after React commits a render that includes the new
+  // pinnedRow / rows, so the element exists by the time we look for it.
+  // We also depend on hasResolvedInitialRows because the table is hidden behind
+  // a loading spinner until that flag is true — without it the effect could fire
+  // when rows/pinnedRow are set but before the table is actually rendered.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: deps are intentional triggers to re-run scroll check when DOM updates
+  useEffect(() => {
+    const id = scrollToIdRef.current
+    if (id == null) return
+    const el = document.getElementById(`requirement-row-detail-${id}`)
+    if (el) {
+      scrollToIdRef.current = null
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [pinnedRow, rows, hasResolvedInitialRows])
+
   useEffect(() => {
     const readFilterResponse = async <T,>(
       result: PromiseSettledResult<Response>,
@@ -295,12 +384,14 @@ export default function KravkatalogClient({
         typesRes,
         qualityCharacteristicsRes,
         statusesRes,
+        scenariosRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/requirement-categories'),
         fetch('/api/requirement-types'),
         fetch('/api/quality-characteristics'),
         fetch('/api/requirement-statuses'),
+        fetch('/api/usage-scenarios'),
       ])
 
       const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
@@ -334,6 +425,12 @@ export default function KravkatalogClient({
       }>(statusesRes)
       if (statusesData) {
         setStatusOptions(statusesData.statuses ?? [])
+      }
+      const scenariosData = await readFilterResponse<{
+        scenarios?: FilterOption[]
+      }>(scenariosRes)
+      if (scenariosData) {
+        setUsageScenarios(scenariosData.scenarios ?? [])
       }
     }
 
@@ -566,6 +663,7 @@ export default function KravkatalogClient({
               sortState={sortState}
               statusOptions={statusOptions}
               types={types}
+              usageScenarios={usageScenarios}
               visibleColumns={visibleColumns}
             />
           )}

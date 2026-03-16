@@ -270,6 +270,7 @@ export const requirementVersions = sqliteTable(
     requiresTesting: integer('is_testing_required', { mode: 'boolean' })
       .notNull()
       .default(false),
+    verificationMethod: text('verification_method'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -311,7 +312,7 @@ export const requirementVersionsRelations = relations(
       references: [qualityCharacteristics.id],
     }),
     references: many(requirementReferences),
-    versionScenarios: many(requirementVersionScenarios),
+    versionScenarios: many(requirementVersionUsageScenarios),
   }),
 )
 
@@ -348,15 +349,15 @@ export const requirementReferencesRelations = relations(
   }),
 )
 
-// ─── Requirement Scenarios ───────────────────────────────────────────────────
+// ─── Usage Scenarios ────────────────────────────────────────────────────────
 
-export const requirementScenarios = sqliteTable('requirement_scenarios', {
+export const usageScenarios = sqliteTable('usage_scenarios', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   nameSv: text('name_sv').notNull(),
   nameEn: text('name_en').notNull(),
   descriptionSv: text('description_sv'),
   descriptionEn: text('description_en'),
-  owner: text('owner'),
+  ownerId: integer('owner_id').references(() => owners.id),
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
@@ -365,42 +366,50 @@ export const requirementScenarios = sqliteTable('requirement_scenarios', {
     .$defaultFn(() => new Date().toISOString()),
 })
 
-export const requirementScenariosRelations = relations(
-  requirementScenarios,
-  ({ many }) => ({
-    versionScenarios: many(requirementVersionScenarios),
+export const usageScenariosRelations = relations(
+  usageScenarios,
+  ({ one, many }) => ({
+    owner: one(owners, {
+      fields: [usageScenarios.ownerId],
+      references: [owners.id],
+    }),
+    versionScenarios: many(requirementVersionUsageScenarios),
   }),
 )
 
-// ─── Requirement Version ↔ Scenario (join table) ────────────────────────────
+// ─── Requirement Version ↔ Usage Scenario (join table) ──────────────────────
 
-export const requirementVersionScenarios = sqliteTable(
-  'requirement_version_scenarios',
+export const requirementVersionUsageScenarios = sqliteTable(
+  'requirement_version_usage_scenarios',
   {
     requirementVersionId: integer('requirement_version_id')
       .notNull()
       .references(() => requirementVersions.id),
-    scenarioId: integer('requirement_scenario_id')
+    usageScenarioId: integer('usage_scenario_id')
       .notNull()
-      .references(() => requirementScenarios.id),
+      .references(() => usageScenarios.id),
   },
   table => [
     primaryKey({
-      columns: [table.requirementVersionId, table.scenarioId],
+      name: 'pk_requirement_version_usage_scenarios',
+      columns: [table.requirementVersionId, table.usageScenarioId],
     }),
+    index('idx_requirement_version_usage_scenarios_usage_scenario_id').on(
+      table.usageScenarioId,
+    ),
   ],
 )
 
-export const requirementVersionScenariosRelations = relations(
-  requirementVersionScenarios,
+export const requirementVersionUsageScenariosRelations = relations(
+  requirementVersionUsageScenarios,
   ({ one }) => ({
     version: one(requirementVersions, {
-      fields: [requirementVersionScenarios.requirementVersionId],
+      fields: [requirementVersionUsageScenarios.requirementVersionId],
       references: [requirementVersions.id],
     }),
-    scenario: one(requirementScenarios, {
-      fields: [requirementVersionScenarios.scenarioId],
-      references: [requirementScenarios.id],
+    scenario: one(usageScenarios, {
+      fields: [requirementVersionUsageScenarios.usageScenarioId],
+      references: [usageScenarios.id],
     }),
   }),
 )

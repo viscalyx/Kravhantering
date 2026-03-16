@@ -8,7 +8,7 @@ applyTo: '{components,app}/**/*.tsx'
 
 - Mobile-first: base styles for small screens, add `sm:`, `md:`, `lg:` for larger
 - All layouts must work from 320px to 1440px+ (single-column mobile, multi-column desktop)
-- Touch targets: buttons and links need `min-h-[44px] min-w-[44px]`
+- Touch targets: buttons and links need `min-h-[44px] min-w-[44px]` unless the target is inline in text, user-agent controls, or a particular size/presentation is essential
 - No fixed widths — use responsive/fluid sizing (`w-full`, `max-w-*`, `flex`, `grid`)
 - Test layout mentally at mobile and desktop before submitting
 
@@ -18,11 +18,18 @@ applyTo: '{components,app}/**/*.tsx'
 
 ## Accessibility
 
+- Follow Web Content Accessibility Guidelines (WCAG) 2.2 Level AA compliance (AAA as an aspirational goal where feasible)
 - Semantic HTML elements over `<div>`/`<span>` + ARIA roles (Biome `a11y/useSemanticElements`)
 - Proper heading order (`h1` > `h2` > `h3`)
 - ARIA labels on all interactive elements
 - Visible focus rings on keyboard-navigable elements
 - Decorative icons: `aria-hidden="true"`
+
+## Form Help Texts
+
+- Every form field that accepts user input must include a help text button (the `?` icon) and a corresponding translatable help text in both `messages/en.json` and `messages/sv.json`
+- The help text should explain the purpose of the field and guide the user on what to enter
+- See `RequirementForm.tsx` for the pattern using `helpButton()` and `helpPanel()`
 
 ## Discoverability
 

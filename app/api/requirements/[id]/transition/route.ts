@@ -6,6 +6,7 @@ import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
+import { parseRequirementRef } from '../../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
 
@@ -29,12 +30,17 @@ export async function POST(
   }
 
   try {
+    const ref = parseRequirementRef(id)
     const result = await service.transitionRequirement(context, {
-      id: Number(id),
+      ...ref,
       responseFormat: 'json',
       toStatusId: statusId,
     })
-    return NextResponse.json({ id: Number(id), version: result.version })
+    return NextResponse.json({
+      id: result.detail.id,
+      uniqueId: result.detail.uniqueId,
+      version: result.version,
+    })
   } catch (error) {
     const { body: errorBody, status } = toHttpErrorPayload(error)
     return NextResponse.json(errorBody, { status })

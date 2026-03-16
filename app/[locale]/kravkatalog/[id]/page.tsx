@@ -15,5 +15,5 @@ export default async function RequirementDetailPage({
   params: Params
 }) {
   const { id } = await params
-  return <RequirementDetailClient requirementId={Number(id)} />
+  return <RequirementDetailClient requirementId={id} />
 }

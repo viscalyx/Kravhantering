@@ -6,6 +6,7 @@ import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
+import { parseRequirementRef } from '../../../parse-requirement-ref'
 
 type Params = Promise<{ id: string; version: string }>
 
@@ -20,8 +21,9 @@ export async function GET(
   const context = createRequestContext(_request, 'rest')
 
   try {
+    const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
-      id: Number(id),
+      ...ref,
       versionNumber: Number(version),
       view: 'version',
     })

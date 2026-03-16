@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
     .filter((v): v is boolean => v !== null)
   const statusParams = url.searchParams.getAll('statuses')
   const statuses = statusParams.map(Number).filter(n => !Number.isNaN(n))
+  const usageScenarioIds = url.searchParams
+    .getAll('usageScenarioIds')
+    .map(Number)
+    .filter(n => !Number.isNaN(n))
   const includeArchived = statuses.length === 0 || statuses.includes(4)
 
   try {
@@ -85,6 +89,8 @@ export async function GET(request: NextRequest) {
           : undefined,
       typeIds: typeIds.length > 0 ? typeIds : undefined,
       uniqueIdSearch,
+      usageScenarioIds:
+        usageScenarioIds.length > 0 ? usageScenarioIds : undefined,
     })
 
     const requirements = result.items as RequirementListItem[]
@@ -184,6 +190,9 @@ export async function POST(request: NextRequest) {
               }))
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
+        verificationMethod: body.verificationMethod
+          ? String(body.verificationMethod)
+          : undefined,
         scenarioIds: Array.isArray(body.scenarioIds)
           ? body.scenarioIds
               .map(value => Number(value))

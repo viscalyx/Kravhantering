@@ -5,6 +5,7 @@
     "loading": "Laddar...",
     "loadingRequirements": "Hämtar krav…",
     "save": "Spara",
+    "saving": "Sparar…",
     "cancel": "Avbryt",
     "delete": "Ta bort",
     "edit": "Redigera",
@@ -44,7 +45,10 @@
     "restoreVersion": "Återskapa version",
     "createdAt": "Skapad",
     "updatedAt": "Uppdaterad",
-    "error": "Ett fel uppstod"
+    "error": "Ett fel uppstod",
+    "share": "Dela",
+    "copied": "Kopierad",
+    "help": "Hjälp"
   },
   "nav": {
     "catalog": "Kravkatalog",
@@ -78,6 +82,16 @@
     "qualityCharacteristic": "Kvalitetsegenskap",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
+    "verificationMethod": "Verifieringsmetod",
+    "verificationMethodHelp": "<strong>Ange hur det ska verifieras att acceptanskriterierna är uppfyllda.</strong>\nVälj eller beskriv lämplig metod, till exempel inspektion, analys/simulering, demonstration eller test, i linje med ISO/IEC/IEEE 29148:2018.",
+    "areaHelp": "<strong>Välj det område som kravet tillhör.</strong>\nOmrådet styr prefix för krav-ID och kopplar kravet till en ansvarig ägare.",
+    "descriptionHelp": "<strong>Formulera kravet tydligt, konkret och verifierbart.</strong>\nBeskriv vem eller vad kravet gäller och vad som ska uppnås. Fokusera på vad som ska gälla, inte hur lösningen ska implementeras. När det är relevant, ange mätbara villkor, till exempel tid, gränsvärde, precision eller kapacitet, så att kravet kan förstås och verifieras. Undvik vaga ord som snabb, enkel, lämplig eller vid behov. Detta följer principerna i ISO/IEC/IEEE 29148:2018 för tydliga och entydiga krav samt ISO/IEC 25030:2019 för mätbara kvalitetskrav.\n\nExempel:\nBra: Systemet ska visa sökresultat inom 2 sekunder.\nMindre bra: Systemet ska vara snabbt och användarvänligt.",
+    "acceptanceCriteriaHelp": "<strong>Ange de objektiva villkor som måste vara uppfyllda för att kravet ska godkännas.</strong>\nSkriv tydligt, konkret och mätbart när det är relevant, till exempel tid, gränsvärde, precision, kapacitet eller observerbart resultat. Beskriv vad som ska vara uppfyllt, inte hur det ska testas. Formuleringen bör följa principerna i ISO/IEC 25010:2023, ISO/IEC 25030:2019 och ISO/IEC/IEEE 29148:2018.",
+    "categoryHelp": "<strong>Välj den kategori som bäst beskriver kravets karaktär.</strong>\nKategorin hjälper till att klassificera och filtrera krav.",
+    "typeHelp": "<strong>Välj den typ som bäst beskriver kravet.</strong>\nTypen bestämmer vilka kvalitetsegenskaper som kan kopplas till kravet.",
+    "qualityCharacteristicHelp": "<strong>Välj den kvalitetsegenskap som kravet bidrar till.</strong>\nKvalitetsegenskaper följer ISO/IEC 25010:2023 och hjälper till att kategorisera kraven efter kvalitetsaspekt.",
+    "requiresTestingHelp": "<strong>Ange om kravet ska verifieras.</strong>\nOm kravet markeras som verifierbart behöver du även ange en verifieringsmetod.",
+    "scenarioHelp": "<strong>Välj ett eller flera användningsscenarier som gäller för detta krav.</strong>\nAnvändningsscenarier beskriver driftsituationer (t.ex. hög belastning, katastrofåterställning) som förtydligar när och hur kravet är relevant.",
     "reference": "Kravreferens",
     "scenario": "Användningsscenario",
     "newRequirement": "Nytt krav",
@@ -120,7 +134,13 @@
     "draftVersionAvailableBanner": "Det finns en utkastsversion (v{version})",
     "viewingOlderVersion": "Visar version {version}",
     "backToLatest": "Tillbaka till senaste versionen",
-    "areaOwner": "ägare"
+    "areaOwner": "ägare",
+    "shareLinkInline": "Kopiera länk (listvy)",
+    "shareLinkPage": "Kopiera länk (detaljsida)",
+    "afterSave": "Gå till efter sparning",
+    "afterSaveInline": "Listvy",
+    "afterSavePage": "Detaljsida",
+    "noPublishedVersion": "Det finns ingen publicerad version av detta krav."
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -155,9 +175,11 @@
   "scenario": {
     "name": "Namn",
     "description": "Beskrivning",
-    "owner": "Kravscenarioägare",
-    "newScenario": "Nytt kravscenario",
-    "editScenario": "Redigera kravscenario"
+    "owner": "Scenarioägare",
+    "newScenario": "Nytt användningsscenario",
+    "editScenario": "Redigera användningsscenario",
+    "linkedRequirements": "Kopplade krav",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
   },
   "qualityCharacteristicMgmt": {
     "name": "Namn",
