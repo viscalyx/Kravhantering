@@ -4,6 +4,7 @@ import {
   desc,
   eq,
   inArray,
+  isNotNull,
   like,
   or,
   type SQLWrapper,
@@ -736,44 +737,123 @@ export async function editRequirement(
   return version
 }
 
-export async function archiveRequirement(
+export async function initiateArchiving(
   db: Database,
   requirementId: number,
   _createdBy?: string,
 ) {
-  // Set is_archived flag
+  // Find the published version (may not be the latest if a newer draft/review exists)
+  const publishedVersion = await db.query.requirementVersions.findFirst({
+    where: and(
+      eq(requirementVersions.requirementId, requirementId),
+      eq(requirementVersions.statusId, STATUS_PUBLISHED),
+    ),
+  })
+
+  if (!publishedVersion) {
+    throw conflictError('No published version found to archive')
+  }
+
+  // Block archiving when there's a newer Draft or Review version (pending work)
+  const newerPendingVersion = await db.query.requirementVersions.findFirst({
+    where: and(
+      eq(requirementVersions.requirementId, requirementId),
+      inArray(requirementVersions.statusId, [STATUS_DRAFT, STATUS_REVIEW]),
+      sql`${requirementVersions.versionNumber} > ${publishedVersion.versionNumber}`,
+    ),
+  })
+
+  if (newerPendingVersion) {
+    throw conflictError(
+      'Cannot initiate archiving while there is a pending draft or review version',
+    )
+  }
+
+  // In-place update: move to Review with archiveInitiatedAt set
+  const now = new Date().toISOString()
+  await db
+    .update(requirementVersions)
+    .set({
+      statusId: STATUS_REVIEW,
+      archiveInitiatedAt: now,
+    })
+    .where(eq(requirementVersions.id, publishedVersion.id))
+
+  // Do NOT set isArchived yet — archiving is pending review
+}
+
+export async function approveArchiving(
+  db: Database,
+  requirementId: number,
+  _createdBy?: string,
+) {
+  // Find the version that is in archiving review (has archiveInitiatedAt set)
+  const currentVersion = await db.query.requirementVersions.findFirst({
+    where: and(
+      eq(requirementVersions.requirementId, requirementId),
+      isNotNull(requirementVersions.archiveInitiatedAt),
+    ),
+  })
+
+  if (!currentVersion) {
+    throw conflictError('No version with archiving initiated found')
+  }
+
+  if (currentVersion.statusId !== STATUS_REVIEW) {
+    throw conflictError(
+      'Can only approve archiving from Review status with archiving initiated',
+    )
+  }
+
+  const now = new Date().toISOString()
+
+  // Set is_archived flag on requirement
   await db
     .update(requirements)
     .set({ isArchived: true })
     .where(eq(requirements.id, requirementId))
 
-  // Get current latest version
-  const latestRows = await db
-    .select({
-      maxVersion: sql<number>`MAX(${requirementVersions.versionNumber})`,
+  // In-place update: set status to Archived and archived_at timestamp
+  await db
+    .update(requirementVersions)
+    .set({
+      statusId: STATUS_ARCHIVED,
+      archivedAt: now,
     })
-    .from(requirementVersions)
-    .where(eq(requirementVersions.requirementId, requirementId))
+    .where(eq(requirementVersions.id, currentVersion.id))
+}
 
-  const currentMax = latestRows[0]?.maxVersion ?? 0
-
+export async function cancelArchiving(
+  db: Database,
+  requirementId: number,
+  _createdBy?: string,
+) {
+  // Find the version that is in archiving review (has archiveInitiatedAt set)
   const currentVersion = await db.query.requirementVersions.findFirst({
     where: and(
       eq(requirementVersions.requirementId, requirementId),
-      eq(requirementVersions.versionNumber, currentMax),
+      isNotNull(requirementVersions.archiveInitiatedAt),
     ),
   })
 
-  // In-place update: set status to Archived and archived_at timestamp
-  if (currentVersion && currentVersion.statusId !== STATUS_ARCHIVED) {
-    await db
-      .update(requirementVersions)
-      .set({
-        statusId: STATUS_ARCHIVED,
-        archivedAt: new Date().toISOString(),
-      })
-      .where(eq(requirementVersions.id, currentVersion.id))
+  if (!currentVersion) {
+    throw conflictError('No version with archiving initiated found')
   }
+
+  if (currentVersion.statusId !== STATUS_REVIEW) {
+    throw conflictError(
+      'Can only cancel archiving from Review status with archiving initiated',
+    )
+  }
+
+  // Return to Published, clear archiveInitiatedAt
+  await db
+    .update(requirementVersions)
+    .set({
+      statusId: STATUS_PUBLISHED,
+      archiveInitiatedAt: null,
+    })
+    .where(eq(requirementVersions.id, currentVersion.id))
 }
 
 export async function deleteDraftVersion(db: Database, requirementId: number) {
@@ -921,12 +1001,48 @@ export async function transitionStatus(
     )
   }
 
+  // Context-aware validation: archiving review vs publishing review
+  if (currentVersion.statusId === STATUS_REVIEW) {
+    if (currentVersion.archiveInitiatedAt) {
+      // Archiving flow: only allow → Archived or → Published (cancel)
+      if (newStatusId !== STATUS_ARCHIVED && newStatusId !== STATUS_PUBLISHED) {
+        throw conflictError(
+          'Archiving review can only transition to Archived or back to Published',
+        )
+      }
+    } else {
+      // Publishing flow: do not allow → Archived
+      if (newStatusId === STATUS_ARCHIVED) {
+        throw conflictError(
+          'Cannot archive from publishing review; initiate archiving from Published state first',
+        )
+      }
+    }
+  }
+
   // In-place status update — never create a new version row.
   // edited_at is intentionally NOT touched on status transitions.
   const now = new Date().toISOString()
 
   const updateFields: Record<string, unknown> = {
     statusId: newStatusId,
+  }
+
+  // When initiating archiving via transition (Published → Review)
+  if (
+    currentVersion.statusId === STATUS_PUBLISHED &&
+    newStatusId === STATUS_REVIEW
+  ) {
+    updateFields.archiveInitiatedAt = now
+  }
+
+  // When cancelling archiving (Review → Published with archiveInitiatedAt set)
+  if (
+    currentVersion.statusId === STATUS_REVIEW &&
+    newStatusId === STATUS_PUBLISHED &&
+    currentVersion.archiveInitiatedAt
+  ) {
+    updateFields.archiveInitiatedAt = null
   }
 
   if (newStatusId === STATUS_PUBLISHED) {

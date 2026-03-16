@@ -14,9 +14,13 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const linkedRequirements = await getLinkedRequirements(db, Number(id))
+  const linkedRequirements = await getLinkedRequirements(db, numericId)
   return NextResponse.json({ linkedRequirements })
 }
 
@@ -25,10 +29,14 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
   const body = (await request.json()) as Parameters<typeof updateScenario>[2]
-  const scenario = await updateScenario(db, Number(id), body)
+  const scenario = await updateScenario(db, numericId, body)
   if (!scenario) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -40,8 +48,12 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  await deleteScenario(db, Number(id))
+  await deleteScenario(db, numericId)
   return NextResponse.json({ ok: true })
 }

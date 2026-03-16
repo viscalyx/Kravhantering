@@ -3,7 +3,9 @@ import { forbiddenError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 const mocks = vi.hoisted(() => ({
-  archiveRequirement: vi.fn(),
+  approveArchiving: vi.fn(),
+  cancelArchiving: vi.fn(),
+  initiateArchiving: vi.fn(),
   countRequirements: vi.fn(),
   createRequirement: vi.fn(),
   deleteDraftVersion: vi.fn(),
@@ -54,7 +56,9 @@ vi.mock('@/lib/dal/requirement-types', () => ({
 }))
 
 vi.mock('@/lib/dal/requirements', () => ({
-  archiveRequirement: mocks.archiveRequirement,
+  approveArchiving: mocks.approveArchiving,
+  cancelArchiving: mocks.cancelArchiving,
+  initiateArchiving: mocks.initiateArchiving,
   countRequirements: mocks.countRequirements,
   createRequirement: mocks.createRequirement,
   deleteDraftVersion: mocks.deleteDraftVersion,
@@ -708,8 +712,8 @@ describe('createRequirementsService', () => {
     expect(mocks.editRequirement).toHaveBeenCalled()
   })
 
-  it('archives a requirement', async () => {
-    mocks.archiveRequirement.mockResolvedValue(undefined)
+  it('initiates archiving review for a requirement', async () => {
+    mocks.initiateArchiving.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
@@ -719,7 +723,35 @@ describe('createRequirementsService', () => {
       operation: 'archive',
     })
     expect(result.operation).toBe('archive')
-    expect(mocks.archiveRequirement).toHaveBeenCalled()
+    expect(mocks.initiateArchiving).toHaveBeenCalled()
+  })
+
+  it('approves archiving of a requirement', async () => {
+    mocks.approveArchiving.mockResolvedValue(undefined)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'approve_archiving',
+    })
+    expect(result.operation).toBe('approve_archiving')
+    expect(mocks.approveArchiving).toHaveBeenCalled()
+  })
+
+  it('cancels archiving of a requirement', async () => {
+    mocks.cancelArchiving.mockResolvedValue(undefined)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    const result = await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'cancel_archiving',
+    })
+    expect(result.operation).toBe('cancel_archiving')
+    expect(mocks.cancelArchiving).toHaveBeenCalled()
   })
 
   it('deletes a draft', async () => {

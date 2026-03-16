@@ -271,10 +271,11 @@ UPDATE requirement_statuses SET name_sv = 'Arkiverad',  name_en = 'Archived',  s
 
 -- ─── Requirement Status Transitions ──────────────────────────────────────────
 INSERT OR IGNORE INTO requirement_status_transitions (id, from_requirement_status_id, to_requirement_status_id) VALUES
-  (1, 1, 2),  -- Utkast → Granskning
-  (2, 2, 3),  -- Granskning → Publicerad
-  (3, 2, 1),  -- Granskning → Utkast
-  (4, 3, 4);  -- Publicerad → Arkiverad
+  (1, 1, 2),  -- Utkast → Granskning (publishing)
+  (2, 2, 3),  -- Granskning → Publicerad (publishing)
+  (3, 2, 1),  -- Granskning → Utkast (publishing reject)
+  (4, 3, 2),  -- Publicerad → Granskning (initiate archiving review)
+  (5, 2, 4);  -- Granskning → Arkiverad (approve archiving)
 
 -- ─── Requirement Categories ──────────────────────────────────────────────────
 INSERT OR IGNORE INTO requirement_categories (id, name_sv, name_en) VALUES
@@ -483,7 +484,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (4,  3, 1, 'FTP-integration för filöverföring (utgått) [Version 1 testdata]', 'FTP-anslutning upprättas och fil överförs [Version 1 testdata]', 2, 1, 1, 4, 0, NULL, datetime('now', '-60 days'), 'seed', datetime('now', '-56 days'), datetime('now', '-55 days'), datetime('now', '-45 days')),
   (5,  4, 1, 'Alla API-anrop ska autentiseras med OAuth2 eller API-nycklar [Version 1 testdata]', 'Oautentiserade anrop avvisas med HTTP 401 [Version 1 testdata]', 2, 2, 26, 3, 0, NULL, datetime('now', '-25 days'), 'seed', datetime('now', '-23 days'), datetime('now', '-22 days'), NULL),
   (6,  5, 1, 'Personuppgifter ska krypteras vid lagring [Version 1 testdata]', 'Data i databasen är krypterat och kan inte läsas i klartext [Version 1 testdata]', 2, 2, 27, 2, 1, 'Penetrationstest och kryptografisk verifiering av krypterad lagringsintegritet', datetime('now', '-15 days'), 'seed', datetime('now', '-13 days'), NULL, NULL),
-  (7,  6, 1, 'Svarstid för API-anrop ska vara under 500ms vid normal last [Version 1 testdata]', '95:e percentilen av svarstider understiger 500ms [Version 1 testdata]', 2, 2, 6, 3, 0, NULL, datetime('now', '-18 days'), 'seed', datetime('now', '-16 days'), datetime('now', '-15 days'), NULL),
+  (7,  6, 1, 'Svarstid för API-anrop ska vara under 500ms vid normal last [Version 1 testdata]', '95:e percentilen av svarstider understiger 500ms [Version 1 testdata]', 2, 2, 6, 2, 0, NULL, datetime('now', '-18 days'), 'seed', datetime('now', '-16 days'), datetime('now', '-15 days'), NULL),
   (8,  7, 1, 'Användargränssnittet ska vara responsivt och fungera på mobila enheter [Version 1 testdata]', 'Gränssnittet anpassar sig korrekt för skärmbredder från 320px till 1920px [Version 1 testdata]', 1, 2, 15, 1, 1, 'Responsivitetstestning med BrowserStack på enheter från 320px till 1920px', datetime('now', '-12 days'), 'seed', datetime('now', '-10 days'), NULL, NULL),
   (9,  4, 2, 'Alla API-anrop ska autentiseras med OAuth2, API-nycklar eller mTLS-certifikat [Version 2 testdata]', 'Oautentiserade anrop avvisas med HTTP 401. mTLS-anslutningar valideras mot internt CA. [Version 2 testdata]', 2, 2, 26, 1, 1, 'Automatiserade e2e-tester som validerar inloggningsflödet och sessionshantering', datetime('now', '-5 days'), 'seed', datetime('now', '-3 days'), NULL, NULL),
   (10, 8, 1, 'Lösenord ska ha minst 8 tecken (utgått, ersatt av SSO-krav) [Version 1 testdata]', 'Lösenordspolicy verifieras vid registrering [Version 1 testdata]', 2, 2, 31, 4, 0, NULL, datetime('now', '-90 days'), 'seed', datetime('now', '-86 days'), datetime('now', '-85 days'), datetime('now', '-75 days')),
@@ -491,7 +492,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
 
 -- === New Integration requirements (IDs 12-18) ===
 INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, description, acceptance_criteria, requirement_category_id, requirement_type_id, quality_characteristic_id, requirement_status_id, is_testing_required, verification_method, created_at, created_by, edited_at, published_at, archived_at) VALUES
-  (12, 10, 1, 'Systemet ska stödja asynkron meddelandehantering via RabbitMQ [Version 1 testdata]', 'Meddelanden tas emot och processas utan dataförlust [Version 1 testdata]', 2, 1, 2, 3, 1, 'Integrationstester som validerar meddelandehantering utan dataförlust', datetime('now', '-22 days'), 'seed', datetime('now', '-20 days'), datetime('now', '-19 days'), NULL),
+  (12, 10, 1, 'Systemet ska stödja asynkron meddelandehantering via RabbitMQ [Version 1 testdata]', 'Meddelanden tas emot och processas utan dataförlust [Version 1 testdata]', 2, 1, 2, 2, 1, 'Integrationstester som validerar meddelandehantering utan dataförlust', datetime('now', '-22 days'), 'seed', datetime('now', '-20 days'), datetime('now', '-19 days'), NULL),
   (13, 11, 1, 'GraphQL-gränssnitt ska tillhandahållas för frontend-applikationer [Version 1 testdata]', 'GraphQL-schema validerar queries och returnerar korrekt data [Version 1 testdata]', 2, 1, 3, 3, 1, 'Automatiserade integrationstester som validerar GraphQL-schema och query-svar', datetime('now', '-19 days'), 'seed', datetime('now', '-17 days'), datetime('now', '-16 days'), NULL),
   (14, 12, 1, 'Webhooks ska kunna konfigureras för händelsenotifiering till externa system [Version 1 testdata]', 'Webhook-anrop levereras inom 5 sekunder efter händelse [Version 1 testdata]', 3, 1, 4, 2, 1, 'Integrationstester som validerar webhook-leverans och svarstider', datetime('now', '-8 days'), 'seed', datetime('now', '-6 days'), NULL, NULL),
   (15, 13, 1, 'API-gateway ska hantera rate limiting per klient [Version 1 testdata]', 'Klienter som överskrider gränsen får HTTP 429 [Version 1 testdata]', 2, 2, 32, 3, 1, 'Lasttest som verifierar att klienter som överskrider gränsen får HTTP 429', datetime('now', '-14 days'), 'seed', datetime('now', '-12 days'), datetime('now', '-11 days'), NULL),
@@ -989,7 +990,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (146, 101, 1, 'Säker hantering av hemligheter via HashiCorp Vault [Version 1 testdata]', 'Inga hemligheter lagras i källkod eller konfigurationsfiler [Version 1 testdata]', 2, 1, 29, 3, 0, NULL, datetime('now', '-185 days'), 'data-admin', datetime('now', '-183 days'), datetime('now', '-182 days'), NULL),
   (147, 102, 1, 'Automatisk sårbarhetsskanning av Docker-images [Version 1 testdata]', 'Inga kritiska CVE:er tillåts i containerimages [Version 1 testdata]', 2, 2, 30, 3, 1, 'Automatiserad SAST/DAST-skanning i CI/CD-pipeline med rapportverifiering', datetime('now', '-180 days'), 'platform-eng', datetime('now', '-178 days'), datetime('now', '-177 days'), NULL),
   (148, 103, 1, 'DDoS-skydd ska implementeras för alla publika tjänster — initial version [Version 1 testdata]', 'DDoS-mitigation aktiveras vid trafikanomalier [Version 1 testdata]', 1, 2, 31, 4, 1, 'Automatiserad säkerhetstestning med verifiering av skyddsmekanismer', datetime('now', '-175 days'), 'seed', datetime('now', '-173 days'), datetime('now', '-172 days'), datetime('now', '-160 days')),
-  (149, 103, 2, 'DDoS-skydd ska implementeras för alla publika tjänster — uppdatering v2 [Version 2 testdata]', 'DDoS-mitigation aktiveras vid trafikanomalier [Version 2 testdata]', 1, 2, 31, 3, 1, 'Automatiserad säkerhetstestning med verifiering av skyddsmekanismer', datetime('now', '-145 days'), 'seed', datetime('now', '-143 days'), datetime('now', '-142 days'), NULL),
+  (149, 103, 2, 'DDoS-skydd ska implementeras för alla publika tjänster — uppdatering v2 [Version 2 testdata]', 'DDoS-mitigation aktiveras vid trafikanomalier [Version 2 testdata]', 1, 2, 31, 2, 1, 'Automatiserad säkerhetstestning med verifiering av skyddsmekanismer', datetime('now', '-145 days'), 'seed', datetime('now', '-143 days'), datetime('now', '-142 days'), NULL),
   (150, 104, 1, 'Supply chain security med signerade artefakter — initial version [Version 1 testdata]', 'Alla deployade artefakter har verifierbar signatur [Version 1 testdata]', 2, 1, 32, 4, 0, NULL, datetime('now', '-170 days'), 'security-admin', datetime('now', '-168 days'), datetime('now', '-167 days'), datetime('now', '-155 days')),
   (151, 104, 2, 'Supply chain security med signerade artefakter — uppdatering v2 [Version 2 testdata]', 'Alla deployade artefakter har verifierbar signatur [Version 2 testdata]', 2, 1, 32, 4, 0, NULL, datetime('now', '-140 days'), 'security-admin', datetime('now', '-138 days'), datetime('now', '-137 days'), datetime('now', '-125 days')),
   (152, 104, 3, 'Supply chain security med signerade artefakter — uppdatering v3 [Version 3 testdata]', 'Alla deployade artefakter har verifierbar signatur [Version 3 testdata]', 2, 1, 32, 1, 0, NULL, datetime('now', '-110 days'), 'security-admin', datetime('now', '-108 days'), NULL, NULL),
@@ -1367,6 +1368,14 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (500, 365, 1, 'API-baserad dataexport med paginering [Version 1 testdata]', 'Export-API stödjer cursor-baserad paginering med konsistent data [Version 1 testdata]', 2, 1, 36, 3, 0, NULL, datetime('now', '-65 days'), 'devops-lead', datetime('now', '-63 days'), datetime('now', '-62 days'), NULL),
   (501, 366, 1, 'Syntetisk testdata-generering [Version 1 testdata]', 'Realistisk testdata genereras automatiskt utan produktionsdata [Version 1 testdata]', 3, 2, 37, 1, 1, 'Automatiserade datavalideringstester med verifiering av integritet och format', datetime('now', '-60 days'), 'data-admin', datetime('now', '-58 days'), NULL, NULL),
   (502, 367, 1, 'Data observability med anomalidetektering [Version 1 testdata]', 'Dataanomalier (volym, schema, freshness) detekteras automatiskt [Version 1 testdata]', 2, 2, 27, 3, 1, 'Utvärdering av ML-modell med kända anomalier och mätning av false positive rate', datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
+
+-- ─── Pending archive (archiving review) ──────────────────────────────────────
+-- Req 6 (PRE0006): was Published, now in archiving review (no prior archived versions)
+UPDATE requirement_versions SET archive_initiated_at = datetime('now', '-2 days') WHERE id = 7;
+-- Req 10 (INT0010): was Published, now in archiving review (no prior archived versions)
+UPDATE requirement_versions SET archive_initiated_at = datetime('now', '-3 days') WHERE id = 12;
+-- Req 103 (SÄK0037): was Published v2, now in archiving review (has archived v1)
+UPDATE requirement_versions SET archive_initiated_at = datetime('now', '-1 days') WHERE id = 149;
 
 -- ─── Usage Scenarios (sample) ────────────────────────────────────────────────
 INSERT OR IGNORE INTO usage_scenarios (id, name_sv, name_en, description_sv, description_en, owner_id, created_at, updated_at) VALUES

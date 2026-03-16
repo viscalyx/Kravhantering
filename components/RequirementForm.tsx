@@ -113,26 +113,34 @@ export default function RequirementForm({
   }
 
   const fetchOptions = useCallback(async () => {
-    const [areasRes, catRes, typesRes, scenariosRes] = await Promise.all([
+    const results = await Promise.allSettled([
       fetch('/api/requirement-areas'),
       fetch('/api/requirement-categories'),
       fetch('/api/requirement-types'),
       fetch('/api/usage-scenarios'),
     ])
-    if (areasRes.ok)
+    const [areasResult, catResult, typesResult, scenariosResult] = results
+    if (areasResult.status === 'fulfilled' && areasResult.value.ok)
       setAreas(
-        ((await areasRes.json()) as { areas?: AreaOption[] }).areas ?? [],
+        ((await areasResult.value.json()) as { areas?: AreaOption[] }).areas ??
+          [],
       )
-    if (catRes.ok)
+    if (catResult.status === 'fulfilled' && catResult.value.ok)
       setCategories(
-        ((await catRes.json()) as { categories?: Option[] }).categories ?? [],
+        ((await catResult.value.json()) as { categories?: Option[] })
+          .categories ?? [],
       )
-    if (typesRes.ok)
-      setTypes(((await typesRes.json()) as { types?: Option[] }).types ?? [])
-    if (scenariosRes.ok)
+    if (typesResult.status === 'fulfilled' && typesResult.value.ok)
+      setTypes(
+        ((await typesResult.value.json()) as { types?: Option[] }).types ?? [],
+      )
+    if (scenariosResult.status === 'fulfilled' && scenariosResult.value.ok)
       setScenarios(
-        ((await scenariosRes.json()) as { scenarios?: ScenarioOption[] })
-          .scenarios ?? [],
+        (
+          (await scenariosResult.value.json()) as {
+            scenarios?: ScenarioOption[]
+          }
+        ).scenarios ?? [],
       )
   }, [])
 
@@ -200,7 +208,11 @@ export default function RequirementForm({
             ? form.verificationMethod || undefined
             : undefined,
           scenarioIds:
-            form.scenarioIds.length > 0 ? form.scenarioIds : undefined,
+            mode === 'edit'
+              ? form.scenarioIds
+              : form.scenarioIds.length > 0
+                ? form.scenarioIds
+                : undefined,
         }),
       })
 

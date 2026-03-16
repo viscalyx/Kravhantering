@@ -7,7 +7,8 @@ import {
   listTypes,
 } from '@/lib/dal/requirement-types'
 import {
-  archiveRequirement,
+  approveArchiving,
+  cancelArchiving,
   countRequirements,
   createRequirement,
   deleteDraftVersion,
@@ -15,6 +16,7 @@ import {
   getRequirementById,
   getRequirementByUniqueId,
   getVersionHistory,
+  initiateArchiving,
   listRequirements,
   reactivateRequirement,
   restoreVersion,
@@ -117,6 +119,8 @@ export interface ManageRequirementInput extends RequirementRefInput {
   locale?: ResponseLocale
   operation:
     | 'archive'
+    | 'approve_archiving'
+    | 'cancel_archiving'
     | 'create'
     | 'delete_draft'
     | 'edit'
@@ -250,6 +254,7 @@ function formatRequirementDetail(
     uniqueId: requirement.uniqueId,
     versions: requirement.versions.map(version => ({
       acceptanceCriteria: version.acceptanceCriteria,
+      archiveInitiatedAt: version.archiveInitiatedAt,
       archivedAt: version.archivedAt,
       category: version.category
         ? {
@@ -958,7 +963,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'archive') {
-            await archiveRequirement(
+            await initiateArchiving(
               db,
               requirementId,
               context.actor.id ?? undefined,
@@ -967,7 +972,33 @@ export function createRequirementsService(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
                   throw notFoundError(
-                    'Archived requirement could not be reloaded',
+                    'Requirement could not be reloaded after initiating archiving',
+                  )
+                })(),
+            )
+            return {
+              detail,
+              message: createServiceMessage(
+                'Archiving Review Initiated',
+                [detail.uniqueId],
+                responseFormat,
+              ),
+              operation: input.operation,
+              result: { ok: true },
+            }
+          }
+
+          if (input.operation === 'approve_archiving') {
+            await approveArchiving(
+              db,
+              requirementId,
+              context.actor.id ?? undefined,
+            )
+            const detail = formatRequirementDetail(
+              (await getRequirementById(db, requirementId)) ??
+                (() => {
+                  throw notFoundError(
+                    'Requirement could not be reloaded after approving archiving',
                   )
                 })(),
             )
@@ -975,6 +1006,32 @@ export function createRequirementsService(
               detail,
               message: createServiceMessage(
                 'Requirement Archived',
+                [detail.uniqueId],
+                responseFormat,
+              ),
+              operation: input.operation,
+              result: { ok: true },
+            }
+          }
+
+          if (input.operation === 'cancel_archiving') {
+            await cancelArchiving(
+              db,
+              requirementId,
+              context.actor.id ?? undefined,
+            )
+            const detail = formatRequirementDetail(
+              (await getRequirementById(db, requirementId)) ??
+                (() => {
+                  throw notFoundError(
+                    'Requirement could not be reloaded after cancelling archiving',
+                  )
+                })(),
+            )
+            return {
+              detail,
+              message: createServiceMessage(
+                'Archiving Cancelled',
                 [detail.uniqueId],
                 responseFormat,
               ),

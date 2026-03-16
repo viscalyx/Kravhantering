@@ -61,8 +61,8 @@ change:
 `edited_at` is **never** updated by:
 
 - Status transitions (`transitionStatus`)
-- Archiving (`archiveRequirement`)
-- System-controlled date changes (`published_at`, `archived_at`)
+- Archiving functions (`initiateArchiving`, `approveArchiving`, `cancelArchiving`)
+- System-controlled date changes (`published_at`, `archived_at`, `archive_initiated_at`)
 
 ## Rules by Status
 
@@ -102,7 +102,8 @@ the same timestamp as the new version's `published_at`.
 
 ### Arkiverad (4) — Archived
 
-Reached via in-place transition from Published, or via
+Reached via the two-step archiving process (Published →
+Review with `archive_initiated_at` set → Archived), or via
 auto-archive when a newer version is published.
 
 - `created_at` — unchanged.
@@ -235,10 +236,21 @@ The version history pills show the relevant date per status:
   version of the same requirement. For archived requirements
   with a pending Draft or Review replacement, `is_archived`
   stays `true` until that replacement version is published.
-- **Archiving via delete** (`archiveRequirement`): In-place
+- **Initiating archiving** (`initiateArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
-  Archived and `archived_at` to the current time. **Never**
-  touches `edited_at`. **Never** creates a new version row.
+  Review and `archive_initiated_at` to the current time.
+  **Never** touches `edited_at`. **Never** creates a new
+  version row. Does **not** set `is_archived`.
+- **Approving archiving** (`approveArchiving`): In-place
+  `UPDATE` on the existing version row. Sets `statusId` to
+  Archived and `archived_at` to the current time. Sets
+  `is_archived = true`. **Never** touches `edited_at`.
+  **Never** creates a new version row.
+- **Cancelling archiving** (`cancelArchiving`): In-place
+  `UPDATE` on the existing version row. Sets `statusId`
+  back to Published and clears `archive_initiated_at`.
+  **Never** touches `edited_at`. **Never** creates a new
+  version row.
 - **Restoring a version** (`restoreVersion`): Creates a new
   Draft copy of the selected historical version. If the
   requirement was archived, `is_archived` remains `true`
