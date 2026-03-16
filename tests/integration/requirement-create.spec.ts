@@ -78,9 +78,11 @@ test.describe('Requirement creation', () => {
       await page.waitForURL(/\/sv\/kravkatalog(?:\?|$)/, { timeout: 10000 })
       expect(page.url()).not.toContain('undefined')
 
-      // The inline detail panel should be visible with the requirement description
+      // The inline detail panel should be visible with the requirement description.
+      // On desktop both the table cell and the detail pane show the text,
+      // so use .first() to avoid a strict-mode violation.
       await expect(
-        page.getByText('Playwright UI test requirement'),
+        page.getByText('Playwright UI test requirement').first(),
       ).toBeVisible({
         timeout: 10000,
       })
