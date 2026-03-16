@@ -8,7 +8,7 @@ applyTo: '{components,app}/**/*.tsx'
 
 - Mobile-first: base styles for small screens, add `sm:`, `md:`, `lg:` for larger
 - All layouts must work from 320px to 1440px+ (single-column mobile, multi-column desktop)
-- Touch targets: buttons and links need `min-h-[44px] min-w-[44px]`
+- Touch targets: buttons and links need `min-h-[44px] min-w-[44px]` unless the target is inline in text, user-agent controls, or a particular size/presentation is essential
 - No fixed widths — use responsive/fluid sizing (`w-full`, `max-w-*`, `flex`, `grid`)
 - Test layout mentally at mobile and desktop before submitting
 
