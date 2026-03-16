@@ -185,6 +185,7 @@ erDiagram
         integer quality_characteristic_id FK
         integer requirement_status_id FK
         integer is_testing_required "boolean"
+        text verification_method
         text created_at
         text edited_at
         text published_at
@@ -626,6 +627,7 @@ complete audit history.
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived) |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
+| `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
 | `created_at` | text (ISO 8601) | When this version was created |
 | `edited_at` | text (ISO 8601) | Last content edit timestamp (nullable) |
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
@@ -705,6 +707,11 @@ Many-to-many link between requirement versions and usage scenarios.
 
 **Primary key:**
 `(requirement_version_id, usage_scenario_id)`.
+
+**Indexes:**
+`idx_requirement_version_usage_scenarios_usage_scenario_id`
+on `(usage_scenario_id)` — reverse-lookup index for
+scenario-to-requirement queries.
 
 ---
 

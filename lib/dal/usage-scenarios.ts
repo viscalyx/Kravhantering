@@ -82,12 +82,12 @@ export async function getLinkedRequirements(db: Database, scenarioId: number) {
 
 export async function getScenarioById(db: Database, id: number) {
   return (
-    db.query.usageScenarios.findFirst({
+    (await db.query.usageScenarios.findFirst({
       where: eq(usageScenarios.id, id),
       with: {
         owner: true,
       },
-    }) ?? null
+    })) ?? null
   )
 }
 

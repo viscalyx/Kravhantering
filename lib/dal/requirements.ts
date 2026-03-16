@@ -569,7 +569,9 @@ export async function createRequirement(
       qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
-      verificationMethod: data.verificationMethod ?? null,
+      verificationMethod: data.requiresTesting
+        ? (data.verificationMethod ?? null)
+        : null,
       createdBy: data.createdBy,
       editedAt: now,
     })
@@ -577,8 +579,9 @@ export async function createRequirement(
 
   // Link scenarios
   if (data.scenarioIds?.length) {
+    const uniqueIds = [...new Set(data.scenarioIds)]
     await db.insert(requirementVersionUsageScenarios).values(
-      data.scenarioIds.map(usageScenarioId => ({
+      uniqueIds.map(usageScenarioId => ({
         requirementVersionId: version.id,
         usageScenarioId,
       })),
@@ -658,7 +661,9 @@ export async function editRequirement(
         requirementTypeId: data.requirementTypeId,
         qualityCharacteristicId: data.qualityCharacteristicId,
         requiresTesting: data.requiresTesting ?? false,
-        verificationMethod: data.verificationMethod ?? null,
+        verificationMethod: data.requiresTesting
+          ? (data.verificationMethod ?? null)
+          : null,
         editedAt: now,
       })
       .where(eq(requirementVersions.id, currentVersion.id))
@@ -674,8 +679,9 @@ export async function editRequirement(
       )
 
     if (data.scenarioIds?.length) {
+      const uniqueIds = [...new Set(data.scenarioIds)]
       await db.insert(requirementVersionUsageScenarios).values(
-        data.scenarioIds.map(usageScenarioId => ({
+        uniqueIds.map(usageScenarioId => ({
           requirementVersionId: currentVersion.id,
           usageScenarioId,
         })),
@@ -708,7 +714,9 @@ export async function editRequirement(
       qualityCharacteristicId: data.qualityCharacteristicId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
-      verificationMethod: data.verificationMethod,
+      verificationMethod: data.requiresTesting
+        ? (data.verificationMethod ?? null)
+        : null,
       editedAt: now,
       createdBy: data.createdBy,
     })
@@ -716,8 +724,9 @@ export async function editRequirement(
 
   // Link scenarios
   if (data.scenarioIds?.length) {
+    const uniqueIds = [...new Set(data.scenarioIds)]
     await db.insert(requirementVersionUsageScenarios).values(
-      data.scenarioIds.map(usageScenarioId => ({
+      uniqueIds.map(usageScenarioId => ({
         requirementVersionId: version.id,
         usageScenarioId,
       })),

@@ -212,9 +212,13 @@ describe('RequirementForm', () => {
   it('renders select options for categories and types', async () => {
     render(<RequirementForm mode="create" />)
     await waitFor(() => {
-      expect(screen.getByLabelText(/requirement\.category/)).toBeInTheDocument()
+      expect(
+        screen.getByRole('combobox', { name: /requirement\.category/ }),
+      ).toBeInTheDocument()
     })
-    expect(screen.getByLabelText(/requirement\.type/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('combobox', { name: /requirement\.type/ }),
+    ).toBeInTheDocument()
   })
 
   it('fetches quality characteristics when typeId is set', async () => {
@@ -250,7 +254,9 @@ describe('RequirementForm', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByLabelText(/requirement\.qualityCharacteristic/),
+        screen.getByRole('combobox', {
+          name: /requirement\.qualityCharacteristic/,
+        }),
       ).toBeInTheDocument()
     })
 
@@ -263,10 +269,14 @@ describe('RequirementForm', () => {
     render(<RequirementForm mode="create" />)
     await waitFor(() => {
       expect(
-        screen.getByLabelText(/requirement\.requiresTesting/),
+        screen.getByRole('checkbox', {
+          name: /requirement\.requiresTesting/,
+        }),
       ).toBeInTheDocument()
     })
-    const checkbox = screen.getByLabelText(/requirement\.requiresTesting/)
+    const checkbox = screen.getByRole('checkbox', {
+      name: /requirement\.requiresTesting/,
+    })
     fireEvent.click(checkbox)
     expect(checkbox).toBeChecked()
   })
@@ -275,14 +285,18 @@ describe('RequirementForm', () => {
     render(<RequirementForm mode="create" />)
     await waitFor(() => {
       expect(
-        screen.getByLabelText(/requirement\.description/),
+        screen.getByRole('textbox', { name: /requirement\.description/ }),
       ).toBeInTheDocument()
     })
-    const desc = screen.getByLabelText(/requirement\.description/)
+    const desc = screen.getByRole('textbox', {
+      name: /requirement\.description/,
+    })
     fireEvent.change(desc, { target: { value: 'My desc' } })
     expect(desc).toHaveValue('My desc')
 
-    const ac = screen.getByLabelText(/requirement\.acceptanceCriteria/)
+    const ac = screen.getByRole('textbox', {
+      name: /requirement\.acceptanceCriteria/,
+    })
     fireEvent.change(ac, { target: { value: 'My criteria' } })
     expect(ac).toHaveValue('My criteria')
   })

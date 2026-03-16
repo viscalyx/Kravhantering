@@ -2705,7 +2705,9 @@ export default function RequirementsTable({
               const active = (fv.usageScenarioIds ?? []).includes(s.id)
               return (
                 <button
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
+                  aria-label={getName(s)}
+                  aria-pressed={active}
+                  className={`min-h-[44px] min-w-[44px] px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                     active
                       ? 'bg-primary-600 text-white'
                       : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
@@ -2729,11 +2731,12 @@ export default function RequirementsTable({
           </div>
           {(fv.usageScenarioIds ?? []).length > 0 && (
             <button
-              className="text-xs text-secondary-400 hover:text-red-500 transition-colors"
+              aria-label={tc('clearFilters')}
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-xs text-secondary-400 hover:text-red-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
               onClick={() => updateFilter({ usageScenarioIds: undefined })}
               type="button"
             >
-              <X className="h-3 w-3" />
+              <X aria-hidden="true" className="h-3 w-3" />
             </button>
           )}
         </div>

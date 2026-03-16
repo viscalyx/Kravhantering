@@ -51,6 +51,7 @@ export default function KravscenarierClient() {
   const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [owners, setOwners] = useState<Owner[]>([])
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [linkedRequirements, setLinkedRequirements] = useState<
@@ -97,36 +98,43 @@ export default function KravscenarierClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const method = editId ? 'PUT' : 'POST'
-    const url = editId
-      ? `/api/usage-scenarios/${editId}`
-      : '/api/usage-scenarios'
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nameSv: form.nameSv,
-        nameEn: form.nameEn,
-        descriptionSv: form.descriptionSv || undefined,
-        descriptionEn: form.descriptionEn || undefined,
-        ownerId: form.ownerId ? Number(form.ownerId) : undefined,
-      }),
-    })
-    setShowForm(false)
-    setEditId(null)
-    setLinkedRequirements([])
-    setForm({
-      nameSv: '',
-      nameEn: '',
-      descriptionSv: '',
-      descriptionEn: '',
-      ownerId: '',
-    })
-    fetchScenarios()
+    setSubmitting(true)
+    try {
+      const method = editId ? 'PUT' : 'POST'
+      const url = editId
+        ? `/api/usage-scenarios/${editId}`
+        : '/api/usage-scenarios'
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nameSv: form.nameSv,
+          nameEn: form.nameEn,
+          descriptionSv: form.descriptionSv || undefined,
+          descriptionEn: form.descriptionEn || undefined,
+          ownerId: form.ownerId ? Number(form.ownerId) : undefined,
+        }),
+      })
+      if (!res.ok) return
+      setShowForm(false)
+      setEditId(null)
+      setLinkedRequirements([])
+      setForm({
+        nameSv: '',
+        nameEn: '',
+        descriptionSv: '',
+        descriptionEn: '',
+        ownerId: '',
+      })
+      fetchScenarios()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleEdit = (s: Scenario) => {
     setEditId(s.id)
+    setLinkedRequirements([])
     setForm({
       nameSv: s.nameSv,
       nameEn: s.nameEn,
@@ -303,8 +311,12 @@ export default function KravscenarierClient() {
                   </select>
                 </div>
                 <div className="flex gap-3">
-                  <button className="btn-primary" type="submit">
-                    {tc('save')}
+                  <button
+                    className="btn-primary"
+                    disabled={submitting}
+                    type="submit"
+                  >
+                    {submitting ? tc('saving') : tc('save')}
                   </button>
                   <button
                     className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"

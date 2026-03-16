@@ -243,15 +243,15 @@ export default function RequirementForm({
   const getQualityCharacteristicName = (c: QualityCharacteristicOption) =>
     locale === 'sv' ? c.nameSv : c.nameEn
 
-  const helpButton = (field: string) => (
+  const helpButton = (field: string, label: string) => (
     <button
       aria-expanded={openHelp.has(field)}
-      aria-label={tc('help')}
-      className="text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+      aria-label={`${tc('help')}: ${label}`}
+      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
       onClick={() => toggleHelp(field)}
       type="button"
     >
-      <HelpCircle className="h-3.5 w-3.5" />
+      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
     </button>
   )
 
@@ -271,7 +271,7 @@ export default function RequirementForm({
               <label className="text-sm font-medium" htmlFor="areaId">
                 {t('area')} *
               </label>
-              {helpButton('areaId')}
+              {helpButton('areaId', t('area'))}
             </div>
             {helpPanel('areaHelp', 'areaId')}
             <select
@@ -302,7 +302,7 @@ export default function RequirementForm({
               <label className="text-sm font-medium" htmlFor="description">
                 {t('description')} *
               </label>
-              {helpButton('description')}
+              {helpButton('description', t('description'))}
             </div>
             {helpPanel('descriptionHelp', 'description')}
             <textarea
@@ -322,7 +322,7 @@ export default function RequirementForm({
               >
                 {t('acceptanceCriteria')}
               </label>
-              {helpButton('acceptanceCriteria')}
+              {helpButton('acceptanceCriteria', t('acceptanceCriteria'))}
             </div>
             {helpPanel('acceptanceCriteriaHelp', 'acceptanceCriteria')}
             <textarea
@@ -339,7 +339,7 @@ export default function RequirementForm({
                 <label className="text-sm font-medium" htmlFor="categoryId">
                   {t('category')}
                 </label>
-                {helpButton('categoryId')}
+                {helpButton('categoryId', t('category'))}
               </div>
               {helpPanel('categoryHelp', 'categoryId')}
               <select
@@ -362,7 +362,7 @@ export default function RequirementForm({
                 <label className="text-sm font-medium" htmlFor="typeId">
                   {t('type')}
                 </label>
-                {helpButton('typeId')}
+                {helpButton('typeId', t('type'))}
               </div>
               {helpPanel('typeHelp', 'typeId')}
               <select
@@ -390,7 +390,10 @@ export default function RequirementForm({
                 >
                   {t('qualityCharacteristic')}
                 </label>
-                {helpButton('qualityCharacteristicId')}
+                {helpButton(
+                  'qualityCharacteristicId',
+                  t('qualityCharacteristic'),
+                )}
               </div>
               {helpPanel(
                 'qualityCharacteristicHelp',
@@ -435,7 +438,7 @@ export default function RequirementForm({
               />
               {t('requiresTesting')}
             </label>
-            {helpButton('requiresTesting')}
+            {helpButton('requiresTesting', t('requiresTesting'))}
           </div>
           {helpPanel('requiresTestingHelp', 'requiresTesting')}
 
@@ -448,7 +451,7 @@ export default function RequirementForm({
                 >
                   {t('verificationMethod')} *
                 </label>
-                {helpButton('verificationMethod')}
+                {helpButton('verificationMethod', t('verificationMethod'))}
               </div>
               {helpPanel('verificationMethodHelp', 'verificationMethod')}
               <textarea
@@ -468,7 +471,7 @@ export default function RequirementForm({
           <div className="self-start lg:w-64">
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-sm font-medium">{t('scenario')}</span>
-              {helpButton('scenario')}
+              {helpButton('scenario', t('scenario'))}
             </div>
             {helpPanel('scenarioHelp', 'scenario')}
             <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
