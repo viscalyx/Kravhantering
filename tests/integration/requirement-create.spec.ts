@@ -58,9 +58,11 @@ test.describe('Requirement creation', () => {
       })
       // Get a valid area for selection
       const areasRes = await request.get('/api/requirement-areas')
+      expect(areasRes.ok()).toBe(true)
       const areasData = (await areasRes.json()) as {
         areas: { id: number; name: string }[]
       }
+      expect(areasData.areas.length).toBeGreaterThan(0)
       const area = areasData.areas[0]
 
       await page.goto('/sv/kravkatalog/ny')
@@ -79,13 +81,11 @@ test.describe('Requirement creation', () => {
       expect(page.url()).not.toContain('undefined')
 
       // The inline detail panel should be visible with the requirement description.
-      // On desktop both the table cell and the detail pane show the text,
-      // so use .first() to avoid a strict-mode violation.
+      const detailPane = page.locator('[data-expanded-detail-cell="true"]')
+      await expect(detailPane).toBeVisible({ timeout: 10000 })
       await expect(
-        page.getByText('Playwright UI test requirement').first(),
-      ).toBeVisible({
-        timeout: 10000,
-      })
+        detailPane.getByText('Playwright UI test requirement'),
+      ).toBeVisible({ timeout: 10000 })
     })
   }
 })
