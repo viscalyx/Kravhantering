@@ -530,7 +530,9 @@ export default function RequirementForm({
           <span>{t('afterSave')}</span>
           <div className="inline-flex rounded-lg border overflow-hidden text-xs font-medium">
             <button
-              className={`min-h-[44px] min-w-[44px] px-3 py-1.5 transition-colors ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              aria-label={t('afterSaveInline')}
+              aria-pressed={saveDestination === 'inline'}
+              className={`min-h-[44px] min-w-[44px] px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
               disabled={submitting}
               onClick={() => {
                 setSaveDestination('inline')
@@ -545,7 +547,9 @@ export default function RequirementForm({
               {t('afterSaveInline')}
             </button>
             <button
-              className={`min-h-[44px] min-w-[44px] px-3 py-1.5 transition-colors ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              aria-label={t('afterSavePage')}
+              aria-pressed={saveDestination === 'page'}
+              className={`min-h-[44px] min-w-[44px] px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
               disabled={submitting}
               onClick={() => {
                 setSaveDestination('page')

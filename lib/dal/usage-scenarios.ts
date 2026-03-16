@@ -155,7 +155,7 @@ export async function updateScenario(
     descriptionEn?: string
     ownerId?: number | null
   },
-): Promise<ScenarioRow> {
+): Promise<ScenarioRow | undefined> {
   const [updated] = await db
     .update(usageScenarios)
     .set({

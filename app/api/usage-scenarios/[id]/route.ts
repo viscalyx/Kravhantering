@@ -29,6 +29,9 @@ export async function PUT(
   const db = getDb(env.DB)
   const body = (await request.json()) as Parameters<typeof updateScenario>[2]
   const scenario = await updateScenario(db, Number(id), body)
+  if (!scenario) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
   return NextResponse.json(scenario)
 }
 

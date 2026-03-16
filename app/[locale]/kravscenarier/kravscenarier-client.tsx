@@ -57,6 +57,8 @@ export default function KravscenarierClient() {
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
+  const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
+    useState(false)
   const [form, setForm] = useState({
     nameSv: '',
     nameEn: '',
@@ -94,12 +96,21 @@ export default function KravscenarierClient() {
 
   const fetchLinkedRequirements = useCallback(async (scenarioId: number) => {
     const requestId = ++linkedReqRequestId.current
-    const res = await fetch(`/api/usage-scenarios/${scenarioId}`)
-    if (res.ok && requestId === linkedReqRequestId.current) {
-      const data = (await res.json()) as {
-        linkedRequirements?: LinkedRequirement[]
+    setLinkedRequirementsLoading(true)
+    try {
+      const res = await fetch(`/api/usage-scenarios/${scenarioId}`)
+      if (res.ok && requestId === linkedReqRequestId.current) {
+        const data = (await res.json()) as {
+          linkedRequirements?: LinkedRequirement[]
+        }
+        setLinkedRequirements(data.linkedRequirements ?? [])
       }
-      setLinkedRequirements(data.linkedRequirements ?? [])
+    } catch {
+      // Keep existing linkedRequirements on error
+    } finally {
+      if (requestId === linkedReqRequestId.current) {
+        setLinkedRequirementsLoading(false)
+      }
     }
   }, [])
 
@@ -200,6 +211,7 @@ export default function KravscenarierClient() {
             data-developer-mode-context="scenarios"
             data-developer-mode-name="create button"
             data-developer-mode-priority="350"
+            disabled={submitting}
             onClick={() => {
               setShowForm(true)
               setEditId(null)
@@ -349,7 +361,11 @@ export default function KravscenarierClient() {
                   <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
                     {t('linkedRequirements')}
                   </h3>
-                  {linkedRequirements.length === 0 ? (
+                  {linkedRequirementsLoading ? (
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                      {tc('loading')}
+                    </p>
+                  ) : linkedRequirements.length === 0 ? (
                     <p className="text-sm text-secondary-500 dark:text-secondary-400">
                       {tc('noneAvailable')}
                     </p>
@@ -472,20 +488,22 @@ export default function KravscenarierClient() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         data-developer-mode-context="scenarios"
                         data-developer-mode-name="table action"
                         data-developer-mode-value="edit"
+                        disabled={submitting}
                         onClick={() => handleEdit(s)}
                         type="button"
                       >
                         {tc('edit')}
                       </button>
                       <button
-                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                        className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         data-developer-mode-context="scenarios"
                         data-developer-mode-name="table action"
                         data-developer-mode-value="delete"
+                        disabled={submitting}
                         onClick={e =>
                           handleDelete(s.id, e.currentTarget as HTMLElement)
                         }
