@@ -1287,6 +1287,7 @@ export default function RequirementsTable({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const tableContentRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLTableElement>(null)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const expandedDetailCellRef = useRef<HTMLTableCellElement>(null)
   const colRefs = useRef<
     Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
@@ -1548,6 +1549,15 @@ export default function RequirementsTable({
   useEffect(() => {
     visibleColumnIdsRef.current = columnDefinitions.map(column => column.id)
   }, [columnDefinitions])
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        rows.length > 0 &&
+        rows.some(r => selectedIds?.has(r.id)) &&
+        !rows.every(r => selectedIds?.has(r.id))
+    }
+  }, [rows, selectedIds])
 
   const buildColumnWidthOverrides = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
@@ -2879,6 +2889,7 @@ export default function RequirementsTable({
                           onSelectionChange(new Set())
                         }
                       }}
+                      ref={selectAllRef}
                       type="checkbox"
                     />
                   </th>
