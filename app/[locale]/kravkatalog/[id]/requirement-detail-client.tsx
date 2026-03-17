@@ -1179,20 +1179,33 @@ export default function RequirementDetailClient({
                               {t(`transitionTo${tr.nameSv}`)}
                             </button>
                           ))}
-                      {currentStatusId !== STATUS_REVIEW && (
-                        <Link
-                          className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                          data-developer-mode-context={detailContext}
-                          data-developer-mode-name="detail action"
-                          data-developer-mode-priority="360"
-                          data-developer-mode-value="edit"
-                          href={`/kravkatalog/${req.uniqueId}/redigera`}
-                          title={tc('editTooltip')}
-                        >
-                          <Edit aria-hidden="true" className="h-4 w-4" />
-                          {tc('edit')}
-                        </Link>
-                      )}
+                      {currentStatusId !== STATUS_REVIEW &&
+                        (hasPendingWorkAbovePublished &&
+                        !isViewingLatest &&
+                        currentStatusId === STATUS_PUBLISHED ? (
+                          <button
+                            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center opacity-60 cursor-not-allowed"
+                            disabled
+                            title={t('editBlockedByPendingWork')}
+                            type="button"
+                          >
+                            <Edit aria-hidden="true" className="h-4 w-4" />
+                            {tc('edit')}
+                          </button>
+                        ) : (
+                          <Link
+                            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="detail action"
+                            data-developer-mode-priority="360"
+                            data-developer-mode-value="edit"
+                            href={`/kravkatalog/${req.uniqueId}/redigera`}
+                            title={tc('editTooltip')}
+                          >
+                            <Edit aria-hidden="true" className="h-4 w-4" />
+                            {tc('edit')}
+                          </Link>
+                        ))}
                       {isViewingLatest &&
                         latestStatusForActions === STATUS_PUBLISHED && (
                           <button

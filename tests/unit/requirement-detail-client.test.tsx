@@ -474,14 +474,9 @@ describe('RequirementDetailClient', () => {
         .getByText('Bestallning')
         .closest('[data-developer-mode-name="scenario chip"]'),
     ).toHaveAttribute('data-developer-mode-value', 'Ordering')
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'data-developer-mode-name',
-      'detail action',
-    )
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'data-developer-mode-value',
-      'edit',
-    )
+    // Edit button is disabled (pending draft exists above published)
+    const editBtn = screen.getByRole('button', { name: 'Edit' })
+    expect(editBtn).toBeDisabled()
     expect(screen.getByTestId('status-stepper')).toHaveAttribute(
       'data-developer-mode-context',
       detailContext,
@@ -605,9 +600,12 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Kategori')).toBeInTheDocument()
     expect(screen.getByText('Funktionell')).toBeInTheDocument()
     expect(screen.getByText('Verksamhet')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
-      'href',
-      '/kravkatalog/REQ-123/redigera',
+    // Edit button is disabled because there's a pending draft version above published
+    const editBtn = screen.getByRole('button', { name: 'Edit' })
+    expect(editBtn).toBeDisabled()
+    expect(editBtn).toHaveAttribute(
+      'title',
+      'requirement.editBlockedByPendingWork',
     )
     expect(screen.queryByText('No')).toBeNull()
     expect(screen.getByTestId('status-stepper')).toHaveTextContent(

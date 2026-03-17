@@ -114,6 +114,7 @@
     "cancelArchivingConfirm": "Are you sure you want to cancel the archiving process and return to Published?",
     "cancelArchivingTooltip": "Cancel archiving and return to Published status",
     "archiveBlockedByPendingWork": "Cannot archive while there is a pending draft or review version",
+    "editBlockedByPendingWork": "Cannot edit while there is a pending draft or review version",
     "restoreBlockedByPendingWork": "Cannot restore while there is a pending draft or review version",
     "deleteDraftConfirm": "Are you sure you want to delete this draft? The draft will be permanently removed.",
     "publishConfirm": "Are you sure you want to publish this requirement? Please confirm that it has gone through the proper review process before making it available.",
