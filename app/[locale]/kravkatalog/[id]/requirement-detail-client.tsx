@@ -7,8 +7,8 @@ import {
   Clock,
   Edit,
   RotateCcw,
+  SearchCheck,
   Share2,
-  TestTube2,
   Trash2,
   X,
 } from 'lucide-react'
@@ -57,6 +57,7 @@ interface RequirementDetail {
     editedAt: string | null
     publishedAt: string | null
     archivedAt: string | null
+    archiveInitiatedAt: string | null
     references: { id: number; name: string; uri: string | null }[]
     versionScenarios: {
       scenario: { id: number; nameSv: string; nameEn: string }
@@ -368,6 +369,18 @@ export default function RequirementDetailClient({
   const latest = req.versions[0]
   const latestStatusForActions = latest?.status ?? 1
   const isLatestVersionArchived = latestStatusForActions === STATUS_ARCHIVED
+  const isArchiving =
+    req.versions.some(v => v.archiveInitiatedAt != null) ||
+    latestStatusForActions === STATUS_ARCHIVED
+
+  // Whether there's a pending draft or review version
+  const hasPendingWork = req.versions.some(
+    v => v.status === STATUS_DRAFT || v.status === STATUS_REVIEW,
+  )
+  // Whether there's a published version with newer pending work on top
+  const publishedVersion = req.versions.find(v => v.status === STATUS_PUBLISHED)
+  const hasPendingWorkAbovePublished =
+    publishedVersion != null && hasPendingWork
 
   // Display version priority: Published > Archived > latest (draft/review)
   const displayVersion =
@@ -475,7 +488,7 @@ export default function RequirementDetailClient({
     const anchorEl = e?.currentTarget
     if (
       !(await confirm({
-        message: t('archiveConfirm'),
+        message: t('archiveInitiateConfirm'),
         variant: 'danger',
         icon: 'caution',
         anchorEl,
@@ -483,9 +496,60 @@ export default function RequirementDetailClient({
     )
       return
     await fetch(`/api/requirements/${requirementId}`, { method: 'DELETE' })
-    onChange?.()
-    if (onClose) onClose()
-    else router.push('/kravkatalog')
+    // Stay on the page — the requirement enters archiving review
+    await Promise.all([fetchRequirement(), onChange?.()])
+  }
+
+  const handleApproveArchiving = async (
+    e?: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    const anchorEl = e?.currentTarget
+    if (
+      !(await confirm({
+        message: t('approveArchivingConfirm'),
+        variant: 'danger',
+        icon: 'caution',
+        anchorEl,
+      }))
+    )
+      return
+    setIsTransitioning(true)
+    try {
+      await fetch(`/api/requirements/${requirementId}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statusId: STATUS_ARCHIVED }),
+      })
+      await onChange?.()
+      if (onClose) onClose()
+      else router.push('/kravkatalog')
+    } finally {
+      setIsTransitioning(false)
+    }
+  }
+
+  const handleCancelArchiving = async (
+    e?: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    const anchorEl = e?.currentTarget
+    if (
+      !(await confirm({
+        message: t('cancelArchivingConfirm'),
+        anchorEl,
+      }))
+    )
+      return
+    setIsTransitioning(true)
+    try {
+      await fetch(`/api/requirements/${requirementId}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statusId: STATUS_PUBLISHED }),
+      })
+      await Promise.all([fetchRequirement(), onChange?.()])
+    } finally {
+      setIsTransitioning(false)
+    }
   }
 
   const handleDeleteDraft = async (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -706,7 +770,15 @@ export default function RequirementDetailClient({
           <StatusStepper
             currentStatusId={currentStatusId}
             developerModeContext={detailContext}
-            statuses={statuses}
+            statuses={
+              statuses.length === 0
+                ? statuses
+                : isArchiving || currentStatusId === STATUS_ARCHIVED
+                  ? [3, 2, 4]
+                      .map(id => statuses.find(s => s.id === id))
+                      .filter((s): s is (typeof statuses)[number] => s != null)
+                  : statuses.filter(s => s.id !== STATUS_ARCHIVED)
+            }
           />
         </div>
 
@@ -1005,16 +1077,22 @@ export default function RequirementDetailClient({
                 {isViewingHistory ? (
                   <>
                     <button
-                      className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                      className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
                       data-developer-mode-context={detailContext}
                       data-developer-mode-name="detail action"
                       data-developer-mode-priority="360"
                       data-developer-mode-value="restore version"
+                      disabled={hasPendingWork}
                       onClick={e =>
                         handleRestore(
                           selectedVersion?.versionNumber ?? 0,
                           e.currentTarget as HTMLElement,
                         )
+                      }
+                      title={
+                        hasPendingWork
+                          ? t('restoreBlockedByPendingWork')
+                          : undefined
                       }
                       type="button"
                     >
@@ -1038,87 +1116,146 @@ export default function RequirementDetailClient({
                     </button>
                   </>
                 ) : !isLatestVersionArchived ? (
-                  <>
-                    {isViewingLatest &&
-                      transitions
-                        .filter(tr => tr.id !== 4)
-                        .map(tr => (
-                          <button
-                            className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-                            data-developer-mode-context={detailContext}
-                            data-developer-mode-name="detail action"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value={getTransitionActionDeveloperModeValue(
-                              tr,
-                            )}
-                            disabled={isTransitioning}
-                            key={tr.id}
-                            onClick={e =>
-                              handleTransition(tr.id, e.currentTarget)
-                            }
-                            title={t(`transitionTooltip${tr.nameSv}`)}
-                            type="button"
-                          >
-                            {t(`transitionTo${tr.nameSv}`)}
-                          </button>
-                        ))}
-                    {currentStatusId !== STATUS_REVIEW && (
-                      <Link
+                  isArchiving && isViewingLatest ? (
+                    <>
+                      <button
                         className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
                         data-developer-mode-context={detailContext}
                         data-developer-mode-name="detail action"
                         data-developer-mode-priority="360"
-                        data-developer-mode-value="edit"
-                        href={`/kravkatalog/${req.uniqueId}/redigera`}
-                        title={tc('editTooltip')}
+                        data-developer-mode-value="approve archiving"
+                        disabled={isTransitioning}
+                        onClick={handleApproveArchiving}
+                        title={t('approveArchivingTooltip')}
+                        type="button"
                       >
-                        <Edit aria-hidden="true" className="h-4 w-4" />
-                        {tc('edit')}
-                      </Link>
-                    )}
-                    {isViewingLatest &&
-                      latestStatusForActions === STATUS_PUBLISHED && (
+                        <Archive aria-hidden="true" className="h-4 w-4" />
+                        {t('approveArchiving')}
+                      </button>
+                      <button
+                        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="detail action"
+                        data-developer-mode-priority="360"
+                        data-developer-mode-value="cancel archiving"
+                        disabled={isTransitioning}
+                        onClick={handleCancelArchiving}
+                        title={t('cancelArchivingTooltip')}
+                        type="button"
+                      >
+                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                        {t('cancelArchiving')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {isViewingLatest &&
+                        transitions
+                          .filter(tr => tr.id !== STATUS_ARCHIVED)
+                          .filter(
+                            tr =>
+                              !(
+                                latestStatusForActions === STATUS_PUBLISHED &&
+                                tr.id === STATUS_REVIEW
+                              ),
+                          )
+                          .map(tr => (
+                            <button
+                              className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                              data-developer-mode-context={detailContext}
+                              data-developer-mode-name="detail action"
+                              data-developer-mode-priority="360"
+                              data-developer-mode-value={getTransitionActionDeveloperModeValue(
+                                tr,
+                              )}
+                              disabled={isTransitioning}
+                              key={tr.id}
+                              onClick={e =>
+                                handleTransition(tr.id, e.currentTarget)
+                              }
+                              title={t(`transitionTooltip${tr.nameSv}`)}
+                              type="button"
+                            >
+                              {t(`transitionTo${tr.nameSv}`)}
+                            </button>
+                          ))}
+                      {currentStatusId !== STATUS_REVIEW && (
+                        <Link
+                          className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                          data-developer-mode-context={detailContext}
+                          data-developer-mode-name="detail action"
+                          data-developer-mode-priority="360"
+                          data-developer-mode-value="edit"
+                          href={`/kravkatalog/${req.uniqueId}/redigera`}
+                          title={tc('editTooltip')}
+                        >
+                          <Edit aria-hidden="true" className="h-4 w-4" />
+                          {tc('edit')}
+                        </Link>
+                      )}
+                      {isViewingLatest &&
+                        latestStatusForActions === STATUS_PUBLISHED && (
+                          <button
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="detail action"
+                            data-developer-mode-priority="360"
+                            data-developer-mode-value="archive"
+                            onClick={handleArchive}
+                            title={tc('archiveTooltip')}
+                            type="button"
+                          >
+                            <Archive aria-hidden="true" className="h-4 w-4" />
+                            {tc('archive')}
+                          </button>
+                        )}
+                      {hasPendingWorkAbovePublished &&
+                        !isViewingLatest &&
+                        currentStatusId === STATUS_PUBLISHED && (
+                          <button
+                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-400 dark:text-secondary-500 cursor-not-allowed opacity-60 w-full justify-center"
+                            disabled
+                            title={t('archiveBlockedByPendingWork')}
+                            type="button"
+                          >
+                            <Archive aria-hidden="true" className="h-4 w-4" />
+                            {tc('archive')}
+                          </button>
+                        )}
+                      {currentStatusId === STATUS_DRAFT && isViewingLatest && (
                         <button
                           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
                           data-developer-mode-context={detailContext}
                           data-developer-mode-name="detail action"
                           data-developer-mode-priority="360"
-                          data-developer-mode-value="archive"
-                          onClick={handleArchive}
-                          title={tc('archiveTooltip')}
+                          data-developer-mode-value="delete draft"
+                          onClick={handleDeleteDraft}
                           type="button"
                         >
-                          <Archive aria-hidden="true" className="h-4 w-4" />
-                          {tc('archive')}
+                          <Trash2 aria-hidden="true" className="h-4 w-4" />
+                          {tc('delete')}
                         </button>
                       )}
-                    {currentStatusId === STATUS_DRAFT && isViewingLatest && (
-                      <button
-                        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail action"
-                        data-developer-mode-priority="360"
-                        data-developer-mode-value="delete draft"
-                        onClick={handleDeleteDraft}
-                        type="button"
-                      >
-                        <Trash2 aria-hidden="true" className="h-4 w-4" />
-                        {tc('delete')}
-                      </button>
-                    )}
-                  </>
+                    </>
+                  )
                 ) : (
                   <button
-                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                    className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
                     data-developer-mode-context={detailContext}
                     data-developer-mode-name="detail action"
                     data-developer-mode-priority="360"
                     data-developer-mode-value="restore version"
+                    disabled={hasPendingWork}
                     onClick={e =>
                       handleRestore(
                         selectedVersion?.versionNumber ?? 0,
                         e.currentTarget as HTMLElement,
                       )
+                    }
+                    title={
+                      hasPendingWork
+                        ? t('restoreBlockedByPendingWork')
+                        : undefined
                     }
                     type="button"
                   >
@@ -1185,7 +1322,7 @@ export default function RequirementDetailClient({
                     {t('requiresTesting')}:
                   </span>
                   {selectedVersion?.requiresTesting ? (
-                    <TestTube2 className="h-4 w-4 text-primary-700 dark:text-primary-300" />
+                    <SearchCheck className="h-4 w-4 text-primary-700 dark:text-primary-300" />
                   ) : (
                     <span className="font-medium">{tc('no')}</span>
                   )}

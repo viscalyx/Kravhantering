@@ -277,6 +277,7 @@ export const requirementVersions = sqliteTable(
     editedAt: text('edited_at'),
     publishedAt: text('published_at'),
     archivedAt: text('archived_at'),
+    archiveInitiatedAt: text('archive_initiated_at'),
     createdBy: text('created_by'),
   },
   table => [

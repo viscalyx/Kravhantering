@@ -32,6 +32,16 @@ vi.mock('next-intl', () => ({
       'common.version': 'Version',
       'requirement.acceptanceCriteria': 'Acceptance criteria',
       'requirement.archiveConfirm': 'Archive this requirement?',
+      'requirement.archiveInitiateConfirm':
+        'Initiate archiving review for this requirement?',
+      'requirement.approveArchiving': 'Approve Archiving',
+      'requirement.approveArchivingConfirm':
+        'Archive this requirement? This is final.',
+      'requirement.approveArchivingTooltip': 'Approve archiving',
+      'requirement.cancelArchiving': 'Cancel Archiving',
+      'requirement.cancelArchivingConfirm':
+        'Cancel archiving and return to Published?',
+      'requirement.cancelArchivingTooltip': 'Cancel archiving',
       'requirement.area': 'Area',
       'requirement.backToLatest': 'Back to latest',
       'requirement.category': 'Category',
@@ -151,6 +161,7 @@ function makeVersion(
   versionNumber: number,
   overrides: Partial<{
     acceptanceCriteria: string | null
+    archiveInitiatedAt: string | null
     archivedAt: string | null
     category: { nameEn: string; nameSv: string } | null
     description: string | null
@@ -171,6 +182,7 @@ function makeVersion(
 ) {
   return {
     acceptanceCriteria: `Acceptance ${versionNumber}`,
+    archiveInitiatedAt: null,
     archivedAt: null,
     category: null,
     createdAt: `2026-03-${String(versionNumber).padStart(2, '0')}`,
@@ -247,7 +259,8 @@ const statusesPayload = {
     { fromStatus: draftStatus, toStatus: reviewStatus },
     { fromStatus: reviewStatus, toStatus: draftStatus },
     { fromStatus: reviewStatus, toStatus: publishedStatus },
-    { fromStatus: publishedStatus, toStatus: archivedStatus },
+    { fromStatus: publishedStatus, toStatus: reviewStatus },
+    { fromStatus: reviewStatus, toStatus: archivedStatus },
   ],
 }
 
@@ -574,7 +587,7 @@ describe('RequirementDetailClient', () => {
       }),
     ])
 
-    const fetchMock = setupFetch({
+    setupFetch({
       initialRequirement: requirement,
       restoreNextRequirement: requirement,
     })
@@ -598,7 +611,7 @@ describe('RequirementDetailClient', () => {
     )
     expect(screen.queryByText('No')).toBeNull()
     expect(screen.getByTestId('status-stepper')).toHaveTextContent(
-      'status:3;count:4',
+      'status:3;count:3',
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'v1' }))
@@ -615,24 +628,16 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('Published description')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'v1' }))
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Restore version' }),
+    // Restore is disabled when there's a pending draft version
+    const restoreBtn = screen.getByRole('button', { name: 'Restore version' })
+    expect(restoreBtn).toBeDisabled()
+    expect(restoreBtn).toHaveAttribute(
+      'title',
+      'requirement.restoreBlockedByPendingWork',
     )
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
-
-    await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements/123/restore',
-        expect.objectContaining({
-          body: JSON.stringify({ versionNumber: 1 }),
-          method: 'POST',
-        }),
-      ),
-    )
-    expect(onChange).toHaveBeenCalled()
   })
 
-  it('archives the displayed version and routes back to the catalog after confirmation', async () => {
+  it('initiates archiving review and stays on page after confirmation', async () => {
     const requirement = makeRequirement([
       makeVersion(2, {
         description: 'Published description',
@@ -652,7 +657,9 @@ describe('RequirementDetailClient', () => {
     expect(await screen.findByText('Published description')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }))
-    expect(screen.getByText('Archive this requirement?')).toBeInTheDocument()
+    expect(
+      screen.getByText('Initiate archiving review for this requirement?'),
+    ).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
     await waitFor(() =>
@@ -661,7 +668,8 @@ describe('RequirementDetailClient', () => {
         expect.objectContaining({ method: 'DELETE' }),
       ),
     )
-    expect(routerPush).toHaveBeenCalledWith('/kravkatalog')
+    // Should stay on page (refresh requirement) instead of navigating away
+    expect(routerPush).not.toHaveBeenCalled()
   })
 
   it('keeps archived requirements actionable while a newer draft replacement exists', async () => {

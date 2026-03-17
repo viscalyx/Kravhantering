@@ -10,18 +10,18 @@ describe('StatusStepper', () => {
   it('renders fallback steps and highlights the first status', () => {
     const { container } = render(<StatusStepper currentStatusId={1} />)
 
+    // Fallback shows publishing process: Draft, Review, Published
     expect(screen.getAllByText('Utkast')).toHaveLength(2)
     expect(screen.getByText('Granskning')).toBeInTheDocument()
     expect(screen.getByText('Publicerad')).toBeInTheDocument()
-    expect(screen.getByText('Arkiverad')).toBeInTheDocument()
+    expect(screen.queryByText('Arkiverad')).not.toBeInTheDocument()
 
     const activeStep = container.querySelector('.text-white')
     expect(activeStep).toHaveStyle({ backgroundColor: '#3b82f6' })
   })
 
-  it('sorts custom statuses by sort order and highlights non-first statuses', () => {
+  it('renders custom statuses in the order provided and highlights non-first statuses', () => {
     const statuses = [
-      { id: 30, color: '#22c55e', nameEn: 'Published', nameSv: 'Publicerad' },
       {
         id: 10,
         color: '#3b82f6',
@@ -36,6 +36,7 @@ describe('StatusStepper', () => {
         nameSv: 'Granskning',
         sortOrder: 2,
       },
+      { id: 30, color: '#22c55e', nameEn: 'Published', nameSv: 'Publicerad' },
     ]
 
     const { container } = render(

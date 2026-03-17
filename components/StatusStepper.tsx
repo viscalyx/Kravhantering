@@ -15,7 +15,6 @@ const FALLBACK_STEPS: StatusStep[] = [
   { id: 1, color: '#3b82f6', nameEn: 'Draft', nameSv: 'Utkast' },
   { id: 2, color: '#eab308', nameEn: 'Review', nameSv: 'Granskning' },
   { id: 3, color: '#22c55e', nameEn: 'Published', nameSv: 'Publicerad' },
-  { id: 4, color: '#6b7280', nameEn: 'Archived', nameSv: 'Arkiverad' },
 ]
 
 /** Pixel depth of the arrow point / notch */
@@ -62,9 +61,7 @@ export default function StatusStepper({
   const t = useTranslations('requirement.statusLabel')
   const steps = useMemo(() => {
     if (!statuses || statuses.length === 0) return FALLBACK_STEPS
-    return [...statuses].sort(
-      (a, b) => (a.sortOrder ?? a.id) - (b.sortOrder ?? b.id),
-    )
+    return statuses
   }, [statuses])
   const targetIndex = steps.findIndex(s => s.id === currentStatusId)
   const activeColor = steps[targetIndex]?.color ?? '#6b7280'
@@ -134,7 +131,7 @@ export default function StatusStepper({
       ))}
 
       {/* Sliding active highlight */}
-      {sliderPos && (
+      {sliderPos && targetIndex >= 0 && (
         <div
           className="absolute top-0 pointer-events-none"
           style={{

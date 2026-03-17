@@ -5,13 +5,15 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { beforeEach, describe, expect, it } from 'vitest'
 import * as schema from '@/drizzle/schema'
 import {
-  archiveRequirement,
+  approveArchiving,
+  cancelArchiving,
   createRequirement,
   deleteDraftVersion,
   editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
   getVersionHistory,
+  initiateArchiving,
   reactivateRequirement,
   restoreVersion,
   transitionStatus,
@@ -74,10 +76,11 @@ async function seedStatuses(db: TestDb) {
     },
   ])
   await db.insert(schema.requirementStatusTransitions).values([
-    { fromStatusId: 1, toStatusId: 2 },
-    { fromStatusId: 2, toStatusId: 1 },
-    { fromStatusId: 2, toStatusId: 3 },
-    { fromStatusId: 3, toStatusId: 4 },
+    { fromStatusId: 1, toStatusId: 2 }, // Draft → Review
+    { fromStatusId: 2, toStatusId: 1 }, // Review → Draft
+    { fromStatusId: 2, toStatusId: 3 }, // Review → Published
+    { fromStatusId: 3, toStatusId: 2 }, // Published → Review (initiate archiving)
+    { fromStatusId: 2, toStatusId: 4 }, // Review → Archived (approve archiving)
   ])
 }
 
@@ -262,7 +265,8 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       })
       await transitionStatus(db as unknown as Db, requirement.id, 2)
       await transitionStatus(db as unknown as Db, requirement.id, 3)
-      await transitionStatus(db as unknown as Db, requirement.id, 4)
+      await initiateArchiving(db as unknown as Db, requirement.id)
+      await approveArchiving(db as unknown as Db, requirement.id)
       await expect(
         editRequirement(db as unknown as Db, requirement.id, {
           description: 'Nope',
@@ -312,17 +316,112 @@ describe('requirements DAL – CRUD & lifecycle', () => {
     })
   })
 
-  describe('archiveRequirement', () => {
-    it('sets isArchived flag', async () => {
+  describe('initiateArchiving', () => {
+    it('moves published requirement to review with archiveInitiatedAt set', async () => {
       await seedStatuses(db)
       const area = await seedArea(db)
       const { requirement } = await createRequirement(db as unknown as Db, {
         requirementAreaId: area.id,
         description: 'T',
       })
-      await archiveRequirement(db as unknown as Db, requirement.id)
+      await transitionStatus(db as unknown as Db, requirement.id, 2)
+      await transitionStatus(db as unknown as Db, requirement.id, 3)
+      const before = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const editedAtBefore = before?.versions[0]?.editedAt
+      await initiateArchiving(db as unknown as Db, requirement.id)
+      const full = await getRequirementById(db as unknown as Db, requirement.id)
+      expect(full?.isArchived).toBe(false)
+      const latest = full?.versions[0]
+      expect(latest?.status).toBe(2) // Review
+      expect(latest?.archiveInitiatedAt).not.toBeNull()
+      expect(latest?.editedAt).toBe(editedAtBefore)
+    })
+
+    it('rejects initiating archiving from non-published status', async () => {
+      await seedStatuses(db)
+      const area = await seedArea(db)
+      const { requirement } = await createRequirement(db as unknown as Db, {
+        requirementAreaId: area.id,
+        description: 'T',
+      })
+      await expect(
+        initiateArchiving(db as unknown as Db, requirement.id),
+      ).rejects.toThrow('No published version found to archive')
+    })
+
+    it('rejects initiating archiving when there is a pending draft version', async () => {
+      await seedStatuses(db)
+      const area = await seedArea(db)
+      const { requirement } = await createRequirement(db as unknown as Db, {
+        requirementAreaId: area.id,
+        description: 'V1',
+      })
+      // Publish v1
+      await transitionStatus(db as unknown as Db, requirement.id, 2)
+      await transitionStatus(db as unknown as Db, requirement.id, 3)
+      // Create a new draft v2 on top
+      await editRequirement(db as unknown as Db, requirement.id, {
+        description: 'V2',
+      })
+      // Archiving should be rejected due to pending work
+      await expect(
+        initiateArchiving(db as unknown as Db, requirement.id),
+      ).rejects.toThrow('pending draft or review')
+    })
+  })
+
+  describe('approveArchiving', () => {
+    it('archives a requirement after archiving review', async () => {
+      await seedStatuses(db)
+      const area = await seedArea(db)
+      const { requirement } = await createRequirement(db as unknown as Db, {
+        requirementAreaId: area.id,
+        description: 'T',
+      })
+      await transitionStatus(db as unknown as Db, requirement.id, 2)
+      await transitionStatus(db as unknown as Db, requirement.id, 3)
+      const before = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const editedAtBefore = before?.versions[0]?.editedAt
+      await initiateArchiving(db as unknown as Db, requirement.id)
+      await approveArchiving(db as unknown as Db, requirement.id)
       const full = await getRequirementById(db as unknown as Db, requirement.id)
       expect(full?.isArchived).toBe(true)
+      const latest = full?.versions[0]
+      expect(latest?.status).toBe(4) // Archived
+      expect(latest?.archivedAt).not.toBeNull()
+      expect(latest?.editedAt).toBe(editedAtBefore)
+    })
+  })
+
+  describe('cancelArchiving', () => {
+    it('returns requirement to published and clears archiveInitiatedAt', async () => {
+      await seedStatuses(db)
+      const area = await seedArea(db)
+      const { requirement } = await createRequirement(db as unknown as Db, {
+        requirementAreaId: area.id,
+        description: 'T',
+      })
+      await transitionStatus(db as unknown as Db, requirement.id, 2)
+      await transitionStatus(db as unknown as Db, requirement.id, 3)
+      const before = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const editedAtBefore = before?.versions[0]?.editedAt
+      await initiateArchiving(db as unknown as Db, requirement.id)
+      await cancelArchiving(db as unknown as Db, requirement.id)
+      const full = await getRequirementById(db as unknown as Db, requirement.id)
+      expect(full?.isArchived).toBe(false)
+      const latest = full?.versions[0]
+      expect(latest?.status).toBe(3) // Published
+      expect(latest?.archiveInitiatedAt).toBeNull()
+      expect(latest?.editedAt).toBe(editedAtBefore)
     })
   })
 
@@ -384,7 +483,8 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       })
       await transitionStatus(db as unknown as Db, requirement.id, 2)
       await transitionStatus(db as unknown as Db, requirement.id, 3)
-      await transitionStatus(db as unknown as Db, requirement.id, 4)
+      await initiateArchiving(db as unknown as Db, requirement.id)
+      await approveArchiving(db as unknown as Db, requirement.id)
       const v2 = await reactivateRequirement(
         db as unknown as Db,
         requirement.id,
