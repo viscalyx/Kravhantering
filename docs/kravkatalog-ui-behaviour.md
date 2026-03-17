@@ -179,6 +179,35 @@ down.
 - During later filter or sort refreshes, the current rows stay visible and the
   delayed in-table spinner may appear if the refresh lasts long enough.
 
+## Row Selection
+
+- When `selectable` is true, a checkbox column appears as the first column.
+- A header checkbox toggles select-all for visible rows.
+- Individual row checkboxes toggle selection without triggering row click.
+- Selection is cleared when filters change.
+- Selection state is managed in `kravkatalog-client.tsx` via `selectedIds`.
+
+## Combined Review Report Floating Pill
+
+- Appears when at least one selected requirement has a version in Review status
+  (either as the current version or as a pending version).
+- Disabled (greyed out) if any selected requirement lacks a Review version.
+- Shows a badge with the number of selected requirements.
+- Uses the Review status color (`#eab308`) as a visual indicator.
+- Opens a dropdown with options to print or download the combined report.
+- Tooltip explains why the pill is disabled when applicable.
+
+## Print Dropdown in Detail View
+
+- A print dropdown button appears in the action buttons column before the
+  share button.
+- Always shows "Print History Report" and "Download History Report (PDF)".
+- Shows "Print Review Report" and "Download Review Report (PDF)" only when
+  the current version has Review status.
+- Report routes open in a new browser tab.
+
+For report architecture details, see [reports.md](./reports.md).
+
 ## Contributor Guardrails
 
 - If you change resize behaviour, update both:
