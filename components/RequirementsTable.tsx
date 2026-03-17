@@ -2861,7 +2861,7 @@ export default function RequirementsTable({
                 {selectable && (
                   <th className="w-9 px-2 py-5.5 text-center align-top">
                     <input
-                      aria-label="Select all"
+                      aria-label={tc('selectAll')}
                       checked={
                         rows.length > 0 &&
                         rows.every(r => selectedIds?.has(r.id))
@@ -3008,7 +3008,7 @@ export default function RequirementsTable({
                         {selectable && (
                           <td className="w-9 px-1 py-2 text-center align-middle">
                             <input
-                              aria-label={`Select ${row.uniqueId}`}
+                              aria-label={tc('selectRow', { id: row.uniqueId })}
                               checked={selectedIds?.has(row.id) ?? false}
                               className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
                               data-developer-mode-context="requirements table"
@@ -3017,8 +3017,8 @@ export default function RequirementsTable({
                               data-developer-mode-value={row.uniqueId}
                               onChange={e => {
                                 e.stopPropagation()
-                                if (!onSelectionChange || !selectedIds) return
-                                const next = new Set(selectedIds)
+                                if (!onSelectionChange) return
+                                const next = new Set(selectedIds ?? [])
                                 if (e.target.checked) {
                                   next.add(row.id)
                                 } else {

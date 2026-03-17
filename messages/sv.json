@@ -48,7 +48,9 @@
     "error": "Ett fel uppstod",
     "share": "Dela",
     "copied": "Kopierad",
-    "help": "Hjälp"
+    "help": "Hjälp",
+    "selectAll": "Markera alla",
+    "selectRow": "Markera {id}"
   },
   "nav": {
     "catalog": "Kravkatalog",

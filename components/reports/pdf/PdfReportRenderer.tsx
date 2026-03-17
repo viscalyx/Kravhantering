@@ -617,7 +617,7 @@ function PdfToc({
           <Text
             style={{
               fontSize: 8,
-              fontWeight: 700,
+              fontFamily: 'Helvetica-Bold',
               color: '#6b7280',
               textTransform: 'uppercase',
               letterSpacing: 0.5,

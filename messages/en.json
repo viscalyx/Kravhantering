@@ -48,7 +48,9 @@
     "error": "Something went wrong",
     "share": "Share",
     "copied": "Copied",
-    "help": "Help"
+    "help": "Help",
+    "selectAll": "Select all",
+    "selectRow": "Select {id}"
   },
   "nav": {
     "catalog": "Requirements Catalog",
