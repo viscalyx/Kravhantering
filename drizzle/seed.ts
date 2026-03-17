@@ -1370,11 +1370,11 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (502, 367, 1, 'Data observability med anomalidetektering [Version 1 testdata]', 'Dataanomalier (volym, schema, freshness) detekteras automatiskt [Version 1 testdata]', 2, 2, 27, 3, 1, 'Utvärdering av ML-modell med kända anomalier och mätning av false positive rate', datetime('now', '-55 days'), 'platform-eng', datetime('now', '-53 days'), datetime('now', '-52 days'), NULL);
 
 -- ─── Pending archive (archiving review) ──────────────────────────────────────
--- Req 6 (PRE0006): was Published, now in archiving review (no prior archived versions)
+-- Req 6 (PRE0001): was Published, now in archiving review (no prior archived versions)
 UPDATE requirement_versions SET archive_initiated_at = datetime('now', '-2 days') WHERE id = 7;
--- Req 10 (INT0010): was Published, now in archiving review (no prior archived versions)
+-- Req 10 (INT0004): was Published, now in archiving review (no prior archived versions)
 UPDATE requirement_versions SET archive_initiated_at = datetime('now', '-3 days') WHERE id = 12;
--- Req 103 (SÄK0037): was Published v2, now in archiving review (has archived v1)
+-- Req 103 (SÄK0016): was Published v2, now in archiving review (has archived v1)
 UPDATE requirement_versions SET archive_initiated_at = datetime('now', '-1 days') WHERE id = 149;
 
 -- ─── Usage Scenarios (sample) ────────────────────────────────────────────────

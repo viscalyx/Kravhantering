@@ -72,6 +72,7 @@ The current canonical labels include:
 - `create button`
 - `crud form`
 - `crud table`
+- `error banner`
 - `table action`
 
 ## Testing

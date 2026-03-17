@@ -326,12 +326,18 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       })
       await transitionStatus(db as unknown as Db, requirement.id, 2)
       await transitionStatus(db as unknown as Db, requirement.id, 3)
+      const before = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const editedAtBefore = before?.versions[0]?.editedAt
       await initiateArchiving(db as unknown as Db, requirement.id)
       const full = await getRequirementById(db as unknown as Db, requirement.id)
       expect(full?.isArchived).toBe(false)
       const latest = full?.versions[0]
       expect(latest?.status).toBe(2) // Review
       expect(latest?.archiveInitiatedAt).not.toBeNull()
+      expect(latest?.editedAt).toBe(editedAtBefore)
     })
 
     it('rejects initiating archiving from non-published status', async () => {
@@ -343,7 +349,7 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       })
       await expect(
         initiateArchiving(db as unknown as Db, requirement.id),
-      ).rejects.toThrow()
+      ).rejects.toThrow('No published version found to archive')
     })
 
     it('rejects initiating archiving when there is a pending draft version', async () => {
@@ -377,6 +383,11 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       })
       await transitionStatus(db as unknown as Db, requirement.id, 2)
       await transitionStatus(db as unknown as Db, requirement.id, 3)
+      const before = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const editedAtBefore = before?.versions[0]?.editedAt
       await initiateArchiving(db as unknown as Db, requirement.id)
       await approveArchiving(db as unknown as Db, requirement.id)
       const full = await getRequirementById(db as unknown as Db, requirement.id)
@@ -384,6 +395,7 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       const latest = full?.versions[0]
       expect(latest?.status).toBe(4) // Archived
       expect(latest?.archivedAt).not.toBeNull()
+      expect(latest?.editedAt).toBe(editedAtBefore)
     })
   })
 
@@ -397,6 +409,11 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       })
       await transitionStatus(db as unknown as Db, requirement.id, 2)
       await transitionStatus(db as unknown as Db, requirement.id, 3)
+      const before = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const editedAtBefore = before?.versions[0]?.editedAt
       await initiateArchiving(db as unknown as Db, requirement.id)
       await cancelArchiving(db as unknown as Db, requirement.id)
       const full = await getRequirementById(db as unknown as Db, requirement.id)
@@ -404,6 +421,7 @@ describe('requirements DAL – CRUD & lifecycle', () => {
       const latest = full?.versions[0]
       expect(latest?.status).toBe(3) // Published
       expect(latest?.archiveInitiatedAt).toBeNull()
+      expect(latest?.editedAt).toBe(editedAtBefore)
     })
   })
 

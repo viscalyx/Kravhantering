@@ -7,8 +7,8 @@ import {
   Clock,
   Edit,
   RotateCcw,
+  SearchCheck,
   Share2,
-  TestTube2,
   Trash2,
   X,
 } from 'lucide-react'
@@ -1322,7 +1322,7 @@ export default function RequirementDetailClient({
                     {t('requiresTesting')}:
                   </span>
                   {selectedVersion?.requiresTesting ? (
-                    <TestTube2 className="h-4 w-4 text-primary-700 dark:text-primary-300" />
+                    <SearchCheck className="h-4 w-4 text-primary-700 dark:text-primary-300" />
                   ) : (
                     <span className="font-medium">{tc('no')}</span>
                   )}

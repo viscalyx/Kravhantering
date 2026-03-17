@@ -1,6 +1,6 @@
 # Version Lifecycle Dates
 
-Each `requirement_version` row carries four timestamp columns
+Each `requirement_version` row carries five timestamp columns
 that track its lifecycle. The values depend on the version's
 **status** and the operations performed on it.
 
@@ -12,6 +12,7 @@ that track its lifecycle. The values depend on the version's
 | `created_at` | TEXT NOT NULL | When the version row was first created |
 | `edited_at` | TEXT NULL | When the version content was last edited |
 | `published_at` | TEXT NULL | When the version was published (status → 3) |
+| `archive_initiated_at` | TEXT NULL | When archiving review was initiated (status → 2 with flag) |
 | `archived_at` | TEXT NULL | When the version was archived (status → 4) |
 <!-- markdownlint-enable MD013 -->
 
@@ -93,12 +94,34 @@ Reached via in-place transition from Review. No new version row.
   transition.
 - `published_at` — set when the version transitions to Published.
   Must be **after** `edited_at`.
+- `archive_initiated_at` — always `NULL`.
 - `archived_at` — always `NULL`.
 
 When a version is published and a previously published version of
 the same requirement exists, the old version is automatically
 archived: its `statusId` is set to 4 and `archived_at` is set to
 the same timestamp as the new version's `published_at`.
+
+### Archiving Review (Published → Review)
+
+Reached via `initiateArchiving` from Published status. The
+version status moves back to Review (2) with `archive_initiated_at`
+set. This is an in-place update — no new version row is created.
+
+- `created_at` — unchanged.
+- `edited_at` — unchanged. **Not** updated by the operation.
+- `published_at` — unchanged from when the version was published.
+- `archive_initiated_at` — set when `initiateArchiving` is called.
+- `archived_at` — always `NULL`.
+
+From archiving review, there are two possible transitions:
+
+- **`approveArchiving`**: sets `statusId` to 4 (Archived),
+  sets `archived_at`, clears `archive_initiated_at` to `NULL`,
+  and sets `requirements.is_archived` to `true`.
+- **`cancelArchiving`**: returns `statusId` to 3 (Published),
+  clears `archive_initiated_at` to `NULL`. `published_at`
+  remains intact.
 
 ### Arkiverad (4) — Archived
 
@@ -110,6 +133,8 @@ auto-archive when a newer version is published.
 - `edited_at` — unchanged. **Not** updated by the status
   transition.
 - `published_at` — unchanged from when the version was published.
+- `archive_initiated_at` — `NULL`. Cleared by `approveArchiving`;
+  never set by auto-archive.
 - `archived_at` — set when the version transitions to Archived.
   Must be **after** `published_at`.
 
@@ -118,7 +143,7 @@ auto-archive when a newer version is published.
 When all timestamps are present, they follow this order:
 
 ```text
-created_at  ≤  edited_at  <  published_at  <  archived_at
+created_at  ≤  edited_at  <  published_at  <  archive_initiated_at  <  archived_at
 ```
 
 `created_at` and `edited_at` may be equal (both set at creation

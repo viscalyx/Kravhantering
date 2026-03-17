@@ -60,6 +60,7 @@ export default function KravscenarierClient() {
   const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
     useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
   const [form, setForm] = useState({
     nameSv: '',
     nameEn: '',
@@ -183,6 +184,7 @@ export default function KravscenarierClient() {
     )
       return
     setDeleteError(null)
+    setDeletingId(id)
     try {
       const res = await fetch(`/api/usage-scenarios/${id}`, {
         method: 'DELETE',
@@ -197,6 +199,8 @@ export default function KravscenarierClient() {
       fetchScenarios()
     } catch {
       setDeleteError(tc('error'))
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -461,7 +465,12 @@ export default function KravscenarierClient() {
         )}
 
         {deleteError && (
-          <p className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <p
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            data-developer-mode-context="scenarios"
+            data-developer-mode-name="error banner"
+            data-developer-mode-value="delete-error"
+          >
             {deleteError}
           </p>
         )}
@@ -524,13 +533,13 @@ export default function KravscenarierClient() {
                         data-developer-mode-context="scenarios"
                         data-developer-mode-name="table action"
                         data-developer-mode-value="delete"
-                        disabled={submitting}
+                        disabled={submitting || deletingId === s.id}
                         onClick={e =>
                           handleDelete(s.id, e.currentTarget as HTMLElement)
                         }
                         type="button"
                       >
-                        {tc('delete')}
+                        {deletingId === s.id ? tc('loading') : tc('delete')}
                       </button>
                     </td>
                   </tr>

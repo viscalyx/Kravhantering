@@ -813,12 +813,13 @@ export async function approveArchiving(
     .set({ isArchived: true })
     .where(eq(requirements.id, requirementId))
 
-  // In-place update: set status to Archived and archived_at timestamp
+  // In-place update: set status to Archived, archived_at timestamp, clear archiveInitiatedAt
   await db
     .update(requirementVersions)
     .set({
       statusId: STATUS_ARCHIVED,
       archivedAt: now,
+      archiveInitiatedAt: null,
     })
     .where(eq(requirementVersions.id, currentVersion.id))
 }

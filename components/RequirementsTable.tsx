@@ -10,7 +10,7 @@ import {
   Columns3,
   Filter,
   Search,
-  TestTube2,
+  SearchCheck,
   X,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -2482,7 +2482,7 @@ export default function RequirementsTable({
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
           >
             {row.version?.requiresTesting && (
-              <TestTube2
+              <SearchCheck
                 aria-label={t('requiresTesting')}
                 className="inline h-4 w-4 text-primary-700 dark:text-primary-300"
               />

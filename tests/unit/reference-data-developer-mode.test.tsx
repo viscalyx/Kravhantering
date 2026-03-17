@@ -224,3 +224,74 @@ describe.each(pages)('$label developer-mode markers', spec => {
     }
   })
 })
+
+describe('KravscenarierClient error banner developer-mode marker', () => {
+  it('renders error banner with developer-mode attributes on delete failure', async () => {
+    confirmMock.mockResolvedValue(true)
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation(async (input, init) => {
+        const url = typeof input === 'string' ? input : (input as Request).url
+        const method =
+          init?.method ??
+          (typeof input !== 'string' ? (input as Request).method : 'GET')
+        if (method === 'DELETE') {
+          return {
+            ok: false,
+            json: async () => ({ error: 'Has linked requirements' }),
+          } as Response
+        }
+        if (url.endsWith('/api/usage-scenarios')) {
+          return okJson({
+            scenarios: [
+              {
+                id: 1,
+                nameSv: 'S',
+                nameEn: 'S',
+                descriptionSv: null,
+                descriptionEn: null,
+                ownerId: null,
+                linkedRequirementCount: 0,
+                owner: null,
+              },
+            ],
+          }) as Response
+        }
+        return okJson({}) as Response
+      })
+
+    try {
+      const mod = await import(
+        '@/app/[locale]/kravscenarier/kravscenarier-client'
+      )
+      const Component = mod.default
+      const { container } = render(<Component />)
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('[data-developer-mode-name="crud table"]'),
+        ).toBeInTheDocument()
+      })
+
+      // Click delete button
+      const deleteBtn = container.querySelector(
+        '[data-developer-mode-name="table action"][data-developer-mode-value="delete"]',
+      ) as HTMLButtonElement
+      expect(deleteBtn).toBeInTheDocument()
+      deleteBtn.click()
+
+      await waitFor(() => {
+        const banner = container.querySelector(
+          '[data-developer-mode-name="error banner"][data-developer-mode-context="scenarios"]',
+        )
+        expect(banner).toBeInTheDocument()
+        expect(banner).toHaveAttribute(
+          'data-developer-mode-value',
+          'delete-error',
+        )
+      })
+    } finally {
+      fetchSpy.mockRestore()
+    }
+  })
+})
