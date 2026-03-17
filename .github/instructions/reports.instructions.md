@@ -45,6 +45,24 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/kravkatalog/rep
 2. Delete `app/.../reports/{engine}/` routes
 3. Remove menu items referencing that engine
 
+## Report Page Rendering
+
+- Report routes force light mode via `force-light-mode` class in the reports layout
+- Navigation and footer are hidden on report pages (both screen and print)
+- Styles are in `components/reports/print/print-styles.css`, imported by the reports layout
+
+## Archiving vs Publishing Reviews
+
+- Templates detect archiving reviews via `archiveInitiatedAt` on the review version
+- Archiving reviews use distinct title, subtitle, and warning severity notices
+- Combined report TOC groups archive requests before review change reports
+
+## Report URLs
+
+- Detail view uses `window.open` with locale prefix (`/${locale}/kravkatalog/reports/...`)
+- List view floating pill uses `next-intl` `Link` without locale prefix (`/kravkatalog/reports/...`)
+- Do not mix these patterns — `Link` auto-prefixes, `window.open` does not
+
 ## After Changes
 
 - Update `docs/reports.md`
