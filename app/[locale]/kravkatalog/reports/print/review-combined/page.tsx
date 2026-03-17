@@ -23,6 +23,10 @@ export default function PrintCombinedReviewReportPage() {
     }
     try {
       const idList = ids.split(',').filter(Boolean)
+      if (idList.length === 0) {
+        setError('No requirement IDs provided')
+        return
+      }
       const requirements = await fetchMultipleRequirements(idList, locale)
       setModel(buildCombinedReviewReport(requirements, locale))
     } catch (err) {

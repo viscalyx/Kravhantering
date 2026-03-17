@@ -1553,7 +1553,7 @@ export default function RequirementsTable({
 
   const syncResizeHandlePositions = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
-      let left = 0
+      let left = checkboxColumnWidth
 
       for (const [columnIndex, column] of columnDefinitions.entries()) {
         left += visibleWidths[column.id] ?? renderedColumnWidths[column.id]
@@ -1569,19 +1569,20 @@ export default function RequirementsTable({
         }
       }
     },
-    [columnDefinitions, renderedColumnWidths],
+    [checkboxColumnWidth, columnDefinitions, renderedColumnWidths],
   )
 
   const applyVisibleWidthPreview = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
       const tableContent = tableContentRef.current
       if (tableContent) {
-        const nextTableWidth = columnDefinitions.reduce(
-          (total, column) =>
-            total +
-            (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
-          0,
-        )
+        const nextTableWidth =
+          columnDefinitions.reduce(
+            (total, column) =>
+              total +
+              (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
+            0,
+          ) + checkboxColumnWidth
         tableContent.style.width = `${nextTableWidth}px`
       }
 
@@ -1596,7 +1597,12 @@ export default function RequirementsTable({
 
       syncResizeHandlePositions(visibleWidths)
     },
-    [columnDefinitions, renderedColumnWidths, syncResizeHandlePositions],
+    [
+      checkboxColumnWidth,
+      columnDefinitions,
+      renderedColumnWidths,
+      syncResizeHandlePositions,
+    ],
   )
 
   const cancelResizePreviewFrame = useCallback(() => {

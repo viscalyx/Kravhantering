@@ -55,7 +55,7 @@ function SectionRenderer({
 }) {
   switch (section.type) {
     case 'header':
-      return <HeaderSection section={section} />
+      return <HeaderSection locale={locale} section={section} />
     case 'notice':
       return <NoticeSection section={section} />
     case 'version-summary':
@@ -65,7 +65,7 @@ function SectionRenderer({
     case 'metadata-changes':
       return <MetadataChangesSection section={section} />
     case 'timeline-entry':
-      return <TimelineEntrySection section={section} />
+      return <TimelineEntrySection locale={locale} section={section} />
     case 'page-break':
       return <div className="print-page-break" />
     case 'requirement-table':
@@ -79,8 +79,10 @@ function SectionRenderer({
 
 function HeaderSection({
   section,
+  locale,
 }: {
   section: Extract<ReportSection, { type: 'header' }>
+  locale: string
 }) {
   return (
     <div
@@ -115,7 +117,7 @@ function HeaderSection({
       <div
         style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '0.25rem' }}
       >
-        {new Date(section.generatedAt).toLocaleString()}
+        {new Date(section.generatedAt).toLocaleString(locale)}
       </div>
     </div>
   )
@@ -485,8 +487,10 @@ function MetadataChangeRow({ change }: { change: MetadataChange }) {
 }
 
 function TimelineEntrySection({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'timeline-entry' }>
 }) {
   const { entry } = section
@@ -513,7 +517,7 @@ function TimelineEntrySection({
           {entry.createdBy && (
             <span style={{ fontWeight: 500 }}>{entry.createdBy} · </span>
           )}
-          <TimelineDate entry={entry} />
+          <TimelineDate entry={entry} locale={locale} />
         </div>
         {entry.descriptionExcerpt && (
           <div
@@ -531,16 +535,28 @@ function TimelineEntrySection({
   )
 }
 
-function TimelineDate({ entry }: { entry: TimelineEntryData }) {
+function TimelineDate({
+  entry,
+  locale,
+}: {
+  entry: TimelineEntryData
+  locale: string
+}) {
   const dates: string[] = []
   if (entry.publishedAt)
-    dates.push(`Published: ${new Date(entry.publishedAt).toLocaleDateString()}`)
+    dates.push(
+      `Published: ${new Date(entry.publishedAt).toLocaleDateString(locale)}`,
+    )
   if (entry.archivedAt)
-    dates.push(`Archived: ${new Date(entry.archivedAt).toLocaleDateString()}`)
+    dates.push(
+      `Archived: ${new Date(entry.archivedAt).toLocaleDateString(locale)}`,
+    )
   if (entry.editedAt)
-    dates.push(`Edited: ${new Date(entry.editedAt).toLocaleDateString()}`)
+    dates.push(`Edited: ${new Date(entry.editedAt).toLocaleDateString(locale)}`)
   if (dates.length === 0)
-    dates.push(`Created: ${new Date(entry.createdAt).toLocaleDateString()}`)
+    dates.push(
+      `Created: ${new Date(entry.createdAt).toLocaleDateString(locale)}`,
+    )
   return <span>{dates.join(' · ')}</span>
 }
 

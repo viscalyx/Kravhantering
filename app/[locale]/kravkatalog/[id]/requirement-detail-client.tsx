@@ -1064,6 +1064,10 @@ export default function RequirementDetailClient({
                     <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="report option"
+                        data-developer-mode-priority="295"
+                        data-developer-mode-value="print history"
                         onClick={() => {
                           setShowReportMenu(false)
                           window.open(
@@ -1078,6 +1082,10 @@ export default function RequirementDetailClient({
                       </button>
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="report option"
+                        data-developer-mode-priority="296"
+                        data-developer-mode-value="download history pdf"
                         onClick={() => {
                           setShowReportMenu(false)
                           window.open(
@@ -1095,6 +1103,10 @@ export default function RequirementDetailClient({
                           <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
                           <button
                             className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="report option"
+                            data-developer-mode-priority="297"
+                            data-developer-mode-value="print review"
                             onClick={() => {
                               setShowReportMenu(false)
                               window.open(
@@ -1109,6 +1121,10 @@ export default function RequirementDetailClient({
                           </button>
                           <button
                             className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="report option"
+                            data-developer-mode-priority="298"
+                            data-developer-mode-value="download review pdf"
                             onClick={() => {
                               setShowReportMenu(false)
                               window.open(

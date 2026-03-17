@@ -75,6 +75,7 @@ The current canonical labels include:
 - `error banner`
 - `table action`
 - `report print button`
+- `report option`
 - `review report pill`
 - `row checkbox`
 
