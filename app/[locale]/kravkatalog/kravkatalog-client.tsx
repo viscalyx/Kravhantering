@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, Plus, Printer } from 'lucide-react'
+import { Download, FileText, Plus, Printer } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -117,6 +117,7 @@ export default function KravkatalogClient({
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
   const [sortState, setSortState] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
@@ -549,6 +550,18 @@ export default function KravkatalogClient({
   const shouldShowInitialLoadingState =
     !columnPreferencesReady || !hasResolvedInitialRows
 
+  const STATUS_REVIEW = 2
+  const selectedRows = useMemo(
+    () => rows.filter(r => selectedIds.has(r.id)),
+    [rows, selectedIds],
+  )
+  const hasReviewVersion = (r: RequirementRow) =>
+    r.version?.status === STATUS_REVIEW ||
+    r.pendingVersionStatusId === STATUS_REVIEW
+  const anySelectedIsReview = selectedRows.some(hasReviewVersion)
+  const allSelectedAreReview =
+    selectedRows.length > 0 && selectedRows.every(hasReviewVersion)
+
   const handleExport = async () => {
     const params = buildRequirementListParams({
       filters,
@@ -622,6 +635,40 @@ export default function KravkatalogClient({
                   id: 'export',
                   onClick: handleExport,
                 },
+                ...(selectedIds.size > 0 && anySelectedIsReview
+                  ? [
+                      {
+                        ariaLabel: t('combinedReviewReport'),
+                        badge: selectedIds.size,
+                        customStyle: {
+                          borderColor: '#eab308',
+                          backgroundColor: '#eab30815',
+                        },
+                        developerModeContext: 'requirements table',
+                        developerModeValue: 'review report',
+                        disabled: !allSelectedAreReview,
+                        icon: (
+                          <FileText aria-hidden="true" className="h-4 w-4" />
+                        ),
+                        id: 'review-report',
+                        menuItems: [
+                          {
+                            href: `/kravkatalog/reports/print/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                            id: 'review-report-print',
+                            label: t('printCombinedReport'),
+                          },
+                          {
+                            href: `/kravkatalog/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                            id: 'review-report-pdf',
+                            label: t('downloadCombinedReportPdf'),
+                          },
+                        ],
+                        tooltip: !allSelectedAreReview
+                          ? t('reviewReportAllMustBeReview')
+                          : t('combinedReviewReport'),
+                      },
+                    ]
+                  : []),
               ]}
               getName={getName}
               getStatusName={getStatusName}
@@ -634,6 +681,7 @@ export default function KravkatalogClient({
                 setFilters(val)
                 setSelectedId(null)
                 setPinnedRow(null)
+                setSelectedIds(new Set())
               }}
               onLoadMore={loadMore}
               onRowClick={id => {
@@ -643,6 +691,7 @@ export default function KravkatalogClient({
                   return next
                 })
               }}
+              onSelectionChange={setSelectedIds}
               onSortChange={setSortState}
               onVisibleColumnsChange={setVisibleColumns}
               pinnedIds={pinnedIds}
@@ -660,6 +709,8 @@ export default function KravkatalogClient({
                 />
               )}
               rows={displayRows}
+              selectable
+              selectedIds={selectedIds}
               sortState={sortState}
               statusOptions={statusOptions}
               types={types}

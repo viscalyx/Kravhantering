@@ -6,6 +6,7 @@ import {
   Check,
   Clock,
   Edit,
+  Printer,
   RotateCcw,
   Share2,
   Trash2,
@@ -96,6 +97,8 @@ export default function RequirementDetailClient({
   const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+  const [showReportMenu, setShowReportMenu] = useState(false)
+  const reportMenuRef = useRef<HTMLDivElement>(null)
   const [statuses, setStatuses] = useState<StatusInfo[]>([])
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
@@ -304,6 +307,21 @@ export default function RequirementDetailClient({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showShareMenu])
+
+  // Close report menu when clicking outside
+  useEffect(() => {
+    if (!showReportMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        reportMenuRef.current &&
+        !reportMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowReportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showReportMenu])
 
   if (loading) {
     const loadingContent = (
@@ -1028,6 +1046,86 @@ export default function RequirementDetailClient({
 
               {/* Action buttons column */}
               <div className="flex flex-col gap-2 shrink-0">
+                <div className="relative" ref={reportMenuRef}>
+                  <button
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="report print button"
+                    data-developer-mode-priority="290"
+                    data-developer-mode-value="reports"
+                    onClick={() => setShowReportMenu(prev => !prev)}
+                    title={tc('print')}
+                    type="button"
+                  >
+                    <Printer aria-hidden="true" className="h-4 w-4" />
+                    {tc('print')}
+                  </button>
+                  {showReportMenu && (
+                    <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        onClick={() => {
+                          setShowReportMenu(false)
+                          window.open(
+                            `/${locale}/kravkatalog/reports/print/history/${requirementId}`,
+                            '_blank',
+                          )
+                        }}
+                        type="button"
+                      >
+                        <Printer aria-hidden="true" className="h-4 w-4" />
+                        {t('printHistoryReport')}
+                      </button>
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        onClick={() => {
+                          setShowReportMenu(false)
+                          window.open(
+                            `/${locale}/kravkatalog/reports/pdf/history/${requirementId}`,
+                            '_blank',
+                          )
+                        }}
+                        type="button"
+                      >
+                        <Printer aria-hidden="true" className="h-4 w-4" />
+                        {t('downloadHistoryReportPdf')}
+                      </button>
+                      {currentStatusId === STATUS_REVIEW && (
+                        <>
+                          <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                            onClick={() => {
+                              setShowReportMenu(false)
+                              window.open(
+                                `/${locale}/kravkatalog/reports/print/review/${requirementId}`,
+                                '_blank',
+                              )
+                            }}
+                            type="button"
+                          >
+                            <Printer aria-hidden="true" className="h-4 w-4" />
+                            {t('printReviewReport')}
+                          </button>
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                            onClick={() => {
+                              setShowReportMenu(false)
+                              window.open(
+                                `/${locale}/kravkatalog/reports/pdf/review/${requirementId}`,
+                                '_blank',
+                              )
+                            }}
+                            type="button"
+                          >
+                            <Printer aria-hidden="true" className="h-4 w-4" />
+                            {t('downloadReviewReportPdf')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="relative" ref={shareMenuRef}>
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
