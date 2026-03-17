@@ -314,6 +314,57 @@ describe('requirements DAL – CRUD & lifecycle', () => {
         transitionStatus(db as unknown as Db, requirement.id, 99),
       ).rejects.toThrow('Invalid status')
     })
+
+    it('cancel-archiving via Review→Published preserves publishedAt and clears archiveInitiatedAt', async () => {
+      await seedStatuses(db)
+      const area = await seedArea(db)
+      const { requirement } = await createRequirement(db as unknown as Db, {
+        requirementAreaId: area.id,
+        description: 'T',
+      })
+      await transitionStatus(db as unknown as Db, requirement.id, 2)
+      await transitionStatus(db as unknown as Db, requirement.id, 3)
+
+      const afterPublish = await getRequirementById(
+        db as unknown as Db,
+        requirement.id,
+      )
+      const originalPublishedAt = afterPublish?.versions[0]?.publishedAt
+
+      await initiateArchiving(db as unknown as Db, requirement.id)
+      // Cancel via transitionStatus (Review → Published with archiveInitiatedAt)
+      const result = await transitionStatus(
+        db as unknown as Db,
+        requirement.id,
+        3,
+      )
+
+      expect(result.statusId).toBe(3)
+      expect(result.archiveInitiatedAt).toBeNull()
+      expect(result.publishedAt).toBe(originalPublishedAt)
+    })
+
+    it('approve-archiving via Review→Archived clears archiveInitiatedAt and sets archivedAt', async () => {
+      await seedStatuses(db)
+      const area = await seedArea(db)
+      const { requirement } = await createRequirement(db as unknown as Db, {
+        requirementAreaId: area.id,
+        description: 'T',
+      })
+      await transitionStatus(db as unknown as Db, requirement.id, 2)
+      await transitionStatus(db as unknown as Db, requirement.id, 3)
+      await initiateArchiving(db as unknown as Db, requirement.id)
+
+      const result = await transitionStatus(
+        db as unknown as Db,
+        requirement.id,
+        4,
+      )
+
+      expect(result.statusId).toBe(4)
+      expect(result.archivedAt).not.toBeNull()
+      expect(result.archiveInitiatedAt).toBeNull()
+    })
   })
 
   describe('initiateArchiving', () => {

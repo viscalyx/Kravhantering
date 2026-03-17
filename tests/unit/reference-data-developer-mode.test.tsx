@@ -226,6 +226,8 @@ describe.each(pages)('$label developer-mode markers', spec => {
 })
 
 describe('KravscenarierClient error banner developer-mode marker', () => {
+  beforeEach(() => vi.clearAllMocks())
+
   it('renders error banner with developer-mode attributes on delete failure', async () => {
     confirmMock.mockResolvedValue(true)
     const fetchSpy = vi
@@ -289,6 +291,7 @@ describe('KravscenarierClient error banner developer-mode marker', () => {
           'data-developer-mode-value',
           'delete-error',
         )
+        expect(banner).toHaveAttribute('data-developer-mode-priority', '340')
       })
     } finally {
       fetchSpy.mockRestore()

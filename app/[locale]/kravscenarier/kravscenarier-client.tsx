@@ -469,6 +469,7 @@ export default function KravscenarierClient() {
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
             data-developer-mode-context="scenarios"
             data-developer-mode-name="error banner"
+            data-developer-mode-priority="340"
             data-developer-mode-value="delete-error"
           >
             {deleteError}

@@ -473,7 +473,7 @@ INSERT OR IGNORE INTO requirements (id, unique_id, requirement_area_id, sequence
 --         requirement_category_id, requirement_type_id, quality_characteristic_id,
 --         requirement_status_id, is_testing_required, verification_method, created_at, created_by, published_at, archived_at
 -- requirement_status_id: 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad
--- published_at: set only for status 3 & 4; archived_at: set only for status 4
+-- published_at: set for status 2 (archiving review), 3, and 4; archived_at: set only for status 4
 -- Constraint: created_at < published_at < archived_at
 
 -- === Original requirements (IDs 1-11) ===
