@@ -6,8 +6,8 @@ import {
   Check,
   Clock,
   Edit,
+  Printer,
   RotateCcw,
-  SearchCheck,
   Share2,
   Trash2,
   X,
@@ -97,10 +97,24 @@ export default function RequirementDetailClient({
   const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+  const [showReportMenu, setShowReportMenu] = useState(false)
+  const reportMenuRef = useRef<HTMLDivElement>(null)
   const [statuses, setStatuses] = useState<StatusInfo[]>([])
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
   >(null)
+
+  const handleVersionSelect = useCallback(
+    (versionNumber: number) => {
+      setSelectedVersionNumber(versionNumber)
+      if (!inline) {
+        const url = `/${locale}/kravkatalog/${requirementId}/${versionNumber}`
+        window.history.replaceState(null, '', url)
+      }
+    },
+    [inline, locale, requirementId],
+  )
+
   const [triangleLeft, setTriangleLeft] = useState<number | null>(null)
   const [connectorHeight, setConnectorHeight] = useState<number | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -293,6 +307,21 @@ export default function RequirementDetailClient({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showShareMenu])
+
+  // Close report menu when clicking outside
+  useEffect(() => {
+    if (!showReportMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        reportMenuRef.current &&
+        !reportMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowReportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showReportMenu])
 
   if (loading) {
     const loadingContent = (
@@ -782,11 +811,9 @@ export default function RequirementDetailClient({
           />
         </div>
 
-        <div
-          className={`grid grid-cols-1 ${inline ? '' : 'lg:grid-cols-3'} gap-6`}
-        >
+        <div className="grid grid-cols-1 gap-6">
           {/* Main content */}
-          <div className={`${inline ? '' : 'lg:col-span-2'} space-y-6`}>
+          <div className="space-y-6">
             <div className="relative flex gap-4">
               <div
                 className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
@@ -820,88 +847,97 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                {inline && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {req.area && (
-                      <div
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail section"
-                        data-developer-mode-priority="350"
-                        data-developer-mode-value="area"
-                      >
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                          {t('area')}
-                        </h3>
-                        <p className="text-secondary-900 dark:text-secondary-100">
-                          {req.area.name}
-                        </p>
-                        {req.area.ownerName && (
-                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                            {t('areaOwner')}: {req.area.ownerName}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {selectedVersion?.type && (
-                      <div
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail section"
-                        data-developer-mode-priority="350"
-                        data-developer-mode-value="type"
-                      >
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                          {t('type')}
-                        </h3>
-                        <p className="text-secondary-900 dark:text-secondary-100">
-                          {localName(selectedVersion.type)}
-                        </p>
-                      </div>
-                    )}
-                    {selectedVersion?.qualityCharacteristic && (
-                      <div
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail section"
-                        data-developer-mode-priority="350"
-                        data-developer-mode-value="quality characteristic"
-                      >
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                          {t('qualityCharacteristic')}
-                        </h3>
-                        <p className="text-secondary-900 dark:text-secondary-100">
-                          {localName(selectedVersion.qualityCharacteristic)}
-                        </p>
-                      </div>
-                    )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {req.area && (
                     <div
                       data-developer-mode-context={detailContext}
                       data-developer-mode-name="detail section"
                       data-developer-mode-priority="350"
-                      data-developer-mode-value="requires testing"
+                      data-developer-mode-value="area"
                     >
                       <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('requiresTesting')}
+                        {t('area')}
                       </h3>
                       <p className="text-secondary-900 dark:text-secondary-100">
-                        {selectedVersion?.requiresTesting
-                          ? tc('yes')
-                          : tc('no')}
+                        {req.area.name}
                       </p>
+                      {req.area.ownerName && (
+                        <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                          {t('areaOwner')}: {req.area.ownerName}
+                        </p>
+                      )}
                     </div>
-                    <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="verification method"
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('verificationMethod')}
-                      </h3>
-                      <p className="text-secondary-900 dark:text-secondary-100">
-                        {selectedVersion?.verificationMethod || '—'}
-                      </p>
-                    </div>
+                  )}
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="category"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('category')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {localName(selectedVersion?.category) ?? '—'}
+                    </p>
                   </div>
-                )}
+                  {selectedVersion?.type && (
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="type"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('type')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {localName(selectedVersion.type)}
+                      </p>
+                    </div>
+                  )}
+                  {selectedVersion?.qualityCharacteristic && (
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="quality characteristic"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('qualityCharacteristic')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {localName(selectedVersion.qualityCharacteristic)}
+                      </p>
+                    </div>
+                  )}
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="requires testing"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('requiresTesting')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {selectedVersion?.requiresTesting ? tc('yes') : tc('no')}
+                    </p>
+                  </div>
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="verification method"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('verificationMethod')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {selectedVersion?.verificationMethod || '—'}
+                    </p>
+                  </div>
+                </div>
 
                 {selectedVersion?.references &&
                   selectedVersion.references.length > 0 && (
@@ -1010,6 +1046,102 @@ export default function RequirementDetailClient({
 
               {/* Action buttons column */}
               <div className="flex flex-col gap-2 shrink-0">
+                <div className="relative" ref={reportMenuRef}>
+                  <button
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="report print button"
+                    data-developer-mode-priority="290"
+                    data-developer-mode-value="reports"
+                    onClick={() => setShowReportMenu(prev => !prev)}
+                    title={tc('print')}
+                    type="button"
+                  >
+                    <Printer aria-hidden="true" className="h-4 w-4" />
+                    {tc('print')}
+                  </button>
+                  {showReportMenu && (
+                    <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="report option"
+                        data-developer-mode-priority="295"
+                        data-developer-mode-value="print history"
+                        onClick={() => {
+                          setShowReportMenu(false)
+                          window.open(
+                            `/${locale}/kravkatalog/reports/print/history/${requirementId}`,
+                            '_blank',
+                          )
+                        }}
+                        type="button"
+                      >
+                        <Printer aria-hidden="true" className="h-4 w-4" />
+                        {t('printHistoryReport')}
+                      </button>
+                      <button
+                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                        data-developer-mode-context={detailContext}
+                        data-developer-mode-name="report option"
+                        data-developer-mode-priority="296"
+                        data-developer-mode-value="download history pdf"
+                        onClick={() => {
+                          setShowReportMenu(false)
+                          window.open(
+                            `/${locale}/kravkatalog/reports/pdf/history/${requirementId}`,
+                            '_blank',
+                          )
+                        }}
+                        type="button"
+                      >
+                        <Printer aria-hidden="true" className="h-4 w-4" />
+                        {t('downloadHistoryReportPdf')}
+                      </button>
+                      {currentStatusId === STATUS_REVIEW && (
+                        <>
+                          <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="report option"
+                            data-developer-mode-priority="297"
+                            data-developer-mode-value="print review"
+                            onClick={() => {
+                              setShowReportMenu(false)
+                              window.open(
+                                `/${locale}/kravkatalog/reports/print/review/${requirementId}`,
+                                '_blank',
+                              )
+                            }}
+                            type="button"
+                          >
+                            <Printer aria-hidden="true" className="h-4 w-4" />
+                            {t('printReviewReport')}
+                          </button>
+                          <button
+                            className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="report option"
+                            data-developer-mode-priority="298"
+                            data-developer-mode-value="download review pdf"
+                            onClick={() => {
+                              setShowReportMenu(false)
+                              window.open(
+                                `/${locale}/kravkatalog/reports/pdf/review/${requirementId}`,
+                                '_blank',
+                              )
+                            }}
+                            type="button"
+                          >
+                            <Printer aria-hidden="true" className="h-4 w-4" />
+                            {t('downloadReviewReportPdf')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <div className="relative" ref={shareMenuRef}>
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
@@ -1106,9 +1238,7 @@ export default function RequirementDetailClient({
                       data-developer-mode-priority="360"
                       data-developer-mode-value="back to latest"
                       onClick={() =>
-                        setSelectedVersionNumber(
-                          displayVersion?.versionNumber ?? 1,
-                        )
+                        handleVersionSelect(displayVersion?.versionNumber ?? 1)
                       }
                       type="button"
                     >
@@ -1179,20 +1309,37 @@ export default function RequirementDetailClient({
                               {t(`transitionTo${tr.nameSv}`)}
                             </button>
                           ))}
-                      {currentStatusId !== STATUS_REVIEW && (
-                        <Link
-                          className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                          data-developer-mode-context={detailContext}
-                          data-developer-mode-name="detail action"
-                          data-developer-mode-priority="360"
-                          data-developer-mode-value="edit"
-                          href={`/kravkatalog/${req.uniqueId}/redigera`}
-                          title={tc('editTooltip')}
-                        >
-                          <Edit aria-hidden="true" className="h-4 w-4" />
-                          {tc('edit')}
-                        </Link>
-                      )}
+                      {currentStatusId !== STATUS_REVIEW &&
+                        (hasPendingWorkAbovePublished &&
+                        !isViewingLatest &&
+                        currentStatusId === STATUS_PUBLISHED ? (
+                          <button
+                            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center opacity-60 cursor-not-allowed"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="detail action"
+                            data-developer-mode-priority="360"
+                            data-developer-mode-value="edit"
+                            disabled
+                            title={t('editBlockedByPendingWork')}
+                            type="button"
+                          >
+                            <Edit aria-hidden="true" className="h-4 w-4" />
+                            {tc('edit')}
+                          </button>
+                        ) : (
+                          <Link
+                            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="detail action"
+                            data-developer-mode-priority="360"
+                            data-developer-mode-value="edit"
+                            href={`/kravkatalog/${req.uniqueId}/redigera`}
+                            title={tc('editTooltip')}
+                          >
+                            <Edit aria-hidden="true" className="h-4 w-4" />
+                            {tc('edit')}
+                          </Link>
+                        ))}
                       {isViewingLatest &&
                         latestStatusForActions === STATUS_PUBLISHED && (
                           <button
@@ -1269,7 +1416,7 @@ export default function RequirementDetailClient({
             {/* Version history */}
             <VersionHistory
               developerModeContext={detailContext}
-              onVersionSelect={setSelectedVersionNumber}
+              onVersionSelect={handleVersionSelect}
               ref={vhRef}
               selectedVersionNumber={
                 selectedVersionNumber ?? currentVersionNumber
@@ -1277,73 +1424,6 @@ export default function RequirementDetailClient({
               versions={req.versions}
             />
           </div>
-
-          {/* Sidebar */}
-          {!inline && (
-            <div className="space-y-4">
-              <div className="glass rounded-2xl p-5 space-y-3 text-sm">
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('area')}:
-                  </span>{' '}
-                  <span className="font-medium">{req.area?.name ?? '—'}</span>
-                  {req.area?.ownerName && (
-                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                      {t('area')} — {t('areaOwner')}: {req.area.ownerName}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('category')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {localName(selectedVersion?.category) ?? '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('type')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {localName(selectedVersion?.type) ?? '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('qualityCharacteristic')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {localName(selectedVersion?.qualityCharacteristic) ?? '—'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('requiresTesting')}:
-                  </span>
-                  {selectedVersion?.requiresTesting ? (
-                    <SearchCheck className="h-4 w-4 text-primary-700 dark:text-primary-300" />
-                  ) : (
-                    <span className="font-medium">{tc('no')}</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('verificationMethod')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {selectedVersion?.verificationMethod || '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {tc('version')}:
-                  </span>{' '}
-                  <span className="font-medium">v{currentVersionNumber}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -75,14 +75,16 @@ change:
 - `published_at` — always `NULL`.
 - `archived_at` — always `NULL`.
 
-### Granskning (2) — Review
+### Granskning (2) — Review (publishing flow)
 
 Reached via in-place transition from Draft. No new version row.
+For the archiving-review path (Published → Review) see
+[Archiving Review](#archiving-review-published--review) below.
 
 - `created_at` — unchanged from Draft.
 - `edited_at` — unchanged from Draft. **Not** updated by the
   status transition.
-- `published_at` — always `NULL`.
+- `published_at` — `NULL` (not yet published).
 - `archived_at` — always `NULL`.
 
 ### Publicerad (3) — Published

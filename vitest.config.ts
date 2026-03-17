@@ -2,10 +2,6 @@ import path from 'node:path'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  esbuild: {
-    jsx: 'automatic', // Enable automatic JSX runtime
-  },
-
   test: {
     // Serve Vitest UI at root so Codespaces port forwarding works (default is /__vitest__/)
     uiBase: '/',

@@ -18,6 +18,8 @@
     "biomejs",
     "cloudflare",
     "cmyk",
+    "codespace",
+    "codespaces",
     "codecov",
     "cspell",
     "devcontainer",
@@ -204,7 +206,8 @@
     "Responsivitetstestning",
     "propagering",
     "datapropagering",
-    "övervakningsresponser"
+    "övervakningsresponser",
+    "historikrapport"
   ],
   "flagWords": [],
   "ignorePaths": [

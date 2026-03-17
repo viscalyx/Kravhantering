@@ -74,6 +74,10 @@ The current canonical labels include:
 - `crud table`
 - `error banner`
 - `table action`
+- `report print button`
+- `report option`
+- `review report pill`
+- `row checkbox`
 
 ## Testing
 

@@ -1,0 +1,62 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: !important is required for print overrides */
+@media print {
+  @page {
+    margin: 1.5cm;
+  }
+
+  nav,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page-break {
+    break-before: page;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+@media screen {
+  .print-report-container {
+    max-width: 800px;
+    padding: 2rem;
+    margin: 0 auto;
+    font-family:
+      ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}
+
+/*
+ * Force light appearance for report pages even when the app is in dark mode.
+ * The Tailwind dark variant matches .dark ancestors, so we override the body
+ * background and text at this boundary and set color-scheme to light so
+ * browser-native UI (scrollbars, print dialog) stays light too.
+ */
+.force-light-mode {
+  color: #1e293b;
+  color-scheme: light;
+  background: #fff;
+}
+
+.force-light-mode *,
+.force-light-mode *::before,
+.force-light-mode *::after {
+  color-scheme: light;
+}
+
+/*
+ * When a report layout is active, hide the app navigation and footer
+ * on screen as well (not just in print).
+ */
+body:has(.force-light-mode) nav,
+body:has(.force-light-mode) footer {
+  display: none;
+}

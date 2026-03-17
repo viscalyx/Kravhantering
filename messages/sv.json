@@ -48,7 +48,9 @@
     "error": "Ett fel uppstod",
     "share": "Dela",
     "copied": "Kopierad",
-    "help": "Hjälp"
+    "help": "Hjälp",
+    "selectAll": "Markera alla",
+    "selectRow": "Markera {id}"
   },
   "nav": {
     "catalog": "Kravkatalog",
@@ -114,6 +116,7 @@
     "cancelArchivingConfirm": "Är du säker på att du vill avbryta arkiveringen och återgå till Publicerad?",
     "cancelArchivingTooltip": "Avbryt arkivering och återgå till Publicerad status",
     "archiveBlockedByPendingWork": "Kan inte arkivera medan det finns en väntande utkast- eller granskningsversion",
+    "editBlockedByPendingWork": "Kan inte redigera medan det finns en väntande utkast- eller granskningsversion",
     "restoreBlockedByPendingWork": "Kan inte återställa medan det finns en väntande utkast- eller granskningsversion",
     "deleteDraftConfirm": "Är du säker på att du vill ta bort detta utkast? Utkastet raderas permanent.",
     "publishConfirm": "Är du säker på att du vill publicera detta krav? Bekräfta att det har genomgått korrekt granskningsprocess innan det görs tillgängligt.",
@@ -149,7 +152,17 @@
     "afterSave": "Gå till efter sparning",
     "afterSaveInline": "Listvy",
     "afterSavePage": "Detaljsida",
-    "noPublishedVersion": "Det finns ingen publicerad version av detta krav."
+    "noPublishedVersion": "Det finns ingen publicerad version av detta krav.",
+    "printHistoryReport": "Skriv ut historikrapport",
+    "downloadHistoryReportPdf": "Ladda ner historikrapport (PDF)",
+    "printReviewReport": "Skriv ut granskningsrapport",
+    "downloadReviewReportPdf": "Ladda ner granskningsrapport (PDF)",
+    "combinedReviewReport": "Kombinerad granskningsrapport",
+    "printCombinedReport": "Skriv ut kombinerad rapport",
+    "downloadCombinedReportPdf": "Ladda ner kombinerad rapport (PDF)",
+    "printListReport": "Skriv ut kravlista",
+    "downloadListReportPdf": "Ladda ner kravlista (PDF)",
+    "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten"
   },
   "requirementsTable": {
     "clear": "Rensa",

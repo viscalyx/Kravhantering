@@ -179,6 +179,49 @@ down.
 - During later filter or sort refreshes, the current rows stay visible and the
   delayed in-table spinner may appear if the refresh lasts long enough.
 
+## Row Selection
+
+- When `selectable` is true, a checkbox column appears as the first column.
+- The checkbox column has a fixed width of 36px and is not resizable.
+- The 36px is subtracted from the available grow space so default columns
+  still fit without horizontal scrolling.
+- A header checkbox toggles select-all for visible rows.
+- Individual row checkboxes toggle selection without triggering row click.
+- Selection is cleared when filters change.
+- Selection state is managed in `kravkatalog-client.tsx` via `selectedIds`.
+
+## Print List Report Floating Pill
+
+- Always visible in the list view as a Printer icon pill.
+- Opens a dropdown with two options:
+  - "Print Requirements List" — opens the print engine route
+  - "Download Requirements List (PDF)" — opens the PDF engine route
+- Passes the IDs of all currently visible rows as `?ids=` query params.
+- The report shows Krav-ID, description, area, and status columns.
+
+## Combined Review Report Floating Pill
+
+- Appears when at least one selected requirement has a version in Review status
+  (either as the current version or as a pending version).
+- Disabled (greyed out) if any selected requirement lacks a Review version.
+- Shows a badge with the number of selected requirements.
+- Uses the Review status color (`#eab308`) as a visual indicator.
+- Opens a dropdown with options to print or download the combined report.
+- Tooltip explains why the pill is disabled when applicable.
+
+## Print Dropdown in Detail View
+
+- A print dropdown button appears in the action buttons column before the
+  share button.
+- Always shows "Print History Report" and "Download History Report (PDF)".
+- Shows "Print Review Report" and "Download Review Report (PDF)" only when
+  the current version has Review status.
+- Detail view report URLs use `window.open` with the locale prefix.
+- List view report URLs use `next-intl` `Link` without the locale prefix
+  (the router adds it automatically).
+
+For report architecture details, see [reports.md](./reports.md).
+
 ## Contributor Guardrails
 
 - If you change resize behaviour, update both:

@@ -60,11 +60,12 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@opennextjs/cloudflare": "^1.17.1",
+    "@react-pdf/renderer": "^4.3.2",
     "@tailwindcss/typography": "^0.5.19",
     "drizzle-orm": "^0.45.1",
-    "framer-motion": "^12.36.0",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.577.0",
-    "next": "^16.1.6",
+    "next": "^16.1.7",
     "next-intl": "^4.8.3",
     "react": "^19.2.4",
     "react-colorful": "^5.6.1",
@@ -89,14 +90,14 @@
     "better-sqlite3": "^12.8.0",
     "cross-env": "^10.1.0",
     "cspell": "^9.7.0",
-    "drizzle-kit": "^0.31.9",
-    "jsdom": "^28.1.0",
+    "drizzle-kit": "^0.31.10",
+    "jsdom": "^29.0.0",
     "markdownlint-cli2": "^0.21.0",
     "rimraf": "^6.1.3",
     "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3",
+    "typescript": "5.9.3",
     "vitest": "^4.1.0",
-    "wrangler": "^4.73.0"
+    "wrangler": "^4.75.0"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
@@ -105,14 +106,10 @@
     "are written as 'extraneous' instead of 'optional' when node_modules is absent during resolution,",
     "which causes 'npm ci' to fail with EBADPLATFORM in CI."
   ],
-  "overrides": {
-    "undici": "7.24.2"
-  },
+  "overrides": {},
   "//overrides": [
     "Overrides pin transitive dependencies to patched versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
-    "undici: overrides.undici pins 7.24.2 because jsdom@28.1.0 declares undici@^7.21.0 and wrangler@4.73.0 -> miniflare@4.20260312.0 declares undici@7.18.2; versions below 7.24.0 match GHSA-f269-vfmq-vjvj, GHSA-2mjp-6q6p-2qxm, GHSA-vrm6-8vpv-qv8q, GHSA-v9p9-hfj2-hcw8, GHSA-4992-7rv2-5pvq, and GHSA-phc3-fgpg-7m6h. Verified on 2026-03-14.",
-    "undici: package-lock.json was checked to confirm the overrides.undici pin resolves transitive undici requests to node_modules/undici@7.24.2.",
-    "Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict."
+    "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict."
   ]
 }

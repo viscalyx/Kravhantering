@@ -6,17 +6,18 @@ applyTo: "app/[locale]/kravkatalog/[id]/requirement-detail-client.tsx"
 
 ## Content Order
 
-The detail pane card (both inline and full-page) must render content sections
-in this fixed order:
+The detail pane card renders content sections in this fixed order for both the
+inline detail pane (expanded inside the requirements table) and the full-page
+requirement detail view — they share the same single-column layout:
 
 1. Requirement text (description) — always first
 2. Acceptance criteria — always second
-3. Metadata properties — area (with owner), type, quality characteristic,
-   references, scenarios, and any future properties come after the two
-   primary text sections
+3. Metadata grid (2–3 columns) — area (with owner), category, type, quality
+   characteristic, requires testing, verification method
+4. References (if any)
+5. Scenarios
 
-This order applies to both the inline detail pane expanded inside the
-requirements table and the full-page requirement detail view.
+There is no sidebar. All metadata lives inside the card's metadata grid.
 
 ## Rationale
 
@@ -27,10 +28,8 @@ and must not push the main content down.
 ## Area Owner Display
 
 - The area owner is a property of the area, not of the requirement.
-- In the inline detail pane, the area and its owner are shown as a metadata
-  section after the two primary text sections.
-- In the full-page sidebar, the area owner is shown as small text below the
-  area name.
+- In both inline and full-page views, the area and its owner are shown inside
+  the metadata grid after the two primary text sections.
 - In the requirement create/edit form, the owner is not an editable field.
   Instead, small text below the area dropdown shows the selected area's owner.
 - The owner is set on the area itself via the area reference data management
@@ -40,5 +39,6 @@ and must not push the main content down.
 
 - Do not move description or acceptance criteria below any metadata section.
 - When adding new metadata properties to the detail card, place them after
-  acceptance criteria, alongside the existing metadata sections.
+  acceptance criteria, alongside the existing metadata sections in the grid.
+- The inline and full-page views share the same card layout.
 - If you change the detail pane layout order, update this instruction file.

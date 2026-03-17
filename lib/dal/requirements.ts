@@ -1038,15 +1038,16 @@ export async function transitionStatus(
   }
 
   // When cancelling archiving (Review → Published with archiveInitiatedAt set)
-  if (
+  const isCancellingArchiving =
     currentVersion.statusId === STATUS_REVIEW &&
     newStatusId === STATUS_PUBLISHED &&
-    currentVersion.archiveInitiatedAt
-  ) {
+    !!currentVersion.archiveInitiatedAt
+
+  if (isCancellingArchiving) {
     updateFields.archiveInitiatedAt = null
   }
 
-  if (newStatusId === STATUS_PUBLISHED) {
+  if (newStatusId === STATUS_PUBLISHED && !isCancellingArchiving) {
     updateFields.publishedAt = now
 
     // Auto-archive any previously published version of this requirement
@@ -1066,6 +1067,7 @@ export async function transitionStatus(
 
   if (newStatusId === STATUS_ARCHIVED) {
     updateFields.archivedAt = now
+    updateFields.archiveInitiatedAt = null
   }
 
   const nextIsArchived =

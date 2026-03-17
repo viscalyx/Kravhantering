@@ -71,12 +71,15 @@ export interface RequirementsTableProps {
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
   onRowClick?: (id: number) => void
+  onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
   rows: RequirementRow[]
+  selectable?: boolean
+  selectedIds?: Set<number>
   sortState?: RequirementSortState
   statusOptions?: StatusOption[]
   types?: FilterOption[]
@@ -95,14 +98,19 @@ export interface FloatingActionMenuItem {
 
 export interface FloatingActionItem {
   ariaLabel: string
+  badge?: string | number
+  customStyle?: React.CSSProperties
   developerModeContext?: string
   developerModeValue?: string
+  disabled?: boolean
+  hidden?: boolean
   href?: string
   icon: ReactNode
   id: string
   menuItems?: FloatingActionMenuItem[]
   onClick?: () => void
   position?: 'beforeColumns' | 'afterColumns'
+  tooltip?: string
   variant?: FloatingActionPillVariant
 }
 
@@ -128,6 +136,8 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   const hasMenu = (action.menuItems?.length ?? 0) > 0
   const developerModeContext = action.developerModeContext
   const developerModeValue = action.developerModeValue
+  const titleText = action.tooltip ?? action.ariaLabel
+  const disabledClass = action.disabled ? ' opacity-60 cursor-not-allowed' : ''
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -232,6 +242,8 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     }
   }, [hasMenu, open])
 
+  if (action.hidden) return null
+
   if (hasMenu) {
     return (
       <div className="relative" ref={wrapperRef}>
@@ -239,7 +251,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           aria-controls={open ? `floating-action-menu-${action.id}` : undefined}
           aria-expanded={open}
           aria-label={action.ariaLabel}
-          className={getFloatingPillClassName(variant)}
+          className={`${getFloatingPillClassName(variant)}${disabledClass}`}
           data-developer-mode-context={developerModeContext}
           data-developer-mode-name="floating pill"
           data-developer-mode-priority="360"
@@ -248,15 +260,22 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           data-floating-action-item="true"
           data-floating-action-menu-trigger={action.id}
           data-floating-action-variant={variant}
-          onClick={() => setOpen(value => !value)}
+          disabled={action.disabled}
+          onClick={() => !action.disabled && setOpen(value => !value)}
           ref={triggerRef}
-          title={action.ariaLabel}
+          style={action.customStyle}
+          title={titleText}
           type="button"
         >
           <span aria-hidden="true" className="flex items-center justify-center">
             {action.icon}
           </span>
           <span className="sr-only">{action.ariaLabel}</span>
+          {action.badge != null && (
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-bold text-white">
+              {action.badge}
+            </span>
+          )}
         </button>
         {open && menuPosition && typeof document !== 'undefined'
           ? createPortal(
@@ -313,6 +332,29 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   }
 
   if (action.href) {
+    if (action.disabled) {
+      return (
+        <span
+          aria-disabled="true"
+          className={`${getFloatingPillClassName(variant)}${disabledClass}`}
+          data-developer-mode-context={developerModeContext}
+          data-developer-mode-name="floating pill"
+          data-developer-mode-priority="360"
+          data-developer-mode-value={developerModeValue}
+          data-floating-action-id={action.id}
+          data-floating-action-item="true"
+          data-floating-action-variant={variant}
+          tabIndex={-1}
+          title={titleText}
+        >
+          <span aria-hidden="true" className="flex items-center justify-center">
+            {action.icon}
+          </span>
+          <span className="sr-only">{action.ariaLabel}</span>
+        </span>
+      )
+    }
+
     return (
       <Link
         aria-label={action.ariaLabel}
@@ -339,7 +381,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   return (
     <button
       aria-label={action.ariaLabel}
-      className={getFloatingPillClassName(variant)}
+      className={`${getFloatingPillClassName(variant)}${disabledClass}`}
       data-developer-mode-context={developerModeContext}
       data-developer-mode-name="floating pill"
       data-developer-mode-priority="360"
@@ -347,14 +389,21 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
       data-floating-action-id={action.id}
       data-floating-action-item="true"
       data-floating-action-variant={variant}
-      onClick={action.onClick}
-      title={action.ariaLabel}
+      disabled={action.disabled}
+      onClick={action.disabled ? undefined : action.onClick}
+      style={action.customStyle}
+      title={titleText}
       type="button"
     >
       <span aria-hidden="true" className="flex items-center justify-center">
         {action.icon}
       </span>
       <span className="sr-only">{action.ariaLabel}</span>
+      {action.badge != null && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary-600 px-1 text-[10px] font-bold text-white">
+          {action.badge}
+        </span>
+      )}
     </button>
   )
 }
@@ -1191,11 +1240,14 @@ export default function RequirementsTable({
   onLoadMore,
   onRowClick,
   onColumnWidthsChange,
+  onSelectionChange,
   onSortChange,
   onVisibleColumnsChange,
   pinnedIds,
   renderExpanded,
   rows,
+  selectable = false,
+  selectedIds,
   sortState = DEFAULT_REQUIREMENT_SORT,
   statusOptions = [],
   qualityCharacteristics = [],
@@ -1235,6 +1287,7 @@ export default function RequirementsTable({
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const tableContentRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLTableElement>(null)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const expandedDetailCellRef = useRef<HTMLTableCellElement>(null)
   const colRefs = useRef<
     Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
@@ -1268,6 +1321,7 @@ export default function RequirementsTable({
   const hasManualColumnWidths = columnDefinitions.some(
     column => typeof columnWidths[column.id] === 'number',
   )
+  const checkboxColumnWidth = selectable ? 36 : 0
   const renderedColumnWidths = {
     ...configuredColumnWidths,
   } as Record<RequirementColumnId, number>
@@ -1281,7 +1335,10 @@ export default function RequirementsTable({
     )
     const availableExtraWidth =
       growColumnIds.length > 0
-        ? Math.max(0, scrollContainerWidth - configuredTableWidth)
+        ? Math.max(
+            0,
+            scrollContainerWidth - configuredTableWidth - checkboxColumnWidth,
+          )
         : 0
 
     if (availableExtraWidth > 0) {
@@ -1295,10 +1352,11 @@ export default function RequirementsTable({
     }
   }
 
-  const tableWidth = columnDefinitions.reduce(
-    (total, column) => total + renderedColumnWidths[column.id],
-    0,
-  )
+  const tableWidth =
+    columnDefinitions.reduce(
+      (total, column) => total + renderedColumnWidths[column.id],
+      0,
+    ) + checkboxColumnWidth
   const scrollLayoutSignature = columnDefinitions
     .map(column => `${column.id}:${renderedColumnWidths[column.id]}`)
     .concat(String(scrollContainerWidth))
@@ -1492,6 +1550,15 @@ export default function RequirementsTable({
     visibleColumnIdsRef.current = columnDefinitions.map(column => column.id)
   }, [columnDefinitions])
 
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        rows.length > 0 &&
+        rows.some(r => selectedIds?.has(r.id)) &&
+        !rows.every(r => selectedIds?.has(r.id))
+    }
+  }, [rows, selectedIds])
+
   const buildColumnWidthOverrides = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
       const nextWidths = { ...columnWidthsRef.current }
@@ -1519,7 +1586,7 @@ export default function RequirementsTable({
 
   const syncResizeHandlePositions = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
-      let left = 0
+      let left = checkboxColumnWidth
 
       for (const [columnIndex, column] of columnDefinitions.entries()) {
         left += visibleWidths[column.id] ?? renderedColumnWidths[column.id]
@@ -1535,19 +1602,20 @@ export default function RequirementsTable({
         }
       }
     },
-    [columnDefinitions, renderedColumnWidths],
+    [checkboxColumnWidth, columnDefinitions, renderedColumnWidths],
   )
 
   const applyVisibleWidthPreview = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
       const tableContent = tableContentRef.current
       if (tableContent) {
-        const nextTableWidth = columnDefinitions.reduce(
-          (total, column) =>
-            total +
-            (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
-          0,
-        )
+        const nextTableWidth =
+          columnDefinitions.reduce(
+            (total, column) =>
+              total +
+              (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
+            0,
+          ) + checkboxColumnWidth
         tableContent.style.width = `${nextTableWidth}px`
       }
 
@@ -1562,7 +1630,12 @@ export default function RequirementsTable({
 
       syncResizeHandlePositions(visibleWidths)
     },
-    [columnDefinitions, renderedColumnWidths, syncResizeHandlePositions],
+    [
+      checkboxColumnWidth,
+      columnDefinitions,
+      renderedColumnWidths,
+      syncResizeHandlePositions,
+    ],
   )
 
   const cancelResizePreviewFrame = useCallback(() => {
@@ -2782,6 +2855,7 @@ export default function RequirementsTable({
             ref={tableRef}
           >
             <colgroup>
+              {selectable && <col style={{ width: '36px' }} />}
               {columnDefinitions.map(column => (
                 <col
                   key={column.id}
@@ -2794,6 +2868,32 @@ export default function RequirementsTable({
             </colgroup>
             <thead>
               <tr className="border-b border-secondary-200/35 bg-secondary-50/80 text-left dark:border-secondary-700/35 dark:bg-secondary-800/30">
+                {selectable && (
+                  <th className="w-9 px-2 py-5.5 text-center align-top">
+                    <input
+                      aria-label={tc('selectAll')}
+                      checked={
+                        rows.length > 0 &&
+                        rows.every(r => selectedIds?.has(r.id))
+                      }
+                      className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
+                      data-developer-mode-context="requirements table"
+                      data-developer-mode-name="row checkbox"
+                      data-developer-mode-priority="300"
+                      data-developer-mode-value="select all"
+                      onChange={e => {
+                        if (!onSelectionChange) return
+                        if (e.target.checked) {
+                          onSelectionChange(new Set(rows.map(r => r.id)))
+                        } else {
+                          onSelectionChange(new Set())
+                        }
+                      }}
+                      ref={selectAllRef}
+                      type="checkbox"
+                    />
+                  </th>
+                )}
                 {columnDefinitions.map((column, columnIndex) => {
                   const label = getColumnLabel(column.id)
                   const isSortable = column.canSort
@@ -2884,7 +2984,7 @@ export default function RequirementsTable({
                 <tr>
                   <td
                     className="py-12 text-center text-secondary-600 dark:text-secondary-400"
-                    colSpan={columnDefinitions.length}
+                    colSpan={columnDefinitions.length + (selectable ? 1 : 0)}
                   >
                     {tc('noResults')}
                   </td>
@@ -2916,6 +3016,32 @@ export default function RequirementsTable({
                         data-developer-mode-value={row.uniqueId}
                         onClick={event => handleBodyRowClick(event, row.id)}
                       >
+                        {selectable && (
+                          <td className="w-9 px-1 py-2 text-center align-middle">
+                            <input
+                              aria-label={tc('selectRow', { id: row.uniqueId })}
+                              checked={selectedIds?.has(row.id) ?? false}
+                              className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
+                              data-developer-mode-context="requirements table"
+                              data-developer-mode-name="row checkbox"
+                              data-developer-mode-priority="300"
+                              data-developer-mode-value={row.uniqueId}
+                              onChange={e => {
+                                e.stopPropagation()
+                                if (!onSelectionChange) return
+                                const next = new Set(selectedIds ?? [])
+                                if (e.target.checked) {
+                                  next.add(row.id)
+                                } else {
+                                  next.delete(row.id)
+                                }
+                                onSelectionChange(next)
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              type="checkbox"
+                            />
+                          </td>
+                        )}
                         {columnDefinitions.map((column, columnIndex) => (
                           <Fragment key={column.id}>
                             {renderCell(
@@ -2930,7 +3056,9 @@ export default function RequirementsTable({
                         <tr>
                           <td
                             className="border-b border-l-2 border-l-primary-500 border-secondary-200/35 bg-secondary-50/60 p-0 dark:border-secondary-700/35 dark:bg-secondary-800/30"
-                            colSpan={columnDefinitions.length}
+                            colSpan={
+                              columnDefinitions.length + (selectable ? 1 : 0)
+                            }
                             data-developer-mode-context="requirements table"
                             data-developer-mode-name="inline detail pane"
                             data-developer-mode-priority="360"

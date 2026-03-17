@@ -17,7 +17,8 @@ const viewportVariants = [
 
 async function openFirstRequirementDetail(page: Page) {
   const firstRow = page.locator('tbody > tr').first()
-  const firstRowUniqueIdCell = firstRow.locator('td').first()
+  // Skip the checkbox td (index 0) — uniqueId is at index 1
+  const firstRowUniqueIdCell = firstRow.locator('td').nth(1)
   const secondRow = page.locator('tbody > tr').nth(1)
   const detailCell = page.locator('[data-expanded-detail-cell="true"]').first()
 
@@ -69,7 +70,7 @@ test.describe('Requirements table column resizing', () => {
         const laterDivider = page
           .locator('[data-column-resize-handle="area"]')
           .first()
-        const descriptionColumn = page.locator('colgroup col').nth(1)
+        const descriptionColumn = page.locator('colgroup col').nth(2)
 
         await handle.scrollIntoViewIfNeeded()
         await expect(handle).toBeVisible()
@@ -210,7 +211,7 @@ test.describe('Requirements table column resizing', () => {
             '[data-column-resize-column="description"][data-column-resize-segment="bottom"]',
           )
           .first()
-        const descriptionColumn = page.locator('colgroup col').nth(1)
+        const descriptionColumn = page.locator('colgroup col').nth(2)
 
         await expect(detailCell).toBeVisible()
         await expect(handle).toBeVisible()
