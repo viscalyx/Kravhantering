@@ -25,6 +25,9 @@ latest archived version.
 - Shows word-level diffs for description and acceptance criteria
 - Shows metadata changes (category, type, quality characteristic, etc.)
 - If no published or archived version exists, displays a notice
+- **Archiving reviews** (Published → Review → Archive) are visually
+  distinct: titled "Arkiveringsförfrågan" / "Archive Request" with a
+  subtitle and amber warning banner
 
 ### 3. Combined Review Report
 
@@ -33,8 +36,10 @@ Generates a multi-requirement review report from the list view.
 - Select requirements using the checkbox column
 - A floating pill appears when any selected requirement has Review status
 - The pill is disabled if any selected requirement is not in Review status
-- Each requirement gets its own section with page breaks between them
-- Includes a table of contents
+- Table of contents on the first page, grouped by report type:
+  archiving requests first, then review change reports
+- Each TOC entry shows its page number
+- Each requirement starts on a new page after the TOC
 
 ## Architecture
 
@@ -103,3 +108,31 @@ screen-only elements.
 Uses `@react-pdf/renderer` to generate a PDF blob client-side. The route
 page fetches data, builds the model, then triggers a download. Uses the
 library's `Document`, `Page`, `View`, `Text` primitives with `StyleSheet`.
+
+## PDF Filenames
+
+- History: `{localized label} {uniqueId}.pdf`
+  (e.g., `Historikrapport ANV0022.pdf`)
+- Review: `{localized label} {uniqueId}.pdf`
+  (e.g., `Granskningsrapport ANV0022.pdf`)
+- Combined: `{localized label} {YYYY-MM-DD HH.MM}.pdf`
+  (e.g., `Kombinerad granskningsrapport 2026-03-17 16.35.pdf`)
+
+## Report Page Rendering
+
+- Report routes are wrapped in a layout that forces light mode
+  rendering regardless of the app's dark mode setting.
+- The app navigation and footer are hidden on report pages, both on
+  screen and in print.
+- Styles are in `components/reports/print/print-styles.css` which is
+  imported by the reports layout.
+
+## Archiving Reviews
+
+When a requirement transitions from Published to Review for archiving
+(`archiveInitiatedAt` is set), the review report uses distinct styling:
+
+- Title: "Arkiveringsförfrågan" / "Archive Request"
+- Subtitle: "Kravet granskas för arkivering"
+- Amber warning banner instead of blue info notice
+- In the combined report TOC, archiving requests are grouped first
