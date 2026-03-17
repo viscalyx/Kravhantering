@@ -158,6 +158,8 @@
     "combinedReviewReport": "Kombinerad granskningsrapport",
     "printCombinedReport": "Skriv ut kombinerad rapport",
     "downloadCombinedReportPdf": "Ladda ner kombinerad rapport (PDF)",
+    "printListReport": "Skriv ut kravlista",
+    "downloadListReportPdf": "Ladda ner kravlista (PDF)",
     "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten"
   },
   "requirementsTable": {

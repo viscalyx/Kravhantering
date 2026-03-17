@@ -625,7 +625,18 @@ export default function KravkatalogClient({
                   ariaLabel: tc('print'),
                   icon: <Printer aria-hidden="true" className="h-4 w-4" />,
                   id: 'print',
-                  onClick: () => globalThis.print(),
+                  menuItems: [
+                    {
+                      href: `/kravkatalog/reports/print/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                      id: 'print-list',
+                      label: t('printListReport'),
+                    },
+                    {
+                      href: `/kravkatalog/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                      id: 'pdf-list',
+                      label: t('downloadListReportPdf'),
+                    },
+                  ],
                 },
                 {
                   developerModeContext: 'requirements table',

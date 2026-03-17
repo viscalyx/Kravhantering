@@ -552,8 +552,12 @@ describe('KravkatalogClient', () => {
       ),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'print' }))
-    expect(printMock).toHaveBeenCalledTimes(1)
+    // Print pill is now a dropdown menu with list report options (menu
+    // rendering tested in requirements-table.test.tsx floating-action tests)
+    expect(screen.getByRole('button', { name: 'print' })).toHaveAttribute(
+      'data-floating-action-id',
+      'print',
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'export' }))
 

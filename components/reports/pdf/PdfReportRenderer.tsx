@@ -261,6 +261,8 @@ function PdfSectionRenderer({
       return <PdfMetadataChanges section={section} />
     case 'timeline-entry':
       return <PdfTimelineEntry section={section} />
+    case 'requirement-table':
+      return <PdfRequirementTable section={section} />
     case 'toc':
       return <PdfToc section={section} />
     case 'page-break':
@@ -542,6 +544,54 @@ function formatTimelineDate(entry: TimelineEntryData): string {
   if (parts.length === 0)
     parts.push(`Created: ${new Date(entry.createdAt).toLocaleDateString()}`)
   return parts.join(' \u00B7 ')
+}
+
+function PdfRequirementTable({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'requirement-table' }>
+}) {
+  const colWidths: Record<string, string> = {
+    uniqueId: '14%',
+    description: '50%',
+    area: '20%',
+    status: '16%',
+  }
+
+  return (
+    <View style={styles.table}>
+      <View style={styles.tableHeader}>
+        {section.columns.map(col => (
+          <Text
+            key={col.key}
+            style={[
+              styles.tableHeaderCell,
+              { width: colWidths[col.key] ?? '25%' },
+            ]}
+          >
+            {col.label}
+          </Text>
+        ))}
+      </View>
+      {section.rows.map((row, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static report rows
+        <View key={i} style={styles.tableRow}>
+          {section.columns.map(col => (
+            <View key={col.key} style={{ width: colWidths[col.key] ?? '25%' }}>
+              {col.key === 'status' && row.statusColor ? (
+                <PdfBadge
+                  color={row.statusColor}
+                  label={row.cells[col.key] ?? ''}
+                />
+              ) : (
+                <Text style={styles.tableCell}>{row.cells[col.key] ?? ''}</Text>
+              )}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  )
 }
 
 function PdfToc({

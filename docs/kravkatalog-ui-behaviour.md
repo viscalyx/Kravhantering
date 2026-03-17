@@ -190,6 +190,15 @@ down.
 - Selection is cleared when filters change.
 - Selection state is managed in `kravkatalog-client.tsx` via `selectedIds`.
 
+## Print List Report Floating Pill
+
+- Always visible in the list view as a Printer icon pill.
+- Opens a dropdown with two options:
+  - "Print Requirements List" — opens the print engine route
+  - "Download Requirements List (PDF)" — opens the PDF engine route
+- Passes the IDs of all currently visible rows as `?ids=` query params.
+- The report shows Krav-ID, description, area, and status columns.
+
 ## Combined Review Report Floating Pill
 
 - Appears when at least one selected requirement has a version in Review status

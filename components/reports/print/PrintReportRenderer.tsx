@@ -68,6 +68,8 @@ function SectionRenderer({
       return <TimelineEntrySection section={section} />
     case 'page-break':
       return <div className="print-page-break" />
+    case 'requirement-table':
+      return <RequirementTableSection section={section} />
     case 'toc':
       return <TocSection section={section} />
     default:
@@ -603,6 +605,71 @@ function TocSection({
         </div>
       ))}
     </div>
+  )
+}
+
+function RequirementTableSection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'requirement-table' }>
+}) {
+  return (
+    <table
+      style={{
+        width: '100%',
+        borderCollapse: 'collapse',
+        fontSize: '0.8125rem',
+      }}
+    >
+      <thead>
+        <tr>
+          {section.columns.map(col => (
+            <th
+              key={col.key}
+              style={{
+                textAlign: 'left',
+                padding: '0.5rem 0.75rem',
+                borderBottom: '2px solid #e2e8f0',
+                color: '#64748b',
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {col.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {section.rows.map((row, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: static report rows
+          <tr key={i}>
+            {section.columns.map(col => (
+              <td
+                key={col.key}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  borderBottom: '1px solid #f1f5f9',
+                  verticalAlign: 'top',
+                  ...(col.key === 'description'
+                    ? { maxWidth: '400px' }
+                    : { whiteSpace: 'nowrap' }),
+                }}
+              >
+                {col.key === 'status' && row.statusColor ? (
+                  <StatusBadge
+                    color={row.statusColor}
+                    label={row.cells[col.key] ?? ''}
+                  />
+                ) : (
+                  (row.cells[col.key] ?? '')
+                )}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 

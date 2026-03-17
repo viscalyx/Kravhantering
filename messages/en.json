@@ -158,6 +158,8 @@
     "combinedReviewReport": "Combined Review Report",
     "printCombinedReport": "Print Combined Report",
     "downloadCombinedReportPdf": "Download Combined Report (PDF)",
+    "printListReport": "Print Requirements List",
+    "downloadListReportPdf": "Download Requirements List (PDF)",
     "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report"
   },
   "requirementsTable": {

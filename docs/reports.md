@@ -29,7 +29,17 @@ latest archived version.
   distinct: titled "Arkiveringsförfrågan" / "Archive Request" with a
   subtitle and amber warning banner
 
-### 3. Combined Review Report
+### 3. Requirements List Report
+
+Prints the requirements currently displayed in the list view as a
+formatted table.
+
+- Available from the print dropdown pill (always visible in list view)
+- Shows Krav-ID, description (truncated), area, and status columns
+- Includes all currently visible requirements (after filtering/sorting)
+- Header shows total count and generation timestamp
+
+### 4. Combined Review Report
 
 Generates a multi-requirement review report from the list view.
 
@@ -89,6 +99,7 @@ under `.../reports/pdf/`.
 
 - **History**: `.../print/history/[id]` | `.../pdf/history/[id]`
 - **Review**: `.../print/review/[id]` | `.../pdf/review/[id]`
+- **List**: `.../print/list?ids=…` | `.../pdf/list?ids=…`
 - **Combined**: `.../print/review-combined?ids=…` |
   `.../pdf/review-combined?ids=…`
 

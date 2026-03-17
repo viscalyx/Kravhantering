@@ -60,6 +60,14 @@ export type ReportSection =
   | { type: 'timeline-entry'; entry: TimelineEntryData }
   | { type: 'page-break' }
   | {
+      type: 'requirement-table'
+      columns: { key: string; label: string }[]
+      rows: {
+        cells: Record<string, string>
+        statusColor?: string | null
+      }[]
+    }
+  | {
       type: 'toc'
       groups: {
         heading: string
