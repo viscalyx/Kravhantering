@@ -487,7 +487,7 @@ describe('RequirementDetailClient', () => {
     )
   })
 
-  it('shows type and quality characteristic in the inline detail view when present', async () => {
+  it('shows type and quality characteristic in the detail view when present', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Test description',

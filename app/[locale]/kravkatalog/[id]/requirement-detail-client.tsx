@@ -7,7 +7,6 @@ import {
   Clock,
   Edit,
   RotateCcw,
-  SearchCheck,
   Share2,
   Trash2,
   X,
@@ -101,6 +100,18 @@ export default function RequirementDetailClient({
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
   >(null)
+
+  const handleVersionSelect = useCallback(
+    (versionNumber: number) => {
+      setSelectedVersionNumber(versionNumber)
+      if (!inline) {
+        const url = `/${locale}/kravkatalog/${requirementId}/${versionNumber}`
+        window.history.replaceState(null, '', url)
+      }
+    },
+    [inline, locale, requirementId],
+  )
+
   const [triangleLeft, setTriangleLeft] = useState<number | null>(null)
   const [connectorHeight, setConnectorHeight] = useState<number | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -782,11 +793,9 @@ export default function RequirementDetailClient({
           />
         </div>
 
-        <div
-          className={`grid grid-cols-1 ${inline ? '' : 'lg:grid-cols-3'} gap-6`}
-        >
+        <div className="grid grid-cols-1 gap-6">
           {/* Main content */}
-          <div className={`${inline ? '' : 'lg:col-span-2'} space-y-6`}>
+          <div className="space-y-6">
             <div className="relative flex gap-4">
               <div
                 className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
@@ -820,88 +829,97 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                {inline && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {req.area && (
-                      <div
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail section"
-                        data-developer-mode-priority="350"
-                        data-developer-mode-value="area"
-                      >
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                          {t('area')}
-                        </h3>
-                        <p className="text-secondary-900 dark:text-secondary-100">
-                          {req.area.name}
-                        </p>
-                        {req.area.ownerName && (
-                          <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                            {t('areaOwner')}: {req.area.ownerName}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {selectedVersion?.type && (
-                      <div
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail section"
-                        data-developer-mode-priority="350"
-                        data-developer-mode-value="type"
-                      >
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                          {t('type')}
-                        </h3>
-                        <p className="text-secondary-900 dark:text-secondary-100">
-                          {localName(selectedVersion.type)}
-                        </p>
-                      </div>
-                    )}
-                    {selectedVersion?.qualityCharacteristic && (
-                      <div
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail section"
-                        data-developer-mode-priority="350"
-                        data-developer-mode-value="quality characteristic"
-                      >
-                        <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                          {t('qualityCharacteristic')}
-                        </h3>
-                        <p className="text-secondary-900 dark:text-secondary-100">
-                          {localName(selectedVersion.qualityCharacteristic)}
-                        </p>
-                      </div>
-                    )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {req.area && (
                     <div
                       data-developer-mode-context={detailContext}
                       data-developer-mode-name="detail section"
                       data-developer-mode-priority="350"
-                      data-developer-mode-value="requires testing"
+                      data-developer-mode-value="area"
                     >
                       <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('requiresTesting')}
+                        {t('area')}
                       </h3>
                       <p className="text-secondary-900 dark:text-secondary-100">
-                        {selectedVersion?.requiresTesting
-                          ? tc('yes')
-                          : tc('no')}
+                        {req.area.name}
                       </p>
+                      {req.area.ownerName && (
+                        <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
+                          {t('areaOwner')}: {req.area.ownerName}
+                        </p>
+                      )}
                     </div>
-                    <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="verification method"
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('verificationMethod')}
-                      </h3>
-                      <p className="text-secondary-900 dark:text-secondary-100">
-                        {selectedVersion?.verificationMethod || '—'}
-                      </p>
-                    </div>
+                  )}
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="category"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('category')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {localName(selectedVersion?.category) ?? '—'}
+                    </p>
                   </div>
-                )}
+                  {selectedVersion?.type && (
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="type"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('type')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {localName(selectedVersion.type)}
+                      </p>
+                    </div>
+                  )}
+                  {selectedVersion?.qualityCharacteristic && (
+                    <div
+                      data-developer-mode-context={detailContext}
+                      data-developer-mode-name="detail section"
+                      data-developer-mode-priority="350"
+                      data-developer-mode-value="quality characteristic"
+                    >
+                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                        {t('qualityCharacteristic')}
+                      </h3>
+                      <p className="text-secondary-900 dark:text-secondary-100">
+                        {localName(selectedVersion.qualityCharacteristic)}
+                      </p>
+                    </div>
+                  )}
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="requires testing"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('requiresTesting')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {selectedVersion?.requiresTesting ? tc('yes') : tc('no')}
+                    </p>
+                  </div>
+                  <div
+                    data-developer-mode-context={detailContext}
+                    data-developer-mode-name="detail section"
+                    data-developer-mode-priority="350"
+                    data-developer-mode-value="verification method"
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('verificationMethod')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {selectedVersion?.verificationMethod || '—'}
+                    </p>
+                  </div>
+                </div>
 
                 {selectedVersion?.references &&
                   selectedVersion.references.length > 0 && (
@@ -1106,9 +1124,7 @@ export default function RequirementDetailClient({
                       data-developer-mode-priority="360"
                       data-developer-mode-value="back to latest"
                       onClick={() =>
-                        setSelectedVersionNumber(
-                          displayVersion?.versionNumber ?? 1,
-                        )
+                        handleVersionSelect(displayVersion?.versionNumber ?? 1)
                       }
                       type="button"
                     >
@@ -1282,7 +1298,7 @@ export default function RequirementDetailClient({
             {/* Version history */}
             <VersionHistory
               developerModeContext={detailContext}
-              onVersionSelect={setSelectedVersionNumber}
+              onVersionSelect={handleVersionSelect}
               ref={vhRef}
               selectedVersionNumber={
                 selectedVersionNumber ?? currentVersionNumber
@@ -1290,73 +1306,6 @@ export default function RequirementDetailClient({
               versions={req.versions}
             />
           </div>
-
-          {/* Sidebar */}
-          {!inline && (
-            <div className="space-y-4">
-              <div className="glass rounded-2xl p-5 space-y-3 text-sm">
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('area')}:
-                  </span>{' '}
-                  <span className="font-medium">{req.area?.name ?? '—'}</span>
-                  {req.area?.ownerName && (
-                    <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                      {t('area')} — {t('areaOwner')}: {req.area.ownerName}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('category')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {localName(selectedVersion?.category) ?? '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('type')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {localName(selectedVersion?.type) ?? '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('qualityCharacteristic')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {localName(selectedVersion?.qualityCharacteristic) ?? '—'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('requiresTesting')}:
-                  </span>
-                  {selectedVersion?.requiresTesting ? (
-                    <SearchCheck className="h-4 w-4 text-primary-700 dark:text-primary-300" />
-                  ) : (
-                    <span className="font-medium">{tc('no')}</span>
-                  )}
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {t('verificationMethod')}:
-                  </span>{' '}
-                  <span className="font-medium">
-                    {selectedVersion?.verificationMethod || '—'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-secondary-600 dark:text-secondary-400">
-                    {tc('version')}:
-                  </span>{' '}
-                  <span className="font-medium">v{currentVersionNumber}</span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
