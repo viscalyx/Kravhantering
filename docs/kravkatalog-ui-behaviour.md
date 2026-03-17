@@ -182,6 +182,9 @@ down.
 ## Row Selection
 
 - When `selectable` is true, a checkbox column appears as the first column.
+- The checkbox column has a fixed width of 36px and is not resizable.
+- The 36px is subtracted from the available grow space so default columns
+  still fit without horizontal scrolling.
 - A header checkbox toggles select-all for visible rows.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
@@ -204,7 +207,9 @@ down.
 - Always shows "Print History Report" and "Download History Report (PDF)".
 - Shows "Print Review Report" and "Download Review Report (PDF)" only when
   the current version has Review status.
-- Report routes open in a new browser tab.
+- Detail view report URLs use `window.open` with the locale prefix.
+- List view report URLs use `next-intl` `Link` without the locale prefix
+  (the router adds it automatically).
 
 For report architecture details, see [reports.md](./reports.md).
 
