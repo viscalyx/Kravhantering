@@ -1299,6 +1299,10 @@ export default function RequirementDetailClient({
                         currentStatusId === STATUS_PUBLISHED ? (
                           <button
                             className="btn-primary inline-flex items-center gap-1.5 w-full justify-center opacity-60 cursor-not-allowed"
+                            data-developer-mode-context={detailContext}
+                            data-developer-mode-name="detail action"
+                            data-developer-mode-priority="360"
+                            data-developer-mode-value="edit"
                             disabled
                             title={t('editBlockedByPendingWork')}
                             type="button"
