@@ -250,7 +250,7 @@ function PdfSectionRenderer({
 }) {
   switch (section.type) {
     case 'header':
-      return <PdfHeader section={section} />
+      return <PdfHeader locale={locale} section={section} />
     case 'notice':
       return <PdfNotice section={section} />
     case 'version-summary':
@@ -260,7 +260,7 @@ function PdfSectionRenderer({
     case 'metadata-changes':
       return <PdfMetadataChanges section={section} />
     case 'timeline-entry':
-      return <PdfTimelineEntry section={section} />
+      return <PdfTimelineEntry locale={locale} section={section} />
     case 'requirement-table':
       return <PdfRequirementTable section={section} />
     case 'toc':
@@ -273,8 +273,10 @@ function PdfSectionRenderer({
 }
 
 function PdfHeader({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'header' }>
 }) {
   return (
@@ -292,7 +294,7 @@ function PdfHeader({
         )}
       </View>
       <Text style={[styles.headerMeta, { fontSize: 8 }]}>
-        {new Date(section.generatedAt).toLocaleString()}
+        {new Date(section.generatedAt).toLocaleString(locale)}
       </Text>
     </View>
   )
@@ -508,8 +510,10 @@ function PdfMetadataChangeRow({ change }: { change: MetadataChange }) {
 }
 
 function PdfTimelineEntry({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'timeline-entry' }>
 }) {
   const { entry } = section
@@ -523,7 +527,7 @@ function PdfTimelineEntry({
       <View style={styles.timelineContent}>
         <Text style={styles.timelineMeta}>
           {entry.createdBy ? `${entry.createdBy} \u00B7 ` : ''}
-          {formatTimelineDate(entry)}
+          {formatTimelineDate(entry, locale)}
         </Text>
         {entry.descriptionExcerpt && (
           <Text style={styles.timelineExcerpt}>{entry.descriptionExcerpt}</Text>
@@ -533,16 +537,22 @@ function PdfTimelineEntry({
   )
 }
 
-function formatTimelineDate(entry: TimelineEntryData): string {
+function formatTimelineDate(entry: TimelineEntryData, locale: string): string {
   const parts: string[] = []
   if (entry.publishedAt)
-    parts.push(`Published: ${new Date(entry.publishedAt).toLocaleDateString()}`)
+    parts.push(
+      `Published: ${new Date(entry.publishedAt).toLocaleDateString(locale)}`,
+    )
   if (entry.archivedAt)
-    parts.push(`Archived: ${new Date(entry.archivedAt).toLocaleDateString()}`)
+    parts.push(
+      `Archived: ${new Date(entry.archivedAt).toLocaleDateString(locale)}`,
+    )
   if (entry.editedAt)
-    parts.push(`Edited: ${new Date(entry.editedAt).toLocaleDateString()}`)
+    parts.push(`Edited: ${new Date(entry.editedAt).toLocaleDateString(locale)}`)
   if (parts.length === 0)
-    parts.push(`Created: ${new Date(entry.createdAt).toLocaleDateString()}`)
+    parts.push(
+      `Created: ${new Date(entry.createdAt).toLocaleDateString(locale)}`,
+    )
   return parts.join(' \u00B7 ')
 }
 

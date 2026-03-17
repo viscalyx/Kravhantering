@@ -332,6 +332,29 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   }
 
   if (action.href) {
+    if (action.disabled) {
+      return (
+        <span
+          aria-disabled="true"
+          className={`${getFloatingPillClassName(variant)}${disabledClass}`}
+          data-developer-mode-context={developerModeContext}
+          data-developer-mode-name="floating pill"
+          data-developer-mode-priority="360"
+          data-developer-mode-value={developerModeValue}
+          data-floating-action-id={action.id}
+          data-floating-action-item="true"
+          data-floating-action-variant={variant}
+          tabIndex={-1}
+          title={titleText}
+        >
+          <span aria-hidden="true" className="flex items-center justify-center">
+            {action.icon}
+          </span>
+          <span className="sr-only">{action.ariaLabel}</span>
+        </span>
+      )
+    }
+
     return (
       <Link
         aria-label={action.ariaLabel}

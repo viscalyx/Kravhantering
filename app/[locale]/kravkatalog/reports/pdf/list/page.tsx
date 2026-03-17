@@ -36,6 +36,10 @@ export default function PdfListReportPage() {
     }
     try {
       const idList = ids.split(',').filter(Boolean)
+      if (idList.length === 0) {
+        setError('No requirement IDs provided')
+        return
+      }
       const requirements = await fetchMultipleRequirements(idList, locale)
       const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
       const now = new Date()
