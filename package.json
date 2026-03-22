@@ -97,7 +97,7 @@
     "tailwindcss": "^4.2.1",
     "typescript": "5.9.3",
     "vitest": "^4.1.0",
-    "wrangler": "^4.75.0"
+    "wrangler": "^4.76.0"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
