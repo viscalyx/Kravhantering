@@ -1,0 +1,75 @@
+Prompt (plan mode):
+Based on the processed and functionality in the project and codebase and using docs/Arkitekturbeskrivning-mall.txt as instructions, I want you to create a markdown file docs/arkitekturebeskrivning-kravhantering.md when you have analyzed the codebase, processes the application uses, the functionality that it contain and create the relevant perspectives. The text must be in swedish and should the tone should focus towards the Intressenter (stakeholders) for each perspective.
+It is my expectation to keep descriptions at overview level while referencing specific components.
+Include mermaid diagrams where they add clarity, also add a ArchiMate modell per each perspective (either in a language similar to mermaid or just in ASCII so I can replace them later).
+
+
+Arkitekturbeskrivning:
+- Beskrivningarna i detta dokument ska vara kortfattade och översiktliga men ge en tydlig bild om vad som ska åstadkommas, hur lösningen är disponerad, vilka som påverkas och varför förändring genomförs, samt hur lösningen är tänkt att användas för att möta verksamhetens behov
+- påverkar regionens övergripande arkitektur
+- bidrar till att nå regionens strategiska mål
+- följer regler och riktlinjer inom informationshantering, säkerhet och IT
+- Använd de perspektiv som är relevanta för arkitekturbeskrivningen beroende på sammanhang och lösningens beskaffenhet.
+- Detta dokument ska ligga på en relativt hög abstraktionsnivå.
+- Det är viktigare att förstå samband och strukturer än detaljer kring lösningen. Finns det behov av mer detaljerade beskrivningar hänvisas dessa till därtill avsedda dokument.
+- I de olika perspektiven beskriv, nuläge, önskat läge och hur förflyttning ska ske.
+
+Perspektiv:
+- Översikt:
+  Namn:	Översiktsperspektiv
+  Intressenter:	Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, förvaltningsledare/förvaltingsledare IT, projektledare
+  Beskrivning av innehåll: Översiktsperspektivet ska ge en översiktlig bild av lösningen. Det ska beskriva hur olika delar av lösningen relaterar till varandra. Denna beskrivning är avsedd att vara fylligare än den konceptuella lösningsansatsen i del A men ändå översiktlig. För att ytterligare förklara olika aspekter på lösningen används vid behov övriga arkitekturperspektiv.
+
+- Verksamhetsprocessperspektiv:
+  Namn: Verksamhetsprocessperspektiv
+  Intressenter: Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, förvaltningsledare/förvaltingsledare IT
+  Beskrivning av innehåll: Verksamhetsprocessperspektivet används för att beskriva den övergripande strukturen och uppbyggnaden av en eller flera verksamhetsprocesser. Beskrivningen kan innehålla:
+  - Verksamhetstjänster som erbjuds till omgivningen och processerna som realiserar tjänsterna.
+  - Vilka aktörer och roller som använder eller arbetar i en process
+  - Vilken information som hanteras i processen eller som resultat av processen.
+
+- Applikationsanvändningsperspektiv:
+  Namn:	Applikationsanvändningsperspektiv
+  Intressenter:	Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, lösningsarkitekt, mjukvaruarkitekt, driftorganisation.
+  Beskrivning av innehåll:	Applikationsanvändningsperspektiv beskriver hur applikationer/system används för att stödja en eller flera verksamhetsprocesser och hur de används av andra applikationer. Denna beskrivning är till för att beskriva hur applikationen används av verksamheten.
+
+- Applikationssambandsperspektiv:
+  Namn:	Applikationssambandsperspektiv
+  Intressenter:	Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, lösningsarkitekt, mjukvaruarkitekt, driftorganisation.
+  Beskrivning av innehåll:	Applikationssambandsperspektivet beskriver hur information flödar mellan applikationer/system och vilka tjänster (SOA/Webb/Applikationstjänst) som de erbjuder och använder.
+
+- Applikationsstrukturperspektiv:
+  Namn:	Applikationsstrukturperspektiv
+  Intressenter:	Mjukvaruarkitekt, mjukvaruutveckling.
+  Beskrivning av innehåll:	Applikationsstrukturperspektivet beskriver hur en applikation är uppbyggd och vilka beroenden som det finns till applikationskomponenter och data.
+
+- Infrastrukturanvändningsperspektiv:
+  Namn:	Infrastrukturanvändningsperspektiv
+  Intressenter:	Lösningsarkitekt, infrastrukturarkitekt, driftorganisation
+  Beskrivning av innehåll:	Infrastrukturanvändningsperspektivet beskriver hur applikationerna stöds av/använder infrastrukturen (mjukvara och hårdvara). Detta perspektiv används även för att beskriva hur en applikations artefakter (datafiler, programfiler, etc.) är spridda/installerade på servrar, klientdatorer och utrustning.
+
+- Infrastruktur- och nätperspektiv:
+  Namn:	Infrastruktur- och nätperspektiv
+  Intressenter:	Lösningsarkitekt, infrastrukturarkitekt, driftorganisation
+  Beskrivning av innehåll:	Infrastruktur- och nätperspektiv används för att beskriva infrastruktur som är särskilt avsedd för lösningen som beskrivs i detta dokument. Dessutom används detta perspektiv för att beskriva förändringar i den gemensamma infrastrukturen som krävs för denna lösning.
+
+- Identitets- och behörighetshanteringsperspektiv:
+  Namn:	Identitets- och behörighetshanteringsperspektiv
+  Intressenter:	Lösningsarkitekt, infrastrukturarkitekt, driftorganisation
+  Beskrivning av innehåll:	Identitets- och behörighetshanteringsperspektivet beskriver hur identiteter säkerställs och hanteras samt behörigheter hanteras i lösningen.
+
+- Utvecklings- och testperspektiv:
+  Namn:	Utvecklings- och testperspektiv
+  Intressenter:	Lösningsarkitekt, mjukvaruarkitekt, mjukvaruutvecklare, leverantör
+  Beskrivning av innehåll:	Utvecklings- och testperspektivet beskriver utvecklings- och testmiljöer för att utveckla och testa lösningen samt hur källkod, konfiguration och testdata hanteras.
+
+- Informationssäkerhetsperspektiv:
+  Namn:	Informationssäkerhetsperspektiv
+  Intressenter:	Lösningsarkitekt, infrastrukturarkitekt, driftorganisation
+  Beskrivning av innehåll:	Informationssäkerhetsperspektivet beskriver hur lösningen uppfyller krav på informationssäkerhet framtagna i del B genom informationsklassning och riskanalys.
+  Uppfyllnad av detaljerade krav dokumenteras i bilaga.
+
+- Implementering- och förflyttningsperspektiv:
+  Namn:	Implementering- och förflyttningsperspektiv
+  Intressenter:	Lösningsarkitekter, driftorganisation, projektledare
+  Beskrivning av innehåll:	Perspektivet beskriver övergången från den nuvarande till den önskade arkitekturen genom stegvisa anvisningar med tidslinjer för att säkerställa en effektiv och implementering.

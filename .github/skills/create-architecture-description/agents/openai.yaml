@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Architecture Description"
+  short_description: "Draft stakeholder-focused architecture descriptions"
+  default_prompt: "Use $create-architecture-description to analyze a codebase and draft a Swedish architecture description from the provided template or structure."
