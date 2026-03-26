@@ -1,0 +1,4 @@
+interface:
+  display_name: "Report Dead Code"
+  short_description: "Find dead code and write removal reports"
+  default_prompt: "Use $report-dead-code to scan this codebase for dead code and produce a removal report with evidence, line savings, and keep-vs-remove guidance."
