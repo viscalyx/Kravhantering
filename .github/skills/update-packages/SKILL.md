@@ -1,4 +1,5 @@
 ---
+applyTo: 'package.json'
 name: update-packages
 description: Audit npm dependencies in package.json, recommend safe updates for this repo, review overrides and vulnerabilities, apply the project's LTS policy, and generate npm update commands. Use when Codex needs to analyze dependency freshness, compare declared versions to installed versions, decide whether overrides should stay, or plan package maintenance work for this project.
 ---
@@ -14,22 +15,23 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
 1. Read `package.json`.
 2. Read `.github/instructions/package-updates.instructions.md`.
 3. Record `dependencies`, `devDependencies`, `overrides`, and `//overrides`.
-4. Run `npm outdated --json` to collect wanted/latest data.
+4. Run `npm run purge:install` to hydrate `node_modules` using this repo's full install flow. Verify it succeeds before continuing.
+5. Run `npm outdated --json` to collect wanted/latest data.
    - If `npm outdated` exits non-zero but returns JSON, treat the JSON as usable output.
-5. Run `npm ls --json --depth=0` to capture actual installed versions.
-6. For packages that need registry confirmation, run `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
-7. Run `npm audit --json`.
+6. Run `npm ls --json --depth=0` to capture actual installed versions.
+7. For packages that need registry confirmation, run `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
+8. Run `npm audit --json`.
    - If `npm audit` exits non-zero because vulnerabilities exist, treat the JSON as usable output.
-8. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings.
-9. For each transitive vulnerability reported by `npm audit`:
+9. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings.
+10. For each transitive vulnerability reported by `npm audit`:
    a. Run `npm ls <vulnerable-package> --json` to identify the dependency path(s).
    b. Check if any parent dependency in the path has a patch/minor update that would pull in the fixed version — cross-reference with the main update tables. If yes, skip the override.
    c. If no parent update resolves it, determine the minimum patched version from the advisory data.
    d. Run `npm install --dry-run` with the override applied to confirm compatibility.
    e. Group multiple advisories for the same package into one override recommendation.
    f. Skip vulnerabilities that are disputed, withdrawn, or have no fix version available.
-10. Evaluate each direct dependency, dev dependency, and override.
-11. Render the report in the required format.
+11. Evaluate each direct dependency, dev dependency, and override.
+12. Render the report in the required format.
 
 ## Apply Repo Rules
 
@@ -71,7 +73,7 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
 ### Propose New Overrides for Transitive Vulnerabilities
 
 - From the `npm audit --json` output, filter for vulnerabilities where the vulnerable package is **not** a direct dependency (it is transitive).
-- For each transitive vulnerability, use the dependency path from workflow step 9 to determine whether it can be resolved:
+- For each transitive vulnerability, use the dependency path from workflow step 10 to determine whether it can be resolved:
   - If a parent dependency patch/minor update resolves it, do not propose an override — the main update tables already cover it.
   - If no parent update resolves it and a fixed version exists, propose an `Add override` with the exact patched version.
   - If no fixed version exists, flag it under `Vulnerable` in the main tables for manual review — do not propose an override.
