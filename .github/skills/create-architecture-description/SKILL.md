@@ -52,6 +52,8 @@ in specific components and evidence from the repository.
 - Write the final document in Swedish.
 - Preserve the provided template's headings, ordering, and terminology when a
   template is supplied.
+- Keep headings unique across the full document. If the same concept recurs,
+  contextualize the heading with the perspective or scope.
 - Keep the text concise and architectural. Explain relationships and intent
   before implementation detail.
 - Reference concrete repository evidence such as packages, routes, jobs, data
@@ -72,14 +74,17 @@ in specific components and evidence from the repository.
 When the user does not provide a template, use
 `references/perspectives.md` as the default template.
 
-- Use the `Output labels` block in `references/perspectives.md` for canonical
-  Swedish subsection names.
+- Use the `Output labels` block in `references/perspectives.md` as the base
+  Swedish terms for subsection names.
 - Keep the selected perspectives in the same general order as the reference
   file unless a different order is clearer.
 - Use each perspective's `Swedish heading` value as the section heading in the
   generated document.
 - Use each perspective's `Stakeholders`, `Use when`, and `Cover` lines to shape
   the section content, not as literal output labels.
+- Render repeated subsection concepts as unique headings by combining the base
+  term with the perspective or scope, for example `Övergripande nuläge`,
+  `Målläge för informationssäkerhet`, or `Framåtblick för applikationsstruktur`.
 - Within each selected perspective, cover `Current state` and `Target state`
   when they help the reader understand the architecture.
 - Add `Forward look` when it helps the reader understand strategic direction,

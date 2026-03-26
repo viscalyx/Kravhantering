@@ -8,6 +8,11 @@ solution.
 
 ## Output Labels
 
+- Use these as base Swedish terms, not as repeated literal headings.
+- Make repeated subsection headings unique by combining the term with the
+  perspective or scope.
+- Example forms: `Övergripande nuläge`, `Nuläge för informationssäkerhet`,
+  `Målläge för verksamhetsprocesser`, `Framåtblick för applikationsstruktur`
 - Current state: `Nuläge`
 - Target state: `Målläge`
 - Transition: `Förflyttning` - use only in `Implementation and Transition Perspective`
