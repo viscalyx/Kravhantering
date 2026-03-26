@@ -43,7 +43,6 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 - Keep `@biomejs/biome` aligned with the `biome.json` `$schema` version when recommending a Biome update.
 - Keep `@types/react` and `@types/react-dom` aligned with the installed React major.
 - Never recommend a downgrade, even if a downgrade would avoid a vulnerability. Flag it for manual review instead.
-- End every actionable report with `npm run purge:install`, `npm run check`, and `npm audit`.
 
 ## Apply LTS Policy
 
