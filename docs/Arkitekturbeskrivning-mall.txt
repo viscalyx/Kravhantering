@@ -1,5 +1,5 @@
 Prompt (plan mode):
-Based on the processed and functionality in the project and codebase and using docs/Arkitekturbeskrivning-mall.txt as instructions, I want you to create a markdown file docs/arkitekturebeskrivning-kravhantering.md when you have analyzed the codebase, processes the application uses, the functionality that it contain and create the relevant perspectives. The text must be in swedish and should the tone should focus towards the Intressenter (stakeholders) for each perspective.
+Based on the processes and functionality in the project and codebase and using docs/Arkitekturbeskrivning-mall.txt as instructions, I want you to create a markdown file docs/arkitekturbeskrivning-kravhantering.md when you have analyzed the codebase, processes the application uses, the functionality that it contain and create the relevant perspectives. The text must be in swedish and should be in tone that focus towards the Intressenter (stakeholders) for each perspective.
 It is my expectation to keep descriptions at overview level while referencing specific components.
 Include mermaid diagrams where they add clarity, also add a ArchiMate modell per each perspective (either in a language similar to mermaid or just in ASCII so I can replace them later).
 
@@ -17,12 +17,12 @@ Arkitekturbeskrivning:
 Perspektiv:
 - Översikt:
   Namn:	Översiktsperspektiv
-  Intressenter:	Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, förvaltningsledare/förvaltingsledare IT, projektledare
+  Intressenter:	Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, förvaltningsledare/förvaltningsledare IT, projektledare
   Beskrivning av innehåll: Översiktsperspektivet ska ge en översiktlig bild av lösningen. Det ska beskriva hur olika delar av lösningen relaterar till varandra. Denna beskrivning är avsedd att vara fylligare än den konceptuella lösningsansatsen i del A men ändå översiktlig. För att ytterligare förklara olika aspekter på lösningen används vid behov övriga arkitekturperspektiv.
 
 - Verksamhetsprocessperspektiv:
   Namn: Verksamhetsprocessperspektiv
-  Intressenter: Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, förvaltningsledare/förvaltingsledare IT
+  Intressenter: Arkitekturledningen, verksamhetsarkitekt, huvudarkitekt, förvaltningsledare/förvaltningsledare IT
   Beskrivning av innehåll: Verksamhetsprocessperspektivet används för att beskriva den övergripande strukturen och uppbyggnaden av en eller flera verksamhetsprocesser. Beskrivningen kan innehålla:
   - Verksamhetstjänster som erbjuds till omgivningen och processerna som realiserar tjänsterna.
   - Vilka aktörer och roller som använder eller arbetar i en process

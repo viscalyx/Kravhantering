@@ -15,8 +15,9 @@ description: >-
 Draft a Swedish architecture description from code, docs, and a supplied
 template or prompt.
 
-Keep the narrative useful for stakeholders, high-level in detail, and anchored
-in specific components and evidence from the repository.
+Keep the narrative concise, high-level, and tied to specific components and
+repository evidence. Make it useful for stakeholders across technical and
+non-technical roles.
 
 ## Workflow
 
@@ -33,7 +34,7 @@ in specific components and evidence from the repository.
 5. If `references/perspectives.md` is used, treat each `Swedish heading` value
    as the canonical output heading and follow the file's order unless a
    different order improves clarity.
-6. Create the requested markdown file after the analysis is complete. If no
+6. Create the requested markdown file after analysis. If no
    output path is given, suggest a `docs/arkitekturbeskrivning-<subject>.md`
    filename and continue if the intent is otherwise clear.
 7. For each selected perspective, write in Swedish.
