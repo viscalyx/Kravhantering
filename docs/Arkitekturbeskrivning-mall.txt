@@ -1,7 +1,7 @@
 Prompt (plan mode):
-Based on the processes and functionality in the project and codebase and using docs/Arkitekturbeskrivning-mall.txt as instructions, I want you to create a markdown file docs/arkitekturbeskrivning-kravhantering.md when you have analyzed the codebase, processes the application uses, the functionality that it contain and create the relevant perspectives. The text must be in swedish and should be in tone that focus towards the Intressenter (stakeholders) for each perspective.
-It is my expectation to keep descriptions at overview level while referencing specific components.
-Include mermaid diagrams where they add clarity, also add a ArchiMate modell per each perspective (either in a language similar to mermaid or just in ASCII so I can replace them later).
+Based on the processes and functionality in the project and codebase and using docs/Arkitekturbeskrivning-mall.txt as instructions, I want you to create a markdown file docs/arkitekturbeskrivning-kravhantering.md when you have analyzed the codebase, processes the application uses, the functionality that it contain and create the relevant perspectives. The text must be in Swedish and should be in a tone that focuses on the Intressenter (stakeholders) for each perspective.
+Keep descriptions at an overview level while referencing specific components.
+Include mermaid diagrams where they add clarity, and add an ArchiMate model for each perspective (either in a language similar to mermaid or just in ASCII so I can replace them later).
 
 
 Arkitekturbeskrivning:
