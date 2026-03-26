@@ -20,8 +20,9 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
 6. For packages that need registry confirmation, run `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
 7. Run `npm audit --json`.
    - If `npm audit` exits non-zero because vulnerabilities exist, treat the JSON as usable output.
-8. Evaluate each direct dependency, dev dependency, and override.
-9. Render the report in the required format.
+8. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings.
+9. Evaluate each direct dependency, dev dependency, and override.
+10. Render the report in the required format.
 
 ## Apply Repo Rules
 
@@ -78,16 +79,25 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
   - `Pinned`
   - `Flagged`
   - `Vulnerable`
-- Add concise explanations inline in the Recommendation cell when the label alone is insufficient, especially for overrides, pinned versions, deprecations, vulnerabilities, and manual-review cases.
+  - `Peer conflict`
+- Add concise explanations inline in the Recommendation cell when the label alone is insufficient, especially for overrides, pinned versions, deprecations, vulnerabilities, peer conflicts, and manual-review cases.
 - Flag deprecated packages and known vulnerabilities explicitly.
 - Use `Patch/Minor, Vulnerable` only when a non-breaking fix exists.
 - Use `Vulnerable` when no newer fixed version is available.
 - Never omit a direct dependency or dev dependency from the tables, even if `npm outdated` does not list it.
 
+## Check Peer Dependency Conflicts
+
+- For every package where a major update is available, run `npm install <package>@<target-version> --dry-run` and inspect stderr for `ERESOLVE` or `Could not resolve dependency` warnings.
+- If a conflict is found, use the `Peer conflict` label (or append `, Peer conflict` to an existing label such as `Pinned, Peer conflict`) and name the blocking package and its peer requirement in the Recommendation cell.
+- Include a **Peer dependency conflicts** section after Overrides in the report listing each conflict: the package being updated, the blocker package, its peer requirement, and whether the blocker has a newer version that widens the peer range.
+- If no peer conflicts exist, still include the section and state that no conflicts were found.
+- Do not include a major update in the commands section if it has an unresolved peer conflict. Instead list it under **Blocked major updates** with the conflict details.
+
 ## Provide Commands And Order
 
 - Provide one `npm install` command that batches all safe patch/minor updates.
-- Provide one separate `npm install` command per major update.
+- Provide one separate `npm install` command per major update that has no unresolved peer conflict.
 - For each major update, summarize the breaking-change risk and any stack compatibility concern.
 - Provide an `Excluded` list for non-LTS skips.
 - Recommend this order:
