@@ -107,7 +107,7 @@ export default function DeveloperModeProvider({
       scanFrameRef.current = null
       const el = lastElementRef.current
 
-      if (!el || !el.isConnected) {
+      if (!el?.isConnected) {
         startTransition(() => setHoveredTarget(null))
         return
       }

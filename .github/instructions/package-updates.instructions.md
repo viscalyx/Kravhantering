@@ -18,4 +18,5 @@ applyTo: 'package.json'
 
 ## After Any Dependency Change
 
-Run `npm run check` to verify type-checking, formatting, linting, tests, and security audit all pass.
+- Run `npm run check` to verify type-checking, formatting, linting, tests, and markdown checks pass.
+- Run `npm audit` to verify vulnerability checks pass after each dependency change.

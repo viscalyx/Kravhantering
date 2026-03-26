@@ -1,73 +1,97 @@
 ---
+applyTo: 'package.json'
 agent: agent
 description: 'Analyze package.json, recommend safe updates following the project LTS policy, and provide update commands'
 ---
 
 # Update Packages
 
-Check all dependencies and devDependencies in `package.json` for available updates.
+- Audit `dependencies`, `devDependencies`, `overrides`, and `//overrides` in `package.json`.
 
 ## LTS Policy
 
-Only recommend **LTS (Long-Term Support)** versions for packages that follow an LTS release cycle. Do **not** recommend upgrading to non-LTS releases.
+- Recommend only LTS versions for packages with LTS release cycles.
+- Show the registry latest even when it is non-LTS.
+- If latest is non-LTS: Recommendation = `Skip (non-LTS)`; exclude it from safe and major update commands.
+- Apply the same rule to any additional package discovered to follow an LTS release cycle.
 
 ### Packages with LTS release cycles in this project
 
-| Package | LTS Rule | How to identify LTS |
+| Package | LTS rule | How to identify LTS |
 | --- | --- | --- |
-| **Node.js** / `@types/node` | Even-numbered majors only (20, 22, 24, 26…) | Odd-numbered majors (21, 23, 25…) are short-lived "Current" releases — skip them |
-
-When a non-LTS version is the latest available, the table should show it but the **Recommendation** column must say **Skip (non-LTS)** and the safe/major update commands must exclude it.
-
-If you discover additional packages with LTS release cycles during analysis, apply the same policy and note them.
+| `Node.js` / `@types/node` | Even-numbered majors only | Skip odd-numbered majors |
 
 ## Steps
 
-1. Run `npm outdated --json` to gather version data. For packages needing more detail, use `npm view <package> versions --json`.
+1. Run `npm run purge:install`. Continue only after it succeeds.
+2. Run `npm outdated --json`.
+   - Run `npm ls --json --depth=0` after `npm outdated`.
+   - Treat a newer installed version within the declared range as a declaration gap.
+   - Set `Current` to the declared minimum in `package.json`.
+   - Set `Latest (Same Major)` and `Latest` to the highest available versions.
+   - Confirm registry data with `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
+3. Review `overrides`.
+   - Remove overrides made unnecessary by upstream updates.
+   - Keep required overrides and update them when a newer fixed version exists.
+4. Run `npm audit --json`.
+5. For each transitive vulnerability:
+   - Run `npm ls <vulnerable-package> --json`.
+   - Skip override proposals when a parent dependency patch/minor update resolves the issue.
+   - Otherwise determine the minimum patched version.
+   - Run `npm install --dry-run` with the override applied.
+   - Group multiple advisories for the same package into one recommendation.
+   - Skip disputed, withdrawn, and no-fix advisories.
+   - Use `Add override` for viable fixes.
+6. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture `ERESOLVE` or peer-dependency warnings.
 
-`npm outdated` only reports packages where the installed version differs from the wanted/latest version. It will **not** list a package when the installed version already satisfies `wanted` — even if `package.json` declares an older range. To catch these gaps:
-- After collecting `npm outdated` results, run `npm ls --json --depth=0` (or `npm ls <package> --json` selectively) to obtain the **actual installed version** of every dependency.
-   - Compare each installed version against the version range in `package.json`. If the installed version exceeds the declared range minimum (e.g., `4.8.3` installed but `package.json` says `^4.8.2`), treat this as a declaration gap and recommend bumping the declared minimum in `package.json` (not as a faulty install).
-   - The **Current** column must always reflect the version declared in `package.json` (the range minimum, e.g., `4.8.2` from `^4.8.2`).
-   - The **Latest (Same Major)** and **Latest** columns must show the highest available version — which may be the **installed** version if it is newer than what `package.json` declares, or a yet-newer registry version. Always verify against the registry with `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
+## Output
 
-2. Evaluate whether each `overrides` entry is still needed:
-   - Check if upstream packages now include the required fixes/versions.
-   - Recommend removing overrides that are no longer necessary.
-   - Clearly list which overrides should be kept and why.
-   - For overrides that should be kept, check if they can be updated to newer versions.
+- Render `Dependencies`, `Dev Dependencies`, and `Overrides` tables sorted alphabetically.
+- Use columns `| Id | Package | Current | Latest (Same Major) | Latest | Recommendation |`.
+- Use these recommendation labels only:
+  - `Patch/Minor`: safe update, no breaking changes
+  - `Patch/Minor, Vulnerable`: non-breaking fix available for a vulnerable current version
+  - `Major available`: new major version available
+  - `Skip (non-LTS)`: latest major is non-LTS
+  - `Up to date`: latest and no known vulnerabilities
+  - `Keep override`: keep the current override
+  - `Remove override`: remove the current override
+  - `Update override`: update the current override
+  - `Pinned`: direct dependency is intentionally pinned
+  - `Flagged`: deprecated or otherwise needs manual review
+  - `Vulnerable`: vulnerable and no newer fixed version is available
+  - `Peer conflict`: major update blocked by a peer requirement
+  - `Add override`: add a new override for a transitive vulnerability
+- Bold the `Latest` cell when a major bump is available.
+- Keep `Id` unique and sequential.
+- Never recommend downgrades. Flag them for manual review.
+- Add a `Proposed overrides` section after the Overrides table.
+  - Include package name, pinned version, advisory reference, parent dependency path, and `--dry-run` compatibility result.
+  - If no new overrides are needed, state that none are required.
+- Add a `Peer dependency conflicts` section after `Proposed overrides`.
+  - Include the package being updated, blocker package, peer requirement, and whether a newer blocker version widens the range.
+  - If no conflicts exist, state that none were found.
 
-3. Audit all packages for known vulnerabilities using `npm audit --json`
+## Commands
 
-4. Present a markdown table for all **Dependencies**, **Dev Dependencies** and **Overrides** (sorted alphabetically):
+- Provide one `npm install` command for safe patch/minor updates.
+- Provide one separate `npm install` command per major update with no unresolved peer conflict.
+- Summarize breaking-change risk and stack-compatibility risk for each major update.
+- Add a `New override commands` section when new overrides are recommended.
+- Add an `Excluded` list for non-LTS skips.
+- List unresolved peer conflicts under `Blocked major updates`.
 
-| Id | Package | Current | Latest (Same Major) | Latest | Recommendation |
-| --- | --- | --- | --- | --- | --- |
+## Update Order
 
-Where **Recommendation** is one of:
-- **Patch/Minor** — safe update, no breaking changes
-- **Patch/Minor, Vulnerable** — Current version is vulnerable; a non-breaking patch/minor update is available, so update promptly to remediate
-- **Major available** — new major version, review changelog
-- **Skip (non-LTS)** — latest major is a non-LTS release, do not update
-- **Up to date** — already latest and have no known vulnerabilities
-- **Keep override** — for entries in `overrides` that should be retained (with explanation)
-- **Remove override** — for entries in `overrides` that can be removed (with explanation)
-- **Update override** — for entries in `overrides` that should be updated to a newer version (with explanation)
-- **Pinned** — for packages with pinned versions (no `^`/`~`) that should be reviewed for updates (with explanation)
-- **Flagged** — for packages that are deprecated or have known vulnerabilities (with explanation)
-- **Vulnerable** - packages that have known vulnerabilities without newer versions available (with explanation of the vulnerabilities and recommended actions). Unlike **Patch/Minor, Vulnerable**, this means no fix version is currently available.
-
-Bold the **Latest** column when a major bump is available. Flag deprecated or vulnerable packages.
-Id is a unique identifier for each package (e.g. `1`, `2`, `3`…), to allow simple reference in further prompts.
-Never recommend updating to a lower version even if it would resolve vulnerabilities, as that can cause other issues. Instead, flag it and recommend manual review.
-
-5. Provide update commands:
-   - **Safe updates** — single `npm install` for all patch/minor updates
-   - **Major updates** — separate `npm install` per package with breaking change summary and compatibility notes for the stack (Next.js, React, TypeScript, Tailwind, etc.)
-   - **Excluded** — list any packages skipped due to non-LTS policy with a brief explanation
-
-6. Suggest update order: patch/minor first (batch), then major one at a time.
-
-7. After applying updates, run `npm run purge:install` to clean `node_modules`, `package-lock.json` and do a fresh install.
-
-8. Run `npm run check` to verify nothing is broken.
+1. Apply patch/minor updates in one batch.
+2. Run `npm run purge:install`.
+3. Run `npm run check`.
+4. Run `npm audit`.
+5. Apply recommended new overrides with `add-override`.
+6. Run `npm run purge:install`.
+7. Run `npm run check`.
+8. Run `npm audit`.
+9. Review and apply major updates one at a time.
+10. Run `npm run purge:install`.
+11. Run `npm run check`.
+12. Run `npm audit`.
