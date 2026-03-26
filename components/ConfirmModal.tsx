@@ -59,7 +59,7 @@ function computePosition(
   modalWidth: number,
   modalHeight: number,
 ) {
-  if (!anchorEl || !anchorEl.isConnected) {
+  if (!anchorEl?.isConnected) {
     return {
       top: Math.max(MARGIN, (window.innerHeight - modalHeight) / 2),
       left: Math.max(MARGIN, (window.innerWidth - modalWidth) / 2),
