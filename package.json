@@ -107,17 +107,13 @@
   ],
   "overrides": {
     "fast-xml-parser": "5.5.9",
-    "flatted": "3.4.2",
-    "smol-toml": "1.6.1",
-    "yaml": "2.8.3"
+    "smol-toml": "1.6.1"
   },
   "//overrides": [
-    "Overrides pin transitive dependencies to patched versions.",
+    "Overrides pin transitive dependencies that still resolve to vulnerable versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
     "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict.",
-    "fast-xml-parser: @opennextjs/cloudflare > @opennextjs/aws > @aws-sdk/xml-builder pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.9 resolves both.",
-    "flatted: @vitest/ui@4.1.1 pins flatted@3.4.0, which is vulnerable to prototype pollution GHSA-rf6f-7fwh-wjgh. Override to 3.4.2 resolves it.",
-    "smol-toml: markdownlint-cli2@0.22.0 and cspell > cspell-config-lib resolve smol-toml@1.6.0, which is vulnerable to DoS GHSA-v3rj-xjv7-4jmq. Override to 1.6.1 resolves it.",
-    "yaml: @opennextjs/cloudflare, cspell, and vitest > vite resolve yaml@2.8.2, which is vulnerable to stack overflow GHSA-48c2-rrv3-qjmp. Override to 2.8.3 resolves it."
+    "fast-xml-parser: @aws-sdk/xml-builder@3.972.11 (via @opennextjs/cloudflare > @opennextjs/aws) pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.9 resolves both.",
+    "smol-toml: markdownlint-cli2@0.22.0 pins 1.6.0, and cspell-config-lib@9.7.0 still ranges ^1.6.0; 1.6.0 is vulnerable to DoS GHSA-v3rj-xjv7-4jmq. Override to 1.6.1 resolves it."
   ]
 }
