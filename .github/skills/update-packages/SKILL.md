@@ -41,7 +41,7 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
 - Keep `@biomejs/biome` aligned with the `biome.json` `$schema` version when recommending a Biome update.
 - Keep `@types/react` and `@types/react-dom` aligned with the installed React major.
 - Never recommend a downgrade, even if a downgrade would avoid a vulnerability. Flag it for manual review instead.
-- End every actionable report with `npm run purge:install` and `npm run check`.
+- End every actionable report with `npm run purge:install`, `npm run check`, and `npm audit`.
 
 ## Apply LTS Policy
 
@@ -72,13 +72,13 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
 
 ### Propose New Overrides for Transitive Vulnerabilities
 
-- From the `npm audit --json` output, filter for vulnerabilities where the vulnerable package is **not** a direct dependency (it is transitive).
+- From the `npm audit --json` output, filter for vulnerabilities where the vulnerable package is not a direct dependency (it is transitive).
 - For each transitive vulnerability, use the dependency path from workflow step 10 to determine whether it can be resolved:
   - If a parent dependency patch/minor update resolves it, do not propose an override — the main update tables already cover it.
   - If no parent update resolves it and a fixed version exists, propose an `Add override` with the exact patched version.
   - If no fixed version exists, flag it under `Vulnerable` in the main tables for manual review — do not propose an override.
 - Add rows to the Overrides table with the `Add override` label. Include in the Recommendation cell: the vulnerable package, the recommended pinned version, the advisory reference (GHSA or CVE), and the parent dependency that pulls it in.
-- After the Overrides table, include a **Proposed overrides** section listing each recommendation with:
+- After the Overrides table, include a Proposed overrides section listing each recommendation with:
   - Package name and recommended pinned version.
   - Advisory reference.
   - Parent dependency path.
@@ -115,25 +115,30 @@ Use `.github/instructions/package-updates.instructions.md` as a required compani
 
 - For every package where a major update is available, run `npm install <package>@<target-version> --dry-run` and inspect stderr for `ERESOLVE` or `Could not resolve dependency` warnings.
 - If a conflict is found, use the `Peer conflict` label (or append `, Peer conflict` to an existing label such as `Pinned, Peer conflict`) and name the blocking package and its peer requirement in the Recommendation cell.
-- Include a **Peer dependency conflicts** section after Overrides in the report listing each conflict: the package being updated, the blocker package, its peer requirement, and whether the blocker has a newer version that widens the peer range.
+- Include a Peer dependency conflicts section after Overrides in the report listing each conflict: the package being updated, the blocker package, its peer requirement, and whether the blocker has a newer version that widens the peer range.
 - If no peer conflicts exist, still include the section and state that no conflicts were found.
-- Do not include a major update in the commands section if it has an unresolved peer conflict. Instead list it under **Blocked major updates** with the conflict details.
+- Do not include a major update in the commands section if it has an unresolved peer conflict. Instead list it under Blocked major updates with the conflict details.
 
 ## Provide Commands And Order
 
 - Provide one `npm install` command that batches all safe patch/minor updates.
 - Provide one separate `npm install` command per major update that has no unresolved peer conflict.
 - For each major update, summarize the breaking-change risk and any stack compatibility concern.
-- If new overrides were proposed, provide a **New override commands** subsection listing each override to apply via the `add-override` skill (package name, pinned version, and reason).
+- If new overrides were proposed, provide a New override commands subsection listing each override to apply via the `add-override` skill (package name, pinned version, and reason).
 - Provide an `Excluded` list for non-LTS skips.
 - Recommend this order:
   1. Apply patch/minor updates in one batch.
   2. Run `npm run purge:install`.
   3. Run `npm run check`.
-  4. Apply recommended new overrides (using `add-override` for each).
-  5. Run `npm run purge:install` and `npm run check`.
-  6. Review and apply major updates one at a time.
-  7. Run `npm run purge:install` and `npm run check` again after major changes.
+  4. Run `npm audit`.
+  5. Apply recommended new overrides (using `add-override` for each).
+  6. Run `npm run purge:install`.
+  7. Run `npm run check`.
+  8. Run `npm audit`.
+  9. Review and apply major updates one at a time.
+  10. Run `npm run purge:install`.
+  11. Run `npm run check`.
+  12. Run `npm audit`.
 
 ## Handle Missing Data
 
