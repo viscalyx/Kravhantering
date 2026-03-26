@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Packages"
+  short_description: "Audit npm updates and propose safe commands"
+  default_prompt: "Use $update-packages to audit package.json, recommend LTS-safe updates, review overrides, and provide npm update commands."
