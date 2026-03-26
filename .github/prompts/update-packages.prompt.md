@@ -23,7 +23,9 @@ If you discover additional packages with LTS release cycles during analysis, app
 
 ## Steps
 
-1. Run `npm outdated --json` to gather version data. For packages needing more detail, use `npm view <package> versions --json`.
+1. Run `npm run purge:install` to hydrate `node_modules` using this repo's full install flow. Verify the install succeeds before continuing to `npm audit --json`, `npm ls <vulnerable-package> --json`, or any `npm install --dry-run` checks.
+
+2. Run `npm outdated --json` to gather version data. For packages needing more detail, use `npm view <package> versions --json`.
 
 `npm outdated` only reports packages where the installed version differs from the wanted/latest version. It will **not** list a package when the installed version already satisfies `wanted` — even if `package.json` declares an older range. To catch these gaps:
 - After collecting `npm outdated` results, run `npm ls --json --depth=0` (or `npm ls <package> --json` selectively) to obtain the **actual installed version** of every dependency.
@@ -31,16 +33,16 @@ If you discover additional packages with LTS release cycles during analysis, app
    - The **Current** column must always reflect the version declared in `package.json` (the range minimum, e.g., `4.8.2` from `^4.8.2`).
    - The **Latest (Same Major)** and **Latest** columns must show the highest available version — which may be the **installed** version if it is newer than what `package.json` declares, or a yet-newer registry version. Always verify against the registry with `npm view <package> dist-tags --json` or `npm view <package> versions --json`.
 
-2. Evaluate whether each `overrides` entry is still needed:
+3. Evaluate whether each `overrides` entry is still needed:
    - Check if upstream packages now include the required fixes/versions.
    - Recommend removing overrides that are no longer necessary.
    - Clearly list which overrides should be kept and why.
    - For overrides that should be kept, check if they can be updated to newer versions.
 
-3. Audit all packages for known vulnerabilities using `npm audit --json`.
+4. Audit all packages for known vulnerabilities using `npm audit --json` against the successfully hydrated install from step 1.
 
-4. For each transitive vulnerability reported by `npm audit`:
-   - Run `npm ls <vulnerable-package> --json` to identify the dependency path(s).
+5. For each transitive vulnerability reported by `npm audit`:
+   - Run `npm ls <vulnerable-package> --json` against the hydrated install to identify the dependency path(s).
    - Check if any parent dependency in the path has a patch/minor update that would pull in the fixed version — cross-reference with the main update tables. If yes, skip the override.
    - If no parent update resolves it, determine the minimum patched version from the advisory data.
    - Run `npm install --dry-run` with the override applied to confirm compatibility.
@@ -48,9 +50,9 @@ If you discover additional packages with LTS release cycles during analysis, app
    - Skip vulnerabilities that are disputed, withdrawn, or have no fix version available.
    - Propose an `Add override` for each viable fix. If no new overrides are proposed, state that no transitive vulnerabilities require overrides.
 
-5. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` and capture any `ERESOLVE` or peer-dependency conflict warnings. If a conflict is found, use the `Peer conflict` label and name the blocking package and its peer requirement.
+6. For each major update candidate, run `npm install <package>@<latest> --dry-run 2>&1` after the successful `npm run purge:install` hydration and capture any `ERESOLVE` or peer-dependency conflict warnings. If a conflict is found, use the `Peer conflict` label and name the blocking package and its peer requirement.
 
-6. Present a markdown table for all **Dependencies**, **Dev Dependencies** and **Overrides** (sorted alphabetically):
+7. Present a markdown table for all **Dependencies**, **Dev Dependencies** and **Overrides** (sorted alphabetically):
 
 | Id | Package | Current | Latest (Same Major) | Latest | Recommendation |
 | --- | --- | --- | --- | --- | --- |
@@ -78,16 +80,22 @@ Include a **Proposed overrides** section after the Overrides table listing each 
 
 Include a **Peer dependency conflicts** section listing each conflict: the package being updated, the blocker package, its peer requirement, and whether the blocker has a newer version that widens the peer range. If no peer conflicts exist, state that none were found.
 
-7. Provide update commands:
+8. Provide update commands:
    - **Safe updates** — single `npm install` for all patch/minor updates
    - **Major updates** — separate `npm install` per package with breaking change summary and compatibility notes for the stack (Next.js, React, TypeScript, Tailwind, etc.). Do not include major updates with unresolved peer conflicts — list those under **Blocked major updates** instead.
    - **New override commands** — if new overrides were proposed, list each override to apply via the `add-override` skill (package name, pinned version, and reason)
    - **Excluded** — list any packages skipped due to non-LTS policy with a brief explanation
 
-8. Suggest update order:
+9. Suggest update order:
    1. Patch/minor updates (batch).
-   2. Run `npm run purge:install` and `npm run check`.
-   3. Apply recommended new overrides (using `add-override` for each).
-   4. Run `npm run purge:install` and `npm run check`.
-   5. Major updates one at a time.
-   6. Run `npm run purge:install` and `npm run check` again after major changes.
+   2. Run `npm run purge:install`.
+   3. Run `npm run check`.
+   4. Run `npm audit`.
+   5. Apply recommended new overrides (using `add-override` for each).
+   6. Run `npm run purge:install`.
+   7. Run `npm run check`.
+   8. Run `npm audit`.
+   9. Major updates one at a time.
+   10. Run `npm run purge:install`.
+   11. Run `npm run check`.
+   12. Run `npm audit`.
