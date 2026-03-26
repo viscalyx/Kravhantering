@@ -6,9 +6,11 @@ description: Audit npm dependencies in package.json, recommend safe updates for 
 
 # Update Packages
 
-Audit `package.json` and produce a repo-safe dependency update plan for this project.
-
-Use `.github/instructions/package-updates.instructions.md` as a required companion for version pinning and compatibility rules.
+- Audit `package.json` for outdated or installed-version mismatches and vulnerabilities.
+- Recommend repo-safe updates and npm update commands.
+- Review `overrides` and justify each keep, remove, or update decision.
+- Apply the project's LTS policy and compatibility rules from `.github/instructions/package-updates.instructions.md`.
+- Output a clear, minimal update plan.
 
 ## Workflow
 
