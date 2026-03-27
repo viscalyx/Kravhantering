@@ -119,7 +119,10 @@ def load_json(path: Path) -> JsonObject:
 
 
 def normalize(relative_path: Path) -> str:
-    return relative_path.as_posix().lstrip("./")
+    path = relative_path.as_posix()
+    if path.startswith("./"):
+        return path[2:]
+    return path
 
 
 def get_json_object(value: JsonValue | None) -> JsonObject:

@@ -36,6 +36,62 @@ afterEach(() => {
 })
 
 describe('find_dead_code_candidates.py', () => {
+  it('preserves external package script paths instead of treating repo files as entrypoints', () => {
+    const dir = makeTempDir()
+    const absoluteExternalName = `outside-${path.basename(dir)}.js`
+
+    writeFile(
+      path.join(dir, 'package.json'),
+      JSON.stringify(
+        {
+          scripts: {
+            'external:relative': 'node ../shared/external-entry.js',
+            'external:absolute': `node /tmp/${absoluteExternalName}`,
+          },
+        },
+        null,
+        2,
+      ),
+    )
+    writeFile(
+      path.join(dir, 'shared', 'external-entry.js'),
+      'module.exports = { relative: true }\n',
+    )
+    writeFile(
+      path.join(dir, 'tmp', absoluteExternalName),
+      'module.exports = { absolute: true }\n',
+    )
+
+    const result = spawnSync(
+      'python3',
+      [helperScript, '--root', dir, '--format', 'json'],
+      {
+        encoding: 'utf8',
+      },
+    )
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toBe('')
+    expect(JSON.parse(result.stdout)).toEqual([
+      {
+        inbound_references: 0,
+        lines: 1,
+        path: 'shared/external-entry.js',
+        referenced_by: [],
+        why_flagged:
+          'No static imports, re-exports, or package.json script entrypoints reference this file.',
+      },
+      {
+        inbound_references: 0,
+        lines: 1,
+        path: `tmp/${absoluteExternalName}`,
+        referenced_by: [],
+        why_flagged:
+          'No static imports, re-exports, or package.json script entrypoints reference this file.',
+      },
+    ])
+  })
+
   it('follows CommonJS requires that include the target file extension', () => {
     const dir = makeTempDir()
 
