@@ -175,7 +175,7 @@ def load_aliases(root: Path) -> list[tuple[str, str]]:
 def file_module_keys(relative_path: str) -> list[str]:
     path = Path(relative_path)
     base = normalize(path.with_suffix(""))
-    keys = [base]
+    keys = [relative_path, base]
     if path.stem == "index" and str(path.parent) != ".":
         keys.append(normalize(path.parent))
     return keys
