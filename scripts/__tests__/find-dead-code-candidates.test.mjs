@@ -26,6 +26,11 @@ const writeFile = (filePath, content) => {
   fs.writeFileSync(filePath, content)
 }
 
+const runHelperScript = dir =>
+  spawnSync('python3', [helperScript, '--root', dir, '--format', 'json'], {
+    encoding: 'utf8',
+  })
+
 afterEach(() => {
   createdTempDirs.forEach(dir => {
     if (fs.existsSync(dir)) {
@@ -62,13 +67,7 @@ describe('find_dead_code_candidates.py', () => {
       'module.exports = { absolute: true }\n',
     )
 
-    const result = spawnSync(
-      'python3',
-      [helperScript, '--root', dir, '--format', 'json'],
-      {
-        encoding: 'utf8',
-      },
-    )
+    const result = runHelperScript(dir)
 
     expect(result.status).toBe(0)
     expect(result.stderr).toBe('')
@@ -116,13 +115,7 @@ describe('find_dead_code_candidates.py', () => {
       'module.exports = { extractPids() { return [] } }\n',
     )
 
-    const result = spawnSync(
-      'python3',
-      [helperScript, '--root', dir, '--format', 'json'],
-      {
-        encoding: 'utf8',
-      },
-    )
+    const result = runHelperScript(dir)
 
     expect(result.status).toBe(0)
     expect(result.stderr).toBe('')
@@ -139,13 +132,7 @@ describe('find_dead_code_candidates.py', () => {
     writeFile(path.join(dir, 'middleware.ts'), "import './lib/live.ts'\n")
     writeFile(path.join(dir, 'lib', 'live.ts'), 'export const live = true\n')
 
-    const result = spawnSync(
-      'python3',
-      [helperScript, '--root', dir, '--format', 'json'],
-      {
-        encoding: 'utf8',
-      },
-    )
+    const result = runHelperScript(dir)
 
     expect(result.status).toBe(0)
     expect(result.stderr).toBe('')
