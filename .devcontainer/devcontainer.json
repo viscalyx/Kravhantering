@@ -49,7 +49,7 @@
         "ms-azuretools.vscode-docker",
 
         // Extensions from .vscode/extensions.json
-        // cSpell:ignore davidanson kohler errorlens bpruitt-goddard bierner
+        // cSpell:ignore davidanson kohler errorlens bpruitt-goddard bierner bradlc gruntfuggly qwtel usernamehw debugpy
         "biomejs.biome",
         "DavidAnson.vscode-markdownlint",
         "streetsidesoftware.code-spell-checker",
@@ -65,7 +65,10 @@
         "vitest.explorer",
         "bierner.markdown-mermaid",
         "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
-        "qwtel.sqlite-viewer"
+        "qwtel.sqlite-viewer",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy"
       ],
       "settings": {
         // Editor settings

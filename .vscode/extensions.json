@@ -3,6 +3,7 @@
     // Code formatting and linting
     "biomejs.biome",
     "DavidAnson.vscode-markdownlint",
+    "ms-python.vscode-pylance",
 
     // Spell checking
     "streetsidesoftware.code-spell-checker",
@@ -28,6 +29,8 @@
     "bierner.markdown-mermaid",
     "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
     "qwtel.sqlite-viewer",
+    "ms-python.python",
+    "ms-python.debugpy"
 
     // GitHub Copilot
     "GitHub.copilot-chat",
