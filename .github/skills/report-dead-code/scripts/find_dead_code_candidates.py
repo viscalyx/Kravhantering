@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 from dataclasses import asdict, dataclass
@@ -48,6 +49,7 @@ IMPORT_RE = re.compile(
     re.VERBOSE,
 )
 PACKAGE_ENTRY_RE = re.compile(r"(?:^|\s)(?:node|bash)\s+((?:[./]|[A-Za-z0-9_-]+/)[^\s|;&]+)")
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -135,6 +137,7 @@ def iter_source_files(root: Path, scan_roots: list[Path]) -> list[str]:
 
 def load_aliases(root: Path) -> list[tuple[str, str]]:
     tsconfig = root / "tsconfig.json"
+    # `extends` is not resolved here, so aliases from extended configs are ignored.
     config = load_json(tsconfig)
     paths = config.get("compilerOptions", {}).get("paths", {})
     aliases: list[tuple[str, str]] = []
@@ -243,7 +246,12 @@ def is_entry_file(relative_path: str, package_entries: set[str]) -> bool:
 
 
 def line_count(root: Path, relative_path: str) -> int:
-    return len((root / relative_path).read_text(encoding="utf-8").splitlines())
+    try:
+        text = (root / relative_path).read_text(encoding="utf-8")
+    except (UnicodeDecodeError, OSError) as exc:
+        logger.warning("Skipping line count for %s: %s", relative_path, exc)
+        return 0
+    return len(text.splitlines())
 
 
 def build_reference_graph(
@@ -254,7 +262,15 @@ def build_reference_graph(
 ) -> dict[str, set[str]]:
     inbound: dict[str, set[str]] = {relative_path: set() for relative_path in files}
     for relative_path in files:
-        text = (root / relative_path).read_text(encoding="utf-8")
+        try:
+            text = (root / relative_path).read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            logger.warning(
+                "Skipping %s while building the reference graph: %s",
+                relative_path,
+                exc,
+            )
+            continue
         for spec in extract_specs(text):
             for resolved in resolve_spec(
                 spec,

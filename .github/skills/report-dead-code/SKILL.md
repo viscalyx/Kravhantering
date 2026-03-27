@@ -43,7 +43,7 @@ What the script does:
 
 - Build a static import graph for `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`,
   and `.cjs` files.
-- Understand `@/`-style aliases from `tsconfig.json`.
+- Resolve path alias patterns from `tsconfig.json`.
 - Check `package.json` scripts for `node ./...` or `bash ./...`
   entrypoints.
 - Exclude common Next.js route files and test files that are live by
@@ -54,6 +54,8 @@ What the script does:
 What the script does not prove:
 
 - Runtime-only loading.
+- Path aliases defined only in `tsconfig.json` files reached via `extends`;
+  the helper reads the local config and does not merge inherited configs.
 - Reflective or string-based usage.
 - CMS-, config-, or plugin-driven entrypoints not visible in source.
 - Partial dead code inside otherwise-live files.
