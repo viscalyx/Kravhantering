@@ -17,7 +17,7 @@ kravmodell och kravprocess.*
 - **Hosting:** Cloudflare Workers
   (via [OpenNext](https://opennext.js.org/cloudflare))
 - **Testing:** Vitest (unit) · Playwright (integration)
-- **Linting:** Biome · markdownlint · cspell
+- **Linting:** Biome · Pyright · markdownlint · cspell
 
 ## Prerequisites
 

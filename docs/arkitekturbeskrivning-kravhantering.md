@@ -751,6 +751,7 @@ Alla kontroller samlas i ett enda kommando:
 ```text
 npm run check
   ├── type-check      Typkontroll (tsc --noEmit)
+  ├── lint:py         Python-typkontroll (Pyright strict)
   ├── format:check    Formateringskontroll (Biome)
   ├── spell:check     Stavningskontroll (cSpell)
   ├── lint            Linting (Biome strict)

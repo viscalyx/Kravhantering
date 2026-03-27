@@ -45,6 +45,9 @@ jobs:
       - name: Run type check
         run: npm run type-check
 
+      - name: Run Python type check
+        run: npm run lint:py
+
       - name: Run tests and coverage
         run: npm run test:coverage
 
@@ -83,7 +86,8 @@ jobs:
               { name: 'Spell Check', command: 'npm run spell:check' },
               { name: 'Lint', command: 'npm run lint' },
               { name: 'Markdown Lint', command: 'npm run lint:md' },
-              { name: 'Type Check', command: 'npm run type-check' }
+              { name: 'Type Check', command: 'npm run type-check' },
+              { name: 'Python Type Check', command: 'npm run lint:py' }
             ];
 
             let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';

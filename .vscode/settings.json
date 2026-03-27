@@ -100,5 +100,6 @@
   "explorer.confirmDragAndDrop": false,
 
   "markdown-mermaid.darkModeTheme": "default",
-  "markdown-mermaid.lightModeTheme": "default"
+  "markdown-mermaid.lightModeTheme": "default",
+  "python.analysis.typeCheckingMode": "strict"
 }

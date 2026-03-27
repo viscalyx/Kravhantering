@@ -224,6 +224,10 @@ Thumbs.db
 *.swo
 \#*\#
 
+# Python
+__pycache__/
+*.pyc
+
 # Misc
 *.tgz
 .cache
