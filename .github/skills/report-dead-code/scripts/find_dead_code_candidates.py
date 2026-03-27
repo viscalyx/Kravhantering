@@ -9,6 +9,7 @@ import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import TypeAlias, cast
 
 CODE_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
 DEFAULT_SOURCE_DIRS = ("app", "components", "lib", "scripts", "tests")
@@ -50,6 +51,10 @@ IMPORT_RE = re.compile(
 )
 PACKAGE_ENTRY_RE = re.compile(r"(?:^|\s)(?:node|bash)\s+((?:[./]|[A-Za-z0-9_-]+/)[^\s|;&]+)")
 logger = logging.getLogger(__name__)
+
+JsonPrimitive: TypeAlias = None | bool | int | float | str
+JsonValue: TypeAlias = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
+JsonObject: TypeAlias = dict[str, JsonValue]
 
 
 @dataclass
@@ -97,17 +102,30 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_json(path: Path) -> dict:
+def load_json(path: Path) -> JsonObject:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        data: object = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {}
     except json.JSONDecodeError as exc:
         raise SystemExit(f"Failed to parse {path}: {exc}") from exc
 
+    if not isinstance(data, dict):
+        raise SystemExit(
+            f"Expected {path} to contain a JSON object at the top level."
+        )
+
+    return cast(JsonObject, data)
+
 
 def normalize(relative_path: Path) -> str:
     return relative_path.as_posix().lstrip("./")
+
+
+def get_json_object(value: JsonValue | None) -> JsonObject:
+    if isinstance(value, dict):
+        return cast(JsonObject, value)
+    return {}
 
 
 def discover_roots(root: Path, requested: list[str] | None) -> list[Path]:
@@ -139,13 +157,16 @@ def load_aliases(root: Path) -> list[tuple[str, str]]:
     tsconfig = root / "tsconfig.json"
     # `extends` is not resolved here, so aliases from extended configs are ignored.
     config = load_json(tsconfig)
-    paths = config.get("compilerOptions", {}).get("paths", {})
+    paths = get_json_object(get_json_object(config.get("compilerOptions")).get("paths"))
     aliases: list[tuple[str, str]] = []
-    for alias, targets in paths.items():
-        if not targets:
+    for alias, targets_value in paths.items():
+        if not isinstance(targets_value, list) or not targets_value:
+            continue
+        first_target = targets_value[0]
+        if not isinstance(first_target, str):
             continue
         alias_prefix = alias[:-1] if alias.endswith("*") else alias
-        target_prefix = targets[0][:-1] if targets[0].endswith("*") else targets[0]
+        target_prefix = first_target[:-1] if first_target.endswith("*") else first_target
         target_prefix = normalize(Path(target_prefix))
         aliases.append((alias_prefix, target_prefix))
     return aliases
@@ -171,8 +192,10 @@ def build_module_index(files: list[str]) -> dict[str, list[str]]:
 def extract_specs(text: str) -> list[str]:
     specs: list[str] = []
     for match in IMPORT_RE.finditer(text):
-        spec = next(group for group in match.groups() if group)
-        specs.append(spec)
+        for group in match.groups():
+            if group is not None:
+                specs.append(group)
+                break
     return specs
 
 
@@ -211,7 +234,7 @@ def resolve_spec(
 
 def collect_package_entrypoints(root: Path) -> set[str]:
     package_json = load_json(root / "package.json")
-    scripts = package_json.get("scripts", {})
+    scripts = get_json_object(package_json.get("scripts"))
     entrypoints: set[str] = set()
     for command in scripts.values():
         if not isinstance(command, str):

@@ -9,25 +9,26 @@ use **Reopen in Container** to get started automatically.
 ## Available Scripts
 
 <!-- markdownlint-disable MD013 -->
-| Command                          | Description                                   |
-| -------------------------------- | --------------------------------------------- |
-| `npm run dev`                    | Start Next.js development server              |
-| `npm run build`                  | Production build                              |
-| `npm run start`                  | Start the production server                   |
-| `npm run check`                  | Run all checks (types, format, lint, tests)   |
-| `npm run test`                   | Run unit tests with Vitest                    |
-| `npm run test:watch`             | Run unit tests in watch mode                  |
-| `npm run test:coverage`          | Run unit tests with coverage                  |
-| `npm run test:integration`       | Run Playwright integration tests              |
-| `npm run lint`                   | Lint with Biome                               |
-| `npm run lint:fix`               | Lint and auto-fix with Biome                  |
-| `npm run format`                 | Format code with Biome                        |
-| `npm run spell`                  | Spell check with cspell                       |
-| `npm run lint:md`                | Lint Markdown files                           |
-| `npm run fix`                    | Auto-fix formatting, linting & Markdown       |
-| `npm run type-check`             | TypeScript type checking                      |
-| `npm run preview`                | Build and preview with Wrangler               |
-| `npm run deploy`                 | Build and deploy to Cloudflare                |
+| Command                    | Description                                      |
+| -------------------------- | ------------------------------------------------ |
+| `npm run dev`              | Start Next.js development server                 |
+| `npm run build`            | Production build                                 |
+| `npm run start`            | Start the production server                      |
+| `npm run check`            | Run all checks (TS, Python, format, lint, tests) |
+| `npm run test`             | Run unit tests with Vitest                       |
+| `npm run test:watch`       | Run unit tests in watch mode                     |
+| `npm run test:coverage`    | Run unit tests with coverage                     |
+| `npm run test:integration` | Run Playwright integration tests                 |
+| `npm run lint`             | Lint with Biome                                  |
+| `npm run lint:fix`         | Lint and auto-fix with Biome                     |
+| `npm run lint:py`          | Type-check Python scripts with Pyright           |
+| `npm run format`           | Format code with Biome                           |
+| `npm run spell`            | Spell check with cspell                          |
+| `npm run lint:md`          | Lint Markdown files                              |
+| `npm run fix`              | Auto-fix formatting, linting & Markdown          |
+| `npm run type-check`       | TypeScript type checking                         |
+| `npm run preview`          | Build and preview with Wrangler                  |
+| `npm run deploy`           | Build and deploy to Cloudflare                   |
 <!-- markdownlint-enable MD013 -->
 
 ## Project Structure
