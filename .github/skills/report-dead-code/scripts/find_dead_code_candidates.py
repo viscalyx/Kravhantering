@@ -153,6 +153,15 @@ def iter_source_files(root: Path, scan_roots: list[Path]) -> list[str]:
     return sorted(set(files))
 
 
+def collect_root_next_entry_files(root: Path) -> list[str]:
+    files: list[str] = []
+    for entry in sorted(ROOT_ENTRY_FILES):
+        path = root / entry
+        if path.is_file():
+            files.append(entry)
+    return files
+
+
 def load_aliases(root: Path) -> list[tuple[str, str]]:
     tsconfig = root / "tsconfig.json"
     # `extends` is not resolved here, so aliases from extended configs are ignored.
@@ -371,6 +380,10 @@ def main() -> None:
     root = Path(args.root).resolve()
     scan_roots = discover_roots(root, args.include_dirs)
     files = iter_source_files(root, scan_roots)
+    if not args.include_dirs:
+        # Root-level Next entry files are live by convention and can keep imported
+        # modules reachable even when the rest of the repo root is out of scan scope.
+        files = sorted(set(files) | set(collect_root_next_entry_files(root)))
     aliases = load_aliases(root)
     module_index = build_module_index(files)
     package_entries = collect_package_entrypoints(root)
