@@ -56,26 +56,35 @@ describe('ThemeToggle', () => {
     expect(setThemeMock).toHaveBeenCalledWith('light')
   })
 
-  it('keeps translated labels and English developer-mode values aligned', () => {
-    for (const [theme, expectedLabel, developerValue] of [
-      ['light', 'Vaxla tema (Ljust)', 'light'],
-      ['dark', 'Vaxla tema (Morkt)', 'dark'],
-      ['system', 'Vaxla tema (Automatiskt)', 'auto'],
-    ] as const) {
-      themeState.value = theme
-      const { unmount } = render(<ThemeToggle />)
+  it.each([
+    {
+      theme: 'light',
+      expectedLabel: 'Vaxla tema (Ljust)',
+      developerValue: 'light',
+    },
+    {
+      theme: 'dark',
+      expectedLabel: 'Vaxla tema (Morkt)',
+      developerValue: 'dark',
+    },
+    {
+      theme: 'system',
+      expectedLabel: 'Vaxla tema (Automatiskt)',
+      developerValue: 'auto',
+    },
+  ] as const)('keeps translated labels and English developer-mode values aligned for $theme', ({
+    theme,
+    expectedLabel,
+    developerValue,
+  }) => {
+    themeState.value = theme
+    render(<ThemeToggle />)
 
-      const button = screen.getByRole('button', { name: expectedLabel })
+    const button = screen.getByRole('button', { name: expectedLabel })
 
-      expect(button).toBeInTheDocument()
-      expect(button).toHaveAttribute(
-        'data-developer-mode-value',
-        developerValue,
-      )
-      expect(button).toHaveAttribute('title', expectedLabel)
-
-      unmount()
-    }
+    expect(button).toBeInTheDocument()
+    expect(button).toHaveAttribute('data-developer-mode-value', developerValue)
+    expect(button).toHaveAttribute('title', expectedLabel)
   })
 
   it('does not cycle before the theme is available', () => {
