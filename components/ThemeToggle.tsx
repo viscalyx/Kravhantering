@@ -15,27 +15,32 @@ export default function ThemeToggle() {
   }, [])
 
   const cycle = () => {
+    if (typeof theme === 'undefined') return
+
     if (theme === 'light') setTheme('dark')
     else if (theme === 'dark') setTheme('system')
     else setTheme('light')
   }
 
-  const current = mounted ? theme : 'system'
+  const current = mounted && typeof theme !== 'undefined' ? theme : 'system'
+  const developerLabel =
+    current === 'light' ? 'light' : current === 'dark' ? 'dark' : 'auto'
   const label =
-    current === 'light'
+    developerLabel === 'light'
       ? t('light')
-      : current === 'dark'
+      : developerLabel === 'dark'
         ? t('dark')
         : t('auto')
+  const buttonLabel = `${t('toggle')} (${label})`
 
   return (
     <button
-      aria-label={`${t('toggle')} (${label})`}
-      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800"
+      aria-label={buttonLabel}
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
       data-developer-mode-name="button"
-      data-developer-mode-value={`${t('toggle')} (${label})`}
+      data-developer-mode-value={developerLabel}
       onClick={cycle}
-      title={`${t('toggle')} (${label})`}
+      title={buttonLabel}
       type="button"
     >
       {current === 'dark' ? (
