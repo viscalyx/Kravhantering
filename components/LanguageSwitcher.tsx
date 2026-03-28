@@ -19,7 +19,7 @@ export default function LanguageSwitcher() {
   return (
     <button
       aria-label={t('switchTo')}
-      className="flex items-center gap-1 p-2 rounded-xl text-sm font-medium text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-all duration-200"
+      className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-xl p-2 text-sm font-medium text-secondary-700 transition-all duration-200 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800"
       data-developer-mode-name="button"
       data-developer-mode-value={t('switchTo')}
       onClick={switchLocale}
