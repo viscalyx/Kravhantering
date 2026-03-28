@@ -256,6 +256,13 @@ in the conversation.
 | Slow first build | Normal — the container image is ~1 GB |
 | Need to re-run all checks | Run `npm run check` |
 
+### Codex namespace errors
+
+If Codex agent tools fail with `bwrap` or `unshare` namespace errors
+after you pull the latest repo changes, rebuild the
+Codespace/devcontainer so the updated `.devcontainer/docker-compose.yml`
+security setting takes effect.
+
 <!-- markdownlint-disable MD013 -->
 
 For more on Codespaces billing, quotas, and machine types see
