@@ -1,11 +1,11 @@
 services:
   app:
     build:
-      context: ..
+      context: ../..
       dockerfile: .devcontainer/Dockerfile
     volumes:
       # Mount the root folder that contains .git
-      - ..:/workspace:cached
+      - ../..:/workspace:cached
       # Persistent npm cache for faster installs across rebuilds (commented out - not needed for infrequent rebuilds)
       # - npm-cache:/home/vscode/.npm
       - type: bind
@@ -19,12 +19,9 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
-    security_opt:
-      # Allow nested tool sandboxes (for example Bubblewrap/unshare) without
-      # granting the whole devcontainer privileged mode.
-      # If the same error ever shows up on a different Linux host, the next narrow
-      # fallback would be apparmor=unconfined
-      - seccomp=unconfined
+    # Intentionally omit seccomp=unconfined in the strict opt-out configuration.
+    # This keeps the container closer to the default runtime profile, but nested
+    # sandbox tooling such as Bubblewrap-based agent edits may stop working.
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true

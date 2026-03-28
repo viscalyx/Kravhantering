@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
-import ThemePicker from '@/components/ThemePicker'
 import ThemeToggle from '@/components/ThemeToggle'
 import { Link, usePathname } from '@/i18n/routing'
 
@@ -66,11 +65,10 @@ export default function Navigation() {
 
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
-          <ThemePicker />
           <ThemeToggle />
           <Link
             aria-label={ta('settings')}
-            className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
+            className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
               isAdminActive
                 ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
                 : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'

@@ -39,6 +39,8 @@ Use these attributes on curated targets:
 - `data-developer-mode-name`: canonical English element name
 - `data-developer-mode-context`: optional English context string
 - `data-developer-mode-value`: optional English or runtime value
+  Localized controls should still expose English-only curated values, for
+  example theme state values like `light`, `dark`, and `auto`.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 
@@ -90,6 +92,7 @@ Developer Mode is covered by:
 - `tests/unit/version-history.test.tsx`
 - `tests/unit/requirements-table.test.tsx`
 - `tests/unit/reference-data-developer-mode.test.tsx`
+- `tests/unit/theme-toggle.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
 
 ## Contributor Guardrails

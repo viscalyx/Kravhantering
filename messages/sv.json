@@ -249,20 +249,7 @@
     "light": "Ljust",
     "dark": "Mörkt",
     "auto": "Auto",
-    "toggle": "Växla tema",
-    "pickColor": "Färgtema",
-    "themes": {
-      "default": "Standard",
-      "navy": "Marinblå",
-      "purple": "Lila",
-      "magenta": "Magenta",
-      "forest": "Skog",
-      "sunset": "Solnedgång",
-      "ocean": "Hav",
-      "berry": "Bär",
-      "autumn": "Höst",
-      "nordic": "Nordisk"
-    }
+    "toggle": "Växla tema"
   },
   "language": {
     "sv": "Svenska",

@@ -1,164 +1,118 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ThemeToggle from '@/components/ThemeToggle'
-import { themeTransitionGuardAttribute } from '@/lib/theme/apply-document-theme-change'
+
+const setThemeMock = vi.fn()
+const themeState: { value: string | undefined } = { value: 'system' }
 
 vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string) =>
+    (
+      ({
+        auto: 'Automatiskt',
+        dark: 'Morkt',
+        light: 'Ljust',
+        toggle: 'Vaxla tema',
+      }) as const
+    )[key] ?? key,
 }))
 
-function installLocalStorage(initial: Record<string, string> = {}) {
-  const store = new Map(Object.entries(initial))
-
-  const localStorageMock = {
-    getItem: vi.fn((key: string) => store.get(key) ?? null),
-    removeItem: vi.fn((key: string) => {
-      store.delete(key)
-    }),
-    setItem: vi.fn((key: string, value: string) => {
-      store.set(key, value)
-    }),
-  }
-
-  Object.defineProperty(window, 'localStorage', {
-    configurable: true,
-    value: localStorageMock,
-  })
-
-  return { localStorageMock, store }
-}
-
-function installMatchMedia(initialMatches: boolean) {
-  const listeners = new Set<(event: MediaQueryListEvent) => void>()
-  const mediaQueryList = {
-    addEventListener: vi.fn(
-      (_type: string, listener: (event: MediaQueryListEvent) => void) => {
-        listeners.add(listener)
-      },
-    ),
-    matches: initialMatches,
-    media: '(prefers-color-scheme: dark)',
-    onchange: null,
-    removeEventListener: vi.fn(
-      (_type: string, listener: (event: MediaQueryListEvent) => void) => {
-        listeners.delete(listener)
-      },
-    ),
-  }
-
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    value: vi.fn().mockImplementation(() => mediaQueryList),
-  })
-
-  return {
-    emit(matches: boolean) {
-      mediaQueryList.matches = matches
-      const event = {
-        matches,
-        media: mediaQueryList.media,
-      } as MediaQueryListEvent
-
-      for (const listener of listeners) {
-        listener(event)
-      }
-    },
-  }
-}
-
-function createAnimationFrameController() {
-  let nextHandle = 1
-  const callbacks = new Map<number, FrameRequestCallback>()
-
-  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
-    const handle = nextHandle++
-    callbacks.set(handle, callback)
-    return handle
-  })
-
-  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(handle => {
-    callbacks.delete(handle)
-  })
-
-  return {
-    flushNextFrame() {
-      const pending = [...callbacks.entries()]
-      callbacks.clear()
-      for (const [, callback] of pending) {
-        callback(16)
-      }
-    },
-  }
-}
-
-function getGuardStyle() {
-  return document.head.querySelector(`[${themeTransitionGuardAttribute}]`)
-}
+vi.mock('next-themes', () => ({
+  useTheme: () => ({ theme: themeState.value, setTheme: setThemeMock }),
+}))
 
 describe('ThemeToggle', () => {
   beforeEach(() => {
-    document.documentElement.classList.remove('dark')
-    document.head
-      .querySelectorAll(`[${themeTransitionGuardAttribute}]`)
-      .forEach(node => {
-        node.remove()
-      })
+    themeState.value = 'system'
+    setThemeMock.mockClear()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-    document.documentElement.classList.remove('dark')
-    document.head
-      .querySelectorAll(`[${themeTransitionGuardAttribute}]`)
-      .forEach(node => {
-        node.remove()
-      })
-  })
-
-  it('cycles light to dark through the guarded theme-change path', () => {
-    const animationFrame = createAnimationFrameController()
-    const { localStorageMock } = installLocalStorage({ theme: 'light' })
-    installMatchMedia(false)
-
+  it('cycles from light to dark', () => {
+    themeState.value = 'light'
     render(<ThemeToggle />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'toggle (light)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Vaxla tema (Ljust)' }))
 
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('theme', 'dark')
-    expect(getGuardStyle()).toBeTruthy()
-
-    animationFrame.flushNextFrame()
-
-    expect(getGuardStyle()).toBeNull()
+    expect(setThemeMock).toHaveBeenCalledWith('dark')
   })
 
-  it('updates the document class when the OS preference changes in auto mode', () => {
-    const animationFrame = createAnimationFrameController()
-    installLocalStorage()
-    const matchMedia = installMatchMedia(false)
-
+  it('cycles from dark to system', () => {
+    themeState.value = 'dark'
     render(<ThemeToggle />)
 
-    matchMedia.emit(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Vaxla tema (Morkt)' }))
 
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(getGuardStyle()).toBeTruthy()
-
-    animationFrame.flushNextFrame()
-
-    expect(getGuardStyle()).toBeNull()
+    expect(setThemeMock).toHaveBeenCalledWith('system')
   })
 
-  it('does not reapply the dark class on mount when the DOM already matches', () => {
-    createAnimationFrameController()
-    installLocalStorage({ theme: 'dark' })
-    installMatchMedia(true)
-    document.documentElement.classList.add('dark')
-
+  it('cycles from system to light', () => {
+    themeState.value = 'system'
     render(<ThemeToggle />)
 
-    expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(getGuardStyle()).toBeNull()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Vaxla tema (Automatiskt)' }),
+    )
+
+    expect(setThemeMock).toHaveBeenCalledWith('light')
+  })
+
+  it.each([
+    {
+      theme: 'light',
+      expectedLabel: 'Vaxla tema (Ljust)',
+      developerValue: 'light',
+    },
+    {
+      theme: 'dark',
+      expectedLabel: 'Vaxla tema (Morkt)',
+      developerValue: 'dark',
+    },
+    {
+      theme: 'system',
+      expectedLabel: 'Vaxla tema (Automatiskt)',
+      developerValue: 'auto',
+    },
+  ] as const)('keeps translated labels and English developer-mode values aligned for $theme', ({
+    theme,
+    expectedLabel,
+    developerValue,
+  }) => {
+    themeState.value = theme
+    render(<ThemeToggle />)
+
+    const button = screen.getByRole('button', { name: expectedLabel })
+
+    expect(button).toBeInTheDocument()
+    expect(button).toHaveAttribute('data-developer-mode-value', developerValue)
+    expect(button).toHaveAttribute('title', expectedLabel)
+  })
+
+  it('does not cycle before the theme is available', () => {
+    themeState.value = undefined
+    render(<ThemeToggle />)
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Vaxla tema (Automatiskt)' }),
+    )
+
+    expect(setThemeMock).not.toHaveBeenCalled()
+  })
+
+  it('adds keyboard-visible focus styling', () => {
+    render(<ThemeToggle />)
+
+    const button = screen.getByRole('button', {
+      name: 'Vaxla tema (Automatiskt)',
+    })
+
+    expect(button.className).toContain('focus-visible:outline-none')
+    expect(button.className).toContain('focus-visible:ring-2')
+    expect(button.className).toContain('focus-visible:ring-primary-400/50')
+    expect(button.className).toContain('focus-visible:ring-offset-2')
+    expect(button.className).toContain('focus-visible:ring-offset-white')
+    expect(button.className).toContain('dark:focus-visible:ring-primary-400/60')
+    expect(button.className).toContain(
+      'dark:focus-visible:ring-offset-secondary-950',
+    )
   })
 })

@@ -2,86 +2,50 @@
 
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
-import { applyDocumentThemeChange } from '@/lib/theme/apply-document-theme-change'
-
-type Mode = 'light' | 'dark' | 'auto'
-
-function getSystemDark() {
-  return window.matchMedia('(prefers-color-scheme: dark)').matches
-}
-
-function syncDarkClass(isDark: boolean) {
-  const root = document.documentElement
-
-  if (root.classList.contains('dark') === isDark) {
-    return
-  }
-
-  applyDocumentThemeChange(() => {
-    root.classList.toggle('dark', isDark)
-  })
-}
+import { useTheme } from 'next-themes'
+import { useEffect, useState } from 'react'
 
 export default function ThemeToggle() {
   const t = useTranslations('theme')
-  const [mode, setMode] = useState<Mode>('auto')
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
 
-  const applyMode = useCallback((m: Mode) => {
-    if (m === 'auto') {
-      syncDarkClass(getSystemDark())
-    } else {
-      syncDarkClass(m === 'dark')
-    }
+  useEffect(() => {
+    setMounted(true)
   }, [])
 
-  // Initialize from localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('theme')
-    const initial: Mode =
-      stored === 'dark' ? 'dark' : stored === 'light' ? 'light' : 'auto'
-    setMode(initial)
-    applyMode(initial)
-  }, [applyMode])
-
-  // Listen for OS preference changes while in auto mode
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const handler = () => {
-      if (mode === 'auto') syncDarkClass(mq.matches)
-    }
-    mq.addEventListener('change', handler)
-    return () => mq.removeEventListener('change', handler)
-  }, [mode])
-
   const cycle = () => {
-    const next: Mode =
-      mode === 'light' ? 'dark' : mode === 'dark' ? 'auto' : 'light'
-    setMode(next)
-    applyMode(next)
-    if (next === 'auto') {
-      localStorage.removeItem('theme')
-    } else {
-      localStorage.setItem('theme', next)
-    }
+    if (typeof theme === 'undefined') return
+
+    if (theme === 'light') setTheme('dark')
+    else if (theme === 'dark') setTheme('system')
+    else setTheme('light')
   }
 
+  const current = mounted && typeof theme !== 'undefined' ? theme : 'system'
+  const developerLabel =
+    current === 'light' ? 'light' : current === 'dark' ? 'dark' : 'auto'
   const label =
-    mode === 'light' ? t('light') : mode === 'dark' ? t('dark') : t('auto')
+    developerLabel === 'light'
+      ? t('light')
+      : developerLabel === 'dark'
+        ? t('dark')
+        : t('auto')
+  const buttonLabel = `${t('toggle')} (${label})`
 
   return (
     <button
-      aria-label={`${t('toggle')} (${label})`}
-      className="p-2 rounded-xl text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-all duration-200"
+      aria-label={buttonLabel}
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
       data-developer-mode-name="button"
-      data-developer-mode-value={`${t('toggle')} (${label})`}
+      data-developer-mode-value={developerLabel}
       onClick={cycle}
-      title={`${t('toggle')} (${label})`}
+      title={buttonLabel}
       type="button"
     >
-      {mode === 'dark' ? (
+      {current === 'dark' ? (
         <Moon aria-hidden="true" className="h-5 w-5" />
-      ) : mode === 'light' ? (
+      ) : current === 'light' ? (
         <Sun aria-hidden="true" className="h-5 w-5" />
       ) : (
         <Monitor aria-hidden="true" className="h-5 w-5" />

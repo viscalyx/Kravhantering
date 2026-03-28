@@ -249,20 +249,7 @@
     "light": "Light",
     "dark": "Dark",
     "auto": "Auto",
-    "toggle": "Toggle theme",
-    "pickColor": "Color theme",
-    "themes": {
-      "default": "Default",
-      "navy": "Navy",
-      "purple": "Purple",
-      "magenta": "Magenta",
-      "forest": "Forest",
-      "sunset": "Sunset",
-      "ocean": "Ocean",
-      "berry": "Berry",
-      "autumn": "Autumn",
-      "nordic": "Nordic"
-    }
+    "toggle": "Toggle theme"
   },
   "language": {
     "sv": "Svenska",

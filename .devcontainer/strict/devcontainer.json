@@ -1,0 +1,219 @@
+{
+  "name": "Kravhantering Development (Strict)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  },
+
+  // Features to add to the dev container
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGitTagPrefix": "v",
+      "version": "24",
+      "nvmVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "installDirectlyFromGitHubRelease": false,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true,
+      "upgradePackages": true,
+      "username": "vscode",
+      "userUid": "automatic",
+      "userGid": "automatic"
+    },
+    "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {
+      "plugins": "zsh-autosuggestions zsh-syntax-highlighting",
+      "omzPlugins": "https://github.com/zsh-users/zsh-autosuggestions.git https://github.com/zsh-users/zsh-syntax-highlighting.git"
+    }
+  },
+
+  // Configure tool-specific properties
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Essential for devcontainer functionality
+        "ms-vscode-remote.remote-containers",
+        "ms-azuretools.vscode-docker",
+
+        // Extensions from .vscode/extensions.json
+        // cSpell:ignore davidanson kohler errorlens bpruitt-goddard bierner bradlc gruntfuggly qwtel usernamehw debugpy
+        "biomejs.biome",
+        "DavidAnson.vscode-markdownlint",
+        "streetsidesoftware.code-spell-checker",
+        "streetsidesoftware.code-spell-checker-swedish",
+        "bradlc.vscode-tailwindcss",
+        "christian-kohler.path-intellisense",
+        "christian-kohler.npm-intellisense",
+        "gruntfuggly.todo-tree",
+        "usernamehw.errorlens",
+        "GitHub.copilot-chat",
+        "openai.chatgpt",
+        "ms-playwright.playwright",
+        "vitest.explorer",
+        "bierner.markdown-mermaid",
+        "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
+        "qwtel.sqlite-viewer",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.debugpy"
+      ],
+      "settings": {
+        // Editor settings
+        "editor.formatOnSave": true,
+        "editor.formatOnPaste": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.biome": "explicit",
+          "source.fixAll.markdownlint": "explicit",
+          "source.organizeImports.biome": "explicit",
+          "source.organizeImports": "never"
+        },
+        "editor.defaultFormatter": "biomejs.biome",
+        "[markdown]": {
+          "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
+        },
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true,
+        "editor.detectIndentation": false,
+        "editor.rulers": [80, 120],
+        "editor.wordWrap": "on",
+        "editor.minimap.enabled": true,
+        "editor.bracketPairColorization.enabled": true,
+        "editor.guides.bracketPairs": true,
+
+        // File settings
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.trimFinalNewlines": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/.next": true,
+          "**/out": true,
+          "**/.git": true,
+          "**/.DS_Store": true,
+          "**/tsconfig.tsbuildinfo": true
+        },
+
+        // TypeScript settings
+        "js/ts.preferences.quoteStyle": "single",
+        "js/ts.preferences.importModuleSpecifier": "relative",
+        "js/ts.updateImportsOnFileMove.enabled": "always",
+        "js/ts.suggest.autoImports": true,
+        "js/ts.preferences.includePackageJsonAutoImports": "auto",
+
+        // Tailwind CSS settings
+        "tailwindCSS.includeLanguages": {
+          "typescript": "javascript",
+          "typescriptreact": "javascript"
+        },
+        "tailwindCSS.experimental.classRegex": [
+          "tw`([^`]*)",
+          ["clsx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+          ["classNames\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"],
+          ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ],
+
+        // Spell checker settings
+        "cSpell.enabled": true,
+        "cSpell.language": "en,sv",
+        "cSpell.enabledFileTypes": {
+          "typescript": true,
+          "typescriptreact": true,
+          "javascript": true,
+          "javascriptreact": true,
+          "markdown": true,
+          "json": true,
+          "jsonc": true,
+          "yaml": true,
+          "yml": true
+        },
+        "cSpell.diagnosticLevel": "Warning",
+        "cSpell.checkLimit": 500,
+        "cSpell.words": [],
+
+        // Git settings
+        // cSpell:ignore autofetch
+        "git.autofetch": true,
+        "git.enableSmartCommit": true,
+        "git.confirmSync": false,
+        // Prefer signed commits when a signing key is available
+        "git.enableCommitSigning": true,
+
+        // Terminal settings
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/bin/zsh"
+          },
+          "bash": {
+            "path": "/bin/bash"
+          }
+        },
+
+        // Emmet settings
+        "emmet.includeLanguages": {
+          "typescript": "html",
+          "typescriptreact": "html"
+        },
+
+        // Explorer settings
+        "explorer.compactFolders": false,
+        "explorer.confirmDelete": false,
+        "explorer.confirmDragAndDrop": false
+      }
+    }
+  },
+
+  // Use 'forwardPorts' to make a list of ports inside the container available locally
+  "forwardPorts": [3000, 3001, 4443, 8787, 9323, 51204],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js Dev Server 1",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "Next.js Dev Server 2",
+      "onAutoForward": "notify"
+    },
+    "4443": {
+      "label": "Next.js Dev HTTPS",
+      "protocol": "https",
+      "onAutoForward": "notify"
+    },
+    "8787": {
+      "label": "Cloudflare / OpenNext Preview",
+      "onAutoForward": "notify"
+    },
+    "9323": {
+      "label": "Playwright Report",
+      "onAutoForward": "notify"
+    },
+    "51204": {
+      "label": "Vitest UI",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Use 'postCreateCommand' to run commands after the container is created
+  // Do not use this git configuration command here, as it will prevent ssh-agent forwarding
+  "postCreateCommand": "npm install -g npm@latest && npm install && npx playwright install --with-deps",
+
+  // Use 'postStartCommand' to run commands after the container starts and every time it starts
+  // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly
+  "postStartCommand": "git config --global --unset gpg.ssh.program || true && npm run cf-typegen && npm run db:setup",
+
+  // Configure remote user
+  "remoteUser": "vscode"
+}

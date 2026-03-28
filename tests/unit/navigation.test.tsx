@@ -28,10 +28,6 @@ vi.mock('@/components/Logo', () => ({
   default: () => <div data-testid="logo" />,
 }))
 
-vi.mock('@/components/ThemePicker', () => ({
-  default: () => <div data-testid="theme-picker" />,
-}))
-
 vi.mock('@/components/ThemeToggle', () => ({
   default: () => <div data-testid="theme-toggle" />,
 }))
