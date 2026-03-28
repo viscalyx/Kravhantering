@@ -1,7 +1,7 @@
 # Running Kravhantering in GitHub Codespaces
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:ignore codespace,codespaces -->
+<!-- cSpell:ignore codespace,codespaces,seccomp,sandboxing,bwrap -->
 
 This guide walks through launching the **main** branch of [viscalyx/Kravhantering](https://github.com/viscalyx/Kravhantering) in a GitHub Codespace, running the dev server, making the forwarded port public, and cleaning up afterwards.
 
