@@ -22,6 +22,8 @@ services:
     security_opt:
       # Allow nested tool sandboxes (for example Bubblewrap/unshare) without
       # granting the whole devcontainer privileged mode.
+      # If the same error ever shows up on a different Linux host, the next narrow
+      # fallback would be apparmor=unconfined
       - seccomp=unconfined
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
