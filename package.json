@@ -116,6 +116,9 @@
     "minimatch@^10.0.0": {
       "brace-expansion": "5.0.5"
     },
+    "router@^2.2.0": {
+      "path-to-regexp": "8.4.0"
+    },
     "smol-toml": "1.6.1"
   },
   "//overrides": [
@@ -125,6 +128,7 @@
     "fast-xml-parser: @aws-sdk/xml-builder@3.972.11 (via @opennextjs/cloudflare > @opennextjs/aws) pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.9 resolves both.",
     "minimatch@^8.0.0 > brace-expansion: @opennextjs/cloudflare > @opennextjs/aws > @node-minify/core > glob@9.3.5 resolves brace-expansion@2.0.2, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 2.0.3.",
     "minimatch@^10.0.0 > brace-expansion: @opennextjs/cloudflare > glob@12.0.0 resolves brace-expansion@5.0.4, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 5.0.5.",
+    "router@^2.2.0 > path-to-regexp: express@5.2.1 (used by @modelcontextprotocol/sdk@1.28.0 and @opennextjs/aws@3.9.16 via @opennextjs/cloudflare@1.18.0) resolves path-to-regexp@8.3.0, which is vulnerable to GHSA-27v5-c462-wpq7 / CVE-2026-4923. Override to 8.4.0.",
     "smol-toml: markdownlint-cli2@0.22.0 pins 1.6.0, and cspell-config-lib@9.7.0 still ranges ^1.6.0; 1.6.0 is vulnerable to DoS GHSA-v3rj-xjv7-4jmq. Override to 1.6.1 resolves it."
   ]
 }
