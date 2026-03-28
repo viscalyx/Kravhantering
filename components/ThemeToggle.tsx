@@ -31,7 +31,7 @@ export default function ThemeToggle() {
   return (
     <button
       aria-label={`${t('toggle')} (${label})`}
-      className="p-2 rounded-xl text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-all duration-200"
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800"
       data-developer-mode-name="button"
       data-developer-mode-value={`${t('toggle')} (${label})`}
       onClick={cycle}
