@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
-import ThemePicker from '@/components/ThemePicker'
 import ThemeToggle from '@/components/ThemeToggle'
 import { Link, usePathname } from '@/i18n/routing'
 
@@ -66,7 +65,6 @@ export default function Navigation() {
 
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
-          <ThemePicker />
           <ThemeToggle />
           <Link
             aria-label={ta('settings')}

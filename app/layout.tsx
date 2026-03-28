@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import { ThemeProvider } from 'next-themes'
 import '@/app/globals.css'
 
 export const metadata: Metadata = {
@@ -44,19 +45,16 @@ export default async function RootLayout({
 
   return (
     <html lang="sv" suppressHydrationWarning>
-      <head>
-        {/* Prevent flash of wrong theme – plain <script> with
-            suppressHydrationWarning because browsers clear the nonce
-            attribute from the DOM after reading it, which causes a
-            hydration mismatch with next/script. */}
-        <script
-          nonce={nonce}
-          src="/scripts/theme-init.js"
-          suppressHydrationWarning
-        />
-      </head>
       <body className="min-h-screen bg-white dark:bg-secondary-950 text-secondary-900 dark:text-secondary-100 antialiased">
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          disableTransitionOnChange
+          nonce={nonce}
+          storageKey="theme"
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
