@@ -26,6 +26,14 @@ No local installs are required — everything runs in the cloud.
 3. Switch to the **Codespaces** tab in the dropdown.
 4. Click **Create codespace on main**.
 
+If you want the stricter opt-out devcontainer that does **not**
+set `seccomp=unconfined`, choose the
+**Kravhantering Development (Strict)** dev container
+configuration before you create the Codespace. The default
+configuration keeps `seccomp=unconfined` enabled so Codex agent
+tooling can use nested sandboxing features such as
+`apply_patch`.
+
 > **Visual reference:** GitHub's documentation has annotated
 > screenshots of this flow — see
 > [Creating a codespace for a repository](https://docs.github.com/en/codespaces/developing-in-a-codespace/creating-a-codespace-for-a-repository#creating-a-codespace-for-a-repository).
@@ -262,6 +270,11 @@ If Codex agent tools fail with `bwrap` or `unshare` namespace errors
 after you pull the latest repo changes, rebuild the
 Codespace/devcontainer so the updated `.devcontainer/docker-compose.yml`
 security setting takes effect.
+
+If you intentionally selected the
+**Kravhantering Development (Strict)** configuration, those
+errors can be expected because that opt-out configuration does
+not include `seccomp=unconfined`.
 
 <!-- markdownlint-disable MD013 -->
 
