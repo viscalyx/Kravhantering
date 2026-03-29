@@ -22,7 +22,7 @@ UI elements so AI prompts can refer to them consistently.
 ## Behavior
 
 - Developer Mode scans only elements currently visible in the viewport.
-- Overlay chips stay English regardless of the active UI locale.
+- Overlay labels stay English regardless of the active UI locale.
 - Clicking a chip copies a deterministic reference string:
   - `context > name: value`
   - `context > name`
@@ -37,9 +37,11 @@ UI elements so AI prompts can refer to them consistently.
 - Generic Developer Mode logic lives in:
   - `packages/developer-mode-core`
   - `packages/developer-mode-react`
-- Future package README drafts live in:
-  - [developer-mode-core-README.md](./developer-mode-core-README.md)
-  - [developer-mode-react-README.md](./developer-mode-react-README.md)
+- Both packages are repo-internal and marked `private`; they are not published
+  to npm.
+- Package docs live in:
+  - [packages/developer-mode-core/README.md](../packages/developer-mode-core/README.md)
+  - [packages/developer-mode-react/README.md](../packages/developer-mode-react/README.md)
 - App code should import the marker helper from `@/lib/developer-mode-markers`
   and the app adapter from `components/DeveloperModeProvider`.
 - Local development enables Developer Mode automatically.
@@ -63,8 +65,9 @@ The emitted attributes are:
 - `data-developer-mode-name`: canonical English element name
 - `data-developer-mode-context`: optional English context string
 - `data-developer-mode-value`: optional English or runtime value
-  Localized controls should still expose English-only curated values, for
-  example theme state values like `light`, `dark`, and `auto`.
+  Keep the control `name` stable and move runtime identity into `value`, for
+  example `sort button: requirement id`, `filter button: status`, or theme
+  state values like `light`, `dark`, and `auto`.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 
@@ -80,6 +83,9 @@ The current canonical labels include:
 - `requirements table`
 - `table space`
 - `column header`
+- `sort button`
+- `filter button`
+- `resize handle`
 - `header chip`
 - `table row`
 - `inline detail pane`
