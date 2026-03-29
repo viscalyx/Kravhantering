@@ -20,6 +20,7 @@ import {
 import { useTranslations } from 'next-intl'
 import { useMemo, useRef, useState } from 'react'
 import { Link, useRouter } from '@/i18n/routing'
+import { devMarker } from '@/lib/developer-mode-markers'
 import {
   getOrderedRequirementListColumns,
   getRequirementColumnDefinition,
@@ -73,7 +74,9 @@ export default function AdminClient({
   const [activeTab, setActiveTab] = useState<AdminTab>('terminology')
   const [activeLocale, setActiveLocale] = useState<UiLocale>('sv')
   const [terminology, setTerminology] = useState(initialTerminology)
-  const [columnDefaults, setColumnDefaults] = useState(initialColumnDefaults)
+  const [columnDefaults, setColumnDefaults] = useState<
+    RequirementListColumnDefault[]
+  >(() => normalizeRequirementListColumnDefaults(initialColumnDefaults))
   const [terminologySaveState, setTerminologySaveState] =
     useState<SaveState>('idle')
   const [columnSaveState, setColumnSaveState] = useState<SaveState>('idle')
@@ -121,34 +124,38 @@ export default function AdminClient({
 
       ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
 
-      return next.map((column, position) => ({
-        ...column,
-        sortOrder: position,
-      }))
+      return normalizeRequirementListColumnDefaults(
+        next.map((column, position) => ({
+          ...column,
+          sortOrder: position,
+        })),
+      )
     })
     setColumnSaveState('idle')
   }
 
   const toggleColumnVisibility = (columnId: string) => {
     setColumnDefaults(current =>
-      current.map(column => {
-        if (column.columnId !== columnId) {
-          return column
-        }
+      normalizeRequirementListColumnDefaults(
+        current.map(column => {
+          if (column.columnId !== columnId) {
+            return column
+          }
 
-        const definition = getRequirementColumnDefinition(column.columnId)
-        if (!definition?.canHide) {
+          const definition = getRequirementColumnDefinition(column.columnId)
+          if (!definition?.canHide) {
+            return {
+              ...column,
+              defaultVisible: true,
+            }
+          }
+
           return {
             ...column,
-            defaultVisible: true,
+            defaultVisible: !column.defaultVisible,
           }
-        }
-
-        return {
-          ...column,
-          defaultVisible: !column.defaultVisible,
-        }
-      }),
+        }),
+      ),
     )
     setColumnSaveState('idle')
   }
@@ -220,7 +227,9 @@ export default function AdminClient({
         return
       }
 
-      const nextColumns = data.columns ?? columnDefaults
+      const nextColumns = normalizeRequirementListColumnDefaults(
+        data.columns ?? columnDefaults,
+      )
       setColumnDefaults(nextColumns)
       setColumnSaveState('saved')
     } catch {
@@ -331,9 +340,11 @@ export default function AdminClient({
             <div
               aria-label={ta('title')}
               className="flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-secondary-200/80 bg-white/80 p-1 dark:border-secondary-700/70 dark:bg-secondary-900/70"
-              data-developer-mode-name="navigation"
-              data-developer-mode-priority="320"
-              data-developer-mode-value="admin center tabs"
+              {...devMarker({
+                name: 'navigation',
+                priority: 320,
+                value: 'admin center tabs',
+              })}
               role="tablist"
             >
               {adminTabs.map(tab => (
@@ -345,14 +356,14 @@ export default function AdminClient({
                       ? 'bg-primary-700 text-white'
                       : 'text-secondary-700 hover:bg-secondary-100 dark:text-secondary-200 dark:hover:bg-secondary-800'
                   }`}
-                  data-developer-mode-context="admin center"
-                  data-developer-mode-name="edge tab"
-                  data-developer-mode-priority="360"
-                  data-developer-mode-value={
-                    ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id]
-                  }
+                  key={`admin-tab-${tab.id}`}
+                  {...devMarker({
+                    context: 'admin center',
+                    name: 'edge tab',
+                    priority: 360,
+                    value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
+                  })}
                   id={`${tab.id}-tab`}
-                  key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   role="tab"
                   type="button"
@@ -369,10 +380,12 @@ export default function AdminClient({
           <section
             aria-labelledby="terminology-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
-            data-developer-mode-context="admin center"
-            data-developer-mode-name="tab panel"
-            data-developer-mode-priority="340"
-            data-developer-mode-value="terminology"
+            {...devMarker({
+              context: 'admin center',
+              name: 'tab panel',
+              priority: 340,
+              value: 'terminology',
+            })}
             id="terminology-panel"
             role="tabpanel"
           >
@@ -511,10 +524,12 @@ export default function AdminClient({
           <section
             aria-labelledby="columns-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
-            data-developer-mode-context="admin center"
-            data-developer-mode-name="tab panel"
-            data-developer-mode-priority="340"
-            data-developer-mode-value="columns"
+            {...devMarker({
+              context: 'admin center',
+              name: 'tab panel',
+              priority: 340,
+              value: 'columns',
+            })}
             id="columns-panel"
             role="tabpanel"
           >
@@ -622,10 +637,12 @@ export default function AdminClient({
           <section
             aria-labelledby="referenceData-tab"
             className="rounded-[2rem] border border-secondary-200/70 bg-white/90 p-6 shadow-sm dark:border-secondary-700/60 dark:bg-secondary-900/80"
-            data-developer-mode-context="admin center"
-            data-developer-mode-name="tab panel"
-            data-developer-mode-priority="340"
-            data-developer-mode-value="reference data"
+            {...devMarker({
+              context: 'admin center',
+              name: 'tab panel',
+              priority: 340,
+              value: 'reference data',
+            })}
             id="referenceData-panel"
             role="tabpanel"
           >

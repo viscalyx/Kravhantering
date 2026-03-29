@@ -1,0 +1,12 @@
+{
+  "name": "@viscalyx/developer-mode-core",
+  "version": "0.0.0",
+  "description": "Framework-agnostic developer mode utilities and marker helpers",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./noop": "./src/noop.ts"
+  }
+}

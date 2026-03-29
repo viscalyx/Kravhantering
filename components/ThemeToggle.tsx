@@ -4,6 +4,7 @@ import { Monitor, Moon, Sun } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 export default function ThemeToggle() {
   const t = useTranslations('theme')
@@ -37,8 +38,7 @@ export default function ThemeToggle() {
     <button
       aria-label={buttonLabel}
       className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
-      data-developer-mode-name="button"
-      data-developer-mode-value={developerLabel}
+      {...devMarker({ name: 'button', value: developerLabel })}
       onClick={cycle}
       title={buttonLabel}
       type="button"

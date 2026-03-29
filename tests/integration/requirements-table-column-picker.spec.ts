@@ -38,10 +38,15 @@ test.describe('Requirements table column picker', () => {
         await trigger.click()
 
         const popover = page.locator('[data-column-picker-popover="true"]')
-        const checkboxes = popover.locator('input[type="checkbox"]')
-        const qualityCharacteristicCheckbox = checkboxes.nth(5)
-        const requiresTestingCheckbox = checkboxes.nth(7)
-        const versionCheckbox = checkboxes.nth(8)
+        const qualityCharacteristicCheckbox = popover.locator(
+          '[data-column-picker-option="qualityCharacteristic"] input[type="checkbox"]',
+        )
+        const requiresTestingCheckbox = popover.locator(
+          '[data-column-picker-option="requiresTesting"] input[type="checkbox"]',
+        )
+        const versionCheckbox = popover.locator(
+          '[data-column-picker-option="version"] input[type="checkbox"]',
+        )
 
         await expect(popover).toBeVisible()
 

@@ -14,6 +14,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 /* ---------- Types ---------- */
 
@@ -247,9 +248,11 @@ function ConfirmModalInner({
             aria-labelledby={modal.title ? titleId : messageId}
             aria-modal="true"
             className="fixed z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl bg-white dark:bg-secondary-900 shadow-2xl"
-            data-developer-mode-name="dialog"
-            data-developer-mode-priority="420"
-            data-developer-mode-value={modal.title ?? undefined}
+            {...devMarker({
+              name: 'dialog',
+              priority: 420,
+              value: modal.title ?? undefined,
+            })}
             exit={{ opacity: 0, scale: 0.95 }}
             initial={{ opacity: 0, scale: 0.95 }}
             onKeyDown={e => {

@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 interface StatusStep {
   color: string | null
@@ -93,20 +94,24 @@ export default function StatusStepper({
   return (
     <div
       className="flex w-full relative"
-      data-developer-mode-context={developerModeContext}
-      data-developer-mode-name="status stepper"
-      data-developer-mode-priority="330"
+      {...devMarker({
+        context: developerModeContext,
+        name: 'status stepper',
+        priority: 330,
+      })}
       ref={containerRef}
     >
       {/* Background (inactive) steps */}
       {steps.map((step, i) => (
         <div
           className="flex-1 min-w-0"
-          data-developer-mode-context={developerModeContext}
-          data-developer-mode-name="status step"
-          data-developer-mode-priority="340"
-          data-developer-mode-value={getStatusStepDeveloperModeValue(step)}
-          key={step.id}
+          key={`status-step-${step.id}`}
+          {...devMarker({
+            context: developerModeContext,
+            name: 'status step',
+            priority: 340,
+            value: getStatusStepDeveloperModeValue(step),
+          })}
           ref={el => {
             stepRefs.current[i] = el
           }}

@@ -67,6 +67,14 @@ export default defineConfig({
     alias: {
       // Module path mapping (equivalent to Jest's moduleNameMapper)
       '@': path.resolve(__dirname, '.'),
+      '@viscalyx/developer-mode-core': path.resolve(
+        __dirname,
+        'packages/developer-mode-core/src/index.ts',
+      ),
+      '@viscalyx/developer-mode-react': path.resolve(
+        __dirname,
+        'packages/developer-mode-react/src/index.tsx',
+      ),
     },
   },
 

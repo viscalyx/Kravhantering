@@ -587,9 +587,65 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'columns' }))
 
-    expect(screen.getByRole('checkbox', { name: 'uniqueId' })).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'description' })).toBeDisabled()
+    const uniqueIdCheckbox = screen.getByRole('checkbox', { name: 'uniqueId' })
+    const descriptionCheckbox = screen.getByRole('checkbox', {
+      name: 'description',
+    })
+    const uniqueIdDescriptionId =
+      uniqueIdCheckbox.getAttribute('aria-describedby')
+
+    expect(uniqueIdCheckbox).toBeDisabled()
+    expect(descriptionCheckbox).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'area' })).not.toBeDisabled()
+    expect(uniqueIdDescriptionId).toMatch(
+      /column-picker-option-description-uniqueId$/,
+    )
+    expect(
+      uniqueIdDescriptionId
+        ? document.getElementById(uniqueIdDescriptionId)
+        : null,
+    ).toHaveTextContent('lockedColumn')
+    expect(uniqueIdCheckbox).toHaveAttribute('title', 'lockedColumn')
+    expect(uniqueIdCheckbox.closest('label')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    const lockedDescriptions = screen.getAllByText('lockedColumn')
+    expect(lockedDescriptions.length).toBeGreaterThanOrEqual(2)
+    for (const description of lockedDescriptions) {
+      expect(description).toHaveClass('sr-only')
+    }
+  })
+
+  it('assigns unique locked-column description ids to each table instance', () => {
+    render(
+      <>
+        <RequirementsTable locale="sv" rows={[makeRow({ id: 1 })]} />
+        <RequirementsTable locale="sv" rows={[makeRow({ id: 2 })]} />
+      </>,
+    )
+
+    for (const button of screen.getAllByRole('button', { name: 'columns' })) {
+      fireEvent.click(button)
+    }
+
+    const uniqueIdCheckboxes = screen.getAllByRole('checkbox', {
+      name: 'uniqueId',
+    })
+    const descriptionIds = uniqueIdCheckboxes
+      .map(checkbox => checkbox.getAttribute('aria-describedby'))
+      .filter((value): value is string => value !== null)
+
+    expect(descriptionIds).toHaveLength(2)
+    expect(new Set(descriptionIds).size).toBe(2)
+    for (const descriptionId of descriptionIds) {
+      expect(descriptionId).toMatch(
+        /column-picker-option-description-uniqueId$/,
+      )
+      expect(document.getElementById(descriptionId)).toHaveTextContent(
+        'lockedColumn',
+      )
+    }
   })
 
   it('renders minimum hit areas in the columns popover', () => {
@@ -625,6 +681,28 @@ describe('RequirementsTable', () => {
 
     fireEvent.mouseDown(document.body)
     expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull()
+  })
+
+  it('exposes developer-mode metadata for column picker options', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    fireEvent.click(getColumnPickerTrigger(container) as HTMLButtonElement)
+
+    const option = document.querySelector(
+      '[data-column-picker-option="requiresTesting"]',
+    )
+
+    expect(option).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirements table > column picker: columns',
+    )
+    expect(option).toHaveAttribute(
+      'data-developer-mode-name',
+      'column picker option',
+    )
+    expect(option).toHaveAttribute('data-developer-mode-value', 'verifiable')
   })
 
   it('keeps the floating action rail within the viewport on narrow screens', () => {
@@ -972,6 +1050,7 @@ describe('RequirementsTable', () => {
     for (const button of screen.getAllByRole('button', { name: 'filterBy' })) {
       expect(button.className).toContain('min-h-[44px]')
       expect(button.className).toContain('min-w-[44px]')
+      expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     }
   })
 
@@ -1910,6 +1989,8 @@ describe('RequirementsTable', () => {
         expandedId={1}
         filterValues={{ ...DEFAULT_FILTERS, uniqueIdSearch: 'INT0001' }}
         locale="sv"
+        onColumnWidthsChange={() => {}}
+        onFilterChange={() => {}}
         renderExpanded={() => <div>Expanded detail</div>}
         rows={[makeRow()]}
       />,
@@ -1931,6 +2012,12 @@ describe('RequirementsTable', () => {
     const detailPane = container.querySelector(
       '[data-expanded-detail-cell="true"]',
     )
+    const sortButton = container.querySelector(
+      '[data-developer-mode-name="sort button"][data-developer-mode-value="requirement id"]',
+    )
+    const filterButton = container.querySelector(
+      '[data-developer-mode-name="filter button"][data-developer-mode-value="requirement id"]',
+    )
 
     expect(scrollContainer).toHaveAttribute(
       'data-developer-mode-name',
@@ -1946,6 +2033,8 @@ describe('RequirementsTable', () => {
       'data-developer-mode-value',
       'requirement id',
     )
+    expect(sortButton).toBeInTheDocument()
+    expect(filterButton).toBeInTheDocument()
     expect(chip).toHaveAttribute(
       'data-developer-mode-context',
       'requirements table > column header: requirement id',
@@ -1958,6 +2047,39 @@ describe('RequirementsTable', () => {
       'inline detail pane',
     )
     expect(detailPane).toHaveAttribute('data-developer-mode-value', 'INT0001')
+  })
+
+  it('exposes developer-mode metadata for sortable, filterable, and resizable header controls', () => {
+    const { container } = render(
+      <RequirementsTable
+        filterValues={{ ...DEFAULT_FILTERS, uniqueIdSearch: 'INT0001' }}
+        locale="sv"
+        onColumnWidthsChange={() => {}}
+        onFilterChange={() => {}}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const sortButton = container.querySelector(
+      '[data-developer-mode-name="sort button"][data-developer-mode-value="requirement id"]',
+    )
+    const filterButton = container.querySelector(
+      '[data-developer-mode-name="filter button"][data-developer-mode-value="requirement id"]',
+    )
+    const resizeHandle = container.querySelector(
+      '[data-column-resize-handle="uniqueId"]',
+    )
+
+    expect(sortButton).toBeInTheDocument()
+    expect(filterButton).toBeInTheDocument()
+    expect(resizeHandle).toHaveAttribute(
+      'data-developer-mode-name',
+      'resize handle',
+    )
+    expect(resizeHandle).toHaveAttribute(
+      'data-developer-mode-value',
+      'requirement id',
+    )
   })
 
   it('applies zebra striping on alternating rows', () => {
@@ -2013,7 +2135,7 @@ describe('RequirementsTable', () => {
   })
 
   it('renders filter chips for all filterable columns when filter values are active', () => {
-    render(
+    const { container } = render(
       <RequirementsTable
         areas={[{ id: 10, name: 'Payments' }]}
         categories={[{ id: 20, nameEn: 'Business', nameSv: 'Verksamhet' }]}
@@ -2075,6 +2197,79 @@ describe('RequirementsTable', () => {
     expect(chipValues).toContain('Tillforlitlighet')
     expect(chipValues).toContain('Publicerad')
     expect(chipValues).toContain('search-term')
+    const removeIcons = container.querySelectorAll(
+      '[data-developer-mode-name="header chip"] button svg',
+    )
+    expect(removeIcons.length).toBeGreaterThan(0)
+    for (const icon of removeIcons) {
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+    }
+  })
+
+  it('does not emit React key warnings when rendering headers and filter chips', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      render(
+        <RequirementsTable
+          areas={[{ id: 10, name: 'Payments' }]}
+          categories={[{ id: 20, nameEn: 'Business', nameSv: 'Verksamhet' }]}
+          filterValues={{
+            areaIds: [10],
+            categoryIds: [20],
+            descriptionSearch: 'search-term',
+            qualityCharacteristicIds: [40],
+            requiresTesting: ['true'],
+            statuses: [3],
+            typeIds: [30],
+          }}
+          getName={opt => opt.nameSv}
+          getStatusName={opt => opt.nameSv}
+          locale="sv"
+          onFilterChange={vi.fn()}
+          qualityCharacteristics={[
+            {
+              id: 40,
+              nameEn: 'Reliability',
+              nameSv: 'Tillforlitlighet',
+              parentId: null,
+            },
+          ]}
+          rows={[makeRow()]}
+          statusOptions={[
+            {
+              color: '#22c55e',
+              id: 3,
+              nameEn: 'Published',
+              nameSv: 'Publicerad',
+            },
+          ]}
+          types={[{ id: 30, nameEn: 'Functional', nameSv: 'Funktionellt' }]}
+          visibleColumns={[
+            'uniqueId',
+            'description',
+            'area',
+            'category',
+            'type',
+            'qualityCharacteristic',
+            'status',
+            'requiresTesting',
+          ]}
+        />,
+      )
+
+      const keyWarnings = consoleError.mock.calls.filter(
+        ([message]) =>
+          typeof message === 'string' &&
+          message.includes(
+            'Each child in a list should have a unique "key" prop.',
+          ),
+      )
+
+      expect(keyWarnings).toHaveLength(0)
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {

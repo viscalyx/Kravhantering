@@ -44,7 +44,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get('x-nonce') ?? undefined
 
   return (
-    <html lang="sv" suppressHydrationWarning>
+    <html data-scroll-behavior="smooth" lang="sv" suppressHydrationWarning>
       <body className="min-h-screen bg-white dark:bg-secondary-950 text-secondary-900 dark:text-secondary-100 antialiased">
         <ThemeProvider
           attribute="class"

@@ -10,6 +10,7 @@ import AdminClient from '@/app/[locale]/admin/admin-client'
 import {
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   normalizeRequirementListColumnDefaults,
+  type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
 import {
   buildUiTerminologyPayload,
@@ -382,6 +383,63 @@ describe('AdminClient', () => {
       'area',
       'type',
     ])
+  })
+
+  it('normalizes duplicate column defaults before toggling and saving', async () => {
+    const duplicateColumns: RequirementListColumnDefault[] = [
+      ...DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
+      {
+        columnId: 'category',
+        defaultVisible: false,
+        sortOrder: DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.length,
+      },
+    ]
+    const normalizedHiddenCategoryColumns =
+      normalizeRequirementListColumnDefaults(
+        DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column =>
+          column.columnId === 'category'
+            ? { ...column, defaultVisible: false }
+            : column,
+        ),
+      )
+    fetchMock.mockResolvedValueOnce(
+      okJson({ columns: normalizedHiddenCategoryColumns }),
+    )
+
+    render(
+      <AdminClient
+        initialColumnDefaults={duplicateColumns}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.columns' }))
+
+    const categoryRow = screen.getByTestId('admin-column-row-category')
+    const categoryCheckbox = within(categoryRow).getByRole('checkbox')
+
+    expect(categoryCheckbox).toBeChecked()
+
+    fireEvent.click(categoryCheckbox)
+
+    expect(categoryCheckbox).not.toBeChecked()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
+
+    await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/admin/requirement-columns', {
+      body: JSON.stringify({ columns: normalizedHiddenCategoryColumns }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+    })
+    expect(
+      within(screen.getByTestId('admin-column-row-category')).getByRole(
+        'checkbox',
+      ),
+    ).not.toBeChecked()
   })
 
   it('restores shipped column defaults after a successful save', async () => {

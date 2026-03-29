@@ -1,7 +1,11 @@
+import path from 'node:path'
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+const enableDeveloperMode =
+  process.env.ENABLE_DEVELOPER_MODE === 'true' ||
+  process.env.NODE_ENV === 'development'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -9,6 +13,10 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
+  transpilePackages: [
+    '@viscalyx/developer-mode-core',
+    '@viscalyx/developer-mode-react',
+  ],
   compiler: {
     removeConsole:
       process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
@@ -18,6 +26,20 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ['mermaid'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
+  webpack(config) {
+    if (!enableDeveloperMode) {
+      config.resolve.alias['@viscalyx/developer-mode-core'] = path.resolve(
+        process.cwd(),
+        'packages/developer-mode-core/src/noop.ts',
+      )
+      config.resolve.alias['@viscalyx/developer-mode-react'] = path.resolve(
+        process.cwd(),
+        'packages/developer-mode-react/src/noop.tsx',
+      )
+    }
+
+    return config
+  },
   // CSP is set per-request in middleware.ts (nonce-based).
   // Only static security headers are defined here.
   async headers() {

@@ -321,4 +321,113 @@ describe('VersionHistory', () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it('preserves the first occurrence when duplicate version numbers are present', () => {
+    locale = 'en'
+
+    const { container } = render(
+      <VersionHistory
+        onVersionSelect={vi.fn()}
+        selectedVersionNumber={3}
+        versions={[
+          makeVersion(3, {
+            editedAt: '2026-03-03',
+            status: 1,
+            statusColor: '#3b82f6',
+            statusNameEn: 'Draft',
+            statusNameSv: 'Utkast',
+          }),
+          makeVersion(3, {
+            archivedAt: '2026-02-28',
+            status: 4,
+            statusColor: '#6b7280',
+            statusNameEn: 'Archived',
+            statusNameSv: 'Arkiverad',
+          }),
+          makeVersion(2, { publishedAt: '2026-03-02' }),
+        ]}
+      />,
+    )
+
+    expect(
+      container.querySelectorAll('[data-version-number="3"]'),
+    ).toHaveLength(1)
+    expect(screen.getByText('Draft')).toBeInTheDocument()
+    expect(screen.getByText('2026-03-03')).toBeInTheDocument()
+    expect(screen.queryByText('2026-02-28')).not.toBeInTheDocument()
+  })
+
+  it('does not emit React key warnings while rendering version pills and toggles', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const versions = [
+      makeVersion(12),
+      makeVersion(11),
+      makeVersion(10),
+      makeVersion(9),
+      makeVersion(8),
+      makeVersion(7),
+      makeVersion(6),
+      makeVersion(5, {
+        archivedAt: '2026-03-05',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(4, {
+        archivedAt: '2026-03-04',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(3, {
+        archivedAt: '2026-03-03',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(2, {
+        archivedAt: '2026-03-02',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+      makeVersion(1, {
+        archivedAt: '2026-03-01',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+    ]
+
+    try {
+      render(
+        <VersionHistory
+          onVersionSelect={vi.fn()}
+          selectedVersionNumber={3}
+          versions={versions}
+        />,
+      )
+
+      await userEvent.click(screen.getByTitle('Show newer versions'))
+      await userEvent.click(screen.getByTitle('Show older versions'))
+
+      const keyWarnings = consoleError.mock.calls.filter(
+        ([message]) =>
+          typeof message === 'string' &&
+          message.includes(
+            'Each child in a list should have a unique "key" prop.',
+          ),
+      )
+
+      expect(keyWarnings).toHaveLength(0)
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
 })

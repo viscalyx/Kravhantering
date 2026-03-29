@@ -7,6 +7,7 @@ import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
 import ThemeToggle from '@/components/ThemeToggle'
 import { Link, usePathname } from '@/i18n/routing'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 const primaryNavItems = [
   { href: '/kravkatalog' as const, labelKey: 'catalog', icon: ClipboardList },
@@ -25,18 +26,22 @@ export default function Navigation() {
     <nav
       aria-label="Huvudnavigation"
       className="sticky top-0 z-50 bg-white/60 dark:bg-secondary-950/60 backdrop-blur-custom border-b border-secondary-200/60 dark:border-secondary-700/40"
-      data-developer-mode-name="navigation"
-      data-developer-mode-priority="320"
-      data-developer-mode-value="main navigation"
+      {...devMarker({
+        name: 'navigation',
+        priority: 320,
+        value: 'main navigation',
+      })}
     >
       <div className="container-custom flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         <Link
           className="flex items-center gap-2.5 font-bold text-lg text-primary-700 dark:text-primary-300"
           href="/kravkatalog"
         >
-          <Logo className="h-8 w-8" />
-          <span className="hidden sm:inline tracking-tight">
-            {tc('appName')}
+          <span className="contents">
+            <Logo className="h-8 w-8" />
+            <span className="hidden sm:inline tracking-tight">
+              {tc('appName')}
+            </span>
           </span>
         </Link>
 
@@ -51,13 +56,14 @@ export default function Navigation() {
                     ? 'bg-primary-50 dark:bg-primary-950/80 text-primary-700 dark:text-primary-300 shadow-sm'
                     : 'text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800'
                 }`}
-                data-developer-mode-name="nav link"
-                data-developer-mode-value={item.labelKey}
+                key={`desktop-nav-${item.href}`}
+                {...devMarker({ name: 'nav link', value: item.labelKey })}
                 href={item.href}
-                key={item.href}
               >
-                <item.icon aria-hidden="true" className="h-4 w-4" />
-                {t(item.labelKey)}
+                <span className="contents">
+                  <item.icon aria-hidden="true" className="h-4 w-4" />
+                  {t(item.labelKey)}
+                </span>
               </Link>
             )
           })}
@@ -73,8 +79,7 @@ export default function Navigation() {
                 ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
                 : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'
             }`}
-            data-developer-mode-name="link"
-            data-developer-mode-value="settings"
+            {...devMarker({ name: 'link', value: 'settings' })}
             href="/admin"
             title={ta('settings')}
           >
@@ -114,8 +119,10 @@ export default function Navigation() {
                 key={item.href}
                 onClick={() => setMobileOpen(false)}
               >
-                <item.icon aria-hidden="true" className="h-4 w-4" />
-                {t(item.labelKey)}
+                <span className="contents">
+                  <item.icon aria-hidden="true" className="h-4 w-4" />
+                  {t(item.labelKey)}
+                </span>
               </Link>
             )
           })}

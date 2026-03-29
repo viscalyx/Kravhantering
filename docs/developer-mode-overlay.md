@@ -22,7 +22,7 @@ UI elements so AI prompts can refer to them consistently.
 ## Behavior
 
 - Developer Mode scans only elements currently visible in the viewport.
-- Overlay chips stay English regardless of the active UI locale.
+- Overlay labels stay English regardless of the active UI locale.
 - Clicking a chip copies a deterministic reference string:
   - `context > name: value`
   - `context > name`
@@ -32,15 +32,42 @@ UI elements so AI prompts can refer to them consistently.
 - Fallback order is: bespoke `data-*` hooks, ARIA roles, `aria-label`, stable
   visible text, then `data-testid`.
 
+## Packaging
+
+- Generic Developer Mode logic lives in:
+  - `packages/developer-mode-core`
+  - `packages/developer-mode-react`
+- Both packages are repo-internal and marked `private`; they are not published
+  to npm.
+- Package docs live in:
+  - [packages/developer-mode-core/README.md](../packages/developer-mode-core/README.md)
+  - [packages/developer-mode-react/README.md](../packages/developer-mode-react/README.md)
+- App code should import the marker helper from `@/lib/developer-mode-markers`
+  and the app adapter from `components/DeveloperModeProvider`.
+- Local development enables Developer Mode automatically.
+- Production `build`, `preview`, and `deploy` flows disable Developer Mode by
+  default by aliasing the packages to no-op entrypoints.
+- Set `ENABLE_DEVELOPER_MODE=true` only when you explicitly want a non-dev build
+  to include the real Developer Mode runtime and marker output.
+
 ## DOM Contract
 
-Use these attributes on curated targets:
+Use the marker helper instead of hardcoding these attributes in app code:
+
+- `devMarker({ name, context?, value?, priority? })`
+- When Developer Mode is enabled, the helper emits the curated
+  `data-developer-mode-*` attributes below.
+- When Developer Mode is disabled, the helper returns `{}` so production HTML
+  stays clean.
+
+The emitted attributes are:
 
 - `data-developer-mode-name`: canonical English element name
 - `data-developer-mode-context`: optional English context string
 - `data-developer-mode-value`: optional English or runtime value
-  Localized controls should still expose English-only curated values, for
-  example theme state values like `light`, `dark`, and `auto`.
+  Keep the control `name` stable and move runtime identity into `value`, for
+  example `sort button: requirement id`, `filter button: status`, or theme
+  state values like `light`, `dark`, and `auto`.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 
@@ -53,9 +80,13 @@ The current canonical labels include:
 - `floating pill`
 - `floating pill menu`
 - `column picker`
+- `column picker option`
 - `requirements table`
 - `table space`
 - `column header`
+- `sort button`
+- `filter button`
+- `resize handle`
 - `header chip`
 - `table row`
 - `inline detail pane`
@@ -100,7 +131,7 @@ Developer Mode is covered by:
 If you change visible UI elements, labels, roles, or layout surfaces that a
 human or AI might need to reference:
 
-- update the relevant curated `data-developer-mode-*` markers or scan heuristics
+- update the relevant `devMarker(...)` calls or scan heuristics
 - update this document when the naming model, shortcut, or glossary changes
 - update the affected unit and integration tests
 - update repo instructions if the maintenance rule itself changes

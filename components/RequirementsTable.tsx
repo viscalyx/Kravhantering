@@ -23,13 +23,17 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
 import StatusBadge from '@/components/StatusBadge'
 import { Link, useRouter } from '@/i18n/routing'
-import { getRequirementColumnDeveloperModeLabel } from '@/lib/developer-mode'
+import {
+  devMarker,
+  getRequirementColumnDeveloperModeLabel,
+} from '@/lib/developer-mode-markers'
 import {
   type AreaOption,
   clampRequirementColumnWidth,
@@ -252,10 +256,12 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
           aria-expanded={open}
           aria-label={action.ariaLabel}
           className={`${getFloatingPillClassName(variant)}${disabledClass}`}
-          data-developer-mode-context={developerModeContext}
-          data-developer-mode-name="floating pill"
-          data-developer-mode-priority="360"
-          data-developer-mode-value={developerModeValue}
+          {...devMarker({
+            context: developerModeContext,
+            name: 'floating pill',
+            priority: 360,
+            value: developerModeValue,
+          })}
           data-floating-action-id={action.id}
           data-floating-action-item="true"
           data-floating-action-menu-trigger={action.id}
@@ -289,14 +295,14 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
               >
                 <div
                   className="w-full overflow-y-auto rounded-2xl border border-secondary-200/80 bg-white/95 p-2 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.5)] backdrop-blur-md dark:border-secondary-700/70 dark:bg-secondary-900/95"
-                  data-developer-mode-context={
-                    developerModeValue
+                  {...devMarker({
+                    context: developerModeValue
                       ? `${developerModeContext ?? 'requirements table'} > floating pill: ${developerModeValue}`
-                      : developerModeContext
-                  }
-                  data-developer-mode-name="floating pill menu"
-                  data-developer-mode-priority="350"
-                  data-developer-mode-value={developerModeValue}
+                      : developerModeContext,
+                    name: 'floating pill menu',
+                    priority: 350,
+                    value: developerModeValue,
+                  })}
                   data-floating-action-menu={action.id}
                   id={`floating-action-menu-${action.id}`}
                   ref={menuRef}
@@ -310,14 +316,16 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                           href={item.href}
                           onClick={() => setOpen(false)}
                         >
-                          <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                            {item.label}
-                          </div>
-                          {item.description ? (
-                            <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
-                              {item.description}
+                          <div className="contents">
+                            <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                              {item.label}
                             </div>
-                          ) : null}
+                            {item.description ? (
+                              <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                                {item.description}
+                              </div>
+                            ) : null}
+                          </div>
                         </Link>
                       </li>
                     ))}
@@ -337,10 +345,12 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
         <span
           aria-disabled="true"
           className={`${getFloatingPillClassName(variant)}${disabledClass}`}
-          data-developer-mode-context={developerModeContext}
-          data-developer-mode-name="floating pill"
-          data-developer-mode-priority="360"
-          data-developer-mode-value={developerModeValue}
+          {...devMarker({
+            context: developerModeContext,
+            name: 'floating pill',
+            priority: 360,
+            value: developerModeValue,
+          })}
           data-floating-action-id={action.id}
           data-floating-action-item="true"
           data-floating-action-variant={variant}
@@ -359,10 +369,12 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
       <Link
         aria-label={action.ariaLabel}
         className={getFloatingPillClassName(variant)}
-        data-developer-mode-context={developerModeContext}
-        data-developer-mode-name="floating pill"
-        data-developer-mode-priority="360"
-        data-developer-mode-value={developerModeValue}
+        {...devMarker({
+          context: developerModeContext,
+          name: 'floating pill',
+          priority: 360,
+          value: developerModeValue,
+        })}
         data-floating-action-id={action.id}
         data-floating-action-item="true"
         data-floating-action-variant={variant}
@@ -370,10 +382,12 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
         onClick={action.onClick}
         title={action.ariaLabel}
       >
-        <span aria-hidden="true" className="flex items-center justify-center">
-          {action.icon}
+        <span className="contents">
+          <span aria-hidden="true" className="flex items-center justify-center">
+            {action.icon}
+          </span>
+          <span className="sr-only">{action.ariaLabel}</span>
         </span>
-        <span className="sr-only">{action.ariaLabel}</span>
       </Link>
     )
   }
@@ -382,10 +396,12 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     <button
       aria-label={action.ariaLabel}
       className={`${getFloatingPillClassName(variant)}${disabledClass}`}
-      data-developer-mode-context={developerModeContext}
-      data-developer-mode-name="floating pill"
-      data-developer-mode-priority="360"
-      data-developer-mode-value={developerModeValue}
+      {...devMarker({
+        context: developerModeContext,
+        name: 'floating pill',
+        priority: 360,
+        value: developerModeValue,
+      })}
       data-floating-action-id={action.id}
       data-floating-action-item="true"
       data-floating-action-variant={variant}
@@ -473,10 +489,12 @@ function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
 
 function SearchFilterPopover({
   activeValue,
+  developerModeValue,
   label,
   onChange,
 }: {
   activeValue: string
+  developerModeValue: string
   label: string
   onChange: (v: string | undefined) => void
 }) {
@@ -553,8 +571,11 @@ function SearchFilterPopover({
       <button
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        data-developer-mode-name={`filter button — ${label}`}
-        data-developer-mode-priority="300"
+        {...devMarker({
+          name: 'filter button',
+          priority: 300,
+          value: developerModeValue,
+        })}
         onClick={e => {
           e.stopPropagation()
           if (!open && btnRef.current) {
@@ -570,7 +591,7 @@ function SearchFilterPopover({
         title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3.5 w-3.5" />
+        <Filter aria-hidden="true" className="h-3.5 w-3.5" />
       </button>
       {open &&
         createPortal(
@@ -629,6 +650,7 @@ function SearchFilterPopover({
 
 function MultiSelectFilterPopover({
   activeCount,
+  developerModeValue,
   getLabel,
   label,
   onChange,
@@ -636,6 +658,7 @@ function MultiSelectFilterPopover({
   value,
 }: {
   activeCount: number
+  developerModeValue: string
   getLabel: (opt: { id: number }) => string
   label: string
   onChange: (ids: number[]) => void
@@ -695,8 +718,11 @@ function MultiSelectFilterPopover({
       <button
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        data-developer-mode-name={`filter button — ${label}`}
-        data-developer-mode-priority="300"
+        {...devMarker({
+          name: 'filter button',
+          priority: 300,
+          value: developerModeValue,
+        })}
         onClick={openDropdown}
         ref={btnRef}
         title={tc('filterBy', { label })}
@@ -706,7 +732,7 @@ function MultiSelectFilterPopover({
           className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
           data-filter-icon-anchor="true"
         >
-          <Filter className="h-3.5 w-3.5" />
+          <Filter aria-hidden="true" className="h-3.5 w-3.5" />
           {activeCount > 0 && (
             <span
               className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
@@ -759,6 +785,7 @@ function MultiSelectFilterPopover({
 
 function GroupedMultiSelectFilterPopover({
   activeCount,
+  developerModeValue,
   getLabel,
   label,
   onChange,
@@ -766,6 +793,7 @@ function GroupedMultiSelectFilterPopover({
   value,
 }: {
   activeCount: number
+  developerModeValue: string
   getLabel: (opt: QualityCharacteristicOption) => string
   label: string
   onChange: (ids: number[]) => void
@@ -829,8 +857,11 @@ function GroupedMultiSelectFilterPopover({
       <button
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
-        data-developer-mode-name={`filter button — ${label}`}
-        data-developer-mode-priority="300"
+        {...devMarker({
+          name: 'filter button',
+          priority: 300,
+          value: developerModeValue,
+        })}
         onClick={openDropdown}
         ref={btnRef}
         title={tc('filterBy', { label })}
@@ -840,7 +871,7 @@ function GroupedMultiSelectFilterPopover({
           className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
           data-filter-icon-anchor="true"
         >
-          <Filter className="h-3.5 w-3.5" />
+          <Filter aria-hidden="true" className="h-3.5 w-3.5" />
           {activeCount > 0 && (
             <span
               className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
@@ -921,6 +952,8 @@ function ColumnsPopover({
   visibleColumns: RequirementColumnId[]
 }) {
   const tc = useTranslations('common')
+  const tt = useTranslations('requirementsTable')
+  const instanceId = useId()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -1005,10 +1038,12 @@ function ColumnsPopover({
       className={getFloatingPillClassName()}
       data-column-picker-shell="true"
       data-column-picker-trigger="true"
-      data-developer-mode-context="requirements table"
-      data-developer-mode-name="floating pill"
-      data-developer-mode-priority="360"
-      data-developer-mode-value="columns"
+      {...devMarker({
+        context: 'requirements table',
+        name: 'floating pill',
+        priority: 360,
+        value: 'columns',
+      })}
       data-floating-action-id="columns"
       data-floating-action-item="true"
       data-floating-action-variant="default"
@@ -1064,9 +1099,11 @@ function ColumnsPopover({
             >
               <div
                 className="pointer-events-auto flex flex-col gap-3"
-                data-developer-mode-context="requirements table"
-                data-developer-mode-name="floating action rail"
-                data-developer-mode-priority="340"
+                {...devMarker({
+                  context: 'requirements table',
+                  name: 'floating action rail',
+                  priority: 340,
+                })}
                 data-floating-action-rail="true"
               >
                 {actionsBeforeColumns.map(action => (
@@ -1092,10 +1129,12 @@ function ColumnsPopover({
           <div
             className="fixed z-50 min-w-56 overflow-y-auto rounded-xl border bg-white p-2 shadow-lg dark:bg-secondary-800"
             data-column-picker-popover="true"
-            data-developer-mode-context="requirements table"
-            data-developer-mode-name="column picker"
-            data-developer-mode-priority="350"
-            data-developer-mode-value="columns"
+            {...devMarker({
+              context: 'requirements table',
+              name: 'column picker',
+              priority: 350,
+              value: 'columns',
+            })}
             ref={dropRef}
             style={{
               left: Math.max(pos.left, 8),
@@ -1116,22 +1155,50 @@ function ColumnsPopover({
               </button>
             </div>
             <div className="space-y-0.5">
-              {columns.map(column => (
-                <label
-                  className={`flex min-h-[44px] min-w-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
-                    !column.canHide ? 'cursor-not-allowed opacity-60' : ''
-                  }`}
-                  key={column.id}
-                >
-                  <input
-                    checked={visibleColumns.includes(column.id)}
-                    disabled={!column.canHide}
-                    onChange={() => onToggle(column.id)}
-                    type="checkbox"
-                  />
-                  <span>{column.label}</span>
-                </label>
-              ))}
+              {columns.map(column => {
+                const lockedDescription = !column.canHide
+                  ? tt('lockedColumn')
+                  : undefined
+                const lockedDescriptionId = lockedDescription
+                  ? `${instanceId}-column-picker-option-description-${column.id}`
+                  : undefined
+
+                return (
+                  <div key={column.id}>
+                    <label
+                      aria-disabled={!column.canHide}
+                      className={`flex min-h-[44px] min-w-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
+                        !column.canHide ? 'cursor-not-allowed opacity-60' : ''
+                      }`}
+                      data-column-picker-option={column.id}
+                      {...devMarker({
+                        context: 'requirements table > column picker: columns',
+                        name: 'column picker option',
+                        priority: 360,
+                        value: getRequirementColumnDeveloperModeLabel(
+                          column.id,
+                        ),
+                      })}
+                      title={lockedDescription}
+                    >
+                      <input
+                        aria-describedby={lockedDescriptionId}
+                        checked={visibleColumns.includes(column.id)}
+                        disabled={!column.canHide}
+                        onChange={() => onToggle(column.id)}
+                        title={lockedDescription}
+                        type="checkbox"
+                      />
+                      <span>{column.label}</span>
+                    </label>
+                    {lockedDescriptionId ? (
+                      <span className="sr-only" id={lockedDescriptionId}>
+                        {lockedDescription}
+                      </span>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>,
           document.body,
@@ -1156,10 +1223,12 @@ function SearchChip({
   return (
     <span
       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] leading-tight rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 max-w-full"
-      data-developer-mode-context={developerModeContext}
-      data-developer-mode-name="header chip"
-      data-developer-mode-priority="370"
-      data-developer-mode-value={label}
+      {...devMarker({
+        context: developerModeContext,
+        name: 'header chip',
+        priority: 370,
+        value: label,
+      })}
     >
       <span className="truncate">{label}</span>
       <button
@@ -1171,7 +1240,7 @@ function SearchChip({
         }}
         type="button"
       >
-        <X className="h-2.5 w-2.5" />
+        <X aria-hidden="true" className="h-2.5 w-2.5" />
       </button>
     </span>
   )
@@ -1191,33 +1260,40 @@ function FilterChips({
   values: number[]
 }) {
   const tt = useTranslations('requirementsTable')
+  const uniqueValues = Array.from(new Set(values))
 
-  if (values.length === 0) return null
+  if (uniqueValues.length === 0) return null
   return (
     <div className="flex flex-wrap gap-0.5 mt-1">
-      {values.map(id => (
-        <span
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] leading-tight rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 max-w-full"
-          data-developer-mode-context={developerModeContext}
-          data-developer-mode-name="header chip"
-          data-developer-mode-priority="370"
-          data-developer-mode-value={getLabel(id)}
-          key={id}
-        >
-          <span className="truncate">{getLabel(id)}</span>
-          <button
-            aria-label={tt('removeItem', { label: getLabel(id) })}
-            className="shrink-0 hover:text-red-600 dark:hover:text-red-400"
-            onClick={e => {
-              e.stopPropagation()
-              onRemove(id)
-            }}
-            type="button"
+      {uniqueValues.map(id => {
+        const label = getLabel(id)
+
+        return (
+          <span
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] leading-tight rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 max-w-full"
+            key={`filter-chip-${developerModeContext}-${id}`}
+            {...devMarker({
+              context: developerModeContext,
+              name: 'header chip',
+              priority: 370,
+              value: label,
+            })}
           >
-            <X className="h-2.5 w-2.5" />
-          </button>
-        </span>
-      ))}
+            <span className="truncate">{label}</span>
+            <button
+              aria-label={tt('removeItem', { label })}
+              className="shrink-0 hover:text-red-600 dark:hover:text-red-400"
+              onClick={e => {
+                e.stopPropagation()
+                onRemove(id)
+              }}
+              type="button"
+            >
+              <X aria-hidden="true" className="h-2.5 w-2.5" />
+            </button>
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -1264,6 +1340,7 @@ export default function RequirementsTable({
 
   const fv = filterValues ?? {}
   const latestFilterValuesRef = useRef(fv)
+  const visibleColumnsRef = useRef(visibleColumns)
   const hasFilters = !!onFilterChange
   const visibleColumnSet = new Set([
     ...visibleColumns,
@@ -1271,6 +1348,7 @@ export default function RequirementsTable({
     'description',
   ])
   latestFilterValuesRef.current = fv
+  visibleColumnsRef.current = visibleColumns
   const columnPickerBadgeLabel =
     visibleColumnSet.size > 0
       ? `${visibleColumnSet.size}/${allColumns.length}`
@@ -2190,16 +2268,25 @@ export default function RequirementsTable({
 
   const toggleColumn = (columnId: RequirementColumnId) => {
     const column = allColumns.find(item => item.id === columnId)
+    const currentVisibleColumns = visibleColumnsRef.current
+    const currentVisibleColumnSet = new Set([
+      ...currentVisibleColumns,
+      'uniqueId',
+      'description',
+    ])
+
     if (!column?.canHide) {
       return
     }
 
-    if (visibleColumnSet.has(columnId)) {
-      applyVisibleColumns(visibleColumns.filter(value => value !== columnId))
+    if (currentVisibleColumnSet.has(columnId)) {
+      applyVisibleColumns(
+        currentVisibleColumns.filter(value => value !== columnId),
+      )
       return
     }
 
-    applyVisibleColumns([...visibleColumns, columnId])
+    applyVisibleColumns([...currentVisibleColumns, columnId])
   }
 
   const renderFilterControl = (columnId: RequirementColumnId) => {
@@ -2207,11 +2294,14 @@ export default function RequirementsTable({
       return null
     }
 
+    const developerModeValue = getRequirementColumnDeveloperModeLabel(columnId)
+
     switch (columnId) {
       case 'uniqueId':
         return (
           <SearchFilterPopover
             activeValue={fv.uniqueIdSearch ?? ''}
+            developerModeValue={developerModeValue}
             label={t('uniqueId')}
             onChange={value => updateFilter({ uniqueIdSearch: value })}
           />
@@ -2220,6 +2310,7 @@ export default function RequirementsTable({
         return (
           <SearchFilterPopover
             activeValue={fv.descriptionSearch ?? ''}
+            developerModeValue={developerModeValue}
             label={t('description')}
             onChange={value => updateFilter({ descriptionSearch: value })}
           />
@@ -2228,6 +2319,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.areaIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => areaLabel(option.id)}
             label={t('area')}
             onChange={ids =>
@@ -2241,6 +2333,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.categoryIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => catLabel(option.id)}
             label={t('category')}
             onChange={ids =>
@@ -2254,6 +2347,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.typeIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => typeLabel(option.id)}
             label={t('type')}
             onChange={ids =>
@@ -2267,6 +2361,7 @@ export default function RequirementsTable({
         return (
           <GroupedMultiSelectFilterPopover
             activeCount={(fv.qualityCharacteristicIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => typeCatLabel(option.id)}
             label={t('qualityCharacteristic')}
             onChange={ids =>
@@ -2282,6 +2377,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.statuses ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => statusLabel(option.id)}
             label={t('status')}
             onChange={ids =>
@@ -2295,6 +2391,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={rtValue.length}
+            developerModeValue={developerModeValue}
             getLabel={option =>
               requiresTestingOptions.find(item => item.id === option.id)
                 ?.label ?? ''
@@ -2641,6 +2738,7 @@ export default function RequirementsTable({
     left: number,
     label: string,
   ) => {
+    const developerModeValue = getRequirementColumnDeveloperModeLabel(columnId)
     const assignResizeHandleRef = (
       segment: ResizeHandleSegmentKey,
       node: ResizeHandleSegmentNode | null,
@@ -2653,8 +2751,6 @@ export default function RequirementsTable({
       'aria-label': tc('resizeColumn', { label }),
       className: interactiveResizeHandleClassName,
       'data-column-resize-handle': columnId,
-      'data-developer-mode-name': `resize handle — ${label}`,
-      'data-developer-mode-priority': '300',
       onBlur: () => setResizeHoverCursor(false),
       onDoubleClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
         event.preventDefault()
@@ -2669,16 +2765,21 @@ export default function RequirementsTable({
       onPointerDown: (event: ReactPointerEvent<HTMLElement>) =>
         handleResizePointerDown(columnId, event),
       title: tc('resizeColumn', { label }),
+      ...devMarker({
+        name: 'resize handle',
+        priority: 300,
+        value: developerModeValue,
+      }),
     }
 
     if (!clippedResizeHandleBounds) {
       return (
         <button
+          key={`resize-handle-${columnId}`}
           {...interactiveProps}
           className={fullResizeHandleClassName}
           data-column-resize-column={columnId}
           data-column-resize-segment="full"
-          key={columnId}
           ref={node => {
             assignResizeHandleRef('full', node)
           }}
@@ -2693,10 +2794,10 @@ export default function RequirementsTable({
     if (clippedResizeHandleBounds.top > 0) {
       segmentNodes.push(
         <button
+          key={`resize-handle-${columnId}-top`}
           {...interactiveProps}
           data-column-resize-column={columnId}
           data-column-resize-segment="top"
-          key={`${columnId}-top`}
           ref={node => {
             assignResizeHandleRef('top', node)
           }}
@@ -2720,7 +2821,9 @@ export default function RequirementsTable({
       )
 
       if (bottomSegmentHeight <= 0) {
-        return <Fragment key={columnId}>{segmentNodes}</Fragment>
+        return (
+          <Fragment key={`resize-handle-${columnId}`}>{segmentNodes}</Fragment>
+        )
       }
 
       segmentNodes.push(
@@ -2730,7 +2833,7 @@ export default function RequirementsTable({
           data-column-resize-column={columnId}
           data-column-resize-role="pointer"
           data-column-resize-segment="bottom"
-          key={`${columnId}-bottom`}
+          key={`resize-handle-${columnId}-bottom`}
           onDoubleClick={event => {
             event.preventDefault()
             event.stopPropagation()
@@ -2751,7 +2854,7 @@ export default function RequirementsTable({
       )
     }
 
-    return <Fragment key={columnId}>{segmentNodes}</Fragment>
+    return <Fragment key={`resize-handle-${columnId}`}>{segmentNodes}</Fragment>
   }
 
   return (
@@ -2816,9 +2919,11 @@ export default function RequirementsTable({
       )}
       <div
         className="relative overflow-x-auto"
-        data-developer-mode-context="requirements table"
-        data-developer-mode-name="table space"
-        data-developer-mode-priority="330"
+        {...devMarker({
+          context: 'requirements table',
+          name: 'table space',
+          priority: 330,
+        })}
         data-requirements-scroll-container="true"
         ref={scrollContainerRef}
       >
@@ -2850,8 +2955,7 @@ export default function RequirementsTable({
             : null}
           <table
             className="w-full table-fixed text-sm"
-            data-developer-mode-name="requirements table"
-            data-developer-mode-priority="320"
+            {...devMarker({ name: 'requirements table', priority: 320 })}
             ref={tableRef}
           >
             <colgroup>
@@ -2877,10 +2981,12 @@ export default function RequirementsTable({
                         rows.every(r => selectedIds?.has(r.id))
                       }
                       className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
-                      data-developer-mode-context="requirements table"
-                      data-developer-mode-name="row checkbox"
-                      data-developer-mode-priority="300"
-                      data-developer-mode-value="select all"
+                      {...devMarker({
+                        context: 'requirements table',
+                        name: 'row checkbox',
+                        priority: 300,
+                        value: 'select all',
+                      })}
                       onChange={e => {
                         if (!onSelectionChange) return
                         if (e.target.checked) {
@@ -2923,13 +3029,15 @@ export default function RequirementsTable({
                           : undefined
                       }
                       className={`${thBase} ${headerAlignClass} ${dividerClass}`}
-                      data-developer-mode-context="requirements table"
-                      data-developer-mode-name="column header"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value={getRequirementColumnDeveloperModeLabel(
-                        column.id,
-                      )}
-                      key={column.id}
+                      key={`column-header-${column.id}`}
+                      {...devMarker({
+                        context: 'requirements table',
+                        name: 'column header',
+                        priority: 350,
+                        value: getRequirementColumnDeveloperModeLabel(
+                          column.id,
+                        ),
+                      })}
                       ref={node => {
                         headerCellRefs.current[column.id] = node
                       }}
@@ -2942,8 +3050,13 @@ export default function RequirementsTable({
                           {isSortable ? (
                             <button
                               className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
-                              data-developer-mode-name={`sort button — ${getRequirementColumnDeveloperModeLabel(column.id)}`}
-                              data-developer-mode-priority="300"
+                              {...devMarker({
+                                name: 'sort button',
+                                priority: 300,
+                                value: getRequirementColumnDeveloperModeLabel(
+                                  column.id,
+                                ),
+                              })}
                               onClick={() =>
                                 handleSortToggle(
                                   column.id as RequirementSortField,
@@ -3010,10 +3123,12 @@ export default function RequirementsTable({
                             ? 'bg-secondary-50/40 dark:bg-secondary-800/20'
                             : ''
                         }`}
-                        data-developer-mode-context="requirements table"
-                        data-developer-mode-name="table row"
-                        data-developer-mode-priority="300"
-                        data-developer-mode-value={row.uniqueId}
+                        {...devMarker({
+                          context: 'requirements table',
+                          name: 'table row',
+                          priority: 300,
+                          value: row.uniqueId,
+                        })}
                         onClick={event => handleBodyRowClick(event, row.id)}
                       >
                         {selectable && (
@@ -3022,10 +3137,12 @@ export default function RequirementsTable({
                               aria-label={tc('selectRow', { id: row.uniqueId })}
                               checked={selectedIds?.has(row.id) ?? false}
                               className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
-                              data-developer-mode-context="requirements table"
-                              data-developer-mode-name="row checkbox"
-                              data-developer-mode-priority="300"
-                              data-developer-mode-value={row.uniqueId}
+                              {...devMarker({
+                                context: 'requirements table',
+                                name: 'row checkbox',
+                                priority: 300,
+                                value: row.uniqueId,
+                              })}
                               onChange={e => {
                                 e.stopPropagation()
                                 if (!onSelectionChange) return
@@ -3059,10 +3176,12 @@ export default function RequirementsTable({
                             colSpan={
                               columnDefinitions.length + (selectable ? 1 : 0)
                             }
-                            data-developer-mode-context="requirements table"
-                            data-developer-mode-name="inline detail pane"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value={row.uniqueId}
+                            {...devMarker({
+                              context: 'requirements table',
+                              name: 'inline detail pane',
+                              priority: 360,
+                              value: row.uniqueId,
+                            })}
                             data-expanded-detail-cell="true"
                             id={`requirement-row-detail-${row.id}`}
                             ref={expandedDetailCellRef}
