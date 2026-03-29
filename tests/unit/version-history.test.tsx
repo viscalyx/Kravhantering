@@ -322,6 +322,41 @@ describe('VersionHistory', () => {
     ).toBeInTheDocument()
   })
 
+  it('preserves the first occurrence when duplicate version numbers are present', () => {
+    locale = 'en'
+
+    const { container } = render(
+      <VersionHistory
+        onVersionSelect={vi.fn()}
+        selectedVersionNumber={3}
+        versions={[
+          makeVersion(3, {
+            editedAt: '2026-03-03',
+            status: 1,
+            statusColor: '#3b82f6',
+            statusNameEn: 'Draft',
+            statusNameSv: 'Utkast',
+          }),
+          makeVersion(3, {
+            archivedAt: '2026-02-28',
+            status: 4,
+            statusColor: '#6b7280',
+            statusNameEn: 'Archived',
+            statusNameSv: 'Arkiverad',
+          }),
+          makeVersion(2, { publishedAt: '2026-03-02' }),
+        ]}
+      />,
+    )
+
+    expect(
+      container.querySelectorAll('[data-version-number="3"]'),
+    ).toHaveLength(1)
+    expect(screen.getByText('Draft')).toBeInTheDocument()
+    expect(screen.getByText('2026-03-03')).toBeInTheDocument()
+    expect(screen.queryByText('2026-02-28')).not.toBeInTheDocument()
+  })
+
   it('does not emit React key warnings while rendering version pills and toggles', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 

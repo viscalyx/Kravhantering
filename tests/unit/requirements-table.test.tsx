@@ -1910,6 +1910,8 @@ describe('RequirementsTable', () => {
         expandedId={1}
         filterValues={{ ...DEFAULT_FILTERS, uniqueIdSearch: 'INT0001' }}
         locale="sv"
+        onColumnWidthsChange={() => {}}
+        onFilterChange={() => {}}
         renderExpanded={() => <div>Expanded detail</div>}
         rows={[makeRow()]}
       />,
@@ -1931,6 +1933,12 @@ describe('RequirementsTable', () => {
     const detailPane = container.querySelector(
       '[data-expanded-detail-cell="true"]',
     )
+    const sortButton = container.querySelector(
+      '[data-developer-mode-name="sort button"][data-developer-mode-value="requirement id"]',
+    )
+    const filterButton = container.querySelector(
+      '[data-developer-mode-name="filter button"][data-developer-mode-value="requirement id"]',
+    )
 
     expect(scrollContainer).toHaveAttribute(
       'data-developer-mode-name',
@@ -1946,6 +1954,8 @@ describe('RequirementsTable', () => {
       'data-developer-mode-value',
       'requirement id',
     )
+    expect(sortButton).toBeInTheDocument()
+    expect(filterButton).toBeInTheDocument()
     expect(chip).toHaveAttribute(
       'data-developer-mode-context',
       'requirements table > column header: requirement id',
@@ -1958,6 +1968,39 @@ describe('RequirementsTable', () => {
       'inline detail pane',
     )
     expect(detailPane).toHaveAttribute('data-developer-mode-value', 'INT0001')
+  })
+
+  it('exposes developer-mode metadata for sortable, filterable, and resizable header controls', () => {
+    const { container } = render(
+      <RequirementsTable
+        filterValues={{ ...DEFAULT_FILTERS, uniqueIdSearch: 'INT0001' }}
+        locale="sv"
+        onColumnWidthsChange={() => {}}
+        onFilterChange={() => {}}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const sortButton = container.querySelector(
+      '[data-developer-mode-name="sort button"][data-developer-mode-value="requirement id"]',
+    )
+    const filterButton = container.querySelector(
+      '[data-developer-mode-name="filter button"][data-developer-mode-value="requirement id"]',
+    )
+    const resizeHandle = container.querySelector(
+      '[data-column-resize-handle="uniqueId"]',
+    )
+
+    expect(sortButton).toBeInTheDocument()
+    expect(filterButton).toBeInTheDocument()
+    expect(resizeHandle).toHaveAttribute(
+      'data-developer-mode-name',
+      'resize handle',
+    )
+    expect(resizeHandle).toHaveAttribute(
+      'data-developer-mode-value',
+      'requirement id',
+    )
   })
 
   it('applies zebra striping on alternating rows', () => {

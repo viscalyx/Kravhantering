@@ -4,11 +4,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import DeveloperModeProvider from '@/components/DeveloperModeProvider'
 
 const clipboardWriteText = vi.fn()
+const defaultDeveloperModeTranslations = {
+  badge: 'Developer Mode',
+  copied: 'Copied',
+  copyFailed: 'Copy failed',
+}
+let developerModeTranslations = defaultDeveloperModeTranslations
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) =>
-    ({ badge: 'Developer Mode', copied: 'Copied', copyFailed: 'Copy failed' })[
-      key
+    developerModeTranslations[
+      key as keyof typeof defaultDeveloperModeTranslations
     ] ?? key,
 }))
 
@@ -113,6 +119,7 @@ describe('DeveloperModeProvider', () => {
   afterEach(() => {
     vi.useRealTimers()
     vi.unstubAllGlobals()
+    developerModeTranslations = defaultDeveloperModeTranslations
   })
 
   it('toggles with Mod+Alt+Shift+H, shows chip on hover, and ignores editable fields', async () => {
@@ -223,5 +230,45 @@ describe('DeveloperModeProvider', () => {
     ).toBeInTheDocument()
 
     await flushDeveloperMode()
+  })
+
+  it('keeps the overlay labels in English even when UI translations are localized', async () => {
+    developerModeTranslations = {
+      badge: 'Utvecklarlage',
+      copied: 'Kopierad',
+      copyFailed: 'Kopiering misslyckades',
+    }
+
+    render(
+      <DeveloperModeProvider>
+        <Fixture />
+      </DeveloperModeProvider>,
+    )
+
+    await flushDeveloperMode()
+
+    fireEvent.keyDown(document, {
+      altKey: true,
+      code: 'KeyH',
+      key: 'H',
+      metaKey: true,
+      shiftKey: true,
+    })
+    await flushDeveloperMode()
+
+    expect(screen.getByTestId('developer-mode-badge')).toHaveTextContent(
+      'Developer Mode',
+    )
+
+    hoverElement(screen.getByTestId('dm-table'))
+    await flushDeveloperMode()
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('requirements table'))
+      vi.runOnlyPendingTimers()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('Copied: requirements table')).toBeInTheDocument()
   })
 })
