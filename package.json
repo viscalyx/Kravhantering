@@ -74,6 +74,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@viscalyx/developer-mode-core": "file:packages/developer-mode-core",
+    "@viscalyx/developer-mode-react": "file:packages/developer-mode-react",
     "@biomejs/biome": "^2.4.9",
     "@cspell/dict-sv": "^2.3.2",
     "@playwright/test": "^1.58.2",
