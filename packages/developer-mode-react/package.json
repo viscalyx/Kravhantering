@@ -1,0 +1,16 @@
+{
+  "name": "@viscalyx/developer-mode-react",
+  "version": "0.0.0",
+  "description": "React overlay and provider for developer mode",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "exports": {
+    ".": "./src/index.tsx",
+    "./noop": "./src/noop.tsx"
+  }
+}
