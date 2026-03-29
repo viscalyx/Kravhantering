@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { devMarker } from '@/lib/developer-mode-markers'
 
@@ -40,6 +40,8 @@ export default function KravpaketClient() {
     TaxonomyItem[]
   >([])
   const [loading, setLoading] = useState(true)
+  const [showSpinner, setShowSpinner] = useState(false)
+  const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [form, setForm] = useState({
@@ -58,11 +60,15 @@ export default function KravpaketClient() {
 
   const fetchPackages = useCallback(async () => {
     setLoading(true)
+    if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
+    spinnerTimerRef.current = setTimeout(() => setShowSpinner(true), 200)
     const res = await fetch('/api/requirement-packages')
     if (res.ok)
       setPackages(
         ((await res.json()) as { packages?: Package[] }).packages ?? [],
       )
+    if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
+    setShowSpinner(false)
     setLoading(false)
   }, [])
 
@@ -278,11 +284,19 @@ export default function KravpaketClient() {
           </form>
         )}
 
-        {loading ? (
-          <p className="text-secondary-600 dark:text-secondary-400">
-            {tc('loading')}
-          </p>
-        ) : (
+        {showSpinner && (
+          <div
+            aria-live="polite"
+            className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
+            data-testid="kravpaket-loading"
+          >
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
+            <p className="text-secondary-600 dark:text-secondary-400">
+              {tc('loading')}
+            </p>
+          </div>
+        )}
+        {!loading && (
           <div
             className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
             {...devMarker({

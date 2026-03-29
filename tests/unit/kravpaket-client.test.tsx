@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -43,7 +44,10 @@ const samplePackages = [
 ]
 
 describe('KravpaketClient', () => {
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,10 +78,21 @@ describe('KravpaketClient', () => {
     expect(screen.getByText('Type')).toBeInTheDocument()
   })
 
-  it('shows loading text initially', () => {
+  it('does not show spinner immediately while loading', () => {
+    vi.useFakeTimers()
     fetchMock.mockReturnValue(new Promise(() => {}))
     render(<KravpaketClient />)
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    expect(screen.queryByTestId('kravpaket-loading')).not.toBeInTheDocument()
+  })
+
+  it('shows spinner after 200ms when still loading', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockReturnValue(new Promise(() => {}))
+    render(<KravpaketClient />)
+    await act(async () => {
+      vi.advanceTimersByTime(200)
+    })
+    expect(screen.getByTestId('kravpaket-loading')).toBeInTheDocument()
   })
 
   it('opens create form with fields', async () => {
