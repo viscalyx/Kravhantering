@@ -62,12 +62,21 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
     const [expandedBefore, setExpandedBefore] = useState(false)
     const [expandedAfter, setExpandedAfter] = useState(false)
 
-    // Sort descending by version number
-    const sorted = Array.from(
-      new Map(
-        versions.map(version => [version.versionNumber, version]),
-      ).values(),
-    ).sort((a, b) => b.versionNumber - a.versionNumber)
+    // Preserve the first/newest occurrence for duplicate version numbers.
+    const uniqueVersions: Version[] = []
+    const seenVersionNumbers = new Set<number>()
+    for (const version of versions) {
+      if (seenVersionNumbers.has(version.versionNumber)) {
+        continue
+      }
+
+      seenVersionNumbers.add(version.versionNumber)
+      uniqueVersions.push(version)
+    }
+
+    const sorted = uniqueVersions.sort(
+      (a, b) => b.versionNumber - a.versionNumber,
+    )
 
     const skipCollapse = sorted.length <= MAX_VISIBLE_WITHOUT_COLLAPSE
 

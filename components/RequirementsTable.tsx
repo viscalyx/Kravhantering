@@ -488,10 +488,12 @@ function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
 
 function SearchFilterPopover({
   activeValue,
+  developerModeValue,
   label,
   onChange,
 }: {
   activeValue: string
+  developerModeValue: string
   label: string
   onChange: (v: string | undefined) => void
 }) {
@@ -569,8 +571,9 @@ function SearchFilterPopover({
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
-          name: `filter button — ${label}`,
+          name: 'filter button',
           priority: 300,
+          value: developerModeValue,
         })}
         onClick={e => {
           e.stopPropagation()
@@ -646,6 +649,7 @@ function SearchFilterPopover({
 
 function MultiSelectFilterPopover({
   activeCount,
+  developerModeValue,
   getLabel,
   label,
   onChange,
@@ -653,6 +657,7 @@ function MultiSelectFilterPopover({
   value,
 }: {
   activeCount: number
+  developerModeValue: string
   getLabel: (opt: { id: number }) => string
   label: string
   onChange: (ids: number[]) => void
@@ -713,8 +718,9 @@ function MultiSelectFilterPopover({
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
-          name: `filter button — ${label}`,
+          name: 'filter button',
           priority: 300,
+          value: developerModeValue,
         })}
         onClick={openDropdown}
         ref={btnRef}
@@ -778,6 +784,7 @@ function MultiSelectFilterPopover({
 
 function GroupedMultiSelectFilterPopover({
   activeCount,
+  developerModeValue,
   getLabel,
   label,
   onChange,
@@ -785,6 +792,7 @@ function GroupedMultiSelectFilterPopover({
   value,
 }: {
   activeCount: number
+  developerModeValue: string
   getLabel: (opt: QualityCharacteristicOption) => string
   label: string
   onChange: (ids: number[]) => void
@@ -849,8 +857,9 @@ function GroupedMultiSelectFilterPopover({
         aria-label={tc('filterBy', { label })}
         className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
-          name: `filter button — ${label}`,
+          name: 'filter button',
           priority: 300,
+          value: developerModeValue,
         })}
         onClick={openDropdown}
         ref={btnRef}
@@ -2255,11 +2264,14 @@ export default function RequirementsTable({
       return null
     }
 
+    const developerModeValue = getRequirementColumnDeveloperModeLabel(columnId)
+
     switch (columnId) {
       case 'uniqueId':
         return (
           <SearchFilterPopover
             activeValue={fv.uniqueIdSearch ?? ''}
+            developerModeValue={developerModeValue}
             label={t('uniqueId')}
             onChange={value => updateFilter({ uniqueIdSearch: value })}
           />
@@ -2268,6 +2280,7 @@ export default function RequirementsTable({
         return (
           <SearchFilterPopover
             activeValue={fv.descriptionSearch ?? ''}
+            developerModeValue={developerModeValue}
             label={t('description')}
             onChange={value => updateFilter({ descriptionSearch: value })}
           />
@@ -2276,6 +2289,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.areaIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => areaLabel(option.id)}
             label={t('area')}
             onChange={ids =>
@@ -2289,6 +2303,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.categoryIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => catLabel(option.id)}
             label={t('category')}
             onChange={ids =>
@@ -2302,6 +2317,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.typeIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => typeLabel(option.id)}
             label={t('type')}
             onChange={ids =>
@@ -2315,6 +2331,7 @@ export default function RequirementsTable({
         return (
           <GroupedMultiSelectFilterPopover
             activeCount={(fv.qualityCharacteristicIds ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => typeCatLabel(option.id)}
             label={t('qualityCharacteristic')}
             onChange={ids =>
@@ -2330,6 +2347,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={(fv.statuses ?? []).length}
+            developerModeValue={developerModeValue}
             getLabel={option => statusLabel(option.id)}
             label={t('status')}
             onChange={ids =>
@@ -2343,6 +2361,7 @@ export default function RequirementsTable({
         return (
           <MultiSelectFilterPopover
             activeCount={rtValue.length}
+            developerModeValue={developerModeValue}
             getLabel={option =>
               requiresTestingOptions.find(item => item.id === option.id)
                 ?.label ?? ''
@@ -2689,6 +2708,7 @@ export default function RequirementsTable({
     left: number,
     label: string,
   ) => {
+    const developerModeValue = getRequirementColumnDeveloperModeLabel(columnId)
     const assignResizeHandleRef = (
       segment: ResizeHandleSegmentKey,
       node: ResizeHandleSegmentNode | null,
@@ -2716,8 +2736,9 @@ export default function RequirementsTable({
         handleResizePointerDown(columnId, event),
       title: tc('resizeColumn', { label }),
       ...devMarker({
-        name: `resize handle — ${label}`,
+        name: 'resize handle',
         priority: 300,
+        value: developerModeValue,
       }),
     }
 
@@ -3000,8 +3021,11 @@ export default function RequirementsTable({
                             <button
                               className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
                               {...devMarker({
-                                name: `sort button — ${getRequirementColumnDeveloperModeLabel(column.id)}`,
+                                name: 'sort button',
                                 priority: 300,
+                                value: getRequirementColumnDeveloperModeLabel(
+                                  column.id,
+                                ),
                               })}
                               onClick={() =>
                                 handleSortToggle(

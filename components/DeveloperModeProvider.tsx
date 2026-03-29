@@ -1,9 +1,14 @@
 'use client'
 
 import AppDeveloperModeProvider from '@viscalyx/developer-mode-react'
-import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
 import { usePathname } from '@/i18n/routing'
+
+const DEVELOPER_MODE_LABELS = {
+  badge: 'Developer Mode',
+  copied: 'Copied',
+  copyFailed: 'Copy failed',
+}
 
 export default function DeveloperModeProvider({
   children,
@@ -11,15 +16,10 @@ export default function DeveloperModeProvider({
   children: ReactNode
 }) {
   const pathname = usePathname()
-  const t = useTranslations('developerMode')
 
   return (
     <AppDeveloperModeProvider
-      labels={{
-        badge: t('badge'),
-        copied: t('copied'),
-        copyFailed: t('copyFailed'),
-      }}
+      labels={DEVELOPER_MODE_LABELS}
       navigationKey={pathname}
     >
       {children}

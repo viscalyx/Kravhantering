@@ -74,18 +74,16 @@ export default function AdminClient({
   const [activeTab, setActiveTab] = useState<AdminTab>('terminology')
   const [activeLocale, setActiveLocale] = useState<UiLocale>('sv')
   const [terminology, setTerminology] = useState(initialTerminology)
-  const [columnDefaults, setColumnDefaults] = useState(initialColumnDefaults)
+  const [columnDefaults, setColumnDefaults] = useState<
+    RequirementListColumnDefault[]
+  >(() => normalizeRequirementListColumnDefaults(initialColumnDefaults))
   const [terminologySaveState, setTerminologySaveState] =
     useState<SaveState>('idle')
   const [columnSaveState, setColumnSaveState] = useState<SaveState>('idle')
   const terminologySaveTokenRef = useRef(0)
   const columnSaveTokenRef = useRef(0)
   const orderedColumns = useMemo(
-    () =>
-      getOrderedRequirementListColumns(columnDefaults).filter(
-        (column, index, ordered) =>
-          index === ordered.findIndex(candidate => candidate.id === column.id),
-      ),
+    () => getOrderedRequirementListColumns(columnDefaults),
     [columnDefaults],
   )
   const isTerminologySaving = terminologySaveState === 'saving'
@@ -126,34 +124,38 @@ export default function AdminClient({
 
       ;[next[index], next[targetIndex]] = [next[targetIndex], next[index]]
 
-      return next.map((column, position) => ({
-        ...column,
-        sortOrder: position,
-      }))
+      return normalizeRequirementListColumnDefaults(
+        next.map((column, position) => ({
+          ...column,
+          sortOrder: position,
+        })),
+      )
     })
     setColumnSaveState('idle')
   }
 
   const toggleColumnVisibility = (columnId: string) => {
     setColumnDefaults(current =>
-      current.map(column => {
-        if (column.columnId !== columnId) {
-          return column
-        }
+      normalizeRequirementListColumnDefaults(
+        current.map(column => {
+          if (column.columnId !== columnId) {
+            return column
+          }
 
-        const definition = getRequirementColumnDefinition(column.columnId)
-        if (!definition?.canHide) {
+          const definition = getRequirementColumnDefinition(column.columnId)
+          if (!definition?.canHide) {
+            return {
+              ...column,
+              defaultVisible: true,
+            }
+          }
+
           return {
             ...column,
-            defaultVisible: true,
+            defaultVisible: !column.defaultVisible,
           }
-        }
-
-        return {
-          ...column,
-          defaultVisible: !column.defaultVisible,
-        }
-      }),
+        }),
+      ),
     )
     setColumnSaveState('idle')
   }
@@ -225,7 +227,9 @@ export default function AdminClient({
         return
       }
 
-      const nextColumns = data.columns ?? columnDefaults
+      const nextColumns = normalizeRequirementListColumnDefaults(
+        data.columns ?? columnDefaults,
+      )
       setColumnDefaults(nextColumns)
       setColumnSaveState('saved')
     } catch {
