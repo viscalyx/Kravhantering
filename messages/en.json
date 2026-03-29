@@ -166,6 +166,7 @@
   },
   "requirementsTable": {
     "clear": "Clear",
+    "lockedColumn": "This column is always visible.",
     "removeItem": "Remove {label}"
   },
   "area": {

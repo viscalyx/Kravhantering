@@ -587,9 +587,28 @@ describe('RequirementsTable', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'columns' }))
 
-    expect(screen.getByRole('checkbox', { name: 'uniqueId' })).toBeDisabled()
-    expect(screen.getByRole('checkbox', { name: 'description' })).toBeDisabled()
+    const uniqueIdCheckbox = screen.getByRole('checkbox', { name: 'uniqueId' })
+    const descriptionCheckbox = screen.getByRole('checkbox', {
+      name: 'description',
+    })
+
+    expect(uniqueIdCheckbox).toBeDisabled()
+    expect(descriptionCheckbox).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'area' })).not.toBeDisabled()
+    expect(uniqueIdCheckbox).toHaveAttribute(
+      'aria-describedby',
+      'column-picker-option-description-uniqueId',
+    )
+    expect(uniqueIdCheckbox).toHaveAttribute('title', 'lockedColumn')
+    expect(uniqueIdCheckbox.closest('label')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    const lockedDescriptions = screen.getAllByText('lockedColumn')
+    expect(lockedDescriptions.length).toBeGreaterThanOrEqual(2)
+    for (const description of lockedDescriptions) {
+      expect(description).toHaveClass('sr-only')
+    }
   })
 
   it('renders minimum hit areas in the columns popover', () => {
@@ -2078,7 +2097,7 @@ describe('RequirementsTable', () => {
   })
 
   it('renders filter chips for all filterable columns when filter values are active', () => {
-    render(
+    const { container } = render(
       <RequirementsTable
         areas={[{ id: 10, name: 'Payments' }]}
         categories={[{ id: 20, nameEn: 'Business', nameSv: 'Verksamhet' }]}
@@ -2140,6 +2159,13 @@ describe('RequirementsTable', () => {
     expect(chipValues).toContain('Tillforlitlighet')
     expect(chipValues).toContain('Publicerad')
     expect(chipValues).toContain('search-term')
+    const removeIcons = container.querySelectorAll(
+      '[data-developer-mode-name="header chip"] button svg',
+    )
+    expect(removeIcons.length).toBeGreaterThan(0)
+    for (const icon of removeIcons) {
+      expect(icon).toHaveAttribute('aria-hidden', 'true')
+    }
   })
 
   it('does not emit React key warnings when rendering headers and filter chips', () => {

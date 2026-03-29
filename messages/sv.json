@@ -166,6 +166,7 @@
   },
   "requirementsTable": {
     "clear": "Rensa",
+    "lockedColumn": "Den här kolumnen visas alltid.",
     "removeItem": "Ta bort {label}"
   },
   "area": {

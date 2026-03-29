@@ -315,7 +315,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                           href={item.href}
                           onClick={() => setOpen(false)}
                         >
-                          <span className="contents">
+                          <div className="contents">
                             <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
                               {item.label}
                             </div>
@@ -324,7 +324,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                                 {item.description}
                               </div>
                             ) : null}
-                          </span>
+                          </div>
                         </Link>
                       </li>
                     ))}
@@ -951,6 +951,7 @@ function ColumnsPopover({
   visibleColumns: RequirementColumnId[]
 }) {
   const tc = useTranslations('common')
+  const tt = useTranslations('requirementsTable')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -1152,29 +1153,50 @@ function ColumnsPopover({
               </button>
             </div>
             <div className="space-y-0.5">
-              {columns.map(column => (
-                <label
-                  className={`flex min-h-[44px] min-w-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
-                    !column.canHide ? 'cursor-not-allowed opacity-60' : ''
-                  }`}
-                  data-column-picker-option={column.id}
-                  {...devMarker({
-                    context: 'requirements table > column picker: columns',
-                    name: 'column picker option',
-                    priority: 360,
-                    value: getRequirementColumnDeveloperModeLabel(column.id),
-                  })}
-                  key={column.id}
-                >
-                  <input
-                    checked={visibleColumns.includes(column.id)}
-                    disabled={!column.canHide}
-                    onChange={() => onToggle(column.id)}
-                    type="checkbox"
-                  />
-                  <span>{column.label}</span>
-                </label>
-              ))}
+              {columns.map(column => {
+                const lockedDescription = !column.canHide
+                  ? tt('lockedColumn')
+                  : undefined
+                const lockedDescriptionId = lockedDescription
+                  ? `column-picker-option-description-${column.id}`
+                  : undefined
+
+                return (
+                  <div key={column.id}>
+                    <label
+                      aria-disabled={!column.canHide}
+                      className={`flex min-h-[44px] min-w-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
+                        !column.canHide ? 'cursor-not-allowed opacity-60' : ''
+                      }`}
+                      data-column-picker-option={column.id}
+                      {...devMarker({
+                        context: 'requirements table > column picker: columns',
+                        name: 'column picker option',
+                        priority: 360,
+                        value: getRequirementColumnDeveloperModeLabel(
+                          column.id,
+                        ),
+                      })}
+                      title={lockedDescription}
+                    >
+                      <input
+                        aria-describedby={lockedDescriptionId}
+                        checked={visibleColumns.includes(column.id)}
+                        disabled={!column.canHide}
+                        onChange={() => onToggle(column.id)}
+                        title={lockedDescription}
+                        type="checkbox"
+                      />
+                      <span>{column.label}</span>
+                    </label>
+                    {lockedDescriptionId ? (
+                      <span className="sr-only" id={lockedDescriptionId}>
+                        {lockedDescription}
+                      </span>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>,
           document.body,
@@ -1216,7 +1238,7 @@ function SearchChip({
         }}
         type="button"
       >
-        <X className="h-2.5 w-2.5" />
+        <X aria-hidden="true" className="h-2.5 w-2.5" />
       </button>
     </span>
   )
@@ -1265,7 +1287,7 @@ function FilterChips({
               }}
               type="button"
             >
-              <X className="h-2.5 w-2.5" />
+              <X aria-hidden="true" className="h-2.5 w-2.5" />
             </button>
           </span>
         )
