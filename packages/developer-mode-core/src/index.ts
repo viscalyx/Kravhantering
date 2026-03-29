@@ -714,6 +714,7 @@ function shouldSkipCandidate(
     }
 
     return (
+      samePayload &&
       existing.priority > candidate.priority &&
       Math.abs(existing.anchorTop - candidate.anchorTop) <= 10 &&
       Math.abs(existing.anchorLeft - candidate.anchorLeft) <= 10

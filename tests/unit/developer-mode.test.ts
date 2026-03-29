@@ -571,5 +571,26 @@ describe('developer mode utilities', () => {
       )
       expect(saveTargets.length).toBe(1)
     })
+
+    it('keeps nearby lower-priority child controls when their payload differs', () => {
+      const popover = document.createElement('div')
+      popover.setAttribute('data-column-picker-popover', '')
+      document.body.appendChild(popover)
+      mockRect(popover, { left: 10, top: 10, width: 200, height: 180 })
+
+      const resetButton = document.createElement('button')
+      resetButton.setAttribute('aria-label', 'Reset columns')
+      popover.appendChild(resetButton)
+      mockRect(resetButton, { left: 12, top: 12, width: 120, height: 40 })
+
+      const targets = scanVisibleDeveloperModeTargets(
+        document.body as unknown as ParentNode,
+      )
+
+      expect(targets.some(t => t.name === 'column picker')).toBe(true)
+      expect(
+        targets.some(t => t.name === 'button' && t.value === 'Reset columns'),
+      ).toBe(true)
+    })
   })
 })

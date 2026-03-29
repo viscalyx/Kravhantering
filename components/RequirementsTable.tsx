@@ -1158,6 +1158,12 @@ function ColumnsPopover({
                     !column.canHide ? 'cursor-not-allowed opacity-60' : ''
                   }`}
                   data-column-picker-option={column.id}
+                  {...devMarker({
+                    context: 'requirements table > column picker: columns',
+                    name: 'column picker option',
+                    priority: 360,
+                    value: getRequirementColumnDeveloperModeLabel(column.id),
+                  })}
                   key={column.id}
                 >
                   <input

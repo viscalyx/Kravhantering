@@ -627,6 +627,28 @@ describe('RequirementsTable', () => {
     expect(screen.queryByRole('checkbox', { name: 'status' })).toBeNull()
   })
 
+  it('exposes developer-mode metadata for column picker options', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    fireEvent.click(getColumnPickerTrigger(container) as HTMLButtonElement)
+
+    const option = document.querySelector(
+      '[data-column-picker-option="requiresTesting"]',
+    )
+
+    expect(option).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirements table > column picker: columns',
+    )
+    expect(option).toHaveAttribute(
+      'data-developer-mode-name',
+      'column picker option',
+    )
+    expect(option).toHaveAttribute('data-developer-mode-value', 'verifiable')
+  })
+
   it('keeps the floating action rail within the viewport on narrow screens', () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,

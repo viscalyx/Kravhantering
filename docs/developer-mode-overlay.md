@@ -80,6 +80,7 @@ The current canonical labels include:
 - `floating pill`
 - `floating pill menu`
 - `column picker`
+- `column picker option`
 - `requirements table`
 - `table space`
 - `column header`
