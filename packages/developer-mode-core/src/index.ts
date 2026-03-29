@@ -189,7 +189,7 @@ export function matchesDeveloperModeShortcut(
   )
 }
 
-export function isEditableTarget(target: EventTarget | null) {
+export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false
   }
@@ -752,8 +752,10 @@ export function findDeveloperModeTargetAt(
 }
 
 export function scanVisibleDeveloperModeTargets(
-  root: ParentNode = document.body as unknown as ParentNode,
-) {
+  root: Pick<ParentNode, 'querySelectorAll'> | null = document.body ??
+    document.documentElement,
+): DeveloperModeTarget[] {
+  const scanRoot = root ?? document.documentElement
   const viewportHeight = Math.max(
     window.innerHeight,
     document.documentElement.clientHeight,
@@ -763,7 +765,7 @@ export function scanVisibleDeveloperModeTargets(
     document.documentElement.clientWidth,
   )
   const elements = Array.from(
-    root.querySelectorAll<HTMLElement>(FALLBACK_SELECTOR),
+    scanRoot.querySelectorAll<HTMLElement>(FALLBACK_SELECTOR),
   )
   const candidates = elements
     .map(element => buildTarget(element, viewportHeight, viewportWidth))
