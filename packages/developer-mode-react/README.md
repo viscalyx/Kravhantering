@@ -16,7 +16,7 @@ experience. It mounts a client-side provider that:
 
 This package does not define the marker contract itself. It expects the DOM to
 contain curated or discoverable targets from
-[`@viscalyx/developer-mode-core`](./developer-mode-core-README.md).
+[`@viscalyx/developer-mode-core`](../developer-mode-core/README.md).
 
 ## When To Use This Package
 
@@ -28,11 +28,11 @@ This package is a good fit when you need:
 - a `DeveloperModeProvider` that wraps an existing React application
 - a visible overlay for hovered targets
 - copy-to-clipboard behavior for stable developer references
-- a badge and toast experience that can be localized by the host app
+- host-provided English badge and toast labels
 - a no-op provider entrypoint for builds that must exclude the real runtime
 
 If you only need marker helpers or target scanning, use
-[`@viscalyx/developer-mode-core`](./developer-mode-core-README.md) by itself.
+[`@viscalyx/developer-mode-core`](../developer-mode-core/README.md) by itself.
 
 ## Installation
 
@@ -57,10 +57,11 @@ In this repository, the package is currently consumed as a local
 
 The application wraps the package in a small adapter:
 
-- [`components/DeveloperModeProvider.tsx`](../components/DeveloperModeProvider.tsx)
+- [`components/DeveloperModeProvider.tsx`](../../components/DeveloperModeProvider.tsx)
 
-That adapter supplies translated labels and a route-derived `navigationKey`.
-This is the recommended integration style for future consumers too.
+That adapter supplies stable, English Developer Mode labels and a
+route-derived `navigationKey`. This is the recommended integration style for
+future consumers too.
 
 ## Quick Start
 
@@ -142,9 +143,9 @@ interface DeveloperModeProviderProps {
 Required behavior:
 
 - `children`: the wrapped application tree
-- `labels.badge`: badge text shown while Developer Mode is enabled
-- `labels.copied`: success prefix for copied payload toasts
-- `labels.copyFailed`: failure prefix for clipboard errors
+- `labels.badge`: English badge text shown while Developer Mode is enabled
+- `labels.copied`: English success prefix for copied payload toasts
+- `labels.copyFailed`: English failure prefix for clipboard errors
 - `navigationKey`: optional route or state key that clears stale hover state
   when navigation changes
 
@@ -186,8 +187,8 @@ In this repository:
   `packages/developer-mode-react/src/noop.tsx` unless
   `ENABLE_DEVELOPER_MODE=true`
 
-See [Developer Mode Overlay](./developer-mode-overlay.md) for the repo-specific
-build wiring and maintenance rules.
+See [Developer Mode Overlay](../../docs/developer-mode-overlay.md) for the
+repo-specific build wiring and maintenance rules.
 
 ## Using With @viscalyx/developer-mode-core
 
@@ -201,7 +202,7 @@ Recommended composition:
 1. Put all marker authoring behind a host helper such as
    `lib/developer-mode-markers.ts`.
 2. Wrap the app with a host adapter around `DeveloperModeProvider`.
-3. Supply localized badge and toast labels from the host app.
+3. Supply English Developer Mode badge and toast labels from the host app.
 4. Pass a route-derived `navigationKey` if your app has client-side navigation.
 5. Use build-time aliasing to swap both packages to their `./noop` variants in
    production.
@@ -209,17 +210,17 @@ Recommended composition:
 In this repository, that adapter flow looks like:
 
 - markers:
-  [`lib/developer-mode-markers.ts`](../lib/developer-mode-markers.ts)
+  [`lib/developer-mode-markers.ts`](../../lib/developer-mode-markers.ts)
 - provider adapter:
-  [`components/DeveloperModeProvider.tsx`](../components/DeveloperModeProvider.tsx)
+  [`components/DeveloperModeProvider.tsx`](../../components/DeveloperModeProvider.tsx)
 - build aliasing:
-  [`next.config.ts`](../next.config.ts)
+  [`next.config.ts`](../../next.config.ts)
 
 ## Notes For Host Applications
 
 - Keep marker names and copied payload values in English, even if the
   surrounding UI is localized.
-- Provide user-facing badge and toast strings from the host app instead of
+- Provide English badge and toast strings from the host app instead of
   hardcoding them inside the package.
 - Use a stable `navigationKey` whenever route transitions can leave stale hover
   targets behind.

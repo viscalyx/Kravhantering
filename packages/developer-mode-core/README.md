@@ -34,7 +34,7 @@ capabilities:
   attributes
 
 If you also want a ready-made React overlay, use this package together with
-[`@viscalyx/developer-mode-react`](./developer-mode-react-README.md).
+[`@viscalyx/developer-mode-react`](../developer-mode-react/README.md).
 
 ## Installation
 
@@ -54,7 +54,7 @@ In this repository, the package is currently consumed as a local
 App code does not import the package directly from every component. Instead, it
 routes marker creation through a small host adapter:
 
-- [`lib/developer-mode-markers.ts`](../lib/developer-mode-markers.ts)
+- [`lib/developer-mode-markers.ts`](../../lib/developer-mode-markers.ts)
 
 That pattern is recommended for future consumers too, because it gives the host
 application one place to centralize naming conventions, helper wrappers, and
@@ -219,8 +219,8 @@ In this repository:
   `packages/developer-mode-core/src/noop.ts` unless
   `ENABLE_DEVELOPER_MODE=true`
 
-See [Developer Mode Overlay](./developer-mode-overlay.md) for the repo-specific
-build wiring.
+See [Developer Mode Overlay](../../docs/developer-mode-overlay.md) for the
+repo-specific build wiring.
 
 ## Used Together With @viscalyx/developer-mode-react
 
@@ -263,7 +263,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 ```
 
 For a fuller React integration guide, see
-[`developer-mode-react-README.md`](./developer-mode-react-README.md).
+[`packages/developer-mode-react/README.md`](../developer-mode-react/README.md).
 
 ## Notes For Host Applications
 
