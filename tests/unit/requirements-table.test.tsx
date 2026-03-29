@@ -2077,6 +2077,72 @@ describe('RequirementsTable', () => {
     expect(chipValues).toContain('search-term')
   })
 
+  it('does not emit React key warnings when rendering headers and filter chips', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      render(
+        <RequirementsTable
+          areas={[{ id: 10, name: 'Payments' }]}
+          categories={[{ id: 20, nameEn: 'Business', nameSv: 'Verksamhet' }]}
+          filterValues={{
+            areaIds: [10],
+            categoryIds: [20],
+            descriptionSearch: 'search-term',
+            qualityCharacteristicIds: [40],
+            requiresTesting: ['true'],
+            statuses: [3],
+            typeIds: [30],
+          }}
+          getName={opt => opt.nameSv}
+          getStatusName={opt => opt.nameSv}
+          locale="sv"
+          onFilterChange={vi.fn()}
+          qualityCharacteristics={[
+            {
+              id: 40,
+              nameEn: 'Reliability',
+              nameSv: 'Tillforlitlighet',
+              parentId: null,
+            },
+          ]}
+          rows={[makeRow()]}
+          statusOptions={[
+            {
+              color: '#22c55e',
+              id: 3,
+              nameEn: 'Published',
+              nameSv: 'Publicerad',
+            },
+          ]}
+          types={[{ id: 30, nameEn: 'Functional', nameSv: 'Funktionellt' }]}
+          visibleColumns={[
+            'uniqueId',
+            'description',
+            'area',
+            'category',
+            'type',
+            'qualityCharacteristic',
+            'status',
+            'requiresTesting',
+          ]}
+        />,
+      )
+
+      const keyWarnings = consoleError.mock.calls.filter(
+        ([message]) =>
+          typeof message === 'string' &&
+          message.includes(
+            'Each child in a list should have a unique "key" prop.',
+          ),
+      )
+
+      expect(keyWarnings).toHaveLength(0)
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
     let observedElement: Element | null = null
     let observerCallback: IntersectionObserverCallback | null = null

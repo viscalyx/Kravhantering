@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildDeveloperModeChipLabel,
   buildDeveloperModeCopyText,
+  devMarker,
   findDeveloperModeTargetAt,
   getRequirementColumnDeveloperModeLabel,
   isEditableTarget,
   matchesDeveloperModeShortcut,
+  noopDevMarker,
   normalizeDeveloperModeText,
   scanVisibleDeveloperModeTargets,
 } from '@/lib/developer-mode'
@@ -80,6 +82,35 @@ describe('developer mode utilities', () => {
       buildDeveloperModeCopyText({ name: 'floating pill', value: 'columns' }),
     ).toBe('floating pill: columns')
     expect(buildDeveloperModeCopyText({ name: 'dialog' })).toBe('dialog')
+  })
+
+  it('serializes curated marker props through the helper API', () => {
+    expect(
+      devMarker({
+        context: 'requirements table',
+        name: 'column header',
+        priority: 500,
+        value: 'requirement id',
+      }),
+    ).toEqual({
+      'data-developer-mode-context': 'requirements table',
+      'data-developer-mode-name': 'column header',
+      'data-developer-mode-priority': '500',
+      'data-developer-mode-value': 'requirement id',
+    })
+
+    expect(
+      devMarker({
+        context: '   ',
+        name: 'dialog',
+        value: false,
+      }),
+    ).toEqual({
+      'data-developer-mode-name': 'dialog',
+      'data-developer-mode-value': 'false',
+    })
+
+    expect(noopDevMarker()).toEqual({})
   })
 
   it('matches the shortcut from the physical H key even when Option changes the character on macOS', () => {
