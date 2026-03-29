@@ -4,6 +4,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 interface TypeCategory {
   id: number
@@ -165,9 +166,11 @@ export default function QualityCharacteristicsClient() {
           </h1>
           <button
             className="btn-primary inline-flex items-center gap-1.5"
-            data-developer-mode-context="quality characteristics"
-            data-developer-mode-name="create button"
-            data-developer-mode-priority="350"
+            {...devMarker({
+              context: 'quality characteristics',
+              name: 'create button',
+              priority: 350,
+            })}
             onClick={() => {
               setShowForm(true)
               setEditId(null)
@@ -186,10 +189,12 @@ export default function QualityCharacteristicsClient() {
         {showForm && (
           <form
             className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
-            data-developer-mode-context="quality characteristics"
-            data-developer-mode-name="crud form"
-            data-developer-mode-priority="340"
-            data-developer-mode-value={editId ? 'edit' : 'create'}
+            {...devMarker({
+              context: 'quality characteristics',
+              name: 'crud form',
+              priority: 340,
+              value: editId ? 'edit' : 'create',
+            })}
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
@@ -302,9 +307,11 @@ export default function QualityCharacteristicsClient() {
         ) : (
           <div
             className="space-y-8"
-            data-developer-mode-context="quality characteristics"
-            data-developer-mode-name="crud table"
-            data-developer-mode-priority="340"
+            {...devMarker({
+              context: 'quality characteristics',
+              name: 'crud table',
+              priority: 340,
+            })}
           >
             {types.map(type => {
               const topLevel = categories.filter(
@@ -332,9 +339,11 @@ export default function QualityCharacteristicsClient() {
                             <span className="flex shrink-0 gap-1">
                               <button
                                 className="text-primary-700 dark:text-primary-300 hover:text-primary-900 dark:hover:text-primary-100 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                                data-developer-mode-context="quality characteristics"
-                                data-developer-mode-name="table action"
-                                data-developer-mode-value="edit"
+                                {...devMarker({
+                                  context: 'quality characteristics',
+                                  name: 'table action',
+                                  value: 'edit',
+                                })}
                                 onClick={() => handleEdit(parent)}
                                 type="button"
                               >
@@ -346,9 +355,11 @@ export default function QualityCharacteristicsClient() {
                               </button>
                               <button
                                 className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                                data-developer-mode-context="quality characteristics"
-                                data-developer-mode-name="table action"
-                                data-developer-mode-value="delete"
+                                {...devMarker({
+                                  context: 'quality characteristics',
+                                  name: 'table action',
+                                  value: 'delete',
+                                })}
                                 onClick={e =>
                                   handleDelete(
                                     parent.id,
@@ -376,9 +387,11 @@ export default function QualityCharacteristicsClient() {
                                   <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                     <button
                                       className="text-primary-700 dark:text-primary-300 hover:text-primary-900 dark:hover:text-primary-100 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                                      data-developer-mode-context="quality characteristics"
-                                      data-developer-mode-name="table action"
-                                      data-developer-mode-value="edit"
+                                      {...devMarker({
+                                        context: 'quality characteristics',
+                                        name: 'table action',
+                                        value: 'edit',
+                                      })}
                                       onClick={() => handleEdit(child)}
                                       type="button"
                                     >
@@ -392,9 +405,11 @@ export default function QualityCharacteristicsClient() {
                                     </button>
                                     <button
                                       className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                                      data-developer-mode-context="quality characteristics"
-                                      data-developer-mode-name="table action"
-                                      data-developer-mode-value="delete"
+                                      {...devMarker({
+                                        context: 'quality characteristics',
+                                        name: 'table action',
+                                        value: 'delete',
+                                      })}
                                       onClick={e =>
                                         handleDelete(
                                           child.id,

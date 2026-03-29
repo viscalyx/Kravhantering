@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 interface TaxonomyItem {
   id: number
@@ -149,9 +150,11 @@ export default function KravpaketClient() {
           </h1>
           <button
             className="btn-primary inline-flex items-center gap-1.5"
-            data-developer-mode-context="packages"
-            data-developer-mode-name="create button"
-            data-developer-mode-priority="350"
+            {...devMarker({
+              context: 'packages',
+              name: 'create button',
+              priority: 350,
+            })}
             onClick={() => {
               setShowForm(true)
               setEditId(null)
@@ -167,10 +170,12 @@ export default function KravpaketClient() {
         {showForm && (
           <form
             className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
-            data-developer-mode-context="packages"
-            data-developer-mode-name="crud form"
-            data-developer-mode-priority="340"
-            data-developer-mode-value={editId ? 'edit' : 'create'}
+            {...devMarker({
+              context: 'packages',
+              name: 'crud form',
+              priority: 340,
+              value: editId ? 'edit' : 'create',
+            })}
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
@@ -280,9 +285,11 @@ export default function KravpaketClient() {
         ) : (
           <div
             className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
-            data-developer-mode-context="packages"
-            data-developer-mode-name="crud table"
-            data-developer-mode-priority="340"
+            {...devMarker({
+              context: 'packages',
+              name: 'crud table',
+              priority: 340,
+            })}
           >
             <table className="w-full text-sm">
               <thead>
@@ -313,9 +320,11 @@ export default function KravpaketClient() {
                     <td className="py-3 px-4 text-right">
                       <button
                         className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                        data-developer-mode-context="packages"
-                        data-developer-mode-name="table action"
-                        data-developer-mode-value="edit"
+                        {...devMarker({
+                          context: 'packages',
+                          name: 'table action',
+                          value: 'edit',
+                        })}
                         onClick={() => handleEdit(pkg)}
                         type="button"
                       >
@@ -323,9 +332,11 @@ export default function KravpaketClient() {
                       </button>
                       <button
                         className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                        data-developer-mode-context="packages"
-                        data-developer-mode-name="table action"
-                        data-developer-mode-value="delete"
+                        {...devMarker({
+                          context: 'packages',
+                          name: 'table action',
+                          value: 'delete',
+                        })}
                         onClick={e =>
                           handleDelete(pkg.id, e.currentTarget as HTMLElement)
                         }

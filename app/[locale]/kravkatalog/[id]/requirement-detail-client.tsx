@@ -19,6 +19,7 @@ import StatusBadge from '@/components/StatusBadge'
 import StatusStepper from '@/components/StatusStepper'
 import VersionHistory from '@/components/VersionHistory'
 import { Link, useRouter } from '@/i18n/routing'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 interface StatusInfo {
   color: string | null
@@ -820,10 +821,12 @@ export default function RequirementDetailClient({
                 ref={cardRef}
               >
                 <div
-                  data-developer-mode-context={detailContext}
-                  data-developer-mode-name="detail section"
-                  data-developer-mode-priority="350"
-                  data-developer-mode-value="requirement text"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'detail section',
+                    priority: 350,
+                    value: 'requirement text',
+                  })}
                 >
                   <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                     {t('description')}
@@ -834,10 +837,12 @@ export default function RequirementDetailClient({
                 </div>
 
                 <div
-                  data-developer-mode-context={detailContext}
-                  data-developer-mode-name="detail section"
-                  data-developer-mode-priority="350"
-                  data-developer-mode-value="acceptance criteria"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'detail section',
+                    priority: 350,
+                    value: 'acceptance criteria',
+                  })}
                 >
                   <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                     {t('acceptanceCriteria')}
@@ -850,10 +855,12 @@ export default function RequirementDetailClient({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {req.area && (
                     <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="area"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail section',
+                        priority: 350,
+                        value: 'area',
+                      })}
                     >
                       <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                         {t('area')}
@@ -869,10 +876,12 @@ export default function RequirementDetailClient({
                     </div>
                   )}
                   <div
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="detail section"
-                    data-developer-mode-priority="350"
-                    data-developer-mode-value="category"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'category',
+                    })}
                   >
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                       {t('category')}
@@ -883,10 +892,12 @@ export default function RequirementDetailClient({
                   </div>
                   {selectedVersion?.type && (
                     <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="type"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail section',
+                        priority: 350,
+                        value: 'type',
+                      })}
                     >
                       <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                         {t('type')}
@@ -898,10 +909,12 @@ export default function RequirementDetailClient({
                   )}
                   {selectedVersion?.qualityCharacteristic && (
                     <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="quality characteristic"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail section',
+                        priority: 350,
+                        value: 'quality characteristic',
+                      })}
                     >
                       <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                         {t('qualityCharacteristic')}
@@ -912,10 +925,12 @@ export default function RequirementDetailClient({
                     </div>
                   )}
                   <div
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="detail section"
-                    data-developer-mode-priority="350"
-                    data-developer-mode-value="requires testing"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'requires testing',
+                    })}
                   >
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                       {t('requiresTesting')}
@@ -925,10 +940,12 @@ export default function RequirementDetailClient({
                     </p>
                   </div>
                   <div
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="detail section"
-                    data-developer-mode-priority="350"
-                    data-developer-mode-value="verification method"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'verification method',
+                    })}
                   >
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                       {t('verificationMethod')}
@@ -942,10 +959,12 @@ export default function RequirementDetailClient({
                 {selectedVersion?.references &&
                   selectedVersion.references.length > 0 && (
                     <div
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail section"
-                      data-developer-mode-priority="350"
-                      data-developer-mode-value="references"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail section',
+                        priority: 350,
+                        value: 'references',
+                      })}
                     >
                       <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                         {t('reference')}
@@ -954,13 +973,13 @@ export default function RequirementDetailClient({
                         {selectedVersion.references.map(ref => (
                           <li
                             className="text-sm"
-                            data-developer-mode-context={buildDetailSectionContext(
-                              'references',
-                            )}
-                            data-developer-mode-name="reference item"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value={ref.name}
-                            key={ref.id}
+                            key={`reference-item-${ref.id}`}
+                            {...devMarker({
+                              context: buildDetailSectionContext('references'),
+                              name: 'reference item',
+                              priority: 360,
+                              value: ref.name,
+                            })}
                           >
                             {ref.uri ? (
                               <a
@@ -981,10 +1000,12 @@ export default function RequirementDetailClient({
                   )}
 
                 <div
-                  data-developer-mode-context={detailContext}
-                  data-developer-mode-name="detail section"
-                  data-developer-mode-priority="350"
-                  data-developer-mode-value="scenarios"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'detail section',
+                    priority: 350,
+                    value: 'scenarios',
+                  })}
                 >
                   <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
                     {t('scenario')}
@@ -995,13 +1016,13 @@ export default function RequirementDetailClient({
                       {selectedVersion.versionScenarios.map(vs => (
                         <li
                           className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
-                          data-developer-mode-context={buildDetailSectionContext(
-                            'scenarios',
-                          )}
-                          data-developer-mode-name="scenario chip"
-                          data-developer-mode-priority="360"
-                          data-developer-mode-value={vs.scenario.nameEn}
-                          key={vs.scenario.id}
+                          key={`scenario-chip-${vs.scenario.id}`}
+                          {...devMarker({
+                            context: buildDetailSectionContext('scenarios'),
+                            name: 'scenario chip',
+                            priority: 360,
+                            value: vs.scenario.nameEn,
+                          })}
                         >
                           {localName(vs.scenario)}
                         </li>
@@ -1049,10 +1070,12 @@ export default function RequirementDetailClient({
                 <div className="relative" ref={reportMenuRef}>
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="report print button"
-                    data-developer-mode-priority="290"
-                    data-developer-mode-value="reports"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'report print button',
+                      priority: 290,
+                      value: 'reports',
+                    })}
                     onClick={() => setShowReportMenu(prev => !prev)}
                     title={tc('print')}
                     type="button"
@@ -1064,10 +1087,12 @@ export default function RequirementDetailClient({
                     <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="report option"
-                        data-developer-mode-priority="295"
-                        data-developer-mode-value="print history"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'report option',
+                          priority: 295,
+                          value: 'print history',
+                        })}
                         onClick={() => {
                           setShowReportMenu(false)
                           window.open(
@@ -1082,10 +1107,12 @@ export default function RequirementDetailClient({
                       </button>
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="report option"
-                        data-developer-mode-priority="296"
-                        data-developer-mode-value="download history pdf"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'report option',
+                          priority: 296,
+                          value: 'download history pdf',
+                        })}
                         onClick={() => {
                           setShowReportMenu(false)
                           window.open(
@@ -1103,10 +1130,12 @@ export default function RequirementDetailClient({
                           <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
                           <button
                             className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                            data-developer-mode-context={detailContext}
-                            data-developer-mode-name="report option"
-                            data-developer-mode-priority="297"
-                            data-developer-mode-value="print review"
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'report option',
+                              priority: 297,
+                              value: 'print review',
+                            })}
                             onClick={() => {
                               setShowReportMenu(false)
                               window.open(
@@ -1121,10 +1150,12 @@ export default function RequirementDetailClient({
                           </button>
                           <button
                             className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                            data-developer-mode-context={detailContext}
-                            data-developer-mode-name="report option"
-                            data-developer-mode-priority="298"
-                            data-developer-mode-value="download review pdf"
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'report option',
+                              priority: 298,
+                              value: 'download review pdf',
+                            })}
                             onClick={() => {
                               setShowReportMenu(false)
                               window.open(
@@ -1145,10 +1176,12 @@ export default function RequirementDetailClient({
                 <div className="relative" ref={shareMenuRef}>
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="share toggle"
-                    data-developer-mode-priority="300"
-                    data-developer-mode-value="share"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'share toggle',
+                      priority: 300,
+                      value: 'share',
+                    })}
                     onClick={() => setShowShareMenu(prev => !prev)}
                     title={tc('share')}
                     type="button"
@@ -1167,10 +1200,12 @@ export default function RequirementDetailClient({
                     <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="share option"
-                        data-developer-mode-priority="310"
-                        data-developer-mode-value="share inline"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'share option',
+                          priority: 310,
+                          value: 'share inline',
+                        })}
                         onClick={() => handleShare('inline')}
                         type="button"
                       >
@@ -1186,10 +1221,12 @@ export default function RequirementDetailClient({
                       </button>
                       <button
                         className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="share option"
-                        data-developer-mode-priority="310"
-                        data-developer-mode-value="share page"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'share option',
+                          priority: 310,
+                          value: 'share page',
+                        })}
                         onClick={() => handleShare('page')}
                         type="button"
                       >
@@ -1210,10 +1247,12 @@ export default function RequirementDetailClient({
                   <>
                     <button
                       className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail action"
-                      data-developer-mode-priority="360"
-                      data-developer-mode-value="restore version"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail action',
+                        priority: 360,
+                        value: 'restore version',
+                      })}
                       disabled={hasPendingWork}
                       onClick={e =>
                         handleRestore(
@@ -1233,10 +1272,12 @@ export default function RequirementDetailClient({
                     </button>
                     <button
                       className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                      data-developer-mode-context={detailContext}
-                      data-developer-mode-name="detail action"
-                      data-developer-mode-priority="360"
-                      data-developer-mode-value="back to latest"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail action',
+                        priority: 360,
+                        value: 'back to latest',
+                      })}
                       onClick={() =>
                         handleVersionSelect(displayVersion?.versionNumber ?? 1)
                       }
@@ -1250,10 +1291,12 @@ export default function RequirementDetailClient({
                     <>
                       <button
                         className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail action"
-                        data-developer-mode-priority="360"
-                        data-developer-mode-value="approve archiving"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'detail action',
+                          priority: 360,
+                          value: 'approve archiving',
+                        })}
                         disabled={isTransitioning}
                         onClick={handleApproveArchiving}
                         title={t('approveArchivingTooltip')}
@@ -1264,10 +1307,12 @@ export default function RequirementDetailClient({
                       </button>
                       <button
                         className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-                        data-developer-mode-context={detailContext}
-                        data-developer-mode-name="detail action"
-                        data-developer-mode-priority="360"
-                        data-developer-mode-value="cancel archiving"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'detail action',
+                          priority: 360,
+                          value: 'cancel archiving',
+                        })}
                         disabled={isTransitioning}
                         onClick={handleCancelArchiving}
                         title={t('cancelArchivingTooltip')}
@@ -1292,14 +1337,15 @@ export default function RequirementDetailClient({
                           .map(tr => (
                             <button
                               className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-                              data-developer-mode-context={detailContext}
-                              data-developer-mode-name="detail action"
-                              data-developer-mode-priority="360"
-                              data-developer-mode-value={getTransitionActionDeveloperModeValue(
-                                tr,
-                              )}
+                              key={`transition-action-${tr.id}`}
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 360,
+                                value:
+                                  getTransitionActionDeveloperModeValue(tr),
+                              })}
                               disabled={isTransitioning}
-                              key={tr.id}
                               onClick={e =>
                                 handleTransition(tr.id, e.currentTarget)
                               }
@@ -1315,10 +1361,12 @@ export default function RequirementDetailClient({
                         currentStatusId === STATUS_PUBLISHED ? (
                           <button
                             className="btn-primary inline-flex items-center gap-1.5 w-full justify-center opacity-60 cursor-not-allowed"
-                            data-developer-mode-context={detailContext}
-                            data-developer-mode-name="detail action"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value="edit"
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'detail action',
+                              priority: 360,
+                              value: 'edit',
+                            })}
                             disabled
                             title={t('editBlockedByPendingWork')}
                             type="button"
@@ -1329,25 +1377,31 @@ export default function RequirementDetailClient({
                         ) : (
                           <Link
                             className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                            data-developer-mode-context={detailContext}
-                            data-developer-mode-name="detail action"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value="edit"
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'detail action',
+                              priority: 360,
+                              value: 'edit',
+                            })}
                             href={`/kravkatalog/${req.uniqueId}/redigera`}
                             title={tc('editTooltip')}
                           >
-                            <Edit aria-hidden="true" className="h-4 w-4" />
-                            {tc('edit')}
+                            <span className="contents">
+                              <Edit aria-hidden="true" className="h-4 w-4" />
+                              {tc('edit')}
+                            </span>
                           </Link>
                         ))}
                       {isViewingLatest &&
                         latestStatusForActions === STATUS_PUBLISHED && (
                           <button
                             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
-                            data-developer-mode-context={detailContext}
-                            data-developer-mode-name="detail action"
-                            data-developer-mode-priority="360"
-                            data-developer-mode-value="archive"
+                            {...devMarker({
+                              context: detailContext,
+                              name: 'detail action',
+                              priority: 360,
+                              value: 'archive',
+                            })}
                             onClick={handleArchive}
                             title={tc('archiveTooltip')}
                             type="button"
@@ -1372,10 +1426,12 @@ export default function RequirementDetailClient({
                       {currentStatusId === STATUS_DRAFT && isViewingLatest && (
                         <button
                           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
-                          data-developer-mode-context={detailContext}
-                          data-developer-mode-name="detail action"
-                          data-developer-mode-priority="360"
-                          data-developer-mode-value="delete draft"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'detail action',
+                            priority: 360,
+                            value: 'delete draft',
+                          })}
                           onClick={handleDeleteDraft}
                           type="button"
                         >
@@ -1388,10 +1444,12 @@ export default function RequirementDetailClient({
                 ) : (
                   <button
                     className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
-                    data-developer-mode-context={detailContext}
-                    data-developer-mode-name="detail action"
-                    data-developer-mode-priority="360"
-                    data-developer-mode-value="restore version"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail action',
+                      priority: 360,
+                      value: 'restore version',
+                    })}
                     disabled={hasPendingWork}
                     onClick={e =>
                       handleRestore(

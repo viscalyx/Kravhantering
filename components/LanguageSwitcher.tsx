@@ -3,6 +3,7 @@
 import { Globe } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 export default function LanguageSwitcher() {
   const t = useTranslations('language')
@@ -20,8 +21,7 @@ export default function LanguageSwitcher() {
     <button
       aria-label={t('switchTo')}
       className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-xl p-2 text-sm font-medium text-secondary-700 transition-all duration-200 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800"
-      data-developer-mode-name="button"
-      data-developer-mode-value={t('switchTo')}
+      {...devMarker({ name: 'button', value: t('switchTo') })}
       onClick={switchLocale}
       title={t('switchTo')}
       type="button"

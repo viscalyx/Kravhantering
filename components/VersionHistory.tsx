@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import StatusBadge from '@/components/StatusBadge'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 interface Version {
   archivedAt: string | null
@@ -62,9 +63,11 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
     const [expandedAfter, setExpandedAfter] = useState(false)
 
     // Sort descending by version number
-    const sorted = [...versions].sort(
-      (a, b) => b.versionNumber - a.versionNumber,
-    )
+    const sorted = Array.from(
+      new Map(
+        versions.map(version => [version.versionNumber, version]),
+      ).values(),
+    ).sort((a, b) => b.versionNumber - a.versionNumber)
 
     const skipCollapse = sorted.length <= MAX_VISIBLE_WITHOUT_COLLAPSE
 
@@ -205,9 +208,11 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
 
     return (
       <div
-        data-developer-mode-context={developerModeContext}
-        data-developer-mode-name="version history"
-        data-developer-mode-priority="330"
+        {...devMarker({
+          context: developerModeContext,
+          name: 'version history',
+          priority: 330,
+        })}
         ref={ref}
       >
         <div className="flex flex-wrap items-center gap-1.5">
@@ -225,17 +230,21 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                   : item.expanded
                     ? 'hideOlderVersions'
                     : 'showOlderVersions'
+              const toggleValue = getVersionHistoryToggleDeveloperModeValue(
+                item.side,
+                item.expanded,
+              )
+
               return (
                 <button
                   className={toggleClasses}
-                  data-developer-mode-context={developerModeContext}
-                  data-developer-mode-name="version history toggle"
-                  data-developer-mode-priority="340"
-                  data-developer-mode-value={getVersionHistoryToggleDeveloperModeValue(
-                    item.side,
-                    item.expanded,
-                  )}
-                  key={item.id}
+                  key={`version-history-toggle-${item.id}`}
+                  {...devMarker({
+                    context: developerModeContext,
+                    name: 'version history toggle',
+                    priority: 340,
+                    value: toggleValue,
+                  })}
                   onClick={item.onToggle}
                   title={t(titleKey)}
                   type="button"
@@ -244,18 +253,18 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                     item.expanded ? (
                       <ChevronRight className="h-3 w-3" />
                     ) : (
-                      <>
+                      <span className="contents">
                         <span>+{item.count}</span>
                         <ChevronLeft className="h-3 w-3" />
-                      </>
+                      </span>
                     )
                   ) : item.expanded ? (
                     <ChevronLeft className="h-3 w-3" />
                   ) : (
-                    <>
+                    <span className="contents">
                       <ChevronRight className="h-3 w-3" />
                       <span>+{item.count}</span>
-                    </>
+                    </span>
                   )}
                 </button>
               )
@@ -270,14 +279,14 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                     ? 'shadow-sm'
                     : 'border-secondary-200 dark:border-secondary-700 hover:border-secondary-300 dark:hover:border-secondary-600'
                 } ${isSelected ? 'ring-1' : ''}`}
-                data-developer-mode-context={developerModeContext}
-                data-developer-mode-name="version pill"
-                data-developer-mode-priority="350"
-                data-developer-mode-value={getVersionPillDeveloperModeValue(
-                  v.versionNumber,
-                )}
+                key={`version-pill-${v.versionNumber}`}
+                {...devMarker({
+                  context: developerModeContext,
+                  name: 'version pill',
+                  priority: 350,
+                  value: getVersionPillDeveloperModeValue(v.versionNumber),
+                })}
                 data-version-number={v.versionNumber}
-                key={v.id}
                 onClick={() => onVersionSelect(v.versionNumber)}
                 style={
                   color
