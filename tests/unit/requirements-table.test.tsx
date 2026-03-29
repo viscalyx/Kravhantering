@@ -591,14 +591,20 @@ describe('RequirementsTable', () => {
     const descriptionCheckbox = screen.getByRole('checkbox', {
       name: 'description',
     })
+    const uniqueIdDescriptionId =
+      uniqueIdCheckbox.getAttribute('aria-describedby')
 
     expect(uniqueIdCheckbox).toBeDisabled()
     expect(descriptionCheckbox).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'area' })).not.toBeDisabled()
-    expect(uniqueIdCheckbox).toHaveAttribute(
-      'aria-describedby',
-      'column-picker-option-description-uniqueId',
+    expect(uniqueIdDescriptionId).toMatch(
+      /column-picker-option-description-uniqueId$/,
     )
+    expect(
+      uniqueIdDescriptionId
+        ? document.getElementById(uniqueIdDescriptionId)
+        : null,
+    ).toHaveTextContent('lockedColumn')
     expect(uniqueIdCheckbox).toHaveAttribute('title', 'lockedColumn')
     expect(uniqueIdCheckbox.closest('label')).toHaveAttribute(
       'aria-disabled',
@@ -608,6 +614,37 @@ describe('RequirementsTable', () => {
     expect(lockedDescriptions.length).toBeGreaterThanOrEqual(2)
     for (const description of lockedDescriptions) {
       expect(description).toHaveClass('sr-only')
+    }
+  })
+
+  it('assigns unique locked-column description ids to each table instance', () => {
+    render(
+      <>
+        <RequirementsTable locale="sv" rows={[makeRow({ id: 1 })]} />
+        <RequirementsTable locale="sv" rows={[makeRow({ id: 2 })]} />
+      </>,
+    )
+
+    for (const button of screen.getAllByRole('button', { name: 'columns' })) {
+      fireEvent.click(button)
+    }
+
+    const uniqueIdCheckboxes = screen.getAllByRole('checkbox', {
+      name: 'uniqueId',
+    })
+    const descriptionIds = uniqueIdCheckboxes
+      .map(checkbox => checkbox.getAttribute('aria-describedby'))
+      .filter((value): value is string => value !== null)
+
+    expect(descriptionIds).toHaveLength(2)
+    expect(new Set(descriptionIds).size).toBe(2)
+    for (const descriptionId of descriptionIds) {
+      expect(descriptionId).toMatch(
+        /column-picker-option-description-uniqueId$/,
+      )
+      expect(document.getElementById(descriptionId)).toHaveTextContent(
+        'lockedColumn',
+      )
     }
   })
 
@@ -1013,6 +1050,7 @@ describe('RequirementsTable', () => {
     for (const button of screen.getAllByRole('button', { name: 'filterBy' })) {
       expect(button.className).toContain('min-h-[44px]')
       expect(button.className).toContain('min-w-[44px]')
+      expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     }
   })
 

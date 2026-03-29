@@ -23,6 +23,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react'
@@ -590,7 +591,7 @@ function SearchFilterPopover({
         title={tc('filterBy', { label })}
         type="button"
       >
-        <Filter className="h-3.5 w-3.5" />
+        <Filter aria-hidden="true" className="h-3.5 w-3.5" />
       </button>
       {open &&
         createPortal(
@@ -731,7 +732,7 @@ function MultiSelectFilterPopover({
           className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
           data-filter-icon-anchor="true"
         >
-          <Filter className="h-3.5 w-3.5" />
+          <Filter aria-hidden="true" className="h-3.5 w-3.5" />
           {activeCount > 0 && (
             <span
               className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
@@ -870,7 +871,7 @@ function GroupedMultiSelectFilterPopover({
           className="relative inline-flex h-3.5 w-3.5 items-center justify-center"
           data-filter-icon-anchor="true"
         >
-          <Filter className="h-3.5 w-3.5" />
+          <Filter aria-hidden="true" className="h-3.5 w-3.5" />
           {activeCount > 0 && (
             <span
               className="pointer-events-none absolute -right-1.5 -top-1.5 flex h-3 w-3 items-center justify-center rounded-full bg-primary-500 text-[8px] font-bold leading-none text-white"
@@ -952,6 +953,7 @@ function ColumnsPopover({
 }) {
   const tc = useTranslations('common')
   const tt = useTranslations('requirementsTable')
+  const instanceId = useId()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -1158,7 +1160,7 @@ function ColumnsPopover({
                   ? tt('lockedColumn')
                   : undefined
                 const lockedDescriptionId = lockedDescription
-                  ? `column-picker-option-description-${column.id}`
+                  ? `${instanceId}-column-picker-option-description-${column.id}`
                   : undefined
 
                 return (
