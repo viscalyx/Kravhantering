@@ -1170,6 +1170,48 @@ describe('RequirementDetailClient', () => {
     consoleErrorSpy.mockRestore()
   })
 
+  it('shows an inline error when loading packages for the add-to-package dialog fails with a plain-text response body', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupFetch({
+      initialRequirement: requirement,
+      packagesHandler: () =>
+        new Response('Package lookup failed', {
+          headers: { 'content-type': 'text/plain' },
+          status: 503,
+          statusText: 'Service Unavailable',
+        }),
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'package.loadPackagesFailed: Package lookup failed',
+    )
+    expect(screen.queryByText('package.noPackagesAvailable')).toBeNull()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
   it('renders the add-to-package close button with touch target and focus styles', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
@@ -1283,6 +1325,7 @@ describe('RequirementDetailClient', () => {
       expect(field.className).toContain('dark:border-secondary-700')
       expect(field.className).toContain('dark:text-secondary-100')
     }
+    expect(packageSelect.className).toContain('min-h-[44px]')
   })
 
   it('ignores stale needs-reference responses when switching packages quickly', async () => {

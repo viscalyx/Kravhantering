@@ -100,27 +100,19 @@ function getResponseMessage(body: unknown): string | null {
 }
 
 async function readResponseMessage(res: Response): Promise<string | null> {
-  const contentType = res.headers?.get?.('content-type')?.toLowerCase() ?? ''
-
-  if (
-    contentType.includes('application/json') ||
-    typeof res.json === 'function'
-  ) {
-    const message = getResponseMessage(await res.json().catch(() => null))
-    if (message) {
-      return message
-    }
-  }
-
   if (typeof res.text === 'function') {
     const text = (await res.text().catch(() => '')).trim()
     if (text.length > 0) {
       try {
         return getResponseMessage(JSON.parse(text)) ?? text
       } catch {
-        return text
+        return getResponseMessage(text) ?? text
       }
     }
+  }
+
+  if (typeof res.json === 'function') {
+    return getResponseMessage(await res.json().catch(() => null))
   }
 
   return null
@@ -1094,7 +1086,7 @@ export default function RequirementDetailClient({
                         </div>
                         {helpPanel('selectPackageHelp', 'atp-package')}
                         <select
-                          className="w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                          className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                           id="atp-package"
                           onChange={e =>
                             void handlePackageSelect(e.target.value)

@@ -46,7 +46,7 @@ vi.mock('next-intl', () => ({
 
 vi.mock('@/components/reports/print/PrintReportRenderer', () => ({
   default: ({ model }: { model: unknown }) => (
-    <div data-testid="print-renderer">{JSON.stringify(model)}</div>
+    <section aria-label="Print renderer">{JSON.stringify(model)}</section>
   ),
 }))
 
@@ -159,7 +159,9 @@ describe('requirement package report pages', () => {
     })
 
     expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()
-    expect(screen.getByTestId('print-renderer')).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: /print renderer/i }),
+    ).toBeInTheDocument()
   })
 
   it('ignores stale print responses when a newer request finishes first', async () => {
@@ -183,16 +185,20 @@ describe('requirement package report pages', () => {
 
     secondRequest.resolve([{ id: 2 }])
     await waitFor(() => {
-      expect(screen.getByTestId('print-renderer')).toHaveTextContent('Report 2')
+      expect(
+        screen.getByRole('region', { name: /print renderer/i }),
+      ).toHaveTextContent('Report 2')
     })
 
     firstRequest.resolve([{ id: 1 }])
     await waitFor(() => {
-      expect(screen.getByTestId('print-renderer')).toHaveTextContent('Report 2')
+      expect(
+        screen.getByRole('region', { name: /print renderer/i }),
+      ).toHaveTextContent('Report 2')
     })
-    expect(screen.getByTestId('print-renderer')).not.toHaveTextContent(
-      'Report 1',
-    )
+    expect(
+      screen.getByRole('region', { name: /print renderer/i }),
+    ).not.toHaveTextContent('Report 1')
   })
 
   it('extracts readable package error details from JSON responses', async () => {
@@ -263,6 +269,17 @@ describe('requirement package report pages', () => {
     ).toBeInTheDocument()
 
     expect(downloadMock).toHaveBeenCalled()
+    expect(buildListReportMock).toHaveBeenCalledWith(
+      [{ id: 1 }, { id: 2 }],
+      'en',
+      {
+        businessNeedsReference: null,
+        implementationType: null,
+        name: 'Security package',
+        responsibilityArea: null,
+        uniqueId: 'SECURITY',
+      },
+    )
     expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()
   })
 
