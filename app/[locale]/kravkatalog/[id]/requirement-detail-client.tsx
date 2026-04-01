@@ -1178,7 +1178,7 @@ export default function RequirementDetailClient({
                         </div>
                         {helpPanel('needsReferenceHelp', 'atp-needs-ref')}
                         <select
-                          className="w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                          className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                           id="atp-needs-ref"
                           onChange={e => {
                             const v = e.target.value
@@ -1250,7 +1250,10 @@ export default function RequirementDetailClient({
                         )}
                       </div>
                       {addToPackageError && (
-                        <p className="text-sm text-red-600 dark:text-red-400">
+                        <p
+                          className="text-sm text-red-600 dark:text-red-400"
+                          role="alert"
+                        >
                           {addToPackageError}
                         </p>
                       )}

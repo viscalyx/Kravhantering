@@ -1392,6 +1392,7 @@ describe('RequirementDetailClient', () => {
       expect(field.className).toContain('dark:text-secondary-100')
     }
     expect(packageSelect.className).toContain('min-h-[44px]')
+    expect(needsReferenceSelect.className).toContain('min-h-[44px]')
   })
 
   it('ignores stale needs-reference responses when switching packages quickly', async () => {
@@ -1651,6 +1652,50 @@ describe('RequirementDetailClient', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+
+  it('announces add-to-package submit failures as alerts', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      addToPackageHandler: () => response({ error: 'Already linked' }, false),
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.selectOptions(
+      within(dialog).getByRole('combobox', {
+        name: /package\.selectPackage/,
+      }),
+      '7',
+    )
+    await userEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Already linked',
+    )
   })
 
   it('closes the add-to-package dialog when Escape is pressed inside it', async () => {

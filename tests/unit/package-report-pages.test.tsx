@@ -351,6 +351,10 @@ describe('requirement package report pages', () => {
       ).toBeInTheDocument()
     })
 
+    // currentPdfError can still hold the previous failure in mocked hook state,
+    // but once a new PdfListReportPage request starts loading, the updated
+    // lastSettledDownloadKey no longer matches that stale download context, so
+    // the UI stops rendering the old error.
     expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()
     expect(screen.queryByText('Failed to generate PDF')).not.toBeInTheDocument()
 

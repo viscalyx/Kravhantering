@@ -84,9 +84,9 @@ The emitted attributes are:
 - Published requirement detail views expose the package-link control as
   `detail action: add to package` when the currently displayed published
   version is the one that can be added to a package.
-- Needs-reference loading and failure messages inside the add-to-package dialog
-  remain part of that same `detail action: add to package` flow rather than
-  introducing extra markers.
+- Needs-reference controls and inline loading or failure messages inside the
+  add-to-package dialog remain part of that same
+  `detail action: add to package` flow rather than introducing extra markers.
 - Requirement package list print pages expose `report state` markers with
   values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
