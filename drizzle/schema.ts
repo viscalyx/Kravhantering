@@ -447,24 +447,30 @@ export const packageImplementationTypes = sqliteTable(
 
 // ─── Requirement Packages ────────────────────────────────────────────────────
 
-export const requirementPackages = sqliteTable('requirement_packages', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  uniqueId: text('unique_id').notNull().unique(),
-  name: text('name').notNull(),
-  packageResponsibilityAreaId: integer(
-    'package_responsibility_area_id',
-  ).references(() => packageResponsibilityAreas.id),
-  packageImplementationTypeId: integer(
-    'package_implementation_type_id',
-  ).references(() => packageImplementationTypes.id),
-  businessNeedsReference: text('business_needs_reference'),
-  createdAt: text('created_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-  updatedAt: text('updated_at')
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-})
+export const requirementPackages = sqliteTable(
+  'requirement_packages',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    uniqueId: text('unique_id').notNull(),
+    name: text('name').notNull(),
+    packageResponsibilityAreaId: integer(
+      'package_responsibility_area_id',
+    ).references(() => packageResponsibilityAreas.id),
+    packageImplementationTypeId: integer(
+      'package_implementation_type_id',
+    ).references(() => packageImplementationTypes.id),
+    businessNeedsReference: text('business_needs_reference'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    uniqueIndex('uq_requirement_packages_unique_id').on(table.uniqueId),
+  ],
+)
 
 export const requirementPackagesRelations = relations(
   requirementPackages,
@@ -497,7 +503,10 @@ export const packageNeedsReferences = sqliteTable(
       .$defaultFn(() => new Date().toISOString()),
   },
   table => [
-    index('idx_package_needs_references_package_id').on(table.packageId),
+    uniqueIndex('uq_package_needs_references_package_text').on(
+      table.packageId,
+      table.text,
+    ),
   ],
 )
 

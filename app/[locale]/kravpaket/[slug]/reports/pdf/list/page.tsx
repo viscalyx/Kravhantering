@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
@@ -12,6 +12,7 @@ export default function PdfListReportPage() {
   const searchParams = useSearchParams()
   const params = useParams()
   const locale = useLocale()
+  const t = useTranslations('reports')
   const [model, setModel] = useState<ReportModel | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,14 +33,14 @@ export default function PdfListReportPage() {
 
   const loadReport = useCallback(async () => {
     if (!ids) {
-      setError('No requirement IDs provided')
+      setError(t('noRequirementIds'))
       setLoading(false)
       return
     }
     try {
       const idList = ids.split(',').filter(Boolean)
       if (idList.length === 0) {
-        setError('No requirement IDs provided')
+        setError(t('noRequirementIds'))
         return
       }
       const [requirements, pkgRes] = await Promise.all([
@@ -48,7 +49,18 @@ export default function PdfListReportPage() {
           ? fetch(`/api/requirement-packages/${slug}`)
           : Promise.resolve(null),
       ])
-      const pkg = pkgRes?.ok
+      if (slug && pkgRes && !pkgRes.ok) {
+        const details = (await pkgRes.text()).trim()
+        throw new Error(
+          details
+            ? t('packageFetchFailedWithDetails', {
+                details,
+                status: pkgRes.status,
+              })
+            : t('packageFetchFailed', { status: pkgRes.status }),
+        )
+      }
+      const pkg = pkgRes
         ? ((await pkgRes.json()) as {
             name: string
             uniqueId: string
@@ -59,10 +71,9 @@ export default function PdfListReportPage() {
         : null
       const pickName = (obj: { nameSv: string; nameEn: string } | null) =>
         obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
-      const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
       const now = new Date()
       const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}`
-      setFilename(`${label} ${stamp}.pdf`)
+      setFilename(t('listPdfFilename', { stamp }))
       setModel(
         buildListReport(
           requirements,
@@ -79,11 +90,11 @@ export default function PdfListReportPage() {
         ),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report')
+      setError(err instanceof Error ? err.message : t('failedToLoadReport'))
     } finally {
       setLoading(false)
     }
-  }, [ids, locale, slug])
+  }, [ids, locale, slug, t])
 
   useEffect(() => {
     loadReport()
@@ -91,7 +102,7 @@ export default function PdfListReportPage() {
 
   useEffect(() => {
     if (model) {
-      download()
+      void download()
     }
   }, [model, download])
 
@@ -103,20 +114,20 @@ export default function PdfListReportPage() {
     >
       {displayError ? (
         <div style={{ color: '#991b1b' }}>
-          <h2>Error</h2>
+          <h2>{t('errorTitle')}</h2>
           <p>{displayError}</p>
         </div>
       ) : loading ? (
-        <p style={{ color: '#64748b' }}>Loading report data...</p>
+        <p style={{ color: '#64748b' }}>{t('loadingData')}</p>
       ) : downloading ? (
-        <p style={{ color: '#64748b' }}>Generating PDF...</p>
+        <p style={{ color: '#64748b' }}>{t('generatingPdf')}</p>
       ) : (
         <div>
           <p style={{ color: '#166534', marginBottom: '1rem' }}>
-            PDF download started.
+            {t('pdfDownloadStarted')}
           </p>
           <button
-            onClick={download}
+            onClick={() => void download()}
             style={{
               padding: '0.5rem 1rem',
               backgroundColor: '#4338ca',
@@ -127,7 +138,7 @@ export default function PdfListReportPage() {
             }}
             type="button"
           >
-            Download Again
+            {t('downloadAgain')}
           </button>
         </div>
       )}

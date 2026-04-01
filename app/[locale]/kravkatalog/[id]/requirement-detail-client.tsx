@@ -6,6 +6,7 @@ import {
   Check,
   Clock,
   Edit,
+  HelpCircle,
   PackagePlus,
   Printer,
   RotateCcw,
@@ -108,9 +109,7 @@ export default function RequirementDetailClient({
     number | null
   >(null)
   const [showAddToPackage, setShowAddToPackage] = useState(false)
-  const [packages, setPackages] = useState<
-    { id: number; nameSv: string; nameEn: string }[]
-  >([])
+  const [packages, setPackages] = useState<{ id: number; name: string }[]>([])
   const [packagesLoading, setPackagesLoading] = useState(false)
   const [addToPackageId, setAddToPackageId] = useState<string>('')
   const [addToPackageNeedsRefMode, setAddToPackageNeedsRefMode] = useState<
@@ -123,6 +122,7 @@ export default function RequirementDetailClient({
   const [availableNeedsRefs, setAvailableNeedsRefs] = useState<
     { id: number; text: string }[]
   >([])
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addToPackageStatus, setAddToPackageStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle')
@@ -147,6 +147,41 @@ export default function RequirementDetailClient({
   const vhRef = useRef<HTMLDivElement>(null)
 
   const hasDataRef = useRef(false)
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(prev => {
+      const next = new Set(prev)
+      if (next.has(field)) {
+        next.delete(field)
+      } else {
+        next.add(field)
+      }
+      return next
+    })
+  }
+
+  const helpButton = (field: string, label: string) => (
+    <button
+      aria-controls={`help-${field}`}
+      aria-expanded={openHelp.has(field)}
+      aria-label={`${tc('help')}: ${label}`}
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      onClick={() => toggleHelp(field)}
+      type="button"
+    >
+      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+    </button>
+  )
+
+  const helpPanel = (helpKey: string, field: string) =>
+    openHelp.has(field) && (
+      <p
+        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
+        id={`help-${field}`}
+      >
+        {tp(helpKey)}
+      </p>
+    )
 
   const fetchRequirement = useCallback(async () => {
     if (!hasDataRef.current) setLoading(true)
@@ -749,6 +784,7 @@ export default function RequirementDetailClient({
     setAddToPackageNeedsRefId('')
     setAddToPackageNeedsRefText('')
     setAvailableNeedsRefs([])
+    setOpenHelp(new Set())
     setAddToPackageStatus('idle')
     setAddToPackageError(null)
     setShowAddToPackage(true)
@@ -758,7 +794,7 @@ export default function RequirementDetailClient({
         const res = await fetch('/api/requirement-packages')
         if (res.ok) {
           const data = (await res.json()) as {
-            packages?: { id: number; nameSv: string; nameEn: string }[]
+            packages?: { id: number; name: string }[]
           }
           setPackages(data.packages ?? [])
         }
@@ -837,8 +873,16 @@ export default function RequirementDetailClient({
           <div
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => setShowAddToPackage(false)}
-            onKeyDown={e => e.key === 'Escape' && setShowAddToPackage(false)}
+            onClick={() => {
+              setOpenHelp(new Set())
+              setShowAddToPackage(false)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Escape') {
+                setOpenHelp(new Set())
+                setShowAddToPackage(false)
+              }
+            }}
             role="dialog"
           >
             <div
@@ -854,7 +898,10 @@ export default function RequirementDetailClient({
                 <button
                   aria-label={tc('close')}
                   className="p-1.5 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
-                  onClick={() => setShowAddToPackage(false)}
+                  onClick={() => {
+                    setOpenHelp(new Set())
+                    setShowAddToPackage(false)
+                  }}
                   type="button"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
@@ -875,12 +922,16 @@ export default function RequirementDetailClient({
               ) : (
                 <form className="space-y-4" onSubmit={handleSubmitAddToPackage}>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-                      htmlFor="atp-package"
-                    >
-                      {tp('selectPackage')} *
-                    </label>
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <label
+                        className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                        htmlFor="atp-package"
+                      >
+                        {tp('selectPackage')} *
+                      </label>
+                      {helpButton('atp-package', tp('selectPackage'))}
+                    </div>
+                    {helpPanel('selectPackageHelp', 'atp-package')}
                     <select
                       className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
                       id="atp-package"
@@ -890,18 +941,22 @@ export default function RequirementDetailClient({
                       <option value="">—</option>
                       {packages.map(p => (
                         <option key={p.id} value={p.id}>
-                          {locale === 'sv' ? p.nameSv : p.nameEn}
+                          {p.name}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-                      htmlFor="atp-needs-ref"
-                    >
-                      {tp('needsReferenceLabel')}
-                    </label>
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <label
+                        className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                        htmlFor="atp-needs-ref"
+                      >
+                        {tp('needsReferenceLabel')}
+                      </label>
+                      {helpButton('atp-needs-ref', tp('needsReferenceLabel'))}
+                    </div>
+                    {helpPanel('needsReferenceHelp', 'atp-needs-ref')}
                     <select
                       className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
                       id="atp-needs-ref"
@@ -933,14 +988,30 @@ export default function RequirementDetailClient({
                       ))}
                     </select>
                     {addToPackageNeedsRefMode === 'new' && (
-                      <textarea
-                        className="mt-2 w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
-                        onChange={e =>
-                          setAddToPackageNeedsRefText(e.target.value)
-                        }
-                        rows={2}
-                        value={addToPackageNeedsRefText}
-                      />
+                      <>
+                        <div className="mt-2 mb-1 flex items-center gap-1.5">
+                          <label
+                            className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                            htmlFor="atp-needs-ref-text"
+                          >
+                            {tp('addNeedsRefTextLabel')}
+                          </label>
+                          {helpButton(
+                            'atp-needs-ref-text',
+                            tp('addNeedsRefTextLabel'),
+                          )}
+                        </div>
+                        {helpPanel('addNeedsRefTextHelp', 'atp-needs-ref-text')}
+                        <textarea
+                          className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
+                          id="atp-needs-ref-text"
+                          onChange={e =>
+                            setAddToPackageNeedsRefText(e.target.value)
+                          }
+                          rows={2}
+                          value={addToPackageNeedsRefText}
+                        />
+                      </>
                     )}
                   </div>
                   {addToPackageError && (
@@ -962,7 +1033,10 @@ export default function RequirementDetailClient({
                     </button>
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
-                      onClick={() => setShowAddToPackage(false)}
+                      onClick={() => {
+                        setOpenHelp(new Set())
+                        setShowAddToPackage(false)
+                      }}
                       type="button"
                     >
                       {tc('cancel')}

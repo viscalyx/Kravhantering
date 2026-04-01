@@ -42,11 +42,10 @@ export async function listPackages(db: Database) {
       itemCount: sql<number>`COUNT(DISTINCT rpi.requirement_id)`.as(
         'item_count',
       ),
-      areaIds: sql<string | null>`GROUP_CONCAT(DISTINCT req_area.id)`.as(
-        'area_ids',
-      ),
-      areaNames: sql<string | null>`GROUP_CONCAT(DISTINCT req_area.name)`.as(
-        'area_names',
+      areaPairs: sql<
+        string | null
+      >`GROUP_CONCAT(DISTINCT req_area.id || '::' || req_area.name)`.as(
+        'area_pairs',
       ),
     })
     .from(requirementPackages)
@@ -71,11 +70,21 @@ export async function listPackages(db: Database) {
     .orderBy(requirementPackages.name)
 
   return rows.map(row => {
-    const areaIdList = row.areaIds ? row.areaIds.split(',') : []
-    const areaNameList = row.areaNames ? row.areaNames.split(',') : []
-    const requirementAreas = areaIdList
-      .map((id, i) => ({ id: Number(id), name: areaNameList[i] ?? '' }))
-      .filter(a => a.id > 0)
+    const requirementAreas = row.areaPairs
+      ? row.areaPairs
+          .split(',')
+          .map((pair: string) => {
+            const sep = pair.indexOf('::')
+            return sep === -1
+              ? null
+              : { id: Number(pair.slice(0, sep)), name: pair.slice(sep + 2) }
+          })
+          .filter(
+            (
+              a: { id: number; name: string } | null,
+            ): a is { id: number; name: string } => a !== null && a.id > 0,
+          )
+      : []
 
     return {
       id: row.id,
@@ -183,6 +192,9 @@ export async function updatePackage(
 
 export async function deletePackage(db: Database, id: number) {
   await db
+    .delete(packageNeedsReferences)
+    .where(eq(packageNeedsReferences.packageId, id))
+  await db
     .delete(requirementPackageItems)
     .where(eq(requirementPackageItems.packageId, id))
   await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
@@ -252,11 +264,13 @@ export async function linkRequirementsToPackage(
     needsReferenceId?: number | null
   }[],
 ) {
-  if (items.length === 0) return
-  await db
+  if (items.length === 0) return 0
+  const inserted = await db
     .insert(requirementPackageItems)
     .values(items.map(item => ({ packageId, ...item })))
     .onConflictDoNothing()
+    .returning({ id: requirementPackageItems.id })
+  return inserted.length
 }
 
 export async function unlinkRequirementsFromPackage(
@@ -264,8 +278,8 @@ export async function unlinkRequirementsFromPackage(
   packageId: number,
   requirementIds: number[],
 ) {
-  if (requirementIds.length === 0) return
-  await db
+  if (requirementIds.length === 0) return 0
+  const deleted = await db
     .delete(requirementPackageItems)
     .where(
       and(
@@ -273,6 +287,8 @@ export async function unlinkRequirementsFromPackage(
         inArray(requirementPackageItems.requirementId, requirementIds),
       ),
     )
+    .returning({ id: requirementPackageItems.id })
+  return deleted.length
 }
 
 export async function listPackageItems(db: Database, packageId: number) {

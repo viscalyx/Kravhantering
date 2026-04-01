@@ -868,12 +868,14 @@ export function createKravhanteringMcpServer(
         'List all requirement packages (kravpaket), optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each package.',
       inputSchema: z
         .object({
+          locale: z.enum(['en', 'sv']).default('en'),
           nameSearch: z
             .string()
             .optional()
             .describe(
               'Case-insensitive substring filter applied to both Swedish and English package names.',
             ),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict(),
       outputSchema: z
@@ -904,7 +906,11 @@ export function createKravhanteringMcpServer(
       try {
         const payload = await service.listPackages(
           getBaseContext(request, 'kravhantering_list_packages'),
-          input,
+          {
+            locale: toResponseLocale(input.locale),
+            nameSearch: input.nameSearch,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
         )
         return {
           content: [{ text: payload.message, type: 'text' }],
@@ -935,6 +941,7 @@ export function createKravhanteringMcpServer(
             .describe(
               'Case-insensitive substring filter on the requirement description.',
             ),
+          locale: z.enum(['en', 'sv']).default('en'),
           packageId: z
             .number()
             .int()
@@ -947,8 +954,17 @@ export function createKravhanteringMcpServer(
             .describe(
               'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
             ),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
-        .strict(),
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.packageId == null) === (val.packageSlug == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of packageId or packageSlug.',
+            })
+          }
+        }),
       outputSchema: z
         .object({
           items: z.array(
@@ -975,7 +991,13 @@ export function createKravhanteringMcpServer(
       try {
         const payload = await service.getPackageItems(
           getBaseContext(request, 'kravhantering_get_package_items'),
-          input,
+          {
+            descriptionSearch: input.descriptionSearch,
+            locale: toResponseLocale(input.locale),
+            packageId: input.packageId,
+            packageSlug: input.packageSlug,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
         )
         return {
           content: [{ text: payload.message, type: 'text' }],
@@ -1000,6 +1022,7 @@ export function createKravhanteringMcpServer(
         'Link one or more requirements to a requirement package. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2").',
       inputSchema: z
         .object({
+          locale: z.enum(['en', 'sv']).default('en'),
           needsReferenceText: z
             .string()
             .optional()
@@ -1024,8 +1047,17 @@ export function createKravhanteringMcpServer(
             .describe(
               'Numeric requirement IDs (not uniqueId strings) to add to the package.',
             ),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
-        .strict(),
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.packageId == null) === (val.packageSlug == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of packageId or packageSlug.',
+            })
+          }
+        }),
       outputSchema: z
         .object({
           addedCount: z.number(),
@@ -1040,7 +1072,14 @@ export function createKravhanteringMcpServer(
       try {
         const payload = await service.addToPackage(
           getBaseContext(request, 'kravhantering_add_to_package'),
-          input,
+          {
+            locale: toResponseLocale(input.locale),
+            needsReferenceText: input.needsReferenceText,
+            packageId: input.packageId,
+            packageSlug: input.packageSlug,
+            requirementIds: input.requirementIds,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
         )
         return {
           content: [{ text: payload.message, type: 'text' }],
@@ -1065,6 +1104,7 @@ export function createKravhanteringMcpServer(
         'Unlink one or more requirements from a requirement package. The requirements themselves are not deleted. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2").',
       inputSchema: z
         .object({
+          locale: z.enum(['en', 'sv']).default('en'),
           packageId: z
             .number()
             .int()
@@ -1081,8 +1121,17 @@ export function createKravhanteringMcpServer(
             .array(z.number().int().positive())
             .min(1)
             .describe('Numeric requirement IDs to remove from the package.'),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
-        .strict(),
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.packageId == null) === (val.packageSlug == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of packageId or packageSlug.',
+            })
+          }
+        }),
       outputSchema: z
         .object({
           message: z.string(),
@@ -1095,7 +1144,13 @@ export function createKravhanteringMcpServer(
       try {
         const payload = await service.removeFromPackage(
           getBaseContext(request, 'kravhantering_remove_from_package'),
-          input,
+          {
+            locale: toResponseLocale(input.locale),
+            packageId: input.packageId,
+            packageSlug: input.packageSlug,
+            requirementIds: input.requirementIds,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
         )
         return {
           content: [{ text: payload.message, type: 'text' }],

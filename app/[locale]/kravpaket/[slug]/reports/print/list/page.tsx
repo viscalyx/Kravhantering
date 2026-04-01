@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
@@ -12,6 +12,7 @@ export default function PrintListReportPage() {
   const searchParams = useSearchParams()
   const params = useParams()
   const locale = useLocale()
+  const t = useTranslations('reports')
   const [model, setModel] = useState<ReportModel | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,13 +21,13 @@ export default function PrintListReportPage() {
 
   const loadReport = useCallback(async () => {
     if (!ids) {
-      setError('No requirement IDs provided')
+      setError(t('noRequirementIds'))
       return
     }
     try {
       const idList = ids.split(',').filter(Boolean)
       if (idList.length === 0) {
-        setError('No requirement IDs provided')
+        setError(t('noRequirementIds'))
         return
       }
       const [requirements, pkgRes] = await Promise.all([
@@ -35,7 +36,18 @@ export default function PrintListReportPage() {
           ? fetch(`/api/requirement-packages/${slug}`)
           : Promise.resolve(null),
       ])
-      const pkg = pkgRes?.ok
+      if (slug && pkgRes && !pkgRes.ok) {
+        const details = (await pkgRes.text()).trim()
+        throw new Error(
+          details
+            ? t('packageFetchFailedWithDetails', {
+                details,
+                status: pkgRes.status,
+              })
+            : t('packageFetchFailed', { status: pkgRes.status }),
+        )
+      }
+      const pkg = pkgRes
         ? ((await pkgRes.json()) as {
             name: string
             uniqueId: string
@@ -62,9 +74,9 @@ export default function PrintListReportPage() {
         ),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report')
+      setError(err instanceof Error ? err.message : t('failedToLoadReport'))
     }
-  }, [ids, locale, slug])
+  }, [ids, locale, slug, t])
 
   useEffect(() => {
     loadReport()
@@ -80,7 +92,7 @@ export default function PrintListReportPage() {
   if (error) {
     return (
       <div style={{ padding: '2rem', color: '#991b1b' }}>
-        <h1>Error</h1>
+        <h1>{t('errorTitle')}</h1>
         <p>{error}</p>
       </div>
     )
@@ -89,7 +101,7 @@ export default function PrintListReportPage() {
   if (!model) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-        Loading report...
+        {t('loading')}
       </div>
     )
   }

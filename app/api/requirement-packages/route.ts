@@ -19,6 +19,14 @@ export async function POST(request: NextRequest) {
   const db = getDb(env.DB)
   const body = (await request.json()) as Parameters<typeof createPackage>[1]
 
+  if (
+    !body?.uniqueId ||
+    typeof body.uniqueId !== 'string' ||
+    !body.uniqueId.trim()
+  ) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+  }
+
   if (await isSlugTaken(db, body.uniqueId)) {
     return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
   }

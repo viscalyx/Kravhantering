@@ -20,4 +20,4 @@ UPDATE `requirement_packages` SET `unique_id` = 'API-GATEWAY' WHERE `id` = 9;
 --> statement-breakpoint
 UPDATE `requirement_packages` SET `unique_id` = 'SYSOVERVAKNING-BAS' WHERE `id` = 10;
 --> statement-breakpoint
-CREATE UNIQUE INDEX `requirement_packages_unique_id_unique` ON `requirement_packages` (`unique_id`);
+CREATE UNIQUE INDEX `uq_requirement_packages_unique_id` ON `requirement_packages` (`unique_id`);

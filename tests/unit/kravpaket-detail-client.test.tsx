@@ -145,7 +145,7 @@ describe('KravpaketDetailClient', () => {
     fireEvent.click(editButton)
 
     expect(editButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByLabelText(/package\.name/)).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /package\.name/ })).toHaveValue(
       'Authorization and IAM',
     )
 
@@ -157,7 +157,9 @@ describe('KravpaketDetailClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
 
     await waitFor(() => {
-      expect(screen.queryByLabelText(/package\.name/)).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: /package\.name/ }),
+      ).not.toBeInTheDocument()
     })
     expect(editButton).toHaveAttribute('aria-expanded', 'false')
   })

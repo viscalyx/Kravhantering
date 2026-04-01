@@ -15,12 +15,13 @@ import { getDb } from '@/lib/db'
 type Params = Promise<{ id: string }>
 
 async function resolvePackageId(db: Database, idOrSlug: string) {
+  const bySlug = await getPackageBySlug(db, idOrSlug)
+  if (bySlug) return bySlug.id
   if (/^\d+$/.test(idOrSlug)) {
-    const pkg = await getPackageById(db, Number(idOrSlug))
-    return pkg?.id ?? null
+    const byId = await getPackageById(db, Number(idOrSlug))
+    return byId?.id ?? null
   }
-  const pkg = await getPackageBySlug(db, idOrSlug)
-  return pkg?.id ?? null
+  return null
 }
 
 export async function GET(
@@ -63,22 +64,8 @@ export async function POST(
     )
   }
 
-  // Resolve the needs reference ID (text takes priority, creates/reuses entry)
-  let resolvedNeedsReferenceId: number | null = needsReferenceId ?? null
-  if (needsReferenceText?.trim()) {
-    resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
-      db,
-      packageId,
-      needsReferenceText.trim(),
-    )
-  }
-
   // Resolve published version for each requirement; reject if any has none
-  const resolvedItems: {
-    requirementId: number
-    requirementVersionId: number
-    needsReferenceId?: number | null
-  }[] = []
+  const resolvedVersionIds: { requirementId: number; versionId: number }[] = []
 
   for (const requirementId of requirementIds) {
     const versionId = await getPublishedVersionIdForRequirement(
@@ -93,12 +80,26 @@ export async function POST(
         { status: 422 },
       )
     }
-    resolvedItems.push({
+    resolvedVersionIds.push({ requirementId, versionId })
+  }
+
+  // All items validated — now resolve/create needs reference
+  let resolvedNeedsReferenceId: number | null = needsReferenceId ?? null
+  if (needsReferenceText?.trim()) {
+    resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
+      db,
+      packageId,
+      needsReferenceText.trim(),
+    )
+  }
+
+  const resolvedItems = resolvedVersionIds.map(
+    ({ requirementId, versionId }) => ({
       requirementId,
       requirementVersionId: versionId,
       needsReferenceId: resolvedNeedsReferenceId,
-    })
-  }
+    }),
+  )
 
   await linkRequirementsToPackage(db, packageId, resolvedItems)
   return NextResponse.json({ ok: true }, { status: 201 })

@@ -1,6 +1,14 @@
 'use client'
 
-import { Download, Pencil, Plus, Printer, Trash2, X } from 'lucide-react'
+import {
+  Download,
+  HelpCircle,
+  Pencil,
+  Plus,
+  Printer,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -155,6 +163,7 @@ export default function KravpaketDetailClient({
   const [availableNeedsRefs, setAvailableNeedsRefs] = useState<
     { id: number; text: string }[]
   >([])
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
 
   // PDF export state
@@ -167,6 +176,41 @@ export default function KravpaketDetailClient({
   })
 
   const latestAvailableRequestIdRef = useRef(0)
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(prev => {
+      const next = new Set(prev)
+      if (next.has(field)) {
+        next.delete(field)
+      } else {
+        next.add(field)
+      }
+      return next
+    })
+  }
+
+  const helpButton = (field: string, label: string) => (
+    <button
+      aria-controls={`help-${field}`}
+      aria-expanded={openHelp.has(field)}
+      aria-label={`${tc('help')}: ${label}`}
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      onClick={() => toggleHelp(field)}
+      type="button"
+    >
+      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+    </button>
+  )
+
+  const helpPanel = (helpKey: string, field: string) =>
+    openHelp.has(field) && (
+      <p
+        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
+        id={`help-${field}`}
+      >
+        {t(helpKey)}
+      </p>
+    )
 
   const packageItemIds = useMemo(
     () => new Set(packageItems.map(r => r.id)),
@@ -324,6 +368,7 @@ export default function KravpaketDetailClient({
     setAddNeedsRefMode('none')
     setAddNeedsRefId('')
     setAddNeedsRefText('')
+    setOpenHelp(new Set())
     setShowAddModal(true)
     const res = await fetch(
       `/api/requirement-packages/${packageSlug}/needs-references`,
@@ -350,11 +395,20 @@ export default function KravpaketDetailClient({
       } else if (addNeedsRefMode === 'new' && addNeedsRefText.trim()) {
         body.needsReferenceText = addNeedsRefText.trim()
       }
-      await fetch(`/api/requirement-packages/${packageSlug}/items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+      const res = await fetch(
+        `/api/requirement-packages/${packageSlug}/items`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      )
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string
+        }
+        throw new Error(data.error ?? 'Failed to add requirements')
+      }
       setRightSelectedIds(new Set())
       setShowAddModal(false)
       await Promise.all([fetchPackageItems(), fetchAvailableRequirements()])
@@ -454,28 +508,16 @@ export default function KravpaketDetailClient({
   }, [packageItems, usageScenarios])
 
   const handleExportCsv = useCallback(() => {
-    const headers =
-      locale === 'sv'
-        ? [
-            'Krav-ID',
-            'Kravtext',
-            'Område',
-            'Behovsreferens',
-            'Status',
-            'Kategori',
-            'Typ',
-            'Kvalitetsegenskap',
-          ]
-        : [
-            'Requirement ID',
-            'Description',
-            'Area',
-            'Needs Reference',
-            'Status',
-            'Category',
-            'Type',
-            'Quality Characteristic',
-          ]
+    const headers = [
+      t('csvHeaders.uniqueId'),
+      t('csvHeaders.description'),
+      t('csvHeaders.area'),
+      t('csvHeaders.needsReference'),
+      t('csvHeaders.status'),
+      t('csvHeaders.category'),
+      t('csvHeaders.type'),
+      t('csvHeaders.qualityCharacteristic'),
+    ]
     const csvRows = filteredPackageItems.map(r => ({
       [headers[0]]: r.uniqueId,
       [headers[1]]: r.version?.description ?? '',
@@ -503,7 +545,7 @@ export default function KravpaketDetailClient({
     a.download = locale === 'sv' ? 'kravpaket.csv' : 'requirement-package.csv'
     a.click()
     URL.revokeObjectURL(url)
-  }, [filteredPackageItems, locale])
+  }, [filteredPackageItems, locale, t])
 
   useEffect(() => {
     if (pdfModel) {
@@ -546,8 +588,16 @@ export default function KravpaketDetailClient({
           <div
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => setShowAddModal(false)}
-            onKeyDown={e => e.key === 'Escape' && setShowAddModal(false)}
+            onClick={() => {
+              setOpenHelp(new Set())
+              setShowAddModal(false)
+            }}
+            onKeyDown={e => {
+              if (e.key === 'Escape') {
+                setOpenHelp(new Set())
+                setShowAddModal(false)
+              }
+            }}
             role="dialog"
           >
             <div
@@ -563,19 +613,26 @@ export default function KravpaketDetailClient({
                 <button
                   aria-label={tc('close')}
                   className="p-1.5 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setOpenHelp(new Set())
+                    setShowAddModal(false)
+                  }}
                   type="button"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
                 </button>
               </div>
               <div>
-                <label
-                  className="block text-sm font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-                  htmlFor="add-needs-ref"
-                >
-                  {t('addNeedsRef')}
-                </label>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                    htmlFor="add-needs-ref"
+                  >
+                    {t('addNeedsRef')}
+                  </label>
+                  {helpButton('add-needs-ref', t('addNeedsRef'))}
+                </div>
+                {helpPanel('addNeedsRefHelp', 'add-needs-ref')}
                 <select
                   className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
                   id="add-needs-ref"
@@ -607,13 +664,29 @@ export default function KravpaketDetailClient({
                   ))}
                 </select>
                 {addNeedsRefMode === 'new' && (
-                  <textarea
-                    className="mt-2 w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
-                    onChange={e => setAddNeedsRefText(e.target.value)}
-                    placeholder={t('addNeedsRefPlaceholder')}
-                    rows={3}
-                    value={addNeedsRefText}
-                  />
+                  <>
+                    <div className="mt-2 mb-1 flex items-center gap-1.5">
+                      <label
+                        className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                        htmlFor="add-needs-ref-text"
+                      >
+                        {t('addNeedsRefTextLabel')}
+                      </label>
+                      {helpButton(
+                        'add-needs-ref-text',
+                        t('addNeedsRefTextLabel'),
+                      )}
+                    </div>
+                    {helpPanel('addNeedsRefTextHelp', 'add-needs-ref-text')}
+                    <textarea
+                      className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
+                      id="add-needs-ref-text"
+                      onChange={e => setAddNeedsRefText(e.target.value)}
+                      placeholder={t('addNeedsRefPlaceholder')}
+                      rows={3}
+                      value={addNeedsRefText}
+                    />
+                  </>
                 )}
               </div>
               <div className="flex gap-3 pt-1">
@@ -627,7 +700,10 @@ export default function KravpaketDetailClient({
                 </button>
                 <button
                   className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setOpenHelp(new Set())
+                    setShowAddModal(false)
+                  }}
                   type="button"
                 >
                   {tc('cancel')}

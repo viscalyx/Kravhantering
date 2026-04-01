@@ -543,6 +543,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
+  clearIfHidden('needsReference', 'needsReferenceIds')
 
   return nextValues
 }

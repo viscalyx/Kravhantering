@@ -1,5 +1,6 @@
 'use client'
 
+import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -62,17 +63,56 @@ export default function PackageEditPanel({
   const tc = useTranslations('common')
   const locale = useLocale()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [slugError, setSlugError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [form, setForm] = useState<PackageFormState>(() => buildFormState(pkg))
 
   useEffect(() => {
     setForm(buildFormState(pkg))
+    setOpenHelp(new Set())
   }, [pkg])
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(prev => {
+      const next = new Set(prev)
+      if (next.has(field)) {
+        next.delete(field)
+      } else {
+        next.add(field)
+      }
+      return next
+    })
+  }
+
+  const helpButton = (field: string, label: string) => (
+    <button
+      aria-controls={`help-${field}`}
+      aria-expanded={openHelp.has(field)}
+      aria-label={`${tc('help')}: ${label}`}
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      onClick={() => toggleHelp(field)}
+      type="button"
+    >
+      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+    </button>
+  )
+
+  const helpPanel = (helpKey: string, field: string) =>
+    openHelp.has(field) && (
+      <p
+        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
+        id={`help-${field}`}
+      >
+        {t(helpKey)}
+      </p>
+    )
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSubmitting(true)
     setSlugError(null)
+    setSubmitError(null)
 
     try {
       const response = await fetch(`/api/requirement-packages/${packageSlug}`, {
@@ -96,9 +136,14 @@ export default function PackageEditPanel({
         return
       }
 
-      if (!response.ok) return
+      if (!response.ok) {
+        setSubmitError(tc('error'))
+        return
+      }
 
       await onSaved(form.uniqueId)
+    } catch {
+      setSubmitError(tc('error'))
     } finally {
       setIsSubmitting(false)
     }
@@ -120,9 +165,13 @@ export default function PackageEditPanel({
       <h2 className="text-lg font-semibold">{t('editPackage')}</h2>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="pkg-name">
-          {t('name')} *
-        </label>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label className="block text-sm font-medium" htmlFor="pkg-name">
+            {t('name')} *
+          </label>
+          {helpButton('pkg-name', t('name'))}
+        </div>
+        {helpPanel('nameHelp', 'pkg-name')}
         <input
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
           id="pkg-name"
@@ -135,12 +184,13 @@ export default function PackageEditPanel({
       </div>
 
       <div>
-        <label
-          className="mb-1 block text-sm font-medium"
-          htmlFor="pkg-unique-id"
-        >
-          {t('uniqueId')} *
-        </label>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label className="block text-sm font-medium" htmlFor="pkg-unique-id">
+            {t('uniqueId')} *
+          </label>
+          {helpButton('pkg-unique-id', t('uniqueId'))}
+        </div>
+        {helpPanel('uniqueIdHelp', 'pkg-unique-id')}
         <input
           className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
           id="pkg-unique-id"
@@ -167,9 +217,13 @@ export default function PackageEditPanel({
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="pkg-area">
-          {t('responsibilityArea')}
-        </label>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label className="block text-sm font-medium" htmlFor="pkg-area">
+            {t('responsibilityArea')}
+          </label>
+          {helpButton('pkg-area', t('responsibilityArea'))}
+        </div>
+        {helpPanel('responsibilityAreaHelp', 'pkg-area')}
         <select
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
           id="pkg-area"
@@ -191,12 +245,13 @@ export default function PackageEditPanel({
       </div>
 
       <div>
-        <label
-          className="mb-1 block text-sm font-medium"
-          htmlFor="pkg-impl-type"
-        >
-          {t('implementationType')}
-        </label>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label className="block text-sm font-medium" htmlFor="pkg-impl-type">
+            {t('implementationType')}
+          </label>
+          {helpButton('pkg-impl-type', t('implementationType'))}
+        </div>
+        {helpPanel('implementationTypeHelp', 'pkg-impl-type')}
         <select
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
           id="pkg-impl-type"
@@ -220,12 +275,16 @@ export default function PackageEditPanel({
       </div>
 
       <div>
-        <label
-          className="mb-1 block text-sm font-medium"
-          htmlFor="pkg-business-ref"
-        >
-          {t('businessNeedsReference')}
-        </label>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label
+            className="block text-sm font-medium"
+            htmlFor="pkg-business-ref"
+          >
+            {t('businessNeedsReference')}
+          </label>
+          {helpButton('pkg-business-ref', t('businessNeedsReference'))}
+        </div>
+        {helpPanel('businessNeedsReferenceHelp', 'pkg-business-ref')}
         <textarea
           className="w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
           id="pkg-business-ref"
@@ -240,6 +299,10 @@ export default function PackageEditPanel({
           value={form.businessNeedsReference}
         />
       </div>
+
+      {submitError && (
+        <p className="text-sm text-red-600 dark:text-red-400">{submitError}</p>
+      )}
 
       <div className="flex gap-3">
         <button className="btn-primary" disabled={isSubmitting} type="submit">

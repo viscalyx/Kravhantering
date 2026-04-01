@@ -218,7 +218,9 @@
     "seccomp",
     "sandboxing",
     "affordances",
-    "Normalise"
+    "Normalise",
+    "misroutes",
+    "misalign"
   ],
   "flagWords": [],
   "ignorePaths": [

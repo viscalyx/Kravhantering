@@ -68,6 +68,9 @@ The emitted attributes are:
   Keep the control `name` stable and move runtime identity into `value`, for
   example `sort button: requirement id`, `filter button: status`, or theme
   state values like `light`, `dark`, and `auto`.
+- Requirement package create/edit forms continue to use the `crud form` marker;
+  their package-field help toggles are part of that same form surface rather
+  than separate developer-mode markers.
 - Requirement package detail header edit affordances use the
   `requirement package detail` context with `detail action: edit package`
   on the icon trigger and `crud form: edit` on the opened editor.

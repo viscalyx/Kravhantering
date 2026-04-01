@@ -666,6 +666,21 @@ describe('RequirementsTable', () => {
     expect(statusLabel?.className).toContain('w-full')
   })
 
+  it('keeps locked columns visible even when excludeColumns includes them', () => {
+    render(
+      <RequirementsTable
+        excludeColumns={['uniqueId', 'description']}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'uniqueId' })).toBeInTheDocument()
+    expect(screen.getByText('description')).toBeInTheDocument()
+    expect(screen.getByText('INT0001')).toBeInTheDocument()
+    expect(screen.getByText('Testkrav')).toBeInTheDocument()
+  })
+
   it('renders the floating pill outside the table header and closes on outside click', () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,

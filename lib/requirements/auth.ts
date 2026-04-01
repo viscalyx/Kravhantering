@@ -23,6 +23,27 @@ export type RequirementsAction =
       catalog: string
     }
   | {
+      kind: 'list_packages'
+      nameSearch?: string
+    }
+  | {
+      kind: 'get_package_items'
+      packageId?: number
+      packageSlug?: string
+    }
+  | {
+      kind: 'add_to_package'
+      packageId?: number
+      packageSlug?: string
+      requirementIds: number[]
+    }
+  | {
+      kind: 'remove_from_package'
+      packageId?: number
+      packageSlug?: string
+      requirementIds: number[]
+    }
+  | {
       kind: 'get_requirement'
       uniqueId?: string
       id?: number

@@ -1,7 +1,7 @@
 import type { RequirementReportData } from '../data/fetch-requirement'
 import type { ReportModel, ReportSection } from '../types'
 
-interface PackageCoverInfo {
+export interface PackageCoverInfo {
   businessNeedsReference: string | null
   implementationType: string | null
   name: string

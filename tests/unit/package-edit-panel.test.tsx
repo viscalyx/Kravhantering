@@ -43,7 +43,7 @@ describe('PackageEditPanel', () => {
       />,
     )
 
-    expect(screen.getByLabelText(/package\.name/)).toHaveValue(
+    expect(screen.getByRole('textbox', { name: /package\.name/ })).toHaveValue(
       'Behörighet och IAM',
     )
 
@@ -71,6 +71,25 @@ describe('PackageEditPanel', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
+  it('shows contextual help for package fields', () => {
+    render(
+      <PackageEditPanel
+        implementationTypes={implementationTypes}
+        onCancel={() => {}}
+        onSaved={() => {}}
+        packageSlug="BEHORIGHET-IAM"
+        pkg={pkg}
+        responsibilityAreas={responsibilityAreas}
+      />,
+    )
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'common.help: package.name' }),
+    )
+
+    expect(screen.getByText('package.nameHelp')).toBeInTheDocument()
+  })
+
   it('submits the updated package information', async () => {
     const onSaved = vi.fn((_uid: string) => {})
 
@@ -85,7 +104,7 @@ describe('PackageEditPanel', () => {
       />,
     )
 
-    fireEvent.change(screen.getByLabelText(/package\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /package\.name/ }), {
       target: { value: 'Nytt paketnamn' },
     })
 
@@ -95,7 +114,8 @@ describe('PackageEditPanel', () => {
       expect(fetchMock).toHaveBeenCalled()
     })
 
-    const [, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [url, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/requirement-packages/BEHORIGHET-IAM')
     expect(requestInit?.method).toBe('PUT')
     expect(requestInit?.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(JSON.parse((requestInit?.body as string) ?? '{}')).toMatchObject({

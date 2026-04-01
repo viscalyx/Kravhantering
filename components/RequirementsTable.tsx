@@ -1383,9 +1383,12 @@ export default function RequirementsTable({
   const router = useRouter()
   const normalizedColumnDefaults =
     normalizeRequirementListColumnDefaults(columnDefaults)
+  const effectiveExcludeColumns: RequirementColumnId[] = (
+    excludeColumns ?? []
+  ).filter(columnId => columnId !== 'uniqueId' && columnId !== 'description')
   const allColumns = getOrderedRequirementListColumns(
     normalizedColumnDefaults,
-  ).filter(col => !excludeColumns?.includes(col.id))
+  ).filter(col => !effectiveExcludeColumns.includes(col.id))
 
   const fv = filterValues ?? {}
   const latestFilterValuesRef = useRef(fv)

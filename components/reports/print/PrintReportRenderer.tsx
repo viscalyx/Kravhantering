@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import type {
   DiffSegment,
   MetadataChange,
@@ -19,6 +20,8 @@ export default function PrintReportRenderer({
   model,
   locale,
 }: PrintReportRendererProps) {
+  const t = useTranslations('reports')
+
   return (
     <div className="print-report-container">
       <div className="no-print" style={{ marginBottom: '1rem' }}>
@@ -35,7 +38,7 @@ export default function PrintReportRenderer({
           }}
           type="button"
         >
-          {locale === 'sv' ? 'Skriv ut' : 'Print'}
+          {t('printButton')}
         </button>
       </div>
       {model.sections.map((section, index) => (
@@ -84,7 +87,7 @@ function PackageCoverSection({
 }: {
   section: Extract<ReportSection, { type: 'package-cover' }>
 }) {
-  const sv = section.locale === 'sv'
+  const t = useTranslations('reports')
   return (
     <div style={{ marginBottom: '2rem' }}>
       <h1
@@ -108,7 +111,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {sv ? 'Kravpaket-ID' : 'Package ID'}
+            {t('packageCover.packageId')}
           </dt>
           <dd
             style={{ fontSize: '0.875rem', fontFamily: 'monospace', margin: 0 }}
@@ -125,7 +128,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {sv ? 'Verksamhetsobjekt' : 'Responsibility area'}
+            {t('packageCover.responsibilityArea')}
           </dt>
           <dd style={{ fontSize: '0.875rem', margin: 0 }}>
             {section.responsibilityArea ?? '—'}
@@ -140,7 +143,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {sv ? 'Genomförandeform' : 'Implementation type'}
+            {t('packageCover.implementationType')}
           </dt>
           <dd style={{ fontSize: '0.875rem', margin: 0 }}>
             {section.implementationType ?? '—'}
@@ -156,7 +159,7 @@ function PackageCoverSection({
                 marginBottom: '0.25rem',
               }}
             >
-              {sv ? 'Verksamhetsbehovsreferens' : 'Business needs reference'}
+              {t('packageCover.businessNeedsReference')}
             </dt>
             <dd style={{ fontSize: '0.875rem', margin: 0 }}>
               {section.businessNeedsReference}

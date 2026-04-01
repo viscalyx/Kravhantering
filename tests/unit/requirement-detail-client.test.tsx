@@ -275,6 +275,7 @@ function setupFetch({
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
   initialRequirement,
+  packages = [],
   reactivateNextRequirement,
   restoreNextRequirement,
   transitionNextRequirement,
@@ -282,6 +283,7 @@ function setupFetch({
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
   initialRequirement: ReturnType<typeof makeRequirement>
+  packages?: { id: number; name: string }[]
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
@@ -348,6 +350,18 @@ function setupFetch({
         if (reactivateNextRequirement) {
           currentRequirement = structuredClone(reactivateNextRequirement)
         }
+        return response({})
+      }
+
+      if (url === '/api/requirement-packages' && method === 'GET') {
+        return response({ packages })
+      }
+
+      if (url === '/api/requirement-packages/7/needs-references') {
+        return response({ needsReferences: [] })
+      }
+
+      if (url === '/api/requirement-packages/7/items' && method === 'POST') {
         return response({})
       }
 
@@ -1036,6 +1050,45 @@ describe('RequirementDetailClient', () => {
       'data-developer-mode-value',
       'share inline',
     )
+  })
+
+  it('shows help affordances in the add-to-package dialog', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'package.addToPackage' }),
+    )
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'common.help: package.selectPackage',
+      }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: package.selectPackage',
+      }),
+    )
+
+    expect(screen.getByText('package.selectPackageHelp')).toBeInTheDocument()
   })
 
   it('renders noPublishedVersion fallback for full-page view without published version', async () => {

@@ -114,7 +114,25 @@ describe('KravpaketClient', () => {
     fireEvent.click(
       screen.getByRole('button', { name: /package\.newPackage/i }),
     )
-    expect(screen.getByLabelText(/package\.name/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /package\.name/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows inline help for package form fields', async () => {
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /package\.newPackage/i }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'common.help: package.name' }),
+    )
+
+    expect(screen.getByText('package.nameHelp')).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
@@ -126,10 +144,10 @@ describe('KravpaketClient', () => {
       screen.getByRole('button', { name: /package\.newPackage/i }),
     )
 
-    fireEvent.change(screen.getByLabelText(/package\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /package\.name/ }), {
       target: { value: 'Ny' },
     })
-    fireEvent.blur(screen.getByLabelText(/package\.name/))
+    fireEvent.blur(screen.getByRole('textbox', { name: /package\.name/ }))
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
@@ -162,7 +180,11 @@ describe('KravpaketClient', () => {
     })
     fireEvent.click(editButtons[0])
     expect(
-      (screen.getByLabelText(/package\.name/) as HTMLInputElement).value,
+      (
+        screen.getByRole('textbox', {
+          name: /package\.name/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('Paket sv')
   })
 
