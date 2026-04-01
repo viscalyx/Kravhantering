@@ -24,6 +24,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -1413,18 +1414,31 @@ export default function RequirementsTable({
   const allColumns = getOrderedRequirementListColumns(
     normalizedColumnDefaults,
   ).filter(col => !effectiveExcludeColumns.includes(col.id))
+  const normalizedVisibleColumns = useMemo(
+    () =>
+      orderRequirementVisibleColumns(
+        allColumns
+          .filter(
+            column =>
+              visibleColumns.includes(column.id) ||
+              column.id === 'uniqueId' ||
+              column.id === 'description',
+          )
+          .map(column => column.id),
+        {
+          columnDefaults: normalizedColumnDefaults,
+        },
+      ),
+    [allColumns, normalizedColumnDefaults, visibleColumns],
+  )
 
   const fv = filterValues ?? {}
   const latestFilterValuesRef = useRef(fv)
-  const visibleColumnsRef = useRef(visibleColumns)
+  const visibleColumnsRef = useRef(normalizedVisibleColumns)
   const hasFilters = !!onFilterChange
-  const visibleColumnSet = new Set([
-    ...visibleColumns,
-    'uniqueId',
-    'description',
-  ])
+  const visibleColumnSet = new Set(normalizedVisibleColumns)
   latestFilterValuesRef.current = fv
-  visibleColumnsRef.current = visibleColumns
+  visibleColumnsRef.current = normalizedVisibleColumns
   const columnPickerBadgeLabel =
     visibleColumnSet.size > 0
       ? `${visibleColumnSet.size}/${allColumns.length}`
@@ -2287,9 +2301,6 @@ export default function RequirementsTable({
     const orderedColumns = orderRequirementVisibleColumns(normalizedColumns, {
       columnDefaults: normalizedColumnDefaults,
     })
-    const hiddenColumns = columnDefinitions
-      .map(column => column.id)
-      .filter(columnId => !orderedColumns.includes(columnId))
     const nextFilterValues = clearRequirementFiltersForHiddenColumns(
       fv,
       orderedColumns,
@@ -2302,7 +2313,7 @@ export default function RequirementsTable({
       onFilterChange(nextFilterValues)
     }
     if (
-      hiddenColumns.includes(sortState.by) &&
+      !orderedColumns.includes(sortState.by as RequirementColumnId) &&
       onSortChange &&
       sortState.by !== DEFAULT_REQUIREMENT_SORT.by
     ) {
@@ -2311,15 +2322,9 @@ export default function RequirementsTable({
   }
 
   useEffect(() => {
-    const orderedColumns = orderRequirementVisibleColumns(visibleColumns, {
-      columnDefaults: normalizedColumnDefaults,
-    })
-    const hiddenColumns = allColumns
-      .map(column => column.id)
-      .filter(columnId => !orderedColumns.includes(columnId))
     const nextFilterValues = clearRequirementFiltersForHiddenColumns(
       fv,
-      orderedColumns,
+      normalizedVisibleColumns,
       { columnDefaults: normalizedColumnDefaults },
     )
 
@@ -2328,20 +2333,19 @@ export default function RequirementsTable({
     }
 
     if (
-      hiddenColumns.includes(sortState.by) &&
+      !normalizedVisibleColumns.includes(sortState.by as RequirementColumnId) &&
       onSortChange &&
       sortState.by !== DEFAULT_REQUIREMENT_SORT.by
     ) {
       onSortChange(DEFAULT_REQUIREMENT_SORT)
     }
   }, [
-    allColumns,
     fv,
     normalizedColumnDefaults,
+    normalizedVisibleColumns,
     onFilterChange,
     onSortChange,
     sortState.by,
-    visibleColumns,
   ])
 
   const toggleColumn = (columnId: RequirementColumnId) => {

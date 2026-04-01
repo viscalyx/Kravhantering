@@ -129,6 +129,21 @@ export default function RequirementDetailClient({
   const [addToPackageError, setAddToPackageError] = useState<string | null>(
     null,
   )
+  const addToPackageNeedsRefsRequestIdRef = useRef(0)
+  const addToPackageNeedsRefsAbortRef = useRef<AbortController | null>(null)
+
+  const closeAddToPackageDialog = useCallback(() => {
+    addToPackageNeedsRefsAbortRef.current?.abort()
+    addToPackageNeedsRefsAbortRef.current = null
+    setOpenHelp(new Set())
+    setShowAddToPackage(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      addToPackageNeedsRefsAbortRef.current?.abort()
+    }
+  }, [])
 
   const handleVersionSelect = useCallback(
     (versionNumber: number) => {
@@ -545,6 +560,8 @@ export default function RequirementDetailClient({
       ? selectedVersion?.statusNameSv
       : selectedVersion?.statusNameEn) ?? ''
   const currentStatusColor = selectedVersion?.statusColor ?? null
+  const canAddToPackage =
+    currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
   const detailContext =
     req == null
       ? undefined
@@ -779,6 +796,9 @@ export default function RequirementDetailClient({
   }
 
   const handleOpenAddToPackage = async () => {
+    addToPackageNeedsRefsAbortRef.current?.abort()
+    addToPackageNeedsRefsAbortRef.current = null
+    addToPackageNeedsRefsRequestIdRef.current += 1
     setAddToPackageId('')
     setAddToPackageNeedsRefMode('none')
     setAddToPackageNeedsRefId('')
@@ -805,20 +825,47 @@ export default function RequirementDetailClient({
   }
 
   const handlePackageSelect = async (pkgId: string) => {
+    addToPackageNeedsRefsAbortRef.current?.abort()
+    addToPackageNeedsRefsAbortRef.current = null
+    addToPackageNeedsRefsRequestIdRef.current += 1
+    const requestId = addToPackageNeedsRefsRequestIdRef.current
     setAddToPackageId(pkgId)
     setAddToPackageNeedsRefMode('none')
     setAddToPackageNeedsRefId('')
     setAddToPackageNeedsRefText('')
     setAvailableNeedsRefs([])
-    if (pkgId) {
+    if (!pkgId) {
+      return
+    }
+
+    const controller = new AbortController()
+    addToPackageNeedsRefsAbortRef.current = controller
+
+    try {
       const res = await fetch(
         `/api/requirement-packages/${pkgId}/needs-references`,
+        { signal: controller.signal },
       )
-      if (res.ok) {
-        const data = (await res.json()) as {
-          needsReferences: { id: number; text: string }[]
-        }
-        setAvailableNeedsRefs(data.needsReferences)
+      if (!res.ok) {
+        return
+      }
+      const data = (await res.json()) as {
+        needsReferences: { id: number; text: string }[]
+      }
+      if (
+        controller.signal.aborted ||
+        addToPackageNeedsRefsRequestIdRef.current !== requestId
+      ) {
+        return
+      }
+      setAvailableNeedsRefs(data.needsReferences)
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'AbortError') {
+        throw error
+      }
+    } finally {
+      if (addToPackageNeedsRefsAbortRef.current === controller) {
+        addToPackageNeedsRefsAbortRef.current = null
       }
     }
   }
@@ -855,7 +902,7 @@ export default function RequirementDetailClient({
       )
       if (res.ok) {
         setAddToPackageStatus('success')
-        setTimeout(() => setShowAddToPackage(false), 1200)
+        setTimeout(() => closeAddToPackageDialog(), 1200)
       } else {
         const data = (await res.json()) as { error?: string }
         setAddToPackageError(data.error ?? tc('error'))
@@ -873,14 +920,10 @@ export default function RequirementDetailClient({
           <div
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => {
-              setOpenHelp(new Set())
-              setShowAddToPackage(false)
-            }}
+            onClick={closeAddToPackageDialog}
             onKeyDown={e => {
               if (e.key === 'Escape') {
-                setOpenHelp(new Set())
-                setShowAddToPackage(false)
+                closeAddToPackageDialog()
               }
             }}
             role="dialog"
@@ -888,7 +931,11 @@ export default function RequirementDetailClient({
             <div
               className="w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl p-6 space-y-4"
               onClick={e => e.stopPropagation()}
-              onKeyDown={e => e.stopPropagation()}
+              onKeyDown={e => {
+                if (e.key !== 'Escape') {
+                  e.stopPropagation()
+                }
+              }}
               role="document"
             >
               <div className="flex items-center justify-between">
@@ -898,10 +945,7 @@ export default function RequirementDetailClient({
                 <button
                   aria-label={tc('close')}
                   className="p-1.5 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
-                  onClick={() => {
-                    setOpenHelp(new Set())
-                    setShowAddToPackage(false)
-                  }}
+                  onClick={closeAddToPackageDialog}
                   type="button"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
@@ -1505,7 +1549,7 @@ export default function RequirementDetailClient({
                     </div>
                   )}
                 </div>
-                {currentStatusId === STATUS_PUBLISHED && (
+                {canAddToPackage && (
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
                     {...devMarker({

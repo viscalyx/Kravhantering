@@ -12,6 +12,15 @@ const fetchMultipleRequirementsMock = vi.fn()
 const buildListReportMock = vi.fn()
 const downloadMock = vi.fn()
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(resolver => {
+    resolve = resolver
+  })
+
+  return { promise, resolve }
+}
+
 vi.mock('next/navigation', () => ({
   useParams: () => ({ slug: currentSlug }),
   useSearchParams: () => ({
@@ -21,8 +30,17 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: (namespace?: string) => (key: string) =>
-    namespace ? `${namespace}.${key}` : key,
+  useTranslations:
+    (namespace?: string) =>
+    (key: string, values?: Record<string, string | number>) => {
+      if (namespace === 'reports' && key === 'packageFetchFailed') {
+        return `Package fetch failed (${values?.status})`
+      }
+      if (namespace === 'reports' && key === 'packageFetchFailedWithDetails') {
+        return `Package fetch failed (${values?.status}): ${values?.details}`
+      }
+      return namespace ? `${namespace}.${key}` : key
+    },
 }))
 
 vi.mock('@/components/reports/print/PrintReportRenderer', () => ({
@@ -108,6 +126,60 @@ describe('requirement package report pages', () => {
 
     expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()
     expect(screen.getByTestId('print-renderer')).toBeInTheDocument()
+  })
+
+  it('ignores stale print responses when a newer request finishes first', async () => {
+    const firstRequest = createDeferred<{ id: number }[]>()
+    const secondRequest = createDeferred<{ id: number }[]>()
+
+    fetchMultipleRequirementsMock
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => secondRequest.promise)
+    buildListReportMock.mockImplementation(
+      (requirements: { id: number }[]) => ({
+        title: `Report ${requirements[0]?.id}`,
+      }),
+    )
+
+    currentIds = '1'
+    const { rerender } = render(<PrintListReportPage />)
+
+    currentIds = '2'
+    rerender(<PrintListReportPage />)
+
+    secondRequest.resolve([{ id: 2 }])
+    await waitFor(() => {
+      expect(screen.getByTestId('print-renderer')).toHaveTextContent('Report 2')
+    })
+
+    firstRequest.resolve([{ id: 1 }])
+    await waitFor(() => {
+      expect(screen.getByTestId('print-renderer')).toHaveTextContent('Report 2')
+    })
+    expect(screen.getByTestId('print-renderer')).not.toHaveTextContent(
+      'Report 1',
+    )
+  })
+
+  it('extracts readable package error details from JSON responses', async () => {
+    currentIds = '1'
+    currentSlug = 'pkg'
+    fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }])
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => JSON.stringify({ error: 'Package missing' }),
+      }),
+    )
+
+    render(<PrintListReportPage />)
+
+    expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
+    expect(
+      screen.getByText('Package fetch failed (500): Package missing'),
+    ).toBeInTheDocument()
   })
 
   it('clears previous pdf errors when ids become valid', async () => {

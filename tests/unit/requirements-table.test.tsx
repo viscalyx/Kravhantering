@@ -1041,6 +1041,29 @@ describe('RequirementsTable', () => {
     })
   })
 
+  it('normalizes excluded visible columns before clearing hidden filters and sort', async () => {
+    const onFilterChange = vi.fn()
+    const onSortChange = vi.fn()
+
+    render(
+      <RequirementsTable
+        excludeColumns={['status']}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'status']}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
+      expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+    })
+  })
+
   it('cancels pending search commits when the controlled filter value is cleared externally', () => {
     vi.useFakeTimers()
 

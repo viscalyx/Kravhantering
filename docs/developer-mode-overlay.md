@@ -75,7 +75,8 @@ The emitted attributes are:
   `requirement package detail` context with `detail action: edit package`
   on the icon trigger and `crud form: edit` on the opened editor.
 - Published requirement detail views expose the package-link control as
-  `detail action: add to package`.
+  `detail action: add to package` when the currently displayed published
+  version is the one that can be added to a package.
 - Requirement package list print pages expose `report state` markers with
   values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.

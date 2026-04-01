@@ -41,6 +41,7 @@ export default function KravpaketClient() {
   const getName = (pkg: Package) => pkg.name
   const getTaxonomyName = (item: TaxonomyItem | null) =>
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
+  const packageTableColumnCount = 6
 
   const [packages, setPackages] = useState<Package[]>([])
   const [responsibilityAreas, setResponsibilityAreas] = useState<
@@ -52,6 +53,7 @@ export default function KravpaketClient() {
   const [loading, setLoading] = useState(true)
   const [showSpinner, setShowSpinner] = useState(false)
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isMountedRef = useRef(true)
   const [showForm, setShowForm] = useState(false)
   const [editPkg, setEditPkg] = useState<Package | null>(null)
   const [slugEdited, setSlugEdited] = useState(false)
@@ -112,17 +114,24 @@ export default function KravpaketClient() {
   const fetchPackages = useCallback(async () => {
     setLoading(true)
     if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
-    spinnerTimerRef.current = setTimeout(() => setShowSpinner(true), 200)
+    spinnerTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        setShowSpinner(true)
+      }
+    }, 200)
     try {
       const res = await fetch('/api/requirement-packages')
-      if (res.ok)
+      if (res.ok && isMountedRef.current)
         setPackages(
           ((await res.json()) as { packages?: Package[] }).packages ?? [],
         )
     } finally {
       if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
-      setShowSpinner(false)
-      setLoading(false)
+      spinnerTimerRef.current = null
+      if (isMountedRef.current) {
+        setShowSpinner(false)
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -131,14 +140,24 @@ export default function KravpaketClient() {
       fetch('/api/package-responsibility-areas'),
       fetch('/api/package-implementation-types'),
     ])
-    if (areasRes.ok)
+    if (areasRes.ok && isMountedRef.current)
       setResponsibilityAreas(
         ((await areasRes.json()) as { areas?: TaxonomyItem[] }).areas ?? [],
       )
-    if (typesRes.ok)
+    if (typesRes.ok && isMountedRef.current)
       setImplementationTypes(
         ((await typesRes.json()) as { types?: TaxonomyItem[] }).types ?? [],
       )
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      if (spinnerTimerRef.current) {
+        clearTimeout(spinnerTimerRef.current)
+        spinnerTimerRef.current = null
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -544,7 +563,7 @@ export default function KravpaketClient() {
                         <div className="flex flex-wrap gap-1">
                           {pkg.requirementAreas.map(area => (
                             <Link
-                              className="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/60 transition-colors"
+                              className="inline-flex min-h-[44px] items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/60 transition-colors"
                               href={`/kravpaket/${pkg.uniqueId}?areaId=${area.id}`}
                               key={area.id}
                             >
@@ -583,6 +602,16 @@ export default function KravpaketClient() {
                       </td>
                     </tr>
                   ))}
+                  {packages.length === 0 && (
+                    <tr>
+                      <td
+                        className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                        colSpan={packageTableColumnCount}
+                      >
+                        {t('emptyState')}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

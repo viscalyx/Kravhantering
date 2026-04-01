@@ -231,6 +231,7 @@
     "addSelectedToPackage": "Add selected ({count})",
     "packageInfo": "Package information",
     "packageDetails": "Details",
+    "emptyState": "No requirement packages yet. Create your first package.",
     "noPackagesAvailable": "There are no requirement packages to add this requirement to. Create a package first.",
     "loadingPackages": "Loading packages…",
     "addNeedsRef": "Needs reference (optional)",

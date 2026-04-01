@@ -17,6 +17,132 @@ type Params = Promise<{ id: string }>
 
 class InvalidNeedsReferenceError extends Error {}
 
+type ParseResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; response: NextResponse<{ error: string }> }
+
+interface ParsedDeleteBody {
+  requirementIds: number[]
+}
+
+interface ParsedPostBody extends ParsedDeleteBody {
+  needsReferenceId?: number | null
+  needsReferenceText?: string | null
+}
+
+function invalidBody(message: string): ParseResult<never> {
+  return {
+    ok: false,
+    response: NextResponse.json({ error: message }, { status: 400 }),
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function parseRequirementIds(
+  value: unknown,
+): ParseResult<ParsedDeleteBody['requirementIds']> {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some(
+      requirementId =>
+        !Number.isInteger(requirementId) || (requirementId as number) <= 0,
+    )
+  ) {
+    return invalidBody(
+      'requirementIds must be a non-empty array of positive integers',
+    )
+  }
+
+  return { ok: true, value: value as number[] }
+}
+
+function parseDeleteBody(body: unknown): ParseResult<ParsedDeleteBody> {
+  if (!isRecord(body)) {
+    return invalidBody('Invalid request body')
+  }
+
+  const requirementIds = parseRequirementIds(body.requirementIds)
+  if (!requirementIds.ok) {
+    return requirementIds
+  }
+
+  return {
+    ok: true,
+    value: {
+      requirementIds: requirementIds.value,
+    },
+  }
+}
+
+function parsePostBody(body: unknown): ParseResult<ParsedPostBody> {
+  if (!isRecord(body)) {
+    return invalidBody('Invalid request body')
+  }
+
+  const requirementIds = parseRequirementIds(body.requirementIds)
+  if (!requirementIds.ok) {
+    return requirementIds
+  }
+
+  const needsReferenceId = Object.hasOwn(body, 'needsReferenceId')
+    ? body.needsReferenceId
+    : undefined
+  if (
+    needsReferenceId !== undefined &&
+    needsReferenceId !== null &&
+    (typeof needsReferenceId !== 'number' ||
+      !Number.isInteger(needsReferenceId) ||
+      needsReferenceId < 0)
+  ) {
+    return invalidBody(
+      'needsReferenceId must be a non-negative integer, null, or undefined',
+    )
+  }
+
+  const needsReferenceText = Object.hasOwn(body, 'needsReferenceText')
+    ? body.needsReferenceText
+    : undefined
+  if (
+    needsReferenceText !== undefined &&
+    needsReferenceText !== null &&
+    typeof needsReferenceText !== 'string'
+  ) {
+    return invalidBody(
+      'needsReferenceText must be a string, null, or undefined',
+    )
+  }
+
+  if (
+    needsReferenceId !== undefined &&
+    needsReferenceId !== null &&
+    typeof needsReferenceText === 'string' &&
+    needsReferenceText.trim() !== ''
+  ) {
+    return invalidBody(
+      'Provide either needsReferenceId or needsReferenceText, not both',
+    )
+  }
+
+  return {
+    ok: true,
+    value: {
+      needsReferenceId:
+        needsReferenceId === undefined
+          ? undefined
+          : (needsReferenceId as number | null),
+      needsReferenceText:
+        needsReferenceText === undefined
+          ? undefined
+          : (needsReferenceText as string | null),
+      requirementIds: requirementIds.value,
+    },
+  }
+}
+
 async function resolvePackageId(db: Database, idOrSlug: string) {
   const bySlug = await getPackageBySlug(db, idOrSlug)
   if (bySlug) return bySlug.id
@@ -53,19 +179,18 @@ export async function POST(
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = (await request.json()) as {
-    requirementIds: number[]
-    needsReferenceId?: number | null
-    needsReferenceText?: string | null
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
-  const { requirementIds, needsReferenceId, needsReferenceText } = body
-
-  if (!Array.isArray(requirementIds) || requirementIds.length === 0) {
-    return NextResponse.json(
-      { error: 'requirementIds must be a non-empty array' },
-      { status: 400 },
-    )
+  const parsedBody = parsePostBody(rawBody)
+  if (!parsedBody.ok) {
+    return parsedBody.response
   }
+  const { requirementIds, needsReferenceId, needsReferenceText } =
+    parsedBody.value
 
   // Resolve published version for each requirement; reject if any has none
   const resolvedVersionIds: { requirementId: number; versionId: number }[] = []
@@ -143,16 +268,21 @@ export async function DELETE(
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = (await request.json()) as { requirementIds: number[] }
-  const { requirementIds } = body
-
-  if (!Array.isArray(requirementIds) || requirementIds.length === 0) {
-    return NextResponse.json(
-      { error: 'requirementIds must be a non-empty array' },
-      { status: 400 },
-    )
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const parsedBody = parseDeleteBody(rawBody)
+  if (!parsedBody.ok) {
+    return parsedBody.response
   }
 
-  await unlinkRequirementsFromPackage(db, packageId, requirementIds)
+  await unlinkRequirementsFromPackage(
+    db,
+    packageId,
+    parsedBody.value.requirementIds,
+  )
   return NextResponse.json({ ok: true })
 }

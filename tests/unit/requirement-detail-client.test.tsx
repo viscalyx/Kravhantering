@@ -271,10 +271,20 @@ function response(body: unknown, ok = true) {
   } as Response
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(resolver => {
+    resolve = resolver
+  })
+
+  return { promise, resolve }
+}
+
 function setupFetch({
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
   initialRequirement,
+  needsReferencesHandler,
   packages = [],
   reactivateNextRequirement,
   restoreNextRequirement,
@@ -283,6 +293,7 @@ function setupFetch({
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
   initialRequirement: ReturnType<typeof makeRequirement>
+  needsReferencesHandler?: (packageId: string) => Promise<Response> | Response
   packages?: { id: number; name: string }[]
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
@@ -357,11 +368,20 @@ function setupFetch({
         return response({ packages })
       }
 
-      if (url === '/api/requirement-packages/7/needs-references') {
+      const needsReferencesMatch = url.match(
+        /^\/api\/requirement-packages\/([^/]+)\/needs-references$/,
+      )
+      if (needsReferencesMatch) {
+        if (needsReferencesHandler) {
+          return needsReferencesHandler(needsReferencesMatch[1] ?? '')
+        }
         return response({ needsReferences: [] })
       }
 
-      if (url === '/api/requirement-packages/7/items' && method === 'POST') {
+      if (
+        method === 'POST' &&
+        /^\/api\/requirement-packages\/[^/]+\/items$/.test(url)
+      ) {
         return response({})
       }
 
@@ -1099,6 +1119,150 @@ describe('RequirementDetailClient', () => {
     )
 
     expect(screen.getByText('package.selectPackageHelp')).toBeInTheDocument()
+  })
+
+  it('ignores stale needs-reference responses when switching packages quickly', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const firstNeedsReferences = createDeferred<Response>()
+    const secondNeedsReferences = createDeferred<Response>()
+
+    setupFetch({
+      initialRequirement: requirement,
+      needsReferencesHandler: packageId =>
+        packageId === '7'
+          ? firstNeedsReferences.promise
+          : secondNeedsReferences.promise,
+      packages: [
+        { id: 7, name: 'IAM Package' },
+        { id: 8, name: 'Security Package' },
+      ],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const packageSelect = screen.getByRole('combobox', {
+      name: /package\.selectPackage/,
+    })
+
+    await userEvent.selectOptions(packageSelect, '7')
+    await userEvent.selectOptions(packageSelect, '8')
+
+    secondNeedsReferences.resolve(
+      response({ needsReferences: [{ id: 81, text: 'Current ref' }] }),
+    )
+    expect(
+      await screen.findByRole('option', { name: 'Current ref' }),
+    ).toBeInTheDocument()
+
+    firstNeedsReferences.resolve(
+      response({ needsReferences: [{ id: 71, text: 'Stale ref' }] }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Current ref' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('option', { name: 'Stale ref' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  it('closes the add-to-package dialog when Escape is pressed inside it', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const packageSelect = screen.getByRole('combobox', {
+      name: /package\.selectPackage/,
+    })
+    fireEvent.keyDown(packageSelect, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('hides add-to-package for historical published versions that cannot be persisted exactly', async () => {
+    const requirement = makeRequirement([
+      makeVersion(4, {
+        description: 'Draft replacement',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+      makeVersion(3, {
+        description: 'Current published requirement',
+        publishedAt: '2026-03-03',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+      makeVersion(2, {
+        description: 'Historical published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject()
+
+    expect(
+      await screen.findByText('Current published requirement'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'package.addToPackage' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'v2' }))
+
+    expect(
+      await screen.findByText('Historical published requirement'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'package.addToPackage' }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders noPublishedVersion fallback for full-page view without published version', async () => {

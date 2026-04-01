@@ -42,7 +42,7 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
     mocks.unlinkRequirementsFromPackage(...args),
 }))
 
-import { POST } from '@/app/api/requirement-packages/[id]/items/route'
+import { DELETE, POST } from '@/app/api/requirement-packages/[id]/items/route'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -119,5 +119,72 @@ describe('requirement-packages/[id]/items route', () => {
         requirementVersionId: 42,
       },
     ])
+  })
+
+  it('rejects malformed requirementIds before any database work runs', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          requirementIds: [1, '2'],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('pkg'))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'requirementIds must be a non-empty array of positive integers',
+    })
+    expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
+    expect(mockDb.transaction).not.toHaveBeenCalled()
+  })
+
+  it('rejects ambiguous needs-reference payloads', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          needsReferenceId: 7,
+          needsReferenceText: 'Shared need',
+          requirementIds: [1],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('pkg'))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Provide either needsReferenceId or needsReferenceText, not both',
+    })
+    expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
+    expect(mockDb.transaction).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed delete payloads before unlinking items', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          requirementIds: [0],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'DELETE',
+      },
+    )
+
+    const response = await DELETE(request, makeParams('pkg'))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'requirementIds must be a non-empty array of positive integers',
+    })
+    expect(mocks.unlinkRequirementsFromPackage).not.toHaveBeenCalled()
   })
 })

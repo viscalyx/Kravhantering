@@ -100,6 +100,50 @@ describe('KravpaketClient', () => {
     expect(screen.getByText('Type')).toBeInTheDocument()
   })
 
+  it('renders an empty-state row when there are no packages', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(okJson({ packages: [] }))
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+
+    const emptyState = await screen.findByText('package.emptyState')
+    expect(emptyState).toBeInTheDocument()
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
+  })
+
+  it('renders requirement-area badges with a 44px minimum touch target', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(
+          okJson({
+            packages: [
+              {
+                ...samplePackages[0],
+                requirementAreas: [{ id: 9, name: 'Identity' }],
+              },
+            ],
+          }),
+        )
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+
+    const areaBadge = await screen.findByRole('link', { name: 'Identity' })
+    expect(areaBadge.className).toContain('min-h-[44px]')
+  })
+
   it('does not show spinner immediately while loading', () => {
     vi.useFakeTimers()
     fetchMock.mockReturnValue(new Promise(() => {}))
@@ -115,6 +159,17 @@ describe('KravpaketClient', () => {
       vi.advanceTimersByTime(200)
     })
     expect(screen.getByTestId('kravpaket-loading')).toBeInTheDocument()
+  })
+
+  it('clears the spinner timer when the component unmounts', () => {
+    vi.useFakeTimers()
+    fetchMock.mockReturnValue(new Promise(() => {}))
+
+    const { unmount } = render(<KravpaketClient />)
+
+    expect(vi.getTimerCount()).toBeGreaterThan(0)
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it('opens create form with fields', async () => {
