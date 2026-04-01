@@ -20,6 +20,14 @@ vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
 }))
 
+vi.mock('@/i18n/routing', () => ({
+  Link: ({ children, href, ...props }: Record<string, unknown>) => (
+    <a href={href as string} {...props}>
+      {children as React.ReactNode}
+    </a>
+  ),
+}))
+
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
@@ -34,12 +42,15 @@ const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const samplePackages = [
   {
     id: 1,
-    nameSv: 'Paket sv',
-    nameEn: 'Package en',
+    name: 'Paket sv',
+    uniqueId: 'PAKET-SV',
     packageResponsibilityAreaId: 1,
     packageImplementationTypeId: 1,
     responsibilityArea: sampleAreas[0],
     implementationType: sampleTypes[0],
+    itemCount: 0,
+    requirementAreas: [],
+    businessNeedsReference: null,
   },
 ]
 
@@ -72,7 +83,7 @@ describe('KravpaketClient', () => {
   it('fetches and displays packages', async () => {
     render(<KravpaketClient />)
     await waitFor(() => {
-      expect(screen.getByText('Package en')).toBeInTheDocument()
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
@@ -98,30 +109,27 @@ describe('KravpaketClient', () => {
   it('opens create form with fields', async () => {
     render(<KravpaketClient />)
     await waitFor(() => {
-      expect(screen.getByText('Package en')).toBeInTheDocument()
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
     fireEvent.click(
       screen.getByRole('button', { name: /package\.newPackage/i }),
     )
-    expect(screen.getByLabelText(/package\.name.+SV/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/package\.name.+EN/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/package\.name/)).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
     render(<KravpaketClient />)
     await waitFor(() => {
-      expect(screen.getByText('Package en')).toBeInTheDocument()
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
     fireEvent.click(
       screen.getByRole('button', { name: /package\.newPackage/i }),
     )
 
-    fireEvent.change(screen.getByLabelText(/package\.name.+SV/), {
+    fireEvent.change(screen.getByLabelText(/package\.name/), {
       target: { value: 'Ny' },
     })
-    fireEvent.change(screen.getByLabelText(/package\.name.+EN/), {
-      target: { value: 'New' },
-    })
+    fireEvent.blur(screen.getByLabelText(/package\.name/))
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
@@ -147,34 +155,34 @@ describe('KravpaketClient', () => {
   it('opens edit form with existing data', async () => {
     render(<KravpaketClient />)
     await waitFor(() => {
-      expect(screen.getByText('Package en')).toBeInTheDocument()
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
     expect(
-      (screen.getByLabelText(/package\.name.+EN/) as HTMLInputElement).value,
-    ).toBe('Package en')
+      (screen.getByLabelText(/package\.name/) as HTMLInputElement).value,
+    ).toBe('Paket sv')
   })
 
   it('closes form on cancel', async () => {
     render(<KravpaketClient />)
     await waitFor(() => {
-      expect(screen.getByText('Package en')).toBeInTheDocument()
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
     fireEvent.click(
       screen.getByRole('button', { name: /package\.newPackage/i }),
     )
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/package\.name.+SV/)).toBeNull()
+    expect(screen.queryByLabelText(/package\.name/)).toBeNull()
   })
 
   it('deletes with confirm', async () => {
     confirmMock.mockResolvedValue(true)
     render(<KravpaketClient />)
     await waitFor(() => {
-      expect(screen.getByText('Package en')).toBeInTheDocument()
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
@@ -198,7 +206,7 @@ describe('KravpaketClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirement-packages/1',
+        '/api/requirement-packages/PAKET-SV',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

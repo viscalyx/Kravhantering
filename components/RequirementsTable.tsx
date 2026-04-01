@@ -61,7 +61,10 @@ export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
+  columnsPickerContainer?: HTMLElement | null
+  columnsPickerInHeader?: boolean
   columnWidths?: RequirementColumnWidths
+  excludeColumns?: RequirementColumnId[]
   expandedId?: number | null
   filterValues?: FilterValues
   floatingActions?: FloatingActionItem[]
@@ -71,6 +74,7 @@ export interface RequirementsTableProps {
   loading?: boolean
   loadingMore?: boolean
   locale: string
+  needsReferenceOptions?: { id: number; text: string }[]
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
@@ -89,15 +93,17 @@ export interface RequirementsTableProps {
   types?: FilterOption[]
   usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
+  wrapDescription?: boolean
 }
 
 export type FloatingActionPillVariant = 'default' | 'primary'
 
 export interface FloatingActionMenuItem {
   description?: string
-  href: string
+  href?: string
   id: string
   label: string
+  onClick?: () => void
 }
 
 export interface FloatingActionItem {
@@ -311,12 +317,15 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   <ul className="space-y-1">
                     {action.menuItems?.map(item => (
                       <li key={item.id}>
-                        <Link
-                          className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                        >
-                          <div className="contents">
+                        {item.onClick ? (
+                          <button
+                            className="flex w-full min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            onClick={() => {
+                              item.onClick?.()
+                              setOpen(false)
+                            }}
+                            type="button"
+                          >
                             <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
                               {item.label}
                             </div>
@@ -325,8 +334,25 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                                 {item.description}
                               </div>
                             ) : null}
-                          </div>
-                        </Link>
+                          </button>
+                        ) : (
+                          <Link
+                            className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            href={item.href ?? '/'}
+                            onClick={() => setOpen(false)}
+                          >
+                            <div className="contents">
+                              <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                                {item.label}
+                              </div>
+                              {item.description ? (
+                                <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                                  {item.description}
+                                </div>
+                              ) : null}
+                            </div>
+                          </Link>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1091,39 +1117,55 @@ function ColumnsPopover({
 
   return (
     <>
-      {outsidePillPos
-        ? createPortal(
+      {outsidePillPos ? (
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-30"
+            style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
+          >
             <div
-              className="pointer-events-none fixed z-30"
-              style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
+              className="pointer-events-auto flex flex-col gap-3"
+              {...devMarker({
+                context: 'requirements table',
+                name: 'floating action rail',
+                priority: 340,
+              })}
+              data-floating-action-rail="true"
             >
+              {actionsBeforeColumns.map(action => (
+                <FloatingActionPill action={action} key={action.id} />
+              ))}
               <div
-                className="pointer-events-auto flex flex-col gap-3"
-                {...devMarker({
-                  context: 'requirements table',
-                  name: 'floating action rail',
-                  priority: 340,
-                })}
-                data-floating-action-rail="true"
+                className="relative inline-flex"
+                data-column-picker-wrapper="true"
+                ref={ref}
               >
-                {actionsBeforeColumns.map(action => (
-                  <FloatingActionPill action={action} key={action.id} />
-                ))}
-                <div
-                  className="relative inline-flex"
-                  data-column-picker-wrapper="true"
-                  ref={ref}
-                >
-                  {trigger}
-                </div>
-                {actionsAfterColumns.map(action => (
-                  <FloatingActionPill action={action} key={action.id} />
-                ))}
+                {trigger}
               </div>
-            </div>,
-            document.body,
-          )
-        : null}
+              {actionsAfterColumns.map(action => (
+                <FloatingActionPill action={action} key={action.id} />
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )
+      ) : (
+        <div className="flex items-center gap-2">
+          {actionsBeforeColumns.map(action => (
+            <FloatingActionPill action={action} key={action.id} />
+          ))}
+          <div
+            className="relative inline-flex"
+            data-column-picker-wrapper="true"
+            ref={ref}
+          >
+            {trigger}
+          </div>
+          {actionsAfterColumns.map(action => (
+            <FloatingActionPill action={action} key={action.id} />
+          ))}
+        </div>
+      )}
       {open &&
         createPortal(
           <div
@@ -1302,7 +1344,10 @@ export default function RequirementsTable({
   areas = [],
   categories = [],
   columnDefaults,
+  columnsPickerContainer = null,
+  columnsPickerInHeader = false,
   columnWidths = {},
+  excludeColumns,
   expandedId,
   filterValues,
   floatingActions = [],
@@ -1312,6 +1357,7 @@ export default function RequirementsTable({
   loading = false,
   loadingMore = false,
   locale,
+  needsReferenceOptions = [],
   onFilterChange,
   onLoadMore,
   onRowClick,
@@ -1330,13 +1376,16 @@ export default function RequirementsTable({
   types = [],
   usageScenarios = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
+  wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const router = useRouter()
   const normalizedColumnDefaults =
     normalizeRequirementListColumnDefaults(columnDefaults)
-  const allColumns = getOrderedRequirementListColumns(normalizedColumnDefaults)
+  const allColumns = getOrderedRequirementListColumns(
+    normalizedColumnDefaults,
+  ).filter(col => !excludeColumns?.includes(col.id))
 
   const fv = filterValues ?? {}
   const latestFilterValuesRef = useRef(fv)
@@ -1486,6 +1535,8 @@ export default function RequirementsTable({
 
   const areaLabel = (id: number) =>
     areas.find(a => a.id === id)?.name ?? String(id)
+  const needsRefLabel = (id: number) =>
+    needsReferenceOptions.find(o => o.id === id)?.text ?? String(id)
   const catLabel = (id: number) => {
     const c = categories.find(c => c.id === id)
     return c ? getName(c) : String(id)
@@ -2402,6 +2453,23 @@ export default function RequirementsTable({
             value={rtValue}
           />
         )
+      case 'needsReference':
+        if (needsReferenceOptions.length === 0) return null
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.needsReferenceIds ?? []).length}
+            developerModeValue={developerModeValue}
+            getLabel={option => needsRefLabel(option.id)}
+            label={t('needsReference')}
+            onChange={ids =>
+              updateFilter({
+                needsReferenceIds: ids.length > 0 ? ids : undefined,
+              })
+            }
+            options={needsReferenceOptions}
+            value={fv.needsReferenceIds ?? []}
+          />
+        )
       case 'version':
         return null
     }
@@ -2508,6 +2576,22 @@ export default function RequirementsTable({
             values={rtValue}
           />
         )
+      case 'needsReference':
+        if (needsReferenceOptions.length === 0) return null
+        return (
+          <FilterChips
+            developerModeContext={developerModeContext}
+            getLabel={needsRefLabel}
+            onRemove={id =>
+              updateFilter({
+                needsReferenceIds: (fv.needsReferenceIds ?? []).filter(
+                  v => v !== id,
+                ),
+              })
+            }
+            values={fv.needsReferenceIds ?? []}
+          />
+        )
       case 'version':
         return null
     }
@@ -2561,7 +2645,7 @@ export default function RequirementsTable({
       case 'description':
         return (
           <td
-            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            className={`py-2 px-2 ${wrapDescription ? 'wrap-break-word' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
           >
             {row.version?.description ?? '—'}
           </td>
@@ -2667,6 +2751,14 @@ export default function RequirementsTable({
             v{row.version?.versionNumber ?? 1}
           </td>
         )
+      case 'needsReference':
+        return (
+          <td
+            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.needsReference ?? '—'}
+          </td>
+        )
     }
   }
 
@@ -2720,7 +2812,11 @@ export default function RequirementsTable({
   const columnsPopover = (
     <ColumnsPopover
       actions={floatingActions}
-      anchorRef={scrollContainerRef}
+      anchorRef={
+        columnsPickerInHeader || columnsPickerContainer != null
+          ? undefined
+          : scrollContainerRef
+      }
       badgeLabel={columnPickerBadgeLabel}
       columns={allColumns.map(column => ({
         canHide: column.canHide,
@@ -2870,7 +2966,13 @@ export default function RequirementsTable({
           </p>
         </output>
       )}
-      {columnsPopover}
+      {columnsPickerContainer ? (
+        createPortal(columnsPopover, columnsPickerContainer)
+      ) : columnsPickerInHeader ? (
+        <div className="flex justify-end px-2 pt-2 pb-1">{columnsPopover}</div>
+      ) : (
+        columnsPopover
+      )}
       {usageScenarios.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 border-b text-sm">
           <span className="text-xs font-medium text-secondary-600 dark:text-secondary-400 shrink-0">
@@ -3075,7 +3177,7 @@ export default function RequirementsTable({
                             </button>
                           ) : (
                             <span
-                              className="min-w-0 truncate"
+                              className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
                               data-requirement-header-label={column.id}
                             >
                               {label}

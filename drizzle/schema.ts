@@ -449,14 +449,15 @@ export const packageImplementationTypes = sqliteTable(
 
 export const requirementPackages = sqliteTable('requirement_packages', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  nameSv: text('name_sv').notNull(),
-  nameEn: text('name_en').notNull(),
+  uniqueId: text('unique_id').notNull().unique(),
+  name: text('name').notNull(),
   packageResponsibilityAreaId: integer(
     'package_responsibility_area_id',
   ).references(() => packageResponsibilityAreas.id),
   packageImplementationTypeId: integer(
     'package_implementation_type_id',
   ).references(() => packageImplementationTypes.id),
+  businessNeedsReference: text('business_needs_reference'),
   createdAt: text('created_at')
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
@@ -477,6 +478,37 @@ export const requirementPackagesRelations = relations(
       references: [packageImplementationTypes.id],
     }),
     items: many(requirementPackageItems),
+    needsReferences: many(packageNeedsReferences),
+  }),
+)
+
+// ─── Package Needs References ─────────────────────────────────────────────────
+
+export const packageNeedsReferences = sqliteTable(
+  'package_needs_references',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    packageId: integer('package_id')
+      .notNull()
+      .references(() => requirementPackages.id),
+    text: text('text').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    index('idx_package_needs_references_package_id').on(table.packageId),
+  ],
+)
+
+export const packageNeedsReferencesRelations = relations(
+  packageNeedsReferences,
+  ({ one, many }) => ({
+    package: one(requirementPackages, {
+      fields: [packageNeedsReferences.packageId],
+      references: [requirementPackages.id],
+    }),
+    items: many(requirementPackageItems),
   }),
 )
 
@@ -495,7 +527,10 @@ export const requirementPackageItems = sqliteTable(
     requirementVersionId: integer('requirement_version_id')
       .notNull()
       .references(() => requirementVersions.id),
-    needsReference: text('needs_reference'),
+    needsReferenceId: integer('needs_reference_id').references(
+      () => packageNeedsReferences.id,
+    ),
+    unused1: text('unused_1'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -505,6 +540,10 @@ export const requirementPackageItems = sqliteTable(
       table.packageId,
     ),
     index('idx_requirement_package_items_requirement_id').on(
+      table.requirementId,
+    ),
+    uniqueIndex('uq_requirement_package_items_package_requirement').on(
+      table.packageId,
       table.requirementId,
     ),
   ],
@@ -524,6 +563,10 @@ export const requirementPackageItemsRelations = relations(
     version: one(requirementVersions, {
       fields: [requirementPackageItems.requirementVersionId],
       references: [requirementVersions.id],
+    }),
+    needsReference: one(packageNeedsReferences, {
+      fields: [requirementPackageItems.needsReferenceId],
+      references: [packageNeedsReferences.id],
     }),
   }),
 )

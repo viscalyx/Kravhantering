@@ -133,12 +133,15 @@ const pages: MarkerSpec[] = [
         packages: [
           {
             id: 1,
-            nameSv: 'P',
-            nameEn: 'P',
+            name: 'P',
+            uniqueId: 'P',
             packageResponsibilityAreaId: null,
             packageImplementationTypeId: null,
             responsibilityArea: null,
             implementationType: null,
+            itemCount: 0,
+            requirementAreas: [],
+            businessNeedsReference: null,
           },
         ],
       }),

@@ -111,6 +111,7 @@ describe('requirement list view helpers', () => {
       'qualityCharacteristic',
       'requiresTesting',
       'version',
+      'needsReference',
     ])
     expect(getDefaultVisibleRequirementColumns(columnDefaults)).toEqual([
       'description',

@@ -12,6 +12,23 @@ applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/mi
 - Prefix boolean columns with `is_`, `has_`, or `can_`.
 - Keep natural keys such as `key` and `column_id` as non-primary columns with unique indexes.
 
+## Retired Columns
+
+- If a column is no longer used and cannot be removed safely, rename it to
+  `unused_1`, `unused_2`, etc.
+- Apply this when the column must remain for compatibility/history or when
+  schema or migration constraints prevent safe removal.
+- Number `unused_n` per table. Use the lowest available positive integer in
+  that table.
+- Use `ALTER TABLE ... RENAME COLUMN ... TO unused_n` for the rename.
+- Clear existing data from the renamed column in the same migration. Prefer
+  `NULL`; if the column cannot be `NULL`, use a neutral empty value with no
+  business meaning.
+- Keep `drizzle/schema.ts` in sync with a neutral field name such as
+  `unused1`.
+- Remove retired-column wiring from DAL, services, UI, tests, and docs. Do
+  not keep product semantics attached to an `unused_n` column.
+
 ## Sync
 
 - Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected DAL/tests, and `docs/database-schema.md` in the same change.

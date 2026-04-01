@@ -46,10 +46,10 @@ describe('requirement-packages DAL', () => {
 
   it('createPackage and getPackageById', async () => {
     const pkg = await createPackage(db as unknown as AppDatabase, {
-      nameEn: 'Security Package',
-      nameSv: 'Säkerhetspaket',
+      name: 'Säkerhetspaket',
+      uniqueId: 'SAKERHETSPAKET',
     })
-    expect(pkg).toMatchObject({ nameEn: 'Security Package' })
+    expect(pkg).toMatchObject({ name: 'Säkerhetspaket' })
 
     const found = await getPackageById(db as unknown as AppDatabase, pkg.id)
     expect(found).toBeTruthy()
@@ -57,20 +57,20 @@ describe('requirement-packages DAL', () => {
 
   it('updatePackage changes fields', async () => {
     const pkg = await createPackage(db as unknown as AppDatabase, {
-      nameEn: 'Old',
-      nameSv: 'Gammal',
+      name: 'Gammal',
+      uniqueId: 'GAMMAL',
     })
 
     const updated = await updatePackage(db as unknown as AppDatabase, pkg.id, {
-      nameEn: 'New',
+      name: 'New',
     })
-    expect(updated).toMatchObject({ nameEn: 'New' })
+    expect(updated).toMatchObject({ name: 'New' })
   })
 
   it('deletePackage removes package', async () => {
     const pkg = await createPackage(db as unknown as AppDatabase, {
-      nameEn: 'Temp',
-      nameSv: 'Tmp',
+      name: 'Tmp',
+      uniqueId: 'TMP',
     })
 
     await deletePackage(db as unknown as AppDatabase, pkg.id)

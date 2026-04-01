@@ -66,6 +66,8 @@ function SectionRenderer({
       return <MetadataChangesSection section={section} />
     case 'timeline-entry':
       return <TimelineEntrySection locale={locale} section={section} />
+    case 'package-cover':
+      return <PackageCoverSection section={section} />
     case 'page-break':
       return <div className="print-page-break" />
     case 'requirement-table':
@@ -75,6 +77,95 @@ function SectionRenderer({
     default:
       return null
   }
+}
+
+function PackageCoverSection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'package-cover' }>
+}) {
+  const sv = section.locale === 'sv'
+  return (
+    <div style={{ marginBottom: '2rem' }}>
+      <h1
+        style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '1rem' }}
+      >
+        {section.name}
+      </h1>
+      <dl
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '0.75rem 1.5rem',
+        }}
+      >
+        <div>
+          <dt
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#64748b',
+              marginBottom: '0.25rem',
+            }}
+          >
+            {sv ? 'Kravpaket-ID' : 'Package ID'}
+          </dt>
+          <dd
+            style={{ fontSize: '0.875rem', fontFamily: 'monospace', margin: 0 }}
+          >
+            {section.uniqueId}
+          </dd>
+        </div>
+        <div>
+          <dt
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#64748b',
+              marginBottom: '0.25rem',
+            }}
+          >
+            {sv ? 'Verksamhetsobjekt' : 'Responsibility area'}
+          </dt>
+          <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+            {section.responsibilityArea ?? '—'}
+          </dd>
+        </div>
+        <div>
+          <dt
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#64748b',
+              marginBottom: '0.25rem',
+            }}
+          >
+            {sv ? 'Genomförandeform' : 'Implementation type'}
+          </dt>
+          <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+            {section.implementationType ?? '—'}
+          </dd>
+        </div>
+        {section.businessNeedsReference && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <dt
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                color: '#64748b',
+                marginBottom: '0.25rem',
+              }}
+            >
+              {sv ? 'Verksamhetsbehovsreferens' : 'Business needs reference'}
+            </dt>
+            <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+              {section.businessNeedsReference}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  )
 }
 
 function HeaderSection({

@@ -1,5 +1,14 @@
 import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
+import {
+  getOrCreatePackageNeedsReference,
+  getPackageBySlug,
+  getPublishedVersionIdForRequirement,
+  linkRequirementsToPackage,
+  listPackageItems,
+  listPackages,
+  unlinkRequirementsFromPackage,
+} from '@/lib/dal/requirement-packages'
 import { replaceReferencesForVersion } from '@/lib/dal/requirement-references'
 import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
 import {
@@ -323,7 +332,64 @@ export function buildRequirementViewUri(
   return `ui://kravhantering/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`
 }
 
+export interface ListPackagesOutput {
+  message: string
+  packages: {
+    businessNeedsReference: string | null
+    id: number
+    implementationType: { nameSv: string; nameEn: string } | null
+    itemCount: number
+    name: string
+    responsibilityArea: { nameSv: string; nameEn: string } | null
+    uniqueId: string
+  }[]
+}
+
+export interface GetPackageItemsOutput {
+  items: {
+    id: number
+    uniqueId: string
+    area: string | null
+    category: string | null
+    description: string | null
+    needsReference: string | null
+    status: string | null
+    type: string | null
+  }[]
+  message: string
+  packageId: number
+}
+
+export interface AddToPackageOutput {
+  addedCount: number
+  message: string
+  skippedCount: number
+  skippedIds: number[]
+}
+
+export interface RemoveFromPackageOutput {
+  message: string
+  removedCount: number
+}
+
 export interface RequirementsService {
+  addToPackage(
+    context: RequestContext,
+    input: {
+      needsReferenceText?: string | null
+      packageId?: number
+      packageSlug?: string
+      requirementIds: number[]
+    },
+  ): Promise<AddToPackageOutput>
+  getPackageItems(
+    context: RequestContext,
+    input: {
+      packageId?: number
+      packageSlug?: string
+      descriptionSearch?: string
+    },
+  ): Promise<GetPackageItemsOutput>
   getRequirement(
     context: RequestContext,
     input: GetRequirementInput,
@@ -335,6 +401,10 @@ export interface RequirementsService {
     version?: RequirementVersionDetail
     versions?: RequirementDetail['versions']
   }>
+  listPackages(
+    context: RequestContext,
+    input: { nameSearch?: string },
+  ): Promise<ListPackagesOutput>
   manageRequirement(
     context: RequestContext,
     input: ManageRequirementInput,
@@ -360,6 +430,14 @@ export interface RequirementsService {
       total: number
     } | null
   }>
+  removeFromPackage(
+    context: RequestContext,
+    input: {
+      packageId?: number
+      packageSlug?: string
+      requirementIds: number[]
+    },
+  ): Promise<RemoveFromPackageOutput>
   transitionRequirement(
     context: RequestContext,
     input: TransitionRequirementInput,
@@ -1195,6 +1273,157 @@ export function createRequirementsService(
           }
         },
       )
+    },
+
+    async listPackages(_context, input) {
+      let packages = await listPackages(db)
+      if (input.nameSearch) {
+        const q = input.nameSearch.toLowerCase()
+        packages = packages.filter(p => p.name.toLowerCase().includes(q))
+      }
+      return {
+        message: `Found ${packages.length} package${packages.length === 1 ? '' : 's'}.`,
+        packages: packages.map(p => ({
+          businessNeedsReference: p.businessNeedsReference,
+          id: p.id,
+          implementationType: p.implementationType
+            ? {
+                nameEn: p.implementationType.nameEn,
+                nameSv: p.implementationType.nameSv,
+              }
+            : null,
+          itemCount: p.itemCount,
+          name: p.name,
+          responsibilityArea: p.responsibilityArea
+            ? {
+                nameEn: p.responsibilityArea.nameEn,
+                nameSv: p.responsibilityArea.nameSv,
+              }
+            : null,
+          uniqueId: p.uniqueId,
+        })),
+      }
+    },
+
+    async getPackageItems(_context, input) {
+      const pkgId =
+        input.packageId != null
+          ? input.packageId
+          : input.packageSlug
+            ? (await getPackageBySlug(db, input.packageSlug))?.id
+            : undefined
+      if (pkgId == null) {
+        return { items: [], message: 'Package not found.', packageId: 0 }
+      }
+      let items = await listPackageItems(db, pkgId)
+      if (input.descriptionSearch) {
+        const q = input.descriptionSearch.toLowerCase()
+        items = items.filter(item =>
+          item.version.description?.toLowerCase().includes(q),
+        )
+      }
+      const ref = input.packageSlug ?? String(pkgId)
+      return {
+        items: items.map(item => ({
+          area: item.area?.name ?? null,
+          category:
+            item.version.categoryNameSv ?? item.version.categoryNameEn ?? null,
+          description: item.version.description,
+          id: item.id,
+          needsReference: item.needsReference,
+          status:
+            item.version.statusNameSv ?? item.version.statusNameEn ?? null,
+          type: item.version.typeNameSv ?? item.version.typeNameEn ?? null,
+          uniqueId: item.uniqueId,
+        })),
+        message: `Found ${items.length} requirement${items.length === 1 ? '' : 's'} in package ${ref}.`,
+        packageId: pkgId,
+      }
+    },
+
+    async addToPackage(_context, input) {
+      const pkgId =
+        input.packageId != null
+          ? input.packageId
+          : input.packageSlug
+            ? (await getPackageBySlug(db, input.packageSlug))?.id
+            : undefined
+      if (pkgId == null) {
+        return {
+          addedCount: 0,
+          message: 'Package not found.',
+          skippedCount: 0,
+          skippedIds: [],
+        }
+      }
+      const versionResults = await Promise.all(
+        input.requirementIds.map(async id => ({
+          id,
+          versionId: await getPublishedVersionIdForRequirement(db, id),
+        })),
+      )
+      const succeeded = versionResults.filter(r => r.versionId != null) as {
+        id: number
+        versionId: number
+      }[]
+      const skipped = versionResults.filter(r => r.versionId == null)
+
+      if (succeeded.length > 0) {
+        let needsReferenceId: number | null = null
+        if (input.needsReferenceText) {
+          needsReferenceId = await getOrCreatePackageNeedsReference(
+            db,
+            pkgId,
+            input.needsReferenceText,
+          )
+        }
+        await linkRequirementsToPackage(
+          db,
+          pkgId,
+          succeeded.map(r => ({
+            needsReferenceId,
+            requirementId: r.id,
+            requirementVersionId: r.versionId,
+          })),
+        )
+      }
+
+      const ref = input.packageSlug ?? String(pkgId)
+      const addedCount = succeeded.length
+      const skippedIds = skipped.map(r => r.id)
+      const parts: string[] = [
+        `Added ${addedCount} requirement${addedCount === 1 ? '' : 's'} to package ${ref}.`,
+      ]
+      if (skippedIds.length > 0) {
+        parts.push(
+          `Skipped ${skippedIds.length} requirement${skippedIds.length === 1 ? '' : 's'} with no published version: ${skippedIds.join(', ')}.`,
+        )
+      }
+      return {
+        addedCount,
+        message: parts.join(' '),
+        skippedCount: skippedIds.length,
+        skippedIds,
+      }
+    },
+
+    async removeFromPackage(_context, input) {
+      const pkgId =
+        input.packageId != null
+          ? input.packageId
+          : input.packageSlug
+            ? (await getPackageBySlug(db, input.packageSlug))?.id
+            : undefined
+      if (pkgId == null) {
+        return { message: 'Package not found.', removedCount: 0 }
+      }
+      await unlinkRequirementsFromPackage(db, pkgId, input.requirementIds)
+      const ref = input.packageSlug ?? String(pkgId)
+      const count = input.requirementIds.length
+      return {
+        message: `Removed ${count} requirement${count === 1 ? '' : 's'} from package ${ref}.`,
+        removedCount: count,
+      }
     },
   }
 }

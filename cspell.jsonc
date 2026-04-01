@@ -207,7 +207,18 @@
     "propagering",
     "datapropagering",
     "övervakningsresponser",
-    "historikrapport"
+    "historikrapport",
+    "kravbibliotek",
+    "kravbiblioteket",
+    "kravbiblioteken",
+    "INTPLATTFORM",
+    "SAKLYFT",
+    "SYSOVERVAKNING",
+    "rvus",
+    "seccomp",
+    "sandboxing",
+    "affordances",
+    "Normalise"
   ],
   "flagWords": [],
   "ignorePaths": [

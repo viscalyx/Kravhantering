@@ -20,6 +20,8 @@ agents can use it reliably.
 
 ### Tools
 
+#### Requirements
+
 - `kravhantering_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, type categories, statuses, scenarios, and transitions.
@@ -31,6 +33,25 @@ agents can use it reliably.
   version.
 - `kravhantering_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
+
+#### Requirement Packages (Kravpaket)
+
+- `kravhantering_list_packages`
+  List all requirement packages, optionally filtered by name. Returns id,
+  `uniqueId` (slug), Swedish and English names, item count, responsibility
+  area, and implementation type for each package.
+- `kravhantering_get_package_items`
+  List requirements linked to a specific package, with optional description
+  search. Use `packageId` (numeric) or `packageSlug` (e.g. `SAKLYFT-Q2`)
+  from `kravhantering_list_packages`.
+- `kravhantering_add_to_package`
+  Link one or more requirements to a package. Requirements must have a
+  published version; those without are skipped and returned in `skippedIds`.
+  Optionally attach a `needsReferenceText` to all added items. Use
+  `packageId` or `packageSlug` to identify the package.
+- `kravhantering_remove_from_package`
+  Unlink one or more requirements from a package. The requirements themselves
+  are not deleted. Use `packageId` or `packageSlug` to identify the package.
 
 ### Resources
 
@@ -207,7 +228,11 @@ Use a configuration like this:
         "kravhantering_query_catalog",
         "kravhantering_get_requirement",
         "kravhantering_manage_requirement",
-        "kravhantering_transition_requirement"
+        "kravhantering_transition_requirement",
+        "kravhantering_list_packages",
+        "kravhantering_get_package_items",
+        "kravhantering_add_to_package",
+        "kravhantering_remove_from_package"
       ]
     }
   }
@@ -234,7 +259,11 @@ Example:
         "kravhantering_query_catalog",
         "kravhantering_get_requirement",
         "kravhantering_manage_requirement",
-        "kravhantering_transition_requirement"
+        "kravhantering_transition_requirement",
+        "kravhantering_list_packages",
+        "kravhantering_get_package_items",
+        "kravhantering_add_to_package",
+        "kravhantering_remove_from_package"
       ],
       "headers": {
         "Authorization": "$COPILOT_MCP_KRAVHANTERING_AUTHORIZATION"
@@ -344,6 +373,22 @@ tool. For requirement lists, it supports:
 - `Archive INT0001.`
 - `Restore version 2 of INT0001.`
 - `Transition INT0001 to published after checking the valid transitions.`
+
+### Requirement Packages
+
+- `List all requirement packages.`
+- `List packages whose name contains "säkerhet".`
+- `Show all requirements in package SAKLYFT-Q2.`
+- `Search for requirements about login in package SAKLYFT-Q2.`
+- `Add requirements INT0001 and INT0002 to package SAKLYFT-Q2.`
+- `Add requirement INT0005 to package GDPR-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
+- `Remove requirement INT0003 from package SAKLYFT-Q2.`
+
+> **Note:** Packages can be identified by `packageId` (numeric) or
+> `packageSlug` (e.g. `SAKLYFT-Q2`) — use whichever is available from
+> `kravhantering_list_packages`. `requirementIds` are numeric IDs; use
+> `kravhantering_query_catalog` or `kravhantering_get_package_items` to find
+> them. Requirements must have a published version to be added to a package.
 
 ## Limitations
 

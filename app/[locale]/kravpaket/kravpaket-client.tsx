@@ -4,7 +4,9 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { generatePackageSlug, normalizeSlugInput } from '@/lib/slug'
 
 interface TaxonomyItem {
   id: number
@@ -12,14 +14,22 @@ interface TaxonomyItem {
   nameSv: string
 }
 
+interface RequirementArea {
+  id: number
+  name: string
+}
+
 interface Package {
+  businessNeedsReference: string | null
   id: number
   implementationType: TaxonomyItem | null
-  nameEn: string
-  nameSv: string
+  itemCount: number
+  name: string
   packageImplementationTypeId: number | null
   packageResponsibilityAreaId: number | null
+  requirementAreas: RequirementArea[]
   responsibilityArea: TaxonomyItem | null
+  uniqueId: string
 }
 
 export default function KravpaketClient() {
@@ -28,7 +38,7 @@ export default function KravpaketClient() {
   const tc = useTranslations('common')
   const locale = useLocale()
 
-  const getName = (pkg: Package) => (locale === 'sv' ? pkg.nameSv : pkg.nameEn)
+  const getName = (pkg: Package) => pkg.name
   const getTaxonomyName = (item: TaxonomyItem | null) =>
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
 
@@ -43,19 +53,23 @@ export default function KravpaketClient() {
   const [showSpinner, setShowSpinner] = useState(false)
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
+  const [editPkg, setEditPkg] = useState<Package | null>(null)
+  const [slugEdited, setSlugEdited] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
   const [form, setForm] = useState({
-    nameSv: '',
-    nameEn: '',
+    name: '',
+    uniqueId: '',
     packageResponsibilityAreaId: '' as string,
     packageImplementationTypeId: '' as string,
+    businessNeedsReference: '',
   })
 
   const resetForm = () => ({
-    nameSv: '',
-    nameEn: '',
+    name: '',
+    uniqueId: '',
     packageResponsibilityAreaId: '' as string,
     packageImplementationTypeId: '' as string,
+    businessNeedsReference: '',
   })
 
   const fetchPackages = useCallback(async () => {
@@ -94,46 +108,56 @@ export default function KravpaketClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const method = editId ? 'PUT' : 'POST'
-    const url = editId
-      ? `/api/requirement-packages/${editId}`
+    setSlugError(null)
+    const method = editPkg ? 'PUT' : 'POST'
+    const url = editPkg
+      ? `/api/requirement-packages/${editPkg.uniqueId}`
       : '/api/requirement-packages'
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        nameSv: form.nameSv,
-        nameEn: form.nameEn,
+        uniqueId: form.uniqueId,
+        name: form.name,
         packageResponsibilityAreaId: form.packageResponsibilityAreaId
           ? Number(form.packageResponsibilityAreaId)
           : null,
         packageImplementationTypeId: form.packageImplementationTypeId
           ? Number(form.packageImplementationTypeId)
           : null,
+        businessNeedsReference: form.businessNeedsReference || null,
       }),
     })
+    if (res.status === 409) {
+      setSlugError(t('uniqueIdTaken'))
+      return
+    }
     setShowForm(false)
-    setEditId(null)
+    setEditPkg(null)
+    setSlugEdited(false)
     setForm(resetForm())
     fetchPackages()
   }
 
   const handleEdit = (pkg: Package) => {
-    setEditId(pkg.id)
+    setEditPkg(pkg)
+    setSlugEdited(true)
+    setSlugError(null)
     setForm({
-      nameSv: pkg.nameSv,
-      nameEn: pkg.nameEn,
+      name: pkg.name,
+      uniqueId: pkg.uniqueId,
       packageResponsibilityAreaId:
         pkg.packageResponsibilityAreaId?.toString() ?? '',
       packageImplementationTypeId:
         pkg.packageImplementationTypeId?.toString() ?? '',
+      businessNeedsReference: pkg.businessNeedsReference ?? '',
     })
     setShowForm(true)
   }
 
   const { confirm } = useConfirmModal()
 
-  const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
+  const handleDelete = async (pkg: Package, anchorEl?: HTMLElement) => {
     if (
       !(await confirm({
         message: tc('confirm'),
@@ -143,7 +167,9 @@ export default function KravpaketClient() {
       }))
     )
       return
-    await fetch(`/api/requirement-packages/${id}`, { method: 'DELETE' })
+    await fetch(`/api/requirement-packages/${pkg.uniqueId}`, {
+      method: 'DELETE',
+    })
     fetchPackages()
   }
 
@@ -163,7 +189,9 @@ export default function KravpaketClient() {
             })}
             onClick={() => {
               setShowForm(true)
-              setEditId(null)
+              setEditPkg(null)
+              setSlugEdited(false)
+              setSlugError(null)
               setForm(resetForm())
             }}
             type="button"
@@ -180,42 +208,67 @@ export default function KravpaketClient() {
               context: 'packages',
               name: 'crud form',
               priority: 340,
-              value: editId ? 'edit' : 'create',
+              value: editPkg ? 'edit' : 'create',
             })}
             onSubmit={handleSubmit}
           >
             <h2 className="text-lg font-semibold">
-              {editId ? t('editPackage') : t('newPackage')}
+              {editPkg ? t('editPackage') : t('newPackage')}
             </h2>
             <div>
               <label
                 className="block text-sm font-medium mb-1"
-                htmlFor="pkg-name-sv"
+                htmlFor="pkg-name"
               >
-                {t('name')} (SV) *
+                {t('name')} *
               </label>
               <input
                 className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="pkg-name-sv"
-                onChange={e => setForm(f => ({ ...f, nameSv: e.target.value }))}
+                id="pkg-name"
+                onBlur={() => {
+                  if (!slugEdited && form.name) {
+                    setForm(f => ({
+                      ...f,
+                      uniqueId: generatePackageSlug(form.name),
+                    }))
+                  }
+                }}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 required
-                value={form.nameSv}
+                value={form.name}
               />
             </div>
             <div>
               <label
                 className="block text-sm font-medium mb-1"
-                htmlFor="pkg-name-en"
+                htmlFor="pkg-unique-id"
               >
-                {t('name')} (EN) *
+                {t('uniqueId')} *
               </label>
               <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="pkg-name-en"
-                onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))}
+                className={`w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
+                id="pkg-unique-id"
+                onChange={e => {
+                  setSlugEdited(true)
+                  setSlugError(null)
+                  setForm(f => ({
+                    ...f,
+                    uniqueId: normalizeSlugInput(e.target.value),
+                  }))
+                }}
+                placeholder={t('uniqueIdPlaceholder')}
                 required
-                value={form.nameEn}
+                value={form.uniqueId}
               />
+              {slugError ? (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {slugError}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                  {t('uniqueIdHelp')}
+                </p>
+              )}
             </div>
             <div>
               <label
@@ -262,12 +315,33 @@ export default function KravpaketClient() {
                 value={form.packageImplementationTypeId}
               >
                 <option value="">—</option>
-                {implementationTypes.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {locale === 'sv' ? t.nameSv : t.nameEn}
+                {implementationTypes.map(it => (
+                  <option key={it.id} value={it.id}>
+                    {locale === 'sv' ? it.nameSv : it.nameEn}
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label
+                className="block text-sm font-medium mb-1"
+                htmlFor="pkg-business-ref"
+              >
+                {t('businessNeedsReference')}
+              </label>
+              <textarea
+                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
+                id="pkg-business-ref"
+                onChange={e =>
+                  setForm(f => ({
+                    ...f,
+                    businessNeedsReference: e.target.value,
+                  }))
+                }
+                placeholder={t('businessNeedsReferencePlaceholder')}
+                rows={2}
+                value={form.businessNeedsReference}
+              />
             </div>
             <div className="flex gap-3">
               <button className="btn-primary" type="submit">
@@ -315,6 +389,10 @@ export default function KravpaketClient() {
                   <th className="py-3 px-4 font-medium">
                     {t('implementationType')}
                   </th>
+                  <th className="py-3 px-4 font-medium">{t('itemCount')}</th>
+                  <th className="py-3 px-4 font-medium">
+                    {t('requirementAreas')}
+                  </th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
@@ -324,12 +402,44 @@ export default function KravpaketClient() {
                     className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
                     key={pkg.id}
                   >
-                    <td className="py-3 px-4 font-medium">{getName(pkg)}</td>
+                    <td className="py-3 px-4 font-medium">
+                      <Link
+                        className="text-primary-700 dark:text-primary-300 hover:underline"
+                        href={`/kravpaket/${pkg.uniqueId}`}
+                      >
+                        {getName(pkg)}
+                      </Link>
+                    </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
                       {getTaxonomyName(pkg.responsibilityArea)}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
                       {getTaxonomyName(pkg.implementationType)}
+                    </td>
+                    <td className="py-3 px-4">
+                      {pkg.itemCount > 0 ? (
+                        <Link
+                          className="text-primary-700 dark:text-primary-300 hover:underline font-medium"
+                          href={`/kravpaket/${pkg.uniqueId}`}
+                        >
+                          {pkg.itemCount}
+                        </Link>
+                      ) : (
+                        <span className="text-secondary-400">0</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-1">
+                        {pkg.requirementAreas.map(area => (
+                          <Link
+                            className="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/60 transition-colors"
+                            href={`/kravpaket/${pkg.uniqueId}?areaId=${area.id}`}
+                            key={area.id}
+                          >
+                            {area.name}
+                          </Link>
+                        ))}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
@@ -352,7 +462,7 @@ export default function KravpaketClient() {
                           value: 'delete',
                         })}
                         onClick={e =>
-                          handleDelete(pkg.id, e.currentTarget as HTMLElement)
+                          handleDelete(pkg, e.currentTarget as HTMLElement)
                         }
                         type="button"
                       >

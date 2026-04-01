@@ -1,0 +1,2 @@
+ALTER TABLE `requirement_packages` ADD `business_needs_reference` text;--> statement-breakpoint
+CREATE UNIQUE INDEX `uq_requirement_package_items_package_requirement` ON `requirement_package_items` (`requirement_package_id`,`requirement_id`);
