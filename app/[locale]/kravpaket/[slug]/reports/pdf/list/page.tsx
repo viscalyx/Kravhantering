@@ -30,11 +30,17 @@ export default function PdfListReportPage() {
   const isMountedRef = useRef(true)
 
   const ids = searchParams.get('ids')
+  const normalizedIds = ids?.replace(/\s+/g, '') ?? ''
   const slug = typeof params.slug === 'string' ? params.slug : null
   const [filename, setFilename] = useState('list-report.pdf')
+  const [lastSettledDownloadKey, setLastSettledDownloadKey] = useState<
+    string | null
+  >(null)
   const reportContext = 'requirement package list report'
   const tRef = useRef(t)
   tRef.current = t
+  const pdfContextKey = `${locale}::${slug ?? ''}::${normalizedIds}::${filename}`
+  const lastAutoDownloadModelRef = useRef<ReportModel | null>(null)
 
   const {
     download,
@@ -151,13 +157,27 @@ export default function PdfListReportPage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (model) {
-      void download()
-    }
-  }, [model, download])
+  const runDownload = useCallback(async () => {
+    const downloadKey = pdfContextKey
 
-  const displayError = error || pdfError
+    try {
+      await download()
+    } finally {
+      if (isMountedRef.current) {
+        setLastSettledDownloadKey(downloadKey)
+      }
+    }
+  }, [download, pdfContextKey])
+
+  useEffect(() => {
+    if (model && model !== lastAutoDownloadModelRef.current) {
+      lastAutoDownloadModelRef.current = model
+      void runDownload()
+    }
+  }, [model, runDownload])
+
+  const displayError =
+    error || (lastSettledDownloadKey === pdfContextKey ? pdfError : null)
   const downloadLabel = downloading ? t('generatingPdf') : t('downloadAgain')
 
   return (
@@ -208,7 +228,7 @@ export default function PdfListReportPage() {
             disabled={downloading}
             onClick={() => {
               if (downloading) return
-              void download()
+              void runDownload()
             }}
             style={{
               backgroundColor: '#4338ca',

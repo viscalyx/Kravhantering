@@ -163,7 +163,9 @@ describe('KravpaketClient', () => {
       expect(screen.queryByText('Säkerhetslyft Q2')).not.toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.clearSearch' }))
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'common.clearSearch' }),
+    )
 
     await waitFor(() => {
       expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
@@ -311,6 +313,34 @@ describe('KravpaketClient', () => {
     expect(screen.getByText('package.nameHelp')).toBeInTheDocument()
   })
 
+  it('renders package form controls with a 44px minimum height', async () => {
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    const filterInput = screen.getByRole('textbox', {
+      name: 'package.filterByName',
+    })
+    expect(filterInput.className).toContain('min-h-[44px]')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /package\.newPackage/i }),
+    )
+
+    for (const field of [
+      screen.getByRole('textbox', { name: /package\.name/ }),
+      screen.getByRole('textbox', { name: /package\.uniqueId/ }),
+      screen.getByRole('combobox', { name: /package\.responsibilityArea/ }),
+      screen.getByRole('combobox', { name: /package\.implementationType/ }),
+      screen.getByRole('textbox', {
+        name: /package\.businessNeedsReference/,
+      }),
+    ]) {
+      expect(field.className).toContain('min-h-[44px]')
+    }
+  })
+
   it('submits create form', async () => {
     render(<KravpaketClient />)
     await waitFor(() => {
@@ -344,6 +374,47 @@ describe('KravpaketClient', () => {
         expect.objectContaining({ method: 'POST' }),
       )
     })
+  })
+
+  it('shows an inline save error for non-conflict failures', async () => {
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /package\.newPackage/i }),
+    )
+
+    const nameInput = screen.getByRole('textbox', { name: /package\.name/ })
+    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.blur(nameInput)
+
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          text: async () => 'Backend unavailable',
+        })
+      }
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(okJson({ packages: samplePackages }))
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'package.saveFailed: Backend unavailable',
+    )
+    expect(
+      screen.getByRole('textbox', { name: /package\.name/ }),
+    ).toBeInTheDocument()
   })
 
   it('opens edit form with existing data', async () => {
@@ -582,5 +653,36 @@ describe('KravpaketClient', () => {
         }),
       )
     })
+  })
+
+  it('shows a visible error when loading packages fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-packages') {
+        return Promise.resolve({
+          ok: false,
+          status: 503,
+          text: async () => 'Service unavailable',
+        })
+      }
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'package.loadPackagesFailed: Service unavailable',
+    )
+    expect(screen.queryByText('package.emptyState')).toBeNull()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 })

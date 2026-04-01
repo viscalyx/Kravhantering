@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PdfListReportPage from '@/app/[locale]/kravpaket/[slug]/reports/pdf/list/page'
 import PrintListReportPage from '@/app/[locale]/kravpaket/[slug]/reports/print/list/page'
 
 let currentIds: string | null = null
+let currentLocale = 'en'
 let currentSlug: string | null = null
 let currentDownloading = false
 let currentPdfError: string | null = null
@@ -29,7 +30,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('next-intl', () => ({
-  useLocale: () => 'en',
+  useLocale: () => currentLocale,
   useTranslations:
     (namespace?: string) =>
     (key: string, values?: Record<string, string | number>) => {
@@ -72,6 +73,7 @@ describe('requirement package report pages', () => {
     vi.stubGlobal('print', vi.fn())
     currentDownloading = false
     currentIds = null
+    currentLocale = 'en'
     currentPdfError = null
     currentSlug = null
     buildListReportMock.mockReturnValue({ title: 'Report' })
@@ -265,6 +267,60 @@ describe('requirement package report pages', () => {
     expect(
       screen.getByText('Package fetch failed (500): Package missing'),
     ).toBeInTheDocument()
+  })
+
+  it('hides a stale pdf generation error when a different report starts loading', async () => {
+    const firstDownload = createDeferred<void>()
+    const secondRequest = createDeferred<{ id: number }[]>()
+
+    currentIds = '1'
+    currentPdfError = 'Failed to generate PDF'
+    currentSlug = 'pkg-one'
+    fetchMultipleRequirementsMock
+      .mockResolvedValueOnce([{ id: 1 }])
+      .mockImplementationOnce(() => secondRequest.promise)
+    downloadMock.mockImplementation(() => firstDownload.promise)
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        businessNeedsReference: null,
+        implementationType: null,
+        name: 'Security package',
+        responsibilityArea: null,
+        uniqueId: 'SECURITY',
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { container, rerender } = render(<PdfListReportPage />)
+
+    await act(async () => {
+      firstDownload.resolve(undefined)
+    })
+    await waitFor(() => {
+      expect(screen.getByText('reports.errorTitle')).toBeInTheDocument()
+    })
+
+    currentIds = '2'
+    currentLocale = 'sv'
+    currentSlug = 'pkg-two'
+    rerender(<PdfListReportPage />)
+
+    await waitFor(() => {
+      expect(
+        container.querySelector(
+          '[data-developer-mode-name="report state"][data-developer-mode-value="report-pdf:loading"]',
+        ),
+      ).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()
+    expect(screen.queryByText('Failed to generate PDF')).not.toBeInTheDocument()
+
+    await act(async () => {
+      secondRequest.resolve([{ id: 2 }])
+    })
   })
 
   it('ignores stale pdf responses when a newer request finishes first', async () => {

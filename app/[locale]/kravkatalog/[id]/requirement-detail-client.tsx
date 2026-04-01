@@ -122,6 +122,10 @@ export default function RequirementDetailClient({
   const [availableNeedsRefs, setAvailableNeedsRefs] = useState<
     { id: number; text: string }[]
   >([])
+  const [needsReferencesLoading, setNeedsReferencesLoading] = useState(false)
+  const [needsReferencesError, setNeedsReferencesError] = useState<
+    string | null
+  >(null)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addToPackageStatus, setAddToPackageStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
@@ -804,6 +808,8 @@ export default function RequirementDetailClient({
     setAddToPackageNeedsRefId('')
     setAddToPackageNeedsRefText('')
     setAvailableNeedsRefs([])
+    setNeedsReferencesLoading(false)
+    setNeedsReferencesError(null)
     setOpenHelp(new Set())
     setAddToPackageStatus('idle')
     setAddToPackageError(null)
@@ -834,12 +840,15 @@ export default function RequirementDetailClient({
     setAddToPackageNeedsRefId('')
     setAddToPackageNeedsRefText('')
     setAvailableNeedsRefs([])
+    setNeedsReferencesLoading(false)
+    setNeedsReferencesError(null)
     if (!pkgId) {
       return
     }
 
     const controller = new AbortController()
     addToPackageNeedsRefsAbortRef.current = controller
+    setNeedsReferencesLoading(true)
 
     try {
       const res = await fetch(
@@ -847,7 +856,10 @@ export default function RequirementDetailClient({
         { signal: controller.signal },
       )
       if (!res.ok) {
-        return
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        throw new Error(data?.error ?? tp('failedToLoadNeedsReferences'))
       }
       const data = (await res.json()) as {
         needsReferences: { id: number; text: string }[]
@@ -861,11 +873,30 @@ export default function RequirementDetailClient({
       setAvailableNeedsRefs(data.needsReferences)
     } catch (error) {
       if ((error as { name?: string }).name !== 'AbortError') {
-        throw error
+        console.error(
+          'Failed to load needs references for add-to-package dialog',
+          error,
+        )
+        if (
+          !controller.signal.aborted &&
+          addToPackageNeedsRefsRequestIdRef.current === requestId
+        ) {
+          setNeedsReferencesError(
+            error instanceof Error
+              ? error.message
+              : tp('failedToLoadNeedsReferences'),
+          )
+        }
       }
     } finally {
       if (addToPackageNeedsRefsAbortRef.current === controller) {
         addToPackageNeedsRefsAbortRef.current = null
+      }
+      if (
+        !controller.signal.aborted &&
+        addToPackageNeedsRefsRequestIdRef.current === requestId
+      ) {
+        setNeedsReferencesLoading(false)
       }
     }
   }
@@ -1031,6 +1062,18 @@ export default function RequirementDetailClient({
                         </option>
                       ))}
                     </select>
+                    {needsReferencesLoading ? (
+                      <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400">
+                        {tp('loadingNeedsReferences')}
+                      </p>
+                    ) : needsReferencesError ? (
+                      <p
+                        className="mt-2 text-sm text-red-600 dark:text-red-400"
+                        role="alert"
+                      >
+                        {needsReferencesError}
+                      </p>
+                    ) : null}
                     {addToPackageNeedsRefMode === 'new' && (
                       <>
                         <div className="mt-2 mb-1 flex items-center gap-1.5">

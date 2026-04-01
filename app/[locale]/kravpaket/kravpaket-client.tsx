@@ -38,11 +38,53 @@ interface Package {
   uniqueId: string
 }
 
+function getResponseMessage(body: unknown): string | null {
+  if (typeof body === 'string') {
+    const trimmed = body.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  if (body && typeof body === 'object') {
+    const error = (body as { error?: unknown }).error
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return error.trim()
+    }
+
+    const message = (body as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message.trim()
+    }
+  }
+
+  return null
+}
+
+async function readResponseMessage(res: Response): Promise<string | null> {
+  const contentType = res.headers?.get?.('content-type')?.toLowerCase() ?? ''
+
+  if (contentType.includes('application/json')) {
+    return getResponseMessage(await res.json().catch(() => null))
+  }
+
+  const text = (await res.text().catch(() => '')).trim()
+  if (text.length > 0) {
+    try {
+      return getResponseMessage(JSON.parse(text)) ?? text
+    } catch {
+      return text
+    }
+  }
+
+  return getResponseMessage(await res.json().catch(() => null))
+}
+
 export default function KravpaketClient() {
   const t = useTranslations('package')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
+  const tRef = useRef(t)
+  tRef.current = t
 
   const getName = (pkg: Package) => pkg.name
   const getTaxonomyName = (item: TaxonomyItem | null) =>
@@ -66,6 +108,8 @@ export default function KravpaketClient() {
   const [slugEdited, setSlugEdited] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [slugError, setSlugError] = useState<string | null>(null)
   const [nameFilter, setNameFilter] = useState('')
   const [form, setForm] = useState({
@@ -130,6 +174,7 @@ export default function KravpaketClient() {
   const fetchPackages = useCallback(async () => {
     const localFetchId = ++fetchIdRef.current
     setLoading(true)
+    setFetchError(null)
     if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
     spinnerTimerRef.current = setTimeout(() => {
       if (isMountedRef.current && localFetchId === fetchIdRef.current) {
@@ -138,10 +183,31 @@ export default function KravpaketClient() {
     }, 200)
     try {
       const res = await fetch('/api/requirement-packages')
-      if (res.ok && isMountedRef.current && localFetchId === fetchIdRef.current)
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        throw new Error(
+          details
+            ? `${tRef.current('loadPackagesFailed')}: ${details}`
+            : tRef.current('loadPackagesFailed'),
+        )
+      }
+
+      if (isMountedRef.current && localFetchId === fetchIdRef.current) {
         setPackages(
           ((await res.json()) as { packages?: Package[] }).packages ?? [],
         )
+        setFetchError(null)
+      }
+    } catch (error) {
+      console.error('Failed to load requirement packages', error)
+      if (isMountedRef.current && localFetchId === fetchIdRef.current) {
+        setPackages([])
+        setFetchError(
+          error instanceof Error
+            ? error.message
+            : tRef.current('loadPackagesFailed'),
+        )
+      }
     } finally {
       if (localFetchId === fetchIdRef.current) {
         if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
@@ -191,6 +257,7 @@ export default function KravpaketClient() {
     if (isSubmitting) return
     setIsSubmitting(true)
     setSlugError(null)
+    setSaveError(null)
     try {
       const method = editPkg ? 'PUT' : 'POST'
       const url = editPkg
@@ -215,13 +282,21 @@ export default function KravpaketClient() {
         setSlugError(t('uniqueIdTaken'))
         return
       }
-      if (!res.ok) return
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        setSaveError(
+          details ? `${t('saveFailed')}: ${details}` : t('saveFailed'),
+        )
+        return
+      }
       setShowForm(false)
       setEditPkg(null)
       setOpenHelp(new Set())
       setSlugEdited(false)
       setForm(resetForm())
       fetchPackages()
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : t('saveFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -232,6 +307,7 @@ export default function KravpaketClient() {
     setOpenHelp(new Set())
     setSlugEdited(true)
     setSlugError(null)
+    setSaveError(null)
     setForm({
       name: pkg.name,
       uniqueId: pkg.uniqueId,
@@ -296,6 +372,7 @@ export default function KravpaketClient() {
     setOpenHelp(new Set())
     setSlugEdited(false)
     setSlugError(null)
+    setSaveError(null)
     setForm(resetForm())
   }
 
@@ -331,7 +408,7 @@ export default function KravpaketClient() {
               </div>
               {helpPanel('nameHelp', 'pkg-name')}
               <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                 id="pkg-name"
                 onBlur={() => {
                   if (!slugEdited && form.name) {
@@ -368,7 +445,7 @@ export default function KravpaketClient() {
               <input
                 aria-describedby={slugError ? 'pkg-unique-id-error' : undefined}
                 aria-invalid={!!slugError}
-                className={`w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
+                className={`min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
                 id="pkg-unique-id"
                 onChange={e => {
                   setSlugEdited(true)
@@ -406,7 +483,7 @@ export default function KravpaketClient() {
               </div>
               {helpPanel('responsibilityAreaHelp', 'pkg-area')}
               <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                 id="pkg-area"
                 onChange={e =>
                   setForm(f => ({
@@ -436,7 +513,7 @@ export default function KravpaketClient() {
               </div>
               {helpPanel('implementationTypeHelp', 'pkg-impl-type')}
               <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                 id="pkg-impl-type"
                 onChange={e =>
                   setForm(f => ({
@@ -466,7 +543,7 @@ export default function KravpaketClient() {
               </div>
               {helpPanel('businessNeedsReferenceHelp', 'pkg-business-ref')}
               <textarea
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
+                className="min-h-[44px] w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                 id="pkg-business-ref"
                 onChange={e =>
                   setForm(f => ({
@@ -479,6 +556,14 @@ export default function KravpaketClient() {
                 value={form.businessNeedsReference}
               />
             </div>
+            {saveError && (
+              <p
+                className="text-sm text-red-600 dark:text-red-400"
+                role="alert"
+              >
+                {saveError}
+              </p>
+            )}
             <div className="flex gap-3">
               <button
                 className="btn-primary"
@@ -520,7 +605,7 @@ export default function KravpaketClient() {
                   />
                   <input
                     autoComplete="off"
-                    className="w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                    className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
                     {...devMarker({
                       context: 'packages',
                       name: 'text field',
@@ -677,7 +762,21 @@ export default function KravpaketClient() {
                       </td>
                     </tr>
                   ))}
-                  {packages.length === 0 && (
+                  {fetchError ? (
+                    <tr>
+                      <td
+                        className="px-4 py-10 text-center"
+                        colSpan={packageTableColumnCount}
+                      >
+                        <p
+                          className="text-sm text-red-600 dark:text-red-400"
+                          role="alert"
+                        >
+                          {fetchError}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : packages.length === 0 ? (
                     <tr>
                       <td
                         className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
@@ -686,8 +785,7 @@ export default function KravpaketClient() {
                         {t('emptyState')}
                       </td>
                     </tr>
-                  )}
-                  {packages.length > 0 && filteredPackages.length === 0 && (
+                  ) : packages.length > 0 && filteredPackages.length === 0 ? (
                     <tr>
                       <td
                         className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
@@ -696,7 +794,7 @@ export default function KravpaketClient() {
                         {tc('noResults')}
                       </td>
                     </tr>
-                  )}
+                  ) : null}
                 </tbody>
               </table>
             </div>

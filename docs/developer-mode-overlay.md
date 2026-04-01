@@ -71,6 +71,9 @@ The emitted attributes are:
 - Requirement package create/edit forms continue to use the `crud form` marker;
   their package-field help toggles are part of that same form surface rather
   than separate developer-mode markers.
+- Requirement package form save errors and package-list load errors stay inside
+  the existing `packages` form/table surfaces; they do not add separate
+  developer-mode markers.
 - Requirement package list filtering exposes `packages > text field: name filter`
   on the Name search input above the table, while the package create trigger
   keeps the existing `packages > create button` marker when it shares that
@@ -81,6 +84,9 @@ The emitted attributes are:
 - Published requirement detail views expose the package-link control as
   `detail action: add to package` when the currently displayed published
   version is the one that can be added to a package.
+- Needs-reference loading and failure messages inside the add-to-package dialog
+  remain part of that same `detail action: add to package` flow rather than
+  introducing extra markers.
 - Requirement package list print pages expose `report state` markers with
   values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.

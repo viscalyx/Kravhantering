@@ -1282,6 +1282,48 @@ describe('RequirementDetailClient', () => {
     })
   })
 
+  it('shows an inline error when loading needs references fails', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupFetch({
+      initialRequirement: requirement,
+      needsReferencesHandler: () => response({ error: 'Lookup failed' }, false),
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', {
+        name: /package\.selectPackage/,
+      }),
+      '7',
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Lookup failed')
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
   it('aborts pending needs-reference requests when cancelling the add-to-package dialog', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
