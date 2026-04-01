@@ -4,6 +4,7 @@ import {
   getOrCreatePackageNeedsReference,
   getPackageById,
   getPackageBySlug,
+  getPackageNeedsReferenceById,
   getPublishedVersionIdForRequirement,
   linkRequirementsToPackage,
   listPackageItems,
@@ -13,6 +14,8 @@ import type { Database } from '@/lib/db'
 import { getDb } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
+
+class InvalidNeedsReferenceError extends Error {}
 
 async function resolvePackageId(db: Database, idOrSlug: string) {
   const bySlug = await getPackageBySlug(db, idOrSlug)
@@ -84,24 +87,47 @@ export async function POST(
   }
 
   // All items validated — now resolve/create needs reference
-  let resolvedNeedsReferenceId: number | null = needsReferenceId ?? null
-  if (needsReferenceText?.trim()) {
-    resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
-      db,
-      packageId,
-      needsReferenceText.trim(),
-    )
+  try {
+    await db.transaction(async tx => {
+      let resolvedNeedsReferenceId: number | null = null
+
+      if (needsReferenceText?.trim()) {
+        resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
+          tx,
+          packageId,
+          needsReferenceText.trim(),
+        )
+      } else if (needsReferenceId != null) {
+        const existingNeedsReference = await getPackageNeedsReferenceById(
+          tx,
+          packageId,
+          needsReferenceId,
+        )
+        if (!existingNeedsReference) {
+          throw new InvalidNeedsReferenceError(
+            'needsReferenceId does not belong to this requirement package',
+          )
+        }
+        resolvedNeedsReferenceId = existingNeedsReference.id
+      }
+
+      const resolvedItems = resolvedVersionIds.map(
+        ({ requirementId, versionId }) => ({
+          requirementId,
+          requirementVersionId: versionId,
+          needsReferenceId: resolvedNeedsReferenceId,
+        }),
+      )
+
+      await linkRequirementsToPackage(tx, packageId, resolvedItems)
+    })
+  } catch (error) {
+    if (error instanceof InvalidNeedsReferenceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    throw error
   }
-
-  const resolvedItems = resolvedVersionIds.map(
-    ({ requirementId, versionId }) => ({
-      requirementId,
-      requirementVersionId: versionId,
-      needsReferenceId: resolvedNeedsReferenceId,
-    }),
-  )
-
-  await linkRequirementsToPackage(db, packageId, resolvedItems)
   return NextResponse.json({ ok: true }, { status: 201 })
 }
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PackageEditPanel from '@/app/[locale]/kravpaket/[slug]/package-edit-panel'
 
 vi.mock('next-intl', () => ({
@@ -12,8 +12,7 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
-const fetchMock = vi.fn()
-vi.stubGlobal('fetch', fetchMock)
+let fetchMock: ReturnType<typeof vi.fn>
 
 const implementationTypes = [{ id: 2, nameEn: 'Program', nameSv: 'Program' }]
 const responsibilityAreas = [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }]
@@ -28,7 +27,13 @@ const pkg = {
 describe('PackageEditPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockResolvedValue(okJson({ ok: true }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('prefills the package edit form and exposes developer-mode metadata', () => {
@@ -110,11 +115,12 @@ describe('PackageEditPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled()
-    })
+    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
 
-    const [url, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const [url, requestInit] = fetchMock.mock.calls.at(-1) as [
+      string,
+      RequestInit,
+    ]
     expect(url).toBe('/api/requirement-packages/BEHORIGHET-IAM')
     expect(requestInit?.method).toBe('PUT')
     expect(requestInit?.headers).toEqual({ 'Content-Type': 'application/json' })
@@ -125,6 +131,5 @@ describe('PackageEditPanel', () => {
       packageResponsibilityAreaId: 1,
       uniqueId: 'BEHORIGHET-IAM',
     })
-    expect(onSaved).toHaveBeenCalledTimes(1)
   })
 })

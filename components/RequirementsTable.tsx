@@ -98,12 +98,26 @@ export interface RequirementsTableProps {
 
 export type FloatingActionPillVariant = 'default' | 'primary'
 
-export interface FloatingActionMenuItem {
+interface FloatingActionMenuItemBase {
   description?: string
-  href?: string
   id: string
   label: string
-  onClick?: () => void
+}
+
+export type FloatingActionMenuItem =
+  | (FloatingActionMenuItemBase & {
+      href: string
+      onClick?: never
+    })
+  | (FloatingActionMenuItemBase & {
+      href?: never
+      onClick: () => void
+    })
+
+function isFloatingActionMenuLink(
+  item: FloatingActionMenuItem,
+): item is FloatingActionMenuItemBase & { href: string } {
+  return typeof (item as { href?: unknown }).href === 'string'
 }
 
 export interface FloatingActionItem {
@@ -126,6 +140,9 @@ export interface FloatingActionItem {
 
 const floatingPillBaseClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full border shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:-translate-y-px dark:focus-visible:ring-offset-secondary-950'
+
+const floatingActionMenuFocusableSelector =
+  'a[href], button:not([disabled]), [role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
 
 const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
   {
@@ -179,14 +196,18 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   }, [hasMenu])
 
   useEffect(() => {
-    if (!hasMenu || !open) {
+    if (!hasMenu || !open || !menuPosition) {
       return
     }
 
-    const firstMenuItem = menuRef.current?.querySelector('a[href]')
-    if (firstMenuItem instanceof HTMLElement) {
-      firstMenuItem.focus()
-    }
+    const frame = window.requestAnimationFrame(() => {
+      const firstMenuItem = menuRef.current?.querySelector(
+        floatingActionMenuFocusableSelector,
+      )
+      if (firstMenuItem instanceof HTMLElement) {
+        firstMenuItem.focus()
+      }
+    })
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -198,8 +219,11 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasMenu, open])
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [hasMenu, menuPosition, open])
 
   useEffect(() => {
     if (!hasMenu || !open || !triggerRef.current) {
@@ -317,28 +341,10 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   <ul className="space-y-1">
                     {action.menuItems?.map(item => (
                       <li key={item.id}>
-                        {item.onClick ? (
-                          <button
-                            className="flex w-full min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-                            onClick={() => {
-                              item.onClick?.()
-                              setOpen(false)
-                            }}
-                            type="button"
-                          >
-                            <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-                              {item.label}
-                            </div>
-                            {item.description ? (
-                              <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
-                                {item.description}
-                              </div>
-                            ) : null}
-                          </button>
-                        ) : (
+                        {isFloatingActionMenuLink(item) ? (
                           <Link
                             className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-                            href={item.href ?? '/'}
+                            href={item.href}
                             onClick={() => setOpen(false)}
                           >
                             <div className="contents">
@@ -352,6 +358,24 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                               ) : null}
                             </div>
                           </Link>
+                        ) : (
+                          <button
+                            className="flex w-full min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            onClick={() => {
+                              item.onClick()
+                              setOpen(false)
+                            }}
+                            type="button"
+                          >
+                            <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                              {item.label}
+                            </div>
+                            {item.description ? (
+                              <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                                {item.description}
+                              </div>
+                            ) : null}
+                          </button>
                         )}
                       </li>
                     ))}
@@ -2648,7 +2672,7 @@ export default function RequirementsTable({
       case 'description':
         return (
           <td
-            className={`py-2 px-2 ${wrapDescription ? 'wrap-break-word' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
+            className={`py-2 px-2 ${wrapDescription ? 'whitespace-normal break-words' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
           >
             {row.version?.description ?? '—'}
           </td>

@@ -1029,7 +1029,7 @@ export default function RequirementDetailClient({
                     >
                       {addToPackageStatus === 'loading'
                         ? tc('loading')
-                        : tp('addToPaket')}
+                        : tp('addToPackage')}
                     </button>
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
@@ -1508,6 +1508,12 @@ export default function RequirementDetailClient({
                 {currentStatusId === STATUS_PUBLISHED && (
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail action',
+                      priority: 360,
+                      value: 'add to package',
+                    })}
                     onClick={handleOpenAddToPackage}
                     title={tp('addToPackage')}
                     type="button"

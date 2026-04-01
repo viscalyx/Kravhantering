@@ -922,6 +922,51 @@ describe('RequirementsTable', () => {
       expect(link.className).toContain('focus-visible:ring-2')
     })
   })
+
+  it('focuses action-only floating menu items when the menu opens', async () => {
+    const onExport = vi.fn()
+
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                id: 'export',
+                label: 'Export',
+                onClick: onExport,
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+
+    const actionButton = await screen.findByRole('button', { name: 'Export' })
+
+    await waitFor(() => expect(actionButton).toHaveFocus())
+
+    fireEvent.click(actionButton)
+    expect(onExport).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses standard wrapping utilities when description wrapping is enabled', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} wrapDescription />)
+
+    const descriptionCell = screen.getByText('Testkrav').closest('td')
+
+    expect(descriptionCell?.className).toContain('whitespace-normal')
+    expect(descriptionCell?.className).toContain('break-words')
+    expect(descriptionCell?.className).not.toContain('wrap-break-word')
+  })
+
   it('clears hidden column filters and resets hidden active sort', () => {
     const onFilterChange = vi.fn()
     const onSortChange = vi.fn()

@@ -1072,9 +1072,19 @@ describe('RequirementDetailClient', () => {
 
     await screen.findByText('Published requirement')
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'package.addToPackage' }),
+    const addToPackageButton = screen.getByRole('button', {
+      name: 'package.addToPackage',
+    })
+    expect(addToPackageButton).toHaveAttribute(
+      'data-developer-mode-name',
+      'detail action',
     )
+    expect(addToPackageButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'add to package',
+    )
+
+    await userEvent.click(addToPackageButton)
 
     expect(
       await screen.findByRole('button', {

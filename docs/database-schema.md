@@ -232,12 +232,20 @@ erDiagram
 
     requirement_packages {
         integer id PK
-        text name_sv
-        text name_en
+        text unique_id UK
+        text name
         integer package_responsibility_area_id FK
         integer package_implementation_type_id FK
+        text business_needs_reference
         text created_at
         text updated_at
+    }
+
+    package_needs_references {
+        integer id PK
+        integer package_id FK
+        text text
+        text created_at
     }
 
     requirement_package_items {
@@ -245,7 +253,8 @@ erDiagram
         integer requirement_package_id FK
         integer requirement_id FK
         integer requirement_version_id FK
-        text needs_reference
+        integer needs_reference_id FK
+        text unused_1
         text created_at
     }
 
@@ -265,9 +274,11 @@ erDiagram
     quality_characteristics ||--o{ quality_characteristics : "parent-child"
     requirement_statuses ||--o{ requirement_status_transitions : "from"
     requirement_statuses ||--o{ requirement_status_transitions : "to"
+    requirement_packages ||--o{ package_needs_references : "stores needs references"
     requirement_packages ||--o{ requirement_package_items : "contains"
     package_responsibility_areas ||--o{ requirement_packages : "responsibility area"
     package_implementation_types ||--o{ requirement_packages : "implementation type"
+    package_needs_references ||--o{ requirement_package_items : "scoped needs reference"
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
 ```
@@ -682,13 +693,33 @@ specific procurement or project.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `name_sv` | text | Swedish package name |
-| `name_en` | text | English package name |
+| `unique_id` | text, unique | Stable package identifier used in URLs and APIs |
+| `name` | text | Display name for the package |
 | `package_responsibility_area_id` | integer FK → `package_responsibility_areas.id` | Responsibility area classification (nullable) |
 | `package_implementation_type_id` | integer FK → `package_implementation_types.id` | Implementation type classification (nullable) |
+| `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
+
+---
+
+### `package_needs_references`
+
+Reusable needs-reference texts stored per package.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `package_id` | integer FK → `requirement_packages.id` | Owning package |
+| `text` | text | Stored needs-reference label |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Unique indexes:**
+`uq_package_needs_references_package_text`,
+`uq_package_needs_references_package_id_id`.
 
 ---
 
@@ -726,9 +757,12 @@ Links individual requirements (pinned to a specific version) into a package.
 | `requirement_package_id` | integer FK → `requirement_packages.id` | Parent package |
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
-| `needs_reference` | text | Business justification for including this requirement (nullable) |
+| `needs_reference_id` | integer FK → `package_needs_references.(package_id, id)` | Optional package-scoped needs reference |
+| `unused_1` | text | Retired legacy column kept for migration compatibility |
 | `created_at` | text (ISO 8601) | When the item was added |
 <!-- markdownlint-enable MD013 -->
+
+**Unique index:** `uq_requirement_package_items_package_requirement`.
 
 **Indexes:**
 `idx_requirement_package_items_requirement_package_id`,
@@ -764,6 +798,10 @@ its purpose and the table/column(s) it covers.
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate owner email addresses |
 | `uq_package_implementation_types_name_sv` | `package_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_package_implementation_types_name_en` | `package_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
+| `uq_requirement_packages_unique_id` | `requirement_packages` | `unique_id` | Ensures each package has a stable unique identifier |
+| `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
+| `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
+| `uq_requirement_package_items_package_requirement` | `requirement_package_items` | `(requirement_package_id, requirement_id)` | Prevents linking the same requirement into a package more than once |
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
@@ -808,6 +846,7 @@ graph LR
         PRA[package_responsibility_areas]
         PIT[package_implementation_types]
         RP[requirement_packages]
+        PNR[package_needs_references]
         RPI[requirement_package_items]
     end
 

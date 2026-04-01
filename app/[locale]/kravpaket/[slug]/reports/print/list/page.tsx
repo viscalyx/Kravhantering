@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
@@ -18,14 +19,18 @@ export default function PrintListReportPage() {
 
   const ids = searchParams.get('ids')
   const slug = typeof params.slug === 'string' ? params.slug : null
+  const reportContext = 'requirement package list report'
 
   const loadReport = useCallback(async () => {
+    setError(null)
+    setModel(null)
+
     if (!ids) {
       setError(t('noRequirementIds'))
       return
     }
     try {
-      const idList = ids.split(',').filter(Boolean)
+      const idList = ids.replace(/\s+/g, '').split(',').filter(Boolean)
       if (idList.length === 0) {
         setError(t('noRequirementIds'))
         return
@@ -91,7 +96,15 @@ export default function PrintListReportPage() {
 
   if (error) {
     return (
-      <div style={{ padding: '2rem', color: '#991b1b' }}>
+      <div
+        {...devMarker({
+          context: reportContext,
+          name: 'report state',
+          priority: 340,
+          value: 'report-print:error',
+        })}
+        style={{ padding: '2rem', color: '#991b1b' }}
+      >
         <h1>{t('errorTitle')}</h1>
         <p>{error}</p>
       </div>
@@ -100,11 +113,30 @@ export default function PrintListReportPage() {
 
   if (!model) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+      <div
+        {...devMarker({
+          context: reportContext,
+          name: 'report state',
+          priority: 340,
+          value: 'report-print:loading',
+        })}
+        style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}
+      >
         {t('loading')}
       </div>
     )
   }
 
-  return <PrintReportRenderer locale={locale} model={model} />
+  return (
+    <div
+      {...devMarker({
+        context: reportContext,
+        name: 'report state',
+        priority: 340,
+        value: 'report-print:renderer',
+      })}
+    >
+      <PrintReportRenderer locale={locale} model={model} />
+    </div>
+  )
 }

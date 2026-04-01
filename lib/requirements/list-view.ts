@@ -87,6 +87,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.typeIds && values.typeIds.length > 0) ||
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
+    (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
     values.descriptionSearch ||
     (values.usageScenarioIds && values.usageScenarioIds.length > 0) ||
@@ -698,6 +699,11 @@ export function buildRequirementListParams({
   if (filters.statuses) {
     for (const status of filters.statuses) {
       params.append('statuses', String(status))
+    }
+  }
+  if (filters.needsReferenceIds) {
+    for (const id of filters.needsReferenceIds) {
+      params.append('needsReferenceIds', String(id))
     }
   }
   if (filters.usageScenarioIds) {

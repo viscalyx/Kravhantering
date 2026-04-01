@@ -32,8 +32,16 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
-const fetchMock = vi.fn()
-vi.stubGlobal('fetch', fetchMock)
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(resolver => {
+    resolve = resolver
+  })
+
+  return { promise, resolve }
+}
+
+let fetchMock: ReturnType<typeof vi.fn>
 
 import KravpaketClient from '@/app/[locale]/kravpaket/kravpaket-client'
 
@@ -58,10 +66,13 @@ describe('KravpaketClient', () => {
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/requirement-packages')
         return Promise.resolve(okJson({ packages: samplePackages }))
@@ -230,6 +241,153 @@ describe('KravpaketClient', () => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/requirement-packages/PAKET-SV',
         expect.objectContaining({ method: 'DELETE' }),
+      )
+    })
+  })
+
+  it('marks slug conflicts as alerts and clears stale errors when auto-generating a new slug', async () => {
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') {
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+        })
+      }
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(okJson({ packages: samplePackages }))
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /package\.newPackage/i }),
+    )
+
+    const nameInput = screen.getByRole('textbox', { name: /package\.name/ })
+    const uniqueIdInput = screen.getByRole('textbox', {
+      name: /package\.uniqueId/,
+    })
+
+    fireEvent.change(nameInput, { target: { value: 'Paket sv' } })
+    fireEvent.blur(nameInput)
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    const slugError = await screen.findByRole('alert')
+    expect(uniqueIdInput).toHaveAttribute(
+      'aria-describedby',
+      'pkg-unique-id-error',
+    )
+    expect(uniqueIdInput).toHaveAttribute('aria-invalid', 'true')
+    expect(slugError).toHaveAttribute('id', 'pkg-unique-id-error')
+
+    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.blur(nameInput)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+    expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
+    expect(uniqueIdInput).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('shows saving state and keeps cancel disabled while submitting', async () => {
+    const postRequest = createDeferred<ReturnType<typeof okJson>>()
+
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') {
+        return postRequest.promise
+      }
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(okJson({ packages: samplePackages }))
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /package\.newPackage/i }),
+    )
+
+    const nameInput = screen.getByRole('textbox', { name: /package\.name/ })
+    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.blur(nameInput)
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    const saveButton = screen.getByRole('button', { name: /common\.saving/i })
+    const cancelButton = screen.getByRole('button', { name: /common\.cancel/i })
+
+    expect(saveButton).toBeDisabled()
+    expect(cancelButton).toBeDisabled()
+
+    fireEvent.click(cancelButton)
+    expect(
+      screen.getByRole('textbox', { name: /package\.name/ }),
+    ).toBeInTheDocument()
+
+    postRequest.resolve(okJson({ id: 2 }))
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('textbox', { name: /package\.name/ }),
+      ).toBeNull()
+    })
+  })
+
+  it('shows an alert dialog when deleting a package fails', async () => {
+    confirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'DELETE') {
+        return Promise.resolve({
+          ok: false,
+          text: async () => 'Delete failed',
+        })
+      }
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(okJson({ packages: samplePackages }))
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    const [deleteButton] = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })
+    expect(deleteButton).toBeDefined()
+    fireEvent.click(deleteButton)
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          icon: 'caution',
+          message: 'Delete failed',
+          showCancel: false,
+          title: 'common.error',
+          variant: 'danger',
+        }),
       )
     })
   })

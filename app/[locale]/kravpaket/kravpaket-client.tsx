@@ -216,10 +216,38 @@ export default function KravpaketClient() {
       }))
     )
       return
-    await fetch(`/api/requirement-packages/${pkg.uniqueId}`, {
-      method: 'DELETE',
-    })
-    fetchPackages()
+
+    try {
+      const res = await fetch(`/api/requirement-packages/${pkg.uniqueId}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const details = (await res.text()).trim()
+        await confirm({
+          anchorEl,
+          confirmText: tc('confirm'),
+          icon: 'caution',
+          message: details || tc('error'),
+          showCancel: false,
+          title: tc('error'),
+          variant: 'danger',
+        })
+        return
+      }
+
+      await fetchPackages()
+    } catch (error) {
+      await confirm({
+        anchorEl,
+        confirmText: tc('confirm'),
+        icon: 'caution',
+        message: error instanceof Error ? error.message : tc('error'),
+        showCancel: false,
+        title: tc('error'),
+        variant: 'danger',
+      })
+    }
   }
 
   return (
@@ -278,10 +306,14 @@ export default function KravpaketClient() {
                 id="pkg-name"
                 onBlur={() => {
                   if (!slugEdited && form.name) {
-                    setForm(f => ({
-                      ...f,
-                      uniqueId: generatePackageSlug(form.name),
-                    }))
+                    const nextUniqueId = generatePackageSlug(form.name)
+                    if (form.uniqueId !== nextUniqueId) {
+                      setSlugError(null)
+                      setForm(f => ({
+                        ...f,
+                        uniqueId: nextUniqueId,
+                      }))
+                    }
                   }
                 }}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -301,6 +333,8 @@ export default function KravpaketClient() {
               </div>
               {helpPanel('uniqueIdHelp', 'pkg-unique-id')}
               <input
+                aria-describedby={slugError ? 'pkg-unique-id-error' : undefined}
+                aria-invalid={!!slugError}
                 className={`w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
                 id="pkg-unique-id"
                 onChange={e => {
@@ -316,7 +350,11 @@ export default function KravpaketClient() {
                 value={form.uniqueId}
               />
               {slugError ? (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                <p
+                  className="mt-1 text-xs text-red-600 dark:text-red-400"
+                  id="pkg-unique-id-error"
+                  role="alert"
+                >
                   {slugError}
                 </p>
               ) : (
@@ -413,11 +451,13 @@ export default function KravpaketClient() {
                 disabled={isSubmitting}
                 type="submit"
               >
-                {tc('save')}
+                {isSubmitting ? tc('saving') : tc('save')}
               </button>
               <button
                 className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                disabled={isSubmitting}
                 onClick={() => {
+                  if (isSubmitting) return
                   setOpenHelp(new Set())
                   setShowForm(false)
                 }}

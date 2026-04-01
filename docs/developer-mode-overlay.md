@@ -74,6 +74,11 @@ The emitted attributes are:
 - Requirement package detail header edit affordances use the
   `requirement package detail` context with `detail action: edit package`
   on the icon trigger and `crud form: edit` on the opened editor.
+- Published requirement detail views expose the package-link control as
+  `detail action: add to package`.
+- Requirement package list print pages expose `report state` markers with
+  values `report-print:error`, `report-print:loading`, and
+  `report-print:renderer`.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 
@@ -116,6 +121,7 @@ The current canonical labels include:
 - `report print button`
 - `report option`
 - `review report pill`
+- `report state`
 - `row checkbox`
 
 ## Testing

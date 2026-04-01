@@ -47,6 +47,7 @@ describe('requirement list view helpers', () => {
   it('builds requirement list params with locale and sort state', () => {
     const params = buildRequirementListParams({
       filters: {
+        needsReferenceIds: [10, 11],
         statuses: [3],
         uniqueIdSearch: 'INT',
       },
@@ -60,6 +61,7 @@ describe('requirement list view helpers', () => {
     expect(params.get('sortBy')).toBe('status')
     expect(params.get('sortDirection')).toBe('desc')
     expect(params.get('uniqueIdSearch')).toBe('INT')
+    expect(params.getAll('needsReferenceIds')).toEqual(['10', '11'])
     expect(params.getAll('statuses')).toEqual(['3'])
   })
 
@@ -138,6 +140,7 @@ describe('requirement list view helpers', () => {
         {
           areaIds: [1],
           descriptionSearch: 'secure',
+          needsReferenceIds: [9],
           qualityCharacteristicIds: [5],
           statuses: [3],
           uniqueIdSearch: 'INT',
@@ -147,6 +150,7 @@ describe('requirement list view helpers', () => {
     ).toEqual({
       areaIds: undefined,
       descriptionSearch: 'secure',
+      needsReferenceIds: undefined,
       qualityCharacteristicIds: undefined,
       statuses: undefined,
       uniqueIdSearch: 'INT',
@@ -291,6 +295,7 @@ describe('requirement list view helpers', () => {
     expect(hasActiveFilters({ typeIds: [1] })).toBe(true)
     expect(hasActiveFilters({ qualityCharacteristicIds: [1] })).toBe(true)
     expect(hasActiveFilters({ requiresTesting: ['true'] })).toBe(true)
+    expect(hasActiveFilters({ needsReferenceIds: [10] })).toBe(true)
     expect(hasActiveFilters({ uniqueIdSearch: 'INT' })).toBe(true)
     expect(hasActiveFilters({ descriptionSearch: 'test' })).toBe(true)
     expect(hasActiveFilters({ statuses: [1, 2] })).toBe(true)

@@ -32,6 +32,10 @@ export default function PdfListReportPage() {
   })
 
   const loadReport = useCallback(async () => {
+    setError(null)
+    setModel(null)
+    setLoading(true)
+
     if (!ids) {
       setError(t('noRequirementIds'))
       setLoading(false)
@@ -107,6 +111,7 @@ export default function PdfListReportPage() {
   }, [model, download])
 
   const displayError = error || pdfError
+  const downloadLabel = downloading ? t('generatingPdf') : t('downloadAgain')
 
   return (
     <div
@@ -119,26 +124,33 @@ export default function PdfListReportPage() {
         </div>
       ) : loading ? (
         <p style={{ color: '#64748b' }}>{t('loadingData')}</p>
-      ) : downloading ? (
-        <p style={{ color: '#64748b' }}>{t('generatingPdf')}</p>
       ) : (
         <div>
           <p style={{ color: '#166534', marginBottom: '1rem' }}>
-            {t('pdfDownloadStarted')}
+            {downloading ? t('generatingPdf') : t('pdfDownloadStarted')}
           </p>
           <button
-            onClick={() => void download()}
+            aria-busy={downloading}
+            aria-label={downloadLabel}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#312e81] disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={downloading}
+            onClick={() => {
+              if (downloading) return
+              void download()
+            }}
             style={{
-              padding: '0.5rem 1rem',
               backgroundColor: '#4338ca',
-              color: 'white',
               border: 'none',
               borderRadius: '0.375rem',
-              cursor: 'pointer',
+              color: 'white',
+              cursor: downloading ? 'not-allowed' : 'pointer',
+              minHeight: '44px',
+              minWidth: '44px',
+              padding: '0.5rem 1rem',
             }}
             type="button"
           >
-            {t('downloadAgain')}
+            {downloadLabel}
           </button>
         </div>
       )}

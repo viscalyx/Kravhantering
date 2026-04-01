@@ -14,6 +14,39 @@ import {
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { Database } from '@/lib/db'
 
+type DatabaseReader = Pick<Database, 'select'>
+type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
+
+function parseRequirementAreas(
+  value: string | null,
+): { id: number; name: string }[] {
+  if (!value) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!Array.isArray(parsed)) {
+      return []
+    }
+
+    return parsed.filter(
+      (
+        area,
+      ): area is {
+        id: number
+        name: string
+      } =>
+        typeof area === 'object' &&
+        area !== null &&
+        typeof (area as { id?: unknown }).id === 'number' &&
+        typeof (area as { name?: unknown }).name === 'string',
+    )
+  } catch {
+    return []
+  }
+}
+
 export async function listPackages(db: Database) {
   const rows = await db
     .select({
@@ -44,7 +77,7 @@ export async function listPackages(db: Database) {
       ),
       areaPairs: sql<
         string | null
-      >`GROUP_CONCAT(DISTINCT req_area.id || '::' || req_area.name)`.as(
+      >`json_group_array(DISTINCT CASE WHEN req_area.id IS NOT NULL THEN json_object('id', req_area.id, 'name', req_area.name) END)`.as(
         'area_pairs',
       ),
     })
@@ -70,21 +103,9 @@ export async function listPackages(db: Database) {
     .orderBy(requirementPackages.name)
 
   return rows.map(row => {
-    const requirementAreas = row.areaPairs
-      ? row.areaPairs
-          .split(',')
-          .map((pair: string) => {
-            const sep = pair.indexOf('::')
-            return sep === -1
-              ? null
-              : { id: Number(pair.slice(0, sep)), name: pair.slice(sep + 2) }
-          })
-          .filter(
-            (
-              a: { id: number; name: string } | null,
-            ): a is { id: number; name: string } => a !== null && a.id > 0,
-          )
-      : []
+    const requirementAreas = parseRequirementAreas(row.areaPairs).filter(
+      area => area.id > 0,
+    )
 
     return {
       id: row.id,
@@ -191,13 +212,42 @@ export async function updatePackage(
 }
 
 export async function deletePackage(db: Database, id: number) {
-  await db
-    .delete(packageNeedsReferences)
-    .where(eq(packageNeedsReferences.packageId, id))
-  await db
-    .delete(requirementPackageItems)
-    .where(eq(requirementPackageItems.packageId, id))
-  await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
+  const sessionName = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
+
+  if (sessionName === 'BetterSQLiteSession') {
+    ;(
+      db as unknown as {
+        transaction: (callback: (tx: Pick<Database, 'delete'>) => void) => void
+      }
+    ).transaction(tx => {
+      tx.delete(requirementPackageItems)
+        .where(eq(requirementPackageItems.packageId, id))
+        .run()
+      tx.delete(packageNeedsReferences)
+        .where(eq(packageNeedsReferences.packageId, id))
+        .run()
+      tx.delete(requirementPackages).where(eq(requirementPackages.id, id)).run()
+    })
+    return
+  }
+
+  await db.transaction(async tx => {
+    await tx
+      .delete(requirementPackageItems)
+      .where(eq(requirementPackageItems.packageId, id))
+    await tx
+      .delete(packageNeedsReferences)
+      .where(eq(packageNeedsReferences.packageId, id))
+    await tx.delete(requirementPackages).where(eq(requirementPackages.id, id))
+  })
 }
 
 export async function getPublishedVersionIdForRequirement(
@@ -219,7 +269,7 @@ export async function getPublishedVersionIdForRequirement(
 }
 
 export async function listPackageNeedsReferences(
-  db: Database,
+  db: DatabaseReader,
   packageId: number,
 ): Promise<{ id: number; text: string }[]> {
   return db
@@ -232,11 +282,42 @@ export async function listPackageNeedsReferences(
     .orderBy(packageNeedsReferences.text)
 }
 
+export async function getPackageNeedsReferenceById(
+  db: DatabaseReader,
+  packageId: number,
+  id: number,
+): Promise<{ id: number } | null> {
+  const [needsReference] = await db
+    .select({ id: packageNeedsReferences.id })
+    .from(packageNeedsReferences)
+    .where(
+      and(
+        eq(packageNeedsReferences.id, id),
+        eq(packageNeedsReferences.packageId, packageId),
+      ),
+    )
+    .limit(1)
+
+  return needsReference ?? null
+}
+
 export async function getOrCreatePackageNeedsReference(
-  db: Database,
+  db: DatabaseWriter,
   packageId: number,
   text: string,
 ): Promise<number> {
+  const [created] = await db
+    .insert(packageNeedsReferences)
+    .values({ packageId, text })
+    .onConflictDoNothing({
+      target: [packageNeedsReferences.packageId, packageNeedsReferences.text],
+    })
+    .returning({ id: packageNeedsReferences.id })
+
+  if (created) {
+    return created.id
+  }
+
   const existing = await db
     .select({ id: packageNeedsReferences.id })
     .from(packageNeedsReferences)
@@ -247,16 +328,16 @@ export async function getOrCreatePackageNeedsReference(
       ),
     )
     .limit(1)
-  if (existing[0]) return existing[0].id
-  const [created] = await db
-    .insert(packageNeedsReferences)
-    .values({ packageId, text })
-    .returning({ id: packageNeedsReferences.id })
-  return created.id
+
+  if (!existing[0]) {
+    throw new Error('Failed to resolve package needs reference')
+  }
+
+  return existing[0].id
 }
 
 export async function linkRequirementsToPackage(
-  db: Database,
+  db: Pick<Database, 'insert'>,
   packageId: number,
   items: {
     requirementId: number
@@ -274,7 +355,7 @@ export async function linkRequirementsToPackage(
 }
 
 export async function unlinkRequirementsFromPackage(
-  db: Database,
+  db: Pick<Database, 'delete'>,
   packageId: number,
   requirementIds: number[],
 ) {
@@ -291,7 +372,7 @@ export async function unlinkRequirementsFromPackage(
   return deleted.length
 }
 
-export async function listPackageItems(db: Database, packageId: number) {
+export async function listPackageItems(db: DatabaseReader, packageId: number) {
   const rows = await db
     .select({
       id: requirements.id,

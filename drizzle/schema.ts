@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm'
 import {
+  foreignKey,
   index,
   integer,
   primaryKey,
@@ -503,6 +504,10 @@ export const packageNeedsReferences = sqliteTable(
       .$defaultFn(() => new Date().toISOString()),
   },
   table => [
+    uniqueIndex('uq_package_needs_references_package_id_id').on(
+      table.packageId,
+      table.id,
+    ),
     uniqueIndex('uq_package_needs_references_package_text').on(
       table.packageId,
       table.text,
@@ -536,9 +541,7 @@ export const requirementPackageItems = sqliteTable(
     requirementVersionId: integer('requirement_version_id')
       .notNull()
       .references(() => requirementVersions.id),
-    needsReferenceId: integer('needs_reference_id').references(
-      () => packageNeedsReferences.id,
-    ),
+    needsReferenceId: integer('needs_reference_id'),
     unused1: text('unused_1'),
     createdAt: text('created_at')
       .notNull()
@@ -555,6 +558,14 @@ export const requirementPackageItems = sqliteTable(
       table.packageId,
       table.requirementId,
     ),
+    foreignKey({
+      columns: [table.packageId, table.needsReferenceId],
+      foreignColumns: [
+        packageNeedsReferences.packageId,
+        packageNeedsReferences.id,
+      ],
+      name: 'fk_requirement_package_items_requirement_package_id_needs_reference_id',
+    }),
   ],
 )
 
@@ -574,8 +585,11 @@ export const requirementPackageItemsRelations = relations(
       references: [requirementVersions.id],
     }),
     needsReference: one(packageNeedsReferences, {
-      fields: [requirementPackageItems.needsReferenceId],
-      references: [packageNeedsReferences.id],
+      fields: [
+        requirementPackageItems.packageId,
+        requirementPackageItems.needsReferenceId,
+      ],
+      references: [packageNeedsReferences.packageId, packageNeedsReferences.id],
     }),
   }),
 )
