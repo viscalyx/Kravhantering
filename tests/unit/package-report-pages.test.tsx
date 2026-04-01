@@ -184,7 +184,7 @@ describe('requirement package report pages', () => {
   })
 
   it('clears previous pdf errors when ids become valid', async () => {
-    fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }])
+    fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
     currentSlug = 'pkg/with slash'
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -202,11 +202,14 @@ describe('requirement package report pages', () => {
 
     await screen.findByText('reports.errorTitle')
 
-    currentIds = '1'
+    currentIds = ' 1, 2 '
     rerender(<PdfListReportPage />)
 
     await waitFor(() => {
-      expect(fetchMultipleRequirementsMock).toHaveBeenCalledWith(['1'], 'en')
+      expect(fetchMultipleRequirementsMock).toHaveBeenCalledWith(
+        ['1', '2'],
+        'en',
+      )
     })
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/requirement-packages/pkg%2F' + 'with%20slash',
@@ -217,6 +220,64 @@ describe('requirement package report pages', () => {
 
     expect(downloadMock).toHaveBeenCalled()
     expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()
+  })
+
+  it('extracts readable package error details from JSON responses on the pdf page', async () => {
+    currentIds = '1'
+    currentSlug = 'pkg/with slash'
+    fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }])
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => JSON.stringify({ error: 'Package missing' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<PdfListReportPage />)
+
+    expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-packages/pkg%2F' + 'with%20slash',
+    )
+    expect(
+      screen.getByText('Package fetch failed (500): Package missing'),
+    ).toBeInTheDocument()
+  })
+
+  it('ignores stale pdf responses when a newer request finishes first', async () => {
+    const firstRequest = createDeferred<{ id: number }[]>()
+    const secondRequest = createDeferred<{ id: number }[]>()
+
+    fetchMultipleRequirementsMock
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => secondRequest.promise)
+    buildListReportMock.mockImplementation(
+      (requirements: { id: number }[]) => ({
+        title: `Report ${requirements[0]?.id}`,
+      }),
+    )
+
+    currentIds = '1'
+    const { rerender } = render(<PdfListReportPage />)
+
+    currentIds = '2'
+    rerender(<PdfListReportPage />)
+
+    secondRequest.resolve([{ id: 2 }])
+    await waitFor(() => {
+      expect(buildListReportMock).toHaveBeenCalledWith(
+        [{ id: 2 }],
+        'en',
+        undefined,
+      )
+    })
+    await waitFor(() => expect(downloadMock).toHaveBeenCalledTimes(1))
+
+    firstRequest.resolve([{ id: 1 }])
+    await waitFor(() => {
+      expect(buildListReportMock).toHaveBeenCalledTimes(1)
+      expect(downloadMock).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('renders the pdf retry button with an accessible loading state', async () => {

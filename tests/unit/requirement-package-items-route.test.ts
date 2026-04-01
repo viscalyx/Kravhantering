@@ -210,4 +210,28 @@ describe('requirement-packages/[id]/items route', () => {
     })
     expect(mocks.unlinkRequirementsFromPackage).not.toHaveBeenCalled()
   })
+
+  it('unlinks requirement items for valid delete payloads', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          requirementIds: [1, 2],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'DELETE',
+      },
+    )
+
+    const response = await DELETE(request, makeParams('pkg'))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledTimes(1)
+    expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      [1, 2],
+    )
+  })
 })

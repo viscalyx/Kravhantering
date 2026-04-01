@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
+import { extractErrorDetails } from '@/lib/reports/extract-error-details'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
 
@@ -15,28 +16,6 @@ interface PackageReportResponse {
   name: string
   responsibilityArea: { nameSv: string; nameEn: string } | null
   uniqueId: string
-}
-
-function extractErrorDetails(rawDetails: string): string {
-  if (!rawDetails) {
-    return ''
-  }
-
-  try {
-    const parsed = JSON.parse(rawDetails) as unknown
-    if (typeof parsed === 'object' && parsed !== null) {
-      const details =
-        (parsed as { error?: unknown }).error ??
-        (parsed as { message?: unknown }).message
-      if (typeof details === 'string' && details.trim()) {
-        return details.trim()
-      }
-    }
-  } catch {
-    // Fall through to the raw response text when the body is not JSON.
-  }
-
-  return rawDetails
 }
 
 export default function PrintListReportPage() {

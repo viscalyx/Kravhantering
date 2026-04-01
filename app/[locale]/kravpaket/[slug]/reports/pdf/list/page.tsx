@@ -2,11 +2,20 @@
 
 import { useParams, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
+import { extractErrorDetails } from '@/lib/reports/extract-error-details'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
+
+interface PackageReportResponse {
+  businessNeedsReference: string | null
+  implementationType: { nameSv: string; nameEn: string } | null
+  name: string
+  responsibilityArea: { nameSv: string; nameEn: string } | null
+  uniqueId: string
+}
 
 export default function PdfListReportPage() {
   const searchParams = useSearchParams()
@@ -16,10 +25,14 @@ export default function PdfListReportPage() {
   const [model, setModel] = useState<ReportModel | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const latestRequestRef = useRef(0)
+  const isMountedRef = useRef(true)
 
   const ids = searchParams.get('ids')
   const slug = typeof params.slug === 'string' ? params.slug : null
   const [filename, setFilename] = useState('list-report.pdf')
+  const tRef = useRef(t)
+  tRef.current = t
 
   const {
     download,
@@ -32,19 +45,29 @@ export default function PdfListReportPage() {
   })
 
   const loadReport = useCallback(async () => {
-    setError(null)
-    setModel(null)
-    setLoading(true)
+    const requestId = ++latestRequestRef.current
+    const isLatestRequest = () =>
+      isMountedRef.current && latestRequestRef.current === requestId
+
+    if (isLatestRequest()) {
+      setError(null)
+      setModel(null)
+      setLoading(true)
+    }
 
     if (!ids) {
-      setError(t('noRequirementIds'))
-      setLoading(false)
+      if (isLatestRequest()) {
+        setError(tRef.current('noRequirementIds'))
+        setLoading(false)
+      }
       return
     }
     try {
-      const idList = ids.split(',').filter(Boolean)
+      const idList = ids.replace(/\s+/g, '').split(',').filter(Boolean)
       if (idList.length === 0) {
-        setError(t('noRequirementIds'))
+        if (isLatestRequest()) {
+          setError(tRef.current('noRequirementIds'))
+        }
         return
       }
       const [requirements, pkgRes] = await Promise.all([
@@ -53,31 +76,34 @@ export default function PdfListReportPage() {
           ? fetch(`/api/requirement-packages/${encodeURIComponent(slug)}`)
           : Promise.resolve(null),
       ])
+      if (!isLatestRequest()) {
+        return
+      }
       if (slug && pkgRes && !pkgRes.ok) {
-        const details = (await pkgRes.text()).trim()
+        const details = extractErrorDetails((await pkgRes.text()).trim())
+        if (!isLatestRequest()) {
+          return
+        }
         throw new Error(
           details
-            ? t('packageFetchFailedWithDetails', {
+            ? tRef.current('packageFetchFailedWithDetails', {
                 details,
                 status: pkgRes.status,
               })
-            : t('packageFetchFailed', { status: pkgRes.status }),
+            : tRef.current('packageFetchFailed', { status: pkgRes.status }),
         )
       }
       const pkg = pkgRes
-        ? ((await pkgRes.json()) as {
-            name: string
-            uniqueId: string
-            responsibilityArea: { nameSv: string; nameEn: string } | null
-            implementationType: { nameSv: string; nameEn: string } | null
-            businessNeedsReference: string | null
-          })
+        ? ((await pkgRes.json()) as PackageReportResponse)
         : null
+      if (!isLatestRequest()) {
+        return
+      }
       const pickName = (obj: { nameSv: string; nameEn: string } | null) =>
         obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
       const now = new Date()
       const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}`
-      setFilename(t('listPdfFilename', { stamp }))
+      setFilename(tRef.current('listPdfFilename', { stamp }))
       setModel(
         buildListReport(
           requirements,
@@ -94,15 +120,32 @@ export default function PdfListReportPage() {
         ),
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('failedToLoadReport'))
+      if (!isLatestRequest()) {
+        return
+      }
+      setError(
+        err instanceof Error ? err.message : tRef.current('failedToLoadReport'),
+      )
     } finally {
-      setLoading(false)
+      if (isLatestRequest()) {
+        setLoading(false)
+      }
     }
-  }, [ids, locale, slug, t])
+  }, [ids, locale, slug])
 
   useEffect(() => {
-    loadReport()
+    void loadReport()
+    return () => {
+      latestRequestRef.current += 1
+    }
   }, [loadReport])
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      latestRequestRef.current += 1
+    }
+  }, [])
 
   useEffect(() => {
     if (model) {
