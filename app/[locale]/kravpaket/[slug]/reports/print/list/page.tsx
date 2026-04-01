@@ -120,6 +120,8 @@ export default function PrintListReportPage() {
   }, [loadReport])
 
   useEffect(() => {
+    isMountedRef.current = true
+
     return () => {
       isMountedRef.current = false
       latestRequestRef.current += 1

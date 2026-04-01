@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const confirmMock = vi.fn()
@@ -96,6 +97,21 @@ describe('KravpaketClient', () => {
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
+    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Type')).toBeInTheDocument()
+  })
+
+  it('fetches and displays packages after strict-mode effect replays', async () => {
+    render(
+      <StrictMode>
+        <KravpaketClient />
+      </StrictMode>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
   })

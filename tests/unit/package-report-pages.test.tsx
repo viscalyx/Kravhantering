@@ -95,6 +95,19 @@ describe('requirement package report pages', () => {
     ).toBeInTheDocument()
   })
 
+  it('marks the pdf loading state while the report is being fetched', () => {
+    currentIds = '1'
+    fetchMultipleRequirementsMock.mockReturnValue(new Promise(() => {}))
+
+    const { container } = render(<PdfListReportPage />)
+
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="report state"][data-developer-mode-value="report-pdf:loading"]',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('clears previous print errors, trims ids, and marks the renderer state', async () => {
     fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
 
@@ -183,7 +196,7 @@ describe('requirement package report pages', () => {
     ).toBeInTheDocument()
   })
 
-  it('clears previous pdf errors when ids become valid', async () => {
+  it('clears previous pdf errors, trims ids, and marks the ready state', async () => {
     fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
     currentSlug = 'pkg/with slash'
     const fetchMock = vi.fn().mockResolvedValue({
@@ -198,9 +211,14 @@ describe('requirement package report pages', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const { rerender } = render(<PdfListReportPage />)
+    const { container, rerender } = render(<PdfListReportPage />)
 
     await screen.findByText('reports.errorTitle')
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="report state"][data-developer-mode-value="report-pdf:error"]',
+      ),
+    ).toBeInTheDocument()
 
     currentIds = ' 1, 2 '
     rerender(<PdfListReportPage />)
@@ -217,6 +235,11 @@ describe('requirement package report pages', () => {
     await waitFor(() => {
       expect(screen.getByText('reports.pdfDownloadStarted')).toBeInTheDocument()
     })
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="report state"][data-developer-mode-value="report-pdf:ready"]',
+      ),
+    ).toBeInTheDocument()
 
     expect(downloadMock).toHaveBeenCalled()
     expect(screen.queryByText('reports.errorTitle')).not.toBeInTheDocument()

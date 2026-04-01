@@ -23,9 +23,9 @@ for (const viewport of viewports) {
       await expect(
         page.getByRole('heading', { level: 2, name: 'Redigera kravpaket' }),
       ).toBeVisible()
-      await expect(
-        page.getByRole('textbox', { name: /^Namn/ }),
-      ).toHaveValue('Behörighet och IAM')
+      await expect(page.getByRole('textbox', { name: /^Namn/ })).toHaveValue(
+        'Behörighet och IAM',
+      )
     })
   })
 }

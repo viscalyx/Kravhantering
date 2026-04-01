@@ -80,6 +80,8 @@ The emitted attributes are:
 - Requirement package list print pages expose `report state` markers with
   values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
+- Requirement package list PDF pages expose `report state` markers with values
+  `report-pdf:error`, `report-pdf:loading`, and `report-pdf:ready`.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 

@@ -155,6 +155,8 @@ export default function KravpaketClient() {
   }, [])
 
   useEffect(() => {
+    isMountedRef.current = true
+
     return () => {
       isMountedRef.current = false
       if (spinnerTimerRef.current) {
@@ -165,8 +167,8 @@ export default function KravpaketClient() {
   }, [])
 
   useEffect(() => {
-    fetchPackages()
-    fetchTaxonomies()
+    void fetchPackages()
+    void fetchTaxonomies()
   }, [fetchPackages, fetchTaxonomies])
 
   const handleSubmit = async (e: React.FormEvent) => {

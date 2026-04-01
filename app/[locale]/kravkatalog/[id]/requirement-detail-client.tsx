@@ -977,7 +977,7 @@ export default function RequirementDetailClient({
                     </div>
                     {helpPanel('selectPackageHelp', 'atp-package')}
                     <select
-                      className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                      className="w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                       id="atp-package"
                       onChange={e => void handlePackageSelect(e.target.value)}
                       value={addToPackageId}
@@ -1002,7 +1002,7 @@ export default function RequirementDetailClient({
                     </div>
                     {helpPanel('needsReferenceHelp', 'atp-needs-ref')}
                     <select
-                      className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                      className="w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                       id="atp-needs-ref"
                       onChange={e => {
                         const v = e.target.value
@@ -1047,7 +1047,7 @@ export default function RequirementDetailClient({
                         </div>
                         {helpPanel('addNeedsRefTextHelp', 'atp-needs-ref-text')}
                         <textarea
-                          className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
+                          className="w-full resize-none rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
                           id="atp-needs-ref-text"
                           onChange={e =>
                             setAddToPackageNeedsRefText(e.target.value)

@@ -1159,6 +1159,56 @@ describe('RequirementDetailClient', () => {
     expect(cancelButton.className).toContain('dark:hover:text-secondary-100')
   })
 
+  it('adds explicit dark-mode border and text classes to add-to-package form fields', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const packageSelect = await screen.findByRole('combobox', {
+      name: /package\.selectPackage/,
+    })
+    const needsReferenceSelect = screen.getByRole('combobox', {
+      name: /package\.needsReferenceLabel/,
+    })
+
+    await userEvent.selectOptions(needsReferenceSelect, 'new')
+
+    const needsReferenceText = screen.getByRole('textbox', {
+      name: /package\.addNeedsRefTextLabel/,
+    })
+
+    for (const field of [
+      packageSelect,
+      needsReferenceSelect,
+      needsReferenceText,
+    ]) {
+      expect(field.className).toContain('border-secondary-200')
+      expect(field.className).toContain('text-secondary-900')
+      expect(field.className).toContain('dark:border-secondary-700')
+      expect(field.className).toContain('dark:text-secondary-100')
+    }
+  })
+
   it('ignores stale needs-reference responses when switching packages quickly', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {

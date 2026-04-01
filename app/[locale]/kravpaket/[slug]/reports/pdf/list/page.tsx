@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
+import { devMarker } from '@/lib/developer-mode-markers'
 import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
 import { extractErrorDetails } from '@/lib/reports/extract-error-details'
 import { buildListReport } from '@/lib/reports/templates/list-template'
@@ -31,6 +32,7 @@ export default function PdfListReportPage() {
   const ids = searchParams.get('ids')
   const slug = typeof params.slug === 'string' ? params.slug : null
   const [filename, setFilename] = useState('list-report.pdf')
+  const reportContext = 'requirement package list report'
   const tRef = useRef(t)
   tRef.current = t
 
@@ -141,6 +143,8 @@ export default function PdfListReportPage() {
   }, [loadReport])
 
   useEffect(() => {
+    isMountedRef.current = true
+
     return () => {
       isMountedRef.current = false
       latestRequestRef.current += 1
@@ -161,14 +165,39 @@ export default function PdfListReportPage() {
       style={{ padding: '2rem', textAlign: 'center', fontFamily: 'sans-serif' }}
     >
       {displayError ? (
-        <div style={{ color: '#991b1b' }}>
+        <div
+          {...devMarker({
+            context: reportContext,
+            name: 'report state',
+            priority: 340,
+            value: 'report-pdf:error',
+          })}
+          style={{ color: '#991b1b' }}
+        >
           <h2>{t('errorTitle')}</h2>
           <p>{displayError}</p>
         </div>
       ) : loading ? (
-        <p style={{ color: '#64748b' }}>{t('loadingData')}</p>
+        <p
+          {...devMarker({
+            context: reportContext,
+            name: 'report state',
+            priority: 340,
+            value: 'report-pdf:loading',
+          })}
+          style={{ color: '#64748b' }}
+        >
+          {t('loadingData')}
+        </p>
       ) : (
-        <div>
+        <div
+          {...devMarker({
+            context: reportContext,
+            name: 'report state',
+            priority: 340,
+            value: 'report-pdf:ready',
+          })}
+        >
           <p style={{ color: '#166534', marginBottom: '1rem' }}>
             {downloading ? t('generatingPdf') : t('pdfDownloadStarted')}
           </p>
