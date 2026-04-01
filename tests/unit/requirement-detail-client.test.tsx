@@ -1127,6 +1127,38 @@ describe('RequirementDetailClient', () => {
     expect(screen.getByText('package.selectPackageHelp')).toBeInTheDocument()
   })
 
+  it('keeps the add-to-package cancel button visible on dark-mode hover', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const cancelButton = await screen.findByRole('button', { name: 'Cancel' })
+
+    expect(cancelButton.className).toContain('dark:hover:bg-secondary-800')
+    expect(cancelButton.className).toContain('dark:hover:border-secondary-600')
+    expect(cancelButton.className).toContain('dark:hover:text-secondary-100')
+  })
+
   it('ignores stale needs-reference responses when switching packages quickly', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {

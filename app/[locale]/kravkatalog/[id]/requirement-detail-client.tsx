@@ -1076,7 +1076,7 @@ export default function RequirementDetailClient({
                         : tp('addToPackage')}
                     </button>
                     <button
-                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
+                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all dark:hover:bg-secondary-800 dark:hover:border-secondary-600 dark:hover:text-secondary-100"
                       onClick={closeAddToPackageDialog}
                       type="button"
                     >
