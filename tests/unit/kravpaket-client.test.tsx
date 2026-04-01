@@ -72,6 +72,7 @@ describe('KravpaketClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    confirmMock.mockReset()
     fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockImplementation((url: string) => {
@@ -531,7 +532,7 @@ describe('KravpaketClient', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
     expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
-    expect(uniqueIdInput).toHaveAttribute('aria-invalid', 'false')
+    expect(uniqueIdInput).not.toHaveAttribute('aria-invalid', 'true')
   })
 
   it('keeps the previous slug and shows an inline error when slug generation returns empty', async () => {

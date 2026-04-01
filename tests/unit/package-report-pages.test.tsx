@@ -110,6 +110,25 @@ describe('requirement package report pages', () => {
     ).toBeInTheDocument()
   })
 
+  it('marks the pdf error state and clears loading for whitespace-only ids', async () => {
+    currentIds = ' , , '
+    fetchMultipleRequirementsMock.mockResolvedValue([])
+
+    const { container } = render(<PdfListReportPage />)
+
+    expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="report state"][data-developer-mode-value="report-pdf:loading"]',
+      ),
+    ).not.toBeInTheDocument()
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="report state"][data-developer-mode-value="report-pdf:error"]',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('clears previous print errors, trims ids, and marks the renderer state', async () => {
     fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
 

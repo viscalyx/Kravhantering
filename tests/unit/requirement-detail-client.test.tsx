@@ -286,6 +286,7 @@ function setupFetch({
   initialRequirement,
   needsReferencesHandler,
   packages = [],
+  packagesHandler,
   reactivateNextRequirement,
   restoreNextRequirement,
   transitionNextRequirement,
@@ -298,6 +299,7 @@ function setupFetch({
     signal?: AbortSignal,
   ) => Promise<Response> | Response
   packages?: { id: number; name: string }[]
+  packagesHandler?: () => Promise<Response> | Response
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
@@ -368,6 +370,9 @@ function setupFetch({
       }
 
       if (url === '/api/requirement-packages' && method === 'GET') {
+        if (packagesHandler) {
+          return packagesHandler()
+        }
         return response({ packages })
       }
 
@@ -1125,6 +1130,77 @@ describe('RequirementDetailClient', () => {
     )
 
     expect(screen.getByText('package.selectPackageHelp')).toBeInTheDocument()
+  })
+
+  it('shows an inline error when loading packages for the add-to-package dialog fails', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupFetch({
+      initialRequirement: requirement,
+      packagesHandler: () =>
+        response({ error: 'Package lookup failed' }, false),
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'package.loadPackagesFailed: Package lookup failed',
+    )
+    expect(screen.queryByText('package.noPackagesAvailable')).toBeNull()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('renders the add-to-package close button with touch target and focus styles', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const closeButton = await screen.findByRole('button', { name: 'Close' })
+    expect(closeButton.className).toContain('min-h-[44px]')
+    expect(closeButton.className).toContain('min-w-[44px]')
+    expect(closeButton.className).toContain('focus-visible:outline-none')
+    expect(closeButton.className).toContain('focus-visible:ring-2')
+    expect(closeButton.className).toContain('focus-visible:ring-primary-500')
   })
 
   it('keeps the add-to-package cancel button visible on dark-mode hover', async () => {

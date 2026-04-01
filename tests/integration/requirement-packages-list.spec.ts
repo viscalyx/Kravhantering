@@ -54,6 +54,7 @@ for (const viewport of viewports) {
 
       await page.getByRole('button', { name: 'Rensa sökning' }).click()
 
+      await expect(nameFilter).toHaveValue('')
       await expect(
         page.getByRole('link', { name: 'Behörighet och IAM' }),
       ).toBeVisible()
