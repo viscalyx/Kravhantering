@@ -163,20 +163,21 @@ describe('requirement package report pages', () => {
 
   it('extracts readable package error details from JSON responses', async () => {
     currentIds = '1'
-    currentSlug = 'pkg'
+    currentSlug = 'pkg/with slash'
     fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }])
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 500,
-        text: async () => JSON.stringify({ error: 'Package missing' }),
-      }),
-    )
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => JSON.stringify({ error: 'Package missing' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     render(<PrintListReportPage />)
 
     expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-packages/pkg%2F' + 'with%20slash',
+    )
     expect(
       screen.getByText('Package fetch failed (500): Package missing'),
     ).toBeInTheDocument()
@@ -184,6 +185,18 @@ describe('requirement package report pages', () => {
 
   it('clears previous pdf errors when ids become valid', async () => {
     fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }])
+    currentSlug = 'pkg/with slash'
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        businessNeedsReference: null,
+        implementationType: null,
+        name: 'Security package',
+        responsibilityArea: null,
+        uniqueId: 'SECURITY',
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     const { rerender } = render(<PdfListReportPage />)
 
@@ -195,6 +208,9 @@ describe('requirement package report pages', () => {
     await waitFor(() => {
       expect(fetchMultipleRequirementsMock).toHaveBeenCalledWith(['1'], 'en')
     })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/requirement-packages/pkg%2F' + 'with%20slash',
+    )
     await waitFor(() => {
       expect(screen.getByText('reports.pdfDownloadStarted')).toBeInTheDocument()
     })

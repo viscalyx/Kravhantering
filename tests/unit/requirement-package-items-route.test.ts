@@ -143,6 +143,29 @@ describe('requirement-packages/[id]/items route', () => {
     expect(mockDb.transaction).not.toHaveBeenCalled()
   })
 
+  it('rejects duplicate requirementIds before any database work runs', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          requirementIds: [1, 1],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('pkg'))
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error:
+        'requirementIds must be a non-empty array of unique positive integers',
+    })
+    expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
+    expect(mockDb.transaction).not.toHaveBeenCalled()
+  })
+
   it('rejects ambiguous needs-reference payloads', async () => {
     const request = new NextRequest(
       'http://localhost/api/requirement-packages/pkg/items',

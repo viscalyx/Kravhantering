@@ -205,6 +205,8 @@
     "uniqueId": "Kravpaket-ID",
     "uniqueIdPlaceholder": "T.ex. MITT-PAKET",
     "uniqueIdHelp": "Används i URL och som kortidentifierare",
+    "uniqueIdRequired": "Ange ett kravpaket-ID.",
+    "uniqueIdGenerationFailed": "Det gick inte att skapa ett kravpaket-ID från namnet. Ange ett manuellt.",
     "uniqueIdTaken": "Detta Kravpaket-ID används redan",
     "itemCount": "Antal krav",
     "requirementAreas": "Kravområden",

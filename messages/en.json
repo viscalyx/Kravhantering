@@ -205,6 +205,8 @@
     "uniqueId": "Package ID",
     "uniqueIdPlaceholder": "E.g. MY-PACKAGE",
     "uniqueIdHelp": "Used in URL and as short identifier",
+    "uniqueIdRequired": "Enter a package ID.",
+    "uniqueIdGenerationFailed": "Could not generate a package ID from the name. Enter one manually.",
     "uniqueIdTaken": "This Package ID is already taken",
     "itemCount": "Requirements",
     "requirementAreas": "Requirement areas",

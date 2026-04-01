@@ -57,6 +57,12 @@ function parseRequirementIds(
     )
   }
 
+  if (new Set(value as number[]).size !== (value as number[]).length) {
+    return invalidBody(
+      'requirementIds must be a non-empty array of unique positive integers',
+    )
+  }
+
   return { ok: true, value: value as number[] }
 }
 

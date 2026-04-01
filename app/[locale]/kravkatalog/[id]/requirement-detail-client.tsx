@@ -1077,10 +1077,7 @@ export default function RequirementDetailClient({
                     </button>
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
-                      onClick={() => {
-                        setOpenHelp(new Set())
-                        setShowAddToPackage(false)
-                      }}
+                      onClick={closeAddToPackageDialog}
                       type="button"
                     >
                       {tc('cancel')}

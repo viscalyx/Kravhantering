@@ -142,6 +142,8 @@ describe('KravpaketClient', () => {
 
     const areaBadge = await screen.findByRole('link', { name: 'Identity' })
     expect(areaBadge.className).toContain('min-h-[44px]')
+    expect(areaBadge.className).toContain('focus-visible:ring-2')
+    expect(areaBadge.className).toContain('focus-visible:ring-offset-2')
   })
 
   it('does not show spinner immediately while loading', () => {
@@ -351,6 +353,33 @@ describe('KravpaketClient', () => {
     })
     expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
     expect(uniqueIdInput).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('keeps the previous slug and shows an inline error when slug generation returns empty', async () => {
+    render(<KravpaketClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /package\.newPackage/i }),
+    )
+
+    const nameInput = screen.getByRole('textbox', { name: /package\.name/ })
+    const uniqueIdInput = screen.getByRole('textbox', {
+      name: /package\.uniqueId/,
+    })
+
+    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.blur(nameInput)
+    expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
+
+    fireEvent.change(nameInput, { target: { value: 'och i' } })
+    fireEvent.blur(nameInput)
+
+    const slugError = await screen.findByRole('alert')
+    expect(slugError).toHaveTextContent('package.uniqueIdGenerationFailed')
+    expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
   })
 
   it('shows saving state and keeps cancel disabled while submitting', async () => {

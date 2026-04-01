@@ -80,7 +80,7 @@ export default function PrintListReportPage() {
       const [requirements, pkgRes] = await Promise.all([
         fetchMultipleRequirements(idList, locale),
         slug
-          ? fetch(`/api/requirement-packages/${slug}`)
+          ? fetch(`/api/requirement-packages/${encodeURIComponent(slug)}`)
           : Promise.resolve(null),
       ])
       if (!isLatestRequest()) {

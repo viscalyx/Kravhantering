@@ -53,6 +53,7 @@ export default function KravpaketClient() {
   const [loading, setLoading] = useState(true)
   const [showSpinner, setShowSpinner] = useState(false)
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const fetchIdRef = useRef(0)
   const isMountedRef = useRef(true)
   const [showForm, setShowForm] = useState(false)
   const [editPkg, setEditPkg] = useState<Package | null>(null)
@@ -112,25 +113,28 @@ export default function KravpaketClient() {
     )
 
   const fetchPackages = useCallback(async () => {
+    const localFetchId = ++fetchIdRef.current
     setLoading(true)
     if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
     spinnerTimerRef.current = setTimeout(() => {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && localFetchId === fetchIdRef.current) {
         setShowSpinner(true)
       }
     }, 200)
     try {
       const res = await fetch('/api/requirement-packages')
-      if (res.ok && isMountedRef.current)
+      if (res.ok && isMountedRef.current && localFetchId === fetchIdRef.current)
         setPackages(
           ((await res.json()) as { packages?: Package[] }).packages ?? [],
         )
     } finally {
-      if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
-      spinnerTimerRef.current = null
-      if (isMountedRef.current) {
-        setShowSpinner(false)
-        setLoading(false)
+      if (localFetchId === fetchIdRef.current) {
+        if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
+        spinnerTimerRef.current = null
+        if (isMountedRef.current) {
+          setShowSpinner(false)
+          setLoading(false)
+        }
       }
     }
   }, [])
@@ -326,6 +330,10 @@ export default function KravpaketClient() {
                 onBlur={() => {
                   if (!slugEdited && form.name) {
                     const nextUniqueId = generatePackageSlug(form.name)
+                    if (!nextUniqueId) {
+                      setSlugError(t('uniqueIdGenerationFailed'))
+                      return
+                    }
                     if (form.uniqueId !== nextUniqueId) {
                       setSlugError(null)
                       setForm(f => ({
@@ -364,6 +372,7 @@ export default function KravpaketClient() {
                     uniqueId: normalizeSlugInput(e.target.value),
                   }))
                 }}
+                onInvalid={() => setSlugError(t('uniqueIdRequired'))}
                 placeholder={t('uniqueIdPlaceholder')}
                 required
                 value={form.uniqueId}
@@ -563,7 +572,7 @@ export default function KravpaketClient() {
                         <div className="flex flex-wrap gap-1">
                           {pkg.requirementAreas.map(area => (
                             <Link
-                              className="inline-flex min-h-[44px] items-center rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-900/40 border border-primary-200 dark:border-primary-800/60 transition-colors"
+                              className="inline-flex min-h-[44px] items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-primary-800/60 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-900/40 dark:focus-visible:ring-offset-secondary-900"
                               href={`/kravpaket/${pkg.uniqueId}?areaId=${area.id}`}
                               key={area.id}
                             >

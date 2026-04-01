@@ -293,7 +293,10 @@ function setupFetch({
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
   initialRequirement: ReturnType<typeof makeRequirement>
-  needsReferencesHandler?: (packageId: string) => Promise<Response> | Response
+  needsReferencesHandler?: (
+    packageId: string,
+    signal?: AbortSignal,
+  ) => Promise<Response> | Response
   packages?: { id: number; name: string }[]
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
@@ -373,7 +376,10 @@ function setupFetch({
       )
       if (needsReferencesMatch) {
         if (needsReferencesHandler) {
-          return needsReferencesHandler(needsReferencesMatch[1] ?? '')
+          return needsReferencesHandler(
+            needsReferencesMatch[1] ?? '',
+            init?.signal ?? undefined,
+          )
         }
         return response({ needsReferences: [] })
       }
@@ -1134,13 +1140,18 @@ describe('RequirementDetailClient', () => {
     ])
     const firstNeedsReferences = createDeferred<Response>()
     const secondNeedsReferences = createDeferred<Response>()
+    const signals: AbortSignal[] = []
 
     setupFetch({
       initialRequirement: requirement,
-      needsReferencesHandler: packageId =>
-        packageId === '7'
+      needsReferencesHandler: (packageId, signal) => {
+        if (signal) {
+          signals.push(signal)
+        }
+        return packageId === '7'
           ? firstNeedsReferences.promise
-          : secondNeedsReferences.promise,
+          : secondNeedsReferences.promise
+      },
       packages: [
         { id: 7, name: 'IAM Package' },
         { id: 8, name: 'Security Package' },
@@ -1162,6 +1173,12 @@ describe('RequirementDetailClient', () => {
     await userEvent.selectOptions(packageSelect, '7')
     await userEvent.selectOptions(packageSelect, '8')
 
+    await waitFor(() => {
+      expect(signals).toHaveLength(2)
+    })
+    expect(signals[0]?.aborted).toBe(true)
+    expect(signals[1]?.aborted).toBe(false)
+
     secondNeedsReferences.resolve(
       response({ needsReferences: [{ id: 81, text: 'Current ref' }] }),
     )
@@ -1181,6 +1198,61 @@ describe('RequirementDetailClient', () => {
         screen.queryByRole('option', { name: 'Stale ref' }),
       ).not.toBeInTheDocument()
     })
+  })
+
+  it('aborts pending needs-reference requests when cancelling the add-to-package dialog', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const pendingNeedsReferences = createDeferred<Response>()
+    const signals: AbortSignal[] = []
+
+    setupFetch({
+      initialRequirement: requirement,
+      needsReferencesHandler: (_packageId, signal) => {
+        if (signal) {
+          signals.push(signal)
+        }
+        return pendingNeedsReferences.promise
+      },
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', {
+        name: /package\.selectPackage/,
+      }),
+      '7',
+    )
+
+    await waitFor(() => {
+      expect(signals).toHaveLength(1)
+    })
+    expect(signals[0]?.aborted).toBe(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(signals[0]?.aborted).toBe(true)
+
+    pendingNeedsReferences.resolve(response({ needsReferences: [] }))
   })
 
   it('closes the add-to-package dialog when Escape is pressed inside it', async () => {
