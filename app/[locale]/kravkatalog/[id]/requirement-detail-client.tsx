@@ -175,21 +175,58 @@ export default function RequirementDetailClient({
   const [addToPackageError, setAddToPackageError] = useState<string | null>(
     null,
   )
+  const addToPackageDialogSessionRef = useRef(0)
+  const addToPackageSubmitAbortRef = useRef<AbortController | null>(null)
+  const addToPackageCloseTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
   const addToPackageNeedsRefsRequestIdRef = useRef(0)
   const addToPackageNeedsRefsAbortRef = useRef<AbortController | null>(null)
 
+  const clearAddToPackageCloseTimer = useCallback(() => {
+    if (addToPackageCloseTimerRef.current) {
+      clearTimeout(addToPackageCloseTimerRef.current)
+      addToPackageCloseTimerRef.current = null
+    }
+  }, [])
+
+  const resetAddToPackageSubmitSession = useCallback(() => {
+    addToPackageDialogSessionRef.current += 1
+    addToPackageSubmitAbortRef.current?.abort()
+    addToPackageSubmitAbortRef.current = null
+    clearAddToPackageCloseTimer()
+  }, [clearAddToPackageCloseTimer])
+
+  const isActiveAddToPackageSession = useCallback(
+    (sessionId: number, signal?: AbortSignal) =>
+      !signal?.aborted && addToPackageDialogSessionRef.current === sessionId,
+    [],
+  )
+
   const closeAddToPackageDialog = useCallback(() => {
+    resetAddToPackageSubmitSession()
     addToPackageNeedsRefsAbortRef.current?.abort()
     addToPackageNeedsRefsAbortRef.current = null
     setOpenHelp(new Set())
     setShowAddToPackage(false)
-  }, [])
+  }, [resetAddToPackageSubmitSession])
+
+  const handleModalDocumentKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'Escape') {
+        e.stopPropagation()
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     return () => {
+      addToPackageSubmitAbortRef.current?.abort()
       addToPackageNeedsRefsAbortRef.current?.abort()
+      clearAddToPackageCloseTimer()
     }
-  }, [])
+  }, [clearAddToPackageCloseTimer])
 
   const handleVersionSelect = useCallback(
     (versionNumber: number) => {
@@ -466,7 +503,7 @@ export default function RequirementDetailClient({
           <div
             className="relative mt-16 w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+            onKeyDown={handleModalDocumentKeyDown}
             role="document"
           >
             {loadingContent}
@@ -502,7 +539,7 @@ export default function RequirementDetailClient({
           <div
             className="relative mt-16 w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+            onKeyDown={handleModalDocumentKeyDown}
             role="document"
           >
             {emptyContent}
@@ -842,6 +879,7 @@ export default function RequirementDetailClient({
   }
 
   const handleOpenAddToPackage = async () => {
+    resetAddToPackageSubmitSession()
     addToPackageNeedsRefsAbortRef.current?.abort()
     addToPackageNeedsRefsAbortRef.current = null
     addToPackageNeedsRefsRequestIdRef.current += 1
@@ -962,6 +1000,11 @@ export default function RequirementDetailClient({
   const handleSubmitAddToPackage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!addToPackageId || !req) return
+    const sessionId = addToPackageDialogSessionRef.current
+    addToPackageSubmitAbortRef.current?.abort()
+    const controller = new AbortController()
+    addToPackageSubmitAbortRef.current = controller
+    clearAddToPackageCloseTimer()
     setAddToPackageStatus('loading')
     setAddToPackageError(null)
     const body: {
@@ -987,19 +1030,42 @@ export default function RequirementDetailClient({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
+          signal: controller.signal,
         },
       )
+      if (!isActiveAddToPackageSession(sessionId, controller.signal)) {
+        return
+      }
       if (res.ok) {
         setAddToPackageStatus('success')
-        setTimeout(() => closeAddToPackageDialog(), 1200)
+        addToPackageCloseTimerRef.current = setTimeout(() => {
+          if (addToPackageDialogSessionRef.current === sessionId) {
+            closeAddToPackageDialog()
+          }
+        }, 1200)
       } else {
-        const data = (await res.json()) as { error?: string }
-        setAddToPackageError(data.error ?? tc('error'))
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        if (!isActiveAddToPackageSession(sessionId, controller.signal)) {
+          return
+        }
+        setAddToPackageError(data?.error ?? tc('error'))
         setAddToPackageStatus('error')
       }
-    } catch {
+    } catch (error) {
+      if ((error as { name?: string }).name === 'AbortError') {
+        return
+      }
+      if (!isActiveAddToPackageSession(sessionId, controller.signal)) {
+        return
+      }
       setAddToPackageError(tc('error'))
       setAddToPackageStatus('error')
+    } finally {
+      if (addToPackageSubmitAbortRef.current === controller) {
+        addToPackageSubmitAbortRef.current = null
+      }
     }
   }
 
@@ -1029,11 +1095,7 @@ export default function RequirementDetailClient({
                   exit={{ opacity: 0, scale: 0.96 }}
                   initial={{ opacity: 0, scale: 0.96 }}
                   onClick={e => e.stopPropagation()}
-                  onKeyDown={e => {
-                    if (e.key !== 'Escape') {
-                      e.stopPropagation()
-                    }
-                  }}
+                  onKeyDown={handleModalDocumentKeyDown}
                   role="document"
                   transition={{ duration: 0.16, ease: 'easeOut' }}
                 >
@@ -2030,12 +2092,12 @@ export default function RequirementDetailClient({
           <div
             className="relative mt-8 mb-8 w-full max-w-5xl max-h-[calc(100vh-4rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+            onKeyDown={handleModalDocumentKeyDown}
             role="document"
           >
             <button
               aria-label={tc('close')}
-              className="sticky top-0 float-right mt-4 mr-4 z-10 p-2 rounded-full bg-secondary-100 dark:bg-secondary-800 hover:bg-secondary-200 dark:hover:bg-secondary-700 transition-colors"
+              className="sticky top-0 z-10 float-right mt-4 mr-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-secondary-100 p-2 transition-colors hover:bg-secondary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-secondary-800 dark:hover:bg-secondary-700 dark:focus-visible:ring-offset-secondary-900"
               onClick={onClose}
               type="button"
             >

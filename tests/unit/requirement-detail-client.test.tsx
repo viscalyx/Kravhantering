@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps, ForwardedRef, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -281,6 +288,7 @@ function createDeferred<T>() {
 }
 
 function setupFetch({
+  addToPackageHandler,
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
   initialRequirement,
@@ -291,6 +299,10 @@ function setupFetch({
   restoreNextRequirement,
   transitionNextRequirement,
 }: {
+  addToPackageHandler?: (
+    packageId: string,
+    init?: RequestInit,
+  ) => Promise<Response> | Response
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
   initialRequirement: ReturnType<typeof makeRequirement>
@@ -389,10 +401,13 @@ function setupFetch({
         return response({ needsReferences: [] })
       }
 
-      if (
-        method === 'POST' &&
-        /^\/api\/requirement-packages\/[^/]+\/items$/.test(url)
-      ) {
+      const addToPackageMatch = url.match(
+        /^\/api\/requirement-packages\/([^/]+)\/items$/,
+      )
+      if (method === 'POST' && addToPackageMatch) {
+        if (addToPackageHandler) {
+          return addToPackageHandler(addToPackageMatch[1] ?? '', init)
+        }
         return response({})
       }
 
@@ -583,6 +598,57 @@ describe('RequirementDetailClient', () => {
 
     fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('closes the full-page detail modal when Escape is pressed inside it', async () => {
+    const onClose = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ onClose })
+
+    await screen.findByText('Published requirement')
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Close' }), {
+      key: 'Escape',
+    })
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('renders the full-page detail close button with touch target and focus styles', async () => {
+    const onClose = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ onClose })
+
+    await screen.findByText('Published requirement')
+
+    const closeButton = screen.getByRole('button', { name: 'Close' })
+    expect(closeButton.className).toContain('min-h-[44px]')
+    expect(closeButton.className).toContain('min-w-[44px]')
+    expect(closeButton.className).toContain('focus:outline-none')
+    expect(closeButton.className).toContain('focus-visible:ring-2')
+    expect(closeButton.className).toContain('focus-visible:ring-offset-2')
   })
 
   it('renders the published display version, switches history views, and restores an older version', async () => {
@@ -1496,6 +1562,95 @@ describe('RequirementDetailClient', () => {
     expect(signals[0]?.aborted).toBe(true)
 
     pendingNeedsReferences.resolve(response({ needsReferences: [] }))
+  })
+
+  it('ignores stale add-to-package submit responses after the dialog is reopened', async () => {
+    try {
+      const requirement = makeRequirement([
+        makeVersion(1, {
+          description: 'Published requirement',
+          publishedAt: '2026-03-01',
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+        }),
+      ])
+      const pendingAddToPackage = createDeferred<Response>()
+      const submitSignals: AbortSignal[] = []
+
+      setupFetch({
+        addToPackageHandler: (_packageId, init) => {
+          if (init?.signal) {
+            submitSignals.push(init.signal)
+          }
+          return pendingAddToPackage.promise
+        },
+        initialRequirement: requirement,
+        packages: [{ id: 7, name: 'IAM Package' }],
+      })
+      renderSubject({ inline: true })
+
+      await screen.findByText('Published requirement')
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'package.addToPackage',
+        }),
+      )
+
+      let dialog = await screen.findByRole('dialog')
+      await userEvent.selectOptions(
+        within(dialog).getByRole('combobox', {
+          name: /package\.selectPackage/,
+        }),
+        '7',
+      )
+      await userEvent.click(
+        within(dialog).getByRole('button', {
+          name: 'package.addToPackage',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(submitSignals).toHaveLength(1)
+      })
+      expect(submitSignals[0]?.aborted).toBe(false)
+
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: 'Cancel' }),
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+      expect(submitSignals[0]?.aborted).toBe(true)
+
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'package.addToPackage',
+        }),
+      )
+      dialog = await screen.findByRole('dialog')
+
+      vi.useFakeTimers()
+      await act(async () => {
+        pendingAddToPackage.resolve(response({}))
+        await Promise.resolve()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1200)
+      })
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('combobox', {
+          name: /package\.selectPackage/,
+        }),
+      ).toHaveValue('')
+      expect(screen.queryByText('package.addToPackageSuccess')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('closes the add-to-package dialog when Escape is pressed inside it', async () => {
