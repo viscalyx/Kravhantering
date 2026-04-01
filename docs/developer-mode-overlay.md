@@ -71,6 +71,10 @@ The emitted attributes are:
 - Requirement package create/edit forms continue to use the `crud form` marker;
   their package-field help toggles are part of that same form surface rather
   than separate developer-mode markers.
+- Requirement package list filtering exposes `packages > text field: name filter`
+  on the Name search input above the table, while the package create trigger
+  keeps the existing `packages > create button` marker when it shares that
+  toolbar row on wide screens.
 - Requirement package detail header edit affordances use the
   `requirement package detail` context with `detail action: edit package`
   on the icon trigger and `crud form: edit` on the opened editor.
@@ -120,6 +124,7 @@ The current canonical labels include:
 - `crud form`
 - `crud table`
 - `error banner`
+- `text field`
 - `table action`
 - `report print button`
 - `report option`

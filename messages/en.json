@@ -198,6 +198,8 @@
     "needsReferenceHelp": "Optionally attach an existing or new needs reference when linking the requirement to a package.",
     "newPackage": "New requirement package",
     "editPackage": "Edit requirement package",
+    "filterByName": "Filter by name",
+    "filterByNamePlaceholder": "Search package name",
     "linkedRequirements": "Linked requirements",
     "businessNeedsReference": "Business needs reference",
     "businessNeedsReferencePlaceholder": "Free text linking the package to a business need or functional requirement",

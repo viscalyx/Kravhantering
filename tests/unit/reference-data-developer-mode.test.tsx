@@ -148,7 +148,12 @@ const pages: MarkerSpec[] = [
       okJson({ areas: [] }),
       okJson({ types: [] }),
     ],
-    expectedMarkers: ['create button', 'crud table', 'table action'],
+    expectedMarkers: [
+      'create button',
+      'crud table',
+      'table action',
+      'text field',
+    ],
   },
   {
     label: 'AnsvarsomradenClient (responsibility areas)',

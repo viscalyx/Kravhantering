@@ -1,8 +1,14 @@
 'use client'
 
-import { HelpCircle, Plus } from 'lucide-react'
+import { HelpCircle, Plus, Search, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -61,6 +67,7 @@ export default function KravpaketClient() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [slugError, setSlugError] = useState<string | null>(null)
+  const [nameFilter, setNameFilter] = useState('')
   const [form, setForm] = useState({
     name: '',
     uniqueId: '',
@@ -68,6 +75,14 @@ export default function KravpaketClient() {
     packageImplementationTypeId: '' as string,
     businessNeedsReference: '',
   })
+  const deferredNameFilter = useDeferredValue(nameFilter)
+  const normalizedNameFilter = deferredNameFilter
+    .trim()
+    .toLocaleLowerCase(locale)
+  const hasActiveNameFilter = nameFilter.trim().length > 0
+  const filteredPackages = packages.filter(pkg =>
+    getName(pkg).toLocaleLowerCase(locale).includes(normalizedNameFilter),
+  )
 
   const resetForm = () => ({
     name: '',
@@ -275,33 +290,22 @@ export default function KravpaketClient() {
     }
   }
 
+  const openCreateForm = () => {
+    setShowForm(true)
+    setEditPkg(null)
+    setOpenHelp(new Set())
+    setSlugEdited(false)
+    setSlugError(null)
+    setForm(resetForm())
+  }
+
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
             {tn('packages')}
           </h1>
-          <button
-            className="btn-primary inline-flex items-center gap-1.5"
-            {...devMarker({
-              context: 'packages',
-              name: 'create button',
-              priority: 350,
-            })}
-            onClick={() => {
-              setShowForm(true)
-              setEditPkg(null)
-              setOpenHelp(new Set())
-              setSlugEdited(false)
-              setSlugError(null)
-              setForm(resetForm())
-            }}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {t('newPackage')}
-          </button>
         </div>
 
         {showForm && (
@@ -499,6 +503,66 @@ export default function KravpaketClient() {
           </form>
         )}
 
+        <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          {!loading && packages.length > 0 && (
+            <div className="w-full max-w-lg">
+              <label
+                className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                htmlFor="package-name-filter"
+              >
+                {t('filterByName')}
+              </label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary-400"
+                  />
+                  <input
+                    autoComplete="off"
+                    className="w-full rounded-xl border border-secondary-200 bg-white py-2.5 pr-3 pl-10 text-sm text-secondary-900 transition-all duration-200 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100 dark:placeholder:text-secondary-500"
+                    {...devMarker({
+                      context: 'packages',
+                      name: 'text field',
+                      priority: 330,
+                      value: 'name filter',
+                    })}
+                    id="package-name-filter"
+                    onChange={e => setNameFilter(e.target.value)}
+                    placeholder={t('filterByNamePlaceholder')}
+                    type="text"
+                    value={nameFilter}
+                  />
+                </div>
+                {hasActiveNameFilter && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl border border-secondary-200 px-4 py-2.5 text-sm text-secondary-700 transition-all duration-200 hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:text-secondary-200 dark:hover:bg-secondary-800/60"
+                    onClick={() => setNameFilter('')}
+                    type="button"
+                  >
+                    <X aria-hidden="true" className="h-4 w-4" />
+                    {tc('clearSearch')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <button
+            className="btn-primary inline-flex items-center gap-1.5 justify-self-start lg:col-start-2 lg:justify-self-end"
+            {...devMarker({
+              context: 'packages',
+              name: 'create button',
+              priority: 350,
+            })}
+            onClick={openCreateForm}
+            type="button"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {t('newPackage')}
+          </button>
+        </div>
+
         {showSpinner && (
           <div
             aria-live="polite"
@@ -539,7 +603,7 @@ export default function KravpaketClient() {
                   </tr>
                 </thead>
                 <tbody>
-                  {packages.map(pkg => (
+                  {filteredPackages.map(pkg => (
                     <tr
                       className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
                       key={pkg.id}
@@ -620,6 +684,16 @@ export default function KravpaketClient() {
                         colSpan={packageTableColumnCount}
                       >
                         {t('emptyState')}
+                      </td>
+                    </tr>
+                  )}
+                  {packages.length > 0 && filteredPackages.length === 0 && (
+                    <tr>
+                      <td
+                        className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                        colSpan={packageTableColumnCount}
+                      >
+                        {tc('noResults')}
                       </td>
                     </tr>
                   )}

@@ -90,6 +90,9 @@ describe('KravpaketClient', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.packages',
     )
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays packages', async () => {
@@ -114,6 +117,95 @@ describe('KravpaketClient', () => {
 
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
+  })
+
+  it('filters packages by the name column and clears the search', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(
+          okJson({
+            packages: [
+              {
+                ...samplePackages[0],
+                id: 1,
+                name: 'Behörighet och IAM',
+                uniqueId: 'BEHORIGHET-IAM',
+              },
+              {
+                ...samplePackages[0],
+                id: 2,
+                name: 'Säkerhetslyft Q2',
+                uniqueId: 'SAKLYFT-Q2',
+              },
+            ],
+          }),
+        )
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+
+    const filterInput = await screen.findByRole('textbox', {
+      name: 'package.filterByName',
+    })
+
+    expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
+    expect(screen.getByText('Säkerhetslyft Q2')).toBeInTheDocument()
+
+    fireEvent.change(filterInput, { target: { value: 'behörighet' } })
+
+    await waitFor(() => {
+      expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
+      expect(screen.queryByText('Säkerhetslyft Q2')).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.clearSearch' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
+      expect(screen.getByText('Säkerhetslyft Q2')).toBeInTheDocument()
+    })
+  })
+
+  it('shows a no-results row when the name filter matches no packages', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-packages')
+        return Promise.resolve(
+          okJson({
+            packages: [
+              {
+                ...samplePackages[0],
+                id: 1,
+                name: 'Behörighet och IAM',
+                uniqueId: 'BEHORIGHET-IAM',
+              },
+            ],
+          }),
+        )
+      if (url === '/api/package-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/package-implementation-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<KravpaketClient />)
+
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'package.filterByName' }),
+      {
+        target: { value: 'saknas' },
+      },
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('common.noResults')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('package.emptyState')).toBeNull()
   })
 
   it('renders an empty-state row when there are no packages', async () => {

@@ -198,6 +198,8 @@
     "needsReferenceHelp": "Lägg vid behov till en befintlig eller ny behovsreferens när kravet kopplas till ett paket.",
     "newPackage": "Nytt kravpaket",
     "editPackage": "Redigera kravpaket",
+    "filterByName": "Filtrera på namn",
+    "filterByNamePlaceholder": "Sök namn på kravpaket",
     "linkedRequirements": "Kopplade krav",
     "businessNeedsReference": "Verksamhetsbehovsreferens",
     "businessNeedsReferencePlaceholder": "Fritext för att koppla paketet till ett verksamhetsbehov eller funktionellt krav",
