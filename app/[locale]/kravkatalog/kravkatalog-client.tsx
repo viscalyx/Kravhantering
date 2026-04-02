@@ -4,6 +4,7 @@ import { Download, FileText, Plus, Printer } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
   type AreaOption,
@@ -30,30 +31,57 @@ import {
   serializeRequirementColumnWidths,
   serializeRequirementVisibleColumns,
 } from '@/lib/requirements/list-view'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import RequirementDetailClient from './[id]/requirement-detail-client'
+
+const KRAVKATALOG_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravkatalog.overview.body',
+      headingKey: 'kravkatalog.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravkatalog.inlineDetail.body',
+      headingKey: 'kravkatalog.inlineDetail.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravkatalog.filtering.body',
+      headingKey: 'kravkatalog.filtering.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravkatalog.columns.body',
+      headingKey: 'kravkatalog.columns.heading',
+    },
+    {
+      bodyKey: 'kravkatalog.lifecycleVisual.body',
+      headingKey: 'kravkatalog.lifecycleVisual.heading',
+      kind: 'visual',
+      visualId: 'requirementLifecycle',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravkatalog.lifecycle.body',
+      headingKey: 'kravkatalog.lifecycle.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravkatalog.actions.body',
+      headingKey: 'kravkatalog.actions.heading',
+    },
+  ],
+  titleKey: 'kravkatalog.title',
+}
 
 const PAGE_SIZE = 200
 
-type RequirementDetailRowSource = {
-  area?: { name: string } | null
+type RequirementDetailRowSource = RequirementDetailResponse & {
   hasPendingVersion?: boolean
-  id: number
-  isArchived: boolean
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
-  uniqueId: string
-  versions?: {
-    category?: { nameEn: string; nameSv: string } | null
-    description: string | null
-    requiresTesting: boolean
-    status: number
-    statusColor: string | null
-    statusNameEn: string | null
-    statusNameSv: string | null
-    type?: { nameEn: string; nameSv: string } | null
-    qualityCharacteristic?: { nameEn: string; nameSv: string } | null
-    versionNumber: number
-  }[]
 }
 
 function mapRequirementDetailToRow(
@@ -96,6 +124,7 @@ export default function KravkatalogClient({
 }: {
   initialColumnDefaults?: RequirementListColumnDefault[]
 }) {
+  useHelpContent(KRAVKATALOG_HELP)
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const locale = useLocale()

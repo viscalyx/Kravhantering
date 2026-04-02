@@ -1,10 +1,15 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import StatusStepper from '@/components/StatusStepper'
 
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
 }))
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 describe('StatusStepper', () => {
   it('renders fallback steps and highlights the first status', () => {
@@ -53,6 +58,34 @@ describe('StatusStepper', () => {
     const activeStep = container.querySelector('.text-white')
     expect(activeStep).toHaveStyle({ backgroundColor: '#eab308' })
     expect(screen.getAllByText('Granskning')).toHaveLength(2)
+  })
+
+  it('handles resize observer callbacks with native arguments', () => {
+    let resizeObserverCallback: ResizeObserverCallback | null = null
+
+    vi.stubGlobal(
+      'ResizeObserver',
+      class ResizeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          resizeObserverCallback = callback
+        }
+
+        disconnect() {}
+        observe() {}
+        unobserve() {}
+      },
+    )
+
+    const { container } = render(<StatusStepper currentStatusId={1} />)
+
+    expect(resizeObserverCallback).not.toBeNull()
+
+    act(() => {
+      resizeObserverCallback?.([], {} as ResizeObserver)
+    })
+
+    const activeStep = container.querySelector('.text-white')
+    expect(activeStep).toHaveStyle({ backgroundColor: '#3b82f6' })
   })
 
   it('renders no active highlight when the current status is unknown', () => {

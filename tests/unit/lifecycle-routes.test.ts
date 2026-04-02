@@ -198,5 +198,30 @@ describe('lifecycle routes', () => {
       })
       expect(res.status).toBe(500)
     })
+
+    it('GET wraps a missing version detail in an internal requirements error', async () => {
+      mockGetRequirement.mockResolvedValue({
+        requirement: { uniqueId: 'TST-001' },
+        version: null,
+      })
+
+      const { GET } = await import(
+        '@/app/api/requirements/[id]/versions/[version]/route'
+      )
+      const req = new Request('http://localhost/api/requirements/1/versions/99')
+      const res = await GET(req as never, {
+        params: Promise.resolve({ id: '1', version: '99' }),
+      })
+
+      expect(res.status).toBe(500)
+      expect(mockToHttpErrorPayload).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'internal',
+          message: 'Version 99 was not returned for requirement 1',
+          name: 'RequirementsServiceError',
+          status: 500,
+        }),
+      )
+    })
   })
 })

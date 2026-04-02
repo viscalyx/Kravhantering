@@ -3,6 +3,8 @@
 import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 
+;(process.env as Record<string, string | undefined>).NODE_ENV = 'test'
+
 // Mock framer-motion globally — all motion.* elements are handled via Proxy.
 // Individual test files should NOT re-mock framer-motion.
 vi.mock('framer-motion', () => {

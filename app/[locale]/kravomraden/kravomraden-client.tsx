@@ -4,7 +4,24 @@ import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const KRAVOMRADEN_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravomraden.overview.body',
+      headingKey: 'kravomraden.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravomraden.manage.body',
+      headingKey: 'kravomraden.manage.heading',
+    },
+  ],
+  titleKey: 'kravomraden.title',
+}
 
 interface Area {
   description: string | null
@@ -21,6 +38,7 @@ interface OwnerOption {
 }
 
 export default function KravomradenClient() {
+  useHelpContent(KRAVOMRADEN_HELP)
   const t = useTranslations('area')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')

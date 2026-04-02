@@ -5,6 +5,7 @@ import { getMessages, getTranslations } from 'next-intl/server'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import DeveloperModeProvider from '@/components/DeveloperModeProvider'
 import Footer from '@/components/Footer'
+import { HelpProvider } from '@/components/HelpPanel'
 import Navigation from '@/components/Navigation'
 import { routing } from '@/i18n/routing'
 import '@/app/globals.css'
@@ -57,11 +58,13 @@ export default async function LocaleLayout({
     <NextIntlClientProvider messages={messages}>
       <DeveloperModeProvider>
         <ConfirmModalProvider>
-          <div className="flex flex-col min-h-screen">
-            <Navigation />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </div>
+          <HelpProvider>
+            <div className="flex flex-col min-h-screen">
+              <Navigation />
+              <main className="flex-1">{children}</main>
+              <Footer />
+            </div>
+          </HelpProvider>
         </ConfirmModalProvider>
       </DeveloperModeProvider>
     </NextIntlClientProvider>

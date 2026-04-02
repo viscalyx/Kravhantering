@@ -71,6 +71,8 @@ The emitted attributes are:
 - Requirement package create/edit forms continue to use the `crud form` marker;
   their package-field help toggles are part of that same form surface rather
   than separate developer-mode markers.
+- Navigation help triggers use the `navigation` context with button values
+  `help toggle open` and `help toggle closed`.
 - Requirement package form save errors and package-list load errors stay inside
   the existing `packages` form/table surfaces; they do not add separate
   developer-mode markers.
@@ -84,6 +86,8 @@ The emitted attributes are:
 - Published requirement detail views expose the package-link control as
   `detail action: add to package` when the currently displayed published
   version is the one that can be added to a package.
+- Help drawer overflow cues and lifecycle illustrations remain part of the
+  existing `dialog` surface and do not add separate developer-mode markers.
 - Needs-reference controls and inline loading or failure messages inside the
   add-to-package dialog remain part of that same
   `detail action: add to package` flow rather than introducing extra markers.
@@ -150,6 +154,7 @@ Developer Mode is covered by:
 - `tests/unit/requirements-table.test.tsx`
 - `tests/unit/reference-data-developer-mode.test.tsx`
 - `tests/unit/kravpaket-detail-client.test.tsx`
+- `tests/unit/navigation.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
 

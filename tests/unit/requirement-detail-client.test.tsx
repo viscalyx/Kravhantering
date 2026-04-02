@@ -11,8 +11,15 @@ import type { ComponentProps, ForwardedRef, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementDetailClient from '@/app/[locale]/kravkatalog/[id]/requirement-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import type {
+  RequirementDetailResponse,
+  RequirementLocalizedEntity,
+  RequirementVersionDetail,
+} from '@/lib/requirements/types'
 
 const routerPush = vi.fn()
+let resizeObserverCallback: ResizeObserverCallback | null = null
+let mutationObserverCallback: MutationCallback | null = null
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
@@ -164,35 +171,78 @@ vi.mock('@/components/VersionHistory', () => {
   }
 })
 
+type RequirementLocalizedEntityOverride = {
+  id?: number
+  nameEn: string | null
+  nameSv: string | null
+}
+
+type RequirementScenarioOverride = {
+  scenario: {
+    descriptionEn?: string | null
+    descriptionSv?: string | null
+    id: number
+    nameEn: string | null
+    nameSv: string | null
+    ownerId?: number | null
+  }
+}
+
+type RequirementVersionOverrides = Omit<
+  Partial<RequirementVersionDetail>,
+  'category' | 'qualityCharacteristic' | 'type' | 'versionScenarios'
+> & {
+  id?: number
+  category?: RequirementLocalizedEntityOverride | null
+  qualityCharacteristic?: RequirementLocalizedEntityOverride | null
+  type?: RequirementLocalizedEntityOverride | null
+  versionScenarios?: RequirementScenarioOverride[]
+}
+
+function toLocalizedEntity(
+  value: RequirementLocalizedEntityOverride | null | undefined,
+  fallbackId: number,
+): RequirementLocalizedEntity | null {
+  if (value == null) {
+    return null
+  }
+
+  return {
+    id: value.id ?? fallbackId,
+    nameEn: value.nameEn,
+    nameSv: value.nameSv,
+  }
+}
+
+function toVersionScenarios(
+  scenarios: RequirementScenarioOverride[] | undefined,
+): RequirementVersionDetail['versionScenarios'] {
+  return (scenarios ?? []).map(({ scenario }) => ({
+    scenario: {
+      descriptionEn: scenario.descriptionEn ?? null,
+      descriptionSv: scenario.descriptionSv ?? null,
+      id: scenario.id,
+      nameEn: scenario.nameEn,
+      nameSv: scenario.nameSv,
+      ownerId: scenario.ownerId ?? null,
+    },
+  }))
+}
+
 function makeVersion(
   versionNumber: number,
-  overrides: Partial<{
-    acceptanceCriteria: string | null
-    archiveInitiatedAt: string | null
-    archivedAt: string | null
-    category: { nameEn: string; nameSv: string } | null
-    description: string | null
-    editedAt: string | null
-    publishedAt: string | null
-    references: { id: number; name: string; uri: string | null }[]
-    requiresTesting: boolean
-    status: number
-    statusColor: string | null
-    statusNameEn: string | null
-    statusNameSv: string | null
-    type: { nameEn: string; nameSv: string } | null
-    qualityCharacteristic: { nameEn: string; nameSv: string } | null
-    versionScenarios: {
-      scenario: { id: number; nameEn: string; nameSv: string }
-    }[]
-  }> = {},
-) {
+  overrides: RequirementVersionOverrides = {},
+): RequirementVersionDetail {
+  const { category, qualityCharacteristic, type, versionScenarios, ...rest } =
+    overrides
+
   return {
     acceptanceCriteria: `Acceptance ${versionNumber}`,
     archiveInitiatedAt: null,
     archivedAt: null,
-    category: null,
+    category: toLocalizedEntity(category, 10),
     createdAt: `2026-03-${String(versionNumber).padStart(2, '0')}`,
+    createdBy: 'Owner',
     description: `Description ${versionNumber}`,
     editedAt: null,
     id: versionNumber,
@@ -200,34 +250,50 @@ function makeVersion(
     publishedAt: null,
     references: [],
     requiresTesting: false,
+    qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',
     statusNameSv: 'Utkast',
-    type: null,
-    qualityCharacteristic: null,
+    type: toLocalizedEntity(type, 20),
+    verificationMethod: null,
     versionNumber,
-    versionScenarios: [],
-    ...overrides,
+    versionScenarios: toVersionScenarios(versionScenarios),
+    ...rest,
   }
 }
 
 function makeRequirement(
-  versions: ReturnType<typeof makeVersion>[],
-  overrides: Partial<{
-    area: { name: string } | null
-    id: number
-    isArchived: boolean
-    uniqueId: string
-  }> = {},
-) {
+  versions: RequirementDetailResponse['versions'],
+  overrides: Partial<Omit<RequirementDetailResponse, 'area' | 'versions'>> & {
+    area?: {
+      id?: number
+      name: string
+      ownerId?: number | null
+      ownerName?: string | null
+      prefix?: string
+    } | null
+  } = {},
+): RequirementDetailResponse {
+  const { area, ...rest } = overrides
+
   return {
-    area: { name: 'Core platform' },
+    area:
+      area === null
+        ? null
+        : {
+            id: area?.id ?? 1,
+            name: area?.name ?? 'Core platform',
+            ownerId: area?.ownerId ?? 1,
+            ownerName: area?.ownerName ?? 'Area Owner',
+            prefix: area?.prefix ?? 'CORE',
+          },
+    createdAt: '2026-03-01T00:00:00Z',
     id: 123,
     isArchived: false,
     uniqueId: 'REQ-123',
     versions,
-    ...overrides,
+    ...rest,
   }
 }
 
@@ -432,19 +498,33 @@ function renderSubject(
 describe('RequirementDetailClient', () => {
   beforeEach(() => {
     routerPush.mockReset()
+    resizeObserverCallback = null
+    mutationObserverCallback = null
 
     vi.stubGlobal(
       'ResizeObserver',
       class ResizeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          resizeObserverCallback = callback
+        }
+
         disconnect() {}
         observe() {}
+        unobserve() {}
       },
     )
     vi.stubGlobal(
       'MutationObserver',
       class MutationObserver {
+        constructor(callback: MutationCallback) {
+          mutationObserverCallback = callback
+        }
+
         disconnect() {}
         observe() {}
+        takeRecords() {
+          return []
+        }
       },
     )
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -545,6 +625,16 @@ describe('RequirementDetailClient', () => {
       'data-developer-mode-context',
       detailContext,
     )
+    expect(resizeObserverCallback).not.toBeNull()
+    expect(mutationObserverCallback).not.toBeNull()
+
+    act(() => {
+      resizeObserverCallback?.([], {} as ResizeObserver)
+      mutationObserverCallback?.([], {} as MutationObserver)
+    })
+
+    expect(screen.getByText('Published description')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'v2' })).toBeInTheDocument()
   })
 
   it('shows type and quality characteristic in the detail view when present', async () => {
@@ -582,6 +672,41 @@ describe('RequirementDetailClient', () => {
         .getByText('Quality characteristic')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
+  })
+
+  it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        category: { nameEn: 'Operations', nameSv: null },
+        description: 'Taxonomy fallback requirement',
+        publishedAt: '2026-03-01',
+        qualityCharacteristic: {
+          nameEn: 'Maintainability',
+          nameSv: null,
+        },
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        type: { nameEn: 'Functional', nameSv: null },
+        versionScenarios: [
+          {
+            scenario: { id: 1, nameEn: 'Ordering', nameSv: null },
+          },
+        ],
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    expect(
+      await screen.findByText('Taxonomy fallback requirement'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Operations')).toBeInTheDocument()
+    expect(screen.getByText('Functional')).toBeInTheDocument()
+    expect(screen.getByText('Maintainability')).toBeInTheDocument()
+    expect(screen.getByText('Ordering')).toBeInTheDocument()
   })
 
   it('renders the empty modal state when the requirement request fails', async () => {

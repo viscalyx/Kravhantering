@@ -19,11 +19,34 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import StatusStepper from '@/components/StatusStepper'
 import VersionHistory from '@/components/VersionHistory'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
+
+const REQUIREMENT_DETAIL_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'requirementDetail.status.body',
+      headingKey: 'requirementDetail.status.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'requirementDetail.versions.body',
+      headingKey: 'requirementDetail.versions.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'requirementDetail.reports.body',
+      headingKey: 'requirementDetail.reports.heading',
+    },
+  ],
+  titleKey: 'requirementDetail.title',
+}
 
 interface StatusInfo {
   color: string | null
@@ -36,38 +59,6 @@ interface TransitionTarget {
   id: number
   nameEn: string
   nameSv: string
-}
-
-interface RequirementDetail {
-  area: { name: string; ownerName: string | null } | null
-  id: number
-  isArchived: boolean
-  uniqueId: string
-  versions: {
-    id: number
-    versionNumber: number
-    description: string | null
-    acceptanceCriteria: string | null
-    requiresTesting: boolean
-    verificationMethod: string | null
-    category: { nameSv: string; nameEn: string } | null
-    type: { nameSv: string; nameEn: string } | null
-    qualityCharacteristic: { nameSv: string; nameEn: string } | null
-    ownerName: string | null
-    status: number
-    statusNameSv: string | null
-    statusNameEn: string | null
-    statusColor: string | null
-    createdAt: string
-    editedAt: string | null
-    publishedAt: string | null
-    archivedAt: string | null
-    archiveInitiatedAt: string | null
-    references: { id: number; name: string; uri: string | null }[]
-    versionScenarios: {
-      scenario: { id: number; nameSv: string; nameEn: string }
-    }[]
-  }[]
 }
 
 interface RequirementDetailClientProps {
@@ -125,6 +116,7 @@ export default function RequirementDetailClient({
   onClose,
   requirementId,
 }: RequirementDetailClientProps) {
+  useHelpContent(inline ? null : REQUIREMENT_DETAIL_HELP)
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const tp = useTranslations('package')
@@ -133,10 +125,15 @@ export default function RequirementDetailClient({
   const { confirm } = useConfirmModal()
 
   const localName = (
-    obj: { nameSv: string; nameEn: string } | null | undefined,
-  ) => (obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null)
+    obj: { nameSv: string | null; nameEn: string | null } | null | undefined,
+  ) =>
+    obj
+      ? locale === 'sv'
+        ? (obj.nameSv ?? obj.nameEn)
+        : (obj.nameEn ?? obj.nameSv)
+      : null
 
-  const [req, setReq] = useState<RequirementDetail | null>(null)
+  const [req, setReq] = useState<RequirementDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [transitions, setTransitions] = useState<TransitionTarget[]>([])
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -285,7 +282,7 @@ export default function RequirementDetailClient({
     if (!hasDataRef.current) setLoading(true)
     const res = await fetch(`/api/requirements/${requirementId}`)
     if (res.ok) {
-      setReq(await res.json())
+      setReq((await res.json()) as RequirementDetailResponse)
       hasDataRef.current = true
     }
     setLoading(false)
@@ -430,11 +427,23 @@ export default function RequirementDetailClient({
       }
     }
     measure()
-    const ro = new ResizeObserver(measure)
+    const handleResizeObserver: ResizeObserverCallback = (
+      _entries,
+      _observer,
+    ) => {
+      measure()
+    }
+    const ro = new ResizeObserver(handleResizeObserver)
     if (vhRef.current) ro.observe(vhRef.current)
     if (cardRef.current) ro.observe(cardRef.current)
     // Re-measure when VersionHistory children change (expand/collapse toggles)
-    const mo = new MutationObserver(measure)
+    const handleMutationObserver: MutationCallback = (
+      _mutations,
+      _observer,
+    ) => {
+      measure()
+    }
+    const mo = new MutationObserver(handleMutationObserver)
     if (vhRef.current)
       mo.observe(vhRef.current, { childList: true, subtree: true })
     window.addEventListener('resize', measure)
@@ -555,7 +564,7 @@ export default function RequirementDetailClient({
   }
 
   const latest = req.versions[0]
-  const latestStatusForActions = latest?.status ?? 1
+  const latestStatusForActions = latest?.status ?? STATUS_DRAFT
   const isLatestVersionArchived = latestStatusForActions === STATUS_ARCHIVED
   const isArchiving =
     req.versions.some(v => v.archiveInitiatedAt != null) ||
@@ -615,29 +624,39 @@ export default function RequirementDetailClient({
     archivedVersionPreferredVersion != null && archivedVersionBannerKey != null
 
   const hasPendingVersion =
-    latest &&
-    displayVersion &&
+    latest?.versionNumber != null &&
+    displayVersion?.versionNumber != null &&
     latest.versionNumber !== displayVersion.versionNumber
   const pendingVersionNumber = latest?.versionNumber
   const pendingStatusLabel = hasPendingVersion
     ? ((locale === 'sv' ? latest?.statusNameSv : latest?.statusNameEn) ?? '')
     : ''
 
+  const selectedViewVersionNumber = selectedVersion?.versionNumber ?? null
+  const displayViewVersionNumber = displayVersion?.versionNumber ?? null
+  const latestViewVersionNumber = latest?.versionNumber ?? null
+
   // Whether the user is viewing the latest (newest) version
   const isViewingLatest =
-    selectedVersion?.versionNumber === latest?.versionNumber
+    selectedViewVersionNumber != null &&
+    latestViewVersionNumber != null &&
+    selectedViewVersionNumber === latestViewVersionNumber
 
   const isViewingDisplayVersion =
-    selectedVersion?.versionNumber === displayVersion?.versionNumber
+    selectedViewVersionNumber != null &&
+    displayViewVersionNumber != null &&
+    selectedViewVersionNumber === displayViewVersionNumber
 
   // Determine if the user is viewing a historical (non-default, non-latest) version
   const isViewingHistory =
-    selectedVersion &&
-    selectedVersion.versionNumber !== displayVersion?.versionNumber &&
-    selectedVersion.versionNumber !== latest?.versionNumber
+    selectedViewVersionNumber != null &&
+    displayViewVersionNumber != null &&
+    latestViewVersionNumber != null &&
+    selectedViewVersionNumber !== displayViewVersionNumber &&
+    selectedViewVersionNumber !== latestViewVersionNumber
 
-  const currentVersionNumber = selectedVersion?.versionNumber ?? 1
-  const currentStatusId = selectedVersion?.status ?? 1
+  const currentVersionNumber = selectedViewVersionNumber ?? 1
+  const currentStatusId = selectedVersion?.status ?? STATUS_DRAFT
   const currentStatusLabel =
     (locale === 'sv'
       ? selectedVersion?.statusNameSv

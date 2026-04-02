@@ -1,9 +1,17 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type {
+  RequirementDetailResponse,
+  RequirementVersionDetail,
+} from '@/lib/requirements/types'
 
 vi.mock('next-intl', () => ({
   useTranslations: (ns?: string) => (key: string) =>
     ns ? `${ns}.${key}` : key,
+}))
+
+vi.mock('@/components/HelpPanel', () => ({
+  useHelpContent: vi.fn(),
 }))
 
 vi.mock('@/components/RequirementForm', () => ({
@@ -29,27 +37,63 @@ vi.stubGlobal('fetch', fetchMock)
 
 import EditRequirementClient from '@/app/[locale]/kravkatalog/[id]/redigera/edit-requirement-client'
 
+function makeVersion(
+  overrides: Partial<RequirementVersionDetail> = {},
+): RequirementVersionDetail {
+  return {
+    acceptanceCriteria: 'AC',
+    archiveInitiatedAt: null,
+    archivedAt: null,
+    category: { id: 2, nameEn: 'Category', nameSv: 'Kategori' },
+    createdAt: '2026-03-01T00:00:00Z',
+    createdBy: 'owner-1',
+    description: 'Desc',
+    editedAt: null,
+    id: 1,
+    ownerName: 'Owner',
+    publishedAt: null,
+    qualityCharacteristic: null,
+    references: [],
+    requiresTesting: true,
+    status: 1,
+    statusColor: '#3b82f6',
+    statusNameEn: 'Draft',
+    statusNameSv: 'Utkast',
+    type: { id: 3, nameEn: 'Type', nameSv: 'Typ' },
+    verificationMethod: null,
+    versionNumber: 1,
+    versionScenarios: [],
+    ...overrides,
+  }
+}
+
+function makeRequirementDetailResponse(
+  overrides: Partial<Omit<RequirementDetailResponse, 'versions'>> = {},
+  versionOverrides: Partial<RequirementVersionDetail> = {},
+): RequirementDetailResponse {
+  return {
+    area: {
+      id: 1,
+      name: 'Core platform',
+      ownerId: 1,
+      ownerName: 'Area Owner',
+      prefix: 'REQ',
+    },
+    createdAt: '2026-03-01T00:00:00Z',
+    id: 1,
+    isArchived: false,
+    uniqueId: 'REQ-001',
+    versions: [makeVersion(versionOverrides)],
+    ...overrides,
+  }
+}
+
 describe('EditRequirementClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(
-      okJson({
-        uniqueId: 'REQ-001',
-        area: { id: 1 },
-        versions: [
-          {
-            description: 'Desc',
-            category: { id: 2 },
-            type: { id: 3 },
-            qualityCharacteristic: null,
-            acceptanceCriteria: 'AC',
-            requiresTesting: true,
-          },
-        ],
-      }),
-    )
+    fetchMock.mockResolvedValue(okJson(makeRequirementDetailResponse()))
   })
 
   it('shows loading initially', () => {
@@ -69,20 +113,19 @@ describe('EditRequirementClient', () => {
 
   it('pre-fills qualityCharacteristicId from latest version', async () => {
     fetchMock.mockResolvedValue(
-      okJson({
-        uniqueId: 'REQ-002',
-        area: { id: 1 },
-        versions: [
+      okJson(
+        makeRequirementDetailResponse(
+          { uniqueId: 'REQ-002' },
           {
-            description: 'Desc',
-            category: { id: 2 },
-            type: { id: 3 },
-            qualityCharacteristic: { id: 42 },
-            acceptanceCriteria: 'AC',
             requiresTesting: false,
+            qualityCharacteristic: {
+              id: 42,
+              nameEn: 'Maintainability',
+              nameSv: 'Underhallbarhet',
+            },
           },
-        ],
-      }),
+        ),
+      ),
     )
     render(<EditRequirementClient requirementId={2} />)
     await waitFor(() => {

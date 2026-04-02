@@ -4,7 +4,24 @@ import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const OMRADESAGARE_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'omradesagare.overview.body',
+      headingKey: 'omradesagare.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'omradesagare.manage.body',
+      headingKey: 'omradesagare.manage.heading',
+    },
+  ],
+  titleKey: 'omradesagare.title',
+}
 
 interface Owner {
   email: string
@@ -14,6 +31,7 @@ interface Owner {
 }
 
 export default function OmradesagareClient() {
+  useHelpContent(OMRADESAGARE_HELP)
   const t = useTranslations('ownerMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')

@@ -1,5 +1,9 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type {
+  RequirementVersionDetail,
+  RequirementVersionResponse,
+} from '@/lib/requirements/types'
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -16,20 +20,39 @@ vi.stubGlobal('fetch', fetchMock)
 
 import VersionDetailClient from '@/app/[locale]/kravkatalog/[id]/versioner/[version]/version-detail-client'
 
-const sampleVersion = {
-  uniqueId: 'REQ-001',
-  version: {
-    id: 1,
-    versionNumber: 2,
-    description: 'Some description',
+function makeVersion(
+  overrides: Partial<RequirementVersionDetail> = {},
+): RequirementVersionDetail {
+  return {
     acceptanceCriteria: 'Must pass',
-    category: { nameSv: 'Kat', nameEn: 'Category' },
-    type: { nameSv: 'Typ', nameEn: 'ReqType' },
-    qualityCharacteristic: { nameSv: 'TC', nameEn: 'TypeCat' },
-    requiresTesting: true,
-    ownerName: null,
+    archiveInitiatedAt: null,
+    archivedAt: null,
+    category: { id: 2, nameSv: 'Kat', nameEn: 'Category' },
     createdAt: '2024-01-15T00:00:00Z',
-  },
+    createdBy: null,
+    description: 'Some description',
+    editedAt: null,
+    id: 1,
+    ownerName: null,
+    publishedAt: null,
+    qualityCharacteristic: { id: 4, nameSv: 'TC', nameEn: 'TypeCat' },
+    references: [],
+    requiresTesting: true,
+    status: 2,
+    statusColor: '#eab308',
+    statusNameEn: 'Review',
+    statusNameSv: 'Granskning',
+    type: { id: 3, nameSv: 'Typ', nameEn: 'ReqType' },
+    verificationMethod: null,
+    versionNumber: 2,
+    versionScenarios: [],
+    ...overrides,
+  }
+}
+
+const sampleVersion: RequirementVersionResponse = {
+  uniqueId: 'REQ-001',
+  version: makeVersion(),
 }
 
 describe('VersionDetailClient', () => {

@@ -4,7 +4,24 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const GENOMFORANDEFORMER_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'genomforandeformer.overview.body',
+      headingKey: 'genomforandeformer.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'genomforandeformer.manage.body',
+      headingKey: 'genomforandeformer.manage.heading',
+    },
+  ],
+  titleKey: 'genomforandeformer.title',
+}
 
 interface ImplementationType {
   id: number
@@ -13,6 +30,7 @@ interface ImplementationType {
 }
 
 export default function GenomforandeformerClient() {
+  useHelpContent(GENOMFORANDEFORMER_HELP)
   const t = useTranslations('implementationTypeMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')

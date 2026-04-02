@@ -6,6 +6,14 @@ const pathnameState = vi.hoisted(() => ({
   value: '/kravkatalog',
 }))
 
+const helpState = vi.hoisted(() => ({
+  value: {
+    content: null as { sections: never[]; titleKey: string } | null,
+    isOpen: false,
+    toggle: vi.fn(),
+  },
+}))
+
 vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => (key: string) =>
     namespace ? `${namespace}.${key}` : key,
@@ -32,9 +40,18 @@ vi.mock('@/components/ThemeToggle', () => ({
   default: () => <div data-testid="theme-toggle" />,
 }))
 
+vi.mock('@/components/HelpPanel', () => ({
+  useHelp: () => helpState.value,
+}))
+
 describe('Navigation', () => {
   beforeEach(() => {
     pathnameState.value = '/kravkatalog'
+    helpState.value = {
+      content: null,
+      isOpen: false,
+      toggle: vi.fn(),
+    }
   })
 
   it('shows a global settings link and removes reference data from the desktop navigation', () => {
@@ -74,5 +91,38 @@ describe('Navigation', () => {
     ).toContain('/kravpaket')
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.queryByText('nav.referenceData')).toBeNull()
+  })
+
+  it('renders the help toggle with focus styles and developer-mode metadata', () => {
+    const toggleHelp = vi.fn()
+    helpState.value = {
+      content: { sections: [], titleKey: 'help.navigation' },
+      isOpen: true,
+      toggle: toggleHelp,
+    }
+
+    render(<Navigation />)
+
+    const helpButton = screen.getByRole('button', { name: 'common.help' })
+
+    expect(helpButton.className).toContain('focus:outline-none')
+    expect(helpButton.className).toContain('focus-visible:ring-2')
+    expect(helpButton.className).toContain('focus-visible:ring-offset-2')
+    expect(helpButton.className).toContain(
+      'dark:focus-visible:ring-offset-secondary-950',
+    )
+    expect(helpButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'navigation',
+    )
+    expect(helpButton).toHaveAttribute('data-developer-mode-name', 'button')
+    expect(helpButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'help toggle open',
+    )
+
+    fireEvent.click(helpButton)
+
+    expect(toggleHelp).toHaveBeenCalledOnce()
   })
 })

@@ -469,5 +469,248 @@
     "badge": "Developer Mode",
     "copied": "Copied",
     "copyFailed": "Copy failed"
+  },
+  "help": {
+    "kravkatalog": {
+      "title": "Requirements Catalog",
+      "overview": {
+        "heading": "Overview",
+        "body": "The catalog is the main workspace for finding, tracking, and opening requirements. It shows every requirement you have access to, its current state, and lets you continue working without leaving the list."
+      },
+      "inlineDetail": {
+        "heading": "Inline detail view",
+        "body": "Click a row to open its detail view directly underneath. There you can read the requirement text, acceptance criteria, metadata, references, scenarios, status steps, and version history. If the requirement has a published version, that version is normally shown first; otherwise an archived version is shown, and otherwise the latest working version. The buttons on the right only show the actions that are available for the version and status you are currently viewing."
+      },
+      "filtering": {
+        "heading": "Searching and filtering",
+        "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right area, status, or other metadata. Turn on \"Show archived\" when you need to include requirements that are no longer active."
+      },
+      "columns": {
+        "heading": "Columns",
+        "body": "The Columns button controls which metadata columns are visible in the table. Drag column edges to resize them. The Requirement ID and Description columns are always visible so you can stay oriented even when you customize the view."
+      },
+      "lifecycleVisual": {
+        "heading": "Process illustration",
+        "body": "This visual shows the main path a requirement follows, plus the points where work loops back to Draft or Published instead of continuing straight forward.",
+        "steps": {
+          "draft": {
+            "title": "Draft",
+            "description": "The requirement is being written or revised."
+          },
+          "review": {
+            "title": "Review",
+            "description": "Stakeholders review the content before publication."
+          },
+          "published": {
+            "title": "Published",
+            "description": "This is the active version that currently applies."
+          },
+          "archivingReview": {
+            "title": "Archiving review",
+            "description": "Archiving has started but can still be approved or cancelled."
+          },
+          "archived": {
+            "title": "Archived",
+            "description": "The requirement is retired and read-only."
+          }
+        },
+        "transitions": {
+          "create": "Create",
+          "sendForReview": "Send for review",
+          "publish": "Publish",
+          "archive": "Start archiving",
+          "approveArchiving": "Approve archiving",
+          "returnToDraft": "Return to Draft",
+          "editCreatesDraft": "Edit: creates a new Draft while Published stays active",
+          "cancelArchiving": "Cancel archiving: return to Published",
+          "restoreCreatesDraft": "Restore: creates a new Draft"
+        }
+      },
+      "lifecycle": {
+        "heading": "Requirement process",
+        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the active version; you can add it to packages, share or print it, and start editing, which creates a new draft while the published version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to packages; restore it to create a new draft."
+      },
+      "actions": {
+        "heading": "Actions",
+        "body": "Use the toolbar to create a new requirement, export the visible list to CSV or PDF, or print it. Select rows with the checkboxes when you want to add multiple requirements to a requirement package or generate a combined review report."
+      }
+    },
+    "newRequirement": {
+      "title": "New Requirement",
+      "form": {
+        "heading": "Filling in the form",
+        "body": "Select an area first — it determines the requirement ID prefix and the responsible owner. Each field with a question-mark icon has inline guidance. Required fields are marked."
+      },
+      "lifecycle": {
+        "heading": "Lifecycle",
+        "body": "A newly created requirement starts as a Draft. It must be submitted for review and then published before it can be added to a requirement package."
+      }
+    },
+    "requirementDetail": {
+      "title": "Requirement Detail",
+      "status": {
+        "heading": "Status transitions",
+        "body": "Use the status bar to advance the requirement through its lifecycle: Draft → Review → Published → Archived. Each transition requires a confirmation. You can return to Draft from Review if more work is needed."
+      },
+      "versions": {
+        "heading": "Versions",
+        "body": "Every approved change creates a new version. Use the Version History section to compare versions or restore an earlier one. Restoring creates a new Draft based on the selected version."
+      },
+      "reports": {
+        "heading": "Reports",
+        "body": "Generate a review report or history report for this requirement using the report buttons. Reports are available as print view or PDF download."
+      }
+    },
+    "editRequirement": {
+      "title": "Edit Requirement",
+      "versioning": {
+        "heading": "Versioning",
+        "body": "Editing a Published requirement creates a new Draft version. The published version remains active until the draft completes the review process and is published."
+      },
+      "form": {
+        "heading": "Saving",
+        "body": "Use \"After save, go to\" to choose where you land after saving — the list view or the detail page. Changes are not auto-saved; click Save to commit them."
+      }
+    },
+    "versionDetail": {
+      "title": "Version Detail",
+      "overview": {
+        "heading": "Viewing a specific version",
+        "body": "This page shows the requirement as it was at a specific version. Use the navigation at the top to move between versions."
+      },
+      "restore": {
+        "heading": "Restoring this version",
+        "body": "Click Restore to create a new Draft based on this version's content. The current published version remains active until the new draft is reviewed and published."
+      }
+    },
+    "kravpaket": {
+      "title": "Requirement Packages",
+      "overview": {
+        "heading": "What is a requirement package?",
+        "body": "Packages group published requirements for a specific delivery, procurement, or business context. Each package can be linked to a business object and an implementation type."
+      },
+      "create": {
+        "heading": "Creating and editing",
+        "body": "Click \"New requirement package\" to create one. Click the package name to open its detail view. Use the edit icon to update the package metadata."
+      }
+    },
+    "kravpaketDetail": {
+      "title": "Package Detail",
+      "requirements": {
+        "heading": "Managing requirements",
+        "body": "Click \"Add requirements\" to open the picker and add published requirements to this package. Select one or more rows and click \"Remove selected\" to remove them."
+      },
+      "needsReference": {
+        "heading": "Needs reference",
+        "body": "Each requirement in the package can have a needs reference — a free-text link to the overarching business need or functional requirement it fulfils. Set it when adding requirements or edit it inline."
+      },
+      "export": {
+        "heading": "Exporting",
+        "body": "Use the print and PDF buttons to export the package's requirement list as a report."
+      }
+    },
+    "ansvarsomraden": {
+      "title": "Business Objects",
+      "overview": {
+        "heading": "What are business objects?",
+        "body": "Business objects categorize requirement packages by the part of the business they belong to. Assign a business object when creating or editing a package."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Click the edit icon on a row to rename a business object. Use the delete icon to remove it — only business objects not linked to any package can be deleted."
+      }
+    },
+    "genomforandeformer": {
+      "title": "Implementation Types",
+      "overview": {
+        "heading": "What are implementation types?",
+        "body": "Implementation types describe how a requirement package will be delivered, for example procurement, in-house development, or integration. Assign one when creating or editing a package."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Click the edit icon to rename an implementation type. Use the delete icon to remove it — only types not linked to any package can be deleted."
+      }
+    },
+    "admin": {
+      "title": "Admin Center",
+      "terminology": {
+        "heading": "Terminology",
+        "body": "Override the singular, plural, and definite plural labels used throughout the UI for terms like area, category, type, and more. Changes take effect immediately without a page reload."
+      },
+      "columns": {
+        "heading": "Default columns",
+        "body": "Set which columns appear by default in the requirements catalog and in what order. Users can still override column visibility per session. Locked columns are always shown."
+      },
+      "referenceData": {
+        "heading": "Reference data",
+        "body": "Quick links to manage areas, types, scenarios, statuses, quality characteristics, business objects, implementation types, and area owners."
+      }
+    },
+    "kravomraden": {
+      "title": "Requirement Areas",
+      "overview": {
+        "heading": "What are requirement areas?",
+        "body": "Areas define the ID prefix for requirements (e.g. PERF-001) and assign a responsible owner. A requirement must belong to an area before it can be saved."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Create a new area using the New button. Click the edit icon to update the prefix, name, description, or owner. Deleting an area is only possible if no requirements are assigned to it."
+      }
+    },
+    "kravtyper": {
+      "title": "Requirement Types",
+      "overview": {
+        "heading": "Functional vs. non-functional",
+        "body": "Types classify requirements. Functional requirements describe behaviors the system must perform. Non-functional requirements describe quality properties such as performance, security, or usability."
+      },
+      "quality": {
+        "heading": "Quality characteristics",
+        "body": "The type controls which quality characteristics can be linked to a requirement. Non-functional types can be associated with the ISO/IEC 25010:2023 quality characteristic hierarchy."
+      }
+    },
+    "kravscenarier": {
+      "title": "Usage Scenarios",
+      "overview": {
+        "heading": "What are usage scenarios?",
+        "body": "Usage scenarios represent operational contexts in which requirements apply, such as high-load operation, disaster recovery, or maintenance mode. They help clarify when a requirement is relevant."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Create and edit scenarios using the toolbar. A scenario can be linked to multiple requirements. Removing a scenario only removes the scenario record; linked requirements are not affected."
+      }
+    },
+    "kravstatusar": {
+      "title": "Requirement Statuses",
+      "overview": {
+        "heading": "Lifecycle statuses",
+        "body": "Statuses represent the lifecycle stages a requirement passes through: Draft, Review, Published, and Archived. These four system statuses cannot be deleted or renamed."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "You can reorder and configure the color of statuses using the controls in each row. System statuses are marked and cannot be removed."
+      }
+    },
+    "omradesagare": {
+      "title": "Area Owners",
+      "overview": {
+        "heading": "What are area owners?",
+        "body": "Area owners are the named individuals responsible for requirements in a specific requirement area. They are listed on the area and on each requirement's detail page."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Add, edit, or remove owners using the toolbar and row actions. An owner cannot be deleted while they are assigned to one or more requirement areas."
+      }
+    },
+    "qualityCharacteristics": {
+      "title": "Quality Characteristics",
+      "overview": {
+        "heading": "ISO/IEC 25010:2023 hierarchy",
+        "body": "Quality characteristics are organized in a two-level tree following ISO/IEC 25010:2023 SQuaRE. Top-level characteristics (e.g. Performance efficiency) can have sub-characteristics (e.g. Time behavior)."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Add new characteristics or sub-characteristics using the New button. A sub-characteristic must be assigned to a parent. Characteristics linked to existing requirements cannot be deleted."
+      }
+    }
   }
 }

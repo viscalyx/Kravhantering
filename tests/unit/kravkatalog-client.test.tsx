@@ -8,6 +8,17 @@ import {
   normalizeRequirementListColumnDefaults,
   REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY,
 } from '@/lib/requirements/list-view'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
+
+type RequirementDetailRowSource = RequirementDetailResponse & {
+  hasPendingVersion?: boolean
+  pendingVersionStatusColor?: string | null
+  pendingVersionStatusId?: number | null
+}
+
+const helpPanelState = vi.hoisted(() => ({
+  useHelpContent: vi.fn(),
+}))
 
 const tableState = vi.hoisted(() => ({
   renderSpy: vi.fn(),
@@ -31,6 +42,10 @@ vi.mock('@/i18n/routing', () => ({
       {children as React.ReactNode}
     </a>
   ),
+}))
+
+vi.mock('@/components/HelpPanel', () => ({
+  useHelpContent: helpPanelState.useHelpContent,
 }))
 
 vi.mock('@/components/RequirementsTable', () => ({
@@ -236,25 +251,48 @@ function makeRequirementRow(
 
 function makeRequirementDetail(
   id: number,
-  overrides: Record<string, unknown> = {},
-) {
+  overrides: Partial<RequirementDetailRowSource> = {},
+): RequirementDetailRowSource {
   return {
-    area: { name: 'Integration' },
+    area: {
+      id: 1,
+      name: 'Integration',
+      ownerId: 1,
+      ownerName: 'Area Owner',
+      prefix: 'INT',
+    },
+    createdAt: '2026-03-01T00:00:00Z',
     id,
     isArchived: false,
     uniqueId: `INT${String(id).padStart(4, '0')}`,
     versions: [
       {
-        category: { nameEn: 'Business requirement', nameSv: 'Verksamhetskrav' },
+        acceptanceCriteria: `Acceptance ${id}`,
+        archiveInitiatedAt: null,
+        archivedAt: null,
+        category: {
+          id: 2,
+          nameEn: 'Business requirement',
+          nameSv: 'Verksamhetskrav',
+        },
+        createdAt: '2026-03-01T00:00:00Z',
+        createdBy: 'owner-1',
         description: `Pinned krav ${id}`,
+        editedAt: null,
+        id,
+        ownerName: 'Owner',
+        publishedAt: '2026-03-01T00:00:00Z',
         requiresTesting: false,
+        references: [],
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
-        type: { nameEn: 'Functional', nameSv: 'Funktionellt' },
         qualityCharacteristic: null,
+        type: { id: 3, nameEn: 'Functional', nameSv: 'Funktionellt' },
+        verificationMethod: null,
         versionNumber: 1,
+        versionScenarios: [],
       },
     ],
     ...overrides,
@@ -324,6 +362,7 @@ function mockCommonFetches() {
 describe('KravkatalogClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    helpPanelState.useHelpContent.mockReset()
     printMock.mockReset()
     createObjectURLMock.mockReset()
     createObjectURLMock.mockReturnValue('blob:requirements-export')
@@ -354,6 +393,55 @@ describe('KravkatalogClient', () => {
         setItem: storageSetItem,
       },
       writable: true,
+    })
+  })
+
+  it('registers help content for inline detail and lifecycle guidance', () => {
+    fetchMock.mockReturnValue(new Promise(() => {}))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<KravkatalogClient />)
+
+    expect(helpPanelState.useHelpContent).toHaveBeenCalledWith({
+      sections: [
+        {
+          kind: 'text',
+          bodyKey: 'kravkatalog.overview.body',
+          headingKey: 'kravkatalog.overview.heading',
+        },
+        {
+          kind: 'text',
+          bodyKey: 'kravkatalog.inlineDetail.body',
+          headingKey: 'kravkatalog.inlineDetail.heading',
+        },
+        {
+          kind: 'text',
+          bodyKey: 'kravkatalog.filtering.body',
+          headingKey: 'kravkatalog.filtering.heading',
+        },
+        {
+          kind: 'text',
+          bodyKey: 'kravkatalog.columns.body',
+          headingKey: 'kravkatalog.columns.heading',
+        },
+        {
+          bodyKey: 'kravkatalog.lifecycleVisual.body',
+          headingKey: 'kravkatalog.lifecycleVisual.heading',
+          kind: 'visual',
+          visualId: 'requirementLifecycle',
+        },
+        {
+          kind: 'text',
+          bodyKey: 'kravkatalog.lifecycle.body',
+          headingKey: 'kravkatalog.lifecycle.heading',
+        },
+        {
+          kind: 'text',
+          bodyKey: 'kravkatalog.actions.body',
+          headingKey: 'kravkatalog.actions.heading',
+        },
+      ],
+      titleKey: 'kravkatalog.title',
     })
   })
 

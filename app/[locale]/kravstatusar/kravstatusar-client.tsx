@@ -4,8 +4,25 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const KRAVSTATUSAR_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravstatusar.overview.body',
+      headingKey: 'kravstatusar.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravstatusar.manage.body',
+      headingKey: 'kravstatusar.manage.heading',
+    },
+  ],
+  titleKey: 'kravstatusar.title',
+}
 
 interface Status {
   color: string | null
@@ -17,6 +34,7 @@ interface Status {
 }
 
 export default function KravstatusarClient() {
+  useHelpContent(KRAVSTATUSAR_HELP)
   const t = useTranslations('statusMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')

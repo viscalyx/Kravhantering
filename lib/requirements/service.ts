@@ -56,7 +56,16 @@ import {
   createRequirementsLogger,
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
+import type {
+  RequirementDetail,
+  RequirementVersionDetail,
+} from '@/lib/requirements/types'
 import { getCatalogTitle } from '@/lib/ui-terminology'
+
+export type {
+  RequirementDetail,
+  RequirementVersionDetail,
+} from '@/lib/requirements/types'
 
 export type ResponseFormat = 'json' | 'markdown'
 export type ResponseLocale = 'en' | 'sv'
@@ -322,7 +331,7 @@ export type RequirementListItem = ReturnType<typeof formatRequirementListItem>
 
 function formatRequirementDetail(
   requirement: NonNullable<Awaited<ReturnType<typeof getRequirementById>>>,
-) {
+): RequirementDetail {
   return {
     area: requirement.area
       ? {
@@ -394,9 +403,6 @@ function formatRequirementDetail(
     })),
   }
 }
-
-export type RequirementDetail = ReturnType<typeof formatRequirementDetail>
-export type RequirementVersionDetail = RequirementDetail['versions'][number]
 
 export function buildRequirementViewUri(
   ref: RequirementRefInput,
@@ -475,7 +481,7 @@ export interface RequirementsService {
     context: RequestContext,
     input: ManageRequirementInput,
   ): Promise<{
-    detail?: ReturnType<typeof formatRequirementDetail>
+    detail?: RequirementDetail
     message: string
     operation: ManageRequirementInput['operation']
     result: unknown
@@ -504,9 +510,9 @@ export interface RequirementsService {
     context: RequestContext,
     input: TransitionRequirementInput,
   ): Promise<{
-    detail: ReturnType<typeof formatRequirementDetail>
+    detail: RequirementDetail
     message: string
-    version: ReturnType<typeof formatRequirementDetail>['versions'][number]
+    version: RequirementVersionDetail
   }>
 }
 
@@ -579,8 +585,8 @@ function getPackageReferenceLabel(input: PackageRefInput, packageId: number) {
 }
 
 function getLatestOverallVersion(
-  requirement: ReturnType<typeof formatRequirementDetail>,
-) {
+  requirement: RequirementDetail,
+): RequirementVersionDetail | null {
   return requirement.versions[0] ?? null
 }
 
@@ -589,15 +595,15 @@ function isPublishedVersion(version: RequirementVersionDetail) {
 }
 
 function getLatestPublishedVersion(
-  requirement: ReturnType<typeof formatRequirementDetail>,
-) {
+  requirement: RequirementDetail,
+): RequirementVersionDetail | null {
   return requirement.versions.find(isPublishedVersion) ?? null
 }
 
 function withSelectedVersions(
-  requirement: ReturnType<typeof formatRequirementDetail>,
+  requirement: RequirementDetail,
   versions: RequirementVersionDetail[],
-) {
+): RequirementDetail {
   return {
     ...requirement,
     versions,

@@ -4,9 +4,26 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const KRAVSCENARIER_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravscenarier.overview.body',
+      headingKey: 'kravscenarier.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravscenarier.manage.body',
+      headingKey: 'kravscenarier.manage.heading',
+    },
+  ],
+  titleKey: 'kravscenarier.title',
+}
 
 interface Owner {
   email: string
@@ -39,6 +56,7 @@ interface LinkedRequirement {
 const DESCRIPTION_TRUNCATE = 80
 
 export default function KravscenarierClient() {
+  useHelpContent(KRAVSCENARIER_HELP)
   const t = useTranslations('scenario')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
