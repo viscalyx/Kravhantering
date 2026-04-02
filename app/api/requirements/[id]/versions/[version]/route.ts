@@ -6,6 +6,7 @@ import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
+import type { RequirementVersionResponse } from '@/lib/requirements/types'
 import { parseRequirementRef } from '../../../parse-requirement-ref'
 
 type Params = Promise<{ id: string; version: string }>
@@ -27,11 +28,19 @@ export async function GET(
       versionNumber: Number(version),
       view: 'version',
     })
+    const versionDetail = result.version
+    if (!versionDetail) {
+      throw new Error(
+        `Version ${version} was not returned for requirement ${id}`,
+      )
+    }
 
-    return NextResponse.json({
+    const responseBody: RequirementVersionResponse = {
       uniqueId: result.requirement.uniqueId,
-      version: result.version,
-    })
+      version: versionDetail,
+    }
+
+    return NextResponse.json(responseBody)
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })

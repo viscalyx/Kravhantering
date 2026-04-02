@@ -7,6 +7,7 @@ import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 type Params = Promise<{ id: string }>
 
@@ -34,10 +35,11 @@ export async function GET(
       const owner = await getOwnerById(db, req.area.ownerId)
       if (owner) areaOwnerName = `${owner.firstName} ${owner.lastName}`
     }
-    return NextResponse.json({
+    const responseBody: RequirementDetailResponse = {
       ...req,
       area: req.area ? { ...req.area, ownerName: areaOwnerName } : null,
-    })
+    }
+    return NextResponse.json(responseBody)
   } catch (error) {
     const { body, status } = toHttpErrorPayload(error)
     return NextResponse.json(body, { status })

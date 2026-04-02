@@ -19,8 +19,10 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useMemo, useRef, useState } from 'react'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+
 import {
   getOrderedRequirementListColumns,
   getRequirementColumnDefinition,
@@ -34,6 +36,27 @@ import {
   type UiLocale,
   type UiTermTranslation,
 } from '@/lib/ui-terminology'
+
+const ADMIN_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'admin.terminology.body',
+      headingKey: 'admin.terminology.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'admin.columns.body',
+      headingKey: 'admin.columns.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'admin.referenceData.body',
+      headingKey: 'admin.referenceData.heading',
+    },
+  ],
+  titleKey: 'admin.title',
+}
 
 type AdminTab = 'columns' | 'referenceData' | 'terminology'
 type SaveState = 'error' | 'idle' | 'saved' | 'saving'
@@ -65,6 +88,7 @@ export default function AdminClient({
   initialColumnDefaults: RequirementListColumnDefault[]
   initialTerminology: UiTermTranslation[]
 }) {
+  useHelpContent(ADMIN_HELP)
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
   const tn = useTranslations('nav')

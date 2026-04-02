@@ -10,9 +10,26 @@ import {
   useState,
 } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { generatePackageSlug, normalizeSlugInput } from '@/lib/slug'
+
+const KRAVPAKET_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravpaket.overview.body',
+      headingKey: 'kravpaket.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravpaket.create.body',
+      headingKey: 'kravpaket.create.heading',
+    },
+  ],
+  titleKey: 'kravpaket.title',
+}
 
 interface TaxonomyItem {
   id: number
@@ -79,6 +96,7 @@ async function readResponseMessage(res: Response): Promise<string | null> {
 }
 
 export default function KravpaketClient() {
+  useHelpContent(KRAVPAKET_HELP)
   const t = useTranslations('package')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')

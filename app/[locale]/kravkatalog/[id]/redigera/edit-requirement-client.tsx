@@ -2,7 +2,25 @@
 
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementForm from '@/components/RequirementForm'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
+
+const EDIT_REQUIREMENT_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'editRequirement.versioning.body',
+      headingKey: 'editRequirement.versioning.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'editRequirement.form.body',
+      headingKey: 'editRequirement.form.heading',
+    },
+  ],
+  titleKey: 'editRequirement.title',
+}
 
 interface EditRequirementClientProps {
   requirementId: number | string
@@ -11,6 +29,7 @@ interface EditRequirementClientProps {
 export default function EditRequirementClient({
   requirementId,
 }: EditRequirementClientProps) {
+  useHelpContent(EDIT_REQUIREMENT_HELP)
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
 
@@ -31,47 +50,34 @@ export default function EditRequirementClient({
         setLoading(false)
         return
       }
-      const data = (await res.json()) as {
-        uniqueId: string
-        area?: { id: number } | null
-        versions?: Record<string, unknown>[]
-      }
+      const data = (await res.json()) as RequirementDetailResponse
       setUniqueId(data.uniqueId)
-      const latest = data.versions?.[0]
+      const latest = data.versions[0]
       if (!latest) {
         setFetchError(tc('noResults'))
         setLoading(false)
         return
       }
       setInitialData({
-        areaId: data.area?.id ? String(data.area.id) : '',
-        categoryId: (latest.category as { id?: number } | null)?.id
-          ? String((latest.category as { id: number }).id)
-          : '',
-        typeId: (latest.type as { id?: number } | null)?.id
-          ? String((latest.type as { id: number }).id)
-          : '',
-        qualityCharacteristicId: (
-          latest.qualityCharacteristic as { id?: number } | null
-        )?.id
-          ? String((latest.qualityCharacteristic as { id: number }).id)
-          : '',
+        areaId: data.area?.id != null ? String(data.area.id) : '',
+        categoryId:
+          latest.category?.id != null ? String(latest.category.id) : '',
+        typeId: latest.type?.id != null ? String(latest.type.id) : '',
+        qualityCharacteristicId:
+          latest.qualityCharacteristic?.id != null
+            ? String(latest.qualityCharacteristic.id)
+            : '',
         description: String(latest.description ?? ''),
         acceptanceCriteria: String(latest.acceptanceCriteria ?? ''),
         requiresTesting: Boolean(latest.requiresTesting ?? false),
         verificationMethod: String(latest.verificationMethod ?? ''),
         ownerId: String(latest.createdBy ?? ''),
       })
-      const versionScenarios = latest.versionScenarios as
-        | { scenario?: { id?: number } }[]
-        | undefined
-      if (versionScenarios) {
-        setInitialScenarioIds(
-          versionScenarios
-            .map(vs => vs.scenario?.id)
-            .filter((id): id is number => id != null),
-        )
-      }
+      setInitialScenarioIds(
+        latest.versionScenarios
+          .map(vs => vs.scenario.id)
+          .filter((id): id is number => id != null),
+      )
     } catch {
       setFetchError(tc('error'))
     }

@@ -261,10 +261,16 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
 
     updatePosition()
 
+    const handleResizeObserver: ResizeObserverCallback = (
+      _entries,
+      _observer,
+    ) => {
+      updatePosition()
+    }
     const resizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
-        : new ResizeObserver(() => updatePosition())
+        : new ResizeObserver(handleResizeObserver)
 
     resizeObserver?.observe(triggerRef.current)
     window.addEventListener('resize', updatePosition)
@@ -1067,10 +1073,16 @@ function ColumnsPopover({
 
     updatePosition()
 
+    const handleResizeObserver: ResizeObserverCallback = (
+      _entries,
+      _observer,
+    ) => {
+      updatePosition()
+    }
     const resizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
-        : new ResizeObserver(() => updatePosition())
+        : new ResizeObserver(handleResizeObserver)
 
     resizeObserver?.observe(anchor)
     window.addEventListener('resize', updatePosition)
@@ -2187,14 +2199,18 @@ export default function RequirementsTable({
     const handleScroll = () => updateScrollFades()
     container.addEventListener('scroll', handleScroll, { passive: true })
 
+    const handleResizeObserver: ResizeObserverCallback = (
+      _entries,
+      _observer,
+    ) => {
+      updateScrollFades()
+      updateResizeHandleOffsets()
+      updateExpandedDetailBounds()
+    }
     const resizeObserver =
       typeof ResizeObserver === 'undefined'
         ? null
-        : new ResizeObserver(() => {
-            updateScrollFades()
-            updateResizeHandleOffsets()
-            updateExpandedDetailBounds()
-          })
+        : new ResizeObserver(handleResizeObserver)
 
     resizeObserver?.observe(container)
     if (tableContentRef.current) {

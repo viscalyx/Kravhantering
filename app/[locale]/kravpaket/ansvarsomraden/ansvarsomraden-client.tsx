@@ -4,7 +4,24 @@ import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const ANSVARSOMRADEN_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'ansvarsomraden.overview.body',
+      headingKey: 'ansvarsomraden.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'ansvarsomraden.manage.body',
+      headingKey: 'ansvarsomraden.manage.heading',
+    },
+  ],
+  titleKey: 'ansvarsomraden.title',
+}
 
 interface ResponsibilityArea {
   id: number
@@ -13,6 +30,7 @@ interface ResponsibilityArea {
 }
 
 export default function AnsvarsomradenClient() {
+  useHelpContent(ANSVARSOMRADEN_HELP)
   const t = useTranslations('responsibilityAreaMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')

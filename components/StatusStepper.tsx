@@ -86,7 +86,13 @@ export default function StatusStepper({
       })
     }
     measure()
-    const ro = new ResizeObserver(measure)
+    const handleResizeObserver: ResizeObserverCallback = (
+      _entries,
+      _observer,
+    ) => {
+      measure()
+    }
+    const ro = new ResizeObserver(handleResizeObserver)
     if (containerRef.current) ro.observe(containerRef.current)
     return () => ro.disconnect()
   }, [targetIndex])

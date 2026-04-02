@@ -469,5 +469,248 @@
     "badge": "Developer Mode",
     "copied": "Kopierad",
     "copyFailed": "Kopiering misslyckades"
+  },
+  "help": {
+    "kravkatalog": {
+      "title": "Kravkatalog",
+      "overview": {
+        "heading": "Översikt",
+        "body": "Kravkatalogen är arbetsytan för att hitta, följa upp och öppna krav. Här ser du alla krav som du har tillgång till, deras aktuella läge och kan fortsätta arbetet utan att lämna listan."
+      },
+      "inlineDetail": {
+        "heading": "Detaljvy i listan",
+        "body": "Klicka på en rad för att öppna detaljvyn direkt under raden. Där ser du kravtext, acceptanskriterier, metadata, referenser, scenarier, statussteg och versionshistorik. Om kravet har en publicerad version visas den normalt först, annars en arkiverad version och annars den senaste arbetsversionen. Knapparna till höger visar bara de åtgärder som är möjliga för den version och status du tittar på."
+      },
+      "filtering": {
+        "heading": "Sökning och filter",
+        "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt område, status eller annan metadata. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
+      },
+      "columns": {
+        "heading": "Kolumner",
+        "body": "Knappen Kolumner styr vilka metadata som visas i tabellen. Dra i kolumnkanterna för att ändra bredden. Kolumnerna Krav-ID och Kravtext är alltid synliga så att du kan orientera dig även när du anpassar vyn."
+      },
+      "lifecycleVisual": {
+        "heading": "Visuell processöversikt",
+        "body": "Den här översikten visar huvudflödet för ett krav och de lägen där arbetet går tillbaka till Utkast eller Publicerad i stället för att fortsätta rakt fram.",
+        "steps": {
+          "draft": {
+            "title": "Utkast",
+            "description": "Kravet skrivs eller revideras."
+          },
+          "review": {
+            "title": "Granskning",
+            "description": "Intressenter granskar innehållet före publicering."
+          },
+          "published": {
+            "title": "Publicerad",
+            "description": "Detta är den gällande versionen som just nu används."
+          },
+          "archivingReview": {
+            "title": "Arkiveringsgranskning",
+            "description": "Arkivering är startad men kan fortfarande godkännas eller avbrytas."
+          },
+          "archived": {
+            "title": "Arkiverad",
+            "description": "Kravet är pensionerat och skrivskyddat."
+          }
+        },
+        "transitions": {
+          "create": "Skapa",
+          "sendForReview": "Skicka till granskning",
+          "publish": "Publicera",
+          "archive": "Påbörja arkivering",
+          "approveArchiving": "Godkänn arkivering",
+          "returnToDraft": "Återgå till Utkast",
+          "editCreatesDraft": "Redigera: skapar nytt Utkast medan Publicerad fortsätter gälla",
+          "cancelArchiving": "Avbryt arkivering: tillbaka till Publicerad",
+          "restoreCreatesDraft": "Återskapa: skapar nytt Utkast"
+        }
+      },
+      "lifecycle": {
+        "heading": "Kravets process",
+        "body": "Utkast: du kan skriva, redigera, ta bort det senaste utkastet och skicka det till granskning. Granskning: innehållet är låst för redigering tills du skickar tillbaka det till Utkast eller publicerar det. Publicerad: detta är den aktiva versionen; du kan lägga till den i kravpaket, dela eller skriva ut den och starta redigering, vilket skapar ett nytt utkast medan den publicerade versionen fortsätter att gälla. När du väljer Arkivera går kravet först in i en arkiveringsgranskning där du kan godkänna eller avbryta arkiveringen. Arkiverad: kravet är skrivskyddat och kan inte redigeras eller läggas till i kravpaket; återställ det för att skapa ett nytt utkast."
+      },
+      "actions": {
+        "heading": "Åtgärder",
+        "body": "Använd verktygsfältet för att skapa ett nytt krav, exportera den synliga listan till CSV eller PDF eller skriva ut. Markera rader med kryssrutorna när du vill lägga till flera krav i ett kravpaket eller skapa en kombinerad granskningsrapport."
+      }
+    },
+    "newRequirement": {
+      "title": "Nytt krav",
+      "form": {
+        "heading": "Fylla i formuläret",
+        "body": "Välj ett område först – det bestämmer krav-ID-prefixet och ansvarig ägare. Varje fält med en frågeteckensikon har inline-vägledning. Obligatoriska fält är markerade."
+      },
+      "lifecycle": {
+        "heading": "Livscykel",
+        "body": "Ett nyskapat krav startar som Utkast. Det måste skickas för granskning och sedan publiceras innan det kan läggas till i ett kravpaket."
+      }
+    },
+    "requirementDetail": {
+      "title": "Kravdetalj",
+      "status": {
+        "heading": "Statusövergångar",
+        "body": "Använd statusfältet för att flytta kravet genom sin livscykel: Utkast → Granskning → Publicerad → Arkiverad. Varje övergång kräver en bekräftelse. Du kan återgå till Utkast från Granskning om mer arbete behövs."
+      },
+      "versions": {
+        "heading": "Versioner",
+        "body": "Varje godkänd ändring skapar en ny version. Använd avsnittet Versionshistorik för att jämföra versioner eller återskapa en tidigare version. Återskapa skapar ett nytt Utkast baserat på den valda versionen."
+      },
+      "reports": {
+        "heading": "Rapporter",
+        "body": "Generera en granskningsrapport eller historikrapport för detta krav med rapportknapparna. Rapporterna finns tillgängliga som utskriftsvy eller PDF-nedladdning."
+      }
+    },
+    "editRequirement": {
+      "title": "Redigera krav",
+      "versioning": {
+        "heading": "Versionshantering",
+        "body": "Redigering av ett Publicerat krav skapar en ny Utkastversion. Den publicerade versionen förblir aktiv tills utkastet har genomgått granskningsprocessen och publicerats."
+      },
+      "form": {
+        "heading": "Spara",
+        "body": "Använd \"Gå till efter sparning\" för att välja var du hamnar efter att ha sparat – listvyn eller detaljsidan. Ändringar sparas inte automatiskt; klicka Spara för att bekräfta dem."
+      }
+    },
+    "versionDetail": {
+      "title": "Versionsdetalj",
+      "overview": {
+        "heading": "Visa en specifik version",
+        "body": "Den här sidan visar kravet som det såg ut vid en specifik version. Använd navigeringen längst upp för att bläddra mellan versioner."
+      },
+      "restore": {
+        "heading": "Återskapa den här versionen",
+        "body": "Klicka på Återskapa för att skapa ett nytt Utkast baserat på den här versionens innehåll. Den aktuella publicerade versionen förblir aktiv tills det nya utkastet har granskats och publicerats."
+      }
+    },
+    "kravpaket": {
+      "title": "Kravpaket",
+      "overview": {
+        "heading": "Vad är ett kravpaket?",
+        "body": "Kravpaket grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje paket kan kopplas till ett verksamhetsobjekt och en genomförandeform."
+      },
+      "create": {
+        "heading": "Skapa och redigera",
+        "body": "Klicka på \"Nytt kravpaket\" för att skapa ett. Klicka på paketnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera paketets metadata."
+      }
+    },
+    "kravpaketDetail": {
+      "title": "Kravpaketdetalj",
+      "requirements": {
+        "heading": "Hantera krav",
+        "body": "Klicka på \"Lägg till krav\" för att öppna väljaren och lägga till publicerade krav i paketet. Markera en eller flera rader och klicka på \"Ta bort valda\" för att ta bort dem."
+      },
+      "needsReference": {
+        "heading": "Behovsreferens",
+        "body": "Varje krav i paketet kan ha en behovsreferens – en fritext som kopplar kravet till det övergripande verksamhetsbehov eller funktionella krav det uppfyller. Ange den när du lägger till krav eller redigera den inline."
+      },
+      "export": {
+        "heading": "Exportera",
+        "body": "Använd utskrifts- och PDF-knapparna för att exportera paketets kravlista som en rapport."
+      }
+    },
+    "ansvarsomraden": {
+      "title": "Verksamhetsobjekt",
+      "overview": {
+        "heading": "Vad är verksamhetsobjekt?",
+        "body": "Verksamhetsobjekt kategoriserar kravpaket efter den del av verksamheten de tillhör. Tilldela ett verksamhetsobjekt när du skapar eller redigerar ett paket."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Klicka på redigeringsikonen på en rad för att byta namn på ett verksamhetsobjekt. Använd borttagningsikonen för att ta bort det – enbart verksamhetsobjekt som inte är kopplade till några paket kan tas bort."
+      }
+    },
+    "genomforandeformer": {
+      "title": "Genomförandeformer",
+      "overview": {
+        "heading": "Vad är genomförandeformer?",
+        "body": "Genomförandeformer beskriver hur ett kravpaket ska levereras, t.ex. upphandling, intern utveckling eller integration. Tilldela en genomförandeform när du skapar eller redigerar ett paket."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Klicka på redigeringsikonen för att byta namn på en genomförandeform. Använd borttagningsikonen för att ta bort den – enbart former som inte är kopplade till några paket kan tas bort."
+      }
+    },
+    "admin": {
+      "title": "Administrationscenter",
+      "terminology": {
+        "heading": "Benämningar",
+        "body": "Åsidosätt singular-, plural- och bestämd pluralform för de benämningar som används i gränssnittet, t.ex. område, kategori, typ. Ändringar träder i kraft omedelbart utan omladdning av sidan."
+      },
+      "columns": {
+        "heading": "Standardkolumner",
+        "body": "Ange vilka kolumner som visas som standard i kravkatalogen och i vilken ordning. Användare kan fortfarande ändra kolumnsynligheten per session. Låsta kolumner visas alltid."
+      },
+      "referenceData": {
+        "heading": "Referensdata",
+        "body": "Snabblänkar till hantering av områden, typer, scenarier, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och områdesägare."
+      }
+    },
+    "kravomraden": {
+      "title": "Kravområden",
+      "overview": {
+        "heading": "Vad är kravområden?",
+        "body": "Kravområden definierar ID-prefixet för krav (t.ex. PERF-001) och tilldelar en ansvarig ägare. Ett krav måste tillhöra ett område innan det kan sparas."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Skapa ett nytt område med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Det går bara att ta bort ett område om inga krav är kopplade till det."
+      }
+    },
+    "kravtyper": {
+      "title": "Kravtyper",
+      "overview": {
+        "heading": "Funktionella och icke-funktionella krav",
+        "body": "Typer klassificerar krav. Funktionella krav beskriver beteenden som systemet måste utföra. Icke-funktionella krav beskriver kvalitetsegenskaper som prestanda, säkerhet eller användbarhet."
+      },
+      "quality": {
+        "heading": "Kvalitetsegenskaper",
+        "body": "Typen styr vilka kvalitetsegenskaper som kan kopplas till ett krav. Icke-funktionella typer kan kopplas till ISO/IEC 25010:2023-hierarkin för kvalitetsegenskaper."
+      }
+    },
+    "kravscenarier": {
+      "title": "Användningsscenarier",
+      "overview": {
+        "heading": "Vad är användningsscenarier?",
+        "body": "Användningsscenarier representerar driftsmässiga kontexter där krav gäller, t.ex. hög belastning, katastrofåterställning eller underhållsläge. De hjälper till att förtydliga när ett krav är relevant."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Skapa och redigera scenarier med verktygsfältet. Ett scenario kan kopplas till flera krav. Att ta bort ett scenario tar bara bort scenarioposten – kopplade krav påverkas inte."
+      }
+    },
+    "kravstatusar": {
+      "title": "Kravstatusar",
+      "overview": {
+        "heading": "Livscykelstatusar",
+        "body": "Statusar representerar de livscykelsteg som ett krav passerar: Utkast, Granskning, Publicerad och Arkiverad. Dessa fyra systemstatusar kan inte tas bort eller byta namn."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Du kan ändra ordning och konfigurera färgen på statusar med kontrollerna i varje rad. Systemstatusar är markerade och kan inte tas bort."
+      }
+    },
+    "omradesagare": {
+      "title": "Områdesägare",
+      "overview": {
+        "heading": "Vad är områdesägare?",
+        "body": "Områdesägare är de namngivna personer som är ansvariga för krav inom ett specifikt kravområde. De visas på området och på varje kravs detaljsida."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Lägg till, redigera eller ta bort ägare med verktygsfältet och radåtgärderna. En ägare kan inte tas bort om de är tilldelade ett eller flera kravområden."
+      }
+    },
+    "qualityCharacteristics": {
+      "title": "Kvalitetsegenskaper",
+      "overview": {
+        "heading": "ISO/IEC 25010:2023-hierarki",
+        "body": "Kvalitetsegenskaper är organiserade i ett tvånivåträd enligt ISO/IEC 25010:2023 SQuaRE. Toppnivåegenskaper (t.ex. Prestandaeffektivitet) kan ha underegenskaper (t.ex. Tidsbeteende)."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Lägg till nya egenskaper eller underegenskaper med Nytt-knappen. En underegenskap måste tilldelas en överordnad egenskap. Egenskaper som är kopplade till befintliga krav kan inte tas bort."
+      }
+    }
   }
 }

@@ -2,19 +2,26 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import type {
+  RequirementLocalizedEntity,
+  RequirementVersionResponse,
+} from '@/lib/requirements/types'
 
-interface VersionData {
-  acceptanceCriteria: string | null
-  category: { nameSv: string; nameEn: string } | null
-  createdAt: string
-  description: string | null
-  id: number
-  ownerName: string | null
-  qualityCharacteristic: { nameSv: string; nameEn: string } | null
-  requiresTesting: boolean
-  type: { nameSv: string; nameEn: string } | null
-  verificationMethod: string | null
-  versionNumber: number
+const VERSION_DETAIL_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'versionDetail.overview.body',
+      headingKey: 'versionDetail.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'versionDetail.restore.body',
+      headingKey: 'versionDetail.restore.heading',
+    },
+  ],
+  titleKey: 'versionDetail.title',
 }
 
 interface VersionDetailClientProps {
@@ -26,25 +33,22 @@ export default function VersionDetailClient({
   requirementId,
   versionNumber,
 }: VersionDetailClientProps) {
+  useHelpContent(VERSION_DETAIL_HELP)
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const locale = useLocale()
 
-  const localName = (
-    obj: { nameSv: string; nameEn: string } | null | undefined,
-  ) => (obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null)
+  const localName = (obj: RequirementLocalizedEntity | null | undefined) =>
+    obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
 
-  const [data, setData] = useState<{
-    uniqueId: string
-    version: VersionData
-  } | null>(null)
+  const [data, setData] = useState<RequirementVersionResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchVersion = useCallback(async () => {
     const res = await fetch(
       `/api/requirements/${requirementId}/versions/${versionNumber}`,
     )
-    if (res.ok) setData(await res.json())
+    if (res.ok) setData((await res.json()) as RequirementVersionResponse)
     setLoading(false)
   }, [requirementId, versionNumber])
 

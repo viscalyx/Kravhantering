@@ -17,6 +17,7 @@ import RequirementDetailClient from '@/app/[locale]/kravkatalog/[id]/requirement
 import PackageEditPanel, {
   PACKAGE_EDIT_FORM_ID,
 } from '@/app/[locale]/kravpaket/[slug]/package-edit-panel'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
 import { Link, useRouter } from '@/i18n/routing'
@@ -35,6 +36,27 @@ import {
   type RequirementRow,
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
+
+const KRAVPAKET_DETAIL_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravpaketDetail.requirements.body',
+      headingKey: 'kravpaketDetail.requirements.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravpaketDetail.needsReference.body',
+      headingKey: 'kravpaketDetail.needsReference.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravpaketDetail.export.body',
+      headingKey: 'kravpaketDetail.export.heading',
+    },
+  ],
+  titleKey: 'kravpaketDetail.title',
+}
 
 interface PackageMeta {
   businessNeedsReference: string | null
@@ -96,6 +118,7 @@ export default function KravpaketDetailClient({
 }: {
   packageSlug: string
 }) {
+  useHelpContent(KRAVPAKET_DETAIL_HELP)
   const t = useTranslations('package')
   const tc = useTranslations('common')
   const tn = useTranslations('nav')

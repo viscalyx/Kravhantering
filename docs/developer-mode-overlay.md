@@ -84,6 +84,8 @@ The emitted attributes are:
 - Published requirement detail views expose the package-link control as
   `detail action: add to package` when the currently displayed published
   version is the one that can be added to a package.
+- Help drawer overflow cues and lifecycle illustrations remain part of the
+  existing `dialog` surface and do not add separate developer-mode markers.
 - Needs-reference controls and inline loading or failure messages inside the
   add-to-package dialog remain part of that same
   `detail action: add to package` flow rather than introducing extra markers.

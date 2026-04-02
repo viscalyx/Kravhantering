@@ -1,9 +1,27 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementForm from '@/components/RequirementForm'
 
+const NEW_REQUIREMENT_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'newRequirement.form.body',
+      headingKey: 'newRequirement.form.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'newRequirement.lifecycle.body',
+      headingKey: 'newRequirement.lifecycle.heading',
+    },
+  ],
+  titleKey: 'newRequirement.title',
+}
+
 export default function NewRequirementClient() {
+  useHelpContent(NEW_REQUIREMENT_HELP)
   const t = useTranslations('requirement')
 
   return (

@@ -2,6 +2,23 @@
 
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+
+const KRAVTYPER_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'kravtyper.overview.body',
+      headingKey: 'kravtyper.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'kravtyper.quality.body',
+      headingKey: 'kravtyper.quality.heading',
+    },
+  ],
+  titleKey: 'kravtyper.title',
+}
 
 interface Type {
   id: number
@@ -18,6 +35,7 @@ interface TypeCategory {
 }
 
 export default function KravtyperClient() {
+  useHelpContent(KRAVTYPER_HELP)
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()

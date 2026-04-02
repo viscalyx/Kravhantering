@@ -4,7 +4,24 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const QUALITY_CHARACTERISTICS_HELP: HelpContent = {
+  sections: [
+    {
+      kind: 'text',
+      bodyKey: 'qualityCharacteristics.overview.body',
+      headingKey: 'qualityCharacteristics.overview.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'qualityCharacteristics.manage.body',
+      headingKey: 'qualityCharacteristics.manage.heading',
+    },
+  ],
+  titleKey: 'qualityCharacteristics.title',
+}
 
 interface TypeCategory {
   id: number
@@ -21,6 +38,7 @@ interface Type {
 }
 
 export default function QualityCharacteristicsClient() {
+  useHelpContent(QUALITY_CHARACTERISTICS_HELP)
   const t = useTranslations('qualityCharacteristicMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
