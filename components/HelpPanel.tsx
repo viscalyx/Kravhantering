@@ -49,15 +49,31 @@ export interface HelpContent {
   titleKey: string
 }
 
+type HelpRegistrationOwner = symbol
+
+interface HelpRegistration {
+  content: HelpContent
+  owner: HelpRegistrationOwner
+}
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ')
+
 /* ---------- Context ---------- */
 
 interface HelpContextValue {
   close: () => void
   content: HelpContent | null
   isOpen: boolean
-  register: (content: HelpContent) => void
+  register: (owner: HelpRegistrationOwner, content: HelpContent) => void
   toggle: () => void
-  unregister: () => void
+  unregister: (owner: HelpRegistrationOwner) => void
 }
 
 const HelpContext = createContext<HelpContextValue | null>(null)
@@ -73,21 +89,34 @@ const TEST_HELP_FALLBACK: HelpContextValue = {
 /* ---------- Provider ---------- */
 
 export function HelpProvider({ children }: { children: ReactNode }) {
-  const [content, setContent] = useState<HelpContent | null>(null)
+  const [registrations, setRegistrations] = useState<HelpRegistration[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const content = registrations[registrations.length - 1]?.content ?? null
 
-  const register = useCallback((c: HelpContent) => {
-    setContent(c)
-    setIsOpen(false)
-  }, [])
+  const register = useCallback(
+    (owner: HelpRegistrationOwner, content: HelpContent) => {
+      setRegistrations(previous => [
+        ...previous.filter(registration => registration.owner !== owner),
+        { owner, content },
+      ])
+    },
+    [],
+  )
 
-  const unregister = useCallback(() => {
-    setContent(null)
-    setIsOpen(false)
+  const unregister = useCallback((owner: HelpRegistrationOwner) => {
+    setRegistrations(previous =>
+      previous.filter(registration => registration.owner !== owner),
+    )
   }, [])
 
   const toggle = useCallback(() => setIsOpen(v => !v), [])
   const close = useCallback(() => setIsOpen(false), [])
+
+  useEffect(() => {
+    if (content === null) {
+      setIsOpen(false)
+    }
+  }, [content])
 
   return (
     <HelpContext.Provider
@@ -128,10 +157,12 @@ export function useHelp() {
  */
 export function useHelpContent(content: HelpContent | null): void {
   const { register, unregister } = useHelp()
+  const ownerRef = useRef<HelpRegistrationOwner>(Symbol('help-content'))
+
   useEffect(() => {
     if (content === null) return
-    register(content)
-    return () => unregister()
+    register(ownerRef.current, content)
+    return () => unregister(ownerRef.current)
   }, [register, unregister, content])
 }
 
@@ -246,24 +277,101 @@ function HelpPanelInner({
 }) {
   const t = useTranslations('help')
   const tc = useTranslations('common')
+  const containerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const scrollRegionRef = useRef<HTMLDivElement>(null)
   const [showScrollIndicator, setShowScrollIndicator] = useState(false)
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null)
 
-  // Escape to close
+  const getFocusableElements = useCallback(() => {
+    if (!panelRef.current) {
+      return []
+    }
+
+    return Array.from(
+      panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+    ).filter(element => {
+      if (element.tabIndex < 0) {
+        return false
+      }
+
+      if (element.hasAttribute('hidden')) {
+        return false
+      }
+
+      return element.getAttribute('aria-hidden') !== 'true'
+    })
+  }, [])
+
+  // Trap focus and restore it when the drawer closes.
   useEffect(() => {
     if (!isOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [isOpen, onClose])
 
-  // Focus panel on open
-  useEffect(() => {
-    if (isOpen) requestAnimationFrame(() => panelRef.current?.focus())
-  }, [isOpen])
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    requestAnimationFrame(() => panelRef.current?.focus())
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab') {
+        return
+      }
+
+      const focusableElements = getFocusableElements()
+      if (focusableElements.length === 0) {
+        event.preventDefault()
+        panelRef.current?.focus()
+        return
+      }
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+      const activeElement =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+      const focusIsInsidePanel =
+        activeElement !== null && panelRef.current?.contains(activeElement)
+
+      if (!focusIsInsidePanel) {
+        event.preventDefault()
+        ;(event.shiftKey ? lastElement : firstElement).focus()
+        return
+      }
+
+      if (activeElement === panelRef.current) {
+        event.preventDefault()
+        ;(event.shiftKey ? lastElement : firstElement).focus()
+        return
+      }
+
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+        return
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocusedElementRef.current?.focus()
+      previousFocusedElementRef.current = null
+    }
+  }, [getFocusableElements, isOpen, onClose])
 
   // Lock background scrolling while the help drawer is open so wheel/touch
   // scrolling stays on the drawer content instead of the dimmed page behind it.
@@ -289,6 +397,53 @@ function HelpPanelInner({
       html.style.overflow = previousHtmlOverflow
       body.style.overscrollBehavior = previousBodyOverscrollBehavior
       html.style.overscrollBehavior = previousHtmlOverscrollBehavior
+    }
+  }, [isOpen])
+
+  // Hide background siblings from assistive tech and interaction while modal.
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    const container = containerRef.current
+    const parent = container?.parentElement
+
+    if (
+      !(container instanceof HTMLElement) ||
+      !(parent instanceof HTMLElement)
+    ) {
+      return
+    }
+
+    const siblings = Array.from(parent.children).filter(
+      (element): element is HTMLElement =>
+        element instanceof HTMLElement && element !== container,
+    )
+
+    const previousState = siblings.map(element => ({
+      ariaHidden: element.getAttribute('aria-hidden'),
+      hadInert: element.hasAttribute('inert'),
+      element,
+    }))
+
+    for (const { element } of previousState) {
+      element.setAttribute('aria-hidden', 'true')
+      element.setAttribute('inert', '')
+    }
+
+    return () => {
+      for (const { ariaHidden, hadInert, element } of previousState) {
+        if (ariaHidden === null) {
+          element.removeAttribute('aria-hidden')
+        } else {
+          element.setAttribute('aria-hidden', ariaHidden)
+        }
+
+        if (!hadInert) {
+          element.removeAttribute('inert')
+        }
+      }
     }
   }, [isOpen])
 
@@ -347,6 +502,7 @@ function HelpPanelInner({
           exit={{ opacity: 0 }}
           initial={{ opacity: 0 }}
           key="help-backdrop"
+          ref={containerRef}
           transition={{ duration: 0.2 }}
         >
           {/* Backdrop */}
@@ -365,12 +521,6 @@ function HelpPanelInner({
             className="absolute right-0 top-0 h-full w-full max-w-sm bg-white dark:bg-secondary-900 shadow-2xl flex flex-col overflow-hidden"
             exit={{ x: '100%' }}
             initial={{ x: '100%' }}
-            onKeyDown={e => {
-              if (e.key === 'Escape') {
-                e.stopPropagation()
-                onClose()
-              }
-            }}
             ref={panelRef}
             role="dialog"
             tabIndex={-1}

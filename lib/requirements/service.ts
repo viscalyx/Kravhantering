@@ -584,7 +584,9 @@ function getPackageReferenceLabel(input: PackageRefInput, packageId: number) {
   return input.packageSlug ?? String(packageId)
 }
 
-function getLatestOverallVersion(requirement: RequirementDetail) {
+function getLatestOverallVersion(
+  requirement: RequirementDetail,
+): RequirementVersionDetail | null {
   return requirement.versions[0] ?? null
 }
 
@@ -592,14 +594,16 @@ function isPublishedVersion(version: RequirementVersionDetail) {
   return version.status === PUBLISHED_REQUIREMENT_STATUS_ID
 }
 
-function getLatestPublishedVersion(requirement: RequirementDetail) {
+function getLatestPublishedVersion(
+  requirement: RequirementDetail,
+): RequirementVersionDetail | null {
   return requirement.versions.find(isPublishedVersion) ?? null
 }
 
 function withSelectedVersions(
   requirement: RequirementDetail,
   versions: RequirementVersionDetail[],
-) {
+): RequirementDetail {
   return {
     ...requirement,
     versions,

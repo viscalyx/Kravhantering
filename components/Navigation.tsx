@@ -89,11 +89,16 @@ export default function Navigation() {
             <button
               aria-label={tc('help')}
               aria-pressed={helpOpen}
-              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 dark:text-secondary-300 ${
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950 ${
                 helpOpen
                   ? 'bg-primary-50 text-primary-700 shadow-sm dark:bg-primary-950/80 dark:text-primary-300'
                   : 'hover:bg-secondary-100 dark:hover:bg-secondary-800'
               }`}
+              {...devMarker({
+                context: 'navigation',
+                name: 'button',
+                value: `help toggle ${helpOpen ? 'open' : 'closed'}`,
+              })}
               onClick={toggleHelp}
               title={tc('help')}
               type="button"

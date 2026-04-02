@@ -126,7 +126,12 @@ export default function RequirementDetailClient({
 
   const localName = (
     obj: { nameSv: string | null; nameEn: string | null } | null | undefined,
-  ) => (obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null)
+  ) =>
+    obj
+      ? locale === 'sv'
+        ? (obj.nameSv ?? obj.nameEn)
+        : (obj.nameEn ?? obj.nameSv)
+      : null
 
   const [req, setReq] = useState<RequirementDetailResponse | null>(null)
   const [loading, setLoading] = useState(true)

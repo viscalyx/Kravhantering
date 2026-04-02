@@ -2,6 +2,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
+import { internalError } from '@/lib/requirements/errors'
 import {
   createRequirementsService,
   toHttpErrorPayload,
@@ -30,7 +31,7 @@ export async function GET(
     })
     const versionDetail = result.version
     if (!versionDetail) {
-      throw new Error(
+      throw internalError(
         `Version ${version} was not returned for requirement ${id}`,
       )
     }
