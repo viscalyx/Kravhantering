@@ -2,13 +2,48 @@
 applyTo: "{components/HelpPanel.tsx,app/[locale]/**/*-client.tsx}"
 ---
 
-# Help Panel
+## Help Panel
 
-## Overview
+### Overview
 
-Every `*-client.tsx` view registers its help content via `useHelpContent(HELP_CONSTANT)`.
-The module-scope constant (type `HelpContent`) uses keys relative to the `help` namespace in
-`messages/en.json` and `messages/sv.json`.
+- Call `useHelpContent(HELP_CONSTANT)` at the top of each `*-client.tsx` view.
+- Define `HELP_CONSTANT` at module scope with type `HelpContent`.
+- Keep help keys relative to the `help` namespace.
+- Keep `messages/en.json` and `messages/sv.json` aligned.
+
+### Message Files
+
+- Add matching `help.*` keys to `messages/en.json`.
+
+```json
+{
+  "help": {
+    "myView": {
+      "title": "My view",
+      "overview": {
+        "heading": "Overview",
+        "body": "Describe the workflow."
+      }
+    }
+  }
+}
+```
+
+- Add matching `help.*` keys to `messages/sv.json`.
+
+```json
+{
+  "help": {
+    "myView": {
+      "title": "Min vy",
+      "overview": {
+        "heading": "Sammanfattning",
+        "body": "Beskriv arbetsgangen."
+      }
+    }
+  }
+}
+```
 
 ## Rules
 
@@ -19,9 +54,8 @@ The module-scope constant (type `HelpContent`) uses keys relative to the `help` 
 - When removing a view, remove its `help.*` keys from both message files.
 - Keep `HelpContent` constants at module scope (not inside the component function).
 - New `help` translation keys must be added to BOTH `messages/en.json` and `messages/sv.json`.
-- `HelpContent.sections` is a discriminated union:
-  - text sections use `kind: 'text'`, `headingKey`, and `bodyKey`
-  - visual sections use `kind: 'visual'`, `headingKey`, optional `bodyKey`, and `visualId`
+- Use text sections with `kind: 'text'`, `headingKey`, and `bodyKey`.
+- Use visual sections with `kind: 'visual'`, `headingKey`, optional `bodyKey`, and `visualId`.
 - Keep help visuals translation-driven; do not pass arbitrary JSX through `HelpContent`.
 
 ## Pattern
