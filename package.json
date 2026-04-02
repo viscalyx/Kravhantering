@@ -59,26 +59,24 @@
     "lint:py": "pyright --project pyrightconfig.json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.28.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@opennextjs/cloudflare": "^1.18.0",
     "@react-pdf/renderer": "^4.3.2",
     "@tailwindcss/typography": "^0.5.19",
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
-    "next": "^16.2.1",
-    "next-intl": "^4.8.3",
+    "next": "^16.2.2",
+    "next-intl": "^4.9.0",
     "next-themes": "^0.4.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@viscalyx/developer-mode-core": "file:packages/developer-mode-core",
-    "@viscalyx/developer-mode-react": "file:packages/developer-mode-react",
-    "@biomejs/biome": "^2.4.9",
+    "@biomejs/biome": "^2.4.10",
     "@cspell/dict-sv": "^2.3.2",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -87,6 +85,8 @@
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@viscalyx/developer-mode-core": "file:packages/developer-mode-core",
+    "@viscalyx/developer-mode-react": "file:packages/developer-mode-react",
     "@vitest/coverage-v8": "^4.1.2",
     "@vitest/ui": "^4.1.2",
     "autoprefixer": "^10.4.27",
@@ -101,7 +101,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.2",
-    "wrangler": "^4.77.0"
+    "wrangler": "^4.80.0"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
@@ -111,6 +111,9 @@
     "which causes 'npm ci' to fail with EBADPLATFORM in CI."
   ],
   "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "0.25.12"
+    },
     "fast-xml-parser": "5.5.9",
     "minimatch@^8.0.0": {
       "brace-expansion": "2.0.3"
@@ -127,6 +130,7 @@
     "Overrides pin transitive dependencies that still resolve to vulnerable versions.",
     "Remove each override when the parent dependency updates to include the fix natively.",
     "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict.",
+    "@esbuild-kit/core-utils > esbuild: drizzle-kit@0.31.10 resolves @esbuild-kit/esm-loader@2.6.5 -> @esbuild-kit/core-utils@3.3.2 -> esbuild@0.18.20, which is vulnerable to GHSA-67mh-4wv8-2f99. Override to 0.25.12 resolves it without downgrading drizzle-kit.",
     "fast-xml-parser: @aws-sdk/xml-builder@3.972.11 (via @opennextjs/cloudflare > @opennextjs/aws) pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.9 resolves both.",
     "minimatch@^8.0.0 > brace-expansion: @opennextjs/cloudflare > @opennextjs/aws > @node-minify/core > glob@9.3.5 resolves brace-expansion@2.0.2, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 2.0.3.",
     "minimatch@^10.0.0 > brace-expansion: @opennextjs/cloudflare > glob@12.0.0 resolves brace-expansion@5.0.4, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 5.0.5.",
