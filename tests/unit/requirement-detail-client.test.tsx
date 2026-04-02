@@ -173,8 +173,8 @@ vi.mock('@/components/VersionHistory', () => {
 
 type RequirementLocalizedEntityOverride = {
   id?: number
-  nameEn: string
-  nameSv: string
+  nameEn: string | null
+  nameSv: string | null
 }
 
 type RequirementScenarioOverride = {
@@ -182,8 +182,8 @@ type RequirementScenarioOverride = {
     descriptionEn?: string | null
     descriptionSv?: string | null
     id: number
-    nameEn: string
-    nameSv: string
+    nameEn: string | null
+    nameSv: string | null
     ownerId?: number | null
   }
 }
@@ -192,6 +192,7 @@ type RequirementVersionOverrides = Omit<
   Partial<RequirementVersionDetail>,
   'category' | 'qualityCharacteristic' | 'type' | 'versionScenarios'
 > & {
+  id?: number
   category?: RequirementLocalizedEntityOverride | null
   qualityCharacteristic?: RequirementLocalizedEntityOverride | null
   type?: RequirementLocalizedEntityOverride | null
@@ -671,6 +672,41 @@ describe('RequirementDetailClient', () => {
         .getByText('Quality characteristic')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
+  })
+
+  it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        category: { nameEn: 'Operations', nameSv: null },
+        description: 'Taxonomy fallback requirement',
+        publishedAt: '2026-03-01',
+        qualityCharacteristic: {
+          nameEn: 'Maintainability',
+          nameSv: null,
+        },
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+        type: { nameEn: 'Functional', nameSv: null },
+        versionScenarios: [
+          {
+            scenario: { id: 1, nameEn: 'Ordering', nameSv: null },
+          },
+        ],
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    expect(
+      await screen.findByText('Taxonomy fallback requirement'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Operations')).toBeInTheDocument()
+    expect(screen.getByText('Functional')).toBeInTheDocument()
+    expect(screen.getByText('Maintainability')).toBeInTheDocument()
+    expect(screen.getByText('Ordering')).toBeInTheDocument()
   })
 
   it('renders the empty modal state when the requirement request fails', async () => {
