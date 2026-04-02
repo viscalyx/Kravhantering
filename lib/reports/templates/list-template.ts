@@ -1,11 +1,25 @@
 import type { RequirementReportData } from '../data/fetch-requirement'
 import type { ReportModel, ReportSection } from '../types'
 
+export interface PackageCoverInfo {
+  businessNeedsReference: string | null
+  implementationType: string | null
+  name: string
+  responsibilityArea: string | null
+  uniqueId: string
+}
+
 export function buildListReport(
   requirements: RequirementReportData[],
   locale: string,
+  packageInfo?: PackageCoverInfo,
 ): ReportModel {
   const sections: ReportSection[] = []
+
+  if (packageInfo) {
+    sections.push({ type: 'package-cover', locale, ...packageInfo })
+    sections.push({ type: 'page-break' })
+  }
   const now = new Date().toISOString()
 
   const count = requirements.length

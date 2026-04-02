@@ -65,6 +65,7 @@ describe('admin requirement columns route', () => {
       'qualityCharacteristic',
       'requiresTesting',
       'version',
+      'needsReference',
     ])
   })
 
@@ -137,6 +138,7 @@ describe('admin requirement columns route', () => {
       'status',
       'requiresTesting',
       'version',
+      'needsReference',
     ])
   })
 

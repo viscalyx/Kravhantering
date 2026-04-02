@@ -666,6 +666,21 @@ describe('RequirementsTable', () => {
     expect(statusLabel?.className).toContain('w-full')
   })
 
+  it('keeps locked columns visible even when excludeColumns includes them', () => {
+    render(
+      <RequirementsTable
+        excludeColumns={['uniqueId', 'description']}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'uniqueId' })).toBeInTheDocument()
+    expect(screen.getByText('description')).toBeInTheDocument()
+    expect(screen.getByText('INT0001')).toBeInTheDocument()
+    expect(screen.getByText('Testkrav')).toBeInTheDocument()
+  })
+
   it('renders the floating pill outside the table header and closes on outside click', () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
@@ -748,7 +763,7 @@ describe('RequirementsTable', () => {
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
 
-    expect(getColumnPickerBadge(container)?.textContent).toBe('6/9')
+    expect(getColumnPickerBadge(container)?.textContent).toBe('6/10')
   })
 
   it('renders the floating pill in a centered square shell', () => {
@@ -907,6 +922,51 @@ describe('RequirementsTable', () => {
       expect(link.className).toContain('focus-visible:ring-2')
     })
   })
+
+  it('focuses action-only floating menu items when the menu opens', async () => {
+    const onExport = vi.fn()
+
+    render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'manage',
+            icon: <span aria-hidden="true">M</span>,
+            id: 'manage',
+            menuItems: [
+              {
+                id: 'export',
+                label: 'Export',
+                onClick: onExport,
+              },
+            ],
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'manage' }))
+
+    const actionButton = await screen.findByRole('button', { name: 'Export' })
+
+    await waitFor(() => expect(actionButton).toHaveFocus())
+
+    fireEvent.click(actionButton)
+    expect(onExport).toHaveBeenCalledTimes(1)
+  })
+
+  it('uses standard wrapping utilities when description wrapping is enabled', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} wrapDescription />)
+
+    const descriptionCell = screen.getByText('Testkrav').closest('td')
+
+    expect(descriptionCell?.className).toContain('whitespace-normal')
+    expect(descriptionCell?.className).toContain('break-words')
+    expect(descriptionCell?.className).not.toContain('wrap-break-word')
+  })
+
   it('clears hidden column filters and resets hidden active sort', () => {
     const onFilterChange = vi.fn()
     const onSortChange = vi.fn()
@@ -972,6 +1032,29 @@ describe('RequirementsTable', () => {
         onSortChange={onSortChange}
         rows={[makeRow()]}
         sortState={{ by: 'status', direction: 'desc' }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(onFilterChange).toHaveBeenCalledWith({ statuses: undefined })
+      expect(onSortChange).toHaveBeenCalledWith(DEFAULT_REQUIREMENT_SORT)
+    })
+  })
+
+  it('normalizes excluded visible columns before clearing hidden filters and sort', async () => {
+    const onFilterChange = vi.fn()
+    const onSortChange = vi.fn()
+
+    render(
+      <RequirementsTable
+        excludeColumns={['status']}
+        filterValues={{ statuses: [3] }}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        onSortChange={onSortChange}
+        rows={[makeRow()]}
+        sortState={{ by: 'status', direction: 'desc' }}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'status']}
       />,
     )
 

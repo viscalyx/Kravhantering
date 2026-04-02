@@ -20,6 +20,13 @@ const mocks = vi.hoisted(() => ({
   listScenarios: vi.fn(),
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
+  listPackages: vi.fn(),
+  getPackageBySlug: vi.fn(),
+  listPackageItems: vi.fn(),
+  getPublishedVersionIdForRequirement: vi.fn(),
+  getOrCreatePackageNeedsReference: vi.fn(),
+  linkRequirementsToPackage: vi.fn(),
+  unlinkRequirementsFromPackage: vi.fn(),
   listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
   reactivateRequirement: vi.fn(),
@@ -35,6 +42,17 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
 
 vi.mock('@/lib/dal/requirement-categories', () => ({
   listCategories: mocks.listCategories,
+}))
+
+vi.mock('@/lib/dal/requirement-packages', () => ({
+  getOrCreatePackageNeedsReference: mocks.getOrCreatePackageNeedsReference,
+  getPackageBySlug: mocks.getPackageBySlug,
+  getPublishedVersionIdForRequirement:
+    mocks.getPublishedVersionIdForRequirement,
+  linkRequirementsToPackage: mocks.linkRequirementsToPackage,
+  listPackageItems: mocks.listPackageItems,
+  listPackages: mocks.listPackages,
+  unlinkRequirementsFromPackage: mocks.unlinkRequirementsFromPackage,
 }))
 
 vi.mock('@/lib/dal/requirement-references', () => ({
@@ -214,8 +232,18 @@ describe('createRequirementsService', () => {
       version: { id: 10, versionNumber: 1 },
     })
     mocks.editRequirement.mockResolvedValue({ id: 10, versionNumber: 2 })
+    mocks.getOrCreatePackageNeedsReference.mockResolvedValue(44)
+    mocks.getPackageBySlug.mockResolvedValue({
+      id: 7,
+      uniqueId: 'IAM-PACKAGE',
+    })
+    mocks.getPublishedVersionIdForRequirement.mockResolvedValue(101)
+    mocks.linkRequirementsToPackage.mockResolvedValue(0)
+    mocks.listPackageItems.mockResolvedValue([])
+    mocks.listPackages.mockResolvedValue([])
     mocks.restoreVersion.mockResolvedValue({ id: 22, versionNumber: 4 })
     mocks.transitionStatus.mockResolvedValue({ id: 10, versionNumber: 1 })
+    mocks.unlinkRequirementsFromPackage.mockResolvedValue(0)
   })
 
   it('returns paginated requirement catalog results', async () => {
@@ -905,5 +933,151 @@ describe('createRequirementsService', () => {
       }),
     ).rejects.toMatchObject({ code: 'not_found' })
     expect(mocks.transitionStatus).not.toHaveBeenCalled()
+  })
+
+  it('authorizes and logs package listing operations', async () => {
+    mocks.listPackages.mockResolvedValue([
+      {
+        businessNeedsReference: null,
+        id: 7,
+        implementationType: null,
+        itemCount: 2,
+        name: 'IAM Package',
+        responsibilityArea: null,
+        uniqueId: 'IAM-PACKAGE',
+      },
+    ])
+    const authorization = {
+      assertAuthorized: vi.fn().mockResolvedValue(undefined),
+    }
+    const service = createRequirementsService({} as never, {
+      authorization,
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.listPackages(makeContext(), {
+      locale: 'sv',
+      responseFormat: 'json',
+    })
+
+    expect(authorization.assertAuthorized).toHaveBeenCalledWith(
+      { kind: 'list_packages', nameSearch: undefined },
+      expect.anything(),
+    )
+    expect(JSON.parse(result.message)).toMatchObject({
+      title: 'Kravpaket',
+    })
+    expect(logger.info).toHaveBeenCalledWith(
+      'requirements.list_packages',
+      expect.objectContaining({
+        actor_id: 'alice',
+        source: 'rest',
+      }),
+    )
+  })
+
+  it('localizes package item labels using the requested locale', async () => {
+    mocks.listPackageItems.mockResolvedValue([
+      {
+        area: { name: 'Identitet' },
+        id: 101,
+        needsReference: 'IAM-42',
+        uniqueId: 'INT0001',
+        version: {
+          categoryNameEn: 'Category',
+          categoryNameSv: 'Kategori',
+          description: 'Support secure integration',
+          qualityCharacteristicNameEn: null,
+          qualityCharacteristicNameSv: null,
+          requiresTesting: true,
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+          typeNameEn: 'Functional',
+          typeNameSv: 'Funktionellt',
+          versionNumber: 1,
+        },
+      },
+    ])
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.getPackageItems(makeContext(), {
+      locale: 'sv',
+      packageSlug: 'IAM-PACKAGE',
+      responseFormat: 'json',
+    })
+
+    expect(result.packageId).toBe(7)
+    expect(result.items).toEqual([
+      expect.objectContaining({
+        area: 'Identitet',
+        category: 'Kategori',
+        needsReference: 'IAM-42',
+        status: 'Publicerad',
+        type: 'Funktionellt',
+      }),
+    ])
+    expect(JSON.parse(result.message)).toMatchObject({
+      title: 'Krav i paket',
+    })
+  })
+
+  it('uses actual inserted package link counts in addToPackage', async () => {
+    mocks.getPublishedVersionIdForRequirement
+      .mockResolvedValueOnce(201)
+      .mockResolvedValueOnce(202)
+    mocks.linkRequirementsToPackage.mockResolvedValue(1)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.addToPackage(makeContext(), {
+      locale: 'en',
+      packageSlug: 'IAM-PACKAGE',
+      requirementIds: [10, 11],
+      responseFormat: 'json',
+    })
+
+    expect(mocks.linkRequirementsToPackage).toHaveBeenCalledWith(
+      expect.anything(),
+      7,
+      expect.arrayContaining([
+        expect.objectContaining({ requirementId: 10 }),
+        expect.objectContaining({ requirementId: 11 }),
+      ]),
+    )
+    expect(result.addedCount).toBe(1)
+    expect(result.skippedCount).toBe(0)
+    expect(JSON.parse(result.message)).toMatchObject({
+      lines: ['Added 1 requirement to package IAM-PACKAGE.'],
+      title: 'Requirements Added to Package',
+    })
+  })
+
+  it('uses actual deleted package link counts in removeFromPackage', async () => {
+    mocks.unlinkRequirementsFromPackage.mockResolvedValue(1)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    const result = await service.removeFromPackage(makeContext(), {
+      locale: 'en',
+      packageSlug: 'IAM-PACKAGE',
+      requirementIds: [10, 11],
+      responseFormat: 'json',
+    })
+
+    expect(result.removedCount).toBe(1)
+    expect(JSON.parse(result.message)).toMatchObject({
+      lines: ['Removed 1 requirement from package IAM-PACKAGE.'],
+      title: 'Requirements Removed from Package',
+    })
   })
 })

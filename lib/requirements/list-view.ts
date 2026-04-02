@@ -2,6 +2,7 @@ export interface FilterValues {
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
+  needsReferenceIds?: number[]
   qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
   statuses?: number[]
@@ -43,9 +44,12 @@ export interface RequirementRow {
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
+  needsReference?: string | null
+  needsReferenceId?: number | null
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
   uniqueId: string
+  usageScenarioIds?: number[]
   version: {
     categoryNameEn: string | null
     categoryNameSv: string | null
@@ -83,6 +87,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.typeIds && values.typeIds.length > 0) ||
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
+    (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
     values.descriptionSearch ||
     (values.usageScenarioIds && values.usageScenarioIds.length > 0) ||
@@ -100,6 +105,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'status',
   'requiresTesting',
   'version',
+  'needsReference',
 ] as const
 
 export type RequirementColumnId = (typeof REQUIREMENT_COLUMN_ORDER)[number]
@@ -275,6 +281,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     labelNamespace: 'common',
     maxWidthPx: 160,
     minWidthPx: 72,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: false,
+    defaultVisible: false,
+    defaultWidthPx: 200,
+    id: 'needsReference',
+    labelKey: 'needsReference',
+    labelNamespace: 'requirement',
+    maxWidthPx: 400,
+    minWidthPx: 140,
     resizable: true,
   },
 ] as const
@@ -525,6 +544,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
+  clearIfHidden('needsReference', 'needsReferenceIds')
 
   return nextValues
 }
@@ -679,6 +699,11 @@ export function buildRequirementListParams({
   if (filters.statuses) {
     for (const status of filters.statuses) {
       params.append('statuses', String(status))
+    }
+  }
+  if (filters.needsReferenceIds) {
+    for (const id of filters.needsReferenceIds) {
+      params.append('needsReferenceIds', String(id))
     }
   }
   if (filters.usageScenarioIds) {

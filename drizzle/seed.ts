@@ -12,24 +12,24 @@
 /* eslint-disable no-console */
 
 const seedSQL = `
--- ─── Clean stale seed data ───────────────────────────────────────────────────
-DELETE FROM requirement_package_items WHERE id IN (1, 2, 3, 4);
-DELETE FROM requirement_packages WHERE id IN (1, 2);
-DELETE FROM package_responsibility_areas WHERE id IN (1, 2, 3, 4, 5);
-DELETE FROM package_implementation_types WHERE id IN (1, 2);
-DELETE FROM requirement_version_usage_scenarios WHERE requirement_version_id IN (2, 5, 7, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100);
-DELETE FROM requirement_references WHERE id IN (1, 2, 3);
-DELETE FROM requirement_versions WHERE id BETWEEN 1 AND 100;
-DELETE FROM requirement_versions WHERE id BETWEEN 101 AND 502;
-DELETE FROM usage_scenarios WHERE id IN (1, 2, 3);
-DELETE FROM requirements WHERE id BETWEEN 1 AND 367;
-DELETE FROM requirement_areas WHERE id BETWEEN 1 AND 10;
-DELETE FROM owners WHERE id BETWEEN 1 AND 3;
-DELETE FROM quality_characteristics WHERE id BETWEEN 1 AND 48;
-DELETE FROM requirement_types WHERE id IN (1, 2);
-DELETE FROM requirement_categories WHERE id IN (1, 2, 3);
-DELETE FROM requirement_status_transitions WHERE id BETWEEN 1 AND 10;
-DELETE FROM requirement_statuses WHERE id BETWEEN 1 AND 10;
+-- ─── Clean stale seed data (dependency order) ───────────────────────────────
+DELETE FROM requirement_package_items;
+DELETE FROM package_needs_references;
+DELETE FROM requirement_packages;
+DELETE FROM package_responsibility_areas;
+DELETE FROM package_implementation_types;
+DELETE FROM requirement_version_usage_scenarios;
+DELETE FROM requirement_references;
+DELETE FROM requirement_versions;
+DELETE FROM usage_scenarios;
+DELETE FROM requirements;
+DELETE FROM requirement_areas;
+DELETE FROM owners;
+DELETE FROM quality_characteristics;
+DELETE FROM requirement_types;
+DELETE FROM requirement_categories;
+DELETE FROM requirement_status_transitions;
+DELETE FROM requirement_statuses;
 -- ─── UI Terminology ──────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO ui_terminology (
   key,
@@ -1429,20 +1429,122 @@ INSERT OR IGNORE INTO package_implementation_types (id, name_sv, name_en) VALUES
 UPDATE package_implementation_types SET name_sv = 'Upphandling', name_en = 'Procurement' WHERE id = 1;
 UPDATE package_implementation_types SET name_sv = 'Utveckling', name_en = 'Development' WHERE id = 2;
 
--- ─── Requirement Packages (sample) ──────────────────────────────────────────
-INSERT OR IGNORE INTO requirement_packages (id, name_sv, name_en, package_responsibility_area_id, package_implementation_type_id, created_at, updated_at) VALUES
-  (1, 'Integrationsplattform 2026', 'Integration Platform 2026', 1, 1, datetime('now'), datetime('now')),
-  (2, 'Säkerhetslyft Q2', 'Security Uplift Q2', 1, 2, datetime('now'), datetime('now'));
+-- ─── Requirement Packages (10 packages) ─────────────────────────────────────
+-- All packages use only published (status=3) requirement versions.
+-- business_needs_reference added to several packages to show the field.
+INSERT OR IGNORE INTO requirement_packages (id, unique_id, name, package_responsibility_area_id, package_implementation_type_id, business_needs_reference, created_at, updated_at) VALUES
+  (1,  'INTPLATTFORM-2026',   'Integrationsplattform 2026',         1, 1, 'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform',  datetime('now', '-30 days'), datetime('now', '-30 days')),
+  (2,  'SAKLYFT-Q2',          'Säkerhetslyft Q2',                   1, 2, 'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas',    datetime('now', '-25 days'), datetime('now', '-25 days')),
+  (3,  'PRESTANDA-SKAL',      'Prestanda och Skalbarhet',            2, 2, NULL,                                                                                                   datetime('now', '-20 days'), datetime('now', '-20 days')),
+  (4,  'TILLGANGLIGHET-Q3',   'Tillgänglighet Q3 2025',              3, 2, 'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025',                   datetime('now', '-18 days'), datetime('now', '-18 days')),
+  (5,  'DATALAGRING-BACKUP',  'Datalagring och Backup',              4, 1, NULL,                                                                                                   datetime('now', '-15 days'), datetime('now', '-15 days')),
+  (6,  'IAM-IDENTITET',       'Identitets- och åtkomsthantering',   1, 2, 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet', datetime('now', '-12 days'), datetime('now', '-12 days')),
+  (7,  'GDPR-2026',           'GDPR-efterlevnad 2026',               5, 1, 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026',            datetime('now', '-10 days'), datetime('now', '-10 days')),
+  (8,  'BEHORIGHET-IAM',      'Behörighet och IAM',                  2, 2, NULL,                                                                                                   datetime('now', '-8 days'),  datetime('now', '-8 days')),
+  (9,  'API-GATEWAY',         'API Gateway och Kommunikation',       3, 1, NULL,                                                                                                   datetime('now', '-5 days'),  datetime('now', '-5 days')),
+  (10, 'SYSOVERVAKNING-BAS',  'Systemövervakning Bas',               4, 2, 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning',                       datetime('now', '-3 days'),  datetime('now', '-3 days'));
 
-UPDATE requirement_packages SET name_sv = 'Integrationsplattform 2026', name_en = 'Integration Platform 2026', package_responsibility_area_id = 1, package_implementation_type_id = 1 WHERE id = 1;
-UPDATE requirement_packages SET name_sv = 'Säkerhetslyft Q2', name_en = 'Security Uplift Q2', package_responsibility_area_id = 1, package_implementation_type_id = 2 WHERE id = 2;
+UPDATE requirement_packages SET unique_id = 'INTPLATTFORM-2026',  name = 'Integrationsplattform 2026',       package_responsibility_area_id = 1, package_implementation_type_id = 1, business_needs_reference = 'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform'  WHERE id = 1;
+UPDATE requirement_packages SET unique_id = 'SAKLYFT-Q2',         name = 'Säkerhetslyft Q2',                 package_responsibility_area_id = 1, package_implementation_type_id = 2, business_needs_reference = 'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas'    WHERE id = 2;
+UPDATE requirement_packages SET unique_id = 'PRESTANDA-SKAL',     name = 'Prestanda och Skalbarhet',          package_responsibility_area_id = 2, package_implementation_type_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 3;
+UPDATE requirement_packages SET unique_id = 'TILLGANGLIGHET-Q3',  name = 'Tillgänglighet Q3 2025',            package_responsibility_area_id = 3, package_implementation_type_id = 2, business_needs_reference = 'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025'                   WHERE id = 4;
+UPDATE requirement_packages SET unique_id = 'DATALAGRING-BACKUP', name = 'Datalagring och Backup',            package_responsibility_area_id = 4, package_implementation_type_id = 1, business_needs_reference = NULL                                                                                                   WHERE id = 5;
+UPDATE requirement_packages SET unique_id = 'IAM-IDENTITET',      name = 'Identitets- och åtkomsthantering', package_responsibility_area_id = 1, package_implementation_type_id = 2, business_needs_reference = 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet' WHERE id = 6;
+UPDATE requirement_packages SET unique_id = 'GDPR-2026',          name = 'GDPR-efterlevnad 2026',             package_responsibility_area_id = 5, package_implementation_type_id = 1, business_needs_reference = 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026'            WHERE id = 7;
+UPDATE requirement_packages SET unique_id = 'BEHORIGHET-IAM',     name = 'Behörighet och IAM',                package_responsibility_area_id = 2, package_implementation_type_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 8;
+UPDATE requirement_packages SET unique_id = 'API-GATEWAY',        name = 'API Gateway och Kommunikation',     package_responsibility_area_id = 3, package_implementation_type_id = 1, business_needs_reference = NULL                                                                                                   WHERE id = 9;
+UPDATE requirement_packages SET unique_id = 'SYSOVERVAKNING-BAS', name = 'Systemövervakning Bas',             package_responsibility_area_id = 4, package_implementation_type_id = 2, business_needs_reference = 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning'                       WHERE id = 10;
 
--- ─── Requirement Package Items (sample) ──────────────────────────────────────
-INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, requirement_id, requirement_version_id, needs_reference, created_at) VALUES
-  (1, 1, 1, 2, 'Behov av integrerad plattform enligt verksamhetsplan 2026', datetime('now')),
-  (2, 1, 2, 3, 'Dataimport krävs för migrering', datetime('now')),
-  (3, 2, 4, 5, 'Krav från IT-säkerhetsrevision 2025', datetime('now')),
-  (4, 2, 5, 6, 'GDPR-efterlevnad', datetime('now'));
+-- ─── Package Needs References ─────────────────────────────────────────────────
+INSERT OR IGNORE INTO package_needs_references (id, package_id, text, created_at) VALUES
+  -- Package 1: Integrationsplattform 2026
+  (1,  1, 'Behov av integrerad plattform enligt verksamhetsplan 2026 — extern integration primärt',  datetime('now', '-29 days')),
+  (2,  1, 'Dataimport krävs för migration av befintliga system',                                      datetime('now', '-29 days')),
+  (3,  1, 'Autentisering mot externa partners via OAuth2',                                             datetime('now', '-29 days')),
+  (4,  1, 'GraphQL behövs för flexibel datahämtning i frontend-applikationer',                       datetime('now', '-28 days')),
+  (5,  1, 'Rate limiting krävs för att skydda mot missbruk av extern API-gateway',                   datetime('now', '-28 days')),
+  (6,  1, 'Auto-scaling är ett krav för att klara förväntad lasttillväxt under migreringsperioden',  datetime('now', '-27 days')),
+  -- Package 2: Säkerhetslyft Q2
+  (7,  2, 'Gap identifierat i revision: TLS-version under 1.3 i äldre integrationspunkter',          datetime('now', '-24 days')),
+  (8,  2, 'Automatisk sårbarhetsskanning saknas i nuvarande CI/CD-pipeline',                          datetime('now', '-24 days')),
+  (9,  2, 'Privilegierad åtkomst loggas idag inte konsekvent',                                         datetime('now', '-23 days')),
+  (10, 2, 'CSRF-skydd saknas på tre kritiska endpoints',                                               datetime('now', '-23 days')),
+  -- Package 4: Tillgänglighet Q3 2025
+  (11, 4, 'WCAG 2.1 AA är lagstadgat för myndigheter från 2025',                                     datetime('now', '-17 days')),
+  -- Package 5: Datalagring och Backup
+  (12, 5, 'GDPR kräver att personuppgifter lagras inom EU',                                           datetime('now', '-13 days')),
+  -- Package 6: Identitets- och åtkomsthantering
+  (13, 6, 'FR-88: GraphQL-gränssnitt för IAM-portalen',                                              datetime('now', '-11 days')),
+  (14, 6, 'FR-88: Rate limiting per klient i IAM-API',                                               datetime('now', '-11 days')),
+  (15, 6, 'Spårbarhet av privilegierad åtkomst är ett kärnkrav i FR-88',                             datetime('now', '-10 days')),
+  (16, 6, 'RBAC är grunden för IAM-lösningen',                                                        datetime('now', '-10 days')),
+  (17, 6, 'Revisionslogg för behörighetsändringar krävs enligt FR-88',                               datetime('now', '-9 days')),
+  (18, 6, 'Tidsbegränsad leverantörsåtkomst är ett explicit krav i FR-88',                           datetime('now', '-9 days')),
+  -- Package 7: GDPR-efterlevnad 2026
+  (19, 7, 'GDPR Art. 44-46: dataöverföring och lagring inom EU',                                     datetime('now', '-9 days')),
+  (20, 7, 'GDPR Art. 5(2) ansvarsskyldighet: logga privilegierade operationer',                      datetime('now', '-8 days')),
+  -- Package 9: API Gateway och Kommunikation
+  (21, 9, 'Rate limiting är ett primärt krav för API-gateway-upphandlingen',                         datetime('now', '-3 days')),
+  -- Package 10: Systemövervakning Bas
+  (22, 10, 'IAM-lösningen är första tjänst som kräver driftövervakning',                              datetime('now', '-2 days'));
+
+-- ─── Requirement Package Items ────────────────────────────────────────────────
+-- Only published versions (requirement_status_id = 3) are referenced.
+-- Published (requirement_id, version_id) pairs used:
+--   req=1  ver=1   req=2  ver=3   req=4  ver=5   req=11 ver=13  req=13 ver=15
+--   req=15 ver=17  req=16 ver=18  req=17 ver=19  req=19 ver=21  req=21 ver=23
+--   req=22 ver=24  req=24 ver=26  req=26 ver=28  req=27 ver=29  req=29 ver=31
+--   req=32 ver=33  req=33 ver=34  req=34 ver=35  req=38 ver=39  req=39 ver=40
+--   req=42 ver=43  req=43 ver=44  req=67 ver=101
+INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, requirement_id, requirement_version_id, needs_reference_id, created_at) VALUES
+  -- Package 1: Integrationsplattform 2026 (7 krav)
+  (1,  1,  1,  1,   1,    datetime('now', '-29 days')),
+  (2,  1,  2,  3,   2,    datetime('now', '-29 days')),
+  (3,  1,  4,  5,   3,    datetime('now', '-29 days')),
+  (4,  1,  11, 13,  4,    datetime('now', '-28 days')),
+  (5,  1,  13, 15,  5,    datetime('now', '-28 days')),
+  (6,  1,  22, 24,  NULL, datetime('now', '-27 days')),
+  (7,  1,  24, 26,  6,    datetime('now', '-27 days')),
+  -- Package 2: Säkerhetslyft Q2 (5 krav)
+  (8,  2,  15, 17,  7,    datetime('now', '-24 days')),
+  (9,  2,  16, 18,  8,    datetime('now', '-24 days')),
+  (10, 2,  17, 19,  9,    datetime('now', '-23 days')),
+  (11, 2,  19, 21,  10,   datetime('now', '-23 days')),
+  (12, 2,  42, 43,  NULL, datetime('now', '-22 days')),
+  -- Package 3: Prestanda och Skalbarhet (4 krav)
+  (13, 3,  21, 23,  NULL, datetime('now', '-19 days')),
+  (14, 3,  22, 24,  NULL, datetime('now', '-19 days')),
+  (15, 3,  24, 26,  NULL, datetime('now', '-18 days')),
+  (16, 3,  39, 40,  NULL, datetime('now', '-18 days')),
+  -- Package 4: Tillgänglighet Q3 2025 (3 krav)
+  (17, 4,  26, 28,  11,   datetime('now', '-17 days')),
+  (18, 4,  27, 29,  NULL, datetime('now', '-17 days')),
+  (19, 4,  29, 31,  NULL, datetime('now', '-16 days')),
+  -- Package 5: Datalagring och Backup (3 krav)
+  (20, 5,  32, 33,  NULL, datetime('now', '-14 days')),
+  (21, 5,  33, 34,  NULL, datetime('now', '-14 days')),
+  (22, 5,  34, 35,  12,   datetime('now', '-13 days')),
+  -- Package 6: Identitets- och åtkomsthantering (6 krav)
+  (23, 6,  11, 13,  13,   datetime('now', '-11 days')),
+  (24, 6,  13, 15,  14,   datetime('now', '-11 days')),
+  (25, 6,  17, 19,  15,   datetime('now', '-10 days')),
+  (26, 6,  38, 39,  16,   datetime('now', '-10 days')),
+  (27, 6,  42, 43,  17,   datetime('now', '-9 days')),
+  (28, 6,  43, 44,  18,   datetime('now', '-9 days')),
+  -- Package 7: GDPR-efterlevnad 2026 (2 krav)
+  (29, 7,  34, 35,  19,   datetime('now', '-9 days')),
+  (30, 7,  17, 19,  20,   datetime('now', '-8 days')),
+  -- Package 8: Behörighet och IAM (4 krav)
+  (31, 8,  38, 39,  NULL, datetime('now', '-7 days')),
+  (32, 8,  39, 40,  NULL, datetime('now', '-7 days')),
+  (33, 8,  42, 43,  NULL, datetime('now', '-6 days')),
+  (34, 8,  43, 44,  NULL, datetime('now', '-6 days')),
+  -- Package 9: API Gateway och Kommunikation (3 krav)
+  (35, 9,  1,  1,   NULL, datetime('now', '-4 days')),
+  (36, 9,  4,  5,   NULL, datetime('now', '-4 days')),
+  (37, 9,  13, 15,  21,   datetime('now', '-3 days')),
+  -- Package 10: Systemövervakning Bas (1 krav)
+  (38, 10, 67, 101, 22,   datetime('now', '-2 days'));
 `
 
 console.log(seedSQL)

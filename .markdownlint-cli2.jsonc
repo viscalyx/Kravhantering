@@ -6,6 +6,7 @@
   "globs": [
     "**/*.md",
     "!**/AGENTS.md",
+    "!Prompt-for-AI-Agents-findings.md",
     "!.github/copilot-instructions.md",
     "!.github/instructions/**",
     "!.github/prompts/**",

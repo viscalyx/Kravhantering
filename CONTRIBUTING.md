@@ -6,6 +6,15 @@ This project uses a [Dev Container](https://containers.dev/) for a
 consistent development environment. Open the project in VS Code and
 use **Reopen in Container** to get started automatically.
 
+If VS Code prompts you to choose a configuration, use
+**Kravhantering Development** for the default container. If you want
+the stricter opt-out variant that does not set
+`seccomp=unconfined`, choose
+**Kravhantering Development (Strict)** from
+[`.devcontainer/strict/devcontainer.json`](.devcontainer/strict/devcontainer.json).
+That stricter variant can prevent AI agents from working correctly
+when they rely on nested sandboxing features.
+
 ## Available Scripts
 
 <!-- markdownlint-disable MD013 -->

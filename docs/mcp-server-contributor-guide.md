@@ -21,7 +21,7 @@ For admin-managed UI terminology and default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 4
+- Exposed MCP tools: 8
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://kravhantering/requirement-detail/{uniqueId}`
@@ -35,7 +35,7 @@ For admin-managed UI terminology and default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the four tools, the JSON resource, and the HTML UI resource.
+  Registers the eight tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads DB-backed UI terminology and default column settings.
 - `lib/ui-terminology.ts`
@@ -53,6 +53,9 @@ For admin-managed UI terminology and default column settings, see
 - `lib/dal/requirements.ts`
   Persistence logic for requirement lifecycle, versioning, transitions,
   restore, and paging counts.
+- `lib/dal/requirement-packages.ts`
+  Persistence logic for requirement packages: listing packages and items,
+  linking and unlinking requirements, and needs reference management.
 - `lib/dal/requirement-references.ts`
   Reference synchronization for version mutations.
 
@@ -75,7 +78,8 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is intentionally kept to four tools.
+The MCP surface is split into two areas: individual requirements (four tools)
+and requirement packages (four tools).
 
 ### `kravhantering_query_catalog`
 
@@ -117,6 +121,34 @@ operation is intentionally not exposed as an MCP tool operation in v1.
 
 Transitions a requirement through the lifecycle using `toStatusId`.
 
+### `kravhantering_list_packages`
+
+Lists all requirement packages with optional name filtering. Returns the
+numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-Q2`) for each package.
+
+### `kravhantering_get_package_items`
+
+Lists requirements linked to a specific package. Accepts `packageId`
+(numeric) or `packageSlug` (e.g. `SAKLYFT-Q2`). Supports optional
+`descriptionSearch` for client-side filtering.
+
+### `kravhantering_add_to_package`
+
+Links requirements to a package. Accepts `packageId` (numeric) or
+`packageSlug` (e.g. `SAKLYFT-Q2`). Requirements without a published version
+are skipped and returned in `skippedIds` rather than causing an error — this
+lets an agent batch-add requirements without needing to pre-filter by publish
+state. An optional `needsReferenceText` is resolved to a
+`package_needs_references` row (created if needed) and linked to all added
+items.
+
+### `kravhantering_remove_from_package`
+
+Unlinks requirements from a package. Accepts `packageId` (numeric) or
+`packageSlug` (e.g. `SAKLYFT-Q2`). The requirements themselves are not
+deleted. The operation is idempotent — removing an ID that is not in the
+package produces no error.
+
 ## Resource Design
 
 ### JSON Resource
@@ -153,6 +185,7 @@ It owns:
 - detail and version-history lookup
 - create, edit, archive, delete draft, reactivate, and restore flows
 - lifecycle transitions
+- package listing, item lookup, link, and unlink flows
 - response formatting
 - logging
 - authorization hook calls
@@ -291,10 +324,12 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp`
-- checking that the four tools appear
+- checking that all eight tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support
+- verifying package tools: list packages, get items for a package, add a
+  requirement, and remove it again
 
 ## Local Development Notes
 

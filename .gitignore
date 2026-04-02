@@ -247,3 +247,5 @@ __pycache__/
 
 # Test artifacts
 /temp-test-content/
+.claude
+.codex

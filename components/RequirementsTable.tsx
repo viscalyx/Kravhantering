@@ -24,6 +24,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -61,7 +62,10 @@ export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
+  columnsPickerContainer?: HTMLElement | null
+  columnsPickerInHeader?: boolean
   columnWidths?: RequirementColumnWidths
+  excludeColumns?: RequirementColumnId[]
   expandedId?: number | null
   filterValues?: FilterValues
   floatingActions?: FloatingActionItem[]
@@ -71,6 +75,7 @@ export interface RequirementsTableProps {
   loading?: boolean
   loadingMore?: boolean
   locale: string
+  needsReferenceOptions?: { id: number; text: string }[]
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
@@ -89,15 +94,31 @@ export interface RequirementsTableProps {
   types?: FilterOption[]
   usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
+  wrapDescription?: boolean
 }
 
 export type FloatingActionPillVariant = 'default' | 'primary'
 
-export interface FloatingActionMenuItem {
+interface FloatingActionMenuItemBase {
   description?: string
-  href: string
   id: string
   label: string
+}
+
+export type FloatingActionMenuItem =
+  | (FloatingActionMenuItemBase & {
+      href: string
+      onClick?: never
+    })
+  | (FloatingActionMenuItemBase & {
+      href?: never
+      onClick: () => void
+    })
+
+function isFloatingActionMenuLink(
+  item: FloatingActionMenuItem,
+): item is FloatingActionMenuItemBase & { href: string } {
+  return typeof (item as { href?: unknown }).href === 'string'
 }
 
 export interface FloatingActionItem {
@@ -120,6 +141,9 @@ export interface FloatingActionItem {
 
 const floatingPillBaseClassName =
   'inline-flex h-11 w-11 items-center justify-center rounded-full border shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:-translate-y-px dark:focus-visible:ring-offset-secondary-950'
+
+const floatingActionMenuFocusableSelector =
+  'a[href], button:not([disabled]), [role="button"]:not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
 
 const floatingPillVariantClassNames: Record<FloatingActionPillVariant, string> =
   {
@@ -173,14 +197,18 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   }, [hasMenu])
 
   useEffect(() => {
-    if (!hasMenu || !open) {
+    if (!hasMenu || !open || !menuPosition) {
       return
     }
 
-    const firstMenuItem = menuRef.current?.querySelector('a[href]')
-    if (firstMenuItem instanceof HTMLElement) {
-      firstMenuItem.focus()
-    }
+    const frame = window.requestAnimationFrame(() => {
+      const firstMenuItem = menuRef.current?.querySelector(
+        floatingActionMenuFocusableSelector,
+      )
+      if (firstMenuItem instanceof HTMLElement) {
+        firstMenuItem.focus()
+      }
+    })
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') {
@@ -192,8 +220,11 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [hasMenu, open])
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [hasMenu, menuPosition, open])
 
   useEffect(() => {
     if (!hasMenu || !open || !triggerRef.current) {
@@ -311,12 +342,32 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                   <ul className="space-y-1">
                     {action.menuItems?.map(item => (
                       <li key={item.id}>
-                        <Link
-                          className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
-                          href={item.href}
-                          onClick={() => setOpen(false)}
-                        >
-                          <div className="contents">
+                        {isFloatingActionMenuLink(item) ? (
+                          <Link
+                            className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            href={item.href}
+                            onClick={() => setOpen(false)}
+                          >
+                            <div className="contents">
+                              <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
+                                {item.label}
+                              </div>
+                              {item.description ? (
+                                <div className="mt-0.5 text-xs text-secondary-600 dark:text-secondary-400">
+                                  {item.description}
+                                </div>
+                              ) : null}
+                            </div>
+                          </Link>
+                        ) : (
+                          <button
+                            className="flex w-full min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            onClick={() => {
+                              item.onClick()
+                              setOpen(false)
+                            }}
+                            type="button"
+                          >
                             <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
                               {item.label}
                             </div>
@@ -325,8 +376,8 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                                 {item.description}
                               </div>
                             ) : null}
-                          </div>
-                        </Link>
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1091,39 +1142,55 @@ function ColumnsPopover({
 
   return (
     <>
-      {outsidePillPos
-        ? createPortal(
+      {outsidePillPos ? (
+        createPortal(
+          <div
+            className="pointer-events-none fixed z-30"
+            style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
+          >
             <div
-              className="pointer-events-none fixed z-30"
-              style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
+              className="pointer-events-auto flex flex-col gap-3"
+              {...devMarker({
+                context: 'requirements table',
+                name: 'floating action rail',
+                priority: 340,
+              })}
+              data-floating-action-rail="true"
             >
+              {actionsBeforeColumns.map(action => (
+                <FloatingActionPill action={action} key={action.id} />
+              ))}
               <div
-                className="pointer-events-auto flex flex-col gap-3"
-                {...devMarker({
-                  context: 'requirements table',
-                  name: 'floating action rail',
-                  priority: 340,
-                })}
-                data-floating-action-rail="true"
+                className="relative inline-flex"
+                data-column-picker-wrapper="true"
+                ref={ref}
               >
-                {actionsBeforeColumns.map(action => (
-                  <FloatingActionPill action={action} key={action.id} />
-                ))}
-                <div
-                  className="relative inline-flex"
-                  data-column-picker-wrapper="true"
-                  ref={ref}
-                >
-                  {trigger}
-                </div>
-                {actionsAfterColumns.map(action => (
-                  <FloatingActionPill action={action} key={action.id} />
-                ))}
+                {trigger}
               </div>
-            </div>,
-            document.body,
-          )
-        : null}
+              {actionsAfterColumns.map(action => (
+                <FloatingActionPill action={action} key={action.id} />
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )
+      ) : (
+        <div className="flex items-center gap-2">
+          {actionsBeforeColumns.map(action => (
+            <FloatingActionPill action={action} key={action.id} />
+          ))}
+          <div
+            className="relative inline-flex"
+            data-column-picker-wrapper="true"
+            ref={ref}
+          >
+            {trigger}
+          </div>
+          {actionsAfterColumns.map(action => (
+            <FloatingActionPill action={action} key={action.id} />
+          ))}
+        </div>
+      )}
       {open &&
         createPortal(
           <div
@@ -1302,7 +1369,10 @@ export default function RequirementsTable({
   areas = [],
   categories = [],
   columnDefaults,
+  columnsPickerContainer = null,
+  columnsPickerInHeader = false,
   columnWidths = {},
+  excludeColumns,
   expandedId,
   filterValues,
   floatingActions = [],
@@ -1312,6 +1382,7 @@ export default function RequirementsTable({
   loading = false,
   loadingMore = false,
   locale,
+  needsReferenceOptions = [],
   onFilterChange,
   onLoadMore,
   onRowClick,
@@ -1330,25 +1401,44 @@ export default function RequirementsTable({
   types = [],
   usageScenarios = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
+  wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const router = useRouter()
   const normalizedColumnDefaults =
     normalizeRequirementListColumnDefaults(columnDefaults)
-  const allColumns = getOrderedRequirementListColumns(normalizedColumnDefaults)
+  const effectiveExcludeColumns: RequirementColumnId[] = (
+    excludeColumns ?? []
+  ).filter(columnId => columnId !== 'uniqueId' && columnId !== 'description')
+  const allColumns = getOrderedRequirementListColumns(
+    normalizedColumnDefaults,
+  ).filter(col => !effectiveExcludeColumns.includes(col.id))
+  const normalizedVisibleColumns = useMemo(
+    () =>
+      orderRequirementVisibleColumns(
+        allColumns
+          .filter(
+            column =>
+              visibleColumns.includes(column.id) ||
+              column.id === 'uniqueId' ||
+              column.id === 'description',
+          )
+          .map(column => column.id),
+        {
+          columnDefaults: normalizedColumnDefaults,
+        },
+      ),
+    [allColumns, normalizedColumnDefaults, visibleColumns],
+  )
 
   const fv = filterValues ?? {}
   const latestFilterValuesRef = useRef(fv)
-  const visibleColumnsRef = useRef(visibleColumns)
+  const visibleColumnsRef = useRef(normalizedVisibleColumns)
   const hasFilters = !!onFilterChange
-  const visibleColumnSet = new Set([
-    ...visibleColumns,
-    'uniqueId',
-    'description',
-  ])
+  const visibleColumnSet = new Set(normalizedVisibleColumns)
   latestFilterValuesRef.current = fv
-  visibleColumnsRef.current = visibleColumns
+  visibleColumnsRef.current = normalizedVisibleColumns
   const columnPickerBadgeLabel =
     visibleColumnSet.size > 0
       ? `${visibleColumnSet.size}/${allColumns.length}`
@@ -1486,6 +1576,8 @@ export default function RequirementsTable({
 
   const areaLabel = (id: number) =>
     areas.find(a => a.id === id)?.name ?? String(id)
+  const needsRefLabel = (id: number) =>
+    needsReferenceOptions.find(o => o.id === id)?.text ?? String(id)
   const catLabel = (id: number) => {
     const c = categories.find(c => c.id === id)
     return c ? getName(c) : String(id)
@@ -2209,9 +2301,6 @@ export default function RequirementsTable({
     const orderedColumns = orderRequirementVisibleColumns(normalizedColumns, {
       columnDefaults: normalizedColumnDefaults,
     })
-    const hiddenColumns = columnDefinitions
-      .map(column => column.id)
-      .filter(columnId => !orderedColumns.includes(columnId))
     const nextFilterValues = clearRequirementFiltersForHiddenColumns(
       fv,
       orderedColumns,
@@ -2224,7 +2313,7 @@ export default function RequirementsTable({
       onFilterChange(nextFilterValues)
     }
     if (
-      hiddenColumns.includes(sortState.by) &&
+      !orderedColumns.includes(sortState.by as RequirementColumnId) &&
       onSortChange &&
       sortState.by !== DEFAULT_REQUIREMENT_SORT.by
     ) {
@@ -2233,15 +2322,9 @@ export default function RequirementsTable({
   }
 
   useEffect(() => {
-    const orderedColumns = orderRequirementVisibleColumns(visibleColumns, {
-      columnDefaults: normalizedColumnDefaults,
-    })
-    const hiddenColumns = allColumns
-      .map(column => column.id)
-      .filter(columnId => !orderedColumns.includes(columnId))
     const nextFilterValues = clearRequirementFiltersForHiddenColumns(
       fv,
-      orderedColumns,
+      normalizedVisibleColumns,
       { columnDefaults: normalizedColumnDefaults },
     )
 
@@ -2250,20 +2333,19 @@ export default function RequirementsTable({
     }
 
     if (
-      hiddenColumns.includes(sortState.by) &&
+      !normalizedVisibleColumns.includes(sortState.by as RequirementColumnId) &&
       onSortChange &&
       sortState.by !== DEFAULT_REQUIREMENT_SORT.by
     ) {
       onSortChange(DEFAULT_REQUIREMENT_SORT)
     }
   }, [
-    allColumns,
     fv,
     normalizedColumnDefaults,
+    normalizedVisibleColumns,
     onFilterChange,
     onSortChange,
     sortState.by,
-    visibleColumns,
   ])
 
   const toggleColumn = (columnId: RequirementColumnId) => {
@@ -2402,6 +2484,23 @@ export default function RequirementsTable({
             value={rtValue}
           />
         )
+      case 'needsReference':
+        if (needsReferenceOptions.length === 0) return null
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.needsReferenceIds ?? []).length}
+            developerModeValue={developerModeValue}
+            getLabel={option => needsRefLabel(option.id)}
+            label={t('needsReference')}
+            onChange={ids =>
+              updateFilter({
+                needsReferenceIds: ids.length > 0 ? ids : undefined,
+              })
+            }
+            options={needsReferenceOptions}
+            value={fv.needsReferenceIds ?? []}
+          />
+        )
       case 'version':
         return null
     }
@@ -2508,6 +2607,22 @@ export default function RequirementsTable({
             values={rtValue}
           />
         )
+      case 'needsReference':
+        if (needsReferenceOptions.length === 0) return null
+        return (
+          <FilterChips
+            developerModeContext={developerModeContext}
+            getLabel={needsRefLabel}
+            onRemove={id =>
+              updateFilter({
+                needsReferenceIds: (fv.needsReferenceIds ?? []).filter(
+                  v => v !== id,
+                ),
+              })
+            }
+            values={fv.needsReferenceIds ?? []}
+          />
+        )
       case 'version':
         return null
     }
@@ -2561,7 +2676,7 @@ export default function RequirementsTable({
       case 'description':
         return (
           <td
-            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            className={`py-2 px-2 ${wrapDescription ? 'whitespace-normal break-words' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
           >
             {row.version?.description ?? '—'}
           </td>
@@ -2667,6 +2782,14 @@ export default function RequirementsTable({
             v{row.version?.versionNumber ?? 1}
           </td>
         )
+      case 'needsReference':
+        return (
+          <td
+            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.needsReference ?? '—'}
+          </td>
+        )
     }
   }
 
@@ -2720,7 +2843,11 @@ export default function RequirementsTable({
   const columnsPopover = (
     <ColumnsPopover
       actions={floatingActions}
-      anchorRef={scrollContainerRef}
+      anchorRef={
+        columnsPickerInHeader || columnsPickerContainer != null
+          ? undefined
+          : scrollContainerRef
+      }
       badgeLabel={columnPickerBadgeLabel}
       columns={allColumns.map(column => ({
         canHide: column.canHide,
@@ -2870,7 +2997,13 @@ export default function RequirementsTable({
           </p>
         </output>
       )}
-      {columnsPopover}
+      {columnsPickerContainer ? (
+        createPortal(columnsPopover, columnsPickerContainer)
+      ) : columnsPickerInHeader ? (
+        <div className="flex justify-end px-2 pt-2 pb-1">{columnsPopover}</div>
+      ) : (
+        columnsPopover
+      )}
       {usageScenarios.length > 0 && (
         <div className="flex items-center gap-2 px-3 py-2 border-b text-sm">
           <span className="text-xs font-medium text-secondary-600 dark:text-secondary-400 shrink-0">
@@ -3075,7 +3208,7 @@ export default function RequirementsTable({
                             </button>
                           ) : (
                             <span
-                              className="min-w-0 truncate"
+                              className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
                               data-requirement-header-label={column.id}
                             >
                               {label}

@@ -1,0 +1,294 @@
+import { getCloudflareContext } from '@opennextjs/cloudflare'
+import { type NextRequest, NextResponse } from 'next/server'
+import {
+  getOrCreatePackageNeedsReference,
+  getPackageById,
+  getPackageBySlug,
+  getPackageNeedsReferenceById,
+  getPublishedVersionIdForRequirement,
+  linkRequirementsToPackage,
+  listPackageItems,
+  unlinkRequirementsFromPackage,
+} from '@/lib/dal/requirement-packages'
+import type { Database } from '@/lib/db'
+import { getDb } from '@/lib/db'
+
+type Params = Promise<{ id: string }>
+
+class InvalidNeedsReferenceError extends Error {}
+
+type ParseResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; response: NextResponse<{ error: string }> }
+
+interface ParsedDeleteBody {
+  requirementIds: number[]
+}
+
+interface ParsedPostBody extends ParsedDeleteBody {
+  needsReferenceId?: number | null
+  needsReferenceText?: string | null
+}
+
+function invalidBody(message: string): ParseResult<never> {
+  return {
+    ok: false,
+    response: NextResponse.json({ error: message }, { status: 400 }),
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function parseRequirementIds(
+  value: unknown,
+): ParseResult<ParsedDeleteBody['requirementIds']> {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some(
+      requirementId =>
+        !Number.isInteger(requirementId) || (requirementId as number) <= 0,
+    )
+  ) {
+    return invalidBody(
+      'requirementIds must be a non-empty array of positive integers',
+    )
+  }
+
+  if (new Set(value as number[]).size !== (value as number[]).length) {
+    return invalidBody(
+      'requirementIds must be a non-empty array of unique positive integers',
+    )
+  }
+
+  return { ok: true, value: value as number[] }
+}
+
+function parseDeleteBody(body: unknown): ParseResult<ParsedDeleteBody> {
+  if (!isRecord(body)) {
+    return invalidBody('Invalid request body')
+  }
+
+  const requirementIds = parseRequirementIds(body.requirementIds)
+  if (!requirementIds.ok) {
+    return requirementIds
+  }
+
+  return {
+    ok: true,
+    value: {
+      requirementIds: requirementIds.value,
+    },
+  }
+}
+
+function parsePostBody(body: unknown): ParseResult<ParsedPostBody> {
+  if (!isRecord(body)) {
+    return invalidBody('Invalid request body')
+  }
+
+  const requirementIds = parseRequirementIds(body.requirementIds)
+  if (!requirementIds.ok) {
+    return requirementIds
+  }
+
+  const needsReferenceId = Object.hasOwn(body, 'needsReferenceId')
+    ? body.needsReferenceId
+    : undefined
+  if (
+    needsReferenceId !== undefined &&
+    needsReferenceId !== null &&
+    (typeof needsReferenceId !== 'number' ||
+      !Number.isInteger(needsReferenceId) ||
+      needsReferenceId < 0)
+  ) {
+    return invalidBody(
+      'needsReferenceId must be a non-negative integer, null, or undefined',
+    )
+  }
+
+  const needsReferenceText = Object.hasOwn(body, 'needsReferenceText')
+    ? body.needsReferenceText
+    : undefined
+  if (
+    needsReferenceText !== undefined &&
+    needsReferenceText !== null &&
+    typeof needsReferenceText !== 'string'
+  ) {
+    return invalidBody(
+      'needsReferenceText must be a string, null, or undefined',
+    )
+  }
+
+  if (
+    needsReferenceId !== undefined &&
+    needsReferenceId !== null &&
+    typeof needsReferenceText === 'string' &&
+    needsReferenceText.trim() !== ''
+  ) {
+    return invalidBody(
+      'Provide either needsReferenceId or needsReferenceText, not both',
+    )
+  }
+
+  return {
+    ok: true,
+    value: {
+      needsReferenceId:
+        needsReferenceId === undefined
+          ? undefined
+          : (needsReferenceId as number | null),
+      needsReferenceText:
+        needsReferenceText === undefined
+          ? undefined
+          : (needsReferenceText as string | null),
+      requirementIds: requirementIds.value,
+    },
+  }
+}
+
+async function resolvePackageId(db: Database, idOrSlug: string) {
+  const bySlug = await getPackageBySlug(db, idOrSlug)
+  if (bySlug) return bySlug.id
+  if (/^\d+$/.test(idOrSlug)) {
+    const byId = await getPackageById(db, Number(idOrSlug))
+    return byId?.id ?? null
+  }
+  return null
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id } = await params
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+  const packageId = await resolvePackageId(db, id)
+  if (packageId === null)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const items = await listPackageItems(db, packageId)
+  return NextResponse.json({ items })
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id } = await params
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+
+  const packageId = await resolvePackageId(db, id)
+  if (packageId === null)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const parsedBody = parsePostBody(rawBody)
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const { requirementIds, needsReferenceId, needsReferenceText } =
+    parsedBody.value
+
+  // Resolve published version for each requirement; reject if any has none
+  const resolvedVersionIds: { requirementId: number; versionId: number }[] = []
+
+  for (const requirementId of requirementIds) {
+    const versionId = await getPublishedVersionIdForRequirement(
+      db,
+      requirementId,
+    )
+    if (versionId === null) {
+      return NextResponse.json(
+        {
+          error: `Requirement ${requirementId} has no published version and cannot be added to a package`,
+        },
+        { status: 422 },
+      )
+    }
+    resolvedVersionIds.push({ requirementId, versionId })
+  }
+
+  // All items validated — now resolve/create needs reference
+  try {
+    await db.transaction(async tx => {
+      let resolvedNeedsReferenceId: number | null = null
+
+      if (needsReferenceText?.trim()) {
+        resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
+          tx,
+          packageId,
+          needsReferenceText.trim(),
+        )
+      } else if (needsReferenceId != null) {
+        const existingNeedsReference = await getPackageNeedsReferenceById(
+          tx,
+          packageId,
+          needsReferenceId,
+        )
+        if (!existingNeedsReference) {
+          throw new InvalidNeedsReferenceError(
+            'needsReferenceId does not belong to this requirement package',
+          )
+        }
+        resolvedNeedsReferenceId = existingNeedsReference.id
+      }
+
+      const resolvedItems = resolvedVersionIds.map(
+        ({ requirementId, versionId }) => ({
+          requirementId,
+          requirementVersionId: versionId,
+          needsReferenceId: resolvedNeedsReferenceId,
+        }),
+      )
+
+      await linkRequirementsToPackage(tx, packageId, resolvedItems)
+    })
+  } catch (error) {
+    if (error instanceof InvalidNeedsReferenceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
+    throw error
+  }
+  return NextResponse.json({ ok: true }, { status: 201 })
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id } = await params
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+
+  const packageId = await resolvePackageId(db, id)
+  if (packageId === null)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const parsedBody = parseDeleteBody(rawBody)
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+
+  await unlinkRequirementsFromPackage(
+    db,
+    packageId,
+    parsedBody.value.requirementIds,
+  )
+  return NextResponse.json({ ok: true })
+}

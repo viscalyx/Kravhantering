@@ -68,6 +68,30 @@ The emitted attributes are:
   Keep the control `name` stable and move runtime identity into `value`, for
   example `sort button: requirement id`, `filter button: status`, or theme
   state values like `light`, `dark`, and `auto`.
+- Requirement package create/edit forms continue to use the `crud form` marker;
+  their package-field help toggles are part of that same form surface rather
+  than separate developer-mode markers.
+- Requirement package form save errors and package-list load errors stay inside
+  the existing `packages` form/table surfaces; they do not add separate
+  developer-mode markers.
+- Requirement package list filtering exposes `packages > text field: name filter`
+  on the Name search input above the table, while the package create trigger
+  keeps the existing `packages > create button` marker when it shares that
+  toolbar row on wide screens.
+- Requirement package detail header edit affordances use the
+  `requirement package detail` context with `detail action: edit package`
+  on the icon trigger and `crud form: edit` on the opened editor.
+- Published requirement detail views expose the package-link control as
+  `detail action: add to package` when the currently displayed published
+  version is the one that can be added to a package.
+- Needs-reference controls and inline loading or failure messages inside the
+  add-to-package dialog remain part of that same
+  `detail action: add to package` flow rather than introducing extra markers.
+- Requirement package list print pages expose `report state` markers with
+  values `report-print:error`, `report-print:loading`, and
+  `report-print:renderer`.
+- Requirement package list PDF pages expose `report state` markers with values
+  `report-pdf:error`, `report-pdf:loading`, and `report-pdf:ready`.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 
@@ -106,10 +130,12 @@ The current canonical labels include:
 - `crud form`
 - `crud table`
 - `error banner`
+- `text field`
 - `table action`
 - `report print button`
 - `report option`
 - `review report pill`
+- `report state`
 - `row checkbox`
 
 ## Testing
@@ -123,6 +149,7 @@ Developer Mode is covered by:
 - `tests/unit/version-history.test.tsx`
 - `tests/unit/requirements-table.test.tsx`
 - `tests/unit/reference-data-developer-mode.test.tsx`
+- `tests/unit/kravpaket-detail-client.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
 

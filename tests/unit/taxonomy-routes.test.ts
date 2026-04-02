@@ -51,6 +51,9 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   createPackage: async () => ({ id: 2 }),
   updatePackage: (...a: unknown[]) => mockUpdatePkg(...a),
   deletePackage: (...a: unknown[]) => mockDeletePkg(...a),
+  getPackageById: async (_db: unknown, id: number) => ({ id }),
+  getPackageBySlug: async () => null,
+  isSlugTaken: async () => false,
 }))
 
 const mockUpdateScenario = vi.fn()
@@ -268,9 +271,9 @@ describe('requirement-packages routes', () => {
   })
   it('POST creates with 201', async () => {
     const r = await postPkg(
-      new Request('http://l', {
+      new NextRequest('http://l', {
         method: 'POST',
-        body: '{"nameSv":"A","nameEn":"B"}',
+        body: '{"name":"A","uniqueId":"A"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )

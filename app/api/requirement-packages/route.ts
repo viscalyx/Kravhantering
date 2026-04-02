@@ -1,6 +1,10 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { NextResponse } from 'next/server'
-import { listPackages } from '@/lib/dal/requirement-packages'
+import { type NextRequest, NextResponse } from 'next/server'
+import {
+  createPackage,
+  isSlugTaken,
+  listPackages,
+} from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 
 export async function GET() {
@@ -10,11 +14,23 @@ export async function GET() {
   return NextResponse.json({ packages })
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const { createPackage } = await import('@/lib/dal/requirement-packages')
   const body = (await request.json()) as Parameters<typeof createPackage>[1]
+
+  if (
+    !body?.uniqueId ||
+    typeof body.uniqueId !== 'string' ||
+    !body.uniqueId.trim()
+  ) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+  }
+
+  if (await isSlugTaken(db, body.uniqueId)) {
+    return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
+  }
+
   const pkg = await createPackage(db, body)
   return NextResponse.json(pkg, { status: 201 })
 }

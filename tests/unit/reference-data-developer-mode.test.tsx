@@ -31,8 +31,13 @@ function okJson(body: unknown) {
 
 interface MarkerSpec {
   context: string
+  expectedFetchCalls?: number
   expectedMarkers: string[]
   factory: () => Promise<{ default: React.ComponentType }>
+  fetchHandler?: (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => Promise<Response> | Response
   fetchResponse: () => ReturnType<typeof okJson> | ReturnType<typeof okJson>[]
   label: string
 }
@@ -133,19 +138,60 @@ const pages: MarkerSpec[] = [
         packages: [
           {
             id: 1,
-            nameSv: 'P',
-            nameEn: 'P',
+            name: 'P',
+            uniqueId: 'P',
             packageResponsibilityAreaId: null,
             packageImplementationTypeId: null,
             responsibilityArea: null,
             implementationType: null,
+            itemCount: 0,
+            requirementAreas: [],
+            businessNeedsReference: null,
           },
         ],
       }),
       okJson({ areas: [] }),
       okJson({ types: [] }),
     ],
-    expectedMarkers: ['create button', 'crud table', 'table action'],
+    fetchHandler: input => {
+      const url = String(input)
+
+      if (url === '/api/requirement-packages') {
+        return okJson({
+          packages: [
+            {
+              id: 1,
+              name: 'P',
+              uniqueId: 'P',
+              packageResponsibilityAreaId: null,
+              packageImplementationTypeId: null,
+              responsibilityArea: null,
+              implementationType: null,
+              itemCount: 0,
+              requirementAreas: [],
+              businessNeedsReference: null,
+            },
+          ],
+        }) as Response
+      }
+
+      if (url === '/api/package-responsibility-areas') {
+        return okJson({ areas: [] }) as Response
+      }
+
+      if (url === '/api/package-implementation-types') {
+        return okJson({ types: [] }) as Response
+      }
+
+      return okJson({}) as Response
+    },
+    expectedMarkers: [
+      'create button',
+      'crud table',
+      'table action',
+      'text field',
+    ],
+    expectedFetchCalls: 3,
   },
   {
     label: 'AnsvarsomradenClient (responsibility areas)',
@@ -183,14 +229,22 @@ describe.each(pages)('$label developer-mode markers', spec => {
   it(`renders markers with context "${spec.context}"`, async () => {
     const responses = spec.fetchResponse()
     const queue = Array.isArray(responses) ? [...responses] : [responses]
+    let unmount: (() => void) | undefined
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
-      .mockImplementation(async () => (queue.shift() ?? okJson({})) as Response)
+      .mockImplementation(
+        async (input, init) =>
+          (spec.fetchHandler
+            ? await spec.fetchHandler(input, init)
+            : (queue.shift() ?? okJson({}))) as Response,
+      )
 
     try {
       const mod = await spec.factory()
       const Component = mod.default
-      const { container } = render(<Component />)
+      const renderResult = render(<Component />)
+      const { container } = renderResult
+      unmount = renderResult.unmount
 
       await waitFor(() => {
         expect(
@@ -201,13 +255,22 @@ describe.each(pages)('$label developer-mode markers', spec => {
       })
 
       for (const marker of spec.expectedMarkers) {
-        const el = container.querySelector(
-          `[data-developer-mode-name="${marker}"][data-developer-mode-context="${spec.context}"]`,
-        )
-        expect(
-          el,
-          `expected marker "${marker}" with context "${spec.context}"`,
-        ).toBeInTheDocument()
+        await waitFor(() => {
+          const el = container.querySelector(
+            `[data-developer-mode-name="${marker}"][data-developer-mode-context="${spec.context}"]`,
+          )
+          expect(
+            el,
+            `expected marker "${marker}" with context "${spec.context}"`,
+          ).toBeInTheDocument()
+        })
+      }
+
+      const expectedFetchCalls = spec.expectedFetchCalls
+      if (expectedFetchCalls !== undefined) {
+        await waitFor(() => {
+          expect(fetchSpy).toHaveBeenCalledTimes(expectedFetchCalls)
+        })
       }
 
       const createBtn = container.querySelector(
@@ -220,6 +283,7 @@ describe.each(pages)('$label developer-mode markers', spec => {
       )
       expect(crudTable).toHaveAttribute('data-developer-mode-priority', '340')
     } finally {
+      unmount?.()
       fetchSpy.mockRestore()
     }
   })

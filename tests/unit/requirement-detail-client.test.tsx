@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps, ForwardedRef, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -271,17 +278,40 @@ function response(body: unknown, ok = true) {
   } as Response
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(resolver => {
+    resolve = resolver
+  })
+
+  return { promise, resolve }
+}
+
 function setupFetch({
+  addToPackageHandler,
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
   initialRequirement,
+  needsReferencesHandler,
+  packages = [],
+  packagesHandler,
   reactivateNextRequirement,
   restoreNextRequirement,
   transitionNextRequirement,
 }: {
+  addToPackageHandler?: (
+    packageId: string,
+    init?: RequestInit,
+  ) => Promise<Response> | Response
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
   initialRequirement: ReturnType<typeof makeRequirement>
+  needsReferencesHandler?: (
+    packageId: string,
+    signal?: AbortSignal,
+  ) => Promise<Response> | Response
+  packages?: { id: number; name: string }[]
+  packagesHandler?: () => Promise<Response> | Response
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
@@ -347,6 +377,36 @@ function setupFetch({
       ) {
         if (reactivateNextRequirement) {
           currentRequirement = structuredClone(reactivateNextRequirement)
+        }
+        return response({})
+      }
+
+      if (url === '/api/requirement-packages' && method === 'GET') {
+        if (packagesHandler) {
+          return packagesHandler()
+        }
+        return response({ packages })
+      }
+
+      const needsReferencesMatch = url.match(
+        /^\/api\/requirement-packages\/([^/]+)\/needs-references$/,
+      )
+      if (needsReferencesMatch) {
+        if (needsReferencesHandler) {
+          return needsReferencesHandler(
+            needsReferencesMatch[1] ?? '',
+            init?.signal ?? undefined,
+          )
+        }
+        return response({ needsReferences: [] })
+      }
+
+      const addToPackageMatch = url.match(
+        /^\/api\/requirement-packages\/([^/]+)\/items$/,
+      )
+      if (method === 'POST' && addToPackageMatch) {
+        if (addToPackageHandler) {
+          return addToPackageHandler(addToPackageMatch[1] ?? '', init)
         }
         return response({})
       }
@@ -538,6 +598,57 @@ describe('RequirementDetailClient', () => {
 
     fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('closes the full-page detail modal when Escape is pressed inside it', async () => {
+    const onClose = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ onClose })
+
+    await screen.findByText('Published requirement')
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Close' }), {
+      key: 'Escape',
+    })
+
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('renders the full-page detail close button with touch target and focus styles', async () => {
+    const onClose = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ onClose })
+
+    await screen.findByText('Published requirement')
+
+    const closeButton = screen.getByRole('button', { name: 'Close' })
+    expect(closeButton.className).toContain('min-h-[44px]')
+    expect(closeButton.className).toContain('min-w-[44px]')
+    expect(closeButton.className).toContain('focus:outline-none')
+    expect(closeButton.className).toContain('focus-visible:ring-2')
+    expect(closeButton.className).toContain('focus-visible:ring-offset-2')
   })
 
   it('renders the published display version, switches history views, and restores an older version', async () => {
@@ -1036,6 +1147,637 @@ describe('RequirementDetailClient', () => {
       'data-developer-mode-value',
       'share inline',
     )
+  })
+
+  it('shows help affordances in the add-to-package dialog', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+
+    const addToPackageButton = screen.getByRole('button', {
+      name: 'package.addToPackage',
+    })
+    expect(addToPackageButton).toHaveAttribute(
+      'data-developer-mode-name',
+      'detail action',
+    )
+    expect(addToPackageButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'add to package',
+    )
+
+    await userEvent.click(addToPackageButton)
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'common.help: package.selectPackage',
+      }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: package.selectPackage',
+      }),
+    )
+
+    expect(screen.getByText('package.selectPackageHelp')).toBeInTheDocument()
+  })
+
+  it('shows an inline error when loading packages for the add-to-package dialog fails', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupFetch({
+      initialRequirement: requirement,
+      packagesHandler: () =>
+        response({ error: 'Package lookup failed' }, false),
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'package.loadPackagesFailed: Package lookup failed',
+    )
+    expect(screen.queryByText('package.noPackagesAvailable')).toBeNull()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('shows an inline error when loading packages for the add-to-package dialog fails with a plain-text response body', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupFetch({
+      initialRequirement: requirement,
+      packagesHandler: () =>
+        new Response('Package lookup failed', {
+          headers: { 'content-type': 'text/plain' },
+          status: 503,
+          statusText: 'Service Unavailable',
+        }),
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'package.loadPackagesFailed: Package lookup failed',
+    )
+    expect(screen.queryByText('package.noPackagesAvailable')).toBeNull()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('renders the add-to-package close button with touch target and focus styles', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const closeButton = await screen.findByRole('button', { name: 'Close' })
+    expect(closeButton.className).toContain('min-h-[44px]')
+    expect(closeButton.className).toContain('min-w-[44px]')
+    expect(closeButton.className).toContain('focus-visible:outline-none')
+    expect(closeButton.className).toContain('focus-visible:ring-2')
+    expect(closeButton.className).toContain('focus-visible:ring-primary-500')
+  })
+
+  it('keeps the add-to-package cancel button visible on dark-mode hover', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const cancelButton = await screen.findByRole('button', { name: 'Cancel' })
+
+    expect(cancelButton.className).toContain('dark:hover:bg-secondary-800')
+    expect(cancelButton.className).toContain('dark:hover:border-secondary-600')
+    expect(cancelButton.className).toContain('dark:hover:text-secondary-100')
+  })
+
+  it('adds explicit dark-mode border and text classes to add-to-package form fields', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const packageSelect = await screen.findByRole('combobox', {
+      name: /package\.selectPackage/,
+    })
+    const needsReferenceSelect = screen.getByRole('combobox', {
+      name: /package\.needsReferenceLabel/,
+    })
+
+    await userEvent.selectOptions(needsReferenceSelect, 'new')
+
+    const needsReferenceText = screen.getByRole('textbox', {
+      name: /package\.addNeedsRefTextLabel/,
+    })
+
+    for (const field of [
+      packageSelect,
+      needsReferenceSelect,
+      needsReferenceText,
+    ]) {
+      expect(field.className).toContain('border-secondary-200')
+      expect(field.className).toContain('text-secondary-900')
+      expect(field.className).toContain('dark:border-secondary-700')
+      expect(field.className).toContain('dark:text-secondary-100')
+    }
+    expect(packageSelect.className).toContain('min-h-[44px]')
+    expect(needsReferenceSelect.className).toContain('min-h-[44px]')
+  })
+
+  it('ignores stale needs-reference responses when switching packages quickly', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const firstNeedsReferences = createDeferred<Response>()
+    const secondNeedsReferences = createDeferred<Response>()
+    const signals: AbortSignal[] = []
+
+    setupFetch({
+      initialRequirement: requirement,
+      needsReferencesHandler: (packageId, signal) => {
+        if (signal) {
+          signals.push(signal)
+        }
+        return packageId === '7'
+          ? firstNeedsReferences.promise
+          : secondNeedsReferences.promise
+      },
+      packages: [
+        { id: 7, name: 'IAM Package' },
+        { id: 8, name: 'Security Package' },
+      ],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const packageSelect = screen.getByRole('combobox', {
+      name: /package\.selectPackage/,
+    })
+
+    await userEvent.selectOptions(packageSelect, '7')
+    await userEvent.selectOptions(packageSelect, '8')
+
+    await waitFor(() => {
+      expect(signals).toHaveLength(2)
+    })
+    expect(signals[0]?.aborted).toBe(true)
+    expect(signals[1]?.aborted).toBe(false)
+
+    secondNeedsReferences.resolve(
+      response({ needsReferences: [{ id: 81, text: 'Current ref' }] }),
+    )
+    expect(
+      await screen.findByRole('option', { name: 'Current ref' }),
+    ).toBeInTheDocument()
+
+    firstNeedsReferences.resolve(
+      response({ needsReferences: [{ id: 71, text: 'Stale ref' }] }),
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('option', { name: 'Current ref' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('option', { name: 'Stale ref' }),
+      ).not.toBeInTheDocument()
+    })
+  })
+
+  it('shows an inline error when loading needs references fails', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupFetch({
+      initialRequirement: requirement,
+      needsReferencesHandler: () => response({ error: 'Lookup failed' }, false),
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', {
+        name: /package\.selectPackage/,
+      }),
+      '7',
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Lookup failed')
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('aborts pending needs-reference requests when cancelling the add-to-package dialog', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+    const pendingNeedsReferences = createDeferred<Response>()
+    const signals: AbortSignal[] = []
+
+    setupFetch({
+      initialRequirement: requirement,
+      needsReferencesHandler: (_packageId, signal) => {
+        if (signal) {
+          signals.push(signal)
+        }
+        return pendingNeedsReferences.promise
+      },
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', {
+        name: /package\.selectPackage/,
+      }),
+      '7',
+    )
+
+    await waitFor(() => {
+      expect(signals).toHaveLength(1)
+    })
+    expect(signals[0]?.aborted).toBe(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+    expect(signals[0]?.aborted).toBe(true)
+
+    pendingNeedsReferences.resolve(response({ needsReferences: [] }))
+  })
+
+  it('ignores stale add-to-package submit responses after the dialog is reopened', async () => {
+    try {
+      const requirement = makeRequirement([
+        makeVersion(1, {
+          description: 'Published requirement',
+          publishedAt: '2026-03-01',
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+        }),
+      ])
+      const pendingAddToPackage = createDeferred<Response>()
+      const submitSignals: AbortSignal[] = []
+
+      setupFetch({
+        addToPackageHandler: (_packageId, init) => {
+          if (init?.signal) {
+            submitSignals.push(init.signal)
+          }
+          return pendingAddToPackage.promise
+        },
+        initialRequirement: requirement,
+        packages: [{ id: 7, name: 'IAM Package' }],
+      })
+      renderSubject({ inline: true })
+
+      await screen.findByText('Published requirement')
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'package.addToPackage',
+        }),
+      )
+
+      let dialog = await screen.findByRole('dialog')
+      await userEvent.selectOptions(
+        within(dialog).getByRole('combobox', {
+          name: /package\.selectPackage/,
+        }),
+        '7',
+      )
+      await userEvent.click(
+        within(dialog).getByRole('button', {
+          name: 'package.addToPackage',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(submitSignals).toHaveLength(1)
+      })
+      expect(submitSignals[0]?.aborted).toBe(false)
+
+      await userEvent.click(
+        within(dialog).getByRole('button', { name: 'Cancel' }),
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
+      expect(submitSignals[0]?.aborted).toBe(true)
+
+      await userEvent.click(
+        screen.getByRole('button', {
+          name: 'package.addToPackage',
+        }),
+      )
+      dialog = await screen.findByRole('dialog')
+
+      vi.useFakeTimers()
+      await act(async () => {
+        pendingAddToPackage.resolve(response({}))
+        await Promise.resolve()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1200)
+      })
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(
+        within(dialog).getByRole('combobox', {
+          name: /package\.selectPackage/,
+        }),
+      ).toHaveValue('')
+      expect(screen.queryByText('package.addToPackageSuccess')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('announces add-to-package submit failures as alerts', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      addToPackageHandler: () => response({ error: 'Already linked' }, false),
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.selectOptions(
+      within(dialog).getByRole('combobox', {
+        name: /package\.selectPackage/,
+      }),
+      '7',
+    )
+    await userEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Already linked',
+    )
+  })
+
+  it('closes the add-to-package dialog when Escape is pressed inside it', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packages: [{ id: 7, name: 'IAM Package' }],
+    })
+    renderSubject({ inline: true })
+
+    await screen.findByText('Published requirement')
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'package.addToPackage',
+      }),
+    )
+
+    const packageSelect = screen.getByRole('combobox', {
+      name: /package\.selectPackage/,
+    })
+    fireEvent.keyDown(packageSelect, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('hides add-to-package for historical published versions that cannot be persisted exactly', async () => {
+    const requirement = makeRequirement([
+      makeVersion(4, {
+        description: 'Draft replacement',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+      makeVersion(3, {
+        description: 'Current published requirement',
+        publishedAt: '2026-03-03',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+      makeVersion(2, {
+        description: 'Historical published requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject()
+
+    expect(
+      await screen.findByText('Current published requirement'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'package.addToPackage' }),
+    ).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'v2' }))
+
+    expect(
+      await screen.findByText('Historical published requirement'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'package.addToPackage' }),
+    ).not.toBeInTheDocument()
   })
 
   it('renders noPublishedVersion fallback for full-page view without published version', async () => {

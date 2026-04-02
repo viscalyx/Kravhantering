@@ -1,11 +1,14 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
   Archive,
   Check,
   Clock,
   Edit,
+  HelpCircle,
+  PackagePlus,
   Printer,
   RotateCcw,
   Share2,
@@ -14,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import StatusBadge from '@/components/StatusBadge'
 import StatusStepper from '@/components/StatusStepper'
@@ -74,6 +78,46 @@ interface RequirementDetailClientProps {
   requirementId: number | string
 }
 
+function getResponseMessage(body: unknown): string | null {
+  if (typeof body === 'string') {
+    const trimmed = body.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+
+  if (body && typeof body === 'object') {
+    const error = (body as { error?: unknown }).error
+    if (typeof error === 'string' && error.trim().length > 0) {
+      return error.trim()
+    }
+
+    const message = (body as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message.trim()
+    }
+  }
+
+  return null
+}
+
+async function readResponseMessage(res: Response): Promise<string | null> {
+  if (typeof res.text === 'function') {
+    const text = (await res.text().catch(() => '')).trim()
+    if (text.length > 0) {
+      try {
+        return getResponseMessage(JSON.parse(text)) ?? text
+      } catch {
+        return getResponseMessage(text) ?? text
+      }
+    }
+  }
+
+  if (typeof res.json === 'function') {
+    return getResponseMessage(await res.json().catch(() => null))
+  }
+
+  return null
+}
+
 export default function RequirementDetailClient({
   defaultVersion,
   inline,
@@ -83,6 +127,7 @@ export default function RequirementDetailClient({
 }: RequirementDetailClientProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
+  const tp = useTranslations('package')
   const router = useRouter()
   const locale = useLocale()
   const { confirm } = useConfirmModal()
@@ -104,6 +149,84 @@ export default function RequirementDetailClient({
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
   >(null)
+  const [showAddToPackage, setShowAddToPackage] = useState(false)
+  const [packages, setPackages] = useState<{ id: number; name: string }[]>([])
+  const [packagesError, setPackagesError] = useState<string | null>(null)
+  const [packagesLoading, setPackagesLoading] = useState(false)
+  const [addToPackageId, setAddToPackageId] = useState<string>('')
+  const [addToPackageNeedsRefMode, setAddToPackageNeedsRefMode] = useState<
+    'none' | 'existing' | 'new'
+  >('none')
+  const [addToPackageNeedsRefId, setAddToPackageNeedsRefId] = useState<
+    number | ''
+  >('')
+  const [addToPackageNeedsRefText, setAddToPackageNeedsRefText] = useState('')
+  const [availableNeedsRefs, setAvailableNeedsRefs] = useState<
+    { id: number; text: string }[]
+  >([])
+  const [needsReferencesLoading, setNeedsReferencesLoading] = useState(false)
+  const [needsReferencesError, setNeedsReferencesError] = useState<
+    string | null
+  >(null)
+  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
+  const [addToPackageStatus, setAddToPackageStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle')
+  const [addToPackageError, setAddToPackageError] = useState<string | null>(
+    null,
+  )
+  const addToPackageDialogSessionRef = useRef(0)
+  const addToPackageSubmitAbortRef = useRef<AbortController | null>(null)
+  const addToPackageCloseTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null)
+  const addToPackageNeedsRefsRequestIdRef = useRef(0)
+  const addToPackageNeedsRefsAbortRef = useRef<AbortController | null>(null)
+
+  const clearAddToPackageCloseTimer = useCallback(() => {
+    if (addToPackageCloseTimerRef.current) {
+      clearTimeout(addToPackageCloseTimerRef.current)
+      addToPackageCloseTimerRef.current = null
+    }
+  }, [])
+
+  const resetAddToPackageSubmitSession = useCallback(() => {
+    addToPackageDialogSessionRef.current += 1
+    addToPackageSubmitAbortRef.current?.abort()
+    addToPackageSubmitAbortRef.current = null
+    clearAddToPackageCloseTimer()
+  }, [clearAddToPackageCloseTimer])
+
+  const isActiveAddToPackageSession = useCallback(
+    (sessionId: number, signal?: AbortSignal) =>
+      !signal?.aborted && addToPackageDialogSessionRef.current === sessionId,
+    [],
+  )
+
+  const closeAddToPackageDialog = useCallback(() => {
+    resetAddToPackageSubmitSession()
+    addToPackageNeedsRefsAbortRef.current?.abort()
+    addToPackageNeedsRefsAbortRef.current = null
+    setOpenHelp(new Set())
+    setShowAddToPackage(false)
+  }, [resetAddToPackageSubmitSession])
+
+  const handleModalDocumentKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'Escape') {
+        e.stopPropagation()
+      }
+    },
+    [],
+  )
+
+  useEffect(() => {
+    return () => {
+      addToPackageSubmitAbortRef.current?.abort()
+      addToPackageNeedsRefsAbortRef.current?.abort()
+      clearAddToPackageCloseTimer()
+    }
+  }, [clearAddToPackageCloseTimer])
 
   const handleVersionSelect = useCallback(
     (versionNumber: number) => {
@@ -122,6 +245,41 @@ export default function RequirementDetailClient({
   const vhRef = useRef<HTMLDivElement>(null)
 
   const hasDataRef = useRef(false)
+
+  const toggleHelp = (field: string) => {
+    setOpenHelp(prev => {
+      const next = new Set(prev)
+      if (next.has(field)) {
+        next.delete(field)
+      } else {
+        next.add(field)
+      }
+      return next
+    })
+  }
+
+  const helpButton = (field: string, label: string) => (
+    <button
+      aria-controls={`help-${field}`}
+      aria-expanded={openHelp.has(field)}
+      aria-label={`${tc('help')}: ${label}`}
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      onClick={() => toggleHelp(field)}
+      type="button"
+    >
+      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+    </button>
+  )
+
+  const helpPanel = (helpKey: string, field: string) =>
+    openHelp.has(field) && (
+      <p
+        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
+        id={`help-${field}`}
+      >
+        {tp(helpKey)}
+      </p>
+    )
 
   const fetchRequirement = useCallback(async () => {
     if (!hasDataRef.current) setLoading(true)
@@ -345,7 +503,7 @@ export default function RequirementDetailClient({
           <div
             className="relative mt-16 w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+            onKeyDown={handleModalDocumentKeyDown}
             role="document"
           >
             {loadingContent}
@@ -381,7 +539,7 @@ export default function RequirementDetailClient({
           <div
             className="relative mt-16 w-full max-w-5xl max-h-[calc(100vh-8rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
+            onKeyDown={handleModalDocumentKeyDown}
             role="document"
           >
             {emptyContent}
@@ -485,6 +643,8 @@ export default function RequirementDetailClient({
       ? selectedVersion?.statusNameSv
       : selectedVersion?.statusNameEn) ?? ''
   const currentStatusColor = selectedVersion?.statusColor ?? null
+  const canAddToPackage =
+    currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
   const detailContext =
     req == null
       ? undefined
@@ -717,6 +877,415 @@ export default function RequirementDetailClient({
       </div>
     )
   }
+
+  const handleOpenAddToPackage = async () => {
+    resetAddToPackageSubmitSession()
+    addToPackageNeedsRefsAbortRef.current?.abort()
+    addToPackageNeedsRefsAbortRef.current = null
+    addToPackageNeedsRefsRequestIdRef.current += 1
+    setAddToPackageId('')
+    setAddToPackageNeedsRefMode('none')
+    setAddToPackageNeedsRefId('')
+    setAddToPackageNeedsRefText('')
+    setAvailableNeedsRefs([])
+    setNeedsReferencesLoading(false)
+    setNeedsReferencesError(null)
+    setOpenHelp(new Set())
+    setAddToPackageStatus('idle')
+    setAddToPackageError(null)
+    setPackagesError(null)
+    setShowAddToPackage(true)
+    if (packages.length === 0) {
+      setPackagesLoading(true)
+      try {
+        const res = await fetch('/api/requirement-packages')
+        if (!res.ok) {
+          const details = await readResponseMessage(res)
+          throw new Error(
+            details
+              ? `${tp('loadPackagesFailed')}: ${details}`
+              : tp('loadPackagesFailed'),
+          )
+        }
+        const data = (await res.json()) as {
+          packages?: { id: number; name: string }[]
+        }
+        setPackages(data.packages ?? [])
+      } catch (error) {
+        console.error(
+          'Failed to load packages for add-to-package dialog',
+          error,
+        )
+        setPackages([])
+        setPackagesError(
+          error instanceof Error ? error.message : tp('loadPackagesFailed'),
+        )
+      } finally {
+        setPackagesLoading(false)
+      }
+    }
+  }
+
+  const handlePackageSelect = async (pkgId: string) => {
+    addToPackageNeedsRefsAbortRef.current?.abort()
+    addToPackageNeedsRefsAbortRef.current = null
+    addToPackageNeedsRefsRequestIdRef.current += 1
+    const requestId = addToPackageNeedsRefsRequestIdRef.current
+    setAddToPackageId(pkgId)
+    setAddToPackageNeedsRefMode('none')
+    setAddToPackageNeedsRefId('')
+    setAddToPackageNeedsRefText('')
+    setAvailableNeedsRefs([])
+    setNeedsReferencesLoading(false)
+    setNeedsReferencesError(null)
+    if (!pkgId) {
+      return
+    }
+
+    const controller = new AbortController()
+    addToPackageNeedsRefsAbortRef.current = controller
+    setNeedsReferencesLoading(true)
+
+    try {
+      const res = await fetch(
+        `/api/requirement-packages/${pkgId}/needs-references`,
+        { signal: controller.signal },
+      )
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        throw new Error(data?.error ?? tp('failedToLoadNeedsReferences'))
+      }
+      const data = (await res.json()) as {
+        needsReferences: { id: number; text: string }[]
+      }
+      if (
+        controller.signal.aborted ||
+        addToPackageNeedsRefsRequestIdRef.current !== requestId
+      ) {
+        return
+      }
+      setAvailableNeedsRefs(data.needsReferences)
+    } catch (error) {
+      if ((error as { name?: string }).name !== 'AbortError') {
+        console.error(
+          'Failed to load needs references for add-to-package dialog',
+          error,
+        )
+        if (
+          !controller.signal.aborted &&
+          addToPackageNeedsRefsRequestIdRef.current === requestId
+        ) {
+          setNeedsReferencesError(
+            error instanceof Error
+              ? error.message
+              : tp('failedToLoadNeedsReferences'),
+          )
+        }
+      }
+    } finally {
+      if (addToPackageNeedsRefsAbortRef.current === controller) {
+        addToPackageNeedsRefsAbortRef.current = null
+      }
+      if (
+        !controller.signal.aborted &&
+        addToPackageNeedsRefsRequestIdRef.current === requestId
+      ) {
+        setNeedsReferencesLoading(false)
+      }
+    }
+  }
+
+  const handleSubmitAddToPackage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!addToPackageId || !req) return
+    const sessionId = addToPackageDialogSessionRef.current
+    addToPackageSubmitAbortRef.current?.abort()
+    const controller = new AbortController()
+    addToPackageSubmitAbortRef.current = controller
+    clearAddToPackageCloseTimer()
+    setAddToPackageStatus('loading')
+    setAddToPackageError(null)
+    const body: {
+      requirementIds: number[]
+      needsReferenceId?: number | null
+      needsReferenceText?: string | null
+    } = { requirementIds: [req.id] }
+    if (
+      addToPackageNeedsRefMode === 'existing' &&
+      addToPackageNeedsRefId !== ''
+    ) {
+      body.needsReferenceId = Number(addToPackageNeedsRefId)
+    } else if (
+      addToPackageNeedsRefMode === 'new' &&
+      addToPackageNeedsRefText.trim()
+    ) {
+      body.needsReferenceText = addToPackageNeedsRefText.trim()
+    }
+    try {
+      const res = await fetch(
+        `/api/requirement-packages/${addToPackageId}/items`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        },
+      )
+      if (!isActiveAddToPackageSession(sessionId, controller.signal)) {
+        return
+      }
+      if (res.ok) {
+        setAddToPackageStatus('success')
+        addToPackageCloseTimerRef.current = setTimeout(() => {
+          if (addToPackageDialogSessionRef.current === sessionId) {
+            closeAddToPackageDialog()
+          }
+        }, 1200)
+      } else {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        if (!isActiveAddToPackageSession(sessionId, controller.signal)) {
+          return
+        }
+        setAddToPackageError(data?.error ?? tc('error'))
+        setAddToPackageStatus('error')
+      }
+    } catch (error) {
+      if ((error as { name?: string }).name === 'AbortError') {
+        return
+      }
+      if (!isActiveAddToPackageSession(sessionId, controller.signal)) {
+        return
+      }
+      setAddToPackageError(tc('error'))
+      setAddToPackageStatus('error')
+    } finally {
+      if (addToPackageSubmitAbortRef.current === controller) {
+        addToPackageSubmitAbortRef.current = null
+      }
+    }
+  }
+
+  const addToPackageDialog =
+    typeof window !== 'undefined'
+      ? createPortal(
+          <AnimatePresence>
+            {showAddToPackage ? (
+              <motion.div
+                animate={{ opacity: 1 }}
+                aria-modal="true"
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+                exit={{ opacity: 0 }}
+                initial={{ opacity: 0 }}
+                onClick={closeAddToPackageDialog}
+                onKeyDown={e => {
+                  if (e.key === 'Escape') {
+                    closeAddToPackageDialog()
+                  }
+                }}
+                role="dialog"
+                transition={{ duration: 0.16 }}
+              >
+                <motion.div
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  onClick={e => e.stopPropagation()}
+                  onKeyDown={handleModalDocumentKeyDown}
+                  role="document"
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                      {tp('addToPackage')}
+                    </h2>
+                    <button
+                      aria-label={tc('close')}
+                      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 transition-colors hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:bg-secondary-800"
+                      onClick={closeAddToPackageDialog}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
+                  {addToPackageStatus === 'success' ? (
+                    <p className="py-2 text-sm text-green-600 dark:text-green-400">
+                      {tp('addToPackageSuccess')}
+                    </p>
+                  ) : packagesLoading ? (
+                    <p className="py-2 text-sm text-secondary-500 dark:text-secondary-400">
+                      {tp('loadingPackages')}
+                    </p>
+                  ) : packagesError ? (
+                    <p
+                      className="py-2 text-sm text-red-600 dark:text-red-400"
+                      role="alert"
+                    >
+                      {packagesError}
+                    </p>
+                  ) : packages.length === 0 ? (
+                    <p className="py-2 text-sm text-secondary-500 dark:text-secondary-400">
+                      {tp('noPackagesAvailable')}
+                    </p>
+                  ) : (
+                    <form
+                      className="space-y-4"
+                      onSubmit={handleSubmitAddToPackage}
+                    >
+                      <div>
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <label
+                            className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                            htmlFor="atp-package"
+                          >
+                            {tp('selectPackage')} *
+                          </label>
+                          {helpButton('atp-package', tp('selectPackage'))}
+                        </div>
+                        {helpPanel('selectPackageHelp', 'atp-package')}
+                        <select
+                          className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                          id="atp-package"
+                          onChange={e =>
+                            void handlePackageSelect(e.target.value)
+                          }
+                          value={addToPackageId}
+                        >
+                          <option value="">—</option>
+                          {packages.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <label
+                            className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                            htmlFor="atp-needs-ref"
+                          >
+                            {tp('needsReferenceLabel')}
+                          </label>
+                          {helpButton(
+                            'atp-needs-ref',
+                            tp('needsReferenceLabel'),
+                          )}
+                        </div>
+                        {helpPanel('needsReferenceHelp', 'atp-needs-ref')}
+                        <select
+                          className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                          id="atp-needs-ref"
+                          onChange={e => {
+                            const v = e.target.value
+                            if (v === 'none') {
+                              setAddToPackageNeedsRefMode('none')
+                              setAddToPackageNeedsRefId('')
+                            } else if (v === 'new') {
+                              setAddToPackageNeedsRefMode('new')
+                              setAddToPackageNeedsRefId('')
+                            } else {
+                              setAddToPackageNeedsRefMode('existing')
+                              setAddToPackageNeedsRefId(Number(v))
+                            }
+                          }}
+                          value={
+                            addToPackageNeedsRefMode === 'existing'
+                              ? String(addToPackageNeedsRefId)
+                              : addToPackageNeedsRefMode
+                          }
+                        >
+                          <option value="none">{tp('noNeedsRef')}</option>
+                          <option value="new">{tp('newNeedsRef')}</option>
+                          {availableNeedsRefs.map(ref => (
+                            <option key={ref.id} value={String(ref.id)}>
+                              {ref.text}
+                            </option>
+                          ))}
+                        </select>
+                        {needsReferencesLoading ? (
+                          <p className="mt-2 text-sm text-secondary-500 dark:text-secondary-400">
+                            {tp('loadingNeedsReferences')}
+                          </p>
+                        ) : needsReferencesError ? (
+                          <p
+                            className="mt-2 text-sm text-red-600 dark:text-red-400"
+                            role="alert"
+                          >
+                            {needsReferencesError}
+                          </p>
+                        ) : null}
+                        {addToPackageNeedsRefMode === 'new' && (
+                          <>
+                            <div className="mt-2 mb-1 flex items-center gap-1.5">
+                              <label
+                                className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                                htmlFor="atp-needs-ref-text"
+                              >
+                                {tp('addNeedsRefTextLabel')}
+                              </label>
+                              {helpButton(
+                                'atp-needs-ref-text',
+                                tp('addNeedsRefTextLabel'),
+                              )}
+                            </div>
+                            {helpPanel(
+                              'addNeedsRefTextHelp',
+                              'atp-needs-ref-text',
+                            )}
+                            <textarea
+                              className="w-full resize-none rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
+                              id="atp-needs-ref-text"
+                              onChange={e =>
+                                setAddToPackageNeedsRefText(e.target.value)
+                              }
+                              rows={2}
+                              value={addToPackageNeedsRefText}
+                            />
+                          </>
+                        )}
+                      </div>
+                      {addToPackageError && (
+                        <p
+                          className="text-sm text-red-600 dark:text-red-400"
+                          role="alert"
+                        >
+                          {addToPackageError}
+                        </p>
+                      )}
+                      <div className="flex gap-3 pt-1">
+                        <button
+                          className="btn-primary"
+                          disabled={
+                            !addToPackageId || addToPackageStatus === 'loading'
+                          }
+                          type="submit"
+                        >
+                          {addToPackageStatus === 'loading'
+                            ? tc('loading')
+                            : tp('addToPackage')}
+                        </button>
+                        <button
+                          className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-all focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:hover:border-secondary-600 dark:hover:bg-secondary-800 dark:hover:text-secondary-100"
+                          onClick={closeAddToPackageDialog}
+                          type="button"
+                        >
+                          {tc('cancel')}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </motion.div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>,
+          document.body,
+        )
+      : null
 
   const content = (
     <div
@@ -1173,6 +1742,23 @@ export default function RequirementDetailClient({
                     </div>
                   )}
                 </div>
+                {canAddToPackage && (
+                  <button
+                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail action',
+                      priority: 360,
+                      value: 'add to package',
+                    })}
+                    onClick={handleOpenAddToPackage}
+                    title={tp('addToPackage')}
+                    type="button"
+                  >
+                    <PackagePlus aria-hidden="true" className="h-4 w-4" />
+                    {tp('addToPackage')}
+                  </button>
+                )}
                 <div className="relative" ref={shareMenuRef}>
                   <button
                     className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
@@ -1488,40 +2074,53 @@ export default function RequirementDetailClient({
   )
 
   if (inline) {
-    return content
+    return (
+      <>
+        {content}
+        {addToPackageDialog}
+      </>
+    )
   }
 
   if (onClose) {
     return (
-      <div
-        aria-modal="true"
-        className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        onKeyDown={e => e.key === 'Escape' && onClose()}
-        role="dialog"
-      >
+      <>
         <div
-          className="relative mt-8 mb-8 w-full max-w-5xl max-h-[calc(100vh-4rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
-          onClick={e => e.stopPropagation()}
-          onKeyDown={e => e.stopPropagation()}
-          role="document"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+          onKeyDown={e => e.key === 'Escape' && onClose()}
+          role="dialog"
         >
-          <button
-            aria-label={tc('close')}
-            className="sticky top-0 float-right mt-4 mr-4 z-10 p-2 rounded-full bg-secondary-100 dark:bg-secondary-800 hover:bg-secondary-200 dark:hover:bg-secondary-700 transition-colors"
-            onClick={onClose}
-            type="button"
+          <div
+            className="relative mt-8 mb-8 w-full max-w-5xl max-h-[calc(100vh-4rem)] overflow-y-auto rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+            onKeyDown={handleModalDocumentKeyDown}
+            role="document"
           >
-            <X
-              aria-hidden="true"
-              className="h-5 w-5 text-secondary-600 dark:text-secondary-300"
-            />
-          </button>
-          {content}
+            <button
+              aria-label={tc('close')}
+              className="sticky top-0 z-10 float-right mt-4 mr-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-secondary-100 p-2 transition-colors hover:bg-secondary-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:bg-secondary-800 dark:hover:bg-secondary-700 dark:focus-visible:ring-offset-secondary-900"
+              onClick={onClose}
+              type="button"
+            >
+              <X
+                aria-hidden="true"
+                className="h-5 w-5 text-secondary-600 dark:text-secondary-300"
+              />
+            </button>
+            {content}
+          </div>
         </div>
-      </div>
+        {addToPackageDialog}
+      </>
     )
   }
 
-  return content
+  return (
+    <>
+      {content}
+      {addToPackageDialog}
+    </>
+  )
 }

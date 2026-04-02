@@ -265,11 +265,64 @@ function PdfSectionRenderer({
       return <PdfRequirementTable section={section} />
     case 'toc':
       return <PdfToc section={section} />
+    case 'package-cover':
+      return <PdfPackageCover section={section} />
     case 'page-break':
       return null
     default:
       return null
   }
+}
+
+function PdfPackageCover({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'package-cover' }>
+}) {
+  const sv = section.locale === 'sv'
+  return (
+    <View style={{ marginBottom: 24 }}>
+      <Text style={[styles.headerTitle, { fontSize: 22, marginBottom: 8 }]}>
+        {section.name}
+      </Text>
+      <View style={styles.metadataGrid}>
+        <View style={styles.metadataItem}>
+          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+            {sv ? 'Kravpaket-ID' : 'Package ID'}
+          </Text>
+          <Text style={[styles.fieldValue, { fontFamily: 'Helvetica-Bold' }]}>
+            {section.uniqueId}
+          </Text>
+        </View>
+        <View style={styles.metadataItem}>
+          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+            {sv ? 'Verksamhetsobjekt' : 'Responsibility area'}
+          </Text>
+          <Text style={styles.fieldValue}>
+            {section.responsibilityArea ?? '—'}
+          </Text>
+        </View>
+        <View style={styles.metadataItem}>
+          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+            {sv ? 'Genomförandeform' : 'Implementation type'}
+          </Text>
+          <Text style={styles.fieldValue}>
+            {section.implementationType ?? '—'}
+          </Text>
+        </View>
+        {section.businessNeedsReference && (
+          <View style={{ width: '100%' }}>
+            <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+              {sv ? 'Verksamhetsbehovsreferens' : 'Business needs reference'}
+            </Text>
+            <Text style={styles.fieldValue}>
+              {section.businessNeedsReference}
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  )
 }
 
 function PdfHeader({

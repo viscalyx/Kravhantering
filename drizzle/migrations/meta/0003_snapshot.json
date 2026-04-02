@@ -1,0 +1,1295 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "98f822fe-c3b2-4e49-b49c-7da0013d3b18",
+  "prevId": "d4e11a06-7185-41e2-b597-62e50e4af096",
+  "tables": {
+    "owners": {
+      "name": "owners",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_owners_email": {
+          "name": "uq_owners_email",
+          "columns": ["email"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "package_implementation_types": {
+      "name": "package_implementation_types",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_package_implementation_types_name_sv": {
+          "name": "uq_package_implementation_types_name_sv",
+          "columns": ["name_sv"],
+          "isUnique": true
+        },
+        "uq_package_implementation_types_name_en": {
+          "name": "uq_package_implementation_types_name_en",
+          "columns": ["name_en"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "package_responsibility_areas": {
+      "name": "package_responsibility_areas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_package_responsibility_areas_name_sv": {
+          "name": "uq_package_responsibility_areas_name_sv",
+          "columns": ["name_sv"],
+          "isUnique": true
+        },
+        "uq_package_responsibility_areas_name_en": {
+          "name": "uq_package_responsibility_areas_name_en",
+          "columns": ["name_en"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "quality_characteristics": {
+      "name": "quality_characteristics",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requirement_type_id": {
+          "name": "requirement_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_quality_characteristics_requirement_type_id": {
+          "name": "idx_quality_characteristics_requirement_type_id",
+          "columns": ["requirement_type_id"],
+          "isUnique": false
+        },
+        "idx_quality_characteristics_parent_id": {
+          "name": "idx_quality_characteristics_parent_id",
+          "columns": ["parent_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "quality_characteristics_requirement_type_id_requirement_types_id_fk": {
+          "name": "quality_characteristics_requirement_type_id_requirement_types_id_fk",
+          "tableFrom": "quality_characteristics",
+          "tableTo": "requirement_types",
+          "columnsFrom": ["requirement_type_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_areas": {
+      "name": "requirement_areas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "prefix": {
+          "name": "prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "next_sequence": {
+          "name": "next_sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_requirement_areas_prefix": {
+          "name": "uq_requirement_areas_prefix",
+          "columns": ["prefix"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "requirement_areas_owner_id_owners_id_fk": {
+          "name": "requirement_areas_owner_id_owners_id_fk",
+          "tableFrom": "requirement_areas",
+          "tableTo": "owners",
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_categories": {
+      "name": "requirement_categories",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_requirement_categories_name_sv": {
+          "name": "uq_requirement_categories_name_sv",
+          "columns": ["name_sv"],
+          "isUnique": true
+        },
+        "uq_requirement_categories_name_en": {
+          "name": "uq_requirement_categories_name_en",
+          "columns": ["name_en"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_list_column_defaults": {
+      "name": "requirement_list_column_defaults",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "column_id": {
+          "name": "column_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_default_visible": {
+          "name": "is_default_visible",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_requirement_list_column_defaults_column_id": {
+          "name": "uq_requirement_list_column_defaults_column_id",
+          "columns": ["column_id"],
+          "isUnique": true
+        },
+        "uq_requirement_list_column_defaults_sort_order": {
+          "name": "uq_requirement_list_column_defaults_sort_order",
+          "columns": ["sort_order"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_package_items": {
+      "name": "requirement_package_items",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "requirement_package_id": {
+          "name": "requirement_package_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requirement_id": {
+          "name": "requirement_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requirement_version_id": {
+          "name": "requirement_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "needs_reference": {
+          "name": "needs_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_requirement_package_items_requirement_package_id": {
+          "name": "idx_requirement_package_items_requirement_package_id",
+          "columns": ["requirement_package_id"],
+          "isUnique": false
+        },
+        "idx_requirement_package_items_requirement_id": {
+          "name": "idx_requirement_package_items_requirement_id",
+          "columns": ["requirement_id"],
+          "isUnique": false
+        },
+        "uq_requirement_package_items_package_requirement": {
+          "name": "uq_requirement_package_items_package_requirement",
+          "columns": ["requirement_package_id", "requirement_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "requirement_package_items_requirement_package_id_requirement_packages_id_fk": {
+          "name": "requirement_package_items_requirement_package_id_requirement_packages_id_fk",
+          "tableFrom": "requirement_package_items",
+          "tableTo": "requirement_packages",
+          "columnsFrom": ["requirement_package_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_package_items_requirement_id_requirements_id_fk": {
+          "name": "requirement_package_items_requirement_id_requirements_id_fk",
+          "tableFrom": "requirement_package_items",
+          "tableTo": "requirements",
+          "columnsFrom": ["requirement_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_package_items_requirement_version_id_requirement_versions_id_fk": {
+          "name": "requirement_package_items_requirement_version_id_requirement_versions_id_fk",
+          "tableFrom": "requirement_package_items",
+          "tableTo": "requirement_versions",
+          "columnsFrom": ["requirement_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_packages": {
+      "name": "requirement_packages",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "package_responsibility_area_id": {
+          "name": "package_responsibility_area_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "package_implementation_type_id": {
+          "name": "package_implementation_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "business_needs_reference": {
+          "name": "business_needs_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "requirement_packages_package_responsibility_area_id_package_responsibility_areas_id_fk": {
+          "name": "requirement_packages_package_responsibility_area_id_package_responsibility_areas_id_fk",
+          "tableFrom": "requirement_packages",
+          "tableTo": "package_responsibility_areas",
+          "columnsFrom": ["package_responsibility_area_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_packages_package_implementation_type_id_package_implementation_types_id_fk": {
+          "name": "requirement_packages_package_implementation_type_id_package_implementation_types_id_fk",
+          "tableFrom": "requirement_packages",
+          "tableTo": "package_implementation_types",
+          "columnsFrom": ["package_implementation_type_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_references": {
+      "name": "requirement_references",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "requirement_version_id": {
+          "name": "requirement_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "uri": {
+          "name": "uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_requirement_references_requirement_version_id": {
+          "name": "idx_requirement_references_requirement_version_id",
+          "columns": ["requirement_version_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "requirement_references_requirement_version_id_requirement_versions_id_fk": {
+          "name": "requirement_references_requirement_version_id_requirement_versions_id_fk",
+          "tableFrom": "requirement_references",
+          "tableTo": "requirement_versions",
+          "columnsFrom": ["requirement_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_status_transitions": {
+      "name": "requirement_status_transitions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "from_requirement_status_id": {
+          "name": "from_requirement_status_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "to_requirement_status_id": {
+          "name": "to_requirement_status_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_requirement_status_transitions_from_to": {
+          "name": "uq_requirement_status_transitions_from_to",
+          "columns": ["from_requirement_status_id", "to_requirement_status_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "requirement_status_transitions_from_requirement_status_id_requirement_statuses_id_fk": {
+          "name": "requirement_status_transitions_from_requirement_status_id_requirement_statuses_id_fk",
+          "tableFrom": "requirement_status_transitions",
+          "tableTo": "requirement_statuses",
+          "columnsFrom": ["from_requirement_status_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_status_transitions_to_requirement_status_id_requirement_statuses_id_fk": {
+          "name": "requirement_status_transitions_to_requirement_status_id_requirement_statuses_id_fk",
+          "tableFrom": "requirement_status_transitions",
+          "tableTo": "requirement_statuses",
+          "columnsFrom": ["to_requirement_status_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_statuses": {
+      "name": "requirement_statuses",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_system": {
+          "name": "is_system",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {
+        "uq_requirement_statuses_name_sv": {
+          "name": "uq_requirement_statuses_name_sv",
+          "columns": ["name_sv"],
+          "isUnique": true
+        },
+        "uq_requirement_statuses_name_en": {
+          "name": "uq_requirement_statuses_name_en",
+          "columns": ["name_en"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_types": {
+      "name": "requirement_types",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_requirement_types_name_sv": {
+          "name": "uq_requirement_types_name_sv",
+          "columns": ["name_sv"],
+          "isUnique": true
+        },
+        "uq_requirement_types_name_en": {
+          "name": "uq_requirement_types_name_en",
+          "columns": ["name_en"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_version_usage_scenarios": {
+      "name": "requirement_version_usage_scenarios",
+      "columns": {
+        "requirement_version_id": {
+          "name": "requirement_version_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "usage_scenario_id": {
+          "name": "usage_scenario_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_requirement_version_usage_scenarios_usage_scenario_id": {
+          "name": "idx_requirement_version_usage_scenarios_usage_scenario_id",
+          "columns": ["usage_scenario_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "requirement_version_usage_scenarios_requirement_version_id_requirement_versions_id_fk": {
+          "name": "requirement_version_usage_scenarios_requirement_version_id_requirement_versions_id_fk",
+          "tableFrom": "requirement_version_usage_scenarios",
+          "tableTo": "requirement_versions",
+          "columnsFrom": ["requirement_version_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_version_usage_scenarios_usage_scenario_id_usage_scenarios_id_fk": {
+          "name": "requirement_version_usage_scenarios_usage_scenario_id_usage_scenarios_id_fk",
+          "tableFrom": "requirement_version_usage_scenarios",
+          "tableTo": "usage_scenarios",
+          "columnsFrom": ["usage_scenario_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "pk_requirement_version_usage_scenarios": {
+          "columns": ["requirement_version_id", "usage_scenario_id"],
+          "name": "pk_requirement_version_usage_scenarios"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirement_versions": {
+      "name": "requirement_versions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "requirement_id": {
+          "name": "requirement_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "version_number": {
+          "name": "version_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "acceptance_criteria": {
+          "name": "acceptance_criteria",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "requirement_category_id": {
+          "name": "requirement_category_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "requirement_type_id": {
+          "name": "requirement_type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "quality_characteristic_id": {
+          "name": "quality_characteristic_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "requirement_status_id": {
+          "name": "requirement_status_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_testing_required": {
+          "name": "is_testing_required",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "verification_method": {
+          "name": "verification_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "edited_at": {
+          "name": "edited_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "archive_initiated_at": {
+          "name": "archive_initiated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "idx_requirement_versions_requirement_id": {
+          "name": "idx_requirement_versions_requirement_id",
+          "columns": ["requirement_id"],
+          "isUnique": false
+        },
+        "uq_requirement_versions_requirement_id_version_number": {
+          "name": "uq_requirement_versions_requirement_id_version_number",
+          "columns": ["requirement_id", "version_number"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "requirement_versions_requirement_id_requirements_id_fk": {
+          "name": "requirement_versions_requirement_id_requirements_id_fk",
+          "tableFrom": "requirement_versions",
+          "tableTo": "requirements",
+          "columnsFrom": ["requirement_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_versions_requirement_category_id_requirement_categories_id_fk": {
+          "name": "requirement_versions_requirement_category_id_requirement_categories_id_fk",
+          "tableFrom": "requirement_versions",
+          "tableTo": "requirement_categories",
+          "columnsFrom": ["requirement_category_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_versions_requirement_type_id_requirement_types_id_fk": {
+          "name": "requirement_versions_requirement_type_id_requirement_types_id_fk",
+          "tableFrom": "requirement_versions",
+          "tableTo": "requirement_types",
+          "columnsFrom": ["requirement_type_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_versions_quality_characteristic_id_quality_characteristics_id_fk": {
+          "name": "requirement_versions_quality_characteristic_id_quality_characteristics_id_fk",
+          "tableFrom": "requirement_versions",
+          "tableTo": "quality_characteristics",
+          "columnsFrom": ["quality_characteristic_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "requirement_versions_requirement_status_id_requirement_statuses_id_fk": {
+          "name": "requirement_versions_requirement_status_id_requirement_statuses_id_fk",
+          "tableFrom": "requirement_versions",
+          "tableTo": "requirement_statuses",
+          "columnsFrom": ["requirement_status_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "requirements": {
+      "name": "requirements",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "unique_id": {
+          "name": "unique_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "requirement_area_id": {
+          "name": "requirement_area_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sequence_number": {
+          "name": "sequence_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_archived": {
+          "name": "is_archived",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_requirements_unique_id": {
+          "name": "uq_requirements_unique_id",
+          "columns": ["unique_id"],
+          "isUnique": true
+        },
+        "idx_requirements_requirement_area_id": {
+          "name": "idx_requirements_requirement_area_id",
+          "columns": ["requirement_area_id"],
+          "isUnique": false
+        },
+        "idx_requirements_is_archived": {
+          "name": "idx_requirements_is_archived",
+          "columns": ["is_archived"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "requirements_requirement_area_id_requirement_areas_id_fk": {
+          "name": "requirements_requirement_area_id_requirement_areas_id_fk",
+          "tableFrom": "requirements",
+          "tableTo": "requirement_areas",
+          "columnsFrom": ["requirement_area_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ui_terminology": {
+      "name": "ui_terminology",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "singular_sv": {
+          "name": "singular_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "plural_sv": {
+          "name": "plural_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "definite_plural_sv": {
+          "name": "definite_plural_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "singular_en": {
+          "name": "singular_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "plural_en": {
+          "name": "plural_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "definite_plural_en": {
+          "name": "definite_plural_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uq_ui_terminology_key": {
+          "name": "uq_ui_terminology_key",
+          "columns": ["key"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "usage_scenarios": {
+      "name": "usage_scenarios",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name_sv": {
+          "name": "name_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_en": {
+          "name": "name_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description_sv": {
+          "name": "description_sv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "description_en": {
+          "name": "description_en",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "owner_id": {
+          "name": "owner_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "usage_scenarios_owner_id_owners_id_fk": {
+          "name": "usage_scenarios_owner_id_owners_id_fk",
+          "tableFrom": "usage_scenarios",
+          "tableTo": "owners",
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

@@ -606,6 +606,7 @@ export default function KravkatalogClient({
               categories={categories}
               columnDefaults={normalizedColumnDefaults}
               columnWidths={columnWidths}
+              excludeColumns={['needsReference']}
               expandedId={selectedId}
               filterValues={filters}
               floatingActions={[

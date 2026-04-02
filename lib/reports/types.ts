@@ -60,6 +60,15 @@ export type ReportSection =
   | { type: 'timeline-entry'; entry: TimelineEntryData }
   | { type: 'page-break' }
   | {
+      type: 'package-cover'
+      name: string
+      uniqueId: string
+      responsibilityArea: string | null
+      implementationType: string | null
+      businessNeedsReference: string | null
+      locale: string
+    }
+  | {
       type: 'requirement-table'
       columns: { key: string; label: string }[]
       rows: {

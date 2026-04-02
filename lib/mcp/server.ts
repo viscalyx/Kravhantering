@@ -855,6 +855,313 @@ export function createKravhanteringMcpServer(
     },
   )
 
+  server.registerTool(
+    'kravhantering_list_packages',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'List all requirement packages (kravpaket), optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each package.',
+      inputSchema: z
+        .object({
+          locale: z.enum(['en', 'sv']).default('en'),
+          nameSearch: z
+            .string()
+            .optional()
+            .describe(
+              'Case-insensitive substring filter applied to both Swedish and English package names.',
+            ),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+        })
+        .strict(),
+      outputSchema: z
+        .object({
+          message: z.string(),
+          packages: z.array(
+            z
+              .object({
+                businessNeedsReference: z.string().nullable(),
+                id: z.number(),
+                implementationType: z
+                  .object({ nameEn: z.string(), nameSv: z.string() })
+                  .nullable(),
+                itemCount: z.number(),
+                name: z.string(),
+                responsibilityArea: z
+                  .object({ nameEn: z.string(), nameSv: z.string() })
+                  .nullable(),
+                uniqueId: z.string(),
+              })
+              .strict(),
+          ),
+        })
+        .strict(),
+      title: 'List Requirement Packages',
+    },
+    async input => {
+      try {
+        const payload = await service.listPackages(
+          getBaseContext(request, 'kravhantering_list_packages'),
+          {
+            locale: toResponseLocale(input.locale),
+            nameSearch: input.nameSearch,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
+        )
+        return {
+          content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'kravhantering_get_package_items',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'List requirements (krav) linked to a specific requirement package, with optional description search. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2") from kravhantering_list_packages.',
+      inputSchema: z
+        .object({
+          descriptionSearch: z
+            .string()
+            .optional()
+            .describe(
+              'Case-insensitive substring filter on the requirement description.',
+            ),
+          locale: z.enum(['en', 'sv']).default('en'),
+          packageId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Numeric ID of the requirement package.'),
+          packageSlug: z
+            .string()
+            .optional()
+            .describe(
+              'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
+            ),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+        })
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.packageId == null) === (val.packageSlug == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of packageId or packageSlug.',
+            })
+          }
+        }),
+      outputSchema: z
+        .object({
+          items: z.array(
+            z
+              .object({
+                area: z.string().nullable(),
+                category: z.string().nullable(),
+                description: z.string().nullable(),
+                id: z.number(),
+                needsReference: z.string().nullable(),
+                status: z.string().nullable(),
+                type: z.string().nullable(),
+                uniqueId: z.string(),
+              })
+              .strict(),
+          ),
+          message: z.string(),
+          packageId: z.number(),
+        })
+        .strict(),
+      title: 'Get Package Items',
+    },
+    async input => {
+      try {
+        const payload = await service.getPackageItems(
+          getBaseContext(request, 'kravhantering_get_package_items'),
+          {
+            descriptionSearch: input.descriptionSearch,
+            locale: toResponseLocale(input.locale),
+            packageId: input.packageId,
+            packageSlug: input.packageSlug,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
+        )
+        return {
+          content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'kravhantering_add_to_package',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description:
+        'Link one or more requirements to a requirement package. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2").',
+      inputSchema: z
+        .object({
+          locale: z.enum(['en', 'sv']).default('en'),
+          needsReferenceText: z
+            .string()
+            .optional()
+            .describe(
+              'Optional needs reference text applied to all added requirements. An existing reference with the same text will be reused.',
+            ),
+          packageId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Numeric ID of the requirement package.'),
+          packageSlug: z
+            .string()
+            .optional()
+            .describe(
+              'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
+            ),
+          requirementIds: z
+            .array(z.number().int().positive())
+            .min(1)
+            .describe(
+              'Numeric requirement IDs (not uniqueId strings) to add to the package.',
+            ),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+        })
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.packageId == null) === (val.packageSlug == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of packageId or packageSlug.',
+            })
+          }
+        }),
+      outputSchema: z
+        .object({
+          addedCount: z.number(),
+          message: z.string(),
+          skippedCount: z.number(),
+          skippedIds: z.array(z.number()),
+        })
+        .strict(),
+      title: 'Add Requirements to Package',
+    },
+    async input => {
+      try {
+        const payload = await service.addToPackage(
+          getBaseContext(request, 'kravhantering_add_to_package'),
+          {
+            locale: toResponseLocale(input.locale),
+            needsReferenceText: input.needsReferenceText,
+            packageId: input.packageId,
+            packageSlug: input.packageSlug,
+            requirementIds: input.requirementIds,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
+        )
+        return {
+          content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'kravhantering_remove_from_package',
+    {
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description:
+        'Unlink one or more requirements from a requirement package. The requirements themselves are not deleted. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2").',
+      inputSchema: z
+        .object({
+          locale: z.enum(['en', 'sv']).default('en'),
+          packageId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Numeric ID of the requirement package.'),
+          packageSlug: z
+            .string()
+            .optional()
+            .describe(
+              'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
+            ),
+          requirementIds: z
+            .array(z.number().int().positive())
+            .min(1)
+            .describe('Numeric requirement IDs to remove from the package.'),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+        })
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.packageId == null) === (val.packageSlug == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of packageId or packageSlug.',
+            })
+          }
+        }),
+      outputSchema: z
+        .object({
+          message: z.string(),
+          removedCount: z.number(),
+        })
+        .strict(),
+      title: 'Remove Requirements from Package',
+    },
+    async input => {
+      try {
+        const payload = await service.removeFromPackage(
+          getBaseContext(request, 'kravhantering_remove_from_package'),
+          {
+            locale: toResponseLocale(input.locale),
+            packageId: input.packageId,
+            packageSlug: input.packageSlug,
+            requirementIds: input.requirementIds,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
+        )
+        return {
+          content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
   return server
 }
 

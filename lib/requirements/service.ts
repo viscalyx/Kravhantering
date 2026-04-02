@@ -1,5 +1,14 @@
 import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
+import {
+  getOrCreatePackageNeedsReference,
+  getPackageBySlug,
+  getPublishedVersionIdForRequirement,
+  linkRequirementsToPackage,
+  listPackageItems,
+  listPackages,
+  unlinkRequirementsFromPackage,
+} from '@/lib/dal/requirement-packages'
 import { replaceReferencesForVersion } from '@/lib/dal/requirement-references'
 import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
 import {
@@ -137,6 +146,36 @@ export interface TransitionRequirementInput extends RequirementRefInput {
   toStatusId: number
 }
 
+export interface PackageRefInput {
+  packageId?: number
+  packageSlug?: string
+}
+
+export interface ListPackagesInput {
+  locale?: ResponseLocale
+  nameSearch?: string
+  responseFormat?: ResponseFormat
+}
+
+export interface GetPackageItemsInput extends PackageRefInput {
+  descriptionSearch?: string
+  locale?: ResponseLocale
+  responseFormat?: ResponseFormat
+}
+
+export interface AddToPackageInput extends PackageRefInput {
+  locale?: ResponseLocale
+  needsReferenceText?: string | null
+  requirementIds: number[]
+  responseFormat?: ResponseFormat
+}
+
+export interface RemoveFromPackageInput extends PackageRefInput {
+  locale?: ResponseLocale
+  requirementIds: number[]
+  responseFormat?: ResponseFormat
+}
+
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 200
 const PUBLISHED_REQUIREMENT_STATUS_ID = 3
@@ -184,7 +223,52 @@ function getVersionDisplayName(
   status: { nameEn?: string | null; nameSv?: string | null } | null | undefined,
   locale: ResponseLocale,
 ) {
-  return localizeName(status, locale) ?? 'Unknown'
+  return localizeName(status, locale) ?? (locale === 'sv' ? 'Okand' : 'Unknown')
+}
+
+function getRequirementWord(locale: ResponseLocale, count: number) {
+  if (locale === 'sv') {
+    return 'krav'
+  }
+
+  return count === 1 ? 'requirement' : 'requirements'
+}
+
+function getPackageWord(locale: ResponseLocale, count: number) {
+  if (locale === 'sv') {
+    return 'kravpaket'
+  }
+
+  return count === 1 ? 'package' : 'packages'
+}
+
+function getPackageServiceTitle(
+  kind: 'add' | 'items' | 'list' | 'remove',
+  locale: ResponseLocale,
+) {
+  if (locale === 'sv') {
+    switch (kind) {
+      case 'add':
+        return 'Krav tillagda i paket'
+      case 'items':
+        return 'Krav i paket'
+      case 'remove':
+        return 'Krav borttagna fran paket'
+      default:
+        return 'Kravpaket'
+    }
+  }
+
+  switch (kind) {
+    case 'add':
+      return 'Requirements Added to Package'
+    case 'items':
+      return 'Package Requirements'
+    case 'remove':
+      return 'Requirements Removed from Package'
+    default:
+      return 'Requirement Packages'
+  }
 }
 
 function formatRequirementListItem(
@@ -323,7 +407,55 @@ export function buildRequirementViewUri(
   return `ui://kravhantering/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`
 }
 
+export interface ListPackagesOutput {
+  message: string
+  packages: {
+    businessNeedsReference: string | null
+    id: number
+    implementationType: { nameSv: string; nameEn: string } | null
+    itemCount: number
+    name: string
+    responsibilityArea: { nameSv: string; nameEn: string } | null
+    uniqueId: string
+  }[]
+}
+
+export interface GetPackageItemsOutput {
+  items: {
+    id: number
+    uniqueId: string
+    area: string | null
+    category: string | null
+    description: string | null
+    needsReference: string | null
+    status: string | null
+    type: string | null
+  }[]
+  message: string
+  packageId: number
+}
+
+export interface AddToPackageOutput {
+  addedCount: number
+  message: string
+  skippedCount: number
+  skippedIds: number[]
+}
+
+export interface RemoveFromPackageOutput {
+  message: string
+  removedCount: number
+}
+
 export interface RequirementsService {
+  addToPackage(
+    context: RequestContext,
+    input: AddToPackageInput,
+  ): Promise<AddToPackageOutput>
+  getPackageItems(
+    context: RequestContext,
+    input: GetPackageItemsInput,
+  ): Promise<GetPackageItemsOutput>
   getRequirement(
     context: RequestContext,
     input: GetRequirementInput,
@@ -335,6 +467,10 @@ export interface RequirementsService {
     version?: RequirementVersionDetail
     versions?: RequirementDetail['versions']
   }>
+  listPackages(
+    context: RequestContext,
+    input: ListPackagesInput,
+  ): Promise<ListPackagesOutput>
   manageRequirement(
     context: RequestContext,
     input: ManageRequirementInput,
@@ -360,6 +496,10 @@ export interface RequirementsService {
       total: number
     } | null
   }>
+  removeFromPackage(
+    context: RequestContext,
+    input: RemoveFromPackageInput,
+  ): Promise<RemoveFromPackageOutput>
   transitionRequirement(
     context: RequestContext,
     input: TransitionRequirementInput,
@@ -414,6 +554,28 @@ async function ensureAreaExists(db: Database, areaId: number | undefined) {
   }
 
   return area
+}
+
+async function resolvePackageIdOrThrow(db: Database, input: PackageRefInput) {
+  const packageId =
+    input.packageId != null
+      ? input.packageId
+      : input.packageSlug
+        ? (await getPackageBySlug(db, input.packageSlug))?.id
+        : undefined
+
+  if (packageId == null) {
+    throw notFoundError('Package not found.', {
+      packageId: input.packageId,
+      packageSlug: input.packageSlug,
+    })
+  }
+
+  return packageId
+}
+
+function getPackageReferenceLabel(input: PackageRefInput, packageId: number) {
+  return input.packageSlug ?? String(packageId)
 }
 
 function getLatestOverallVersion(
@@ -1192,6 +1354,286 @@ export function createRequirementsService(
               responseFormat,
             ),
             version,
+          }
+        },
+      )
+    },
+
+    async listPackages(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'list_packages',
+          nameSearch: input.nameSearch,
+        },
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.list_packages',
+        {
+          name_search: input.nameSearch,
+        },
+        async () => {
+          let packages = await listPackages(db)
+          if (input.nameSearch) {
+            const q = input.nameSearch.toLowerCase()
+            packages = packages.filter(p => p.name.toLowerCase().includes(q))
+          }
+
+          const summary =
+            locale === 'sv'
+              ? packages.length === 0
+                ? 'Inga kravpaket hittades.'
+                : `Hittade ${packages.length} ${getPackageWord(locale, packages.length)}.`
+              : packages.length === 0
+                ? 'No packages found.'
+                : `Found ${packages.length} ${getPackageWord(locale, packages.length)}.`
+
+          return {
+            message: createServiceMessage(
+              getPackageServiceTitle('list', locale),
+              [summary],
+              responseFormat,
+            ),
+            packages: packages.map(p => ({
+              businessNeedsReference: p.businessNeedsReference,
+              id: p.id,
+              implementationType: p.implementationType
+                ? {
+                    nameEn: p.implementationType.nameEn,
+                    nameSv: p.implementationType.nameSv,
+                  }
+                : null,
+              itemCount: p.itemCount,
+              name: p.name,
+              responsibilityArea: p.responsibilityArea
+                ? {
+                    nameEn: p.responsibilityArea.nameEn,
+                    nameSv: p.responsibilityArea.nameSv,
+                  }
+                : null,
+              uniqueId: p.uniqueId,
+            })),
+          }
+        },
+      )
+    },
+
+    async getPackageItems(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'get_package_items',
+          packageId: input.packageId,
+          packageSlug: input.packageSlug,
+        },
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.get_package_items',
+        {
+          description_search: input.descriptionSearch,
+          package_id: input.packageId,
+          package_slug: input.packageSlug,
+        },
+        async () => {
+          const packageId = await resolvePackageIdOrThrow(db, input)
+          let items = await listPackageItems(db, packageId)
+          if (input.descriptionSearch) {
+            const q = input.descriptionSearch.toLowerCase()
+            items = items.filter(item =>
+              item.version.description?.toLowerCase().includes(q),
+            )
+          }
+
+          const ref = getPackageReferenceLabel(input, packageId)
+          const summary =
+            locale === 'sv'
+              ? `Hittade ${items.length} ${getRequirementWord(locale, items.length)} i paket ${ref}.`
+              : `Found ${items.length} ${getRequirementWord(locale, items.length)} in package ${ref}.`
+
+          return {
+            items: items.map(item => ({
+              area: item.area?.name ?? null,
+              category: localizeName(
+                {
+                  nameEn: item.version.categoryNameEn,
+                  nameSv: item.version.categoryNameSv,
+                },
+                locale,
+              ),
+              description: item.version.description,
+              id: item.id,
+              needsReference: item.needsReference,
+              status: localizeName(
+                {
+                  nameEn: item.version.statusNameEn,
+                  nameSv: item.version.statusNameSv,
+                },
+                locale,
+              ),
+              type: localizeName(
+                {
+                  nameEn: item.version.typeNameEn,
+                  nameSv: item.version.typeNameSv,
+                },
+                locale,
+              ),
+              uniqueId: item.uniqueId,
+            })),
+            message: createServiceMessage(
+              getPackageServiceTitle('items', locale),
+              [summary],
+              responseFormat,
+            ),
+            packageId,
+          }
+        },
+      )
+    },
+
+    async addToPackage(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'add_to_package',
+          packageId: input.packageId,
+          packageSlug: input.packageSlug,
+          requirementIds: input.requirementIds,
+        },
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.add_to_package',
+        {
+          package_id: input.packageId,
+          package_slug: input.packageSlug,
+          requirement_count: input.requirementIds.length,
+        },
+        async () => {
+          const packageId = await resolvePackageIdOrThrow(db, input)
+          const versionResults = await Promise.all(
+            input.requirementIds.map(async id => ({
+              id,
+              versionId: await getPublishedVersionIdForRequirement(db, id),
+            })),
+          )
+          const succeeded = versionResults.filter(r => r.versionId != null) as {
+            id: number
+            versionId: number
+          }[]
+          const skipped = versionResults.filter(r => r.versionId == null)
+
+          let addedCount = 0
+          if (succeeded.length > 0) {
+            let needsReferenceId: number | null = null
+            if (input.needsReferenceText) {
+              needsReferenceId = await getOrCreatePackageNeedsReference(
+                db,
+                packageId,
+                input.needsReferenceText,
+              )
+            }
+            addedCount = await linkRequirementsToPackage(
+              db,
+              packageId,
+              succeeded.map(r => ({
+                needsReferenceId,
+                requirementId: r.id,
+                requirementVersionId: r.versionId,
+              })),
+            )
+          }
+
+          const ref = getPackageReferenceLabel(input, packageId)
+          const skippedIds = skipped.map(r => r.id)
+          const lines: string[] = [
+            locale === 'sv'
+              ? `Lade till ${addedCount} ${getRequirementWord(locale, addedCount)} i paket ${ref}.`
+              : `Added ${addedCount} ${getRequirementWord(locale, addedCount)} to package ${ref}.`,
+          ]
+          if (skippedIds.length > 0) {
+            lines.push(
+              locale === 'sv'
+                ? `Hoppade over ${skippedIds.length} ${getRequirementWord(locale, skippedIds.length)} utan publicerad version: ${skippedIds.join(', ')}.`
+                : `Skipped ${skippedIds.length} ${getRequirementWord(locale, skippedIds.length)} with no published version: ${skippedIds.join(', ')}.`,
+            )
+          }
+          return {
+            addedCount,
+            message: createServiceMessage(
+              getPackageServiceTitle('add', locale),
+              lines,
+              responseFormat,
+            ),
+            skippedCount: skippedIds.length,
+            skippedIds,
+          }
+        },
+      )
+    },
+
+    async removeFromPackage(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'remove_from_package',
+          packageId: input.packageId,
+          packageSlug: input.packageSlug,
+          requirementIds: input.requirementIds,
+        },
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.remove_from_package',
+        {
+          package_id: input.packageId,
+          package_slug: input.packageSlug,
+          requirement_count: input.requirementIds.length,
+        },
+        async () => {
+          const packageId = await resolvePackageIdOrThrow(db, input)
+          const removedCount = await unlinkRequirementsFromPackage(
+            db,
+            packageId,
+            input.requirementIds,
+          )
+          const ref = getPackageReferenceLabel(input, packageId)
+          const summary =
+            locale === 'sv'
+              ? `Tog bort ${removedCount} ${getRequirementWord(locale, removedCount)} fran paket ${ref}.`
+              : `Removed ${removedCount} ${getRequirementWord(locale, removedCount)} from package ${ref}.`
+          return {
+            message: createServiceMessage(
+              getPackageServiceTitle('remove', locale),
+              [summary],
+              responseFormat,
+            ),
+            removedCount,
           }
         },
       )

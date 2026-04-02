@@ -27,6 +27,12 @@ function createFakeService(
   requiresTesting = true,
 ) {
   return {
+    addToPackage: vi.fn().mockResolvedValue({
+      addedCount: 1,
+      message: 'Requirement added to package',
+      skippedCount: 0,
+      skippedIds: [],
+    }),
     getRequirement: vi.fn().mockResolvedValue({
       message: 'Requirement detail',
       requirement: {
@@ -126,6 +132,19 @@ function createFakeService(
         offset: 0,
         total: 1,
       },
+    }),
+    getPackageItems: vi.fn().mockResolvedValue({
+      items: [],
+      message: 'Package items',
+      packageId: 7,
+    }),
+    listPackages: vi.fn().mockResolvedValue({
+      message: 'Packages',
+      packages: [],
+    }),
+    removeFromPackage: vi.fn().mockResolvedValue({
+      message: 'Requirement removed from package',
+      removedCount: 1,
     }),
     transitionRequirement: vi.fn().mockResolvedValue({
       detail: {
@@ -299,6 +318,46 @@ describe('handleRequirementsMcpRequest', () => {
       text: 'Error: Boom',
       type: 'text',
     })
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('rejects package tools unless exactly one package identifier is provided', async () => {
+    const { client, transport } = await createClient()
+
+    const missingIdentifier = await client.callTool({
+      arguments: {},
+      name: 'kravhantering_get_package_items',
+    })
+    expect(missingIdentifier.isError).toBe(true)
+    expect(missingIdentifier.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: expect.stringContaining(
+            'Provide exactly one of packageId or packageSlug.',
+          ),
+        }),
+      ]),
+    )
+
+    const duplicateIdentifier = await client.callTool({
+      arguments: {
+        packageId: 7,
+        packageSlug: 'IAM-PACKAGE',
+      },
+      name: 'kravhantering_get_package_items',
+    })
+    expect(duplicateIdentifier.isError).toBe(true)
+    expect(duplicateIdentifier.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: expect.stringContaining(
+            'Provide exactly one of packageId or packageSlug.',
+          ),
+        }),
+      ]),
+    )
 
     await client.close()
     await transport.close()
