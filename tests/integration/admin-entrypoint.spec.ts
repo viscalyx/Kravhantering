@@ -146,7 +146,7 @@ for (const { name, viewport } of viewportVariants) {
     test('header settings link opens the Swedish admin center', async ({
       page,
     }) => {
-      await page.goto('/sv/kravkatalog')
+      await page.goto('/sv/requirements')
 
       await expect(
         page.getByRole('button', { name: 'Referensdata' }),
@@ -188,7 +188,7 @@ for (const { name, viewport } of viewportVariants) {
       await page.getByRole('button', { name: 'Spara' }).click()
       await expect(page.getByText('Sparat')).toBeVisible()
 
-      await page.goto('/sv/kravkatalog')
+      await page.goto('/sv/requirements')
       await expect(page.locator('thead')).toContainText(renamedCategoryLabel)
 
       const readHeaderTexts = async () =>

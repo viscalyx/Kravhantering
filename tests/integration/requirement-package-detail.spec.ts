@@ -12,7 +12,7 @@ for (const viewport of viewports) {
     test('opens the package edit view from the title action', async ({
       page,
     }) => {
-      await page.goto('/sv/kravpaket/BEHORIGHET-IAM')
+      await page.goto('/sv/requirement-packages/BEHORIGHET-IAM')
 
       await expect(
         page.getByRole('heading', { level: 1, name: 'Behörighet och IAM' }),

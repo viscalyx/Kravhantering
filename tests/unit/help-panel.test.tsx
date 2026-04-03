@@ -16,23 +16,23 @@ const TEST_HELP_CONTENT: HelpContent = {
   sections: [
     {
       kind: 'text',
-      bodyKey: 'kravkatalog.overview.body',
-      headingKey: 'kravkatalog.overview.heading',
+      bodyKey: 'requirements.overview.body',
+      headingKey: 'requirements.overview.heading',
     },
   ],
-  titleKey: 'kravkatalog.title',
+  titleKey: 'requirements.title',
 }
 
 const TEST_VISUAL_HELP_CONTENT: HelpContent = {
   sections: [
     {
-      bodyKey: 'kravkatalog.lifecycleVisual.body',
-      headingKey: 'kravkatalog.lifecycleVisual.heading',
+      bodyKey: 'requirements.lifecycleVisual.body',
+      headingKey: 'requirements.lifecycleVisual.heading',
       kind: 'visual',
       visualId: 'requirementLifecycle',
     },
   ],
-  titleKey: 'kravkatalog.title',
+  titleKey: 'requirements.title',
 }
 
 const PARENT_HELP_CONTENT: HelpContent = {
@@ -253,22 +253,22 @@ describe('HelpPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'toggle help' }))
 
     expect(
-      screen.getByText('help.kravkatalog.lifecycleVisual.heading'),
+      screen.getByText('help.requirements.lifecycleVisual.heading'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('help.kravkatalog.lifecycleVisual.body'),
+      screen.getByText('help.requirements.lifecycleVisual.body'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('help.kravkatalog.lifecycleVisual.steps.draft.title'),
+      screen.getByText('help.requirements.lifecycleVisual.steps.draft.title'),
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'help.kravkatalog.lifecycleVisual.transitions.editCreatesDraft',
+        'help.requirements.lifecycleVisual.transitions.editCreatesDraft',
       ),
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'help.kravkatalog.lifecycleVisual.steps.archivingReview.title',
+        'help.requirements.lifecycleVisual.steps.archivingReview.title',
       ),
     ).toBeInTheDocument()
   })

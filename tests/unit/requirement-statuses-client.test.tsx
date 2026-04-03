@@ -35,7 +35,7 @@ function errJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import KravstatusarClient from '@/app/[locale]/kravstatusar/kravstatusar-client'
+import RequirementStatusesClient from '@/app/[locale]/requirement-statuses/requirement-statuses-client'
 
 const sampleStatuses = [
   {
@@ -56,7 +56,7 @@ const sampleStatuses = [
   },
 ]
 
-describe('KravstatusarClient', () => {
+describe('RequirementStatusesClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
@@ -65,7 +65,7 @@ describe('KravstatusarClient', () => {
   })
 
   it('renders heading and create button', async () => {
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.statuses',
     )
@@ -75,7 +75,7 @@ describe('KravstatusarClient', () => {
   })
 
   it('fetches and displays statuses', async () => {
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
@@ -84,12 +84,12 @@ describe('KravstatusarClient', () => {
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form with fields', async () => {
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
@@ -100,7 +100,7 @@ describe('KravstatusarClient', () => {
   })
 
   it('submits create form', async () => {
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
@@ -127,7 +127,7 @@ describe('KravstatusarClient', () => {
   })
 
   it('opens edit form with existing data', async () => {
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
@@ -141,7 +141,7 @@ describe('KravstatusarClient', () => {
   })
 
   it('closes form on cancel', async () => {
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
@@ -152,7 +152,7 @@ describe('KravstatusarClient', () => {
 
   it('deletes non-system status with confirm', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Custom')).toBeInTheDocument()
     })
@@ -178,7 +178,7 @@ describe('KravstatusarClient', () => {
 
   it('shows error when delete fails', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<KravstatusarClient />)
+    render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Custom')).toBeInTheDocument()
     })

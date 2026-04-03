@@ -25,7 +25,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import KravomradenClient from '@/app/[locale]/kravomraden/kravomraden-client'
+import RequirementAreasClient from '@/app/[locale]/requirement-areas/requirement-areas-client'
 
 const sampleAreas = [
   {
@@ -51,7 +51,7 @@ const sampleOwners = [
   { id: 2, name: 'Erik L' },
 ]
 
-describe('KravomradenClient', () => {
+describe('RequirementAreasClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
@@ -65,7 +65,7 @@ describe('KravomradenClient', () => {
   })
 
   it('renders heading and create button', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.areas',
     )
@@ -75,7 +75,7 @@ describe('KravomradenClient', () => {
   })
 
   it('fetches and displays areas in the table', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -85,12 +85,12 @@ describe('KravomradenClient', () => {
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form when clicking create button', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -103,7 +103,7 @@ describe('KravomradenClient', () => {
   })
 
   it('submits create form and refreshes list', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -135,7 +135,7 @@ describe('KravomradenClient', () => {
   })
 
   it('opens edit form with existing data', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -157,7 +157,7 @@ describe('KravomradenClient', () => {
   })
 
   it('submits edit form with PUT', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -189,7 +189,7 @@ describe('KravomradenClient', () => {
   })
 
   it('closes form when cancel is clicked', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -203,7 +203,7 @@ describe('KravomradenClient', () => {
 
   it('calls delete with confirm and refreshes', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -235,7 +235,7 @@ describe('KravomradenClient', () => {
 
   it('does not delete when confirm is cancelled', async () => {
     confirmMock.mockResolvedValue(false)
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Integration')).toBeInTheDocument()
     })
@@ -256,7 +256,7 @@ describe('KravomradenClient', () => {
   })
 
   it('displays owner names for areas and dash for missing owners', async () => {
-    render(<KravomradenClient />)
+    render(<RequirementAreasClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })

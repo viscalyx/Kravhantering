@@ -9,7 +9,7 @@ import {
 import userEvent from '@testing-library/user-event'
 import type { ComponentProps, ForwardedRef, ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import RequirementDetailClient from '@/app/[locale]/kravkatalog/[id]/requirement-detail-client'
+import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
 import type {
   RequirementDetailResponse,
@@ -943,7 +943,7 @@ describe('RequirementDetailClient', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
       'href',
-      '/kravkatalog/REQ-123/redigera',
+      '/requirements/REQ-123/edit',
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'v2' }))

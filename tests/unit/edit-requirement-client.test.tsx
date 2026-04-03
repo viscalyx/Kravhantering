@@ -35,7 +35,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import EditRequirementClient from '@/app/[locale]/kravkatalog/[id]/redigera/edit-requirement-client'
+import EditRequirementClient from '@/app/[locale]/requirements/[id]/edit/edit-requirement-client'
 
 function makeVersion(
   overrides: Partial<RequirementVersionDetail> = {},

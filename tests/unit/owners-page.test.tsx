@@ -19,11 +19,9 @@ const fetchMock = vi.fn().mockResolvedValue({
 })
 vi.stubGlobal('fetch', fetchMock)
 
-import OmradesagarePage, {
-  generateMetadata,
-} from '@/app/[locale]/omradesagare/page'
+import OmradesagarePage, { generateMetadata } from '@/app/[locale]/owners/page'
 
-describe('omradesagare page', () => {
+describe('owners page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

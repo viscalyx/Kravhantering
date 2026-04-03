@@ -15,8 +15,20 @@ vi.mock('next-intl', () => ({
     ns ? `${ns}.${key}` : key,
 }))
 
+vi.mock('@/i18n/routing', () => ({
+  Link: ({ children, href, ...props }: Record<string, unknown>) => (
+    <a href={href as string} {...props}>
+      {children as React.ReactNode}
+    </a>
+  ),
+}))
+
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
+}))
+
+vi.mock('@/components/StatusBadge', () => ({
+  default: ({ label }: { label: string }) => <span>{label}</span>,
 }))
 
 function okJson(body: unknown) {
@@ -26,123 +38,120 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import AnsvarsomradenClient from '@/app/[locale]/kravpaket/ansvarsomraden/ansvarsomraden-client'
+import UsageScenariosClient from '@/app/[locale]/usage-scenarios/usage-scenarios-client'
 
-const sampleItems = [{ id: 1, nameSv: 'Område sv', nameEn: 'Area en' }]
+const sampleScenarios = [
+  {
+    id: 1,
+    nameSv: 'Scenario A sv',
+    nameEn: 'Scenario A',
+    descriptionSv: 'Desc sv',
+    descriptionEn: 'Desc en',
+    ownerId: null,
+  },
+]
 
-describe('AnsvarsomradenClient', () => {
+describe('UsageScenariosClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ areas: sampleItems }))
+    fetchMock.mockResolvedValue(okJson({ scenarios: sampleScenarios }))
   })
 
   it('renders heading and create button', async () => {
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.responsibilityAreas',
+      'nav.scenarios',
     )
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
   })
 
-  it('fetches and displays items', async () => {
-    render(<AnsvarsomradenClient />)
+  it('fetches and displays scenarios', async () => {
+    render(<UsageScenariosClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
+    expect(screen.getByText('Desc en')).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form', async () => {
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+SV/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+EN/),
-    ).toBeInTheDocument()
+    expect(screen.getByLabelText(/scenario\.name.+SV/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/scenario\.name.+EN/)).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-
-    fireEvent.change(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+SV/),
-      { target: { value: 'Ny' } },
-    )
-    fireEvent.change(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+EN/),
-      { target: { value: 'New' } },
-    )
+    fireEvent.change(screen.getByLabelText(/scenario\.name.+SV/), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(screen.getByLabelText(/scenario\.name.+EN/), {
+      target: { value: 'New' },
+    })
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
-    fetchMock.mockResolvedValueOnce(okJson({ areas: sampleItems }))
+    fetchMock.mockResolvedValueOnce(okJson({ scenarios: sampleScenarios }))
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-responsibility-areas',
+        '/api/usage-scenarios',
         expect.objectContaining({ method: 'POST' }),
       )
     })
   })
 
   it('opens edit form with existing data', async () => {
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
     expect(
-      (
-        screen.getByLabelText(
-          /responsibilityAreaMgmt\.name.+EN/,
-        ) as HTMLInputElement
-      ).value,
-    ).toBe('Area en')
+      (screen.getByLabelText(/scenario\.name.+EN/) as HTMLInputElement).value,
+    ).toBe('Scenario A')
   })
 
   it('closes form on cancel', async () => {
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(
-      screen.queryByLabelText(/responsibilityAreaMgmt\.name.+SV/),
-    ).toBeNull()
+    expect(screen.queryByLabelText(/scenario\.name.+SV/)).toBeNull()
   })
 
   it('deletes with confirm', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<AnsvarsomradenClient />)
+    render(<UsageScenariosClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
 
     fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ areas: [] }))
+    fetchMock.mockResolvedValueOnce(okJson({ scenarios: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
@@ -154,7 +163,7 @@ describe('AnsvarsomradenClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-responsibility-areas/1',
+        '/api/usage-scenarios/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

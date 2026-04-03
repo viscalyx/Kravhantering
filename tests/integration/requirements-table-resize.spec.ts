@@ -2,7 +2,7 @@ import { expect, type Page, test } from '@playwright/test'
 
 // Keep this in sync with getRequirementColumnWidthsStorageKey('sv')
 // in lib/requirements/list-view.ts.
-const DESCRIPTION_COLUMN_WIDTHS_STORAGE_KEY = 'kravkatalog.columnWidths.v2.sv'
+const DESCRIPTION_COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v3.sv'
 
 const viewportVariants = [
   {
@@ -62,7 +62,7 @@ test.describe('Requirements table column resizing', () => {
           pageErrors.push(error.message)
         })
 
-        await page.goto('/sv/kravkatalog')
+        await page.goto('/sv/requirements')
 
         const handle = page
           .locator('[data-column-resize-handle="description"]')
@@ -201,7 +201,7 @@ test.describe('Requirements table column resizing', () => {
       test('clips resize handles around an expanded detail pane and still resizes', async ({
         page,
       }) => {
-        await page.goto('/sv/kravkatalog')
+        await page.goto('/sv/requirements')
         const { detailCell } = await openFirstRequirementDetail(page)
         const handle = page
           .locator('[data-column-resize-handle="description"]')
@@ -314,7 +314,7 @@ test.describe('Requirements table column resizing', () => {
       test('scrolls immediately up and down after opening an inline detail pane', async ({
         page,
       }) => {
-        await page.goto('/sv/kravkatalog')
+        await page.goto('/sv/requirements')
 
         const { detailCell } = await openFirstRequirementDetail(page)
 

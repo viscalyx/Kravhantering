@@ -19,7 +19,7 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('@/i18n/routing', () => ({
-  usePathname: () => '/kravkatalog',
+  usePathname: () => '/requirements',
 }))
 
 function createRectRef(

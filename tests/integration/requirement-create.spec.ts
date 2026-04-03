@@ -65,7 +65,7 @@ test.describe('Requirement creation', () => {
       expect(areasData.areas.length).toBeGreaterThan(0)
       const area = areasData.areas[0]
 
-      await page.goto('/sv/kravkatalog/ny')
+      await page.goto('/sv/requirements/new')
 
       // Select area
       await page.selectOption('#areaId', String(area.id))
@@ -76,8 +76,8 @@ test.describe('Requirement creation', () => {
       // Submit the form
       await page.click('button[type="submit"]')
 
-      // Should redirect to the list (not /kravkatalog/undefined)
-      await page.waitForURL(/\/sv\/kravkatalog(?:\?|$)/, { timeout: 10000 })
+      // Should redirect to the list (not /requirements/undefined)
+      await page.waitForURL(/\/sv\/requirements(?:\?|$)/, { timeout: 10000 })
       expect(page.url()).not.toContain('undefined')
 
       // The inline detail panel should be visible with the requirement description.

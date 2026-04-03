@@ -15,20 +15,8 @@ vi.mock('next-intl', () => ({
     ns ? `${ns}.${key}` : key,
 }))
 
-vi.mock('@/i18n/routing', () => ({
-  Link: ({ children, href, ...props }: Record<string, unknown>) => (
-    <a href={href as string} {...props}>
-      {children as React.ReactNode}
-    </a>
-  ),
-}))
-
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
-}))
-
-vi.mock('@/components/StatusBadge', () => ({
-  default: ({ label }: { label: string }) => <span>{label}</span>,
 }))
 
 function okJson(body: unknown) {
@@ -38,120 +26,123 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import KravscenarierClient from '@/app/[locale]/kravscenarier/kravscenarier-client'
+import ImplementationTypesClient from '@/app/[locale]/requirement-packages/implementation-types/implementation-types-client'
 
-const sampleScenarios = [
-  {
-    id: 1,
-    nameSv: 'Scenario A sv',
-    nameEn: 'Scenario A',
-    descriptionSv: 'Desc sv',
-    descriptionEn: 'Desc en',
-    ownerId: null,
-  },
-]
+const sampleItems = [{ id: 1, nameSv: 'Typ sv', nameEn: 'Type en' }]
 
-describe('KravscenarierClient', () => {
+describe('ImplementationTypesClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ scenarios: sampleScenarios }))
+    fetchMock.mockResolvedValue(okJson({ types: sampleItems }))
   })
 
   it('renders heading and create button', async () => {
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.scenarios',
+      'nav.implementationTypes',
     )
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
   })
 
-  it('fetches and displays scenarios', async () => {
-    render(<KravscenarierClient />)
+  it('fetches and displays items', async () => {
+    render(<ImplementationTypesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Type en')).toBeInTheDocument()
     })
-    expect(screen.getByText('Desc en')).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form', async () => {
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Type en')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByLabelText(/scenario\.name.+SV/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/scenario\.name.+EN/)).toBeInTheDocument()
+    expect(
+      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+    ).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Type en')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.change(screen.getByLabelText(/scenario\.name.+SV/), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.change(screen.getByLabelText(/scenario\.name.+EN/), {
-      target: { value: 'New' },
-    })
+
+    fireEvent.change(
+      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      { target: { value: 'Ny' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      { target: { value: 'New' } },
+    )
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
-    fetchMock.mockResolvedValueOnce(okJson({ scenarios: sampleScenarios }))
+    fetchMock.mockResolvedValueOnce(okJson({ types: sampleItems }))
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/usage-scenarios',
+        '/api/package-implementation-types',
         expect.objectContaining({ method: 'POST' }),
       )
     })
   })
 
   it('opens edit form with existing data', async () => {
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Type en')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
     expect(
-      (screen.getByLabelText(/scenario\.name.+EN/) as HTMLInputElement).value,
-    ).toBe('Scenario A')
+      (
+        screen.getByLabelText(
+          /implementationTypeMgmt\.name.+EN/,
+        ) as HTMLInputElement
+      ).value,
+    ).toBe('Type en')
   })
 
   it('closes form on cancel', async () => {
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Type en')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/scenario\.name.+SV/)).toBeNull()
+    expect(
+      screen.queryByLabelText(/implementationTypeMgmt\.name.+SV/),
+    ).toBeNull()
   })
 
   it('deletes with confirm', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<KravscenarierClient />)
+    render(<ImplementationTypesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Type en')).toBeInTheDocument()
     })
 
     fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ scenarios: [] }))
+    fetchMock.mockResolvedValueOnce(okJson({ types: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
@@ -163,7 +154,7 @@ describe('KravscenarierClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/usage-scenarios/1',
+        '/api/package-implementation-types/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

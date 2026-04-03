@@ -28,9 +28,9 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import OmradesagareClient from '@/app/[locale]/omradesagare/omradesagare-client'
+import OwnersClient from '@/app/[locale]/owners/owners-client'
 
-describe('OmradesagareClient', () => {
+describe('OwnersClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
@@ -46,7 +46,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('renders heading and create button', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.areaOwners',
     )
@@ -56,7 +56,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('fetches and displays owners in the table', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -66,12 +66,12 @@ describe('OmradesagareClient', () => {
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form when clicking create button', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -85,7 +85,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('submits create form and refreshes list', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -116,7 +116,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('opens edit form with existing data', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -135,7 +135,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('submits edit form with PUT and refreshes', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -169,7 +169,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('closes form when cancel is clicked', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -183,7 +183,7 @@ describe('OmradesagareClient', () => {
 
   it('calls delete with confirm and refreshes', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -215,7 +215,7 @@ describe('OmradesagareClient', () => {
 
   it('does not delete when confirm returns false', async () => {
     confirmMock.mockResolvedValue(false)
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -237,7 +237,7 @@ describe('OmradesagareClient', () => {
 
   it('disables form fields while submitting', async () => {
     let resolveFetch: ((v: unknown) => void) | undefined
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })
@@ -269,7 +269,7 @@ describe('OmradesagareClient', () => {
   })
 
   it('shows sr-only actions header in table', async () => {
-    render(<OmradesagareClient />)
+    render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
     })

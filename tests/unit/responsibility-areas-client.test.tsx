@@ -26,22 +26,22 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import GenomforandeformerClient from '@/app/[locale]/kravpaket/genomforandeformer/genomforandeformer-client'
+import ResponsibilityAreasClient from '@/app/[locale]/requirement-packages/responsibility-areas/responsibility-areas-client'
 
-const sampleItems = [{ id: 1, nameSv: 'Typ sv', nameEn: 'Type en' }]
+const sampleItems = [{ id: 1, nameSv: 'Område sv', nameEn: 'Area en' }]
 
-describe('GenomforandeformerClient', () => {
+describe('ResponsibilityAreasClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ types: sampleItems }))
+    fetchMock.mockResolvedValue(okJson({ areas: sampleItems }))
   })
 
   it('renders heading and create button', async () => {
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.implementationTypes',
+      'nav.responsibilityAreas',
     )
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
@@ -49,65 +49,65 @@ describe('GenomforandeformerClient', () => {
   })
 
   it('fetches and displays items', async () => {
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Type en')).toBeInTheDocument()
+      expect(screen.getByText('Area en')).toBeInTheDocument()
     })
   })
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form', async () => {
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Type en')).toBeInTheDocument()
+      expect(screen.getByText('Area en')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     expect(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByLabelText(/responsibilityAreaMgmt\.name.+SV/),
     ).toBeInTheDocument()
     expect(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      screen.getByLabelText(/responsibilityAreaMgmt\.name.+EN/),
     ).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Type en')).toBeInTheDocument()
+      expect(screen.getByText('Area en')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByLabelText(/responsibilityAreaMgmt\.name.+SV/),
       { target: { value: 'Ny' } },
     )
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      screen.getByLabelText(/responsibilityAreaMgmt\.name.+EN/),
       { target: { value: 'New' } },
     )
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
-    fetchMock.mockResolvedValueOnce(okJson({ types: sampleItems }))
+    fetchMock.mockResolvedValueOnce(okJson({ areas: sampleItems }))
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-implementation-types',
+        '/api/package-responsibility-areas',
         expect.objectContaining({ method: 'POST' }),
       )
     })
   })
 
   it('opens edit form with existing data', async () => {
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Type en')).toBeInTheDocument()
+      expect(screen.getByText('Area en')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
@@ -116,33 +116,33 @@ describe('GenomforandeformerClient', () => {
     expect(
       (
         screen.getByLabelText(
-          /implementationTypeMgmt\.name.+EN/,
+          /responsibilityAreaMgmt\.name.+EN/,
         ) as HTMLInputElement
       ).value,
-    ).toBe('Type en')
+    ).toBe('Area en')
   })
 
   it('closes form on cancel', async () => {
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Type en')).toBeInTheDocument()
+      expect(screen.getByText('Area en')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
-      screen.queryByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.queryByLabelText(/responsibilityAreaMgmt\.name.+SV/),
     ).toBeNull()
   })
 
   it('deletes with confirm', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<GenomforandeformerClient />)
+    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Type en')).toBeInTheDocument()
+      expect(screen.getByText('Area en')).toBeInTheDocument()
     })
 
     fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ types: [] }))
+    fetchMock.mockResolvedValueOnce(okJson({ areas: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
@@ -154,7 +154,7 @@ describe('GenomforandeformerClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-implementation-types/1',
+        '/api/package-responsibility-areas/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

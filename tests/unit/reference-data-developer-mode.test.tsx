@@ -47,7 +47,7 @@ const pages: MarkerSpec[] = [
     label: 'OmradesagareClient (area owners)',
     context: 'area owners',
     factory: () =>
-      import('@/app/[locale]/omradesagare/omradesagare-client') as Promise<{
+      import('@/app/[locale]/owners/owners-client') as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () =>
@@ -60,7 +60,9 @@ const pages: MarkerSpec[] = [
     label: 'KravomradenClient (areas)',
     context: 'areas',
     factory: () =>
-      import('@/app/[locale]/kravomraden/kravomraden-client') as Promise<{
+      import(
+        '@/app/[locale]/requirement-areas/requirement-areas-client'
+      ) as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () => [
@@ -86,7 +88,9 @@ const pages: MarkerSpec[] = [
     label: 'KravscenarierClient (scenarios)',
     context: 'scenarios',
     factory: () =>
-      import('@/app/[locale]/kravscenarier/kravscenarier-client') as Promise<{
+      import(
+        '@/app/[locale]/usage-scenarios/usage-scenarios-client'
+      ) as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () =>
@@ -108,7 +112,9 @@ const pages: MarkerSpec[] = [
     label: 'KravstatusarClient (statuses)',
     context: 'statuses',
     factory: () =>
-      import('@/app/[locale]/kravstatusar/kravstatusar-client') as Promise<{
+      import(
+        '@/app/[locale]/requirement-statuses/requirement-statuses-client'
+      ) as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () =>
@@ -130,7 +136,9 @@ const pages: MarkerSpec[] = [
     label: 'KravpaketClient (packages)',
     context: 'packages',
     factory: () =>
-      import('@/app/[locale]/kravpaket/kravpaket-client') as Promise<{
+      import(
+        '@/app/[locale]/requirement-packages/requirement-packages-client'
+      ) as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () => [
@@ -198,7 +206,7 @@ const pages: MarkerSpec[] = [
     context: 'responsibility areas',
     factory: () =>
       import(
-        '@/app/[locale]/kravpaket/ansvarsomraden/ansvarsomraden-client'
+        '@/app/[locale]/requirement-packages/responsibility-areas/responsibility-areas-client'
       ) as Promise<{ default: React.ComponentType }>,
     fetchResponse: () =>
       okJson({
@@ -211,7 +219,7 @@ const pages: MarkerSpec[] = [
     context: 'implementation types',
     factory: () =>
       import(
-        '@/app/[locale]/kravpaket/genomforandeformer/genomforandeformer-client'
+        '@/app/[locale]/requirement-packages/implementation-types/implementation-types-client'
       ) as Promise<{ default: React.ComponentType }>,
     fetchResponse: () =>
       okJson({
@@ -328,7 +336,7 @@ describe('KravscenarierClient error banner developer-mode marker', () => {
 
     try {
       const mod = await import(
-        '@/app/[locale]/kravscenarier/kravscenarier-client'
+        '@/app/[locale]/usage-scenarios/usage-scenarios-client'
       )
       const Component = mod.default
       const { container } = render(<Component />)

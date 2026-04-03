@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'kravkatalog.visibleColumns.v2'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v3'
 
 const viewportVariants = [
   {
@@ -27,7 +27,7 @@ test.describe('Requirements table column picker', () => {
       test('keeps the floating pill visible during horizontal scroll and still toggles columns', async ({
         page,
       }) => {
-        await page.goto('/sv/kravkatalog')
+        await page.goto('/sv/requirements')
 
         const trigger = page.locator('[data-column-picker-trigger="true"]')
         const scrollContainer = page

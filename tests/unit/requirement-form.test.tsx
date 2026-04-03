@@ -139,7 +139,7 @@ describe('RequirementForm', () => {
     expect(body).not.toHaveProperty('typeCategoryId')
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/kravkatalog?selected=TST0042')
+      expect(pushMock).toHaveBeenCalledWith('/requirements?selected=TST0042')
     })
   })
 

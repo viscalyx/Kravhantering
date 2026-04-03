@@ -14,7 +14,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import KravtyperClient from '@/app/[locale]/kravtyper/kravtyper-client'
+import RequirementTypesClient from '@/app/[locale]/requirement-types/requirement-types-client'
 
 const sampleTypes = [
   { id: 1, nameSv: 'Typ A sv', nameEn: 'Type A' },
@@ -38,7 +38,7 @@ const sampleCategories = [
   },
 ]
 
-describe('KravtyperClient', () => {
+describe('RequirementTypesClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
@@ -55,7 +55,7 @@ describe('KravtyperClient', () => {
   })
 
   it('renders heading', async () => {
-    render(<KravtyperClient />)
+    render(<RequirementTypesClient />)
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
         'nav.types',
@@ -64,7 +64,7 @@ describe('KravtyperClient', () => {
   })
 
   it('fetches and displays types with categories', async () => {
-    render(<KravtyperClient />)
+    render(<RequirementTypesClient />)
     await waitFor(() => {
       expect(screen.getByText('Type A')).toBeInTheDocument()
     })
@@ -75,7 +75,7 @@ describe('KravtyperClient', () => {
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<KravtyperClient />)
+    render(<RequirementTypesClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
@@ -87,7 +87,7 @@ describe('KravtyperClient', () => {
         return Promise.resolve(okJson({ qualityCharacteristics: [] }))
       return Promise.resolve(okJson({}))
     })
-    render(<KravtyperClient />)
+    render(<RequirementTypesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('common.noResults')).toHaveLength(2)
     })

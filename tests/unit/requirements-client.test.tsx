@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import KravkatalogClient from '@/app/[locale]/kravkatalog/kravkatalog-client'
+import RequirementsClient from '@/app/[locale]/requirements/requirements-client'
 import type { RequirementsTableProps } from '@/components/RequirementsTable'
 import {
   DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
@@ -183,7 +183,7 @@ vi.mock('@/components/RequirementsTable', () => ({
   },
 }))
 
-vi.mock('@/app/[locale]/kravkatalog/[id]/requirement-detail-client', () => ({
+vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   default: ({
     onClose,
     requirementId,
@@ -359,7 +359,7 @@ function mockCommonFetches() {
   })
 }
 
-describe('KravkatalogClient', () => {
+describe('RequirementsClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     helpPanelState.useHelpContent.mockReset()
@@ -400,48 +400,48 @@ describe('KravkatalogClient', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     expect(helpPanelState.useHelpContent).toHaveBeenCalledWith({
       sections: [
         {
           kind: 'text',
-          bodyKey: 'kravkatalog.overview.body',
-          headingKey: 'kravkatalog.overview.heading',
+          bodyKey: 'requirements.overview.body',
+          headingKey: 'requirements.overview.heading',
         },
         {
           kind: 'text',
-          bodyKey: 'kravkatalog.inlineDetail.body',
-          headingKey: 'kravkatalog.inlineDetail.heading',
+          bodyKey: 'requirements.inlineDetail.body',
+          headingKey: 'requirements.inlineDetail.heading',
         },
         {
           kind: 'text',
-          bodyKey: 'kravkatalog.filtering.body',
-          headingKey: 'kravkatalog.filtering.heading',
+          bodyKey: 'requirements.filtering.body',
+          headingKey: 'requirements.filtering.heading',
         },
         {
           kind: 'text',
-          bodyKey: 'kravkatalog.columns.body',
-          headingKey: 'kravkatalog.columns.heading',
+          bodyKey: 'requirements.columns.body',
+          headingKey: 'requirements.columns.heading',
         },
         {
-          bodyKey: 'kravkatalog.lifecycleVisual.body',
-          headingKey: 'kravkatalog.lifecycleVisual.heading',
+          bodyKey: 'requirements.lifecycleVisual.body',
+          headingKey: 'requirements.lifecycleVisual.heading',
           kind: 'visual',
           visualId: 'requirementLifecycle',
         },
         {
           kind: 'text',
-          bodyKey: 'kravkatalog.lifecycle.body',
-          headingKey: 'kravkatalog.lifecycle.heading',
+          bodyKey: 'requirements.lifecycle.body',
+          headingKey: 'requirements.lifecycle.heading',
         },
         {
           kind: 'text',
-          bodyKey: 'kravkatalog.actions.body',
-          headingKey: 'kravkatalog.actions.heading',
+          bodyKey: 'requirements.actions.body',
+          headingKey: 'requirements.actions.heading',
         },
       ],
-      titleKey: 'kravkatalog.title',
+      titleKey: 'requirements.title',
     })
   })
 
@@ -485,7 +485,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     expect(screen.getByTestId('requirements-card-loading')).toBeTruthy()
     expect(screen.getByText('loadingRequirements')).toBeTruthy()
@@ -530,7 +530,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     await waitFor(() =>
       expect(screen.queryByTestId('requirements-card-loading')).toBeNull(),
@@ -564,7 +564,7 @@ describe('KravkatalogClient', () => {
     mockCommonFetches()
     vi.stubGlobal('fetch', fetchMock)
 
-    const { container } = render(<KravkatalogClient />)
+    const { container } = render(<RequirementsClient />)
 
     const tableCard = Array.from(container.querySelectorAll('div')).find(node =>
       node.className.includes(
@@ -585,7 +585,7 @@ describe('KravkatalogClient', () => {
     expect(screen.queryByText('newRequirement')).toBeNull()
     expect(
       screen.getByRole('link', { name: 'newRequirement' }),
-    ).toHaveAttribute('href', '/kravkatalog/ny')
+    ).toHaveAttribute('href', '/requirements/new')
     expect(
       screen.getByRole('link', { name: 'newRequirement' }).dataset
         .floatingActionVariant,
@@ -687,7 +687,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     await waitFor(() =>
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
@@ -764,7 +764,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: false },
@@ -912,7 +912,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: false },
@@ -1012,7 +1012,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: false },
@@ -1104,7 +1104,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: false },
@@ -1205,7 +1205,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: true },
@@ -1290,7 +1290,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: true },
@@ -1378,7 +1378,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     initialList.resolve({
       pagination: { hasMore: false },
@@ -1433,7 +1433,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     await waitFor(() =>
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),
@@ -1473,7 +1473,7 @@ describe('KravkatalogClient', () => {
     mockCommonFetches()
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     await waitFor(() =>
       expect(screen.getByTestId('visible-columns').textContent).toBe(
@@ -1529,7 +1529,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     await waitFor(() =>
       expect(screen.getByTestId('visible-columns').textContent).toBe(
@@ -1577,7 +1577,7 @@ describe('KravkatalogClient', () => {
       { columnId: 'version', defaultVisible: false, sortOrder: 8 },
     ])
 
-    render(<KravkatalogClient initialColumnDefaults={reorderedDefaults} />)
+    render(<RequirementsClient initialColumnDefaults={reorderedDefaults} />)
 
     await waitFor(() =>
       expect(screen.getByTestId('visible-columns').textContent).toBe(
@@ -1652,7 +1652,7 @@ describe('KravkatalogClient', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    render(<KravkatalogClient />)
+    render(<RequirementsClient />)
 
     await waitFor(() =>
       expect(screen.getByTestId('row-ids').textContent).toBe('INT0001'),

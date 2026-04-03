@@ -44,7 +44,7 @@ function createDeferred<T>() {
 
 let fetchMock: ReturnType<typeof vi.fn>
 
-import KravpaketClient from '@/app/[locale]/kravpaket/kravpaket-client'
+import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requirement-packages-client'
 
 const sampleAreas = [{ id: 1, nameSv: 'Område', nameEn: 'Area' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
@@ -63,7 +63,7 @@ const samplePackages = [
   },
 ]
 
-describe('KravpaketClient', () => {
+describe('RequirementPackagesClient', () => {
   afterEach(() => {
     cleanup()
     vi.useRealTimers()
@@ -87,7 +87,7 @@ describe('KravpaketClient', () => {
   })
 
   it('renders heading', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.packages',
     )
@@ -97,7 +97,7 @@ describe('KravpaketClient', () => {
   })
 
   it('fetches and displays packages', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -108,7 +108,7 @@ describe('KravpaketClient', () => {
   it('fetches and displays packages after strict-mode effect replays', async () => {
     render(
       <StrictMode>
-        <KravpaketClient />
+        <RequirementPackagesClient />
       </StrictMode>,
     )
 
@@ -148,7 +148,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
 
     const filterInput = await screen.findByRole('textbox', {
       name: 'package.filterByName',
@@ -196,7 +196,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
 
     fireEvent.change(
       await screen.findByRole('textbox', { name: 'package.filterByName' }),
@@ -222,7 +222,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
 
     const emptyState = await screen.findByText('package.emptyState')
     expect(emptyState).toBeInTheDocument()
@@ -249,7 +249,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
 
     const areaBadge = await screen.findByRole('link', { name: 'Identity' })
     expect(areaBadge.className).toContain('min-h-[44px]')
@@ -260,25 +260,29 @@ describe('KravpaketClient', () => {
   it('does not show spinner immediately while loading', () => {
     vi.useFakeTimers()
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<KravpaketClient />)
-    expect(screen.queryByTestId('kravpaket-loading')).not.toBeInTheDocument()
+    render(<RequirementPackagesClient />)
+    expect(
+      screen.queryByTestId('requirement-packages-loading'),
+    ).not.toBeInTheDocument()
   })
 
   it('shows spinner after 200ms when still loading', async () => {
     vi.useFakeTimers()
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await act(async () => {
       vi.advanceTimersByTime(200)
     })
-    expect(screen.getByTestId('kravpaket-loading')).toBeInTheDocument()
+    expect(
+      screen.getByTestId('requirement-packages-loading'),
+    ).toBeInTheDocument()
   })
 
   it('clears the spinner timer when the component unmounts', () => {
     vi.useFakeTimers()
     fetchMock.mockReturnValue(new Promise(() => {}))
 
-    const { unmount } = render(<KravpaketClient />)
+    const { unmount } = render(<RequirementPackagesClient />)
 
     expect(vi.getTimerCount()).toBeGreaterThan(0)
     unmount()
@@ -286,7 +290,7 @@ describe('KravpaketClient', () => {
   })
 
   it('opens create form with fields', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -299,7 +303,7 @@ describe('KravpaketClient', () => {
   })
 
   it('shows inline help for package form fields', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -315,7 +319,7 @@ describe('KravpaketClient', () => {
   })
 
   it('renders package form controls with a 44px minimum height', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -343,7 +347,7 @@ describe('KravpaketClient', () => {
   })
 
   it('submits create form', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -378,7 +382,7 @@ describe('KravpaketClient', () => {
   })
 
   it('shows an inline save error for non-conflict failures', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -419,7 +423,7 @@ describe('KravpaketClient', () => {
   })
 
   it('opens edit form with existing data', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -437,7 +441,7 @@ describe('KravpaketClient', () => {
   })
 
   it('closes form on cancel', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -450,7 +454,7 @@ describe('KravpaketClient', () => {
 
   it('deletes with confirm', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -483,7 +487,7 @@ describe('KravpaketClient', () => {
   })
 
   it('marks slug conflicts as alerts and clears stale errors when auto-generating a new slug', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -536,7 +540,7 @@ describe('KravpaketClient', () => {
   })
 
   it('keeps the previous slug and shows an inline error when slug generation returns empty', async () => {
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -578,7 +582,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -631,7 +635,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
       expect(screen.getByText('Paket sv')).toBeInTheDocument()
     })
@@ -676,7 +680,7 @@ describe('KravpaketClient', () => {
       return Promise.resolve(okJson({}))
     })
 
-    render(<KravpaketClient />)
+    render(<RequirementPackagesClient />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'package.loadPackagesFailed: Service unavailable',

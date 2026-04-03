@@ -21,10 +21,10 @@ flowchart TD
     D --> E2[Set viewport 1280x800]
     E1 --> F[GET /api/requirement-areas]
     E2 --> F
-    F --> G[Navigate to /sv/kravkatalog/ny]
+    F --> G[Navigate to /sv/requirements/new]
     G --> H[Select area, fill description]
     H --> I[Click submit]
-    I --> J[Wait for redirect to /sv/kravkatalog]
+    I --> J[Wait for redirect to /sv/requirements]
     J --> K[Assert description visible in inline detail]
 ```
 
@@ -73,11 +73,11 @@ mobile (375 x 812) and desktop (1280 x 800) viewports.
 
 1. Set viewport to the target size.
 2. `GET /api/requirement-areas` — retrieve available areas.
-3. Navigate to `/sv/kravkatalog/ny`.
+3. Navigate to `/sv/requirements/new`.
 4. `selectOption('#areaId', areaId)` — pick the first area.
 5. `fill('#description', 'Playwright UI test requirement')`.
 6. `click('button[type="submit"]')`.
-7. `waitForURL(/\/sv\/kravkatalog(?:\?|$)/)` — confirm redirect.
+7. `waitForURL(/\/sv\/requirements(?:\?|$)/)` — confirm redirect.
 8. Assert URL does not contain `undefined`.
 9. Assert text *"Playwright UI test requirement"* is visible (inline detail
    panel).
@@ -90,10 +90,10 @@ sequenceDiagram
     T->>Page: setViewportSize(width, height)
     T->>API: GET /api/requirement-areas
     API-->>T: { areas: [...] }
-    T->>Page: goto /sv/kravkatalog/ny
+    T->>Page: goto /sv/requirements/new
     T->>Page: selectOption #areaId
     T->>Page: fill #description
     T->>Page: click submit
-    Page-->>T: redirect to /sv/kravkatalog?selected=...
+    Page-->>T: redirect to /sv/requirements?selected=...
     T->>Page: assert description visible
 ```

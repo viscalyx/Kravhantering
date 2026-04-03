@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Navigation from '@/components/Navigation'
 
 const pathnameState = vi.hoisted(() => ({
-  value: '/kravkatalog',
+  value: '/requirements',
 }))
 
 const helpState = vi.hoisted(() => ({
@@ -46,7 +46,7 @@ vi.mock('@/components/HelpPanel', () => ({
 
 describe('Navigation', () => {
   beforeEach(() => {
-    pathnameState.value = '/kravkatalog'
+    pathnameState.value = '/requirements'
     helpState.value = {
       content: null,
       isOpen: false,
@@ -66,11 +66,11 @@ describe('Navigation', () => {
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.getByRole('link', { name: 'nav.catalog' })).toHaveAttribute(
       'href',
-      '/kravkatalog',
+      '/requirements',
     )
     expect(screen.getByRole('link', { name: 'nav.packages' })).toHaveAttribute(
       'href',
-      '/kravpaket',
+      '/requirement-packages',
     )
   })
 
@@ -83,12 +83,12 @@ describe('Navigation', () => {
       screen
         .getAllByRole('link', { name: 'nav.catalog' })
         .map(link => link.getAttribute('href')),
-    ).toContain('/kravkatalog')
+    ).toContain('/requirements')
     expect(
       screen
         .getAllByRole('link', { name: 'nav.packages' })
         .map(link => link.getAttribute('href')),
-    ).toContain('/kravpaket')
+    ).toContain('/requirement-packages')
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.queryByText('nav.referenceData')).toBeNull()
   })

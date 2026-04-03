@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import PdfListReportPage from '@/app/[locale]/kravpaket/[slug]/reports/pdf/list/page'
-import PrintListReportPage from '@/app/[locale]/kravpaket/[slug]/reports/print/list/page'
+import PdfListReportPage from '@/app/[locale]/requirement-packages/[slug]/reports/pdf/list/page'
+import PrintListReportPage from '@/app/[locale]/requirement-packages/[slug]/reports/print/list/page'
 
 let currentIds: string | null = null
 let currentLocale = 'en'

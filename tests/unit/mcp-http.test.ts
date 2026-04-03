@@ -72,7 +72,7 @@ function createFakeService(
       },
       requirementResourceUri: 'requirements://requirement/INT0001?version=2',
       requirementViewUri:
-        'ui://kravhantering/requirement-detail/INT0001?version=2',
+        'ui://requirements/requirement-detail/INT0001?version=2',
       version: {
         acceptanceCriteria: 'Must respond in 2s',
         category: {
@@ -213,10 +213,10 @@ describe('handleRequirementsMcpRequest', () => {
     const tools = await client.listTools()
     expect(tools.tools.map(tool => tool.name)).toEqual(
       expect.arrayContaining([
-        'kravhantering_get_requirement',
-        'kravhantering_manage_requirement',
-        'kravhantering_query_catalog',
-        'kravhantering_transition_requirement',
+        'requirements_get_requirement',
+        'requirements_manage_requirement',
+        'requirements_query_catalog',
+        'requirements_transition_requirement',
       ]),
     )
 
@@ -238,7 +238,7 @@ describe('handleRequirementsMcpRequest', () => {
     )
 
     const viewResource = await client.readResource({
-      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2',
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2',
     })
     const firstViewResource =
       'contents' in viewResource ? viewResource.contents[0] : undefined
@@ -271,13 +271,13 @@ describe('handleRequirementsMcpRequest', () => {
         uniqueId: 'INT0001',
         view: 'detail',
       },
-      name: 'kravhantering_get_requirement',
+      name: 'requirements_get_requirement',
     })
 
     expect(result.isError).not.toBe(true)
     expect(result._meta).toMatchObject({
       'openai/outputTemplate':
-        'ui://kravhantering/requirement-detail/INT0001?version=2',
+        'ui://requirements/requirement-detail/INT0001?version=2',
     })
     const content = result.content as Array<{
       type: string
@@ -287,7 +287,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'resource_link',
-          uri: 'ui://kravhantering/requirement-detail/INT0001?version=2',
+          uri: 'ui://requirements/requirement-detail/INT0001?version=2',
         }),
       ]),
     )
@@ -306,7 +306,7 @@ describe('handleRequirementsMcpRequest', () => {
       arguments: {
         uniqueId: 'INT0001',
       },
-      name: 'kravhantering_get_requirement',
+      name: 'requirements_get_requirement',
     })
 
     expect(result.isError).toBe(true)
@@ -328,7 +328,7 @@ describe('handleRequirementsMcpRequest', () => {
 
     const missingIdentifier = await client.callTool({
       arguments: {},
-      name: 'kravhantering_get_package_items',
+      name: 'requirements_get_package_items',
     })
     expect(missingIdentifier.isError).toBe(true)
     expect(missingIdentifier.content).toEqual(
@@ -346,7 +346,7 @@ describe('handleRequirementsMcpRequest', () => {
         packageId: 7,
         packageSlug: 'IAM-PACKAGE',
       },
-      name: 'kravhantering_get_package_items',
+      name: 'requirements_get_package_items',
     })
     expect(duplicateIdentifier.isError).toBe(true)
     expect(duplicateIdentifier.content).toEqual(
@@ -375,7 +375,7 @@ describe('handleRequirementsMcpRequest', () => {
 
     const { client } = await createInMemoryClient(server)
     const viewResource = await client.readResource({
-      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2',
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2',
     })
     const firstViewResource =
       'contents' in viewResource ? viewResource.contents[0] : undefined
@@ -396,7 +396,7 @@ describe('handleRequirementsMcpRequest', () => {
   it('localizes empty reference and scenario sections in Swedish HTML resources', async () => {
     const { client, transport } = await createClient()
     const viewResource = await client.readResource({
-      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2&locale=sv',
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2&locale=sv',
     })
     const firstViewResource =
       'contents' in viewResource ? viewResource.contents[0] : undefined
@@ -417,7 +417,7 @@ describe('handleRequirementsMcpRequest', () => {
 
     const { client, transport } = await createClient()
     const viewResource = await client.readResource({
-      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2&locale=sv',
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2&locale=sv',
     })
     const firstViewResource =
       'contents' in viewResource ? viewResource.contents[0] : undefined
@@ -472,7 +472,7 @@ describe('handleRequirementsMcpRequest', () => {
 
     const { client } = await createInMemoryClient(server)
     const viewResource = await client.readResource({
-      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2&locale=sv',
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2&locale=sv',
     })
     const firstViewResource =
       'contents' in viewResource ? viewResource.contents[0] : undefined
@@ -500,7 +500,7 @@ describe('handleRequirementsMcpRequest', () => {
 
     const { client, transport } = await createClient()
     const viewResource = await client.readResource({
-      uri: 'ui://kravhantering/requirement-detail/INT0001?version=2',
+      uri: 'ui://requirements/requirement-detail/INT0001?version=2',
     })
     const firstViewResource =
       'contents' in viewResource ? viewResource.contents[0] : undefined

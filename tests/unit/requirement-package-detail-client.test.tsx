@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import KravpaketDetailClient from '@/app/[locale]/kravpaket/[slug]/kravpaket-detail-client'
+import RequirementPackageDetailClient from '@/app/[locale]/requirement-packages/[slug]/requirement-package-detail-client'
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -15,7 +15,7 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-vi.mock('@/app/[locale]/kravkatalog/[id]/requirement-detail-client', () => ({
+vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
   default: ({ requirementId }: { requirementId: number }) => (
     <div>{`Requirement detail ${requirementId}`}</div>
   ),
@@ -50,7 +50,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-describe('KravpaketDetailClient', () => {
+describe('RequirementPackageDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fetchMock.mockImplementation((input: string | Request) => {
@@ -113,7 +113,7 @@ describe('KravpaketDetailClient', () => {
 
   it('opens and closes the package edit view from the title action', async () => {
     const { container } = render(
-      <KravpaketDetailClient packageSlug="BEHORIGHET-IAM" />,
+      <RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />,
     )
 
     await waitFor(() => {
