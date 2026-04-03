@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import {
   deleteScenario,
   getLinkedRequirements,
+  getScenarioById,
   updateScenario,
 } from '@/lib/dal/usage-scenarios'
 import { getDb } from '@/lib/db'
@@ -20,8 +21,14 @@ export async function GET(
   }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const linkedRequirements = await getLinkedRequirements(db, numericId)
-  return NextResponse.json({ linkedRequirements })
+  const [scenario, linkedRequirements] = await Promise.all([
+    getScenarioById(db, numericId),
+    getLinkedRequirements(db, numericId),
+  ])
+  if (!scenario) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  return NextResponse.json({ scenario, linkedRequirements })
 }
 
 export async function PUT(
