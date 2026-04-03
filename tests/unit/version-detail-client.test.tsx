@@ -18,7 +18,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import VersionDetailClient from '@/app/[locale]/kravkatalog/[id]/versioner/[version]/version-detail-client'
+import VersionDetailClient from '@/app/[locale]/requirements/[id]/versions/[version]/version-detail-client'
 
 function makeVersion(
   overrides: Partial<RequirementVersionDetail> = {},

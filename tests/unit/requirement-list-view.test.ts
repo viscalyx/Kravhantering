@@ -184,7 +184,7 @@ describe('requirement list view helpers', () => {
       ),
     ).toEqual({ category: 190 })
     expect(getRequirementColumnWidthsStorageKey('sv')).toBe(
-      'kravkatalog.columnWidths.v2.sv',
+      'requirements.columnWidths.v3.sv',
     )
   })
 

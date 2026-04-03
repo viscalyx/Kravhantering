@@ -36,7 +36,7 @@ browser storage on both mobile and desktop layouts.
 ```mermaid
 flowchart TD
     A[Start viewport variant] --> B[Clear localStorage]
-    B --> C[Open /sv/kravkatalog]
+    B --> C[Open /sv/requirements]
     C --> D[Open floating column picker]
     D --> E[Enable qualityCharacteristic and requiresTesting]
     E --> F[Close picker and scroll table right]
@@ -72,7 +72,7 @@ persists the expected visible-column list.
 
 1. Start the current viewport variant from `viewportVariants`.
 2. Clear browser storage before navigation.
-3. Open `/sv/kravkatalog`.
+3. Open `/sv/requirements`.
 4. Locate the floating column-picker trigger and the scroll container.
 5. Open the popover with the floating trigger.
 6. Ensure the `qualityCharacteristic` and `requiresTesting` checkboxes are enabled.
@@ -98,7 +98,7 @@ sequenceDiagram
     participant S as Storage
 
     P->>P: Apply viewport variant
-    U->>P: Open /sv/kravkatalog
+    U->>P: Open /sv/requirements
     P->>T: Render floating column pill and scroll container
     U->>T: Click floating pill
     T->>Pop: Open column picker

@@ -85,25 +85,25 @@ describe('AdminClient', () => {
 
     expect(panel.getByTestId('reference-data-card-areas')).toHaveAttribute(
       'href',
-      '/kravomraden',
+      '/requirement-areas',
     )
     expect(panel.getByTestId('reference-data-icon-areas')).toBeTruthy()
 
     expect(panel.getByTestId('reference-data-card-types')).toHaveAttribute(
       'href',
-      '/kravtyper',
+      '/requirement-types',
     )
     expect(panel.getByTestId('reference-data-icon-types')).toBeTruthy()
 
     expect(panel.getByTestId('reference-data-card-scenarios')).toHaveAttribute(
       'href',
-      '/kravscenarier',
+      '/usage-scenarios',
     )
     expect(panel.getByTestId('reference-data-icon-scenarios')).toBeTruthy()
 
     expect(panel.getByTestId('reference-data-card-statuses')).toHaveAttribute(
       'href',
-      '/kravstatusar',
+      '/requirement-statuses',
     )
     expect(panel.getByTestId('reference-data-icon-statuses')).toBeTruthy()
 
@@ -116,21 +116,21 @@ describe('AdminClient', () => {
 
     expect(
       panel.getByTestId('reference-data-card-responsibilityAreas'),
-    ).toHaveAttribute('href', '/kravpaket/ansvarsomraden')
+    ).toHaveAttribute('href', '/requirement-packages/responsibility-areas')
     expect(
       panel.getByTestId('reference-data-icon-responsibilityAreas'),
     ).toBeTruthy()
 
     expect(
       panel.getByTestId('reference-data-card-implementationTypes'),
-    ).toHaveAttribute('href', '/kravpaket/genomforandeformer')
+    ).toHaveAttribute('href', '/requirement-packages/implementation-types')
     expect(
       panel.getByTestId('reference-data-icon-implementationTypes'),
     ).toBeTruthy()
 
     expect(panel.getByTestId('reference-data-card-areaOwners')).toHaveAttribute(
       'href',
-      '/omradesagare',
+      '/owners',
     )
     expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
 

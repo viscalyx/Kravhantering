@@ -1,16 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildDeveloperModeChipLabel,
   buildDeveloperModeCopyText,
-  devMarker,
   findDeveloperModeTargetAt,
-  getRequirementColumnDeveloperModeLabel,
   isEditableTarget,
   matchesDeveloperModeShortcut,
   noopDevMarker,
   normalizeDeveloperModeText,
   scanVisibleDeveloperModeTargets,
-} from '@/lib/developer-mode'
+} from '@viscalyx/developer-mode-core'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  devMarker,
+  getRequirementColumnDeveloperModeLabel,
+} from '@/lib/developer-mode-markers'
 
 function mockRect(
   element: HTMLElement,

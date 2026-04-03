@@ -34,7 +34,7 @@ Keep the storage key constant in sync with
 ```mermaid
 flowchart TD
     A[Start viewport variant] --> B{Viewport}
-    B -- 375x667 --> C[Open /sv/kravkatalog]
+    B -- 375x667 --> C[Open /sv/requirements]
     B -- 1280x720 --> C
     C --> D{Scenario}
     D -- Rapid drag --> E[Wait for description resize handle]
@@ -97,7 +97,7 @@ the mobile and desktop layouts.
 1. Start the current viewport variant (`375x667` or `1280x720`).
 2. Clear browser storage before navigation.
 3. Start capturing console and page-level errors.
-4. Open `/sv/kravkatalog`.
+4. Open `/sv/requirements`.
 5. Scroll the `description` resize handle into view and record the
    initial description column width.
 6. Record the initial position of the later `area` divider.
@@ -123,7 +123,7 @@ sequenceDiagram
     participant S as Storage
 
     P->>P: Apply viewport variant
-    U->>P: Open /sv/kravkatalog
+    U->>P: Open /sv/requirements
     P->>T: Render Krav list and resize handles
     P->>T: Scroll description handle into view
     Note over T: ✓ Description divider is visible
@@ -151,7 +151,7 @@ still commit successfully while the pane remains open.
 
 1. Start the current viewport variant (`375x667` or `1280x720`).
 2. Clear browser storage before navigation.
-3. Open `/sv/kravkatalog`.
+3. Open `/sv/requirements`.
 4. Wait for the first two table rows so the expanded row will have
    content below it.
 5. Open the first row's inline detail pane.
@@ -182,7 +182,7 @@ sequenceDiagram
     participant S as Storage
 
     P->>P: Apply viewport variant
-    U->>P: Open /sv/kravkatalog
+    U->>P: Open /sv/requirements
     P->>T: Render list and divider overlay
     U->>T: Click first requirement row
     T->>D: Render inline detail pane
@@ -209,7 +209,7 @@ invisible resize strip.
 
 1. Start the current viewport variant (`375x667` or `1280x720`).
 2. Clear browser storage before navigation.
-3. Open `/sv/kravkatalog`.
+3. Open `/sv/requirements`.
 4. Open the first row's inline detail pane.
 5. Wait for `[data-expanded-detail-cell="true"]`.
 6. Locate the first visible lower resize grip, or fall back to the
@@ -234,7 +234,7 @@ sequenceDiagram
     participant D as Detail Pane
 
     P->>P: Apply viewport variant
-    U->>P: Open /sv/kravkatalog
+    U->>P: Open /sv/requirements
     U->>T: Click first requirement row
     T->>D: Render inline detail pane
     P->>T: Choose probe point below pane

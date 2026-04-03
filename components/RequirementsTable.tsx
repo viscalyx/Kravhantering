@@ -1628,7 +1628,7 @@ export default function RequirementsTable({
       }
 
       const row = rows.find(r => r.id === id)
-      router.push(`/kravkatalog/${row?.uniqueId ?? id}`)
+      router.push(`/requirements/${row?.uniqueId ?? id}`)
     },
     [onRowClick, router, rows],
   )

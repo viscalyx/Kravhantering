@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import PackageEditPanel from '@/app/[locale]/kravpaket/[slug]/package-edit-panel'
+import PackageEditPanel from '@/app/[locale]/requirement-packages/[slug]/package-edit-panel'
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',

@@ -100,14 +100,14 @@ graph TB
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│                   << Motivation >>                       │
+│                   << Motivation >>                      │
 │  Mål: Enhetlig kravhantering med full spårbarhet        │
 │  Intressenter: Kravförfattare, Granskare, Förvaltare    │
 └─────────────────────────────────────────────────────────┘
          │ realiseras av
          ▼
 ┌─────────────────────────────────────────────────────────┐
-│              << Business Layer >>                        │
+│              << Business Layer >>                       │
 │                                                         │
 │  [Business Process]     [Business Process]              │
 │   Kravlivscykel          Rapportgenerering              │
@@ -119,7 +119,7 @@ graph TB
          │ stöds av
          ▼
 ┌─────────────────────────────────────────────────────────┐
-│             << Application Layer >>                      │
+│             << Application Layer >>                     │
 │                                                         │
 │  [Application Service]        [Application Service]     │
 │   Kravkatalog (UI)             REST API                 │
@@ -134,13 +134,13 @@ graph TB
          │ driftas på
          ▼
 ┌─────────────────────────────────────────────────────────┐
-│             << Technology Layer >>                       │
+│             << Technology Layer >>                      │
 │                                                         │
-│  [Technology Service]    [Technology Service]            │
+│  [Technology Service]    [Technology Service]           │
 │   Cloudflare Workers      Cloudflare D1 (SQLite)        │
 │                                                         │
-│  [Technology Service]    [Technology Service]            │
-│   Cloudflare Assets       OpenNext-adapter               │
+│  [Technology Service]    [Technology Service]           │
+│   Cloudflare Assets       OpenNext-adapter              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -272,19 +272,19 @@ gransknings- och beslutsprocesserna:
 ┌──────────────────────────────────────────────────────────┐
 │            << Business Process: Kravlivscykel >>         │
 │                                                          │
-│  ┌──────────┐    ┌───────────┐    ┌───────────────┐     │
-│  │ Författa │───>│  Granska  │───>│  Publicera    │     │
-│  │  krav    │    │  krav     │    │  krav         │     │
-│  └──────────┘    └───────────┘    └───────────────┘     │
-│       │               │ avslå           │               │
-│       │<──────────────┘                 │               │
-│       │                                 ▼               │
-│       │                          ┌──────────────┐       │
-│       │                          │  Arkivera    │       │
-│       │                          │  krav        │       │
-│       │                          └──────────────┘       │
-│       │                                 │               │
-│       │<────────────────────────────────┘ återaktivera  │
+│  ┌──────────┐    ┌───────────┐    ┌───────────────┐      │
+│  │ Författa │───>│  Granska  │───>│  Publicera    │      │
+│  │  krav    │    │  krav     │    │  krav         │      │
+│  └──────────┘    └───────────┘    └───────────────┘      │
+│       │               │ avslå           │                │
+│       │<──────────────┘                 │                │
+│       │                                 ▼                │
+│       │                          ┌──────────────┐        │
+│       │                          │  Arkivera    │        │
+│       │                          │  krav        │        │
+│       │                          └──────────────┘        │
+│       │                                 │                │
+│       │<────────────────────────────────┘ återaktivera   │
 └──────────────────────────────────────────────────────────┘
          │              │              │            │
    [Assigned to]  [Assigned to]  [Assigned to]  [Assigned]
@@ -311,7 +311,7 @@ huvudsakliga användningsmönstren.
 
 ### Kravkatalogen — listvyn
 
-Huvudvyn (`/kravkatalog`) visar samtliga krav i en
+Huvudvyn (`/requirements`) visar samtliga krav i en
 tabellvy med:
 
 - **Kolumnhantering** — Administratörer anger
@@ -333,7 +333,7 @@ tabellvy med:
 Klick på en rad expanderar en inline-detaljpanel som
 visar kravtext, acceptanskriterier, område med ägare,
 referenser och scenarier. Alternativt öppnas en
-helsidevy (`/kravkatalog/[id]`).
+helsidevy (`/requirements/[id]`).
 
 Från detaljvyn kan användaren:
 
@@ -400,13 +400,13 @@ MCP-servern (`/api/mcp`) exponerar fyra verktyg som
 gör det möjligt för AI-agenter att interagera med
 kravkatalogen:
 
-1. `kravhantering_query_catalog` — Lista krav eller
+1. `requirements_query_catalog` — Lista krav eller
    uppslagstabeller.
-2. `kravhantering_get_requirement` — Hämta detalj,
+2. `requirements_get_requirement` — Hämta detalj,
    specifik version eller fullständig historik.
-3. `kravhantering_manage_requirement` — Skapa,
+3. `requirements_manage_requirement` — Skapa,
    redigera, arkivera, radera utkast, återställ.
-4. `kravhantering_transition_requirement` —
+4. `requirements_transition_requirement` —
    Statusövergångar.
 
 MCP-servern och REST API:et delar samma
@@ -426,14 +426,14 @@ interna applikationssambanden:
 <!-- Replace with ArchiMate tool export -->
 
 ```text
-┌────────────────────────────────────────────────────────────────┐
-│          << Application Cooperation Viewpoint >>               │
-│                                                                │
+┌───────────────────────────────────────────────────────────────┐
+│          << Application Cooperation Viewpoint >>              │
+│                                                               │
 │  ┌────────────┐         ┌────────────────────────────────┐    │
 │  │ Webbläsare │────────>│    Next.js App Router (UI)     │    │
-│  │ (Användare)│  HTTPS  │    /[locale]/kravkatalog/...   │    │
-│  └────────────┘         └──────────┬──────┬──────────────┘    │
-│                                    │      │                    │
+│  │ (Användare)│  HTTPS  │    /[locale]/requirements/...  │    │
+│  └────────────┘         └──────────┬─────┬───────────────┘    │
+│                                    │     │                    │
 │  ┌────────────┐         ┌──────────▼──┐  │                    │
 │  │ AI-agenter │────────>│  MCP-server │  │                    │
 │  │ (MCP-      │  HTTP   │  /api/mcp   │  │                    │
@@ -443,7 +443,7 @@ interna applikationssambanden:
 │                    ┌──────────────────────────┐               │
 │                    │   RequirementsService    │               │
 │                    │   (Gemensam affärslogik) │               │
-│                    └────────────┬─────────────┘               │
+│                    └───────────┬──────────────┘               │
 │                                │                              │
 │                    ┌───────────▼────────────┐                 │
 │                    │   Data Access Layer    │                 │
@@ -454,12 +454,12 @@ interna applikationssambanden:
 │                    │   Cloudflare D1        │                 │
 │                    │   (SQLite)             │                 │
 │                    └───────────────────────-┘                 │
-│                                                                │
-│  << Application Interfaces >>                                  │
-│  ┌──────────┐  ┌──────────┐  ┌──────────────────────────┐    │
-│  │ JSON/REST │  │ CSV      │  │ PDF (react-pdf / print) │    │
-│  └──────────┘  └──────────┘  └──────────────────────────┘    │
-└────────────────────────────────────────────────────────────────┘
+│                                                               │
+│  << Application Interfaces >>                                 │
+│  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐    │
+│  │ JSON/REST │  │ CSV      │  │ PDF (react-pdf / print)  │    │
+│  └───────────┘  └──────────┘  └──────────────────────────┘    │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -478,15 +478,15 @@ med locale-baserad routing:
 ```text
 app/
   [locale]/
-    kravkatalog/         Kravlista och detaljvy
+    requirements/         Kravlista och detaljvy
       [id]/              Enskilt krav
       reports/           Rapportrendering (print/pdf)
     admin/               Administrationscenter
-    kravomraden/         Områdeshantering (CRUD)
-    kravpaket/           Pakethantering
-    kravscenarier/       Scenariohantering
-    kravstatusar/        Statushantering
-    kravtyper/           Typhantering
+    requirement-areas/         Områdeshantering (CRUD)
+    requirement-packages/           Pakethantering
+    usage-scenarios/       Scenariohantering
+    requirement-statuses/        Statushantering
+    requirement-types/           Typhantering
     quality-characteristics/  Kvalitetskaraktäristiker
   api/
     requirements/        REST-ändpunkter

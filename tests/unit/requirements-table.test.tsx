@@ -39,7 +39,7 @@ vi.mock('@/i18n/routing', () => ({
       {children as React.ReactNode}
     </a>
   ),
-  usePathname: () => '/kravkatalog',
+  usePathname: () => '/requirements',
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -787,7 +787,7 @@ describe('RequirementsTable', () => {
         floatingActions={[
           {
             ariaLabel: 'newRequirement',
-            href: '/kravkatalog/ny',
+            href: '/requirements/new',
             icon: <span aria-hidden="true">+</span>,
             id: 'create',
             position: 'beforeColumns',
@@ -817,7 +817,7 @@ describe('RequirementsTable', () => {
     ])
     expect(
       screen.getByRole('link', { name: 'newRequirement' }),
-    ).toHaveAttribute('href', '/kravkatalog/ny')
+    ).toHaveAttribute('href', '/requirements/new')
     expect(
       screen.getByRole('link', { name: 'newRequirement' }).dataset
         .floatingActionVariant,
@@ -1918,8 +1918,8 @@ describe('RequirementsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: 'INT0001' }))
 
     expect(mockPush.mock.calls).toEqual([
-      ['/kravkatalog/INT0001'],
-      ['/kravkatalog/INT0001'],
+      ['/requirements/INT0001'],
+      ['/requirements/INT0001'],
     ])
   })
 

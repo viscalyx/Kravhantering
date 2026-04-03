@@ -12,7 +12,7 @@ for (const viewport of viewports) {
     test('filters the table by package name and clears the search', async ({
       page,
     }) => {
-      await page.goto('/sv/kravpaket')
+      await page.goto('/sv/requirement-packages')
 
       await expect(
         page.getByRole('heading', { level: 1, name: 'Kravpaket' }),

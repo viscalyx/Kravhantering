@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/kravkatalog/reports/**/*}"
+applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/reports/**/*}"
 ---
 
 # Reports
@@ -59,8 +59,8 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/kravkatalog/rep
 
 ## Report URLs
 
-- Detail view uses `window.open` with locale prefix (`/${locale}/kravkatalog/reports/...`)
-- List view floating pill uses `next-intl` `Link` without locale prefix (`/kravkatalog/reports/...`)
+- Detail view uses `window.open` with locale prefix (`/${locale}/requirements/reports/...`)
+- List view floating pill uses `next-intl` `Link` without locale prefix (`/requirements/reports/...`)
 - Do not mix these patterns — `Link` auto-prefixes, `window.open` does not
 
 ## After Changes

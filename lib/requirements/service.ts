@@ -407,10 +407,10 @@ function formatRequirementDetail(
 export function buildRequirementViewUri(
   ref: RequirementRefInput,
   versionNumber?: number,
-) {
+): string {
   const stableRef = ref.uniqueId ?? String(ref.id)
   const suffix = versionNumber != null ? `?version=${versionNumber}` : ''
-  return `ui://kravhantering/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`
+  return `ui://requirements/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`
 }
 
 export interface ListPackagesOutput {
@@ -1646,10 +1646,6 @@ export function createRequirementsService(
     },
   }
 }
-
-export type RequirementsServiceFactory = ReturnType<
-  typeof createRequirementsService
->
 
 export function toResponseFormat(format?: string): ResponseFormat {
   return format === 'json' ? 'json' : 'markdown'

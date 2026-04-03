@@ -12,7 +12,7 @@ vi.mock('next-intl', () => ({
 const mockReplace = vi.fn()
 vi.mock('@/i18n/routing', () => ({
   useRouter: () => ({ replace: mockReplace }),
-  usePathname: () => '/kravkatalog',
+  usePathname: () => '/requirements',
 }))
 
 describe('Footer', () => {
@@ -41,6 +41,6 @@ describe('LanguageSwitcher', () => {
     render(<LanguageSwitcher />)
     const btn = screen.getByRole('button', { name: 'switchTo' })
     fireEvent.click(btn)
-    expect(mockReplace).toHaveBeenCalledWith('/kravkatalog', { locale: 'sv' })
+    expect(mockReplace).toHaveBeenCalledWith('/requirements', { locale: 'sv' })
   })
 })

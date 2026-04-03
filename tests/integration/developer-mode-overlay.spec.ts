@@ -18,7 +18,7 @@ for (const viewport of viewports) {
     test('shows chip on hover and copies a contextual reference', async ({
       page,
     }) => {
-      await page.goto('/sv/kravkatalog')
+      await page.goto('/sv/requirements')
 
       await page.getByLabel('Filtrera efter Krav-ID').click()
       const searchInput = page.getByRole('textbox', { name: 'Krav-ID' })
@@ -51,7 +51,7 @@ for (const viewport of viewports) {
     test('keeps developer mode active across client navigation into admin', async ({
       page,
     }) => {
-      await page.goto('/sv/kravkatalog')
+      await page.goto('/sv/requirements')
       await page.locator('tbody > tr').first().waitFor()
       await page.getByRole('link', { name: 'Inställningar' }).focus()
       await page.keyboard.press('Control+Alt+Shift+H')

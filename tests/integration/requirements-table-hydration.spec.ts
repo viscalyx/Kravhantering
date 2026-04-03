@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'kravkatalog.visibleColumns.v2'
-const COLUMN_WIDTHS_STORAGE_KEY = 'kravkatalog.columnWidths.v2.sv'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v3'
+const COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v3.sv'
 
 async function expectInitialLoadingState(page: Page) {
   await expect(page.getByText(/Hämtar krav/)).toBeVisible()
@@ -85,7 +85,7 @@ for (const viewportConfig of [
         await route.continue()
       })
 
-      await page.goto('/sv/kravkatalog')
+      await page.goto('/sv/requirements')
 
       await expectInitialLoadingState(page)
       await expectHydratedTable(page)

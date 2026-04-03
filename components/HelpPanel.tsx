@@ -22,9 +22,9 @@ export interface HelpSection {
 }
 
 export interface HelpTextSection extends HelpSection {
-  /** Key relative to the 'help' namespace, e.g. 'kravkatalog.overview.body' */
+  /** Key relative to the 'help' namespace, e.g. 'requirements.overview.body' */
   bodyKey: string
-  /** Key relative to the 'help' namespace, e.g. 'kravkatalog.overview.heading' */
+  /** Key relative to the 'help' namespace, e.g. 'requirements.overview.heading' */
   headingKey: string
   kind: 'text'
 }
@@ -34,7 +34,7 @@ export type HelpVisualId = 'requirementLifecycle'
 export interface HelpVisualSection extends HelpSection {
   /** Optional explanatory text rendered above the visual */
   bodyKey?: string
-  /** Key relative to the 'help' namespace, e.g. 'kravkatalog.lifecycleVisual.heading' */
+  /** Key relative to the 'help' namespace, e.g. 'requirements.lifecycleVisual.heading' */
   headingKey: string
   kind: 'visual'
   /** Visual renderer identifier */
@@ -45,7 +45,7 @@ export type HelpContentSection = HelpTextSection | HelpVisualSection
 
 export interface HelpContent {
   sections: HelpContentSection[]
-  /** Key relative to the 'help' namespace, e.g. 'kravkatalog.title' */
+  /** Key relative to the 'help' namespace, e.g. 'requirements.title' */
   titleKey: string
 }
 
@@ -179,42 +179,44 @@ function RequirementLifecycleVisual() {
     {
       colorClassName:
         'border-sky-200 bg-sky-50/90 text-sky-700 dark:border-sky-800/70 dark:bg-sky-950/40 dark:text-sky-300',
-      descriptionKey: 'kravkatalog.lifecycleVisual.steps.draft.description',
-      titleKey: 'kravkatalog.lifecycleVisual.steps.draft.title',
-      transitionKey: 'kravkatalog.lifecycleVisual.transitions.create',
+      descriptionKey: 'requirements.lifecycleVisual.steps.draft.description',
+      titleKey: 'requirements.lifecycleVisual.steps.draft.title',
+      transitionKey: 'requirements.lifecycleVisual.transitions.create',
     },
     {
       colorClassName:
         'border-amber-200 bg-amber-50/90 text-amber-700 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300',
-      descriptionKey: 'kravkatalog.lifecycleVisual.steps.review.description',
-      noteKey: 'kravkatalog.lifecycleVisual.transitions.returnToDraft',
-      titleKey: 'kravkatalog.lifecycleVisual.steps.review.title',
-      transitionKey: 'kravkatalog.lifecycleVisual.transitions.sendForReview',
+      descriptionKey: 'requirements.lifecycleVisual.steps.review.description',
+      noteKey: 'requirements.lifecycleVisual.transitions.returnToDraft',
+      titleKey: 'requirements.lifecycleVisual.steps.review.title',
+      transitionKey: 'requirements.lifecycleVisual.transitions.sendForReview',
     },
     {
       colorClassName:
         'border-emerald-200 bg-emerald-50/90 text-emerald-700 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-300',
-      descriptionKey: 'kravkatalog.lifecycleVisual.steps.published.description',
-      noteKey: 'kravkatalog.lifecycleVisual.transitions.editCreatesDraft',
-      titleKey: 'kravkatalog.lifecycleVisual.steps.published.title',
-      transitionKey: 'kravkatalog.lifecycleVisual.transitions.publish',
+      descriptionKey:
+        'requirements.lifecycleVisual.steps.published.description',
+      noteKey: 'requirements.lifecycleVisual.transitions.editCreatesDraft',
+      titleKey: 'requirements.lifecycleVisual.steps.published.title',
+      transitionKey: 'requirements.lifecycleVisual.transitions.publish',
     },
     {
       colorClassName:
         'border-orange-200 bg-orange-50/90 text-orange-700 dark:border-orange-800/70 dark:bg-orange-950/40 dark:text-orange-300',
       descriptionKey:
-        'kravkatalog.lifecycleVisual.steps.archivingReview.description',
-      noteKey: 'kravkatalog.lifecycleVisual.transitions.cancelArchiving',
-      titleKey: 'kravkatalog.lifecycleVisual.steps.archivingReview.title',
-      transitionKey: 'kravkatalog.lifecycleVisual.transitions.archive',
+        'requirements.lifecycleVisual.steps.archivingReview.description',
+      noteKey: 'requirements.lifecycleVisual.transitions.cancelArchiving',
+      titleKey: 'requirements.lifecycleVisual.steps.archivingReview.title',
+      transitionKey: 'requirements.lifecycleVisual.transitions.archive',
     },
     {
       colorClassName:
         'border-slate-200 bg-slate-50/90 text-slate-700 dark:border-slate-700/70 dark:bg-slate-900/70 dark:text-slate-300',
-      descriptionKey: 'kravkatalog.lifecycleVisual.steps.archived.description',
-      noteKey: 'kravkatalog.lifecycleVisual.transitions.restoreCreatesDraft',
-      titleKey: 'kravkatalog.lifecycleVisual.steps.archived.title',
-      transitionKey: 'kravkatalog.lifecycleVisual.transitions.approveArchiving',
+      descriptionKey: 'requirements.lifecycleVisual.steps.archived.description',
+      noteKey: 'requirements.lifecycleVisual.transitions.restoreCreatesDraft',
+      titleKey: 'requirements.lifecycleVisual.steps.archived.title',
+      transitionKey:
+        'requirements.lifecycleVisual.transitions.approveArchiving',
     },
   ]
 

@@ -153,7 +153,7 @@ Developer Mode is covered by:
 - `tests/unit/version-history.test.tsx`
 - `tests/unit/requirements-table.test.tsx`
 - `tests/unit/reference-data-developer-mode.test.tsx`
-- `tests/unit/kravpaket-detail-client.test.tsx`
+- `tests/unit/requirement-package-detail-client.test.tsx`
 - `tests/unit/navigation.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
