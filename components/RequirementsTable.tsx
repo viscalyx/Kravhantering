@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  AlignLeft,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -97,7 +98,6 @@ export interface RequirementsTableProps {
   types?: FilterOption[]
   usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
-  wrapDescription?: boolean
 }
 
 export type FloatingActionPillVariant = 'default' | 'primary'
@@ -1337,7 +1337,6 @@ export default function RequirementsTable({
   types = [],
   usageScenarios = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
-  wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
@@ -2878,7 +2877,7 @@ export default function RequirementsTable({
     }
   }
 
-  const [descriptionWrapped, setDescriptionWrapped] = useState(wrapDescription)
+  const [descriptionWrapped, setDescriptionWrapped] = useState(false)
   const [showSpinner, setShowSpinner] = useState(false)
   useEffect(() => {
     if (!loading) {
@@ -3152,11 +3151,7 @@ export default function RequirementsTable({
                           : 'Visa fullständig text'
                       }
                       aria-pressed={descriptionWrapped}
-                      className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded ${
-                        descriptionWrapped
-                          ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400'
-                          : 'text-secondary-400 hover:text-secondary-600'
-                      }`}
+                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600"
                       onClick={() => setDescriptionWrapped(v => !v)}
                       title={
                         descriptionWrapped
@@ -3165,7 +3160,11 @@ export default function RequirementsTable({
                       }
                       type="button"
                     >
-                      <WrapText size={16} />
+                      {descriptionWrapped ? (
+                        <WrapText size={16} />
+                      ) : (
+                        <AlignLeft size={16} />
+                      )}
                     </button>
                   )}
                 </div>
