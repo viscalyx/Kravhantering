@@ -583,9 +583,8 @@ export default function KravpaketDetailClient({
     if (ids.length === 0) return
     const requirements = await fetchMultipleRequirements(ids, locale)
     const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
-    const now = new Date()
-    const stamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}`
-    setPdfFilename(`${label} ${stamp}.pdf`)
+    const raw = `${label} ${pkg.name} ${pkg.uniqueId}.pdf`
+    setPdfFilename(raw.replace(/[/\\:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim())
     const pickName = (obj: { nameSv: string; nameEn: string } | null) =>
       obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
     setPdfModel(
