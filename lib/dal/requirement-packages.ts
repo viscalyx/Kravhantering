@@ -471,30 +471,3 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
     },
   }))
 }
-
-// Keep legacy single-item functions for backwards compat
-export async function linkRequirementToPackage(
-  db: Database,
-  data: {
-    packageId: number
-    requirementId: number
-    requirementVersionId: number
-    needsReferenceId?: number | null
-  },
-) {
-  const [item] = await db
-    .insert(requirementPackageItems)
-    .values(data)
-    .onConflictDoNothing()
-    .returning()
-  return item
-}
-
-export async function unlinkRequirementFromPackage(
-  db: Database,
-  itemId: number,
-) {
-  await db
-    .delete(requirementPackageItems)
-    .where(eq(requirementPackageItems.id, itemId))
-}
