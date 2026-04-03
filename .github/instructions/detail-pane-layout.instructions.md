@@ -1,5 +1,5 @@
 ---
-applyTo: "app/[locale]/kravkatalog/[id]/requirement-detail-client.tsx"
+applyTo: "app/[locale]/requirements/[id]/requirement-detail-client.tsx"
 ---
 
 # Requirement Detail Pane Layout

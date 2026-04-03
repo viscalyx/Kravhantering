@@ -1,12 +1,12 @@
 ---
-applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.ts},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
+applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.ts},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
 ---
 
 # Add Requirement Column Or Property
 
 ## Scope
 
-- Apply this when adding, removing, renaming, or exposing a requirement property in any kravkatalog surface.
+- Apply this when adding, removing, renaming, or exposing a requirement property in any requirements surface.
 - Include list columns, filters, edit form fields, create form fields, inline detail pane content, dedicated requirement detail views, CSV export, and MCP output.
 
 ## Column Registry
@@ -58,10 +58,10 @@ applyTo: "{components/**/*.tsx,app/[locale]/kravkatalog/**/*.tsx,app/api/**/*.ts
 
 - Update `tests/unit/requirement-list-view.test.ts` for order, visibility, parsing, reset, and filter-clearing when the property is a list column.
 - Update `tests/unit/requirements-table.test.tsx` for list rendering, resize, filter, or popover changes.
-- Update `tests/unit/kravkatalog-client.test.tsx` for first render, local overrides, and floating actions when needed.
+- Update `tests/unit/requirements-client.test.tsx` for first render, local overrides, and floating actions when needed.
 - Update `tests/unit/requirement-detail-client.test.tsx` when the inline detail pane or detail view changes.
 - Update `tests/unit/requirements-route.test.ts` for CSV header or export field changes.
 - Update `tests/unit/requirements-service.test.ts` and `tests/unit/mcp-http.test.ts` for service or MCP output changes.
 - Update `tests/integration/requirements-table-hydration.spec.ts` when default visible headers change.
 - Update `tests/integration/admin-entrypoint.spec.ts` when the admin settings flow changes.
-- Update `docs/kravkatalog-ui-behaviour.md` when visible table, form, or inline detail behavior changes.
+- Update `docs/requirements-ui-behaviour.md` when visible table, form, or inline detail behavior changes.
