@@ -1647,7 +1647,6 @@ export function createRequirementsService(
   }
 }
 
-
 export function toResponseFormat(format?: string): ResponseFormat {
   return format === 'json' ? 'json' : 'markdown'
 }
