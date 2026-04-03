@@ -163,7 +163,9 @@
     "downloadCombinedReportPdf": "Download Combined Report (PDF)",
     "printListReport": "Print Requirements List",
     "downloadListReportPdf": "Download Requirements List (PDF)",
-    "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report"
+    "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report",
+    "editNotAllowedStatus": "This requirement cannot be edited because it is in Review or Archived status. Return it to Draft status first.",
+    "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published version remains active until the new draft completes the review process and is published."
   },
   "requirementsTable": {
     "clear": "Clear",
@@ -471,7 +473,7 @@
     "copyFailed": "Copy failed"
   },
   "help": {
-    "kravkatalog": {
+    "requirements": {
       "title": "Requirements Catalog",
       "overview": {
         "heading": "Overview",
@@ -583,7 +585,7 @@
         "body": "Click Restore to create a new Draft based on this version's content. The current published version remains active until the new draft is reviewed and published."
       }
     },
-    "kravpaket": {
+    "requirementPackages": {
       "title": "Requirement Packages",
       "overview": {
         "heading": "What is a requirement package?",
@@ -594,7 +596,7 @@
         "body": "Click \"New requirement package\" to create one. Click the package name to open its detail view. Use the edit icon to update the package metadata."
       }
     },
-    "kravpaketDetail": {
+    "requirementPackageDetail": {
       "title": "Package Detail",
       "requirements": {
         "heading": "Managing requirements",
@@ -609,7 +611,7 @@
         "body": "Use the print and PDF buttons to export the package's requirement list as a report."
       }
     },
-    "ansvarsomraden": {
+    "responsibilityAreas": {
       "title": "Business Objects",
       "overview": {
         "heading": "What are business objects?",
@@ -620,7 +622,7 @@
         "body": "Click the edit icon on a row to rename a business object. Use the delete icon to remove it — only business objects not linked to any package can be deleted."
       }
     },
-    "genomforandeformer": {
+    "implementationTypes": {
       "title": "Implementation Types",
       "overview": {
         "heading": "What are implementation types?",
@@ -646,7 +648,7 @@
         "body": "Quick links to manage areas, types, scenarios, statuses, quality characteristics, business objects, implementation types, and area owners."
       }
     },
-    "kravomraden": {
+    "requirementAreas": {
       "title": "Requirement Areas",
       "overview": {
         "heading": "What are requirement areas?",
@@ -657,7 +659,7 @@
         "body": "Create a new area using the New button. Click the edit icon to update the prefix, name, description, or owner. Deleting an area is only possible if no requirements are assigned to it."
       }
     },
-    "kravtyper": {
+    "requirementTypes": {
       "title": "Requirement Types",
       "overview": {
         "heading": "Functional vs. non-functional",
@@ -668,7 +670,7 @@
         "body": "The type controls which quality characteristics can be linked to a requirement. Non-functional types can be associated with the ISO/IEC 25010:2023 quality characteristic hierarchy."
       }
     },
-    "kravscenarier": {
+    "usageScenarios": {
       "title": "Usage Scenarios",
       "overview": {
         "heading": "What are usage scenarios?",
@@ -679,7 +681,7 @@
         "body": "Create and edit scenarios using the toolbar. A scenario can be linked to multiple requirements. Removing a scenario only removes the scenario record; linked requirements are not affected."
       }
     },
-    "kravstatusar": {
+    "requirementStatuses": {
       "title": "Requirement Statuses",
       "overview": {
         "heading": "Lifecycle statuses",
@@ -690,7 +692,7 @@
         "body": "You can reorder and configure the color of statuses using the controls in each row. System statuses are marked and cannot be removed."
       }
     },
-    "omradesagare": {
+    "owners": {
       "title": "Area Owners",
       "overview": {
         "heading": "What are area owners?",

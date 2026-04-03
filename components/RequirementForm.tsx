@@ -233,9 +233,9 @@ export default function RequirementForm({
               ? data.version?.versionNumber
               : data.version
           const versionSuffix = versionNumber ? `/${versionNumber}` : ''
-          router.push(`/kravkatalog/${targetUniqueId}${versionSuffix}`)
+          router.push(`/requirements/${targetUniqueId}${versionSuffix}`)
         } else {
-          router.push(`/kravkatalog?selected=${targetUniqueId}`)
+          router.push(`/requirements?selected=${targetUniqueId}`)
         }
       } else {
         const err = (await res.json().catch(() => null)) as {

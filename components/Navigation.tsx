@@ -18,8 +18,12 @@ import { Link, usePathname } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 const primaryNavItems = [
-  { href: '/kravkatalog' as const, labelKey: 'catalog', icon: ClipboardList },
-  { href: '/kravpaket' as const, labelKey: 'packages', icon: Package },
+  { href: '/requirements' as const, labelKey: 'catalog', icon: ClipboardList },
+  {
+    href: '/requirement-packages' as const,
+    labelKey: 'packages',
+    icon: Package,
+  },
 ]
 
 export default function Navigation() {
@@ -48,7 +52,7 @@ export default function Navigation() {
       <div className="container-custom flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8">
         <Link
           className="flex items-center gap-2.5 font-bold text-lg text-primary-700 dark:text-primary-300"
-          href="/kravkatalog"
+          href="/requirements"
         >
           <span className="contents">
             <Logo className="h-8 w-8" />

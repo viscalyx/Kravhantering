@@ -163,7 +163,9 @@
     "downloadCombinedReportPdf": "Ladda ner kombinerad rapport (PDF)",
     "printListReport": "Skriv ut kravlista",
     "downloadListReportPdf": "Ladda ner kravlista (PDF)",
-    "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten"
+    "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten",
+    "editNotAllowedStatus": "Detta krav kan inte redigeras eftersom det har status Granskning eller Arkiverad. Återställ det till Utkast-status först.",
+    "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen och publicerats."
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -471,7 +473,7 @@
     "copyFailed": "Kopiering misslyckades"
   },
   "help": {
-    "kravkatalog": {
+    "requirements": {
       "title": "Kravkatalog",
       "overview": {
         "heading": "Översikt",
@@ -583,7 +585,7 @@
         "body": "Klicka på Återskapa för att skapa ett nytt Utkast baserat på den här versionens innehåll. Den aktuella publicerade versionen förblir aktiv tills det nya utkastet har granskats och publicerats."
       }
     },
-    "kravpaket": {
+    "requirementPackages": {
       "title": "Kravpaket",
       "overview": {
         "heading": "Vad är ett kravpaket?",
@@ -594,7 +596,7 @@
         "body": "Klicka på \"Nytt kravpaket\" för att skapa ett. Klicka på paketnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera paketets metadata."
       }
     },
-    "kravpaketDetail": {
+    "requirementPackageDetail": {
       "title": "Kravpaketdetalj",
       "requirements": {
         "heading": "Hantera krav",
@@ -609,7 +611,7 @@
         "body": "Använd utskrifts- och PDF-knapparna för att exportera paketets kravlista som en rapport."
       }
     },
-    "ansvarsomraden": {
+    "responsibilityAreas": {
       "title": "Verksamhetsobjekt",
       "overview": {
         "heading": "Vad är verksamhetsobjekt?",
@@ -620,7 +622,7 @@
         "body": "Klicka på redigeringsikonen på en rad för att byta namn på ett verksamhetsobjekt. Använd borttagningsikonen för att ta bort det – enbart verksamhetsobjekt som inte är kopplade till några paket kan tas bort."
       }
     },
-    "genomforandeformer": {
+    "implementationTypes": {
       "title": "Genomförandeformer",
       "overview": {
         "heading": "Vad är genomförandeformer?",
@@ -646,7 +648,7 @@
         "body": "Snabblänkar till hantering av områden, typer, scenarier, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och områdesägare."
       }
     },
-    "kravomraden": {
+    "requirementAreas": {
       "title": "Kravområden",
       "overview": {
         "heading": "Vad är kravområden?",
@@ -657,7 +659,7 @@
         "body": "Skapa ett nytt område med Nytt-knappen. Klicka på redigeringsikonen för att uppdatera prefix, namn, beskrivning eller ägare. Det går bara att ta bort ett område om inga krav är kopplade till det."
       }
     },
-    "kravtyper": {
+    "requirementTypes": {
       "title": "Kravtyper",
       "overview": {
         "heading": "Funktionella och icke-funktionella krav",
@@ -668,7 +670,7 @@
         "body": "Typen styr vilka kvalitetsegenskaper som kan kopplas till ett krav. Icke-funktionella typer kan kopplas till ISO/IEC 25010:2023-hierarkin för kvalitetsegenskaper."
       }
     },
-    "kravscenarier": {
+    "usageScenarios": {
       "title": "Användningsscenarier",
       "overview": {
         "heading": "Vad är användningsscenarier?",
@@ -679,7 +681,7 @@
         "body": "Skapa och redigera scenarier med verktygsfältet. Ett scenario kan kopplas till flera krav. Att ta bort ett scenario tar bara bort scenarioposten – kopplade krav påverkas inte."
       }
     },
-    "kravstatusar": {
+    "requirementStatuses": {
       "title": "Kravstatusar",
       "overview": {
         "heading": "Livscykelstatusar",
@@ -690,7 +692,7 @@
         "body": "Du kan ändra ordning och konfigurera färgen på statusar med kontrollerna i varje rad. Systemstatusar är markerade och kan inte tas bort."
       }
     },
-    "omradesagare": {
+    "owners": {
       "title": "Områdesägare",
       "overview": {
         "heading": "Vad är områdesägare?",

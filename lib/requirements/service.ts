@@ -410,7 +410,7 @@ export function buildRequirementViewUri(
 ) {
   const stableRef = ref.uniqueId ?? String(ref.id)
   const suffix = versionNumber != null ? `?version=${versionNumber}` : ''
-  return `ui://kravhantering/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`
+  return `ui://requirements/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`
 }
 
 export interface ListPackagesOutput {

@@ -537,7 +537,7 @@ export function createKravhanteringMcpServer(
 ): McpServer {
   const server = new McpServer(
     {
-      name: 'kravhantering-mcp-server',
+      name: 'requirement-management-mcp-server',
       version: '1.0.0',
     },
     {
@@ -555,7 +555,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerResource(
-    'kravhantering_requirement_resource',
+    'requirements_requirement_resource',
     requirementResourceTemplate,
     {
       description:
@@ -567,7 +567,7 @@ export function createKravhanteringMcpServer(
       const versionNumber = uri.searchParams.get('version')
       const uniqueId = getRequirementUniqueIdFromResourceUri(uri, variables)
       const payload = await service.getRequirement(
-        getBaseContext(request, 'kravhantering_get_requirement'),
+        getBaseContext(request, 'requirements_get_requirement'),
         {
           locale: toResponseLocale(uri.searchParams.get('locale') ?? undefined),
           responseFormat: 'json',
@@ -597,14 +597,14 @@ export function createKravhanteringMcpServer(
   )
 
   const uiResourceTemplate = new ResourceTemplate(
-    'ui://kravhantering/requirement-detail/{uniqueId}',
+    'ui://requirements/requirement-detail/{uniqueId}',
     {
       list: undefined,
     },
   )
 
   server.registerResource(
-    'kravhantering_requirement_view',
+    'requirements_requirement_view',
     uiResourceTemplate,
     {
       description: 'HTML requirement view for MCP Apps-capable hosts.',
@@ -618,7 +618,7 @@ export function createKravhanteringMcpServer(
       )
       const uniqueId = getRequirementUniqueIdFromResourceUri(uri, variables)
       const payload = await service.getRequirement(
-        getBaseContext(request, 'kravhantering_get_requirement'),
+        getBaseContext(request, 'requirements_get_requirement'),
         {
           locale,
           responseFormat: 'markdown',
@@ -652,7 +652,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_query_catalog',
+    'requirements_query_catalog',
     {
       annotations: {
         destructiveHint: false,
@@ -669,7 +669,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.queryCatalog(
-          getBaseContext(request, 'kravhantering_query_catalog'),
+          getBaseContext(request, 'requirements_query_catalog'),
           toCatalogInput(input),
         )
         return {
@@ -688,7 +688,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_get_requirement',
+    'requirements_get_requirement',
     {
       annotations: {
         destructiveHint: false,
@@ -705,7 +705,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.getRequirement(
-          getBaseContext(request, 'kravhantering_get_requirement'),
+          getBaseContext(request, 'requirements_get_requirement'),
           toGetInput(input),
         )
         const links = getRequirementLinkPayload(payload)
@@ -731,7 +731,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_manage_requirement',
+    'requirements_manage_requirement',
     {
       annotations: {
         destructiveHint: true,
@@ -748,7 +748,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.manageRequirement(
-          getBaseContext(request, 'kravhantering_manage_requirement'),
+          getBaseContext(request, 'requirements_manage_requirement'),
           toManageInput(input),
         )
         const content: Array<
@@ -805,7 +805,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_transition_requirement',
+    'requirements_transition_requirement',
     {
       annotations: {
         destructiveHint: true,
@@ -822,7 +822,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.transitionRequirement(
-          getBaseContext(request, 'kravhantering_transition_requirement'),
+          getBaseContext(request, 'requirements_transition_requirement'),
           toTransitionInput(input),
         )
 
@@ -856,7 +856,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_list_packages',
+    'requirements_list_packages',
     {
       annotations: {
         destructiveHint: false,
@@ -865,7 +865,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List all requirement packages (kravpaket), optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each package.',
+        'List all requirement packages, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each package.',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -905,7 +905,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.listPackages(
-          getBaseContext(request, 'kravhantering_list_packages'),
+          getBaseContext(request, 'requirements_list_packages'),
           {
             locale: toResponseLocale(input.locale),
             nameSearch: input.nameSearch,
@@ -923,7 +923,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_get_package_items',
+    'requirements_get_package_items',
     {
       annotations: {
         destructiveHint: false,
@@ -932,7 +932,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List requirements (krav) linked to a specific requirement package, with optional description search. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2") from kravhantering_list_packages.',
+        'List requirements (krav) linked to a specific requirement package, with optional description search. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2") from requirements_list_packages.',
       inputSchema: z
         .object({
           descriptionSearch: z
@@ -990,7 +990,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.getPackageItems(
-          getBaseContext(request, 'kravhantering_get_package_items'),
+          getBaseContext(request, 'requirements_get_package_items'),
           {
             descriptionSearch: input.descriptionSearch,
             locale: toResponseLocale(input.locale),
@@ -1010,7 +1010,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_add_to_package',
+    'requirements_add_to_package',
     {
       annotations: {
         destructiveHint: false,
@@ -1071,7 +1071,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.addToPackage(
-          getBaseContext(request, 'kravhantering_add_to_package'),
+          getBaseContext(request, 'requirements_add_to_package'),
           {
             locale: toResponseLocale(input.locale),
             needsReferenceText: input.needsReferenceText,
@@ -1092,7 +1092,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'kravhantering_remove_from_package',
+    'requirements_remove_from_package',
     {
       annotations: {
         destructiveHint: true,
@@ -1143,7 +1143,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.removeFromPackage(
-          getBaseContext(request, 'kravhantering_remove_from_package'),
+          getBaseContext(request, 'requirements_remove_from_package'),
           {
             locale: toResponseLocale(input.locale),
             packageId: input.packageId,

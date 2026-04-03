@@ -11,7 +11,7 @@ export default function NotFound() {
         <p className="mt-4 text-lg text-secondary-700 dark:text-secondary-300">
           {t('description')}
         </p>
-        <Link className="btn-primary mt-8 inline-block" href="/kravkatalog">
+        <Link className="btn-primary mt-8 inline-block" href="/requirements">
           {t('goHome')}
         </Link>
       </div>
