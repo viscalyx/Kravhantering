@@ -98,6 +98,7 @@ export interface RequirementsTableProps {
   types?: FilterOption[]
   usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
+  wrapDescription?: boolean
 }
 
 export type FloatingActionPillVariant = 'default' | 'primary'
@@ -1337,6 +1338,7 @@ export default function RequirementsTable({
   types = [],
   usageScenarios = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
+  wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
@@ -2877,7 +2879,7 @@ export default function RequirementsTable({
     }
   }
 
-  const [descriptionWrapped, setDescriptionWrapped] = useState(false)
+  const [descriptionWrapped, setDescriptionWrapped] = useState(wrapDescription)
   const [showSpinner, setShowSpinner] = useState(false)
   useEffect(() => {
     if (!loading) {
