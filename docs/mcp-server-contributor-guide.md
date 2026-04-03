@@ -14,7 +14,7 @@ For admin-managed UI terminology and default column settings, see
 
 ## Server Contract
 
-- Server name: `kravhantering-mcp-server`
+- Server name: `requirement-management-mcp-server`
 - Endpoint: `/api/mcp`
 - Runtime: Next.js edge route in this application
 - Transport: stateless Streamable HTTP
@@ -24,7 +24,7 @@ For admin-managed UI terminology and default column settings, see
 - Exposed MCP tools: 8
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
-  - `ui://kravhantering/requirement-detail/{uniqueId}`
+  - `ui://requirements/requirement-detail/{uniqueId}`
 
 ## File Map
 
@@ -81,7 +81,7 @@ keeps lifecycle behavior aligned between REST and MCP.
 The MCP surface is split into two areas: individual requirements (four tools)
 and requirement packages (four tools).
 
-### `kravhantering_query_catalog`
+### `requirements_query_catalog`
 
 Combines:
 
@@ -92,7 +92,7 @@ Combines:
 
 This avoids a larger set of narrowly scoped read tools.
 
-### `kravhantering_get_requirement`
+### `requirements_get_requirement`
 
 Supports:
 
@@ -104,7 +104,7 @@ The caller selects the behavior with `view`. Default detail reads must not fall
 back to draft, review, or archived versions. Those versions are only returned
 for explicit `view: "version"` or `view: "history"` requests.
 
-### `kravhantering_manage_requirement`
+### `requirements_manage_requirement`
 
 Supports:
 
@@ -117,22 +117,22 @@ Supports:
 The shared service also supports `reactivate` for REST parity, but that
 operation is intentionally not exposed as an MCP tool operation in v1.
 
-### `kravhantering_transition_requirement`
+### `requirements_transition_requirement`
 
 Transitions a requirement through the lifecycle using `toStatusId`.
 
-### `kravhantering_list_packages`
+### `requirements_list_packages`
 
 Lists all requirement packages with optional name filtering. Returns the
 numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-Q2`) for each package.
 
-### `kravhantering_get_package_items`
+### `requirements_get_package_items`
 
 Lists requirements linked to a specific package. Accepts `packageId`
 (numeric) or `packageSlug` (e.g. `SAKLYFT-Q2`). Supports optional
 `descriptionSearch` for client-side filtering.
 
-### `kravhantering_add_to_package`
+### `requirements_add_to_package`
 
 Links requirements to a package. Accepts `packageId` (numeric) or
 `packageSlug` (e.g. `SAKLYFT-Q2`). Requirements without a published version
@@ -142,7 +142,7 @@ state. An optional `needsReferenceText` is resolved to a
 `package_needs_references` row (created if needed) and linked to all added
 items.
 
-### `kravhantering_remove_from_package`
+### `requirements_remove_from_package`
 
 Unlinks requirements from a package. Accepts `packageId` (numeric) or
 `packageSlug` (e.g. `SAKLYFT-Q2`). The requirements themselves are not
@@ -161,7 +161,7 @@ extra tools.
 
 ### UI Resource
 
-`ui://kravhantering/requirement-detail/{uniqueId}` returns HTML for MCP
+`ui://requirements/requirement-detail/{uniqueId}` returns HTML for MCP
 Apps-capable clients.
 
 The UI resource is linked from `get`, `manage`, and `transition` tool results
@@ -298,7 +298,7 @@ If a tool needs extra arguments:
 4. Update tests and documentation.
 
 Prefer expanding an existing tool when the behavior is closely related. For
-example, lookups were intentionally folded into `kravhantering_query_catalog`
+example, lookups were intentionally folded into `requirements_query_catalog`
 instead of creating one tool per lookup table.
 
 ### Add A New Resource Or App

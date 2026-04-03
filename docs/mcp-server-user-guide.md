@@ -3,7 +3,7 @@
 ## Overview
 
 This project exposes a requirements-management MCP server named
-`kravhantering-mcp-server`.
+`requirement-management-mcp-server`.
 
 - Transport: stateless Streamable HTTP
 - Endpoint: `/api/mcp`
@@ -22,34 +22,34 @@ agents can use it reliably.
 
 #### Requirements
 
-- `kravhantering_query_catalog`
+- `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, type categories, statuses, scenarios, and transitions.
-- `kravhantering_get_requirement`
+- `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.
-- `kravhantering_manage_requirement`
+- `requirements_manage_requirement`
   Create, edit, archive, delete the latest draft, or restore a historical
   version.
-- `kravhantering_transition_requirement`
+- `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 
 #### Requirement Packages (Kravpaket)
 
-- `kravhantering_list_packages`
+- `requirements_list_packages`
   List all requirement packages, optionally filtered by name. Returns id,
   `uniqueId` (slug), Swedish and English names, item count, responsibility
   area, and implementation type for each package.
-- `kravhantering_get_package_items`
+- `requirements_get_package_items`
   List requirements linked to a specific package, with optional description
   search. Use `packageId` (numeric) or `packageSlug` (e.g. `SAKLYFT-Q2`)
-  from `kravhantering_list_packages`.
-- `kravhantering_add_to_package`
+  from `requirements_list_packages`.
+- `requirements_add_to_package`
   Link one or more requirements to a package. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
   Optionally attach a `needsReferenceText` to all added items. Use
   `packageId` or `packageSlug` to identify the package.
-- `kravhantering_remove_from_package`
+- `requirements_remove_from_package`
   Unlink one or more requirements from a package. The requirements themselves
   are not deleted. Use `packageId` or `packageSlug` to identify the package.
 
@@ -57,7 +57,7 @@ agents can use it reliably.
 
 - `requirements://requirement/{uniqueId}`
   Read-only JSON resource for a requirement.
-- `ui://kravhantering/requirement-detail/{uniqueId}`
+- `ui://requirements/requirement-detail/{uniqueId}`
   Read-only HTML view for MCP Apps-capable clients.
 
 Add `?version=<number>` to either URI to target a specific version.
@@ -91,7 +91,7 @@ Create `.vscode/mcp.json` with:
 ```json
 {
   "servers": {
-    "kravhantering": {
+    "requirement-management": {
       "type": "http",
       "url": "http://localhost:3000/api/mcp"
     }
@@ -104,7 +104,7 @@ For a deployed environment, replace the URL with your public HTTPS origin:
 ```json
 {
   "servers": {
-    "kravhantering": {
+    "requirement-management": {
       "type": "http",
       "url": "https://your-domain.example/api/mcp"
     }
@@ -117,7 +117,7 @@ For a deployed environment, replace the URL with your public HTTPS origin:
 1. Open Copilot Chat in Visual Studio Code.
 2. Switch the chat mode to `Agent`.
 3. Select `Configure Tools`.
-4. Enable the `kravhantering` server or individual tools from it.
+4. Enable the `requirement-management` server or individual tools from it.
 5. Ask a natural-language question, or explicitly reference a tool with `#`.
 
 Examples:
@@ -133,7 +133,7 @@ Examples:
 - `Show me all version of IDN0001`
 - `Show me the details of version 2 of IDN0001`
 - `Show me requirement ANV0001` (fail case, there is no published version)
-- `Use #kravhantering_query_catalog to list available statuses first, then move`
+- `Use #requirements_query_catalog to list available statuses first, then move`
   `INT0001` to review.
 - `Hämta krav ANV0001 med version 1 och flytta det sen till granskning`
 
@@ -164,7 +164,7 @@ status och datum. Använd datum enligt följande:
 ### MCP Apps In Visual Studio Code
 
 This server returns a requirement view app through
-`ui://kravhantering/requirement-detail/{uniqueId}`. In Visual Studio Code, the
+`ui://requirements/requirement-detail/{uniqueId}`. In Visual Studio Code, the
 app can render directly in chat when the client supports MCP Apps.
 
 If the app is not rendering:
@@ -186,7 +186,7 @@ If the app is not rendering:
 ### Troubleshooting In VS Code
 
 - If the server fails to start, open `MCP: List Servers`, select
-  `kravhantering`, then choose `Show Output`.
+  `requirement-management`, then choose `Show Output`.
 - If the tools do not appear in chat, verify that the chat is in `Agent` mode
   and that the tools are enabled in `Configure Tools`.
 - If the requirement app does not appear, the tool result still includes normal
@@ -221,18 +221,18 @@ Use a configuration like this:
 ```json
 {
   "mcpServers": {
-    "kravhantering": {
+    "requirement-management": {
       "type": "http",
       "url": "https://your-domain.example/api/mcp",
       "tools": [
-        "kravhantering_query_catalog",
-        "kravhantering_get_requirement",
-        "kravhantering_manage_requirement",
-        "kravhantering_transition_requirement",
-        "kravhantering_list_packages",
-        "kravhantering_get_package_items",
-        "kravhantering_add_to_package",
-        "kravhantering_remove_from_package"
+        "requirements_query_catalog",
+        "requirements_get_requirement",
+        "requirements_manage_requirement",
+        "requirements_transition_requirement",
+        "requirements_list_packages",
+        "requirements_get_package_items",
+        "requirements_add_to_package",
+        "requirements_remove_from_package"
       ]
     }
   }
@@ -252,18 +252,18 @@ Example:
 ```json
 {
   "mcpServers": {
-    "kravhantering": {
+    "requirement-management": {
       "type": "http",
       "url": "https://your-domain.example/api/mcp",
       "tools": [
-        "kravhantering_query_catalog",
-        "kravhantering_get_requirement",
-        "kravhantering_manage_requirement",
-        "kravhantering_transition_requirement",
-        "kravhantering_list_packages",
-        "kravhantering_get_package_items",
-        "kravhantering_add_to_package",
-        "kravhantering_remove_from_package"
+        "requirements_query_catalog",
+        "requirements_get_requirement",
+        "requirements_manage_requirement",
+        "requirements_transition_requirement",
+        "requirements_list_packages",
+        "requirements_get_package_items",
+        "requirements_add_to_package",
+        "requirements_remove_from_package"
       ],
       "headers": {
         "Authorization": "$COPILOT_MCP_KRAVHANTERING_AUTHORIZATION"
@@ -301,7 +301,7 @@ identifier.
 
 ### 3. Ask For The View You Need
 
-`kravhantering_get_requirement` supports three views:
+`requirements_get_requirement` supports three views:
 
 - `detail`
   Current requirement and latest published version context. If no published
@@ -386,8 +386,8 @@ tool. For requirement lists, it supports:
 
 > **Note:** Packages can be identified by `packageId` (numeric) or
 > `packageSlug` (e.g. `SAKLYFT-Q2`) — use whichever is available from
-> `kravhantering_list_packages`. `requirementIds` are numeric IDs; use
-> `kravhantering_query_catalog` or `kravhantering_get_package_items` to find
+> `requirements_list_packages`. `requirementIds` are numeric IDs; use
+> `requirements_query_catalog` or `requirements_get_package_items` to find
 > them. Requirements must have a published version to be added to a package.
 
 ## Limitations

@@ -4,7 +4,7 @@ This document describes the contributor-facing admin center for UI
 terminology, default requirement-list columns, and reference-data entrypoints.
 
 For requirement-list interaction details such as resizing, sorting, and
-filtering, see [kravkatalog-ui-behaviour.md](./kravkatalog-ui-behaviour.md).
+filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
 
 ## Purpose
 

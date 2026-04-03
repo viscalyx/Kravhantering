@@ -62,11 +62,11 @@ Shared Layer (engine-agnostic)
 
 Browser Print Engine
   components/reports/print/         PrintReportRenderer + CSS
-  app/[locale]/kravkatalog/reports/print/   Route pages
+  app/[locale]/requirements/reports/print/   Route pages
 
 react-pdf Engine
   components/reports/pdf/           PdfReportRenderer + download hook
-  app/[locale]/kravkatalog/reports/pdf/     Route pages
+  app/[locale]/requirements/reports/pdf/     Route pages
 ```
 
 ### Data Flow
@@ -103,7 +103,7 @@ under `.../reports/pdf/`.
 - **Combined**: `.../print/review-combined?ids=…` |
   `.../pdf/review-combined?ids=…`
 
-All routes are prefixed with `/[locale]/kravkatalog/reports`.
+All routes are prefixed with `/[locale]/requirements/reports`.
 
 ## Engines
 

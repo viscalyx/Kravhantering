@@ -10,7 +10,7 @@ For the admin-managed source of terminology and default column settings, see
 
 The behaviors below apply to the requirement list rendered by:
 
-- `app/[locale]/kravkatalog/kravkatalog-client.tsx`
+- `app/[locale]/requirements/requirements-client.tsx`
 - `components/RequirementsTable.tsx`
 - `lib/requirements/list-view.ts`
 
@@ -188,7 +188,7 @@ down.
 - A header checkbox toggles select-all for visible rows.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
-- Selection state is managed in `kravkatalog-client.tsx` via `selectedIds`.
+- Selection state is managed in `requirements-client.tsx` via `selectedIds`.
 
 ## Print List Report Floating Pill
 
@@ -238,7 +238,7 @@ For report architecture details, see [reports.md](./reports.md).
 - If you change width persistence semantics, update:
   - `lib/requirements/list-view.ts`
   - `tests/unit/requirement-list-view.test.ts`
-  - `tests/unit/kravkatalog-client.test.tsx`
+  - `tests/unit/requirements-client.test.tsx`
 - If you change table labels, named table surfaces, floating pills, or the
   inline detail pane used by Developer Mode, also update:
   - `docs/developer-mode-overlay.md`
