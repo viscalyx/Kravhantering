@@ -87,8 +87,8 @@ Combines:
 
 - requirement listing
 - free-text search
-- lookup tables for areas, categories, types, type categories, statuses,
-  scenarios, and transitions
+- lookup tables for areas, categories, types, quality characteristics,
+  statuses, scenarios, and transitions
 
 This avoids a larger set of narrowly scoped read tools.
 

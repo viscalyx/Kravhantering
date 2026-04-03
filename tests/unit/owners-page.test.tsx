@@ -19,7 +19,7 @@ const fetchMock = vi.fn().mockResolvedValue({
 })
 vi.stubGlobal('fetch', fetchMock)
 
-import OmradesagarePage, { generateMetadata } from '@/app/[locale]/owners/page'
+import OwnersPage, { generateMetadata } from '@/app/[locale]/owners/page'
 
 describe('owners page', () => {
   beforeEach(() => {
@@ -32,7 +32,7 @@ describe('owners page', () => {
   })
 
   it('renders the client component', () => {
-    render(<OmradesagarePage />)
+    render(<OwnersPage />)
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 })

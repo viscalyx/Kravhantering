@@ -164,7 +164,8 @@
     "printListReport": "Skriv ut kravlista",
     "downloadListReportPdf": "Ladda ner kravlista (PDF)",
     "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten",
-    "editNotAllowedStatus": "Detta krav kan inte redigeras eftersom det har status Granskning eller Arkiverad. Återställ det till Utkast-status först.",
+    "editNotAllowedStatusReview": "Detta krav kan inte redigeras eftersom det har status Granskning. Återställ det till Utkast-status först.",
+    "editNotAllowedStatusArchived": "Detta krav är Arkiverat och måste återställas eller återaktiveras innan det kan redigeras.",
     "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen och publicerats."
   },
   "requirementsTable": {

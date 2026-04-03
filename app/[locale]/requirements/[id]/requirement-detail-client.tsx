@@ -854,18 +854,12 @@ export default function RequirementDetailClient({
     url.search = ''
     const shareUniqueId = req.uniqueId
     if (mode === 'inline') {
-      url.pathname = url.pathname.replace(
-        /\/requirements(\/.*)?$/,
-        '/requirements',
-      )
+      url.pathname = `/${locale}/requirements`
       url.searchParams.set('selected', shareUniqueId)
     } else {
       const versionSuffix =
         selectedVersionNumber != null ? `/${selectedVersionNumber}` : ''
-      url.pathname = url.pathname.replace(
-        /\/requirements(\/.*)?$/,
-        `/requirements/${shareUniqueId}${versionSuffix}`,
-      )
+      url.pathname = `/${locale}/requirements/${shareUniqueId}${versionSuffix}`
     }
     try {
       await navigator.clipboard.writeText(url.toString())

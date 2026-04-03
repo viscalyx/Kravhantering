@@ -122,6 +122,7 @@ export default function KravpaketDetailClient({
   const t = useTranslations('package')
   const tc = useTranslations('common')
   const tn = useTranslations('nav')
+  const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -582,9 +583,14 @@ export default function KravpaketDetailClient({
     const ids = filteredPackageItems.map(r => String(r.id))
     if (ids.length === 0) return
     const requirements = await fetchMultipleRequirements(ids, locale)
-    const label = locale === 'sv' ? 'Kravlista' : 'Requirements List'
+    const label = tr('listPdfFilenameLabel')
     const raw = `${label} ${pkg.name} ${pkg.uniqueId}.pdf`
-    setPdfFilename(raw.replace(/[/\\:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim())
+    setPdfFilename(
+      raw
+        .replace(/[/\\:*?"<>|]+/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
     const pickName = (obj: { nameSv: string; nameEn: string } | null) =>
       obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
     setPdfModel(
@@ -596,7 +602,7 @@ export default function KravpaketDetailClient({
         businessNeedsReference: pkg.businessNeedsReference,
       }),
     )
-  }, [filteredPackageItems, locale, pkg])
+  }, [filteredPackageItems, locale, pkg, tr])
 
   const pkgName = pkg ? pkg.name : '…'
 

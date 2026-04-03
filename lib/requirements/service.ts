@@ -407,7 +407,7 @@ function formatRequirementDetail(
 export function buildRequirementViewUri(
   ref: RequirementRefInput,
   versionNumber?: number,
-) {
+): string {
   const stableRef = ref.uniqueId ?? String(ref.id)
   const suffix = versionNumber != null ? `?version=${versionNumber}` : ''
   return `ui://requirements/requirement-detail/${encodeURIComponent(stableRef)}${suffix}`

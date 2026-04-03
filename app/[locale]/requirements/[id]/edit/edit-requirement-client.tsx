@@ -64,8 +64,15 @@ export default function EditRequirementClient({
         setLoading(false)
         return
       }
-      if (latest.status === STATUS_REVIEW || latest.status === STATUS_ARCHIVED) {
-        setFetchError(t('editNotAllowedStatus'))
+      if (
+        latest.status === STATUS_REVIEW ||
+        latest.status === STATUS_ARCHIVED
+      ) {
+        setFetchError(
+          latest.status === STATUS_REVIEW
+            ? t('editNotAllowedStatusReview')
+            : t('editNotAllowedStatusArchived'),
+        )
         setLoading(false)
         return
       }
@@ -120,7 +127,10 @@ export default function EditRequirementClient({
             className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-700 dark:border-red-800/70 dark:bg-red-950/40 dark:text-red-300"
             role="alert"
           >
-            <Ban className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+            <Ban
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-red-500"
+            />
             <span>{fetchError}</span>
           </div>
         </div>
@@ -136,7 +146,10 @@ export default function EditRequirementClient({
         </h1>
         {isPublished && (
           <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-700 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-300">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
+            />
             <span>{t('editPublishedVersionNotice')}</span>
           </div>
         )}

@@ -73,14 +73,15 @@ Shared Layer (engine-agnostic)
   lib/reports/templates/            Template functions (data -> ReportModel)
 
 Browser Print Engine
-  components/reports/print/                                    PrintReportRenderer + CSS
-  app/[locale]/requirements/reports/print/                     Route pages
-  app/[locale]/requirement-packages/[slug]/reports/print/      Package route pages
+  components/reports/print/            PrintReportRenderer + CSS
+  app/[locale]/requirements/reports/print/     Route pages
+  app/[locale]/requirement-packages/[slug]/reports/print/
+                                       Package route pages
 
 react-pdf Engine
-  components/reports/pdf/                                      PdfReportRenderer + download hook
-  app/[locale]/requirements/reports/pdf/                       Route pages
-  (package PDF is generated inline in requirement-package-detail-client, not via a route)
+  components/reports/pdf/              PdfReportRenderer + download hook
+  app/[locale]/requirements/reports/pdf/       Route pages
+  (package PDF generated inline in requirement-package-detail-client)
 ```
 
 ### Data Flow
@@ -122,7 +123,8 @@ All routes above are prefixed with `/[locale]/requirements/reports`.
 Package list reports use a separate prefix
 `/[locale]/requirement-packages/[slug]/reports`:
 
-- **Package List**: `.../print/list?ids=…` (PDF is generated inline, no separate PDF route)
+- **Package List**: `.../print/list?ids=…`
+  (PDF is generated inline — no separate PDF route)
 
 ## Engines
 

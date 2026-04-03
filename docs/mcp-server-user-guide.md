@@ -203,7 +203,7 @@ If the app is not rendering:
 ## Configure GitHub Copilot Coding Agent
 
 GitHub Copilot coding agent supports MCP tools, but not MCP resources or MCP
-Apps. For this server, that means the four tools are available, but the
+Apps. For this server, that means the tools are available, but the
 HTML-based requirement view is ignored by the coding agent.
 
 Because coding agent runs remotely, do not point it at

@@ -164,7 +164,8 @@
     "printListReport": "Print Requirements List",
     "downloadListReportPdf": "Download Requirements List (PDF)",
     "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report",
-    "editNotAllowedStatus": "This requirement cannot be edited because it is in Review or Archived status. Return it to Draft status first.",
+    "editNotAllowedStatusReview": "This requirement cannot be edited because it is in Review status. Return it to Draft status first.",
+    "editNotAllowedStatusArchived": "This requirement is Archived and must be restored or reactivated before it can be edited.",
     "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published version remains active until the new draft completes the review process and is published."
   },
   "requirementsTable": {

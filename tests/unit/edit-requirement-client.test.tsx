@@ -111,6 +111,45 @@ describe('EditRequirementClient', () => {
     expect(screen.getByText(/REQ-001/)).toBeInTheDocument()
   })
 
+  it('shows a blocked error when requirement is in Review status', async () => {
+    fetchMock.mockResolvedValue(
+      okJson(makeRequirementDetailResponse({}, { status: 2 })),
+    )
+    render(<EditRequirementClient requirementId={1} />)
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'requirement.editNotAllowedStatusReview',
+      )
+    })
+    expect(screen.queryByTestId('req-form')).not.toBeInTheDocument()
+  })
+
+  it('shows a blocked error when requirement is in Archived status', async () => {
+    fetchMock.mockResolvedValue(
+      okJson(makeRequirementDetailResponse({}, { status: 4 })),
+    )
+    render(<EditRequirementClient requirementId={1} />)
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'requirement.editNotAllowedStatusArchived',
+      )
+    })
+    expect(screen.queryByTestId('req-form')).not.toBeInTheDocument()
+  })
+
+  it('shows the published warning notice when requirement is Published', async () => {
+    fetchMock.mockResolvedValue(
+      okJson(makeRequirementDetailResponse({}, { status: 3 })),
+    )
+    render(<EditRequirementClient requirementId={1} />)
+    await waitFor(() => {
+      expect(screen.getByTestId('req-form')).toBeInTheDocument()
+    })
+    expect(
+      screen.getByText('requirement.editPublishedVersionNotice'),
+    ).toBeInTheDocument()
+  })
+
   it('pre-fills qualityCharacteristicId from latest version', async () => {
     fetchMock.mockResolvedValue(
       okJson(
