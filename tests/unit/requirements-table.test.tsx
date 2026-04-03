@@ -238,9 +238,11 @@ describe('RequirementsTable', () => {
   }
 
   function getColumnWidths(container: HTMLElement) {
-    return Array.from(container.querySelectorAll('col')).map(
-      col => (col as HTMLTableColElement).style.width,
-    )
+    return Array.from(
+      container.querySelectorAll(
+        '[data-requirements-scroll-container="true"] table col',
+      ),
+    ).map(col => (col as HTMLTableColElement).style.width)
   }
 
   function getResizeHandle(container: HTMLElement, columnId: string) {
@@ -361,16 +363,21 @@ describe('RequirementsTable', () => {
       .filter((value): value is string => value !== null)
   }
 
-  function getFloatingActionRailContainer(container: HTMLElement) {
-    const rail =
+  function getFloatingActionRail(container: HTMLElement) {
+    return (
       (container.querySelector(
         '[data-floating-action-rail="true"]',
       ) as HTMLDivElement | null) ??
       (document.querySelector(
         '[data-floating-action-rail="true"]',
       ) as HTMLDivElement | null)
+    )
+  }
 
-    return rail?.parentElement as HTMLDivElement | null
+  function getFloatingActionRailContainer(container: HTMLElement) {
+    const rail = getFloatingActionRail(container)
+
+    return (rail?.parentElement as HTMLDivElement | null) ?? null
   }
 
   function setHeaderMetrics(container: HTMLElement, widths: number[]) {
@@ -758,6 +765,137 @@ describe('RequirementsTable', () => {
     expect(getFloatingActionRailContainer(container)?.style.left).toBe('268px')
   })
 
+  it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 560,
+      left: 24,
+      right: 340,
+      top: 120,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(getFloatingActionRailContainer(container)?.style.top).toBe('124px')
+
+    setElementRect(scrollContainer, {
+      bottom: 300,
+      left: 24,
+      right: 340,
+      top: -140,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(getFloatingActionRailContainer(container)?.style.top).toBe('80px')
+
+    setElementRect(scrollContainer, {
+      bottom: 60,
+      left: 24,
+      right: 340,
+      top: -380,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(getFloatingActionRailContainer(container)).toBeNull()
+  })
+
+  it('renders an inline top rail and sticky title bar when requested', () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActionRailPlacement="inline-top"
+        locale="sv"
+        rows={[makeRow()]}
+        stickyTitle={<h2>Package items</h2>}
+        stickyTitleActions={<button type="button">Remove selected</button>}
+      />,
+    )
+
+    const stickyTopBar = container.querySelector(
+      '[data-requirements-sticky-top-bar="true"]',
+    ) as HTMLDivElement | null
+    const inlineRail = container.querySelector(
+      '[data-floating-action-rail-placement="inline-top"]',
+    ) as HTMLDivElement | null
+
+    expect(stickyTopBar).toBeTruthy()
+    expect(stickyTopBar).toHaveTextContent('Package items')
+    expect(stickyTopBar).toHaveTextContent('Remove selected')
+    expect(inlineRail).toBeTruthy()
+    expect(
+      inlineRail?.querySelector('[data-column-picker-trigger="true"]'),
+    ).toBeTruthy()
+    expect(
+      document.querySelector(
+        '[data-floating-action-rail-placement="fixed-right"]',
+      ),
+    ).toBeNull()
+  })
+
+  it('renders the synced header inside a sticky table chrome container below the navigation', () => {
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        onSelectionChange={vi.fn()}
+        rows={[makeRow()]}
+        selectable
+        selectedIds={new Set()}
+      />,
+    )
+
+    const stickyTableChrome = container.querySelector(
+      '[data-sticky-table-chrome="true"]',
+    ) as HTMLDivElement | null
+    const headerCells = Array.from(container.querySelectorAll('thead th'))
+
+    expect(stickyTableChrome?.className).toContain('sticky')
+    expect(stickyTableChrome?.className).toContain('top-16')
+    expect(stickyTableChrome?.className).toContain('rounded-t-2xl')
+    expect(headerCells.length).toBeGreaterThan(1)
+    for (const cell of headerCells) {
+      expect(cell.className).toContain('bg-secondary-50')
+    }
+  })
+
+  it('supports overriding the sticky top offset classes for container-scrolled tables', () => {
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        rows={[makeRow()]}
+        stickyTopOffsetClassName="top-16 xl:top-0"
+      />,
+    )
+
+    const stickyTableChrome = container.querySelector(
+      '[data-sticky-table-chrome="true"]',
+    ) as HTMLDivElement | null
+
+    expect(stickyTableChrome?.className).toContain('top-16')
+    expect(stickyTableChrome?.className).toContain('xl:top-0')
+  })
+
   it('shows the floating pill badge in the default column state', () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
@@ -826,6 +964,136 @@ describe('RequirementsTable', () => {
       screen.getByRole('button', { name: 'columns' }).dataset
         .floatingActionVariant,
     ).toBe('default')
+  })
+
+  it('renders the scroll-to-top pill in a separate end group after vertical scroll', () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/requirements/new',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 520,
+      left: 24,
+      right: 340,
+      top: -120,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(getFloatingActionIds(container)).toEqual([
+      'create',
+      'columns',
+      'print',
+      'scroll-top',
+    ])
+    const rail = getFloatingActionRail(container)
+    const scrollTopGroup = document.querySelector(
+      '[data-floating-action-group="scroll-top"]',
+    ) as HTMLDivElement | null
+    const scrollTopTrigger = document.querySelector(
+      '[data-scroll-top-trigger="true"]',
+    ) as HTMLButtonElement | null
+
+    expect(scrollTopGroup).toBeTruthy()
+    expect(scrollTopTrigger).toBeTruthy()
+    expect(rail?.lastElementChild).toBe(scrollTopGroup)
+    expect(scrollTopTrigger).toHaveAttribute(
+      'data-developer-mode-name',
+      'table action',
+    )
+    expect(scrollTopTrigger).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirements table',
+    )
+    expect(scrollTopTrigger).toHaveAttribute(
+      'data-developer-mode-value',
+      'scroll to top',
+    )
+  })
+
+  it('scrolls the table back to its top anchor from the end-cap pill', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 520,
+      left: 24,
+      right: 340,
+      top: -120,
+      width: 316,
+    })
+
+    const tableRoot = container.firstElementChild as HTMLDivElement | null
+    expect(tableRoot).toBeTruthy()
+    if (!tableRoot) {
+      throw new Error('Expected the table root to be rendered.')
+    }
+
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(tableRoot, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    const scrollTopTrigger = document.querySelector(
+      '[data-scroll-top-trigger="true"]',
+    ) as HTMLButtonElement | null
+
+    expect(scrollTopTrigger).toBeTruthy()
+    if (!scrollTopTrigger) {
+      throw new Error('Expected the scroll-to-top trigger to be rendered.')
+    }
+
+    fireEvent.click(scrollTopTrigger)
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'start',
+    })
   })
 
   it('clamps floating action menus inside the viewport on narrow screens', async () => {
@@ -1583,6 +1851,26 @@ describe('RequirementsTable', () => {
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"description":392}',
     )
+  })
+
+  it('rounds clipped resize segments away from the expanded detail pane edges', () => {
+    const { container } = render(<ControlledExpandedResizableTable />)
+
+    syncResizeHandleMetrics(container)
+    setExpandedDetailMetrics(container, {
+      bottom: 240.4,
+      contentHeight: 360.4,
+      top: 120.6,
+    })
+
+    const topHandle = getResizeHandle(container, 'description')
+    const bottomSegment = container.querySelector(
+      '[data-column-resize-column="description"][data-column-resize-segment="bottom"]',
+    ) as HTMLDivElement | null
+
+    expect(topHandle?.style.height).toBe('120px')
+    expect(bottomSegment?.style.top).toBe('241px')
+    expect(bottomSegment?.style.height).toBe('48px')
   })
 
   it('keeps clipped resize segments below 44px from expanding their hit area', () => {

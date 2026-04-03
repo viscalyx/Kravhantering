@@ -25,7 +25,13 @@ for (const viewport of viewports) {
       await searchInput.fill('INT0001')
       await searchInput.press('Enter')
 
-      await page.getByRole('button', { exact: true, name: 'INT0001' }).click()
+      await page
+        .getByRole('button', { exact: true, name: 'INT0001' })
+        .evaluate(el => (el as HTMLElement).click())
+      await expect(
+        page.locator('[data-expanded-detail-cell]').first(),
+      ).toBeVisible()
+      await page.getByRole('button', { exact: true, name: 'INT0001' }).focus()
       await page.keyboard.press('Control+Alt+Shift+H')
 
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
@@ -72,6 +78,38 @@ for (const viewport of viewports) {
       await expect(
         page.locator('[data-developer-mode-overlay-chip="true"]'),
       ).toBeVisible()
+    })
+
+    test('keeps sticky table headers referenceable in developer mode', async ({
+      page,
+    }) => {
+      await page.goto('/sv/requirements')
+      await page.locator('tbody > tr').first().waitFor()
+      await page
+        .getByRole('button', { exact: true, name: 'INT0001' })
+        .click({ force: true })
+
+      await page.mouse.wheel(0, 320)
+      const stickyHeader = page.locator(
+        'thead th[data-developer-mode-name="column header"][data-developer-mode-value="requirement id"]',
+      )
+      await expect(stickyHeader).toBeVisible()
+      await expect
+        .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
+        .toBeGreaterThan(200)
+
+      await page.keyboard.press('Control+Alt+Shift+H')
+
+      await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
+      await stickyHeader.hover()
+      const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
+      await expect(chip).toBeVisible()
+
+      await chip.click()
+
+      await expect(
+        page.locator('[data-developer-mode-toast="true"]'),
+      ).toContainText('requirements table > column header: requirement id')
     })
   })
 }

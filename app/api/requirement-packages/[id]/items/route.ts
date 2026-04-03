@@ -16,6 +16,7 @@ import { getDb } from '@/lib/db'
 type Params = Promise<{ id: string }>
 
 class InvalidNeedsReferenceError extends Error {}
+const ADD_REQUIREMENTS_ERROR = 'Failed to add requirements'
 
 type ParseResult<T> =
   | { ok: true; value: T }
@@ -217,49 +218,51 @@ export async function POST(
     resolvedVersionIds.push({ requirementId, versionId })
   }
 
-  // All items validated — now resolve/create needs reference
   try {
-    await db.transaction(async tx => {
-      let resolvedNeedsReferenceId: number | null = null
+    let resolvedNeedsReferenceId: number | null = null
 
-      if (needsReferenceText?.trim()) {
-        resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
-          tx,
-          packageId,
-          needsReferenceText.trim(),
-        )
-      } else if (needsReferenceId != null) {
-        const existingNeedsReference = await getPackageNeedsReferenceById(
-          tx,
-          packageId,
-          needsReferenceId,
-        )
-        if (!existingNeedsReference) {
-          throw new InvalidNeedsReferenceError(
-            'needsReferenceId does not belong to this requirement package',
-          )
-        }
-        resolvedNeedsReferenceId = existingNeedsReference.id
-      }
-
-      const resolvedItems = resolvedVersionIds.map(
-        ({ requirementId, versionId }) => ({
-          requirementId,
-          requirementVersionId: versionId,
-          needsReferenceId: resolvedNeedsReferenceId,
-        }),
+    if (needsReferenceText?.trim()) {
+      resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
+        db,
+        packageId,
+        needsReferenceText.trim(),
       )
+    } else if (needsReferenceId != null) {
+      const existingNeedsReference = await getPackageNeedsReferenceById(
+        db,
+        packageId,
+        needsReferenceId,
+      )
+      if (!existingNeedsReference) {
+        throw new InvalidNeedsReferenceError(
+          'needsReferenceId does not belong to this requirement package',
+        )
+      }
+      resolvedNeedsReferenceId = existingNeedsReference.id
+    }
 
-      await linkRequirementsToPackage(tx, packageId, resolvedItems)
-    })
+    const resolvedItems = resolvedVersionIds.map(
+      ({ requirementId, versionId }) => ({
+        requirementId,
+        requirementVersionId: versionId,
+        needsReferenceId: resolvedNeedsReferenceId,
+      }),
+    )
+
+    const addedCount = await linkRequirementsToPackage(
+      db,
+      packageId,
+      resolvedItems,
+    )
+    return NextResponse.json({ addedCount, ok: true }, { status: 201 })
   } catch (error) {
     if (error instanceof InvalidNeedsReferenceError) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    throw error
+    console.error('Failed to add requirements to requirement package', error)
+    return NextResponse.json({ error: ADD_REQUIREMENTS_ERROR }, { status: 500 })
   }
-  return NextResponse.json({ ok: true }, { status: 201 })
 }
 
 export async function DELETE(

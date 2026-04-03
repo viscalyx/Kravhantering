@@ -49,6 +49,7 @@
     "share": "Share",
     "copied": "Copied",
     "help": "Help",
+    "backToTop": "Back to top",
     "selectAll": "Select all",
     "selectRow": "Select {id}"
   },

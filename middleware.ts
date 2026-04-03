@@ -4,7 +4,7 @@
 // edge middleware. Keep this as middleware.ts until OpenNext adds proxy support.
 // See: https://github.com/opennextjs/opennextjs-cloudflare/issues/1093
 
-import type { NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
 
@@ -51,26 +51,36 @@ function buildDevCsp(nonce: string): string {
   ].join('; ')
 }
 
+function applyRequestHeaderOverrides(response: NextResponse, headers: Headers) {
+  const overrideResponse = NextResponse.next({
+    request: {
+      headers,
+    },
+  })
+
+  for (const [key, value] of overrideResponse.headers) {
+    if (
+      key === 'x-middleware-override-headers' ||
+      key.startsWith('x-middleware-request-')
+    ) {
+      response.headers.set(key, value)
+    }
+  }
+}
+
 export default function middleware(request: NextRequest) {
   const response = intlMiddleware(request)
 
   const nonceBytes = new Uint8Array(16)
   crypto.getRandomValues(nonceBytes)
   const nonce = btoa(String.fromCharCode(...nonceBytes)).replace(/=+$/, '')
-
-  // Propagate nonce as a request header so Server Components can read it
-  // via headers().get('x-nonce').
-  const overrideKey = 'x-middleware-override-headers'
-  const existing = response.headers.get(overrideKey)
-  const list = existing ? existing.split(',').map(h => h.trim()) : []
-  if (!list.includes('x-nonce')) {
-    list.push('x-nonce')
-  }
-  response.headers.set(overrideKey, list.join(','))
-  response.headers.set('x-middleware-request-x-nonce', nonce)
-
   const csp =
     process.env.NODE_ENV === 'production' ? buildCsp(nonce) : buildDevCsp(nonce)
+  const requestHeaders = new Headers(request.headers)
+
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('content-security-policy', csp)
+  applyRequestHeaderOverrides(response, requestHeaders)
   response.headers.set('Content-Security-Policy', csp)
 
   return response

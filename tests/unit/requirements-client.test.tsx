@@ -568,7 +568,7 @@ describe('RequirementsClient', () => {
 
     const tableCard = Array.from(container.querySelectorAll('div')).find(node =>
       node.className.includes(
-        'relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm',
+        'relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm',
       ),
     )
 

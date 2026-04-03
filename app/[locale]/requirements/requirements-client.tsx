@@ -617,7 +617,7 @@ export default function RequirementsClient({
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-secondary-900/60">
+        <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-secondary-900/60">
           {shouldShowInitialLoadingState ? (
             <div
               aria-live="polite"

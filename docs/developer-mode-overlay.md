@@ -83,9 +83,35 @@ The emitted attributes are:
 - Requirement package detail header edit affordances use the
   `requirement package detail` context with `detail action: edit package`
   on the icon trigger and `crud form: edit` on the opened editor.
+- The package-detail header may visually regroup the title, business-needs
+  reference, and short metadata summary into a compact layout, including a
+  wide-screen variant where the metadata sits beside the title. That layout
+  does not introduce any separate developer-mode marker beyond the existing
+  edit action.
+- The package-detail page no longer renders a separate breadcrumb-style back
+  control in that header area; browser navigation is the supported way back
+  from this compact header.
 - Published requirement detail views expose the package-link control as
   `detail action: add to package` when the currently displayed published
   version is the one that can be added to a package.
+- Sticky requirements table headers keep their existing
+  `requirements table > column header: ...` references while pinned; the sticky
+  state does not introduce a separate developer-mode surface.
+- Requirement package detail tables may render the `floating action rail`
+  inline inside their sticky title bar; the marker name stays the same in both
+  the fixed-right and inline-top layouts.
+- On desktop package-detail split views, those inline rails live inside
+  independently scrollable table cards; the marker names stay the same even
+  though each table now scrolls within its own panel.
+- The desktop package-detail split view may expand those list panels into a
+  viewport-locked full-width shell, but that layout change does not add any new
+  developer-mode markers beyond the existing table surfaces.
+- The fixed-right rail on the main requirements catalog can also expose a
+  `requirements table` marker for `table action: scroll to top`; it remains the
+  last grouped pill in that rail when shown.
+- Bulk-add failures from the package-detail available-requirements dialog now
+  stay inline inside that existing modal; they do not add a separate
+  developer-mode marker beyond the surrounding table and dialog surfaces.
 - Help drawer overflow cues and lifecycle illustrations remain part of the
   existing `dialog` surface and do not add separate developer-mode markers.
 - Needs-reference controls and inline loading or failure messages inside the
@@ -157,6 +183,7 @@ Developer Mode is covered by:
 - `tests/unit/navigation.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
+- `tests/integration/requirements-table-column-picker.spec.ts`
 
 ## Contributor Guardrails
 

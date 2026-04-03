@@ -132,6 +132,81 @@ test.describe('Requirements table column picker', () => {
         expect(storedColumns).toContain('"requiresTesting"')
         expect(storedColumns).toContain('"version"')
       })
+
+      test('keeps the floating rail fixed and the header sticky during vertical scroll', async ({
+        page,
+      }) => {
+        await page.goto('/sv/requirements')
+
+        await page.locator('tbody > tr').first().waitFor()
+        await page
+          .getByRole('button', { exact: true, name: 'INT0001' })
+          .click({ force: true })
+
+        const columnsTrigger = page.locator(
+          '[data-column-picker-trigger="true"]',
+        )
+        const scrollTopTrigger = page.locator(
+          '[data-scroll-top-trigger="true"]',
+        )
+        const scenarioFilter = page.getByRole('button', {
+          exact: true,
+          name: 'Hög belastning',
+        })
+        const headerLabel = page
+          .locator('[data-requirement-header-label="uniqueId"]')
+          .first()
+
+        await expect(columnsTrigger).toBeVisible()
+        await expect(scenarioFilter).toBeVisible()
+        await expect(headerLabel).toBeVisible()
+
+        const beforeScrollBox = await columnsTrigger.boundingBox()
+        expect(beforeScrollBox).not.toBeNull()
+        if (!beforeScrollBox) {
+          throw new Error(
+            'Column picker trigger did not expose a bounding box.',
+          )
+        }
+
+        await page.mouse.wheel(0, 320)
+        await expect
+          .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
+          .toBeGreaterThan(200)
+        await expect(scenarioFilter).toBeVisible()
+        await expect(headerLabel).toBeVisible()
+        await expect(scrollTopTrigger).toBeVisible()
+
+        const afterScrollBox = await columnsTrigger.boundingBox()
+        const scrollTopBox = await scrollTopTrigger.boundingBox()
+        expect(afterScrollBox).not.toBeNull()
+        expect(scrollTopBox).not.toBeNull()
+        if (!afterScrollBox) {
+          throw new Error(
+            'Column picker trigger lost its bounding box after vertical scroll.',
+          )
+        }
+        if (!scrollTopBox) {
+          throw new Error(
+            'Scroll-to-top trigger did not expose a bounding box after vertical scroll.',
+          )
+        }
+
+        expect(
+          Math.abs(
+            Math.round(afterScrollBox.y) - Math.round(beforeScrollBox.y),
+          ),
+        ).toBeLessThanOrEqual(1)
+        expect(scrollTopBox.y).toBeGreaterThan(afterScrollBox.y)
+
+        const beforeReturnScrollY = await page.evaluate(() =>
+          Math.round(window.scrollY),
+        )
+        await scrollTopTrigger.click()
+        await expect
+          .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
+          .toBeLessThan(beforeReturnScrollY)
+      })
     })
   }
 })

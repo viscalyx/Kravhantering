@@ -52,6 +52,58 @@ The behaviors below apply to the requirement list rendered by:
 - The first visible table render waits for persisted column visibility and
   locale-specific width preferences to hydrate from `localStorage`.
 
+## Floating Rail
+
+- The requirements table actions live in a floating rail outside the table.
+- When possible, the rail aligns with the table’s top edge with a slight
+  downward offset.
+- Once the table top scrolls under the sticky navigation, the rail stays fixed
+  below the navigation while its table remains in view.
+- The rail uses a short motion-safe top/left transition with subpixel
+  positioning so the handoff between those two positions tracks scrolling
+  smoothly.
+- The rail hides once the table has scrolled fully out of view.
+- The rail order is:
+  - `beforeColumns` floating actions
+  - the columns pill
+  - trailing floating actions
+- Package-detail split tables keep the same pill order but render the rail
+  inline in a sticky top bar above each table instead of as a fixed right rail.
+
+## Sticky Header
+
+- The column header row stays sticky during vertical page scroll.
+- Sticky headers pin directly below the `h-16` site navigation using a `top-16`
+  offset.
+- The sticky table chrome keeps the usage-scenario chips visible together with
+  the header when those chips are present.
+- Package-detail split tables also keep their list title bar sticky in that
+  same chrome so the section title and top rail stay visible with the headers.
+- On `xl` and wider package-detail layouts, the `Krav i paketet` and
+  `Tillgängliga krav` cards each become their own vertically scrollable region
+  and stay pinned below the site navigation while the user scrolls inside a
+  list.
+- In the normal desktop package-detail state, the page shell itself stays
+  viewport-locked so the two list panels fit inside the visible window without
+  requiring page-level vertical scrolling.
+- Those desktop list panels stretch to the padded page edges and use the full
+  available width under the header instead of sitting inside an additional
+  inset content column.
+- In that desktop split-panel mode, the package-detail sticky chrome uses the
+  card’s own top edge instead of the global `top-16` viewport offset so the
+  title bar, scenario chips, and header stay visually attached to the table.
+- The package-detail bulk-add dialog keeps API failures inline inside the
+  modal and leaves the current selection in place so the user can adjust the
+  needs-reference choice or retry without rebuilding the selection.
+- The sticky header lives in a synced header viewport above the horizontal body
+  scroll area so row content does not bleed through underneath it.
+- Sticky headers use their existing column-header markers and remain part of
+  the same table surface; no separate recovery control is shown when the page
+  scrolls vertically.
+- On the fixed-right rail used by the main requirements catalog, a scroll-to-top
+  pill appears as its own final action group once the table top has moved above
+  the sticky offset. Selecting it scrolls the page back to the table top.
+
 ## Admin Defaults vs Personal Overrides
 
 - Admin settings define the organization-wide baseline for:

@@ -121,7 +121,6 @@ export default function KravpaketDetailClient({
   useHelpContent(REQUIREMENT_PACKAGE_DETAIL_HELP)
   const t = useTranslations('package')
   const tc = useTranslations('common')
-  const tn = useTranslations('nav')
   const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
@@ -142,10 +141,6 @@ export default function KravpaketDetailClient({
   const [packageImplementationTypes, setPackageImplementationTypes] = useState<
     PackageTaxonomyItem[]
   >([])
-  const [leftColsPickerEl, setLeftColsPickerEl] =
-    useState<HTMLDivElement | null>(null)
-  const [rightColsPickerEl, setRightColsPickerEl] =
-    useState<HTMLDivElement | null>(null)
   const [showEditPackageForm, setShowEditPackageForm] = useState(false)
 
   // Left panel state
@@ -189,6 +184,7 @@ export default function KravpaketDetailClient({
   >([])
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
+  const [addModalError, setAddModalError] = useState<string | null>(null)
 
   // PDF export state
   const [pdfModel, setPdfModel] = useState<ReportModel | null>(null)
@@ -200,6 +196,12 @@ export default function KravpaketDetailClient({
   })
 
   const latestAvailableRequestIdRef = useRef(0)
+
+  const closeAddModal = useCallback(() => {
+    setOpenHelp(new Set())
+    setAddModalError(null)
+    setShowAddModal(false)
+  }, [])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -392,6 +394,7 @@ export default function KravpaketDetailClient({
     setAddNeedsRefMode('none')
     setAddNeedsRefId('')
     setAddNeedsRefText('')
+    setAddModalError(null)
     setOpenHelp(new Set())
     setShowAddModal(true)
     const res = await fetch(
@@ -408,6 +411,7 @@ export default function KravpaketDetailClient({
   const handleConfirmAdd = useCallback(async () => {
     if (pendingAddIds.length === 0) return
     setAddModalLoading(true)
+    setAddModalError(null)
     try {
       const body: {
         requirementIds: number[]
@@ -431,11 +435,15 @@ export default function KravpaketDetailClient({
         const data = (await res.json().catch(() => ({}))) as {
           error?: string
         }
-        throw new Error(data.error ?? 'Failed to add requirements')
+        setAddModalError(data.error ?? tc('error'))
+        return
       }
       setRightSelectedIds(new Set())
+      setAddModalError(null)
       setShowAddModal(false)
       await Promise.all([fetchPackageItems(), fetchAvailableRequirements()])
+    } catch {
+      setAddModalError(tc('error'))
     } finally {
       setAddModalLoading(false)
     }
@@ -447,6 +455,7 @@ export default function KravpaketDetailClient({
     fetchPackageItems,
     packageSlug,
     pendingAddIds,
+    tc,
   ])
 
   const handleRemoveSelected = useCallback(async () => {
@@ -616,14 +625,10 @@ export default function KravpaketDetailClient({
           <div
             aria-modal="true"
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => {
-              setOpenHelp(new Set())
-              setShowAddModal(false)
-            }}
+            onClick={closeAddModal}
             onKeyDown={e => {
               if (e.key === 'Escape') {
-                setOpenHelp(new Set())
-                setShowAddModal(false)
+                closeAddModal()
               }
             }}
             role="dialog"
@@ -641,10 +646,7 @@ export default function KravpaketDetailClient({
                 <button
                   aria-label={tc('close')}
                   className="p-1.5 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
-                  onClick={() => {
-                    setOpenHelp(new Set())
-                    setShowAddModal(false)
-                  }}
+                  onClick={closeAddModal}
                   type="button"
                 >
                   <X aria-hidden="true" className="h-4 w-4" />
@@ -717,6 +719,14 @@ export default function KravpaketDetailClient({
                   </>
                 )}
               </div>
+              {addModalError ? (
+                <p
+                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300"
+                  role="alert"
+                >
+                  {addModalError}
+                </p>
+              ) : null}
               <div className="flex gap-3 pt-1">
                 <button
                   className="btn-primary"
@@ -728,10 +738,7 @@ export default function KravpaketDetailClient({
                 </button>
                 <button
                   className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
-                  onClick={() => {
-                    setOpenHelp(new Set())
-                    setShowAddModal(false)
-                  }}
+                  onClick={closeAddModal}
                   type="button"
                 >
                   {tc('cancel')}
@@ -772,66 +779,92 @@ export default function KravpaketDetailClient({
     )
   }
 
+  const desktopSplitPanelCardClassName =
+    'bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain'
+  const packageDetailStickyTopOffsetClassName = 'top-16 xl:top-0'
+  const packageDetailPagePaddingClassName =
+    'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
+  const packageDetailPageShellClassName = showEditPackageForm
+    ? packageDetailPagePaddingClassName
+    : `${packageDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
+  const packageDetailContainerClassName = showEditPackageForm
+    ? 'container-custom max-w-none'
+    : 'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
+  const packageDetailSplitPanelClassName = showEditPackageForm
+    ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
+    : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:items-stretch xl:gap-4'
+
   return (
     <>
-      <div className="section-padding px-4 sm:px-6 lg:px-8">
-        <div className="container-custom max-w-none">
+      <div
+        className={packageDetailPageShellClassName}
+        data-package-detail-page-shell="true"
+      >
+        <div className={packageDetailContainerClassName}>
           {/* Header */}
-          <div className="mb-6">
-            <Link
-              className="text-sm text-primary-700 dark:text-primary-300 hover:underline mb-2 inline-block"
-              href="/requirement-packages"
+          <div className="mb-5">
+            <div
+              className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,1fr)] xl:items-start xl:gap-5"
+              data-package-detail-header-summary="true"
             >
-              ← {tn('packages')}
-            </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-                {pkgName}
-              </h1>
-              <button
-                aria-controls={PACKAGE_EDIT_FORM_ID}
-                aria-expanded={showEditPackageForm}
-                aria-label={t('editPackage')}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
-                {...devMarker({
-                  context: 'requirement package detail',
-                  name: 'detail action',
-                  priority: 350,
-                  value: 'edit package',
-                })}
-                onClick={() => setShowEditPackageForm(current => !current)}
-                title={t('editPackage')}
-                type="button"
+              <div className="min-w-0">
+                <div
+                  className="flex items-start gap-3"
+                  data-package-detail-title-row="true"
+                >
+                  <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
+                    {pkgName}
+                  </h1>
+                  <button
+                    aria-controls={PACKAGE_EDIT_FORM_ID}
+                    aria-expanded={showEditPackageForm}
+                    aria-label={t('editPackage')}
+                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                    {...devMarker({
+                      context: 'requirement package detail',
+                      name: 'detail action',
+                      priority: 350,
+                      value: 'edit package',
+                    })}
+                    onClick={() => setShowEditPackageForm(current => !current)}
+                    title={t('editPackage')}
+                    type="button"
+                  >
+                    <Pencil aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                </div>
+                {pkg.businessNeedsReference && (
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
+                    {pkg.businessNeedsReference}
+                  </p>
+                )}
+              </div>
+              <dl
+                className="grid gap-3 sm:grid-cols-2 xl:w-full xl:grid-cols-2"
+                data-package-detail-header-metadata="true"
               >
-                <Pencil aria-hidden="true" className="h-4 w-4" />
-              </button>
+                {pkg.responsibilityArea && (
+                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                      {t('responsibilityArea')}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                      {localName(pkg.responsibilityArea)}
+                    </dd>
+                  </div>
+                )}
+                {pkg.implementationType && (
+                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                      {t('implementationType')}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                      {localName(pkg.implementationType)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
             </div>
-            <div className="mt-2 flex flex-wrap gap-3 text-sm text-secondary-600 dark:text-secondary-400">
-              {pkg.responsibilityArea && (
-                <span className="inline-flex items-center gap-1">
-                  <span className="font-medium text-secondary-700 dark:text-secondary-300">
-                    {t('responsibilityArea')}:
-                  </span>{' '}
-                  {localName(pkg.responsibilityArea)}
-                </span>
-              )}
-              {pkg.implementationType && (
-                <span className="inline-flex items-center gap-1">
-                  <span className="font-medium text-secondary-700 dark:text-secondary-300">
-                    {t('implementationType')}:
-                  </span>{' '}
-                  {localName(pkg.implementationType)}
-                </span>
-              )}
-            </div>
-            {pkg.businessNeedsReference && (
-              <p className="mt-3 text-sm text-secondary-700 dark:text-secondary-300 max-w-2xl">
-                <span className="font-medium">
-                  {t('businessNeedsReference')}:
-                </span>{' '}
-                {pkg.businessNeedsReference}
-              </p>
-            )}
             {showEditPackageForm && (
               <div className="mt-4">
                 <PackageEditPanel
@@ -854,42 +887,48 @@ export default function KravpaketDetailClient({
           </div>
 
           {/* Split panel */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+          <div
+            className={packageDetailSplitPanelClassName}
+            data-package-detail-split-panel="true"
+          >
             {/* Left panel: Krav i paketet */}
-            <div className="flex flex-col gap-3">
-              <div className="flex min-h-10 items-center justify-between">
-                <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                  {t('itemsInPackage')}
-                  <span className="ml-2 text-sm font-normal text-secondary-500 dark:text-secondary-400">
-                    ({packageItems.length})
-                  </span>
-                </h2>
-                <div className="flex items-center gap-2">
-                  <div ref={setLeftColsPickerEl} />
-                  {leftSelectedIds.size > 0 && (
-                    <button
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                      onClick={() => void handleRemoveSelected()}
-                      type="button"
-                    >
-                      <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                      {t('removeSelected', { count: leftSelectedIds.size })}
-                    </button>
-                  )}
-                </div>
-              </div>
-
+            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
               {packageItems.length === 0 ? (
-                <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-8 text-center text-secondary-500 dark:text-secondary-400 text-sm">
-                  {t('noItems')}
-                </div>
+                <>
+                  <div className="flex min-h-10 items-center justify-between">
+                    <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                      {t('itemsInPackage')}
+                      <span className="ml-2 text-sm font-normal text-secondary-500 dark:text-secondary-400">
+                        ({packageItems.length})
+                      </span>
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      {leftSelectedIds.size > 0 && (
+                        <button
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          onClick={() => void handleRemoveSelected()}
+                          type="button"
+                        >
+                          <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                          {t('removeSelected', { count: leftSelectedIds.size })}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-8 text-center text-secondary-500 dark:text-secondary-400 text-sm">
+                    {t('noItems')}
+                  </div>
+                </>
               ) : (
-                <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
+                <div
+                  className={desktopSplitPanelCardClassName}
+                  data-package-detail-list-panel="items"
+                >
                   <RequirementsTable
                     areas={areas}
-                    columnsPickerContainer={leftColsPickerEl}
                     expandedId={leftExpandedId}
                     filterValues={leftFilters}
+                    floatingActionRailPlacement="inline-top"
                     floatingActions={[
                       {
                         ariaLabel: tc('print'),
@@ -936,6 +975,29 @@ export default function KravpaketDetailClient({
                     selectable
                     selectedIds={leftSelectedIds}
                     sortState={leftSort}
+                    stickyTitle={
+                      <h2 className="truncate text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                        {t('itemsInPackage')}
+                        <span className="ml-2 text-sm font-normal text-secondary-500 dark:text-secondary-400">
+                          ({packageItems.length})
+                        </span>
+                      </h2>
+                    }
+                    stickyTitleActions={
+                      leftSelectedIds.size > 0 ? (
+                        <button
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                          onClick={() => void handleRemoveSelected()}
+                          type="button"
+                        >
+                          <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
+                          {t('removeSelected', { count: leftSelectedIds.size })}
+                        </button>
+                      ) : null
+                    }
+                    stickyTopOffsetClassName={
+                      packageDetailStickyTopOffsetClassName
+                    }
                     usageScenarios={packageUsageScenarios}
                     visibleColumns={leftVisibleCols}
                     wrapDescription
@@ -945,35 +1007,17 @@ export default function KravpaketDetailClient({
             </div>
 
             {/* Right panel: Tillgängliga krav */}
-            <div className="flex flex-col gap-3">
-              <div className="flex min-h-10 items-center justify-between">
-                <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                  {t('availableRequirements')}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <div ref={setRightColsPickerEl} />
-                  {rightSelectedIds.size > 0 && (
-                    <button
-                      className="inline-flex items-center gap-1.5 btn-primary"
-                      onClick={handleOpenAddModal}
-                      type="button"
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      {t('addSelectedToPackage', {
-                        count: rightSelectedIds.size,
-                      })}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden">
+            <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
+              <div
+                className={desktopSplitPanelCardClassName}
+                data-package-detail-list-panel="available"
+              >
                 <RequirementsTable
                   areas={areas}
-                  columnsPickerContainer={rightColsPickerEl}
                   excludeColumns={['needsReference']}
                   expandedId={rightExpandedId}
                   filterValues={rightFilters}
+                  floatingActionRailPlacement="inline-top"
                   getName={getName}
                   hasMore={rightHasMore}
                   loadingMore={rightLoadingMore}
@@ -997,6 +1041,28 @@ export default function KravpaketDetailClient({
                   selectable
                   selectedIds={rightSelectedIds}
                   sortState={rightSort}
+                  stickyTitle={
+                    <h2 className="truncate text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                      {t('availableRequirements')}
+                    </h2>
+                  }
+                  stickyTitleActions={
+                    rightSelectedIds.size > 0 ? (
+                      <button
+                        className="inline-flex items-center gap-1.5 btn-primary"
+                        onClick={handleOpenAddModal}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                        {t('addSelectedToPackage', {
+                          count: rightSelectedIds.size,
+                        })}
+                      </button>
+                    ) : null
+                  }
+                  stickyTopOffsetClassName={
+                    packageDetailStickyTopOffsetClassName
+                  }
                   usageScenarios={usageScenarios}
                   visibleColumns={rightVisibleCols}
                   wrapDescription

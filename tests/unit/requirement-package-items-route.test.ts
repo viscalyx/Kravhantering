@@ -83,14 +83,14 @@ describe('requirement-packages/[id]/items route', () => {
       error: 'needsReferenceId does not belong to this requirement package',
     })
     expect(mocks.getPackageNeedsReferenceById).toHaveBeenCalledWith(
-      mockTx,
+      mockDb,
       5,
       99,
     )
     expect(mocks.linkRequirementsToPackage).not.toHaveBeenCalled()
   })
 
-  it('creates needs references and links items inside the same transaction', async () => {
+  it('creates needs references before linking items without starting a SQL transaction', async () => {
     const request = new NextRequest(
       'http://localhost/api/requirement-packages/pkg/items',
       {
@@ -106,19 +106,19 @@ describe('requirement-packages/[id]/items route', () => {
     const response = await POST(request, makeParams('pkg'))
 
     expect(response.status).toBe(201)
-    expect(mockDb.transaction).toHaveBeenCalledTimes(1)
     expect(mocks.getOrCreatePackageNeedsReference).toHaveBeenCalledWith(
-      mockTx,
+      mockDb,
       5,
       'Shared need',
     )
-    expect(mocks.linkRequirementsToPackage).toHaveBeenCalledWith(mockTx, 5, [
+    expect(mocks.linkRequirementsToPackage).toHaveBeenCalledWith(mockDb, 5, [
       {
         needsReferenceId: 7,
         requirementId: 1,
         requirementVersionId: 42,
       },
     ])
+    expect(mockDb.transaction).not.toHaveBeenCalled()
   })
 
   it('rejects malformed requirementIds before any database work runs', async () => {
@@ -209,6 +209,41 @@ describe('requirement-packages/[id]/items route', () => {
       error: 'requirementIds must be a non-empty array of positive integers',
     })
     expect(mocks.unlinkRequirementsFromPackage).not.toHaveBeenCalled()
+  })
+
+  it('returns a JSON 500 error when linking requirements fails unexpectedly', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.linkRequirementsToPackage.mockRejectedValue(
+      new Error('D1 transaction failed'),
+    )
+
+    try {
+      const request = new NextRequest(
+        'http://localhost/api/requirement-packages/pkg/items',
+        {
+          body: JSON.stringify({
+            requirementIds: [1],
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      )
+
+      const response = await POST(request, makeParams('pkg'))
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to add requirements',
+      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to add requirements to requirement package',
+        expect.any(Error),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('unlinks requirement items for valid delete payloads', async () => {
