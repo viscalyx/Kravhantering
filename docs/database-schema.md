@@ -17,6 +17,7 @@ The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
 5. [Core Domain Tables](#core-domain-tables)
 6. [Join / Bridge Tables](#join--bridge-tables)
 7. [Status Workflow](#status-workflow)
+8. [Write-Ahead Logging (WAL)](#write-ahead-logging-wal)
 
 ---
 
@@ -885,3 +886,33 @@ graph LR
     RVS -. "composite PK" .-> RSC
 ```
 <!-- markdownlint-enable MD013 -->
+
+---
+
+## Write-Ahead Logging (WAL)
+
+WAL is already active at every level of the stack —
+no configuration is needed or possible.
+
+<!-- markdownlint-disable MD013 -->
+| Surface | WAL status | Configurable? |
+| --- | --- | --- |
+| Cloudflare D1 (production) | Enabled internally by Cloudflare | No |
+| Miniflare / Wrangler (local dev) | Enabled by default | No |
+| `better-sqlite3 :memory:` (unit tests) | Not applicable (in-memory) | No |
+<!-- markdownlint-enable MD013 -->
+
+**Production:** D1 uses a WAL-based architecture for its distributed
+SQLite. This is managed by Cloudflare; PRAGMA statements are not
+reliably honored (see also `copilot-instructions.md`).
+
+**Local dev:** Miniflare's SQLite emulation uses WAL by default.
+Confirmation: `metadata.sqlite-wal` exists under
+`.wrangler/state/v3/d1/miniflare-D1DatabaseObject/` after a local
+run. The main app database file has no active `.sqlite-wal` at rest,
+which is normal — SQLite removes the WAL file after a clean
+checkpoint/shutdown.
+
+**Unit tests:** All test databases use `new BetterSqlite3(':memory:')`.
+WAL mode requires a file-based database and cannot be applied to
+in-memory databases.
