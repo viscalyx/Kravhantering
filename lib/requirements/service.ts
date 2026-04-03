@@ -1647,9 +1647,6 @@ export function createRequirementsService(
   }
 }
 
-export type RequirementsServiceFactory = ReturnType<
-  typeof createRequirementsService
->
 
 export function toResponseFormat(format?: string): ResponseFormat {
   return format === 'json' ? 'json' : 'markdown'
