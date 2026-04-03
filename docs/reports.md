@@ -51,6 +51,18 @@ Generates a multi-requirement review report from the list view.
 - Each TOC entry shows its page number
 - Each requirement starts on a new page after the TOC
 
+### 5. Package List Report
+
+Prints the requirements contained in a specific requirement package as a
+formatted table.
+
+- Available from the print dropdown in the package detail view
+- Includes package metadata in the header: package name, unique ID,
+  responsibility area, implementation type, and business needs reference
+- Shows Krav-ID, description (truncated), area, and status columns
+- Print opens a dedicated route; PDF is generated inline in the package
+  detail view (not via a separate route page)
+
 ## Architecture
 
 ```text
@@ -61,12 +73,14 @@ Shared Layer (engine-agnostic)
   lib/reports/templates/            Template functions (data -> ReportModel)
 
 Browser Print Engine
-  components/reports/print/         PrintReportRenderer + CSS
-  app/[locale]/requirements/reports/print/   Route pages
+  components/reports/print/                                    PrintReportRenderer + CSS
+  app/[locale]/requirements/reports/print/                     Route pages
+  app/[locale]/requirement-packages/[slug]/reports/print/      Package route pages
 
 react-pdf Engine
-  components/reports/pdf/           PdfReportRenderer + download hook
-  app/[locale]/requirements/reports/pdf/     Route pages
+  components/reports/pdf/                                      PdfReportRenderer + download hook
+  app/[locale]/requirements/reports/pdf/                       Route pages
+  (package PDF is generated inline in requirement-package-detail-client, not via a route)
 ```
 
 ### Data Flow
@@ -103,7 +117,12 @@ under `.../reports/pdf/`.
 - **Combined**: `.../print/review-combined?ids=…` |
   `.../pdf/review-combined?ids=…`
 
-All routes are prefixed with `/[locale]/requirements/reports`.
+All routes above are prefixed with `/[locale]/requirements/reports`.
+
+Package list reports use a separate prefix
+`/[locale]/requirement-packages/[slug]/reports`:
+
+- **Package List**: `.../print/list?ids=…` (PDF is generated inline, no separate PDF route)
 
 ## Engines
 
@@ -128,6 +147,8 @@ library's `Document`, `Page`, `View`, `Text` primitives with `StyleSheet`.
   (e.g., `Granskningsrapport ANV0022.pdf`)
 - Combined: `{localized label} {YYYY-MM-DD HH.MM}.pdf`
   (e.g., `Kombinerad granskningsrapport 2026-03-17 16.35.pdf`)
+- List (package): `{localized label} {package name} {package ID}.pdf`
+  (e.g., `Kravlista Tillgänglighet PKG001.pdf`)
 
 ## Report Page Rendering
 
