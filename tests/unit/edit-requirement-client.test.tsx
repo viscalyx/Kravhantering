@@ -32,6 +32,14 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>(res => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -148,6 +156,87 @@ describe('EditRequirementClient', () => {
     expect(
       screen.getByText('requirement.editPublishedVersionNotice'),
     ).toBeInTheDocument()
+  })
+
+  it('clears a previous fetch error before refetching a new requirement', async () => {
+    const nextFetch = deferred<ReturnType<typeof okJson>>()
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/1')) {
+        return Promise.resolve({ ok: false })
+      }
+      if (url.endsWith('/2')) {
+        return nextFetch.promise
+      }
+      return Promise.resolve(okJson(makeRequirementDetailResponse()))
+    })
+
+    const { rerender } = render(<EditRequirementClient requirementId={1} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('common.error')
+    })
+
+    rerender(<EditRequirementClient requirementId={2} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('common.loading')).toBeInTheDocument()
+    })
+
+    nextFetch.resolve(
+      okJson(makeRequirementDetailResponse({ id: 2, uniqueId: 'REQ-002' })),
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('req-form')).toBeInTheDocument()
+    })
+    expect(screen.getByText(/REQ-002/)).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('hides a stale published notice while refetching a different requirement', async () => {
+    const nextFetch = deferred<ReturnType<typeof okJson>>()
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.endsWith('/1')) {
+        return Promise.resolve(
+          okJson(makeRequirementDetailResponse({}, { status: 3 })),
+        )
+      }
+      if (url.endsWith('/2')) {
+        return nextFetch.promise
+      }
+      return Promise.resolve(okJson(makeRequirementDetailResponse()))
+    })
+
+    const { rerender } = render(<EditRequirementClient requirementId={1} />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('requirement.editPublishedVersionNotice'),
+      ).toBeInTheDocument()
+    })
+
+    rerender(<EditRequirementClient requirementId={2} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('common.loading')).toBeInTheDocument()
+      expect(
+        screen.queryByText('requirement.editPublishedVersionNotice'),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('req-form')).not.toBeInTheDocument()
+    })
+
+    nextFetch.resolve(okJson(makeRequirementDetailResponse({ id: 2 })))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('req-form')).toBeInTheDocument()
+    })
+    expect(
+      screen.queryByText('requirement.editPublishedVersionNotice'),
+    ).not.toBeInTheDocument()
   })
 
   it('pre-fills qualityCharacteristicId from latest version', async () => {

@@ -266,7 +266,8 @@ Example:
         "requirements_remove_from_package"
       ],
       "headers": {
-        "Authorization": "$COPILOT_MCP_KRAVHANTERING_AUTHORIZATION"
+        "Authorization":
+          "$COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION"
       }
     }
   }

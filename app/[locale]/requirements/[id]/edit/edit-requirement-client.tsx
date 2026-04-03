@@ -49,6 +49,10 @@ export default function EditRequirementClient({
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
+    setFetchError(null)
+    setIsPublished(false)
+    setLoading(true)
+
     try {
       const res = await fetch(`/api/requirements/${requirementId}`)
       if (!res.ok) {
