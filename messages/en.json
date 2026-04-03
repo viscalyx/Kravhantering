@@ -280,6 +280,7 @@
     "packageFetchFailed": "Could not load the requirement package for this report (status {status}).",
     "packageFetchFailedWithDetails": "Could not load the requirement package for this report (status {status}): {details}",
     "listPdfFilename": "Requirements List {stamp}.pdf",
+    "listPdfFilenameLabel": "Requirements List",
     "packageCover": {
       "packageId": "Package ID",
       "responsibilityArea": "Responsibility area",

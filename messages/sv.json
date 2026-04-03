@@ -280,6 +280,7 @@
     "packageFetchFailed": "Det gick inte att läsa in kravpaketet för rapporten (status {status}).",
     "packageFetchFailedWithDetails": "Det gick inte att läsa in kravpaketet för rapporten (status {status}): {details}",
     "listPdfFilename": "Kravlista {stamp}.pdf",
+    "listPdfFilenameLabel": "Kravlista",
     "packageCover": {
       "packageId": "Kravpaket-ID",
       "responsibilityArea": "Verksamhetsobjekt",
