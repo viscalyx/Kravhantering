@@ -70,13 +70,23 @@ test.describe('Requirements table column resizing', () => {
         const laterDivider = page
           .locator('[data-column-resize-handle="area"]')
           .first()
-        const descriptionColumn = page.locator('colgroup col').nth(2)
+        // The page includes a leading checkbox column and the locked Krav-ID
+        // column before `description`.
+        const bodyDescriptionColumn = page
+          .locator('[data-requirements-data-table="true"] colgroup col')
+          .nth(2)
+        const stickyDescriptionColumn = page
+          .locator('[data-sticky-table-header-table="true"] colgroup col')
+          .nth(2)
 
         await handle.scrollIntoViewIfNeeded()
         await expect(handle).toBeVisible()
         await expect(laterDivider).toBeVisible()
 
-        const beforeWidth = await descriptionColumn.evaluate(
+        const beforeBodyWidth = await bodyDescriptionColumn.evaluate(
+          node => (node as HTMLTableColElement).style.width,
+        )
+        const beforeStickyWidth = await stickyDescriptionColumn.evaluate(
           node => (node as HTMLTableColElement).style.width,
         )
         const box = await handle.boundingBox()
@@ -136,6 +146,20 @@ test.describe('Requirements table column resizing', () => {
             return nextBox ? Math.round(nextBox.x) : -1
           })
           .toBeGreaterThan(Math.round(laterDividerBox.x))
+        await expect
+          .poll(async () =>
+            bodyDescriptionColumn.evaluate(
+              node => (node as HTMLTableColElement).style.width,
+            ),
+          )
+          .not.toBe(beforeBodyWidth)
+        await expect
+          .poll(async () =>
+            stickyDescriptionColumn.evaluate(
+              node => (node as HTMLTableColElement).style.width,
+            ),
+          )
+          .not.toBe(beforeStickyWidth)
 
         await page.evaluate(
           ({ deltas, pointerId, pointerY, startX }) => {
@@ -175,11 +199,11 @@ test.describe('Requirements table column resizing', () => {
 
         await expect
           .poll(async () =>
-            descriptionColumn.evaluate(
+            bodyDescriptionColumn.evaluate(
               node => (node as HTMLTableColElement).style.width,
             ),
           )
-          .not.toBe(beforeWidth)
+          .not.toBe(beforeBodyWidth)
 
         await expect
           .poll(async () =>

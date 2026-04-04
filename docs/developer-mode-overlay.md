@@ -98,7 +98,9 @@ The emitted attributes are:
   `requirements table > column header: ...` references while pinned; the sticky
   state does not introduce a separate developer-mode surface. The scrolling
   data table keeps the semantic header row while the pinned clone remains a
-  presentational chrome surface.
+  presentational chrome surface. Existing `resize handle` markers continue to
+  describe the shared live divider positions while the sticky header and
+  scrolling body stay aligned during drag preview.
 - Requirement package detail tables may render the `floating action rail`
   inline inside their sticky title bar; the marker name stays the same in both
   the fixed-right and inline-top layouts. On narrow screens, that sticky title

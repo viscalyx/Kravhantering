@@ -167,6 +167,41 @@ describe('RequirementsTable', () => {
     )
   }
 
+  function ControlledExpandedSwitchTable() {
+    const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+    const [expandedId, setExpandedId] = useState(1)
+
+    return (
+      <div>
+        <button onClick={() => setExpandedId(2)} type="button">
+          expand-second-row
+        </button>
+        <RequirementsTable
+          columnWidths={columnWidths}
+          expandedId={expandedId}
+          locale="sv"
+          onColumnWidthsChange={setColumnWidths}
+          renderExpanded={id => (
+            <div data-testid={`expanded-detail-content-${id}`}>
+              Expanded detail {id}
+            </div>
+          )}
+          rows={[
+            makeRow(),
+            makeRow({
+              id: 2,
+              uniqueId: 'INT0002',
+              version: {
+                ...makeRow().version,
+                description: 'Uppfoljning',
+              },
+            }),
+          ]}
+        />
+      </div>
+    )
+  }
+
   function ControlledSearchFilterTable() {
     const [filterValues, setFilterValues] = useState<FilterValues>({
       ...DEFAULT_FILTERS,
@@ -237,11 +272,23 @@ describe('RequirementsTable', () => {
     ) as HTMLDivElement | null
   }
 
+  function getStickyHeaderContent(container: HTMLElement) {
+    return container.querySelector(
+      '[data-sticky-table-header="true"]',
+    ) as HTMLDivElement | null
+  }
+
   function getColumnWidths(container: HTMLElement) {
     return Array.from(
       container.querySelectorAll(
         '[data-requirements-scroll-container="true"] table col',
       ),
+    ).map(col => (col as HTMLTableColElement).style.width)
+  }
+
+  function getStickyHeaderColumnWidths(container: HTMLElement) {
+    return Array.from(
+      container.querySelectorAll('[data-sticky-table-header-table="true"] col'),
     ).map(col => (col as HTMLTableColElement).style.width)
   }
 
@@ -1291,6 +1338,24 @@ describe('RequirementsTable', () => {
     expect(wrapToggle.className).toContain('focus-visible:ring-offset-2')
   })
 
+  it('marks the description wrap toggle icons as decorative in both states', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    let wrapToggle = screen.getByRole('button', { name: 'showFullText' })
+    let icon = wrapToggle.querySelector('svg')
+
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(icon).toHaveAttribute('focusable', 'false')
+
+    fireEvent.click(wrapToggle)
+
+    wrapToggle = screen.getByRole('button', { name: 'showShortText' })
+    icon = wrapToggle.querySelector('svg')
+
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(icon).toHaveAttribute('focusable', 'false')
+  })
+
   it('clears hidden column filters and resets hidden active sort', () => {
     const onFilterChange = vi.fn()
     const onSortChange = vi.fn()
@@ -1787,6 +1852,45 @@ describe('RequirementsTable', () => {
     )
   })
 
+  it('keeps the sticky header preview widths aligned with the body during drag', async () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+    const tableContent = getTableContent(container)
+    const stickyHeaderContent = getStickyHeaderContent(container)
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(getStickyHeaderColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1154px')
+    expect(stickyHeaderContent?.style.width).toBe('1154px')
+  })
+
   it('ignores pointer events from other pointers while a resize is active', async () => {
     const { container } = render(<ControlledResizableTable />)
 
@@ -1961,6 +2065,32 @@ describe('RequirementsTable', () => {
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"description":392}',
     )
+  })
+
+  it('re-observes the expanded detail cell when the expanded row changes', async () => {
+    const { container } = render(<ControlledExpandedSwitchTable />)
+
+    const firstDetailCell = container.querySelector(
+      '[data-expanded-detail-cell="true"]',
+    ) as HTMLTableCellElement | null
+
+    expect(firstDetailCell).toBeTruthy()
+
+    resizeObserverObserve.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'expand-second-row' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('expanded-detail-content-2')).toBeTruthy(),
+    )
+
+    const secondDetailCell = container.querySelector(
+      '[data-expanded-detail-cell="true"]',
+    ) as HTMLTableCellElement | null
+
+    expect(secondDetailCell).toBeTruthy()
+    expect(secondDetailCell).not.toBe(firstDetailCell)
+    expect(resizeObserverObserve).toHaveBeenCalledWith(secondDetailCell)
   })
 
   it('restores divider positions on pointer cancel', async () => {

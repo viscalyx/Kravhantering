@@ -133,6 +133,8 @@ The behaviors below apply to the requirement list rendered by:
   `description` absorbs spare horizontal space.
 - During pointer drag, the live width preview is applied imperatively to the
   rendered table DOM.
+- That live preview must keep the sticky header chrome and the scrolling body
+  table in sync so the visible column boundaries stay aligned while dragging.
 - The persisted width map is committed only when the drag ends successfully on
   `pointerup`.
 
@@ -170,6 +172,8 @@ The behaviors below apply to the requirement list rendered by:
   every event.
 - Live drag preview should be throttled to animation frames and applied directly
   to the rendered table widths.
+- The previewed sticky header widths and the scrolling body widths should move
+  together during drag; neither surface should wait for `pointerup` to realign.
 - All visible resize-divider lines should stay aligned with the previewed
   column boundaries during drag, not snap into place only after drag end.
 - Cleanup should happen only when the drag actually ends:

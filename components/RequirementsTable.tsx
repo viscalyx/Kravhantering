@@ -1391,11 +1391,15 @@ export default function RequirementsTable({
   ) as Record<RequirementColumnId, number>
   const tableRootRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const stickyHeaderContentRef = useRef<HTMLDivElement>(null)
   const tableContentRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLTableElement>(null)
   const selectAllRef = useRef<HTMLInputElement>(null)
   const expandedDetailCellRef = useRef<HTMLTableCellElement>(null)
   const colRefs = useRef<
+    Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
+  >({})
+  const stickyHeaderColRefs = useRef<
     Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
   >({})
   const headerCellRefs = useRef<
@@ -1496,11 +1500,14 @@ export default function RequirementsTable({
   })
   const [horizontalScrollLeft, setHorizontalScrollLeft] = useState(0)
   const canResizeColumns = !!onColumnWidthsChange
-  const hasExpandedDetailRow =
+  const expandedDetailRowId =
     expandedId !== null &&
     expandedId !== undefined &&
     !!renderExpanded &&
     rows.some(row => row.id === expandedId)
+      ? expandedId
+      : null
+  const hasExpandedDetailRow = expandedDetailRowId !== null
   const clippedResizeHandleBounds = hasExpandedDetailRow
     ? expandedDetailBounds
     : null
@@ -1746,15 +1753,21 @@ export default function RequirementsTable({
 
   const applyVisibleWidthPreview = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
+      const nextTableWidth =
+        columnDefinitions.reduce(
+          (total, column) =>
+            total +
+            (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
+          0,
+        ) + checkboxColumnWidth
+      const stickyHeaderContent = stickyHeaderContentRef.current
       const tableContent = tableContentRef.current
+
+      if (stickyHeaderContent) {
+        stickyHeaderContent.style.width = `${nextTableWidth}px`
+      }
+
       if (tableContent) {
-        const nextTableWidth =
-          columnDefinitions.reduce(
-            (total, column) =>
-              total +
-              (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
-            0,
-          ) + checkboxColumnWidth
         tableContent.style.width = `${nextTableWidth}px`
       }
 
@@ -1762,8 +1775,12 @@ export default function RequirementsTable({
         const width =
           visibleWidths[column.id] ?? renderedColumnWidths[column.id]
         const col = colRefs.current[column.id]
+        const stickyHeaderCol = stickyHeaderColRefs.current[column.id]
         if (col) {
           col.style.width = `${width}px`
+        }
+        if (stickyHeaderCol) {
+          stickyHeaderCol.style.width = `${width}px`
         }
       }
 
@@ -2063,7 +2080,7 @@ export default function RequirementsTable({
   }, [canResizeColumns, columnDefinitions])
 
   const updateExpandedDetailBounds = useCallback(() => {
-    if (!canResizeColumns || !hasExpandedDetailRow) {
+    if (!canResizeColumns || expandedDetailRowId === null) {
       setExpandedDetailBounds(previous => (previous ? null : previous))
       return
     }
@@ -2093,7 +2110,7 @@ export default function RequirementsTable({
         ? previous
         : nextBounds,
     )
-  }, [canResizeColumns, hasExpandedDetailRow])
+  }, [canResizeColumns, expandedDetailRowId])
 
   const updateFloatingRail = useCallback(() => {
     if (shouldRenderInlineRail) {
@@ -3191,9 +3208,17 @@ export default function RequirementsTable({
                           type="button"
                         >
                           {descriptionWrapped ? (
-                            <WrapText size={16} />
+                            <WrapText
+                              aria-hidden="true"
+                              focusable={false}
+                              size={16}
+                            />
                           ) : (
-                            <AlignLeft size={16} />
+                            <AlignLeft
+                              aria-hidden="true"
+                              focusable={false}
+                              size={16}
+                            />
                           )}
                         </button>
                       )}
@@ -3413,6 +3438,7 @@ export default function RequirementsTable({
           <div
             className="relative motion-safe:transition-transform motion-safe:duration-100 motion-safe:ease-linear motion-reduce:transition-none"
             data-sticky-table-header="true"
+            ref={stickyHeaderContentRef}
             style={{
               transform: `translateX(-${horizontalScrollLeft}px)`,
               width: `${tableWidth}px`,
@@ -3429,6 +3455,9 @@ export default function RequirementsTable({
                 {columnDefinitions.map(column => (
                   <col
                     key={`sticky-header-column-${column.id}`}
+                    ref={node => {
+                      stickyHeaderColRefs.current[column.id] = node
+                    }}
                     style={{ width: `${renderedColumnWidths[column.id]}px` }}
                   />
                 ))}
