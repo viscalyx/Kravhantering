@@ -51,7 +51,9 @@
     "help": "Hjälp",
     "backToTop": "Till toppen",
     "selectAll": "Markera alla",
-    "selectRow": "Markera {id}"
+    "selectRow": "Markera {id}",
+    "showShortText": "Visa kortad text",
+    "showFullText": "Visa fullständig text"
   },
   "nav": {
     "catalog": "Kravkatalog",

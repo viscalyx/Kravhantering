@@ -3149,16 +3149,16 @@ export default function RequirementsTable({
                     <button
                       aria-label={
                         descriptionWrapped
-                          ? 'Visa kortad text'
-                          : 'Visa fullständig text'
+                          ? tc('showShortText')
+                          : tc('showFullText')
                       }
                       aria-pressed={descriptionWrapped}
                       className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600"
                       onClick={() => setDescriptionWrapped(v => !v)}
                       title={
                         descriptionWrapped
-                          ? 'Visa kortad text'
-                          : 'Visa fullständig text'
+                          ? tc('showShortText')
+                          : tc('showFullText')
                       }
                       type="button"
                     >

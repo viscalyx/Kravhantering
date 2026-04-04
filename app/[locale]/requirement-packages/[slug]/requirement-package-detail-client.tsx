@@ -198,10 +198,11 @@ export default function KravpaketDetailClient({
   const latestAvailableRequestIdRef = useRef(0)
 
   const closeAddModal = useCallback(() => {
+    if (addModalLoading) return
     setOpenHelp(new Set())
     setAddModalError(null)
     setShowAddModal(false)
-  }, [])
+  }, [addModalLoading])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -645,7 +646,8 @@ export default function KravpaketDetailClient({
                 </h2>
                 <button
                   aria-label={tc('close')}
-                  className="p-1.5 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={addModalLoading}
                   onClick={closeAddModal}
                   type="button"
                 >
@@ -737,11 +739,12 @@ export default function KravpaketDetailClient({
                   {addModalLoading ? tc('loading') : t('confirmAdd')}
                 </button>
                 <button
-                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all"
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled={addModalLoading}
                   onClick={closeAddModal}
                   type="button"
                 >
-                  {tc('cancel')}
+                  {addModalLoading ? tc('loading') : tc('cancel')}
                 </button>
               </div>
             </div>

@@ -141,6 +141,9 @@ for (const viewport of viewports) {
         expect(rightPanelBox.y + rightPanelBox.height).toBeLessThanOrEqual(
           activeViewportHeight,
         )
+        // If neither panel overflows (e.g. in CI with a small fixture dataset
+        // or a large viewport) the scroll-sync behaviour cannot be exercised.
+        // Skip rather than assert on a precondition that isn't met.
         if (!leftHasOverflow && !rightHasOverflow) {
           return
         }

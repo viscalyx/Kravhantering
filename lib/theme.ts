@@ -94,6 +94,7 @@ export function persistThemePreference(
           expires: Date
           name: string
           path: string
+          sameSite?: string
           value: string
         }) => Promise<unknown>
       }
@@ -105,6 +106,7 @@ export function persistThemePreference(
       expires: new Date(Date.now() + THEME_COOKIE_MAX_AGE_SECONDS * 1000),
       name: THEME_COOKIE_KEY,
       path: '/',
+      sameSite: 'Lax',
       value: preference,
     })
     return

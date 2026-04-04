@@ -25,6 +25,9 @@ for (const viewport of viewports) {
       await searchInput.fill('INT0001')
       await searchInput.press('Enter')
 
+      // The sticky table header overlaps this button, so Playwright's
+      // actionability check would fail. We bypass it via evaluate() to
+      // expand the row before enabling developer mode.
       await page
         .getByRole('button', { exact: true, name: 'INT0001' })
         .evaluate(el => (el as HTMLElement).click())
@@ -85,6 +88,8 @@ for (const viewport of viewports) {
     }) => {
       await page.goto('/sv/requirements')
       await page.locator('tbody > tr').first().waitFor()
+      // force: true because the sticky header overlaps the row button at
+      // the top of the list before any scrolling has occurred.
       await page
         .getByRole('button', { exact: true, name: 'INT0001' })
         .click({ force: true })

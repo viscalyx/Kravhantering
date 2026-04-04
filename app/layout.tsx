@@ -73,7 +73,7 @@ export default async function RootLayout({
           defaultTheme="system"
           disableTransitionOnChange
           nonce={nonce}
-          storageKey="theme"
+          storageKey={THEME_STORAGE_KEY}
         >
           <ThemeRootSync />
           {children}

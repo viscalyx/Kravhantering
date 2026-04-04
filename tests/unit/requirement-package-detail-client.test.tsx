@@ -213,7 +213,7 @@ describe('RequirementPackageDetailClient', () => {
           )
         }
 
-        return Promise.resolve(okJson({}))
+        throw new Error(`Unmocked fetch: ${method} ${url}`)
       },
     )
   })

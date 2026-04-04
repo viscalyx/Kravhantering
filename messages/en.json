@@ -51,7 +51,9 @@
     "help": "Help",
     "backToTop": "Back to top",
     "selectAll": "Select all",
-    "selectRow": "Select {id}"
+    "selectRow": "Select {id}",
+    "showShortText": "Show short text",
+    "showFullText": "Show full text"
   },
   "nav": {
     "catalog": "Requirements Catalog",
