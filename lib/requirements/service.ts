@@ -1,10 +1,9 @@
 import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import {
-  getOrCreatePackageNeedsReference,
   getPackageBySlug,
   getPublishedVersionIdForRequirement,
-  linkRequirementsToPackage,
+  linkRequirementsToPackageAtomically,
   listPackageItems,
   listPackages,
   unlinkRequirementsFromPackage,
@@ -1550,22 +1549,16 @@ export function createRequirementsService(
 
           let addedCount = 0
           if (succeeded.length > 0) {
-            let needsReferenceId: number | null = null
-            if (input.needsReferenceText) {
-              needsReferenceId = await getOrCreatePackageNeedsReference(
-                db,
-                packageId,
-                input.needsReferenceText,
-              )
-            }
-            addedCount = await linkRequirementsToPackage(
+            addedCount = await linkRequirementsToPackageAtomically(
               db,
               packageId,
-              succeeded.map(r => ({
-                needsReferenceId,
-                requirementId: r.id,
-                requirementVersionId: r.versionId,
-              })),
+              {
+                items: succeeded.map(r => ({
+                  requirementId: r.id,
+                  requirementVersionId: r.versionId,
+                })),
+                needsReferenceText: input.needsReferenceText,
+              },
             )
           }
 

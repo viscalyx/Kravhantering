@@ -1,21 +1,19 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  getOrCreatePackageNeedsReference,
   getPackageById,
   getPackageBySlug,
-  getPackageNeedsReferenceById,
   getPublishedVersionIdForRequirement,
-  linkRequirementsToPackage,
+  linkRequirementsToPackageAtomically,
   listPackageItems,
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
 import type { Database } from '@/lib/db'
 import { getDb } from '@/lib/db'
+import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
 
-class InvalidNeedsReferenceError extends Error {}
 const ADD_REQUIREMENTS_ERROR = 'Failed to add requirements'
 
 type ParseResult<T> =
@@ -219,44 +217,21 @@ export async function POST(
   }
 
   try {
-    let resolvedNeedsReferenceId: number | null = null
-
-    if (needsReferenceText?.trim()) {
-      resolvedNeedsReferenceId = await getOrCreatePackageNeedsReference(
-        db,
-        packageId,
-        needsReferenceText.trim(),
-      )
-    } else if (needsReferenceId != null) {
-      const existingNeedsReference = await getPackageNeedsReferenceById(
-        db,
-        packageId,
-        needsReferenceId,
-      )
-      if (!existingNeedsReference) {
-        throw new InvalidNeedsReferenceError(
-          'needsReferenceId does not belong to this requirement package',
-        )
-      }
-      resolvedNeedsReferenceId = existingNeedsReference.id
-    }
-
-    const resolvedItems = resolvedVersionIds.map(
-      ({ requirementId, versionId }) => ({
-        requirementId,
-        requirementVersionId: versionId,
-        needsReferenceId: resolvedNeedsReferenceId,
-      }),
-    )
-
-    const addedCount = await linkRequirementsToPackage(
+    const addedCount = await linkRequirementsToPackageAtomically(
       db,
       packageId,
-      resolvedItems,
+      {
+        items: resolvedVersionIds.map(({ requirementId, versionId }) => ({
+          requirementId,
+          requirementVersionId: versionId,
+        })),
+        needsReferenceId,
+        needsReferenceText,
+      },
     )
     return NextResponse.json({ addedCount, ok: true }, { status: 201 })
   } catch (error) {
-    if (error instanceof InvalidNeedsReferenceError) {
+    if (isRequirementsServiceError(error) && error.code === 'validation') {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 

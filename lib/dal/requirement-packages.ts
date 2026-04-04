@@ -13,9 +13,30 @@ import {
 } from '@/drizzle/schema'
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { Database } from '@/lib/db'
+import { validationError } from '@/lib/requirements/errors'
 
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
+type RequirementPackageLinkItem = {
+  requirementId: number
+  requirementVersionId: number
+}
+type D1BatchResult = {
+  meta?: {
+    changes?: number
+  }
+  results?: Record<string, unknown>[]
+}
+type D1PreparedStatement = {
+  bind(...params: unknown[]): D1PreparedStatement
+  run(): Promise<D1BatchResult>
+}
+type D1BatchClient = {
+  batch(statements: D1PreparedStatement[]): Promise<D1BatchResult[]>
+  prepare(query: string): {
+    bind(...params: unknown[]): D1PreparedStatement
+  }
+}
 
 function parseRequirementAreas(
   value: string | null,
@@ -301,21 +322,22 @@ export async function getPackageNeedsReferenceById(
   return needsReference ?? null
 }
 
-export async function getOrCreatePackageNeedsReference(
+async function getOrCreatePackageNeedsReferenceWithMetadata(
   db: DatabaseWriter,
   packageId: number,
   text: string,
-): Promise<number> {
+): Promise<{ created: boolean; id: number }> {
+  const normalizedText = text.trim()
   const [created] = await db
     .insert(packageNeedsReferences)
-    .values({ packageId, text })
+    .values({ packageId, text: normalizedText })
     .onConflictDoNothing({
       target: [packageNeedsReferences.packageId, packageNeedsReferences.text],
     })
     .returning({ id: packageNeedsReferences.id })
 
   if (created) {
-    return created.id
+    return { created: true, id: created.id }
   }
 
   const existing = await db
@@ -324,7 +346,7 @@ export async function getOrCreatePackageNeedsReference(
     .where(
       and(
         eq(packageNeedsReferences.packageId, packageId),
-        eq(packageNeedsReferences.text, text),
+        eq(packageNeedsReferences.text, normalizedText),
       ),
     )
     .limit(1)
@@ -333,7 +355,250 @@ export async function getOrCreatePackageNeedsReference(
     throw new Error('Failed to resolve package needs reference')
   }
 
-  return existing[0].id
+  return { created: false, id: existing[0].id }
+}
+
+export async function getOrCreatePackageNeedsReference(
+  db: DatabaseWriter,
+  packageId: number,
+  text: string,
+): Promise<number> {
+  const { id } = await getOrCreatePackageNeedsReferenceWithMetadata(
+    db,
+    packageId,
+    text,
+  )
+  return id
+}
+
+async function resolveExistingPackageNeedsReferenceForLinking(
+  db: DatabaseReader,
+  packageId: number,
+  needsReferenceId: number,
+): Promise<number> {
+  const existingNeedsReference = await getPackageNeedsReferenceById(
+    db,
+    packageId,
+    needsReferenceId,
+  )
+  if (!existingNeedsReference) {
+    throw validationError(
+      'needsReferenceId does not belong to this requirement package',
+    )
+  }
+
+  return existingNeedsReference.id
+}
+
+function getD1BatchClient(db: Database): D1BatchClient | null {
+  const client = (db as { $client?: D1BatchClient }).$client
+
+  if (
+    typeof client?.batch === 'function' &&
+    typeof client?.prepare === 'function'
+  ) {
+    return client
+  }
+
+  return null
+}
+
+async function linkRequirementsToPackageWithD1Batch(
+  client: D1BatchClient,
+  packageId: number,
+  items: RequirementPackageLinkItem[],
+  needsReferenceText: string,
+) {
+  const normalizedNeedsReferenceText = needsReferenceText.trim()
+  const createdAt = new Date().toISOString()
+  const insertNeedsReference = client
+    .prepare(
+      `
+        INSERT INTO package_needs_references (package_id, text, created_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(package_id, text) DO NOTHING
+      `,
+    )
+    .bind(packageId, normalizedNeedsReferenceText, createdAt)
+
+  const insertItems = items.map(item =>
+    client
+      .prepare(
+        `
+          INSERT INTO requirement_package_items (
+            requirement_package_id,
+            requirement_id,
+            requirement_version_id,
+            needs_reference_id,
+            created_at
+          )
+          VALUES (
+            ?,
+            ?,
+            ?,
+            (
+              SELECT id
+              FROM package_needs_references
+              WHERE package_id = ?
+                AND text = ?
+              LIMIT 1
+            ),
+            ?
+          )
+          ON CONFLICT(requirement_package_id, requirement_id) DO NOTHING
+        `,
+      )
+      .bind(
+        packageId,
+        item.requirementId,
+        item.requirementVersionId,
+        packageId,
+        normalizedNeedsReferenceText,
+        createdAt,
+      ),
+  )
+  const selectNeedsReference = client
+    .prepare(
+      `
+        SELECT id
+        FROM package_needs_references
+        WHERE package_id = ?
+          AND text = ?
+        LIMIT 1
+      `,
+    )
+    .bind(packageId, normalizedNeedsReferenceText)
+
+  const batchResults = await client.batch([
+    insertNeedsReference,
+    ...insertItems,
+    selectNeedsReference,
+  ])
+
+  const createdNeedsReference = Number(batchResults[0]?.meta?.changes ?? 0) > 0
+  const addedCount = batchResults
+    .slice(1, 1 + insertItems.length)
+    .reduce((sum, result) => sum + Number(result.meta?.changes ?? 0), 0)
+  const resolvedNeedsReference = batchResults.at(-1)?.results?.[0] as
+    | { id?: unknown }
+    | undefined
+  const resolvedNeedsReferenceId = resolvedNeedsReference?.id
+
+  if (typeof resolvedNeedsReferenceId !== 'number') {
+    throw new Error('Failed to resolve package needs reference')
+  }
+
+  if (addedCount === 0 && createdNeedsReference) {
+    await client
+      .prepare(
+        `
+          DELETE FROM package_needs_references
+          WHERE id = ?
+            AND package_id = ?
+            AND NOT EXISTS (
+              SELECT 1
+              FROM requirement_package_items
+              WHERE requirement_package_id = ?
+                AND needs_reference_id = ?
+            )
+        `,
+      )
+      .bind(
+        resolvedNeedsReferenceId,
+        packageId,
+        packageId,
+        resolvedNeedsReferenceId,
+      )
+      .run()
+  }
+
+  return addedCount
+}
+
+export async function linkRequirementsToPackageAtomically(
+  db: Database,
+  packageId: number,
+  {
+    items,
+    needsReferenceId,
+    needsReferenceText,
+  }: {
+    items: RequirementPackageLinkItem[]
+    needsReferenceId?: number | null
+    needsReferenceText?: string | null
+  },
+) {
+  if (items.length === 0) {
+    return 0
+  }
+
+  const normalizedNeedsReferenceText = needsReferenceText?.trim() ?? null
+
+  if (normalizedNeedsReferenceText) {
+    const d1BatchClient = getD1BatchClient(db)
+
+    if (d1BatchClient) {
+      return linkRequirementsToPackageWithD1Batch(
+        d1BatchClient,
+        packageId,
+        items,
+        normalizedNeedsReferenceText,
+      )
+    }
+  } else {
+    const resolvedNeedsReferenceId =
+      needsReferenceId == null
+        ? null
+        : await resolveExistingPackageNeedsReferenceForLinking(
+            db,
+            packageId,
+            needsReferenceId,
+          )
+
+    return linkRequirementsToPackage(
+      db,
+      packageId,
+      items.map(item => ({
+        ...item,
+        needsReferenceId: resolvedNeedsReferenceId,
+      })),
+    )
+  }
+
+  return db.transaction(async tx => {
+    const resolvedNeedsReference =
+      await getOrCreatePackageNeedsReferenceWithMetadata(
+        tx,
+        packageId,
+        normalizedNeedsReferenceText,
+      )
+
+    const addedCount = await linkRequirementsToPackage(
+      tx,
+      packageId,
+      items.map(item => ({
+        ...item,
+        needsReferenceId: resolvedNeedsReference.id,
+      })),
+    )
+
+    if (
+      addedCount === 0 &&
+      resolvedNeedsReference.created &&
+      resolvedNeedsReference.id !== null
+    ) {
+      await tx
+        .delete(packageNeedsReferences)
+        .where(
+          and(
+            eq(packageNeedsReferences.id, resolvedNeedsReference.id),
+            eq(packageNeedsReferences.packageId, packageId),
+          ),
+        )
+    }
+
+    return addedCount
+  })
 }
 
 export async function linkRequirementsToPackage(

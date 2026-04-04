@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   listPackageItems: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreatePackageNeedsReference: vi.fn(),
+  linkRequirementsToPackageAtomically: vi.fn(),
   linkRequirementsToPackage: vi.fn(),
   unlinkRequirementsFromPackage: vi.fn(),
   listQualityCharacteristics: vi.fn(),
@@ -49,6 +50,8 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   getPackageBySlug: mocks.getPackageBySlug,
   getPublishedVersionIdForRequirement:
     mocks.getPublishedVersionIdForRequirement,
+  linkRequirementsToPackageAtomically:
+    mocks.linkRequirementsToPackageAtomically,
   linkRequirementsToPackage: mocks.linkRequirementsToPackage,
   listPackageItems: mocks.listPackageItems,
   listPackages: mocks.listPackages,
@@ -238,6 +241,7 @@ describe('createRequirementsService', () => {
       uniqueId: 'IAM-PACKAGE',
     })
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(101)
+    mocks.linkRequirementsToPackageAtomically.mockResolvedValue(0)
     mocks.linkRequirementsToPackage.mockResolvedValue(0)
     mocks.listPackageItems.mockResolvedValue([])
     mocks.listPackages.mockResolvedValue([])
@@ -1031,7 +1035,7 @@ describe('createRequirementsService', () => {
     mocks.getPublishedVersionIdForRequirement
       .mockResolvedValueOnce(201)
       .mockResolvedValueOnce(202)
-    mocks.linkRequirementsToPackage.mockResolvedValue(1)
+    mocks.linkRequirementsToPackageAtomically.mockResolvedValue(1)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
@@ -1044,13 +1048,16 @@ describe('createRequirementsService', () => {
       responseFormat: 'json',
     })
 
-    expect(mocks.linkRequirementsToPackage).toHaveBeenCalledWith(
+    expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
       expect.anything(),
       7,
-      expect.arrayContaining([
-        expect.objectContaining({ requirementId: 10 }),
-        expect.objectContaining({ requirementId: 11 }),
-      ]),
+      {
+        items: expect.arrayContaining([
+          expect.objectContaining({ requirementId: 10 }),
+          expect.objectContaining({ requirementId: 11 }),
+        ]),
+        needsReferenceText: undefined,
+      },
     )
     expect(result.addedCount).toBe(1)
     expect(result.skippedCount).toBe(0)
