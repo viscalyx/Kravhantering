@@ -38,6 +38,7 @@ export default function RequirementTypesClient() {
   useHelpContent(REQUIREMENT_TYPES_HELP)
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
+  const th = useTranslations('help')
   const locale = useLocale()
 
   const [types, setTypes] = useState<Type[]>([])
@@ -90,51 +91,70 @@ export default function RequirementTypesClient() {
           {tn('types')}
         </h1>
 
-        <div className="space-y-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
           {types.map(type => {
             const topLevel = qualityCharacteristics.filter(
               c => c.requirementTypeId === type.id && !c.parentId,
             )
             return (
               <div
-                className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 transition-all duration-200 hover:shadow-md"
+                className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden"
                 key={type.id}
               >
-                <h2 className="text-lg font-semibold mb-4">
-                  {getTypeName(type)}
-                </h2>
-                {topLevel.length === 0 ? (
-                  <p className="text-secondary-600 dark:text-secondary-400 text-sm">
-                    {tc('noResults')}
+                {/* Zone A — Kravtyp */}
+                <div className="px-6 pt-6 pb-4">
+                  <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                    {getTypeName(type)}
+                  </h2>
+                </div>
+
+                {/* Connector: dashed lines flanking ISO badge */}
+                <div className="mx-6 flex items-center gap-2">
+                  <div className="h-px flex-1 border-t-2 border-dashed border-primary-200 dark:border-primary-700" />
+                  <span className="text-xs font-mono bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded border border-primary-200 dark:border-primary-800 select-none">
+                    ISO/IEC 25010:2023
+                  </span>
+                  <div className="h-px flex-1 border-t-2 border-dashed border-primary-200 dark:border-primary-700" />
+                </div>
+
+                {/* Zone B — ISO koppling */}
+                <div className="mx-4 mb-4 mt-3 rounded-xl border-2 border-dashed border-primary-200 dark:border-primary-800 bg-primary-50/40 dark:bg-primary-950/20 p-4">
+                  <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-3 uppercase tracking-wide">
+                    {th('requirementTypes.quality.heading')}
                   </p>
-                ) : (
-                  <div className="space-y-3">
-                    {topLevel.map(parent => {
-                      const children = qualityCharacteristics.filter(
-                        c => c.parentId === parent.id,
-                      )
-                      return (
-                        <div key={parent.id}>
-                          <h3 className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                            {getName(parent)}
-                          </h3>
-                          {children.length > 0 && (
-                            <ul className="ml-4 mt-1 space-y-0.5">
-                              {children.map(child => (
-                                <li
-                                  className="text-sm text-secondary-700 dark:text-secondary-300"
-                                  key={child.id}
-                                >
-                                  {getName(child)}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                  {topLevel.length === 0 ? (
+                    <p className="text-secondary-600 dark:text-secondary-400 text-sm">
+                      {tc('noResults')}
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {topLevel.map(parent => {
+                        const children = qualityCharacteristics.filter(
+                          c => c.parentId === parent.id,
+                        )
+                        return (
+                          <div key={parent.id}>
+                            <h3 className="text-sm font-medium text-primary-700 dark:text-primary-300 mb-1">
+                              {getName(parent)}
+                            </h3>
+                            {children.length > 0 && (
+                              <ul className="ml-3 space-y-0.5">
+                                {children.map(child => (
+                                  <li
+                                    className="text-xs text-secondary-600 dark:text-secondary-400 pl-2 border-l-2 border-primary-200 dark:border-primary-800"
+                                    key={child.id}
+                                  >
+                                    {getName(child)}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })}
