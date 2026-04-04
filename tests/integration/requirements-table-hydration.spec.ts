@@ -4,7 +4,8 @@ const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v3'
 const COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v3.sv'
 const VISIBLE_HEADER_CELL_SELECTOR =
   '[data-sticky-table-header-table="true"] thead th'
-const BODY_COLUMN_SELECTOR = '[data-requirements-data-table="true"] colgroup col'
+const BODY_COLUMN_SELECTOR =
+  '[data-requirements-data-table="true"] colgroup col'
 
 async function expectInitialLoadingState(page: Page) {
   await expect(page.getByText(/Hämtar krav/)).toBeVisible()
