@@ -2882,6 +2882,9 @@ export default function RequirementsTable({
   const [descriptionWrapped, setDescriptionWrapped] = useState(wrapDescription)
   const [showSpinner, setShowSpinner] = useState(false)
   useEffect(() => {
+    setDescriptionWrapped(wrapDescription)
+  }, [wrapDescription])
+  useEffect(() => {
     if (!loading) {
       setShowSpinner(false)
       return
@@ -2917,7 +2920,7 @@ export default function RequirementsTable({
     'bg-secondary-50 shadow-[inset_0_-1px_0_rgba(148,163,184,0.24)] dark:bg-secondary-900 dark:shadow-[inset_0_-1px_0_rgba(51,65,85,0.6)]'
   const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-hidden rounded-t-2xl`
   const stickyTopBarClassName =
-    'flex items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm dark:bg-secondary-900/80'
+    'flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80'
   const stickyHeaderViewportClassName =
     'overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900'
   const resizeHandleBaseClassName =
@@ -2990,7 +2993,7 @@ export default function RequirementsTable({
     ) : null
   const inlineFloatingRail = shouldRenderInlineRail ? (
     <div
-      className="flex items-center gap-2"
+      className="min-w-0 flex flex-wrap items-center gap-2 sm:flex-nowrap"
       {...devMarker({
         context: 'requirements table',
         name: 'floating action rail',
@@ -3354,7 +3357,7 @@ export default function RequirementsTable({
             data-requirements-sticky-top-bar="true"
           >
             <div className="min-w-0 flex-1">{stickyTitle}</div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
               {stickyTitleActions}
               {inlineFloatingRail}
             </div>

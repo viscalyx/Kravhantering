@@ -85,12 +85,16 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 let addRequirementsResponse: { body: unknown; ok: boolean }
+let failNextAvailableRequirementsFetch = false
+let failNextPackageItemsFetch = false
 
 describe('RequirementPackageDetailClient', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     requirementsTableMock.mockReset()
     addRequirementsResponse = { body: { ok: true }, ok: true }
+    failNextAvailableRequirementsFetch = false
+    failNextPackageItemsFetch = false
     fetchMock.mockImplementation(
       (input: string | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input.url
@@ -122,7 +126,18 @@ describe('RequirementPackageDetailClient', () => {
           })
         }
 
-        if (url === '/api/requirement-packages/BEHORIGHET-IAM/items') {
+        if (
+          url === '/api/requirement-packages/BEHORIGHET-IAM/items' &&
+          method === 'GET'
+        ) {
+          if (failNextPackageItemsFetch) {
+            failNextPackageItemsFetch = false
+            return Promise.resolve({
+              json: async () => ({}),
+              ok: false,
+            })
+          }
+
           return Promise.resolve(
             okJson({
               items: [
@@ -153,6 +168,14 @@ describe('RequirementPackageDetailClient', () => {
         }
 
         if (url.startsWith('/api/requirements?')) {
+          if (failNextAvailableRequirementsFetch) {
+            failNextAvailableRequirementsFetch = false
+            return Promise.resolve({
+              json: async () => ({}),
+              ok: false,
+            })
+          }
+
           return Promise.resolve(
             okJson({
               pagination: { hasMore: false },
@@ -467,5 +490,31 @@ describe('RequirementPackageDetailClient', () => {
         ok: true,
       })
     })
+  })
+
+  it('keeps the add dialog open when a post-add refresh fails', async () => {
+    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'package.addSelectedToPackage' }),
+    )
+
+    const dialog = await screen.findByRole('dialog')
+    failNextPackageItemsFetch = true
+
+    fireEvent.click(screen.getByRole('button', { name: 'package.confirmAdd' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
+    expect(dialog).toBeInTheDocument()
   })
 })

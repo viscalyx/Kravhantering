@@ -261,36 +261,65 @@ export default function KravpaketDetailClient({
     }
   }, [packageSlug])
 
-  const fetchPackageItems = useCallback(async () => {
-    const res = await fetch(`/api/requirement-packages/${packageSlug}/items`)
-    if (res.ok) {
+  const fetchPackageItems = useCallback(
+    async ({
+      throwOnError = false,
+    }: {
+      throwOnError?: boolean
+    } = {}): Promise<boolean> => {
+      const res = await fetch(`/api/requirement-packages/${packageSlug}/items`)
+      if (!res.ok) {
+        if (throwOnError) {
+          throw new Error('Failed to refresh requirement package items')
+        }
+        return false
+      }
       const data = (await res.json()) as { items: PackageItem[] }
       setPackageItems(data.items)
-    }
-  }, [packageSlug])
+      return true
+    },
+    [packageSlug],
+  )
 
-  const fetchAvailableRequirements = useCallback(async () => {
-    const requestId = ++latestAvailableRequestIdRef.current
-    const params = buildRequirementListParams({
-      filters: { ...rightFilters, statuses: [3] },
-      limit: PAGE_SIZE,
-      locale,
-      sort: rightSort,
-    })
-    try {
-      const res = await fetch(`/api/requirements?${params}`)
-      if (!res.ok || requestId !== latestAvailableRequestIdRef.current) return
-      const data = (await res.json()) as {
-        requirements?: RequirementRow[]
-        pagination?: { hasMore?: boolean }
+  const fetchAvailableRequirements = useCallback(
+    async ({
+      throwOnError = false,
+    }: {
+      throwOnError?: boolean
+    } = {}): Promise<boolean> => {
+      const requestId = ++latestAvailableRequestIdRef.current
+      const params = buildRequirementListParams({
+        filters: { ...rightFilters, statuses: [3] },
+        limit: PAGE_SIZE,
+        locale,
+        sort: rightSort,
+      })
+      try {
+        const res = await fetch(`/api/requirements?${params}`)
+        if (!res.ok) {
+          if (throwOnError) {
+            throw new Error('Failed to refresh available requirements')
+          }
+          return false
+        }
+        if (requestId !== latestAvailableRequestIdRef.current) return false
+        const data = (await res.json()) as {
+          requirements?: RequirementRow[]
+          pagination?: { hasMore?: boolean }
+        }
+        if (requestId !== latestAvailableRequestIdRef.current) return false
+        setAvailableRows(data.requirements ?? [])
+        setRightHasMore(data.pagination?.hasMore ?? false)
+        return true
+      } catch {
+        if (throwOnError) {
+          throw new Error('Failed to refresh available requirements')
+        }
+        return false
       }
-      if (requestId !== latestAvailableRequestIdRef.current) return
-      setAvailableRows(data.requirements ?? [])
-      setRightHasMore(data.pagination?.hasMore ?? false)
-    } catch {
-      // ignore
-    }
-  }, [locale, rightFilters, rightSort])
+    },
+    [locale, rightFilters, rightSort],
+  )
 
   const loadMoreAvailable = useCallback(async () => {
     if (rightLoadingMore || !rightHasMore) return
@@ -422,7 +451,6 @@ export default function KravpaketDetailClient({
   const handleConfirmAdd = useCallback(async () => {
     if (pendingAddIds.length === 0) return
     setAddModalLoading(true)
-    setAddModalError(null)
     try {
       const body: {
         requirementIds: number[]
@@ -449,10 +477,13 @@ export default function KravpaketDetailClient({
         setAddModalError(data.error ?? tc('error'))
         return
       }
-      setRightSelectedIds(new Set())
+      await Promise.all([
+        fetchPackageItems({ throwOnError: true }),
+        fetchAvailableRequirements({ throwOnError: true }),
+      ])
       setAddModalError(null)
+      setRightSelectedIds(new Set())
       setShowAddModal(false)
-      await Promise.all([fetchPackageItems(), fetchAvailableRequirements()])
     } catch {
       setAddModalError(tc('error'))
     } finally {

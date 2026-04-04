@@ -587,11 +587,7 @@ export async function linkRequirementsToPackageAtomically(
       })),
     )
 
-    if (
-      addedCount === 0 &&
-      resolvedNeedsReference.created &&
-      resolvedNeedsReference.id !== null
-    ) {
+    if (addedCount === 0 && resolvedNeedsReference.created) {
       await tx
         .delete(packageNeedsReferences)
         .where(

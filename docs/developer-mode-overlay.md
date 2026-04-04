@@ -101,7 +101,9 @@ The emitted attributes are:
   presentational chrome surface.
 - Requirement package detail tables may render the `floating action rail`
   inline inside their sticky title bar; the marker name stays the same in both
-  the fixed-right and inline-top layouts.
+  the fixed-right and inline-top layouts. On narrow screens, that sticky title
+  bar and inline rail may wrap across multiple lines without changing marker
+  names.
 - On desktop package-detail split views, those inline rails live inside
   independently scrollable table cards; the marker names stay the same even
   though each table now scrolls within its own panel.

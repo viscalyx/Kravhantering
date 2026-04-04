@@ -841,11 +841,19 @@ describe('RequirementsTable', () => {
     const inlineRail = container.querySelector(
       '[data-floating-action-rail-placement="inline-top"]',
     ) as HTMLDivElement | null
+    const actionGroup = stickyTopBar?.lastElementChild as HTMLDivElement | null
 
     expect(stickyTopBar).toBeTruthy()
     expect(stickyTopBar).toHaveTextContent('Package items')
     expect(stickyTopBar).toHaveTextContent('Remove selected')
+    expect(stickyTopBar?.className).toContain('flex-wrap')
+    expect(stickyTopBar?.className).toContain('sm:flex-nowrap')
     expect(inlineRail).toBeTruthy()
+    expect(inlineRail?.className).toContain('flex-wrap')
+    expect(inlineRail?.className).toContain('sm:flex-nowrap')
+    expect(actionGroup?.className).toContain('flex-wrap')
+    expect(actionGroup?.className).toContain('sm:flex-nowrap')
+    expect(actionGroup?.className).toContain('sm:shrink-0')
     expect(
       inlineRail?.querySelector('[data-column-picker-trigger="true"]'),
     ).toBeTruthy()
@@ -1249,6 +1257,28 @@ describe('RequirementsTable', () => {
     expect(descriptionCell?.className).toContain('whitespace-normal')
     expect(descriptionCell?.className).toContain('break-words')
     expect(descriptionCell?.className).not.toContain('wrap-break-word')
+  })
+
+  it('syncs description wrapping when the prop changes on rerender', () => {
+    const { rerender } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    let descriptionCell = screen.getByText('Testkrav').closest('td')
+    expect(descriptionCell?.className).toContain('truncate')
+
+    rerender(
+      <RequirementsTable locale="sv" rows={[makeRow()]} wrapDescription />,
+    )
+
+    descriptionCell = screen.getByText('Testkrav').closest('td')
+    expect(descriptionCell?.className).toContain('whitespace-normal')
+    expect(descriptionCell?.className).toContain('break-words')
+
+    rerender(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    descriptionCell = screen.getByText('Testkrav').closest('td')
+    expect(descriptionCell?.className).toContain('truncate')
   })
 
   it('adds a visible focus ring to the description wrap toggle', () => {
