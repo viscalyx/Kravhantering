@@ -98,23 +98,27 @@ fixed at the same vertical position while the panel scrolls beneath it.
 ### Step-by-Step Flow: Independent Panel Scroll
 
 1. Navigate to `/sv/requirement-packages/BEHORIGHET-IAM` at 560 px height.
-2. Assert both panels, their sticky bars, triggers, titles, and Krav-ID
-   headers are visible, and `scrollY` is 0.
-3. Measure initial overflow: if neither panel overflows, expand the first left
-   row to add content height and re-measure.
-4. If still no overflow, skip the scroll assertions.
-5. Record initial `scrollTop` for both panels and bounding boxes.
-6. Assert left panel starts near the left viewport edge (≤ 8 px).
-7. Assert right panel ends near the right viewport edge (within 8 px).
-8. Assert both panels fit within the viewport height.
-9. Programmatically set `scrollTop` to 520 on the overflowing panel.
-10. Assert the scrolled panel's `scrollTop` increased.
-11. Assert the stationary panel's `scrollTop` is unchanged.
-12. Assert `window.scrollY` is still 0.
-13. Assert the sticky top bar, column-picker trigger, title, and Krav-ID
-    header are still visible.
-14. Assert the sticky top bar's `y` position is the same before and after
-    scrolling.
+2. Assert the available-requirements panel, its sticky bar, trigger, title,
+   and Krav-ID header are visible, and `scrollY` is 0.
+3. Assert the left side shows either the `items` list panel with its own
+   sticky controls or the empty-state heading/message when the package has no
+   linked requirements.
+4. Measure initial overflow, starting with the available-requirements panel.
+5. If neither side overflows and the left list panel exists, expand the first
+   left row to add content height and re-measure.
+6. If still no overflow, skip the scroll assertions.
+7. Record initial `scrollTop` values and the visible panel bounding boxes.
+8. Assert the right panel ends near the right viewport edge (within 8 px).
+9. Assert the visible split-panel cards fit within the viewport height.
+10. Programmatically set `scrollTop` to 520 on the overflowing panel.
+11. Assert the scrolled panel's `scrollTop` increased.
+12. If the left list panel exists and the right panel was scrolled, assert the
+    left panel's `scrollTop` is unchanged.
+13. Assert `window.scrollY` is still 0.
+14. Assert the right sticky top bar, column-picker trigger, title, and
+    Krav-ID header are still visible.
+15. Assert the right sticky top bar's `y` position is the same before and
+    after scrolling.
 
 ### Sequence Diagram: Independent Panel Scroll
 
@@ -122,21 +126,21 @@ fixed at the same vertical position while the panel scrolls beneath it.
 sequenceDiagram
     participant U as User
     participant P as Page
-    participant L as LeftPanel
+    participant L as LeftSide
     participant R as RightPanel
-    participant Bar as StickyTitleBar
+    participant Bar as RightStickyTitleBar
 
     U->>P: Open BEHORIGHET-IAM at height 560px
-    P->>L: Render "Krav i paketet"
+    P->>L: Render "Krav i paketet" panel or empty state
     P->>R: Render "Tillgängliga krav"
-    Note over L,R: ✓ Both panels visible within viewport
-    P->>L: Measure overflow
+    Note over L,R: ✓ Right panel visible, left side may be empty
     P->>R: Measure overflow
-    Note over L,R: Expand row if needed to create overflow
+    P->>L: Measure overflow when left list panel exists
+    Note over L,R: Expand left row only if a left list panel exists
     P->>Bar: Record Y position
-    U->>L: Set scrollTop = 520 (or R if R overflows)
-    Note over L: ✓ scrollTop increased
-    Note over R: ✓ scrollTop unchanged
+    U->>R: Set scrollTop = 520 when the right panel overflows
+    Note over R: ✓ scrollTop increased
+    Note over L: ✓ Left scrollTop unchanged when a left list panel exists
     Note over P: ✓ window.scrollY = 0
     Note over Bar: ✓ Y position unchanged
 ```
@@ -145,13 +149,15 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[Measure overflow] --> B{Left or right overflows?}
-    B -- Neither --> C[Expand first row]
-    C --> D{Now overflows?}
-    D -- No --> E[Skip scroll assertion]
-    D -- Yes --> F[Scroll overflowing panel]
-    B -- Yes --> F
-    F --> G[Assert only that panel scrolled]
-    G --> H[Assert page Y = 0]
-    H --> I[Assert title bar Y unchanged]
+    A[Measure right-panel overflow] --> B{Right overflows?}
+    B -- No --> C{Left list panel exists?}
+    C -- Yes --> D[Expand first left row]
+    C -- No --> E[Skip scroll assertion]
+    D --> F{Any panel now overflows?}
+    F -- No --> E
+    F -- Yes --> G[Scroll overflowing panel]
+    B -- Yes --> G
+    G --> H[Assert only that panel scrolled]
+    H --> I[Assert page Y = 0]
+    I --> J[Assert right title bar Y unchanged]
 ```

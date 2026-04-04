@@ -29,6 +29,10 @@ const DEFAULT_TERMINOLOGY_PAYLOAD = UI_TERM_KEYS.map(key => ({
 
 const DEFAULT_COLUMN_PAYLOAD: RequirementListColumnDefault[] =
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS.map(column => ({ ...column }))
+const VISIBLE_REQUIREMENTS_HEADER_SELECTOR =
+  '[data-sticky-table-header-table="true"] thead'
+const VISIBLE_REQUIREMENTS_HEADER_CELL_SELECTOR =
+  '[data-sticky-table-header-table="true"] thead th'
 
 async function assertOkResponse(
   requestName: string,
@@ -189,11 +193,13 @@ for (const { name, viewport } of viewportVariants) {
       await expect(page.getByText('Sparat')).toBeVisible()
 
       await page.goto('/sv/requirements')
-      await expect(page.locator('thead')).toContainText(renamedCategoryLabel)
+      await expect(
+        page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
+      ).toContainText(renamedCategoryLabel)
 
       const readHeaderTexts = async () =>
         page
-          .locator('thead th')
+          .locator(VISIBLE_REQUIREMENTS_HEADER_CELL_SELECTOR)
           .evaluateAll(nodes =>
             nodes.map(
               node => node.textContent?.replace(/\s+/g, ' ').trim() ?? '',
@@ -213,7 +219,9 @@ for (const { name, viewport } of viewportVariants) {
       )
 
       await page.reload()
-      await expect(page.locator('thead')).toContainText(renamedCategoryLabel)
+      await expect(
+        page.locator(VISIBLE_REQUIREMENTS_HEADER_SELECTOR),
+      ).toContainText(renamedCategoryLabel)
 
       await page.goto('/sv/admin')
       await expect(categorySingularInput).toHaveValue(renamedCategoryLabel)

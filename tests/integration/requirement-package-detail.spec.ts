@@ -41,6 +41,13 @@ for (const viewport of viewports) {
         const leftPanel = page.locator(
           '[data-package-detail-list-panel="items"]',
         )
+        const leftPanelHeading = page.getByRole('heading', {
+          level: 2,
+          name: /Krav i paketet/,
+        })
+        const leftEmptyState = page.getByText(
+          'Det finns inga krav kopplade till detta paket.',
+        )
         const rightPanel = page.locator(
           '[data-package-detail-list-panel="available"]',
         )
@@ -71,30 +78,36 @@ for (const viewport of viewports) {
           '[data-requirement-header-label="uniqueId"]',
         )
 
-        await expect(leftPanel).toBeVisible()
         await expect(rightPanel).toBeVisible()
-        await expect(leftTopBar).toBeVisible()
-        await expect(leftTrigger).toBeVisible()
-        await expect(leftTitle).toBeVisible()
-        await expect(leftHeaderLabel).toBeVisible()
         await expect(rightTopBar).toBeVisible()
         await expect(rightTrigger).toBeVisible()
         await expect(rightTitle).toBeVisible()
         await expect(rightHeaderLabel).toBeVisible()
+        await expect(leftPanelHeading).toBeVisible()
+        const hasLeftPanel = (await leftPanel.count()) > 0
+        if (hasLeftPanel) {
+          await expect(leftPanel).toBeVisible()
+          await expect(leftTopBar).toBeVisible()
+          await expect(leftTrigger).toBeVisible()
+          await expect(leftTitle).toBeVisible()
+          await expect(leftHeaderLabel).toBeVisible()
+        } else {
+          await expect(leftEmptyState).toBeVisible()
+        }
         await expect
           .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
           .toBe(0)
 
-        let [leftHasOverflow, rightHasOverflow] = await Promise.all([
-          leftPanel.evaluate(
-            node => node.scrollHeight > node.clientHeight + 50,
-          ),
-          rightPanel.evaluate(
-            node => node.scrollHeight > node.clientHeight + 50,
-          ),
-        ])
+        let leftHasOverflow = hasLeftPanel
+          ? await leftPanel.evaluate(
+              node => node.scrollHeight > node.clientHeight + 50,
+            )
+          : false
+        let rightHasOverflow = await rightPanel.evaluate(
+          node => node.scrollHeight > node.clientHeight + 50,
+        )
 
-        if (!leftHasOverflow && !rightHasOverflow) {
+        if (!leftHasOverflow && !rightHasOverflow && hasLeftPanel) {
           const firstLeftRow = leftPanel.locator('tbody tr').first()
           await firstLeftRow.click()
           await expect(
@@ -111,62 +124,56 @@ for (const viewport of viewports) {
           ])
         }
 
-        const [
-          beforeLeftScrollTop,
-          beforeRightScrollTop,
-          leftPanelBox,
-          rightPanelBox,
-        ] = await Promise.all([
-          leftPanel.evaluate(node => node.scrollTop),
-          rightPanel.evaluate(node => node.scrollTop),
-          leftPanel.boundingBox(),
-          rightPanel.boundingBox(),
-        ])
+        const beforeLeftScrollTop = hasLeftPanel
+          ? await leftPanel.evaluate(node => node.scrollTop)
+          : 0
+        const beforeRightScrollTop = await rightPanel.evaluate(
+          node => node.scrollTop,
+        )
+        const rightPanelBox = await rightPanel.boundingBox()
 
-        expect(leftPanelBox).not.toBeNull()
         expect(rightPanelBox).not.toBeNull()
-        if (!leftPanelBox || !rightPanelBox) {
+        if (!rightPanelBox) {
           throw new Error(
-            'Package detail split panels did not expose bounding boxes.',
+            'Available requirements split panel did not expose a bounding box.',
           )
         }
 
-        expect(leftPanelBox.x).toBeLessThanOrEqual(8)
         expect(rightPanelBox.x + rightPanelBox.width).toBeGreaterThanOrEqual(
           activeViewportWidth - 8,
-        )
-        expect(leftPanelBox.y + leftPanelBox.height).toBeLessThanOrEqual(
-          activeViewportHeight,
         )
         expect(rightPanelBox.y + rightPanelBox.height).toBeLessThanOrEqual(
           activeViewportHeight,
         )
+        if (hasLeftPanel) {
+          const leftPanelBox = await leftPanel.boundingBox()
+
+          expect(leftPanelBox).not.toBeNull()
+          if (!leftPanelBox) {
+            throw new Error('Items split panel did not expose a bounding box.')
+          }
+
+          expect(leftPanelBox.x).toBeLessThanOrEqual(8)
+          expect(leftPanelBox.y + leftPanelBox.height).toBeLessThanOrEqual(
+            activeViewportHeight,
+          )
+        }
         // If neither panel overflows (e.g. in CI with a small fixture dataset
         // or a large viewport) the scroll-sync behaviour cannot be exercised.
         // Skip rather than assert on a precondition that isn't met.
-        if (!leftHasOverflow && !rightHasOverflow) {
+        if (!rightHasOverflow && !leftHasOverflow) {
           return
         }
+
         const scrollPanel = rightHasOverflow ? rightPanel : leftPanel
-        const stationaryPanel = rightHasOverflow ? leftPanel : rightPanel
         const beforeScrollTop = rightHasOverflow
           ? beforeRightScrollTop
           : beforeLeftScrollTop
-        const beforeStationaryScrollTop = rightHasOverflow
-          ? beforeLeftScrollTop
-          : beforeRightScrollTop
-        const activeTopBar = rightHasOverflow ? rightTopBar : leftTopBar
-        const activeTrigger = rightHasOverflow ? rightTrigger : leftTrigger
-        const activeTitle = rightHasOverflow ? rightTitle : leftTitle
-        const activeHeaderLabel = rightHasOverflow
-          ? rightHeaderLabel
-          : leftHeaderLabel
-
-        const beforeTopBarBox = await activeTopBar.boundingBox()
+        const beforeTopBarBox = await rightTopBar.boundingBox()
         expect(beforeTopBarBox).not.toBeNull()
         if (!beforeTopBarBox) {
           throw new Error(
-            'Package detail sticky title bar did not expose a bounding box.',
+            'Available requirements sticky title bar did not expose a bounding box.',
           )
         }
 
@@ -178,23 +185,25 @@ for (const viewport of viewports) {
         await expect
           .poll(async () => scrollPanel.evaluate(node => node.scrollTop))
           .toBeGreaterThan(beforeScrollTop)
-        await expect
-          .poll(async () => stationaryPanel.evaluate(node => node.scrollTop))
-          .toBe(beforeStationaryScrollTop)
+        if (hasLeftPanel && rightHasOverflow) {
+          await expect
+            .poll(async () => leftPanel.evaluate(node => node.scrollTop))
+            .toBe(beforeLeftScrollTop)
+        }
         await expect
           .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
           .toBe(0)
-        await expect(activeTopBar).toBeVisible()
-        await expect(activeTrigger).toBeVisible()
-        await expect(activeTitle).toBeVisible()
-        await expect(activeHeaderLabel).toBeVisible()
+        await expect(rightTopBar).toBeVisible()
+        await expect(rightTrigger).toBeVisible()
+        await expect(rightTitle).toBeVisible()
+        await expect(rightHeaderLabel).toBeVisible()
 
-        const afterTopBarBox = await activeTopBar.boundingBox()
+        const afterTopBarBox = await rightTopBar.boundingBox()
 
         expect(afterTopBarBox).not.toBeNull()
         if (!afterTopBarBox) {
           throw new Error(
-            'Package detail sticky title bar lost its bounding box after panel scrolling.',
+            'Available requirements sticky title bar lost its bounding box after panel scrolling.',
           )
         }
 
