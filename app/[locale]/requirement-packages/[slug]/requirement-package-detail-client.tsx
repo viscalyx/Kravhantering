@@ -216,12 +216,17 @@ export default function KravpaketDetailClient({
     })
   }
 
-  const helpButton = (field: string, label: string) => (
+  const helpButton = (
+    field: string,
+    label: string,
+    { disabled = false }: { disabled?: boolean } = {},
+  ) => (
     <button
       aria-controls={`help-${field}`}
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-secondary-400 dark:hover:text-primary-400 dark:disabled:hover:text-secondary-400"
+      disabled={disabled}
       onClick={() => toggleHelp(field)}
       type="button"
     >
@@ -229,9 +234,14 @@ export default function KravpaketDetailClient({
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
+  const helpPanel = (
+    helpKey: string,
+    field: string,
+    { disabled = false }: { disabled?: boolean } = {},
+  ) =>
     openHelp.has(field) && (
       <p
+        aria-disabled={disabled}
         className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
         id={`help-${field}`}
       >
@@ -637,7 +647,12 @@ export default function KravpaketDetailClient({
             <div
               className="w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 shadow-2xl p-6 space-y-4"
               onClick={e => e.stopPropagation()}
-              onKeyDown={e => e.stopPropagation()}
+              onKeyDown={e => {
+                e.stopPropagation()
+                if (e.key === 'Escape') {
+                  closeAddModal()
+                }
+              }}
               role="document"
             >
               <div className="flex items-center justify-between">
@@ -662,11 +677,16 @@ export default function KravpaketDetailClient({
                   >
                     {t('addNeedsRef')}
                   </label>
-                  {helpButton('add-needs-ref', t('addNeedsRef'))}
+                  {helpButton('add-needs-ref', t('addNeedsRef'), {
+                    disabled: addModalLoading,
+                  })}
                 </div>
-                {helpPanel('addNeedsRefHelp', 'add-needs-ref')}
+                {helpPanel('addNeedsRefHelp', 'add-needs-ref', {
+                  disabled: addModalLoading,
+                })}
                 <select
-                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={addModalLoading}
                   id="add-needs-ref"
                   onChange={e => {
                     const v = e.target.value
@@ -707,11 +727,15 @@ export default function KravpaketDetailClient({
                       {helpButton(
                         'add-needs-ref-text',
                         t('addNeedsRefTextLabel'),
+                        { disabled: addModalLoading },
                       )}
                     </div>
-                    {helpPanel('addNeedsRefTextHelp', 'add-needs-ref-text')}
+                    {helpPanel('addNeedsRefTextHelp', 'add-needs-ref-text', {
+                      disabled: addModalLoading,
+                    })}
                     <textarea
-                      className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none"
+                      className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={addModalLoading}
                       id="add-needs-ref-text"
                       onChange={e => setAddNeedsRefText(e.target.value)}
                       placeholder={t('addNeedsRefPlaceholder')}

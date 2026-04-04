@@ -74,11 +74,11 @@ Swedish admin heading.
 ### Step-by-Step Flow
 
 1. Navigate to `/sv/requirements`.
-2. Assert the "Referensdata" button is absent (not an admin context).
-3. Assert the "Inställningar" link is visible with `href="/sv/admin"`.
-4. Click the link.
-5. Assert the URL is `/sv/admin`.
-6. Assert the `h1` text is `"Administrationscenter"`.
+1. Assert the "Referensdata" button is absent (not an admin context).
+1. Assert the "Inställningar" link is visible with `href="/sv/admin"`.
+1. Click the link.
+1. Assert the URL is `/sv/admin`.
+1. Assert the `h1` text is `"Administrationscenter"`.
 
 ### Sequence Diagram
 
@@ -106,20 +106,20 @@ hard page reload.
 ### Step-by-Step Flow: Persist Changes
 
 1. Navigate to `/sv/admin`.
-2. Read the current singular label for "Kategorier".
-3. Switch to the Kolumner tab and read the current column order.
-4. Compute a target order that swaps `area` and `category`.
-5. Switch to the Benämningar tab, append `" test"` to the category label,
+1. Read the current singular label for "Kategorier".
+1. Switch to the Kolumner tab and read the current column order.
+1. Compute a target order that swaps `area` and `category`.
+1. Switch to the Benämningar tab, append `" test"` to the category label,
    and click "Spara". Assert "Sparat" appears.
-6. Switch to the Kolumner tab, apply the target order via `setAdminColumnOrder`,
+1. Switch to the Kolumner tab, apply the target order via `setAdminColumnOrder`,
    and click "Spara". Assert "Sparat" appears.
-7. Navigate to `/sv/requirements`.
-8. Assert the renamed label appears in `<thead>`.
-9. Assert the column index of the renamed label is before or after "Område"
+1. Navigate to `/sv/requirements`.
+1. Assert the renamed label appears in `<thead>`.
+1. Assert the column index of the renamed label is before or after "Område"
    consistent with the swapped order.
-10. Reload the page.
-11. Assert the renamed label is still in `<thead>`.
-12. Navigate back to `/sv/admin` and assert the terminology input still holds
+1. Reload the page.
+1. Assert the renamed label is still in `<thead>`.
+1. Navigate back to `/sv/admin` and assert the terminology input still holds
     the renamed value and the column order matches the target.
 
 ### Sequence Diagram: Persist Changes
@@ -169,16 +169,16 @@ correctly.
 ### Step-by-Step Flow: Mobile Touch Targets
 
 1. Navigate to `/sv/admin` on the `375×812` mobile viewport.
-2. Locate the Benämningar, Kolumner, and Referensdata tabs and the tablist.
-3. Assert the tablist `scrollWidth` exceeds its `clientWidth` (tabs overflow
+1. Locate the Benämningar, Kolumner, and Referensdata tabs and the tablist.
+1. Assert the tablist `scrollWidth` exceeds its `clientWidth` (tabs overflow
    horizontally and are scrollable).
-4. Assert each of the three tabs meets the 44×44 px touch-target minimum.
-5. Assert the "English" and "Återställ standardvy" buttons meet the minimum.
-6. Assert the "Spara" button meets the minimum.
-7. Click the Referensdata tab. Assert it has `aria-selected="true"` and the
+1. Assert each of the three tabs meets the 44×44 px touch-target minimum.
+1. Assert the "English" and "Återställ standardvy" buttons meet the minimum.
+1. Assert the "Spara" button meets the minimum.
+1. Click the Referensdata tab. Assert it has `aria-selected="true"` and the
    reference-data card is visible.
-8. Click the Kolumner tab. Assert it has `aria-selected="true"`.
-9. Assert the column-section "Återställ standardvy" and "Spara" buttons are
+1. Click the Kolumner tab. Assert it has `aria-selected="true"`.
+1. Assert the column-section "Återställ standardvy" and "Spara" buttons are
    visible and meet the minimum.
 
 ### Sequence Diagram: Mobile Touch Targets
@@ -210,7 +210,7 @@ the Swedish (`/sv/admin`) and English (`/en/admin`) locales.
 ### Step-by-Step Flow: Locale Load
 
 1. Navigate to `/{locale}/admin`.
-2. Assert the `h1` text is `"Administrationscenter"` for `sv` or
+1. Assert the `h1` text is `"Administrationscenter"` for `sv` or
    `"Admin center"` for `en`.
 
 ### Sequence Diagram: Locale Load

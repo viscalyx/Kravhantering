@@ -1052,10 +1052,10 @@ describe('createRequirementsService', () => {
       expect.anything(),
       7,
       {
-        items: expect.arrayContaining([
-          expect.objectContaining({ requirementId: 10 }),
-          expect.objectContaining({ requirementId: 11 }),
-        ]),
+        items: [
+          { requirementId: 10, requirementVersionId: 201 },
+          { requirementId: 11, requirementVersionId: 202 },
+        ],
         needsReferenceText: undefined,
       },
     )

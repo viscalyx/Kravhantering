@@ -229,7 +229,10 @@ export async function POST(
         needsReferenceText,
       },
     )
-    return NextResponse.json({ addedCount, ok: true }, { status: 201 })
+    return NextResponse.json(
+      { addedCount, ok: true },
+      { status: addedCount > 0 ? 201 : 200 },
+    )
   } catch (error) {
     if (isRequirementsServiceError(error) && error.code === 'validation') {
       return NextResponse.json({ error: error.message }, { status: 400 })

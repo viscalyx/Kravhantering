@@ -40,18 +40,18 @@ that the filter input and the "Nytt kravpaket" button share the same row.
 ### Step-by-Step Flow
 
 1. Navigate to `/sv/requirement-packages`.
-2. Assert the `h1` "Kravpaket" heading is visible.
-3. Assert the name-filter text input and "Nytt kravpaket" button are visible.
-4. *(Desktop only)* Assert that the bottom edges of the filter and button are
+1. Assert the `h1` "Kravpaket" heading is visible.
+1. Assert the name-filter text input and "Nytt kravpaket" button are visible.
+1. *(Desktop only)* Assert that the bottom edges of the filter and button are
    within 6 px of each other and that the button starts to the right of the
    filter.
-5. Type `Behörighet` into the name filter.
-6. Assert "Behörighet och IAM" link is visible.
-7. Assert "Säkerhetslyft Q2" link is hidden.
-8. Click "Rensa sökning".
-9. Assert the filter input value is empty.
-10. Assert "Behörighet och IAM" is visible again.
-11. Assert "Säkerhetslyft Q2" is visible again.
+1. Type `Behörighet` into the name filter.
+1. Assert "Behörighet och IAM" link is visible.
+1. Assert "Säkerhetslyft Q2" link is hidden.
+1. Click "Rensa sökning".
+1. Assert the filter input value is empty.
+1. Assert "Behörighet och IAM" is visible again.
+1. Verify "Säkerhetslyft Q2" is visible again.
 
 ### Sequence Diagram
 

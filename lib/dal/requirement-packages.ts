@@ -17,21 +17,21 @@ import { validationError } from '@/lib/requirements/errors'
 
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
-type RequirementPackageLinkItem = {
+interface RequirementPackageLinkItem {
   requirementId: number
   requirementVersionId: number
 }
-type D1BatchResult = {
+interface D1BatchResult {
   meta?: {
     changes?: number
   }
   results?: Record<string, unknown>[]
 }
-type D1PreparedStatement = {
+interface D1PreparedStatement {
   bind(...params: unknown[]): D1PreparedStatement
   run(): Promise<D1BatchResult>
 }
-type D1BatchClient = {
+interface D1BatchClient {
   batch(statements: D1PreparedStatement[]): Promise<D1BatchResult[]>
   prepare(query: string): {
     bind(...params: unknown[]): D1PreparedStatement
@@ -408,7 +408,7 @@ async function linkRequirementsToPackageWithD1Batch(
   packageId: number,
   items: RequirementPackageLinkItem[],
   needsReferenceText: string,
-) {
+): Promise<number> {
   const normalizedNeedsReferenceText = needsReferenceText.trim()
   const createdAt = new Date().toISOString()
   const insertNeedsReference = client
@@ -527,12 +527,17 @@ export async function linkRequirementsToPackageAtomically(
     needsReferenceId?: number | null
     needsReferenceText?: string | null
   },
-) {
+): Promise<number> {
   if (items.length === 0) {
     return 0
   }
 
   const normalizedNeedsReferenceText = needsReferenceText?.trim() ?? null
+  if (needsReferenceId != null && normalizedNeedsReferenceText) {
+    throw validationError(
+      'Provide either needsReferenceId or needsReferenceText, not both',
+    )
+  }
 
   if (normalizedNeedsReferenceText) {
     const d1BatchClient = getD1BatchClient(db)
@@ -609,7 +614,7 @@ export async function linkRequirementsToPackage(
     requirementVersionId: number
     needsReferenceId?: number | null
   }[],
-) {
+): Promise<number> {
   if (items.length === 0) return 0
   const inserted = await db
     .insert(requirementPackageItems)
@@ -623,7 +628,7 @@ export async function unlinkRequirementsFromPackage(
   db: Pick<Database, 'delete'>,
   packageId: number,
   requirementIds: number[],
-) {
+): Promise<number> {
   if (requirementIds.length === 0) return 0
   const deleted = await db
     .delete(requirementPackageItems)

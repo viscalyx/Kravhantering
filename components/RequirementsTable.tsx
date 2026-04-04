@@ -3038,36 +3038,44 @@ export default function RequirementsTable({
         )
       : null
 
-  const renderTableHeader = () => (
-    <thead>
-      <tr className="text-left">
+  const renderTableHeader = (mode: 'interactive' | 'semantic') => (
+    <thead className={mode === 'semantic' ? 'h-0 overflow-hidden' : undefined}>
+      <tr className={mode === 'semantic' ? 'h-0 text-left' : 'text-left'}>
         {selectable && (
           <th
-            className={`${thBase} ${headerCellSurfaceClassName} w-9 py-2 text-center`}
+            aria-label={mode === 'semantic' ? tc('selectAll') : undefined}
+            className={
+              mode === 'semantic'
+                ? 'h-0 w-9 overflow-hidden p-0 text-center'
+                : `${thBase} ${headerCellSurfaceClassName} w-9 py-2 text-center`
+            }
+            scope="col"
           >
-            <input
-              aria-label={tc('selectAll')}
-              checked={
-                rows.length > 0 && rows.every(r => selectedIds?.has(r.id))
-              }
-              className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
-              {...devMarker({
-                context: 'requirements table',
-                name: 'row checkbox',
-                priority: 300,
-                value: 'select all',
-              })}
-              onChange={e => {
-                if (!onSelectionChange) return
-                if (e.target.checked) {
-                  onSelectionChange(new Set(rows.map(r => r.id)))
-                } else {
-                  onSelectionChange(new Set())
+            {mode === 'interactive' ? (
+              <input
+                aria-label={tc('selectAll')}
+                checked={
+                  rows.length > 0 && rows.every(r => selectedIds?.has(r.id))
                 }
-              }}
-              ref={selectAllRef}
-              type="checkbox"
-            />
+                className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
+                {...devMarker({
+                  context: 'requirements table',
+                  name: 'row checkbox',
+                  priority: 300,
+                  value: 'select all',
+                })}
+                onChange={e => {
+                  if (!onSelectionChange) return
+                  if (e.target.checked) {
+                    onSelectionChange(new Set(rows.map(r => r.id)))
+                  } else {
+                    onSelectionChange(new Set())
+                  }
+                }}
+                ref={selectAllRef}
+                type="checkbox"
+              />
+            ) : null}
           </th>
         )}
         {columnDefinitions.map((column, columnIndex) => {
@@ -3086,6 +3094,7 @@ export default function RequirementsTable({
 
           return (
             <th
+              aria-label={mode === 'semantic' ? label : undefined}
               aria-sort={
                 isSortable
                   ? isActiveSort
@@ -3095,83 +3104,101 @@ export default function RequirementsTable({
                     : 'none'
                   : undefined
               }
-              className={`${thBase} ${headerCellSurfaceClassName} py-2 ${headerAlignClass} ${dividerClass}`}
+              className={
+                mode === 'semantic'
+                  ? `h-0 overflow-hidden p-0 ${headerAlignClass}`
+                  : `${thBase} ${headerCellSurfaceClassName} py-2 ${headerAlignClass} ${dividerClass}`
+              }
+              data-requirement-semantic-header-label={
+                mode === 'semantic' ? column.id : undefined
+              }
               key={`column-header-${column.id}`}
-              {...devMarker({
-                context: 'requirements table',
-                name: 'column header',
-                priority: 350,
-                value: getRequirementColumnDeveloperModeLabel(column.id),
-              })}
-              ref={node => {
-                headerCellRefs.current[column.id] = node
-              }}
+              scope="col"
+              {...(mode === 'interactive'
+                ? devMarker({
+                    context: 'requirements table',
+                    name: 'column header',
+                    priority: 350,
+                    value: getRequirementColumnDeveloperModeLabel(column.id),
+                  })
+                : {})}
+              ref={
+                mode === 'interactive'
+                  ? node => {
+                      headerCellRefs.current[column.id] = node
+                    }
+                  : undefined
+              }
             >
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
-                  data-requirement-header-control={column.id}
-                >
-                  {isSortable ? (
-                    <button
-                      className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
-                      {...devMarker({
-                        name: 'sort button',
-                        priority: 300,
-                        value: getRequirementColumnDeveloperModeLabel(
-                          column.id,
-                        ),
-                      })}
-                      onClick={() =>
-                        handleSortToggle(column.id as RequirementSortField)
-                      }
-                      title={sortTooltip}
-                      type="button"
+              {mode === 'interactive' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                      data-requirement-header-control={column.id}
                     >
-                      <span
-                        className="min-w-0 flex-1 truncate"
-                        data-requirement-header-label={column.id}
-                      >
-                        {label}
-                      </span>
-                      {getSortIcon(column.id as RequirementSortField)}
-                    </button>
-                  ) : (
-                    <span
-                      className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
-                      data-requirement-header-label={column.id}
-                    >
-                      {label}
-                    </span>
-                  )}
-                  {renderFilterControl(column.id)}
-                  {column.id === 'description' && (
-                    <button
-                      aria-label={
-                        descriptionWrapped
-                          ? tc('showShortText')
-                          : tc('showFullText')
-                      }
-                      aria-pressed={descriptionWrapped}
-                      className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600"
-                      onClick={() => setDescriptionWrapped(v => !v)}
-                      title={
-                        descriptionWrapped
-                          ? tc('showShortText')
-                          : tc('showFullText')
-                      }
-                      type="button"
-                    >
-                      {descriptionWrapped ? (
-                        <WrapText size={16} />
+                      {isSortable ? (
+                        <button
+                          className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
+                          {...devMarker({
+                            name: 'sort button',
+                            priority: 300,
+                            value: getRequirementColumnDeveloperModeLabel(
+                              column.id,
+                            ),
+                          })}
+                          onClick={() =>
+                            handleSortToggle(column.id as RequirementSortField)
+                          }
+                          title={sortTooltip}
+                          type="button"
+                        >
+                          <span
+                            className="min-w-0 flex-1 truncate"
+                            data-requirement-header-label={column.id}
+                          >
+                            {label}
+                          </span>
+                          {getSortIcon(column.id as RequirementSortField)}
+                        </button>
                       ) : (
-                        <AlignLeft size={16} />
+                        <span
+                          className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
+                          data-requirement-header-label={column.id}
+                        >
+                          {label}
+                        </span>
                       )}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {renderFilterChips(column.id)}
+                      {renderFilterControl(column.id)}
+                      {column.id === 'description' && (
+                        <button
+                          aria-label={
+                            descriptionWrapped
+                              ? tc('showShortText')
+                              : tc('showFullText')
+                          }
+                          aria-pressed={descriptionWrapped}
+                          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary-50 dark:focus-visible:ring-offset-secondary-900"
+                          onClick={() => setDescriptionWrapped(v => !v)}
+                          title={
+                            descriptionWrapped
+                              ? tc('showShortText')
+                              : tc('showFullText')
+                          }
+                          type="button"
+                        >
+                          {descriptionWrapped ? (
+                            <WrapText size={16} />
+                          ) : (
+                            <AlignLeft size={16} />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {renderFilterChips(column.id)}
+                </>
+              ) : null}
             </th>
           )
         })}
@@ -3389,7 +3416,11 @@ export default function RequirementsTable({
               willChange: 'transform',
             }}
           >
-            <table className="w-full table-fixed text-sm">
+            <table
+              className="w-full table-fixed text-sm"
+              data-sticky-table-header-table="true"
+              role="presentation"
+            >
               <colgroup>
                 {selectable && <col style={{ width: '36px' }} />}
                 {columnDefinitions.map(column => (
@@ -3399,7 +3430,7 @@ export default function RequirementsTable({
                   />
                 ))}
               </colgroup>
-              {renderTableHeader()}
+              {renderTableHeader('interactive')}
             </table>
           </div>
         </div>
@@ -3443,6 +3474,7 @@ export default function RequirementsTable({
           <table
             className="w-full table-fixed text-sm"
             {...devMarker({ name: 'requirements table', priority: 320 })}
+            data-requirements-data-table="true"
             ref={tableRef}
           >
             <colgroup>
@@ -3457,6 +3489,7 @@ export default function RequirementsTable({
                 />
               ))}
             </colgroup>
+            {renderTableHeader('semantic')}
             <tbody
               className={`${showSpinner ? 'opacity-40' : ''} ${loading ? 'pointer-events-none' : ''}`}
             >

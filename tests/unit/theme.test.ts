@@ -26,8 +26,8 @@ describe('theme utilities', () => {
     expect(normalizeThemePreference(null)).toBe('system')
   })
 
-  it('returns the first non-empty request nonce', () => {
-    expect(getRequestNonce([undefined, '', '  ', 'nonce-123'])).toBe(
+  it('returns the first trimmed non-empty request nonce', () => {
+    expect(getRequestNonce([undefined, '', '  ', '  nonce-123  '])).toBe(
       'nonce-123',
     )
     expect(getRequestNonce([null, undefined, ''])).toBeUndefined()

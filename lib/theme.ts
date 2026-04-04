@@ -10,6 +10,18 @@ export const THEME_LIGHT_BACKGROUND = '#ffffff'
 export type ThemePreference = 'light' | 'dark' | 'system'
 export type ResolvedTheme = 'light' | 'dark'
 
+export interface CookieSetOptions {
+  expires: Date
+  name: string
+  path: string
+  sameSite?: string
+  value: string
+}
+
+export interface CookieStore {
+  set?: (options: CookieSetOptions) => Promise<unknown>
+}
+
 export function normalizeThemePreference(
   value: string | null | undefined,
 ): ThemePreference {
@@ -23,7 +35,7 @@ export function getRequestNonce(
 ): string | undefined {
   for (const value of values) {
     if (typeof value === 'string' && value.trim().length > 0) {
-      return value
+      return value.trim()
     }
   }
 
@@ -72,33 +84,23 @@ export function getServerThemeRootAttributes(
 export function applyResolvedThemeToRoot(
   root: HTMLElement,
   resolvedTheme: ResolvedTheme,
-) {
+): void {
   root.classList.toggle(THEME_DARK_CLASS, resolvedTheme === 'dark')
   root.style.colorScheme = resolvedTheme
   root.style.backgroundColor =
     resolvedTheme === 'dark' ? THEME_DARK_BACKGROUND : THEME_LIGHT_BACKGROUND
 }
 
-export function createThemeCookie(preference: ThemePreference) {
+export function createThemeCookie(preference: ThemePreference): string {
   return `${THEME_COOKIE_KEY}=${encodeURIComponent(preference)}; Path=/; Max-Age=${THEME_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`
 }
 
 export function persistThemePreference(
   preference: ThemePreference,
   doc: Document = document,
-) {
+): void {
   const cookieStore = (
-    globalThis as typeof globalThis & {
-      cookieStore?: {
-        set?: (options: {
-          expires: Date
-          name: string
-          path: string
-          sameSite?: string
-          value: string
-        }) => Promise<unknown>
-      }
-    }
+    globalThis as typeof globalThis & { cookieStore?: CookieStore }
   ).cookieStore
 
   if (typeof cookieStore?.set === 'function') {

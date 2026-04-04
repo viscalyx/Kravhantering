@@ -127,6 +127,41 @@ describe('requirement-packages/[id]/items route', () => {
     )
   })
 
+  it('returns 200 when linking is a no-op', async () => {
+    mocks.linkRequirementsToPackageAtomically.mockResolvedValueOnce(0)
+
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          needsReferenceText: 'Shared need',
+          requirementIds: [1],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('pkg'))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ addedCount: 0, ok: true })
+    expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      {
+        items: [
+          {
+            requirementId: 1,
+            requirementVersionId: 42,
+          },
+        ],
+        needsReferenceId: undefined,
+        needsReferenceText: 'Shared need',
+      },
+    )
+  })
+
   it('rejects malformed requirementIds before any database work runs', async () => {
     const request = new NextRequest(
       'http://localhost/api/requirement-packages/pkg/items',

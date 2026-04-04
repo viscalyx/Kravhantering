@@ -382,7 +382,9 @@ describe('RequirementsTable', () => {
 
   function setHeaderMetrics(container: HTMLElement, widths: number[]) {
     const headers = Array.from(
-      container.querySelectorAll('thead th'),
+      container.querySelectorAll(
+        '[data-sticky-table-header-table="true"] thead th',
+      ),
     ) as HTMLTableCellElement[]
 
     let left = 0
@@ -868,13 +870,27 @@ describe('RequirementsTable', () => {
     const stickyTableChrome = container.querySelector(
       '[data-sticky-table-chrome="true"]',
     ) as HTMLDivElement | null
-    const headerCells = Array.from(container.querySelectorAll('thead th'))
+    const stickyHeaderTable = container.querySelector(
+      '[data-sticky-table-header-table="true"]',
+    ) as HTMLTableElement | null
+    const stickyHeaderCells = Array.from(
+      container.querySelectorAll(
+        '[data-sticky-table-header-table="true"] thead th',
+      ),
+    )
+    const semanticHeaderCells = Array.from(
+      container.querySelectorAll(
+        '[data-requirements-data-table="true"] thead th',
+      ),
+    )
 
     expect(stickyTableChrome?.className).toContain('sticky')
     expect(stickyTableChrome?.className).toContain('top-16')
     expect(stickyTableChrome?.className).toContain('rounded-t-2xl')
-    expect(headerCells.length).toBeGreaterThan(1)
-    for (const cell of headerCells) {
+    expect(stickyHeaderTable).toHaveAttribute('role', 'presentation')
+    expect(stickyHeaderCells.length).toBeGreaterThan(1)
+    expect(semanticHeaderCells.length).toBeGreaterThan(1)
+    for (const cell of stickyHeaderCells) {
       expect(cell.className).toContain('bg-secondary-50')
     }
   })
@@ -1233,6 +1249,16 @@ describe('RequirementsTable', () => {
     expect(descriptionCell?.className).toContain('whitespace-normal')
     expect(descriptionCell?.className).toContain('break-words')
     expect(descriptionCell?.className).not.toContain('wrap-break-word')
+  })
+
+  it('adds a visible focus ring to the description wrap toggle', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    const wrapToggle = screen.getByRole('button', { name: 'showFullText' })
+
+    expect(wrapToggle.className).toContain('focus-visible:outline-none')
+    expect(wrapToggle.className).toContain('focus-visible:ring-2')
+    expect(wrapToggle.className).toContain('focus-visible:ring-offset-2')
   })
 
   it('clears hidden column filters and resets hidden active sort', () => {

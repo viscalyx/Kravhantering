@@ -265,6 +265,56 @@ describe('linkRequirementsToPackageAtomically', () => {
     expect(packageANeedsReferences).toEqual([])
   })
 
+  it('rejects conflicting needs-reference inputs before linking', async () => {
+    await seedPublishedStatus(db)
+
+    const pkg = await createPackage(db, {
+      name: 'Conflicting package',
+      uniqueId: 'CONFLICTING-PACKAGE',
+    })
+
+    await db.insert(schema.requirementAreas).values({
+      description: null,
+      id: 1,
+      name: 'Platform',
+      nextSequence: 1,
+      ownerId: null,
+      prefix: 'PLT',
+    })
+    await db.insert(schema.requirements).values({
+      id: 1,
+      requirementAreaId: 1,
+      sequenceNumber: 1,
+      uniqueId: 'PLT-001',
+    })
+    await db.insert(schema.requirementVersions).values({
+      description: 'PLT-001 description',
+      id: 101,
+      requirementId: 1,
+      requiresTesting: false,
+      statusId: 3,
+      versionNumber: 1,
+    })
+
+    const needsReferenceId = await getOrCreatePackageNeedsReference(
+      db,
+      pkg.id,
+      'Existing need',
+    )
+
+    await expect(
+      linkRequirementsToPackageAtomically(db, pkg.id, {
+        items: [{ requirementId: 1, requirementVersionId: 101 }],
+        needsReferenceId,
+        needsReferenceText: '  Conflicting need  ',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message:
+        'Provide either needsReferenceId or needsReferenceText, not both',
+    })
+  })
+
   it('removes a newly created needs reference when all links already exist', async () => {
     await seedPublishedStatus(db)
 

@@ -96,7 +96,9 @@ The emitted attributes are:
   version is the one that can be added to a package.
 - Sticky requirements table headers keep their existing
   `requirements table > column header: ...` references while pinned; the sticky
-  state does not introduce a separate developer-mode surface.
+  state does not introduce a separate developer-mode surface. The scrolling
+  data table keeps the semantic header row while the pinned clone remains a
+  presentational chrome surface.
 - Requirement package detail tables may render the `floating action rail`
   inline inside their sticky title bar; the marker name stays the same in both
   the fixed-right and inline-top layouts.
@@ -116,7 +118,8 @@ The emitted attributes are:
   existing `dialog` surface and do not add separate developer-mode markers.
 - Needs-reference controls and inline loading or failure messages inside the
   add-to-package dialog remain part of that same
-  `detail action: add to package` flow rather than introducing extra markers.
+  `detail action: add to package` flow rather than introducing extra markers,
+  including when those controls are temporarily disabled during submission.
 - Requirement package list print pages expose `report state` markers with
   values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.

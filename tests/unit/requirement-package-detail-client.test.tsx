@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementPackageDetailClient from '@/app/[locale]/requirement-packages/[slug]/requirement-package-detail-client'
@@ -378,5 +378,94 @@ describe('RequirementPackageDetailClient', () => {
       'Could not add requirements',
     )
     expect(dialog).toBeInTheDocument()
+  })
+
+  it('closes the add dialog when Escape is pressed inside the panel', async () => {
+    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'package.addSelectedToPackage' }),
+    )
+
+    await screen.findByRole('dialog')
+    fireEvent.change(screen.getByLabelText('package.addNeedsRef'), {
+      target: { value: 'new' },
+    })
+
+    fireEvent.keyDown(screen.getByLabelText('package.addNeedsRefTextLabel'), {
+      key: 'Escape',
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('disables needs-reference inputs and help toggles while add is submitting', async () => {
+    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'select-row-202' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'package.addSelectedToPackage' }),
+    )
+
+    await screen.findByRole('dialog')
+    fireEvent.change(screen.getByLabelText('package.addNeedsRef'), {
+      target: { value: 'new' },
+    })
+
+    const select = screen.getByLabelText('package.addNeedsRef')
+    const textarea = screen.getByLabelText('package.addNeedsRefTextLabel')
+    const needsRefHelpButton = screen.getByRole('button', {
+      name: 'common.help: package.addNeedsRef',
+    })
+    const needsRefTextHelpButton = screen.getByRole('button', {
+      name: 'common.help: package.addNeedsRefTextLabel',
+    })
+
+    let resolvePost:
+      | ((value: { json: () => Promise<unknown>; ok: boolean }) => void)
+      | undefined
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolvePost = resolve
+        }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'package.confirmAdd' }))
+
+    await waitFor(() => {
+      expect(select).toBeDisabled()
+      expect(textarea).toBeDisabled()
+      expect(needsRefHelpButton).toBeDisabled()
+      expect(needsRefTextHelpButton).toBeDisabled()
+    })
+
+    await act(async () => {
+      resolvePost?.({
+        json: async () => ({ ok: true }),
+        ok: true,
+      })
+    })
   })
 })
