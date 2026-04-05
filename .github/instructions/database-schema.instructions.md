@@ -29,6 +29,13 @@ applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/mi
 - Remove retired-column wiring from DAL, services, UI, tests, and docs. Do
   not keep product semantics attached to an `unused_n` column.
 
+## Foreign Keys
+
+- Use table-level `foreignKey({ name: 'fk_<table>_<col>', columns: [...], foreignColumns: [...] })` for all FK constraints that need explicit names.
+- Do not rely on `.references()` for named constraints — `ReferenceConfig.actions` has no `constraintName` option (drizzle-orm ≥ 0.45).
+- Name FK constraints `fk_<table>_<col>` where `<table>` is the declaring table and `<col>` is the referencing column name.
+- Chain `.onDelete(action)` / `.onUpdate(action)` on the `foreignKey()` builder for referential actions.
+
 ## Sync
 
 - Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected DAL/tests, and `docs/database-schema.md` in the same change.

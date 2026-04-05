@@ -455,12 +455,8 @@ export const normReferencesRelations = relations(
 export const requirementVersionNormReferences = sqliteTable(
   'requirement_version_norm_references',
   {
-    requirementVersionId: integer('requirement_version_id')
-      .notNull()
-      .references(() => requirementVersions.id, { onDelete: 'cascade' }),
-    normReferenceId: integer('norm_reference_id')
-      .notNull()
-      .references(() => normReferences.id),
+    requirementVersionId: integer('requirement_version_id').notNull(),
+    normReferenceId: integer('norm_reference_id').notNull(),
   },
   table => [
     primaryKey({
@@ -470,6 +466,16 @@ export const requirementVersionNormReferences = sqliteTable(
     index('idx_requirement_version_norm_references_norm_reference_id').on(
       table.normReferenceId,
     ),
+    foreignKey({
+      name: 'fk_requirement_version_norm_references_requirement_version_id',
+      columns: [table.requirementVersionId],
+      foreignColumns: [requirementVersions.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      name: 'fk_requirement_version_norm_references_norm_reference_id',
+      columns: [table.normReferenceId],
+      foreignColumns: [normReferences.id],
+    }),
   ],
 )
 
