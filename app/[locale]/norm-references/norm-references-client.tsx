@@ -84,7 +84,8 @@ export default function NormReferencesClient() {
     useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
+  const [linkedRequirementsError, setLinkedRequirementsError] = useState(false)
   const [form, setForm] = useState({
     normReferenceId: '',
     name: '',
@@ -127,6 +128,7 @@ export default function NormReferencesClient() {
   const fetchLinkedRequirements = useCallback(async (id: number) => {
     const requestId = ++linkedReqRequestId.current
     setLinkedRequirementsLoading(true)
+    setLinkedRequirementsError(false)
     try {
       const res = await fetch(`/api/norm-references/${id}`)
       if (res.ok && requestId === linkedReqRequestId.current) {
@@ -136,7 +138,9 @@ export default function NormReferencesClient() {
         setLinkedRequirements(data.linkedRequirements ?? [])
       }
     } catch {
-      // Keep existing linkedRequirements on error
+      if (requestId === linkedReqRequestId.current) {
+        setLinkedRequirementsError(true)
+      }
     } finally {
       if (requestId === linkedReqRequestId.current) {
         setLinkedRequirementsLoading(false)
@@ -235,7 +239,7 @@ export default function NormReferencesClient() {
     )
       return
     setDeleteError(null)
-    setDeletingId(id)
+    setDeletingIds(prev => new Set(prev).add(id))
     try {
       const res = await fetch(`/api/norm-references/${id}`, {
         method: 'DELETE',
@@ -260,7 +264,11 @@ export default function NormReferencesClient() {
     } catch {
       setDeleteError(tc('error'))
     } finally {
-      setDeletingId(null)
+      setDeletingIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -342,8 +350,9 @@ export default function NormReferencesClient() {
                   <button
                     className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                     disabled={submitting}
-                    onClick={async () => {
-                      if (!(await guardUnsavedChanges())) return
+                    onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                      const anchorEl = e.currentTarget
+                      if (!(await guardUnsavedChanges(anchorEl))) return
                       setShowForm(false)
                       setEditId(null)
                       setLinkedRequirements([])
@@ -365,6 +374,13 @@ export default function NormReferencesClient() {
                   {linkedRequirementsLoading ? (
                     <p className="text-sm text-secondary-500 dark:text-secondary-400">
                       {tc('loading')}
+                    </p>
+                  ) : linkedRequirementsError ? (
+                    <p
+                      className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                      role="alert"
+                    >
+                      {tc('error')}
                     </p>
                   ) : linkedRequirements.length === 0 ? (
                     <p className="text-sm text-secondary-500 dark:text-secondary-400">
@@ -553,13 +569,13 @@ export default function NormReferencesClient() {
                           name: 'table action',
                           value: 'delete',
                         })}
-                        disabled={submitting || deletingId === nr.id}
+                        disabled={submitting || deletingIds.has(nr.id)}
                         onClick={e =>
                           handleDelete(nr.id, e.currentTarget as HTMLElement)
                         }
                         type="button"
                       >
-                        {deletingId === nr.id ? tc('loading') : tc('delete')}
+                        {deletingIds.has(nr.id) ? tc('loading') : tc('delete')}
                       </button>
                     </td>
                   </tr>
