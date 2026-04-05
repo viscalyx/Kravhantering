@@ -949,7 +949,7 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     throw conflictError('Only draft versions can be deleted')
   }
 
-  // Delete related references and scenarios first
+  // Delete related references, scenarios, and norm references first
   await db
     .delete(requirementReferences)
     .where(eq(requirementReferences.requirementVersionId, latestVersion.id))
@@ -958,6 +958,14 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     .where(
       eq(
         requirementVersionUsageScenarios.requirementVersionId,
+        latestVersion.id,
+      ),
+    )
+  await db
+    .delete(requirementVersionNormReferences)
+    .where(
+      eq(
+        requirementVersionNormReferences.requirementVersionId,
         latestVersion.id,
       ),
     )

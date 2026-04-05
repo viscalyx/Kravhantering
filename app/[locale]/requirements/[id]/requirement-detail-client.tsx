@@ -1585,6 +1585,37 @@ export default function RequirementDetailClient({
                   {...devMarker({
                     context: detailContext,
                     name: 'detail section',
+                    priority: 355,
+                    value: 'normReferences',
+                  })}
+                >
+                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                    {t('normReferences')}
+                  </h3>
+                  {selectedVersion?.versionNormReferences &&
+                  selectedVersion.versionNormReferences.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2">
+                      {selectedVersion.versionNormReferences.map(vnr => (
+                        <li
+                          className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
+                          key={`normref-chip-${vnr.normReference.id}`}
+                          title={`${vnr.normReference.name} (${vnr.normReference.reference})`}
+                        >
+                          {vnr.normReference.normReferenceId}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                      {tc('noneAvailable')}
+                    </p>
+                  )}
+                </div>
+
+                <div
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'detail section',
                     priority: 350,
                     value: 'scenarios',
                   })}
@@ -1607,37 +1638,6 @@ export default function RequirementDetailClient({
                           })}
                         >
                           {localName(vs.scenario)}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
-                    </p>
-                  )}
-                </div>
-
-                <div
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'detail section',
-                    priority: 355,
-                    value: 'normReferences',
-                  })}
-                >
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                    {t('normReferences')}
-                  </h3>
-                  {selectedVersion?.versionNormReferences &&
-                  selectedVersion.versionNormReferences.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2">
-                      {selectedVersion.versionNormReferences.map(vnr => (
-                        <li
-                          className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
-                          key={`normref-chip-${vnr.normReference.id}`}
-                          title={`${vnr.normReference.name} (${vnr.normReference.reference})`}
-                        >
-                          {vnr.normReference.normReferenceId}
                         </li>
                       ))}
                     </ul>

@@ -36,9 +36,35 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const body = (await request.json()) as Parameters<
-    typeof createNormReference
-  >[1]
-  const normReference = await createNormReference(db, body)
-  return NextResponse.json(normReference, { status: 201 })
+  const body = (await request.json()) as Record<string, unknown>
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const type = typeof body.type === 'string' ? body.type.trim() : ''
+  const reference =
+    typeof body.reference === 'string' ? body.reference.trim() : ''
+  const issuer = typeof body.issuer === 'string' ? body.issuer.trim() : ''
+  if (!name || !type || !reference || !issuer) {
+    return NextResponse.json(
+      { error: 'Missing required fields: name, type, reference, issuer' },
+      { status: 400 },
+    )
+  }
+  try {
+    const normReference = await createNormReference(db, {
+      normReferenceId:
+        typeof body.normReferenceId === 'string'
+          ? body.normReferenceId
+          : undefined,
+      name,
+      type,
+      reference,
+      version: typeof body.version === 'string' ? body.version || null : null,
+      issuer,
+    })
+    return NextResponse.json(normReference, { status: 201 })
+  } catch {
+    return NextResponse.json(
+      { error: 'Failed to create norm reference' },
+      { status: 500 },
+    )
+  }
 }

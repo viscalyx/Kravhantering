@@ -99,7 +99,7 @@ export default function RequirementTypesClient() {
             )
             return (
               <div
-                className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden"
+                className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border dark:border-secondary-700 shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden"
                 key={type.id}
                 {...devMarker({
                   context: 'requirement types',

@@ -476,6 +476,7 @@ export function getRequirementCsvHeaders(
     getLocalizedUiTerm(terminology, 'status', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'requiresTesting', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
+    locale === 'sv' ? 'Normreferenser' : 'Norm references',
   ]
 }
 

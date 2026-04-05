@@ -129,6 +129,7 @@ export async function GET(request: NextRequest) {
               ? 'Nej'
               : 'No',
           String(r.version?.versionNumber ?? 1),
+          (r.normReferenceIds ?? []).join(', '),
         ]
         return Object.fromEntries(headers.map((h, i) => [h, values[i]]))
       })

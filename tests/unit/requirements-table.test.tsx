@@ -2875,4 +2875,69 @@ describe('RequirementsTable', () => {
       globalThis.IntersectionObserver = OriginalIntersectionObserver
     }
   })
+
+  describe('norm references column', () => {
+    const normRefColumns = [
+      ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+      'normReferences' as const,
+    ]
+
+    it('renders norm reference IDs in cell when column is visible', () => {
+      const row = makeRow({
+        normReferenceIds: ['SFS-2018-218', 'ISO-27001-2022'],
+      })
+      render(
+        <RequirementsTable
+          locale="sv"
+          rows={[row]}
+          visibleColumns={normRefColumns}
+        />,
+      )
+      expect(
+        screen.getByText('SFS-2018-218, ISO-27001-2022'),
+      ).toBeInTheDocument()
+    })
+
+    it('renders dash when no norm references', () => {
+      const row = makeRow({ normReferenceIds: [] })
+      const { container } = render(
+        <RequirementsTable
+          locale="sv"
+          rows={[row]}
+          visibleColumns={normRefColumns}
+        />,
+      )
+      const cells = container.querySelectorAll('td')
+      const normRefCell = Array.from(cells).find(c => c.textContent === '—')
+      expect(normRefCell).toBeTruthy()
+    })
+
+    it('calls onVisibleColumnsChange when toggling normReferences column', async () => {
+      const onVisibleColumnsChange = vi.fn()
+      const { container } = render(
+        <RequirementsTable
+          locale="sv"
+          onVisibleColumnsChange={onVisibleColumnsChange}
+          rows={[makeRow()]}
+          visibleColumns={DEFAULT_VISIBLE_REQUIREMENT_COLUMNS}
+        />,
+      )
+      const trigger = getColumnPickerTrigger(container)
+      expect(trigger).toBeTruthy()
+      await act(async () => {
+        fireEvent.click(trigger as HTMLButtonElement)
+      })
+      const normRefOption =
+        container.querySelector(
+          '[data-column-picker-option="normReferences"]',
+        ) ??
+        document.querySelector('[data-column-picker-option="normReferences"]')
+      if (normRefOption) {
+        await act(async () => {
+          fireEvent.click(normRefOption)
+        })
+        expect(onVisibleColumnsChange).toHaveBeenCalled()
+      }
+    })
+  })
 })

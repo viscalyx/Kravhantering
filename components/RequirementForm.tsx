@@ -4,6 +4,7 @@ import { HelpCircle, Plus, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import { useRouter } from '@/i18n/routing'
 
 interface FormData {
@@ -647,8 +648,10 @@ export default function RequirementForm({
                   }),
                 })
                 if (!res.ok) {
-                  const data = (await res.json()) as { error?: string }
-                  setNormRefError(data.error ?? tc('error'))
+                  const data = (await res.json().catch(() => null)) as {
+                    error?: string
+                  } | null
+                  setNormRefError(data?.error ?? tc('error'))
                 } else {
                   const created = (await res.json()) as NormReferenceOption
                   setNormReferences(prev => [...prev, created])
@@ -666,6 +669,8 @@ export default function RequirementForm({
                   })
                   setShowCreateNormRef(false)
                 }
+              } catch {
+                setNormRefError(tc('error'))
               } finally {
                 setNormRefSubmitting(false)
               }
@@ -741,15 +746,6 @@ export default function RequirementForm({
   )
 }
 
-const NORM_REF_TYPE_SUGGESTIONS = [
-  'Lag',
-  'Förordning',
-  'Föreskrift',
-  'Standard',
-  'Riktlinje',
-  'Strategisk riktlinje',
-]
-
 interface NormReferenceModalProps {
   normRefError: string | null
   normRefForm: {
@@ -785,9 +781,6 @@ function NormReferenceModal({
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [onCancel])
-
-  const fieldClass =
-    'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
   const canSave =
     !normRefSubmitting &&
@@ -838,109 +831,11 @@ function NormReferenceModal({
         )}
 
         <div className="space-y-3">
-          <div>
-            <label
-              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-              htmlFor="modal-nr-id"
-            >
-              {t('normReferenceIdLabel')}
-            </label>
-            <input
-              className={fieldClass}
-              id="modal-nr-id"
-              onChange={e => onSetField('normReferenceId', e.target.value)}
-              placeholder={t('normReferenceIdPlaceholder')}
-              type="text"
-              value={normRefForm.normReferenceId}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-              htmlFor="modal-nr-name"
-            >
-              {t('name')} *
-            </label>
-            <input
-              className={fieldClass}
-              id="modal-nr-name"
-              onChange={e => onSetField('name', e.target.value)}
-              required
-              type="text"
-              value={normRefForm.name}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-              htmlFor="modal-nr-type"
-            >
-              {t('type')} *
-            </label>
-            <input
-              className={fieldClass}
-              id="modal-nr-type"
-              list="norm-ref-modal-type-options"
-              onChange={e => onSetField('type', e.target.value)}
-              placeholder={t('typePlaceholder')}
-              required
-              type="text"
-              value={normRefForm.type}
-            />
-            <datalist id="norm-ref-modal-type-options">
-              {NORM_REF_TYPE_SUGGESTIONS.map(s => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <label
-              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-              htmlFor="modal-nr-reference"
-            >
-              {t('reference')} *
-            </label>
-            <input
-              className={fieldClass}
-              id="modal-nr-reference"
-              onChange={e => onSetField('reference', e.target.value)}
-              placeholder="t.ex. SFS 2018:218, ISO 27001:2022"
-              required
-              type="text"
-              value={normRefForm.reference}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-              htmlFor="modal-nr-version"
-            >
-              {t('version')}
-            </label>
-            <input
-              className={fieldClass}
-              id="modal-nr-version"
-              onChange={e => onSetField('version', e.target.value)}
-              type="text"
-              value={normRefForm.version}
-            />
-          </div>
-          <div>
-            <label
-              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
-              htmlFor="modal-nr-issuer"
-            >
-              {t('issuer')} *
-            </label>
-            <input
-              className={fieldClass}
-              id="modal-nr-issuer"
-              onChange={e => onSetField('issuer', e.target.value)}
-              required
-              type="text"
-              value={normRefForm.issuer}
-            />
-          </div>
+          <NormReferenceFormFields
+            form={normRefForm}
+            idPrefix="modal-nr"
+            onSetField={onSetField}
+          />
         </div>
 
         <div className="flex gap-3 pt-2">

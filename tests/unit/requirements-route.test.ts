@@ -127,6 +127,7 @@ describe('requirements route CSV locale fallback', () => {
       'Status',
       'Verifiable',
       'Version',
+      'Norm references',
     ])
     expect(response.headers.get('Content-Disposition')).toContain(
       'requirements.csv',

@@ -202,7 +202,9 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('qualityCharacteristic', 5, 0, datetime('now')),
   ('status', 6, 1, datetime('now')),
   ('requiresTesting', 7, 0, datetime('now')),
-  ('version', 8, 0, datetime('now'));
+  ('version', 8, 0, datetime('now')),
+  ('needsReference', 9, 0, datetime('now')),
+  ('normReferences', 10, 0, datetime('now'));
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
@@ -257,6 +259,18 @@ UPDATE requirement_list_column_defaults SET
   is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'version';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 9,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'needsReference';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 10,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'normReferences';
 
 -- ─── Requirement Statuses ────────────────────────────────────────────────────
 -- 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad

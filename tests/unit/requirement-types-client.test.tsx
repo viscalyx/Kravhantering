@@ -128,7 +128,7 @@ describe('RequirementTypesClient', () => {
       expect(screen.getByText('Type A')).toBeInTheDocument()
     })
     const cards = container.querySelectorAll(
-      '.bg-white\\/80.dark\\:bg-secondary-900\\/60.rounded-2xl.border.shadow-sm',
+      '[data-developer-mode-name="type card"]',
     )
     expect(cards).toHaveLength(sampleTypes.length)
   })

@@ -471,15 +471,17 @@ export default function RequirementsClient({
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
     const statuses = filters.statuses ?? []
     const params = new URLSearchParams()
     params.set('linked', 'true')
     for (const s of statuses) {
       params.append('statuses', String(s))
     }
-    fetch(`/api/norm-references?${params}`)
+    fetch(`/api/norm-references?${params}`, { signal: controller.signal })
       .then(res => (res.ok ? res.json() : null))
       .then((data: unknown) => {
+        if (controller.signal.aborted) return
         const typed = data as {
           normReferences?: {
             id: number
@@ -490,8 +492,11 @@ export default function RequirementsClient({
         setNormReferenceOptions(typed?.normReferences ?? [])
       })
       .catch(() => {
-        setNormReferenceOptions([])
+        if (!controller.signal.aborted) {
+          setNormReferenceOptions([])
+        }
       })
+    return () => controller.abort()
   }, [filters.statuses])
 
   useEffect(() => {

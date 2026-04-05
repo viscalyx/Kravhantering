@@ -2601,6 +2601,7 @@ export default function RequirementsTable({
             value={fv.needsReferenceIds ?? []}
           />
         )
+      case 'normReferences':
       case 'version':
         return null
     }
@@ -2723,6 +2724,7 @@ export default function RequirementsTable({
             values={fv.needsReferenceIds ?? []}
           />
         )
+      case 'normReferences':
       case 'version':
         return null
     }

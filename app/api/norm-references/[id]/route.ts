@@ -1,7 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  countLinkedRequirements,
   deleteNormReference,
   getLinkedRequirements,
   getNormReferenceById,
@@ -64,8 +63,8 @@ export async function DELETE(
   }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const counts = await countLinkedRequirements(db)
-  if ((counts[numericId] ?? 0) > 0) {
+  const linked = await getLinkedRequirements(db, numericId)
+  if (linked.length > 0) {
     return NextResponse.json(
       { error: 'Cannot delete norm reference with linked requirements' },
       { status: 409 },

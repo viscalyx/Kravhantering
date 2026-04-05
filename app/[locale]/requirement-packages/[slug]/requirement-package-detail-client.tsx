@@ -621,15 +621,17 @@ export default function KravpaketDetailClient({
       leftFilters.normReferenceIds &&
       leftFilters.normReferenceIds.length > 0
     ) {
-      const filterDbIds = new Set(leftFilters.normReferenceIds)
-      const matchingTextIds = new Set(
-        leftNormReferenceOptions
-          .filter(nr => filterDbIds.has(nr.id))
-          .map(nr => nr.normReferenceId),
-      )
-      rows = rows.filter(r =>
-        r.normReferenceIds?.some(textId => matchingTextIds.has(textId)),
-      )
+      if (leftNormReferenceOptions.length > 0) {
+        const filterDbIds = new Set(leftFilters.normReferenceIds)
+        const matchingTextIds = new Set(
+          leftNormReferenceOptions
+            .filter(nr => filterDbIds.has(nr.id))
+            .map(nr => nr.normReferenceId),
+        )
+        rows = rows.filter(r =>
+          r.normReferenceIds?.some(textId => matchingTextIds.has(textId)),
+        )
+      }
     }
     return rows
   }, [packageItems, leftFilters, areas, leftNormReferenceOptions])

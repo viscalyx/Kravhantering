@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import StatusBadge from '@/components/StatusBadge'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -54,15 +55,6 @@ interface LinkedRequirement {
 
 const DESCRIPTION_TRUNCATE = 80
 
-const TYPE_SUGGESTIONS = [
-  'Lag',
-  'Förordning',
-  'Föreskrift',
-  'Standard',
-  'Riktlinje',
-  'Strategisk riktlinje',
-]
-
 export default function NormReferencesClient() {
   useHelpContent(NORM_REFERENCES_HELP)
   const t = useTranslations('normReference')
@@ -82,6 +74,7 @@ export default function NormReferencesClient() {
   const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
     useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [form, setForm] = useState({
     normReferenceId: '',
@@ -148,6 +141,7 @@ export default function NormReferencesClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
+    setFormError(null)
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId
@@ -165,12 +159,19 @@ export default function NormReferencesClient() {
           issuer: form.issuer,
         }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        setFormError((body as { error?: string } | null)?.error ?? tc('error'))
+        return
+      }
+      setFormError(null)
       setShowForm(false)
       setEditId(null)
       setLinkedRequirements([])
       resetForm()
       fetchNormReferences()
+    } catch {
+      setFormError(tc('error'))
     } finally {
       setSubmitting(false)
     }
@@ -230,9 +231,6 @@ export default function NormReferencesClient() {
     return `${text.slice(0, DESCRIPTION_TRUNCATE)}…`
   }
 
-  const fieldClass =
-    'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
-
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
@@ -252,6 +250,7 @@ export default function NormReferencesClient() {
               setShowForm(true)
               setEditId(null)
               setLinkedRequirements([])
+              setFormError(null)
               resetForm()
             }}
             type="button"
@@ -277,115 +276,21 @@ export default function NormReferencesClient() {
                 <h2 className="text-lg font-semibold">
                   {editId ? t('editNormReference') : t('newNormReference')}
                 </h2>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="nr-id"
+                <NormReferenceFormFields
+                  form={form}
+                  idPrefix="nr"
+                  onSetField={(field, value) =>
+                    setForm(f => ({ ...f, [field]: value }))
+                  }
+                />
+                {formError && (
+                  <p
+                    className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    role="alert"
                   >
-                    {t('normReferenceId')}
-                  </label>
-                  <input
-                    className={fieldClass}
-                    id="nr-id"
-                    onChange={e =>
-                      setForm(f => ({ ...f, normReferenceId: e.target.value }))
-                    }
-                    placeholder={t('normReferenceIdPlaceholder')}
-                    value={form.normReferenceId}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="nr-name"
-                  >
-                    {t('name')} *
-                  </label>
-                  <input
-                    className={fieldClass}
-                    id="nr-name"
-                    onChange={e =>
-                      setForm(f => ({ ...f, name: e.target.value }))
-                    }
-                    required
-                    value={form.name}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="nr-type"
-                  >
-                    {t('type')} *
-                  </label>
-                  <input
-                    className={fieldClass}
-                    id="nr-type"
-                    list="nr-type-list"
-                    onChange={e =>
-                      setForm(f => ({ ...f, type: e.target.value }))
-                    }
-                    placeholder={t('typePlaceholder')}
-                    required
-                    value={form.type}
-                  />
-                  <datalist id="nr-type-list">
-                    {TYPE_SUGGESTIONS.map(s => (
-                      <option key={s} value={s} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="nr-reference"
-                  >
-                    {t('reference')} *
-                  </label>
-                  <input
-                    className={fieldClass}
-                    id="nr-reference"
-                    onChange={e =>
-                      setForm(f => ({ ...f, reference: e.target.value }))
-                    }
-                    placeholder="t.ex. SFS 2018:218, ISO 27001:2022"
-                    required
-                    value={form.reference}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="nr-version"
-                  >
-                    {t('version')}
-                  </label>
-                  <input
-                    className={fieldClass}
-                    id="nr-version"
-                    onChange={e =>
-                      setForm(f => ({ ...f, version: e.target.value }))
-                    }
-                    value={form.version}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="nr-issuer"
-                  >
-                    {t('issuer')} *
-                  </label>
-                  <input
-                    className={fieldClass}
-                    id="nr-issuer"
-                    onChange={e =>
-                      setForm(f => ({ ...f, issuer: e.target.value }))
-                    }
-                    required
-                    value={form.issuer}
-                  />
-                </div>
+                    {formError}
+                  </p>
+                )}
                 <div className="flex gap-3">
                   <button
                     className="btn-primary"
