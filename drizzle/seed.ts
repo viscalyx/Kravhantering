@@ -1425,7 +1425,7 @@ INSERT OR IGNORE INTO requirement_references (id, requirement_version_id, name, 
 
 -- ─── Norm References ─────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO norm_references (id, norm_reference_id, name, type, reference, version, issuer, created_at, updated_at) VALUES
-  (1, 'SFS 2018:218',       'Dataskyddsförordningen (GDPR)',                               'Lag',        'SFS 2018:218',       NULL,   'Riksdagen',                                             datetime('now'), datetime('now')),
+  (1, 'SFS 2018:218',       'Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning', 'Lag', 'SFS 2018:218', NULL, 'Riksdagen', datetime('now'), datetime('now')),
   (2, 'ISO/IEC 27001:2022', 'Ledningssystem för informationssäkerhet',                     'Standard',   'ISO/IEC 27001:2022', '2022', 'ISO/IEC',                                               datetime('now'), datetime('now')),
   (3, 'MSBFS 2020:6',       'Föreskrifter om informationssäkerhet för statliga myndigheter','Föreskrift', 'MSBFS 2020:6',       NULL,   'Myndigheten för samhällsskydd och beredskap (MSB)',      datetime('now'), datetime('now')),
   (4, 'RFC 6749',            'The OAuth 2.0 Authorization Framework',                       'Standard',   'RFC 6749',           NULL,   'IETF',                                                  datetime('now'), datetime('now')),

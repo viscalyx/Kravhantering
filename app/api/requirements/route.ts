@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
   const statuses = statusParams.map(Number).filter(n => !Number.isNaN(n))
   const normReferenceIds = url.searchParams
     .getAll('normReferenceIds')
+    .filter(v => v.trim() !== '')
     .map(Number)
     .filter(n => !Number.isNaN(n))
   const usageScenarioIds = url.searchParams
@@ -198,8 +199,9 @@ export async function POST(request: NextRequest) {
           : undefined,
         normReferenceIds: Array.isArray(body.normReferenceIds)
           ? body.normReferenceIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
+              .filter((value: unknown) => String(value).trim() !== '')
+              .map((value: unknown) => Number(value))
+              .filter((value: number) => !Number.isNaN(value))
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod

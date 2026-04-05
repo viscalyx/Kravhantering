@@ -70,6 +70,7 @@ describe('requirements route CSV locale fallback', () => {
       items: [
         {
           area: { name: 'Integration' },
+          normReferenceIds: ['ISO/IEC 27001:2022'],
           uniqueId: 'REQ-1',
           version: {
             categoryNameEn: 'Business requirement',
@@ -129,6 +130,13 @@ describe('requirements route CSV locale fallback', () => {
       'Version',
       'Norm references',
     ])
+    expect(firstExportCall?.[1]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          'Norm references': 'ISO/IEC 27001:2022',
+        }),
+      ]),
+    )
     expect(response.headers.get('Content-Disposition')).toContain(
       'requirements.csv',
     )

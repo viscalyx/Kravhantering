@@ -1600,6 +1600,12 @@ export default function RequirementDetailClient({
                           className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
                           key={`normref-chip-${vnr.normReference.id}`}
                           title={`${vnr.normReference.name} (${vnr.normReference.reference})`}
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'normref-chip',
+                            priority: 354,
+                            value: vnr.normReference.normReferenceId,
+                          })}
                         >
                           {vnr.normReference.normReferenceId}
                         </li>

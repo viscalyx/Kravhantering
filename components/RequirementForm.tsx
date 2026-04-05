@@ -776,11 +776,11 @@ function NormReferenceModal({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel()
+      if (e.key === 'Escape' && !normRefSubmitting) onCancel()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onCancel])
+  }, [onCancel, normRefSubmitting])
 
   const canSave =
     !normRefSubmitting &&
@@ -797,7 +797,7 @@ function NormReferenceModal({
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onCancel}
+        onClick={normRefSubmitting ? undefined : onCancel}
       />
       <div
         aria-modal="true"

@@ -179,6 +179,7 @@ export default function NormReferencesClient() {
 
   const handleEdit = (nr: NormReference) => {
     setEditId(nr.id)
+    setFormError(null)
     setLinkedRequirements([])
     setForm({
       normReferenceId: nr.normReferenceId,

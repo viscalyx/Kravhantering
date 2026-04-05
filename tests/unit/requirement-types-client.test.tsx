@@ -122,7 +122,7 @@ describe('RequirementTypesClient', () => {
     expect(grid).toBeInTheDocument()
   })
 
-  it('applies card styling with dark-mode variants', async () => {
+  it('renders type cards with developer-mode marker', async () => {
     const { container } = render(<RequirementTypesClient />)
     await waitFor(() => {
       expect(screen.getByText('Type A')).toBeInTheDocument()

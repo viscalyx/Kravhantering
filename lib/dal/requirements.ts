@@ -692,60 +692,133 @@ export async function editRequirement(
 
   // Draft status: update the existing version row in place
   if (currentVersion.statusId === STATUS_DRAFT) {
-    await db
-      .update(requirementVersions)
-      .set({
-        description: data.description,
-        acceptanceCriteria: data.acceptanceCriteria,
-        requirementCategoryId: data.requirementCategoryId,
-        requirementTypeId: data.requirementTypeId,
-        qualityCharacteristicId: data.qualityCharacteristicId,
-        requiresTesting: data.requiresTesting ?? false,
-        verificationMethod: data.requiresTesting
-          ? (data.verificationMethod ?? null)
-          : null,
-        editedAt: now,
-      })
-      .where(eq(requirementVersions.id, currentVersion.id))
-
-    // Replace scenarios: delete existing, then insert new
-    await db
-      .delete(requirementVersionUsageScenarios)
-      .where(
-        eq(
-          requirementVersionUsageScenarios.requirementVersionId,
-          currentVersion.id,
-        ),
-      )
-
-    if (data.scenarioIds?.length) {
-      const uniqueIds = [...new Set(data.scenarioIds)]
-      await db.insert(requirementVersionUsageScenarios).values(
-        uniqueIds.map(usageScenarioId => ({
-          requirementVersionId: currentVersion.id,
-          usageScenarioId,
-        })),
-      )
+    const versionSetData = {
+      description: data.description,
+      acceptanceCriteria: data.acceptanceCriteria,
+      requirementCategoryId: data.requirementCategoryId,
+      requirementTypeId: data.requirementTypeId,
+      qualityCharacteristicId: data.qualityCharacteristicId,
+      requiresTesting: data.requiresTesting ?? false,
+      verificationMethod: data.requiresTesting
+        ? (data.verificationMethod ?? null)
+        : null,
+      editedAt: now,
     }
+    const uniqueScenarioIds = data.scenarioIds?.length
+      ? [...new Set(data.scenarioIds)]
+      : []
+    const uniqueNormRefIds = data.normReferenceIds?.length
+      ? [...new Set(data.normReferenceIds)]
+      : []
 
-    // Replace norm references: delete existing, then insert new
-    await db
-      .delete(requirementVersionNormReferences)
-      .where(
-        eq(
-          requirementVersionNormReferences.requirementVersionId,
-          currentVersion.id,
-        ),
-      )
+    const sessionName = (
+      db as {
+        session?: {
+          constructor?: {
+            name?: string
+          }
+        }
+      }
+    ).session?.constructor?.name
 
-    if (data.normReferenceIds?.length) {
-      const uniqueIds = [...new Set(data.normReferenceIds)]
-      await db.insert(requirementVersionNormReferences).values(
-        uniqueIds.map(normReferenceId => ({
-          requirementVersionId: currentVersion.id,
-          normReferenceId,
-        })),
-      )
+    if (sessionName === 'BetterSQLiteSession') {
+      ;(
+        db as unknown as {
+          transaction: (
+            callback: (
+              tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+            ) => void,
+          ) => void
+        }
+      ).transaction(tx => {
+        tx.update(requirementVersions)
+          .set(versionSetData)
+          .where(eq(requirementVersions.id, currentVersion.id))
+          .run()
+
+        tx.delete(requirementVersionUsageScenarios)
+          .where(
+            eq(
+              requirementVersionUsageScenarios.requirementVersionId,
+              currentVersion.id,
+            ),
+          )
+          .run()
+
+        if (uniqueScenarioIds.length) {
+          tx.insert(requirementVersionUsageScenarios)
+            .values(
+              uniqueScenarioIds.map(usageScenarioId => ({
+                requirementVersionId: currentVersion.id,
+                usageScenarioId,
+              })),
+            )
+            .run()
+        }
+
+        tx.delete(requirementVersionNormReferences)
+          .where(
+            eq(
+              requirementVersionNormReferences.requirementVersionId,
+              currentVersion.id,
+            ),
+          )
+          .run()
+
+        if (uniqueNormRefIds.length) {
+          tx.insert(requirementVersionNormReferences)
+            .values(
+              uniqueNormRefIds.map(normReferenceId => ({
+                requirementVersionId: currentVersion.id,
+                normReferenceId,
+              })),
+            )
+            .run()
+        }
+      })
+    } else {
+      await db.transaction(async tx => {
+        await tx
+          .update(requirementVersions)
+          .set(versionSetData)
+          .where(eq(requirementVersions.id, currentVersion.id))
+
+        await tx
+          .delete(requirementVersionUsageScenarios)
+          .where(
+            eq(
+              requirementVersionUsageScenarios.requirementVersionId,
+              currentVersion.id,
+            ),
+          )
+
+        if (uniqueScenarioIds.length) {
+          await tx.insert(requirementVersionUsageScenarios).values(
+            uniqueScenarioIds.map(usageScenarioId => ({
+              requirementVersionId: currentVersion.id,
+              usageScenarioId,
+            })),
+          )
+        }
+
+        await tx
+          .delete(requirementVersionNormReferences)
+          .where(
+            eq(
+              requirementVersionNormReferences.requirementVersionId,
+              currentVersion.id,
+            ),
+          )
+
+        if (uniqueNormRefIds.length) {
+          await tx.insert(requirementVersionNormReferences).values(
+            uniqueNormRefIds.map(normReferenceId => ({
+              requirementVersionId: currentVersion.id,
+              normReferenceId,
+            })),
+          )
+        }
+      })
     }
 
     const updated = await db.query.requirementVersions.findFirst({

@@ -2932,12 +2932,11 @@ describe('RequirementsTable', () => {
           '[data-column-picker-option="normReferences"]',
         ) ??
         document.querySelector('[data-column-picker-option="normReferences"]')
-      if (normRefOption) {
-        await act(async () => {
-          fireEvent.click(normRefOption)
-        })
-        expect(onVisibleColumnsChange).toHaveBeenCalled()
-      }
+      expect(normRefOption).toBeTruthy()
+      await act(async () => {
+        fireEvent.click(normRefOption as Element)
+      })
+      expect(onVisibleColumnsChange).toHaveBeenCalled()
     })
   })
 })
