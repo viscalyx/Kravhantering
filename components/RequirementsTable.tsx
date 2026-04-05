@@ -1500,7 +1500,6 @@ export default function RequirementsTable({
     left: false,
     right: false,
   })
-  const [horizontalScrollLeft, setHorizontalScrollLeft] = useState(0)
   const canResizeColumns = !!onColumnWidthsChange
   const expandedDetailRowId =
     expandedId !== null &&
@@ -1997,7 +1996,6 @@ export default function RequirementsTable({
     const container = scrollContainerRef.current
 
     if (!container) {
-      setHorizontalScrollLeft(previous => (previous === 0 ? previous : 0))
       setScrollFadeState(previous =>
         previous.left || previous.right
           ? { left: false, right: false }
@@ -2014,9 +2012,6 @@ export default function RequirementsTable({
 
     setScrollContainerWidth(previous =>
       previous === container.clientWidth ? previous : container.clientWidth,
-    )
-    setHorizontalScrollLeft(previous =>
-      previous === container.scrollLeft ? previous : container.scrollLeft,
     )
 
     setScrollFadeState(previous => {
@@ -2324,6 +2319,42 @@ export default function RequirementsTable({
     updateResizeHandleOffsets,
     updateScrollFades,
   ])
+
+  // Sync sticky header horizontal position with the scroll container.
+  // Uses ScrollTimeline (compositor-thread, zero JS lag) when available,
+  // falling back to a passive scroll listener.
+  useClientLayoutEffect(() => {
+    const container = scrollContainerRef.current
+    const header = stickyHeaderContentRef.current
+    if (!container || !header) return
+
+    const maxScrollLeft = container.scrollWidth - container.clientWidth
+
+    if (maxScrollLeft <= 0) {
+      header.style.transform = 'translateX(0px)'
+      return
+    }
+
+    if (typeof ScrollTimeline !== 'undefined') {
+      const timeline = new ScrollTimeline({ axis: 'inline', source: container })
+      const animation = header.animate(
+        [
+          { transform: 'translateX(0px)' },
+          { transform: `translateX(-${maxScrollLeft}px)` },
+        ],
+        { fill: 'both', timeline } as KeyframeAnimationOptions,
+      )
+      return () => animation.cancel()
+    }
+
+    // Fallback for browsers without ScrollTimeline
+    const sync = () => {
+      header.style.transform = `translateX(-${container.scrollLeft}px)`
+    }
+    sync()
+    container.addEventListener('scroll', sync, { passive: true })
+    return () => container.removeEventListener('scroll', sync)
+  }, [scrollLayoutSignature])
 
   const handleResizePointerDown = (
     columnId: RequirementColumnId,
@@ -2952,8 +2983,6 @@ export default function RequirementsTable({
   const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-hidden rounded-t-2xl`
   const stickyTopBarClassName =
     'flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80'
-  const stickyHeaderViewportClassName =
-    'overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900'
   const resizeHandleBaseClassName =
     'group pointer-events-auto absolute left-0 z-20 m-0 min-w-[44px] -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
   const interactiveResizeHandleClassName = `${resizeHandleBaseClassName} focus-visible:outline-none hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400`
@@ -3496,16 +3525,14 @@ export default function RequirementsTable({
               )}
             </div>
           )}
-        <div className={stickyHeaderViewportClassName}>
+        <div
+          className="overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900"
+        >
           <div
-            className="relative motion-safe:transition-transform motion-safe:duration-100 motion-safe:ease-linear motion-reduce:transition-none"
+            className="relative"
             data-sticky-table-header="true"
             ref={stickyHeaderContentRef}
-            style={{
-              transform: `translateX(-${horizontalScrollLeft}px)`,
-              width: `${tableWidth}px`,
-              willChange: 'transform',
-            }}
+            style={{ width: `${tableWidth}px`, willChange: 'transform' }}
           >
             <table
               className="w-full table-fixed text-sm"
