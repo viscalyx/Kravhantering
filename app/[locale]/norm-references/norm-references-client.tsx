@@ -342,9 +342,13 @@ export default function NormReferencesClient() {
                   <button
                     className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                     disabled={submitting}
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!(await guardUnsavedChanges())) return
                       setShowForm(false)
+                      setEditId(null)
                       setLinkedRequirements([])
+                      setFormError(null)
+                      resetForm()
                     }}
                     type="button"
                   >
@@ -490,6 +494,16 @@ export default function NormReferencesClient() {
                 </tr>
               </thead>
               <tbody>
+                {normReferences.length === 0 && (
+                  <tr>
+                    <td
+                      className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
+                      colSpan={8}
+                    >
+                      {t('emptyState')}
+                    </td>
+                  </tr>
+                )}
                 {normReferences.map(nr => (
                   <tr
                     className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"

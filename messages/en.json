@@ -346,7 +346,8 @@
     "typeSuggestionStandard": "Standard",
     "typeSuggestionStrategicGuideline": "Strategic guideline",
     "version": "Version",
-    "versionHelp": "<strong>Optionally specify the edition or version of the document.</strong>\nUse this to distinguish between revisions of the same document, for example 2022 or 3rd edition."
+    "versionHelp": "<strong>Optionally specify the edition or version of the document.</strong>\nUse this to distinguish between revisions of the same document, for example 2022 or 3rd edition.",
+    "emptyState": "No norm references yet. Create your first norm reference."
   },
   "qualityCharacteristicMgmt": {
     "name": "Name",

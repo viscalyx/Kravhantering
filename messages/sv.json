@@ -346,7 +346,8 @@
     "typeSuggestionStandard": "Standard",
     "typeSuggestionStrategicGuideline": "Strategisk riktlinje",
     "version": "Version",
-    "versionHelp": "<strong>Ange valfritt dokumentets utgåva eller version.</strong>\nAnvänd detta för att skilja mellan revisioner av samma dokument, t.ex. 2022 eller 3:e utgåvan."
+    "versionHelp": "<strong>Ange valfritt dokumentets utgåva eller version.</strong>\nAnvänd detta för att skilja mellan revisioner av samma dokument, t.ex. 2022 eller 3:e utgåvan.",
+    "emptyState": "Inga normreferenser ännu. Skapa din första normreferens."
   },
   "qualityCharacteristicMgmt": {
     "name": "Namn",
