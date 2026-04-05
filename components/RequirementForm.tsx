@@ -129,13 +129,12 @@ export default function RequirementForm({
     verificationMethod: initialData?.verificationMethod ?? '',
   })
 
-  const hasUserEdited = useRef(false)
+  const dirtyFields = useRef<Set<string>>(new Set())
   const prevInitialData = useRef(initialData)
   const prevNormReferenceIds = useRef(initialNormReferenceIds)
   const prevScenarioIds = useRef(initialScenarioIds)
 
   useEffect(() => {
-    if (hasUserEdited.current) return
     const dataChanged = initialData !== prevInitialData.current
     const normRefsChanged =
       initialNormReferenceIds !== prevNormReferenceIds.current
@@ -146,29 +145,48 @@ export default function RequirementForm({
     prevNormReferenceIds.current = initialNormReferenceIds
     prevScenarioIds.current = initialScenarioIds
 
+    const dirty = dirtyFields.current
+
     setForm(prev => ({
       ...prev,
       ...(dataChanged && initialData
         ? {
-            areaId: initialData.areaId ?? prev.areaId,
-            categoryId: initialData.categoryId ?? prev.categoryId,
-            typeId: initialData.typeId ?? prev.typeId,
-            qualityCharacteristicId:
-              initialData.qualityCharacteristicId ??
-              prev.qualityCharacteristicId,
-            description: initialData.description ?? prev.description,
-            acceptanceCriteria:
-              initialData.acceptanceCriteria ?? prev.acceptanceCriteria,
-            requiresTesting:
-              initialData.requiresTesting ?? prev.requiresTesting,
-            verificationMethod:
-              initialData.verificationMethod ?? prev.verificationMethod,
+            ...(!dirty.has('areaId') && initialData.areaId != null
+              ? { areaId: initialData.areaId }
+              : {}),
+            ...(!dirty.has('categoryId') && initialData.categoryId != null
+              ? { categoryId: initialData.categoryId }
+              : {}),
+            ...(!dirty.has('typeId') && initialData.typeId != null
+              ? { typeId: initialData.typeId }
+              : {}),
+            ...(!dirty.has('qualityCharacteristicId') &&
+            initialData.qualityCharacteristicId != null
+              ? {
+                  qualityCharacteristicId: initialData.qualityCharacteristicId,
+                }
+              : {}),
+            ...(!dirty.has('description') && initialData.description != null
+              ? { description: initialData.description }
+              : {}),
+            ...(!dirty.has('acceptanceCriteria') &&
+            initialData.acceptanceCriteria != null
+              ? { acceptanceCriteria: initialData.acceptanceCriteria }
+              : {}),
+            ...(!dirty.has('requiresTesting') &&
+            initialData.requiresTesting != null
+              ? { requiresTesting: initialData.requiresTesting }
+              : {}),
+            ...(!dirty.has('verificationMethod') &&
+            initialData.verificationMethod != null
+              ? { verificationMethod: initialData.verificationMethod }
+              : {}),
           }
         : {}),
-      ...(normRefsChanged
+      ...(normRefsChanged && !dirty.has('normReferenceIds')
         ? { normReferenceIds: initialNormReferenceIds ?? prev.normReferenceIds }
         : {}),
-      ...(scenariosChanged
+      ...(scenariosChanged && !dirty.has('scenarioIds')
         ? { scenarioIds: initialScenarioIds ?? prev.scenarioIds }
         : {}),
     }))
@@ -263,7 +281,7 @@ export default function RequirementForm({
   }, [form.typeId, fetchQualityCharacteristics])
 
   const handleChange = (key: keyof FormData, value: string | boolean) => {
-    hasUserEdited.current = true
+    dirtyFields.current.add(key)
     setForm(prev => {
       const next = { ...prev, [key]: value }
       if (key === 'requiresTesting' && !value) {
@@ -586,9 +604,11 @@ export default function RequirementForm({
 
         <div className="self-start lg:w-64 space-y-6">
           {scenarios.length > 0 && (
-            <div>
+            <fieldset className="border-0 m-0 p-0">
               <div className="flex items-center gap-1.5 mb-1">
-                <span className="text-sm font-medium">{t('scenario')}</span>
+                <legend className="text-sm font-medium contents">
+                  {t('scenario')}
+                </legend>
                 {helpButton('scenario', t('scenario'))}
               </div>
               {helpPanel('scenarioHelp', 'scenario')}
@@ -602,7 +622,7 @@ export default function RequirementForm({
                       checked={form.scenarioIds.includes(s.id)}
                       className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
                       onChange={e => {
-                        hasUserEdited.current = true
+                        dirtyFields.current.add('scenarioIds')
                         const checked = e.target.checked
                         setForm(prev => ({
                           ...prev,
@@ -617,19 +637,19 @@ export default function RequirementForm({
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
           )}
 
-          <div>
+          <fieldset className="border-0 m-0 p-0">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-sm font-medium">
+                <legend className="text-sm font-medium contents">
                   {t('normReferences')}
-                </span>
+                </legend>
                 {helpButton('normReferences', t('normReferences'))}
               </div>
               <button
-                className="btn-primary inline-flex items-center gap-1.5 min-h-[44px] min-w-[44px]"
+                className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
                 onClick={() => setShowCreateNormRef(true)}
                 type="button"
               >
@@ -649,7 +669,7 @@ export default function RequirementForm({
                       checked={form.normReferenceIds.includes(nr.id)}
                       className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
                       onChange={e => {
-                        hasUserEdited.current = true
+                        dirtyFields.current.add('normReferenceIds')
                         const checked = e.target.checked
                         setForm(prev => ({
                           ...prev,
@@ -670,7 +690,7 @@ export default function RequirementForm({
                 ))}
               </div>
             )}
-          </div>
+          </fieldset>
         </div>
       </div>
 
@@ -826,10 +846,54 @@ function NormReferenceModal({
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const overlayRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const previouslyFocused = useRef<Element | null>(null)
 
   useEffect(() => {
+    previouslyFocused.current = document.activeElement
+    // Focus the close button on open
+    closeButtonRef.current?.focus()
+
+    return () => {
+      // Restore focus on close
+      if (previouslyFocused.current instanceof HTMLElement) {
+        previouslyFocused.current.focus()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !normRefSubmitting) onCancel()
+      if (e.key === 'Escape' && !normRefSubmitting) {
+        onCancel()
+        return
+      }
+      if (e.key === 'Tab') {
+        const focusable = Array.from(
+          dialog.querySelectorAll<HTMLElement>(FOCUSABLE),
+        )
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
+      }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -857,6 +921,7 @@ function NormReferenceModal({
         aria-labelledby="modal-title-norm-ref"
         aria-modal="true"
         className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl animate-fade-in-up p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        ref={dialogRef}
         role="dialog"
       >
         <div className="flex items-center justify-between">
@@ -871,6 +936,7 @@ function NormReferenceModal({
             className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:opacity-50 disabled:pointer-events-none"
             disabled={normRefSubmitting}
             onClick={onCancel}
+            ref={closeButtonRef}
             type="button"
           >
             <X aria-hidden="true" className="h-4 w-4" />

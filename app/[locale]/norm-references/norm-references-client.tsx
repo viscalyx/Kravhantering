@@ -193,19 +193,22 @@ export default function NormReferencesClient() {
 
   const { confirm } = useConfirmModal()
 
-  const guardUnsavedChanges = async (): Promise<boolean> => {
+  const guardUnsavedChanges = async (
+    anchorEl?: HTMLElement | null,
+  ): Promise<boolean> => {
     if (showForm && isFormDirty()) {
       return confirm({
         message: tc('unsavedChangesConfirm'),
         variant: 'danger',
-        icon: 'warning',
+        icon: 'caution',
+        anchorEl: anchorEl ?? undefined,
       })
     }
     return true
   }
 
-  const handleEdit = async (nr: NormReference) => {
-    if (!(await guardUnsavedChanges())) return
+  const handleEdit = async (nr: NormReference, anchorEl?: HTMLElement) => {
+    if (!(await guardUnsavedChanges(anchorEl))) return
     setEditId(nr.id)
     setFormError(null)
     setLinkedRequirements([])
@@ -244,12 +247,15 @@ export default function NormReferencesClient() {
         )
         return
       }
-      if (editId === id) {
-        setEditId(null)
-        setShowForm(false)
-        setLinkedRequirements([])
-        resetForm()
-      }
+      setEditId(prev => {
+        if (prev === id) {
+          setShowForm(false)
+          setLinkedRequirements([])
+          resetForm()
+          return null
+        }
+        return prev
+      })
       fetchNormReferences()
     } catch {
       setDeleteError(tc('error'))
@@ -279,8 +285,8 @@ export default function NormReferencesClient() {
               priority: 350,
             })}
             disabled={submitting}
-            onClick={async () => {
-              if (!(await guardUnsavedChanges())) return
+            onClick={async e => {
+              if (!(await guardUnsavedChanges(e.currentTarget))) return
               setShowForm(true)
               setEditId(null)
               setLinkedRequirements([])
@@ -519,7 +525,9 @@ export default function NormReferencesClient() {
                           value: 'edit',
                         })}
                         disabled={submitting}
-                        onClick={() => handleEdit(nr)}
+                        onClick={e =>
+                          handleEdit(nr, e.currentTarget as HTMLElement)
+                        }
                         type="button"
                       >
                         {tc('edit')}
