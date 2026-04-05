@@ -55,6 +55,15 @@ interface LinkedRequirement {
 
 const DESCRIPTION_TRUNCATE = 80
 
+const INITIAL_FORM = {
+  normReferenceId: '',
+  name: '',
+  type: '',
+  reference: '',
+  version: '',
+  issuer: '',
+}
+
 export default function NormReferencesClient() {
   useHelpContent(NORM_REFERENCES_HELP)
   const t = useTranslations('normReference')
@@ -85,24 +94,15 @@ export default function NormReferencesClient() {
     issuer: '',
   })
 
-  const initialForm = {
-    normReferenceId: '',
-    name: '',
-    type: '',
-    reference: '',
-    version: '',
-    issuer: '',
-  }
-
   const isFormDirty = () => {
-    return Object.keys(initialForm).some(
+    return Object.keys(INITIAL_FORM).some(
       key =>
         form[key as keyof typeof form] !==
         (editId
           ? (normReferences.find(nr => nr.id === editId)?.[
               key as keyof NormReference
             ] ?? '')
-          : initialForm[key as keyof typeof initialForm]),
+          : INITIAL_FORM[key as keyof typeof INITIAL_FORM]),
     )
   }
 
@@ -149,14 +149,7 @@ export default function NormReferencesClient() {
   }, [fetchNormReferences])
 
   const resetForm = () => {
-    setForm({
-      normReferenceId: '',
-      name: '',
-      type: '',
-      reference: '',
-      version: '',
-      issuer: '',
-    })
+    setForm({ ...INITIAL_FORM })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -198,6 +191,8 @@ export default function NormReferencesClient() {
     }
   }
 
+  const { confirm } = useConfirmModal()
+
   const guardUnsavedChanges = async (): Promise<boolean> => {
     if (showForm && isFormDirty()) {
       return confirm({
@@ -225,8 +220,6 @@ export default function NormReferencesClient() {
     setShowForm(true)
     fetchLinkedRequirements(nr.id)
   }
-
-  const { confirm } = useConfirmModal()
 
   const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
     if (

@@ -223,14 +223,19 @@ export default function RequirementForm({
           }
         ).scenarios ?? [],
       )
-    if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok)
-      setNormReferences(
+    if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok) {
+      const fetched =
         (
           (await normRefsResult.value.json()) as {
             normReferences?: NormReferenceOption[]
           }
-        ).normReferences ?? [],
-      )
+        ).normReferences ?? []
+      setNormReferences(prev => {
+        const ids = new Set(fetched.map(nr => nr.id))
+        const localOnly = prev.filter(nr => !ids.has(nr.id))
+        return [...localOnly, ...fetched]
+      })
+    }
   }, [])
 
   const fetchQualityCharacteristics = useCallback(async (typeId: string) => {
@@ -848,12 +853,17 @@ function NormReferenceModal({
         onClick={normRefSubmitting ? undefined : onCancel}
       />
       <div
+        aria-describedby="modal-desc-norm-ref"
+        aria-labelledby="modal-title-norm-ref"
         aria-modal="true"
         className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl animate-fade-in-up p-6 space-y-4 max-h-[90vh] overflow-y-auto"
         role="dialog"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-secondary-900 dark:text-secondary-100">
+          <h2
+            className="text-base font-semibold text-secondary-900 dark:text-secondary-100"
+            id="modal-title-norm-ref"
+          >
             {t('addNewNormReference')}
           </h2>
           <button
@@ -867,7 +877,10 @@ function NormReferenceModal({
           </button>
         </div>
 
-        <div className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+        <div
+          className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2"
+          id="modal-desc-norm-ref"
+        >
           <p className="text-xs text-amber-800 dark:text-amber-200">
             {t('newNormReferenceWarning')}
           </p>
