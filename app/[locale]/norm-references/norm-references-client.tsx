@@ -86,6 +86,7 @@ export default function NormReferencesClient() {
   const [formError, setFormError] = useState<string | null>(null)
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
   const [linkedRequirementsError, setLinkedRequirementsError] = useState(false)
+  const [normListError, setNormListError] = useState(false)
   const [form, setForm] = useState({
     normReferenceId: '',
     name: '',
@@ -107,19 +108,31 @@ export default function NormReferencesClient() {
     )
   }
 
+  const normReqRequestId = useRef(0)
+
   const fetchNormReferences = useCallback(async () => {
+    const requestId = ++normReqRequestId.current
     setLoading(true)
+    setNormListError(false)
     try {
       const res = await fetch('/api/norm-references')
-      if (res.ok)
+      if (requestId !== normReqRequestId.current) return
+      if (res.ok) {
         setNormReferences(
           ((await res.json()) as { normReferences?: NormReference[] })
             .normReferences ?? [],
         )
+      } else {
+        setNormListError(true)
+      }
     } catch {
-      // Keep previous list on transient failures
+      if (requestId === normReqRequestId.current) {
+        setNormListError(true)
+      }
     } finally {
-      setLoading(false)
+      if (requestId === normReqRequestId.current) {
+        setLoading(false)
+      }
     }
   }, [])
 
@@ -131,11 +144,14 @@ export default function NormReferencesClient() {
     setLinkedRequirementsError(false)
     try {
       const res = await fetch(`/api/norm-references/${id}`)
-      if (res.ok && requestId === linkedReqRequestId.current) {
+      if (requestId !== linkedReqRequestId.current) return
+      if (res.ok) {
         const data = (await res.json()) as {
           linkedRequirements?: LinkedRequirement[]
         }
         setLinkedRequirements(data.linkedRequirements ?? [])
+      } else {
+        setLinkedRequirementsError(true)
       }
     } catch {
       if (requestId === linkedReqRequestId.current) {
@@ -477,6 +493,15 @@ export default function NormReferencesClient() {
           </p>
         )}
 
+        {normListError && (
+          <p
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
+          >
+            {tc('error')}
+          </p>
+        )}
+
         {loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">
             {tc('loading')}
@@ -548,6 +573,7 @@ export default function NormReferencesClient() {
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       <button
+                        aria-label={`${tc('edit')} ${nr.name || nr.normReferenceId}`}
                         className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
                           context: 'normReferences',
@@ -563,6 +589,11 @@ export default function NormReferencesClient() {
                         {tc('edit')}
                       </button>
                       <button
+                        aria-label={
+                          deletingIds.has(nr.id)
+                            ? `${tc('loading')} ${nr.name || nr.normReferenceId}`
+                            : `${tc('delete')} ${nr.name || nr.normReferenceId}`
+                        }
                         className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
                           context: 'normReferences',
