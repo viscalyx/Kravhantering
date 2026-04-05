@@ -3,6 +3,7 @@
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 const REQUIREMENT_TYPES_HELP: HelpContent = {
   sections: [
@@ -100,6 +101,12 @@ export default function RequirementTypesClient() {
               <div
                 className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden"
                 key={type.id}
+                {...devMarker({
+                  context: 'requirement types',
+                  name: 'type card',
+                  priority: 340,
+                  value: getTypeName(type),
+                })}
               >
                 {/* Zone A — Kravtyp */}
                 <div className="px-6 pt-6 pb-4">
@@ -111,7 +118,14 @@ export default function RequirementTypesClient() {
                 {/* Connector: dashed lines flanking ISO badge */}
                 <div className="mx-6 flex items-center gap-2">
                   <div className="h-px flex-1 border-t-2 border-dashed border-primary-200 dark:border-primary-700" />
-                  <span className="text-xs font-mono bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded border border-primary-200 dark:border-primary-800 select-none">
+                  <span
+                    className="text-xs font-mono bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-0.5 rounded border border-primary-200 dark:border-primary-800 select-none"
+                    {...devMarker({
+                      context: 'requirement types',
+                      name: 'iso badge',
+                      priority: 330,
+                    })}
+                  >
                     ISO/IEC 25010:2023
                   </span>
                   <div className="h-px flex-1 border-t-2 border-dashed border-primary-200 dark:border-primary-700" />
@@ -119,9 +133,16 @@ export default function RequirementTypesClient() {
 
                 {/* Zone B — ISO koppling */}
                 <div className="mx-4 mb-4 mt-3 rounded-xl border-2 border-dashed border-primary-200 dark:border-primary-800 bg-primary-50/40 dark:bg-primary-950/20 p-4">
-                  <p className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-3 uppercase tracking-wide">
+                  <h3
+                    className="text-xs font-medium text-primary-600 dark:text-primary-400 mb-3 uppercase tracking-wide"
+                    {...devMarker({
+                      context: 'requirement types',
+                      name: 'quality heading',
+                      priority: 330,
+                    })}
+                  >
                     {th('requirementTypes.quality.heading')}
-                  </p>
+                  </h3>
                   {topLevel.length === 0 ? (
                     <p className="text-secondary-600 dark:text-secondary-400 text-sm">
                       {tc('noResults')}

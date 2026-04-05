@@ -77,6 +77,7 @@ export interface RequirementsTableProps {
   loadingMore?: boolean
   locale: string
   needsReferenceOptions?: { id: number; text: string }[]
+  normReferences?: { id: number; normReferenceId: string; name: string }[]
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
@@ -1317,6 +1318,7 @@ export default function RequirementsTable({
   loadingMore = false,
   locale,
   needsReferenceOptions = [],
+  normReferences = [],
   onFilterChange,
   onLoadMore,
   onRowClick,
@@ -2893,6 +2895,16 @@ export default function RequirementsTable({
             {row.needsReference ?? '—'}
           </td>
         )
+      case 'normReferences':
+        return (
+          <td
+            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.normReferenceIds && row.normReferenceIds.length > 0
+              ? row.normReferenceIds.join(', ')
+              : '—'}
+          </td>
+        )
     }
   }
 
@@ -3434,6 +3446,54 @@ export default function RequirementsTable({
             )}
           </div>
         )}
+        {normReferences.length > 0 &&
+          visibleColumnSet.has('normReferences') && (
+            <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
+              <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
+                {t('normReferences')}:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {normReferences.map(nr => {
+                  const active = (fv.normReferenceIds ?? []).includes(nr.id)
+                  return (
+                    <button
+                      aria-label={`${nr.normReferenceId} ${nr.name}`}
+                      aria-pressed={active}
+                      className={`min-h-11 min-w-11 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                        active
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
+                      }`}
+                      key={nr.id}
+                      onClick={() => {
+                        const current = fv.normReferenceIds ?? []
+                        const next = active
+                          ? current.filter(id => id !== nr.id)
+                          : [...current, nr.id]
+                        updateFilter({
+                          normReferenceIds: next.length > 0 ? next : undefined,
+                        })
+                      }}
+                      title={nr.name}
+                      type="button"
+                    >
+                      {nr.normReferenceId}
+                    </button>
+                  )
+                })}
+              </div>
+              {(fv.normReferenceIds ?? []).length > 0 && (
+                <button
+                  aria-label={tc('clearFilters')}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  onClick={() => updateFilter({ normReferenceIds: undefined })}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
         <div className={stickyHeaderViewportClassName}>
           <div
             className="relative motion-safe:transition-transform motion-safe:duration-100 motion-safe:ease-linear motion-reduce:transition-none"

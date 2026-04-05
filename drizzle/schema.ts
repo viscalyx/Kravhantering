@@ -315,6 +315,7 @@ export const requirementVersionsRelations = relations(
     }),
     references: many(requirementReferences),
     versionScenarios: many(requirementVersionUsageScenarios),
+    versionNormReferences: many(requirementVersionNormReferences),
   }),
 )
 
@@ -412,6 +413,76 @@ export const requirementVersionUsageScenariosRelations = relations(
     scenario: one(usageScenarios, {
       fields: [requirementVersionUsageScenarios.usageScenarioId],
       references: [usageScenarios.id],
+    }),
+  }),
+)
+
+// ─── Norm References ────────────────────────────────────────────────────────
+
+export const normReferences = sqliteTable(
+  'norm_references',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    normReferenceId: text('norm_reference_id').notNull(),
+    name: text('name').notNull(),
+    type: text('type').notNull(),
+    reference: text('reference').notNull(),
+    version: text('version'),
+    issuer: text('issuer').notNull(),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    uniqueIndex('uq_norm_references_norm_reference_id').on(
+      table.normReferenceId,
+    ),
+  ],
+)
+
+export const normReferencesRelations = relations(
+  normReferences,
+  ({ many }) => ({
+    versionNormReferences: many(requirementVersionNormReferences),
+  }),
+)
+
+// ─── Requirement Version ↔ Norm Reference (join table) ──────────────────────
+
+export const requirementVersionNormReferences = sqliteTable(
+  'requirement_version_norm_references',
+  {
+    requirementVersionId: integer('requirement_version_id')
+      .notNull()
+      .references(() => requirementVersions.id, { onDelete: 'cascade' }),
+    normReferenceId: integer('norm_reference_id')
+      .notNull()
+      .references(() => normReferences.id),
+  },
+  table => [
+    primaryKey({
+      name: 'pk_requirement_version_norm_references',
+      columns: [table.requirementVersionId, table.normReferenceId],
+    }),
+    index('idx_requirement_version_norm_references_norm_reference_id').on(
+      table.normReferenceId,
+    ),
+  ],
+)
+
+export const requirementVersionNormReferencesRelations = relations(
+  requirementVersionNormReferences,
+  ({ one }) => ({
+    version: one(requirementVersions, {
+      fields: [requirementVersionNormReferences.requirementVersionId],
+      references: [requirementVersions.id],
+    }),
+    normReference: one(normReferences, {
+      fields: [requirementVersionNormReferences.normReferenceId],
+      references: [normReferences.id],
     }),
   }),
 )

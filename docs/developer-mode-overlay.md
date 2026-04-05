@@ -120,6 +120,10 @@ The emitted attributes are:
   developer-mode marker beyond the surrounding table and dialog surfaces.
 - Help drawer overflow cues and lifecycle illustrations remain part of the
   existing `dialog` surface and do not add separate developer-mode markers.
+- Requirement Types cards use the `requirement types` context with:
+  - `type card: <type name>` on the card container
+  - `iso badge` on the ISO/IEC 25010:2023 badge span
+  - `quality heading` on the quality-characteristics section heading
 - Needs-reference controls and inline loading or failure messages inside the
   add-to-package dialog remain part of that same
   `detail action: add to package` flow rather than introducing extra markers,
@@ -169,6 +173,9 @@ The current canonical labels include:
 - `error banner`
 - `text field`
 - `table action`
+- `type card`
+- `iso badge`
+- `quality heading`
 - `report print button`
 - `report option`
 - `review report pill`
@@ -186,6 +193,7 @@ Developer Mode is covered by:
 - `tests/unit/version-history.test.tsx`
 - `tests/unit/requirements-table.test.tsx`
 - `tests/unit/reference-data-developer-mode.test.tsx`
+- `tests/unit/requirement-types-client.test.tsx`
 - `tests/unit/requirement-package-detail-client.test.tsx`
 - `tests/unit/navigation.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`

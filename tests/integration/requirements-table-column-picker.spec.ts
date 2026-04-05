@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v3'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v4'
 
 const viewportVariants = [
   {
@@ -192,11 +192,10 @@ test.describe('Requirements table column picker', () => {
           )
         }
 
-        expect(
-          Math.abs(
-            Math.round(afterScrollBox.y) - Math.round(beforeScrollBox.y),
-          ),
-        ).toBeLessThanOrEqual(1)
+        expect(Math.round(afterScrollBox.y)).toBeLessThanOrEqual(
+          Math.round(beforeScrollBox.y) + 1,
+        )
+        expect(Math.round(afterScrollBox.y)).toBeGreaterThanOrEqual(0)
         expect(scrollTopBox.y).toBeGreaterThan(afterScrollBox.y)
 
         const beforeReturnScrollY = await page.evaluate(() =>

@@ -91,6 +91,7 @@ export interface RequirementMutationInput {
   categoryId?: number
   createdBy?: string
   description?: string
+  normReferenceIds?: number[]
   qualityCharacteristicId?: number
   references?: RequirementReferenceInput[]
   requiresTesting?: boolean
@@ -112,6 +113,7 @@ export interface QueryCatalogInput {
   includeArchived?: boolean
   limit?: number
   locale?: ResponseLocale
+  normReferenceIds?: number[]
   offset?: number
   qualityCharacteristicIds?: number[]
   requiresTesting?: boolean[]
@@ -301,6 +303,9 @@ function formatRequirementListItem(
         : null,
     pendingVersionStatusId:
       item.maxVersion > item.versionNumber ? item.pendingVersionStatusId : null,
+    normReferenceIds: item.normReferenceIds
+      ? item.normReferenceIds.split(',').filter(Boolean)
+      : [],
     uniqueId: item.uniqueId,
     version: {
       acceptanceCriteria: item.acceptanceCriteria,
@@ -388,6 +393,17 @@ function formatRequirementDetail(
             nameSv: version.qualityCharacteristic.nameSv,
           }
         : null,
+      versionNormReferences: version.versionNormReferences.map(vnr => ({
+        normReference: {
+          id: vnr.normReference?.id ?? vnr.normReferenceId,
+          issuer: vnr.normReference?.issuer ?? '',
+          name: vnr.normReference?.name ?? '',
+          normReferenceId: vnr.normReference?.normReferenceId ?? '',
+          reference: vnr.normReference?.reference ?? '',
+          type: vnr.normReference?.type ?? '',
+          version: vnr.normReference?.version ?? null,
+        },
+      })),
       versionNumber: version.versionNumber,
       versionScenarios: version.versionScenarios.map(versionScenario => ({
         scenario: {
@@ -700,6 +716,7 @@ export function createRequirementsService(
               sortDirection: input.sortDirection,
               statuses: input.statuses,
               qualityCharacteristicIds: input.qualityCharacteristicIds,
+              normReferenceIds: input.normReferenceIds,
               typeIds: input.typeIds,
               uniqueIdSearch: input.uniqueIdSearch,
               usageScenarioIds: input.usageScenarioIds,
@@ -1039,6 +1056,7 @@ export function createRequirementsService(
               acceptanceCriteria: payload.acceptanceCriteria,
               createdBy: payload.createdBy ?? context.actor.id ?? undefined,
               description: payload.description,
+              normReferenceIds: payload.normReferenceIds,
               requirementAreaId: payload.areaId,
               requirementCategoryId: payload.categoryId,
               qualityCharacteristicId: payload.qualityCharacteristicId,
@@ -1098,6 +1116,7 @@ export function createRequirementsService(
               acceptanceCriteria: payload.acceptanceCriteria,
               createdBy: payload.createdBy ?? context.actor.id ?? undefined,
               description: payload.description,
+              normReferenceIds: payload.normReferenceIds,
               requirementAreaId: payload.areaId,
               requirementCategoryId: payload.categoryId,
               qualityCharacteristicId: payload.qualityCharacteristicId,

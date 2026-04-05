@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
     .filter((v): v is boolean => v !== null)
   const statusParams = url.searchParams.getAll('statuses')
   const statuses = statusParams.map(Number).filter(n => !Number.isNaN(n))
+  const normReferenceIds = url.searchParams
+    .getAll('normReferenceIds')
+    .map(Number)
+    .filter(n => !Number.isNaN(n))
   const usageScenarioIds = url.searchParams
     .getAll('usageScenarioIds')
     .map(Number)
@@ -89,6 +93,8 @@ export async function GET(request: NextRequest) {
           : undefined,
       typeIds: typeIds.length > 0 ? typeIds : undefined,
       uniqueIdSearch,
+      normReferenceIds:
+        normReferenceIds.length > 0 ? normReferenceIds : undefined,
       usageScenarioIds:
         usageScenarioIds.length > 0 ? usageScenarioIds : undefined,
     })
@@ -188,6 +194,11 @@ export async function POST(request: NextRequest) {
                 owner: reference.owner,
                 uri: reference.uri,
               }))
+          : undefined,
+        normReferenceIds: Array.isArray(body.normReferenceIds)
+          ? body.normReferenceIds
+              .map(value => Number(value))
+              .filter(value => !Number.isNaN(value))
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod

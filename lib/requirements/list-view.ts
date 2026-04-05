@@ -3,6 +3,7 @@ export interface FilterValues {
   categoryIds?: number[]
   descriptionSearch?: string
   needsReferenceIds?: number[]
+  normReferenceIds?: number[]
   qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
   statuses?: number[]
@@ -46,6 +47,7 @@ export interface RequirementRow {
   isArchived: boolean
   needsReference?: string | null
   needsReferenceId?: number | null
+  normReferenceIds?: string[]
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
   uniqueId: string
@@ -88,6 +90,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
     (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
+    (values.normReferenceIds && values.normReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
     values.descriptionSearch ||
     (values.usageScenarioIds && values.usageScenarioIds.length > 0) ||
@@ -106,6 +109,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'requiresTesting',
   'version',
   'needsReference',
+  'normReferences',
 ] as const
 
 export type RequirementColumnId = (typeof REQUIREMENT_COLUMN_ORDER)[number]
@@ -160,9 +164,9 @@ export const DEFAULT_REQUIREMENT_SORT: RequirementSortState = {
 }
 
 export const REQUIREMENT_VISIBLE_COLUMNS_STORAGE_KEY =
-  'requirements.visibleColumns.v3'
+  'requirements.visibleColumns.v4'
 export const REQUIREMENT_COLUMN_WIDTHS_STORAGE_KEY_PREFIX =
-  'requirements.columnWidths.v3'
+  'requirements.columnWidths.v4'
 
 export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
   {
@@ -291,6 +295,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     defaultWidthPx: 200,
     id: 'needsReference',
     labelKey: 'needsReference',
+    labelNamespace: 'requirement',
+    maxWidthPx: 400,
+    minWidthPx: 140,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: false,
+    defaultVisible: false,
+    defaultWidthPx: 200,
+    id: 'normReferences',
+    labelKey: 'normReferences',
     labelNamespace: 'requirement',
     maxWidthPx: 400,
     minWidthPx: 140,
@@ -545,6 +562,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')
+  clearIfHidden('normReferences', 'normReferenceIds')
 
   return nextValues
 }
@@ -704,6 +722,11 @@ export function buildRequirementListParams({
   if (filters.needsReferenceIds) {
     for (const id of filters.needsReferenceIds) {
       params.append('needsReferenceIds', String(id))
+    }
+  }
+  if (filters.normReferenceIds) {
+    for (const id of filters.normReferenceIds) {
+      params.append('normReferenceIds', String(id))
     }
   }
   if (filters.usageScenarioIds) {

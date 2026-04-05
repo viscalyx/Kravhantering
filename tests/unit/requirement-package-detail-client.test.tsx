@@ -236,6 +236,10 @@ describe('RequirementPackageDetailClient', () => {
           )
         }
 
+        if (url.startsWith('/api/norm-references')) {
+          return Promise.resolve(okJson({ normReferences: [] }))
+        }
+
         throw new Error(`Unmocked fetch: ${method} ${url}`)
       },
     )

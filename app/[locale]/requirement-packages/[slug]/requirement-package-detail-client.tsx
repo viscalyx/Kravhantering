@@ -182,6 +182,12 @@ export default function KravpaketDetailClient({
   const [availableNeedsRefs, setAvailableNeedsRefs] = useState<
     { id: number; text: string }[]
   >([])
+  const [leftNormReferenceOptions, setLeftNormReferenceOptions] = useState<
+    { id: number; normReferenceId: string; name: string }[]
+  >([])
+  const [rightNormReferenceOptions, setRightNormReferenceOptions] = useState<
+    { id: number; normReferenceId: string; name: string }[]
+  >([])
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
   const [addModalError, setAddModalError] = useState<string | null>(null)
@@ -428,6 +434,44 @@ export default function KravpaketDetailClient({
     )
   }, [rightVisibleCols])
 
+  // Fetch norm reference options for left panel (status-aware)
+  useEffect(() => {
+    const statuses = leftFilters.statuses ?? []
+    const params = new URLSearchParams()
+    params.set('linked', 'true')
+    for (const s of statuses) params.append('statuses', String(s))
+    fetch(`/api/norm-references?${params}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        const typed = data as {
+          normReferences?: {
+            id: number
+            normReferenceId: string
+            name: string
+          }[]
+        } | null
+        setLeftNormReferenceOptions(typed?.normReferences ?? [])
+      })
+      .catch(() => setLeftNormReferenceOptions([]))
+  }, [leftFilters.statuses])
+
+  // Fetch norm reference options for right panel (always published = status 3)
+  useEffect(() => {
+    fetch('/api/norm-references?linked=true&statuses=3')
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        const typed = data as {
+          normReferences?: {
+            id: number
+            normReferenceId: string
+            name: string
+          }[]
+        } | null
+        setRightNormReferenceOptions(typed?.normReferences ?? [])
+      })
+      .catch(() => setRightNormReferenceOptions([]))
+  }, [])
+
   // Open add modal
   const handleOpenAddModal = useCallback(async () => {
     setPendingAddIds(Array.from(rightSelectedIds))
@@ -573,8 +617,22 @@ export default function KravpaketDetailClient({
         r.usageScenarioIds?.some(id => scenarioSet.has(id)),
       )
     }
+    if (
+      leftFilters.normReferenceIds &&
+      leftFilters.normReferenceIds.length > 0
+    ) {
+      const filterDbIds = new Set(leftFilters.normReferenceIds)
+      const matchingTextIds = new Set(
+        leftNormReferenceOptions
+          .filter(nr => filterDbIds.has(nr.id))
+          .map(nr => nr.normReferenceId),
+      )
+      rows = rows.filter(r =>
+        r.normReferenceIds?.some(textId => matchingTextIds.has(textId)),
+      )
+    }
     return rows
-  }, [packageItems, leftFilters, areas])
+  }, [packageItems, leftFilters, areas, leftNormReferenceOptions])
 
   // Only show usage scenarios that appear on at least one item in the package
   const packageUsageScenarios = useMemo(() => {
@@ -1019,6 +1077,7 @@ export default function KravpaketDetailClient({
                     getName={getName}
                     locale={locale}
                     needsReferenceOptions={availableNeedsRefs}
+                    normReferences={leftNormReferenceOptions}
                     onFilterChange={setLeftFilters}
                     onRowClick={id =>
                       setLeftExpandedId(prev => (prev === id ? null : id))
@@ -1080,6 +1139,7 @@ export default function KravpaketDetailClient({
                   hasMore={rightHasMore}
                   loadingMore={rightLoadingMore}
                   locale={locale}
+                  normReferences={rightNormReferenceOptions}
                   onFilterChange={newFilters => {
                     // Strip statuses — always fixed to published
                     const { statuses: _s, ...rest } = newFilters

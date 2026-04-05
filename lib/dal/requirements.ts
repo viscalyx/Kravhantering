@@ -19,6 +19,7 @@ import {
   requirementStatusTransitions,
   requirements,
   requirementTypes,
+  requirementVersionNormReferences,
   requirementVersions,
   requirementVersionUsageScenarios,
 } from '@/drizzle/schema'
@@ -53,6 +54,7 @@ type ListRequirementsOptions = {
   qualityCharacteristicIds?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
+  normReferenceIds?: number[]
   usageScenarioIds?: number[]
 }
 
@@ -123,6 +125,19 @@ function buildRequirementListConditions(opts: ListRequirementsOptions) {
   if (opts.requiresTesting && opts.requiresTesting.length > 0) {
     conditions.push(
       inArray(requirementVersions.requiresTesting, opts.requiresTesting),
+    )
+  }
+  if (opts.normReferenceIds && opts.normReferenceIds.length > 0) {
+    const ids = sql.join(
+      opts.normReferenceIds.map(id => sql`${id}`),
+      sql`, `,
+    )
+    conditions.push(
+      sql`EXISTS (
+        SELECT 1 FROM requirement_version_norm_references vnr
+        WHERE vnr.requirement_version_id = ${requirementVersions.id}
+        AND vnr.norm_reference_id IN (${ids})
+      )`,
     )
   }
   if (opts.usageScenarioIds && opts.usageScenarioIds.length > 0) {
@@ -305,6 +320,12 @@ export async function listRequirements(
         WHERE rv.requirement_id = ${requirements.id}
         ORDER BY rv.version_number DESC LIMIT 1
       )`.as('pending_version_status_id'),
+      normReferenceIds: sql<string | null>`(
+        SELECT GROUP_CONCAT(nr.norm_reference_id, ',')
+        FROM requirement_version_norm_references vnr
+        JOIN norm_references nr ON nr.id = vnr.norm_reference_id
+        WHERE vnr.requirement_version_id = ${requirementVersions.id}
+      )`.as('norm_reference_ids'),
     })
     .from(requirements)
     .innerJoin(
@@ -483,6 +504,11 @@ export async function getRequirementById(db: Database, id: number) {
           qualityCharacteristic: true,
           status: true,
           references: true,
+          versionNormReferences: {
+            with: {
+              normReference: true,
+            },
+          },
           versionScenarios: {
             with: {
               scenario: true,
@@ -528,6 +554,7 @@ export async function createRequirement(
     requiresTesting?: boolean
     verificationMethod?: string | null
     createdBy?: string
+    normReferenceIds?: number[]
     referenceIds?: number[]
     scenarioIds?: number[]
   },
@@ -589,6 +616,17 @@ export async function createRequirement(
     )
   }
 
+  // Link norm references
+  if (data.normReferenceIds?.length) {
+    const uniqueIds = [...new Set(data.normReferenceIds)]
+    await db.insert(requirementVersionNormReferences).values(
+      uniqueIds.map(normReferenceId => ({
+        requirementVersionId: version.id,
+        normReferenceId,
+      })),
+    )
+  }
+
   return { requirement: req, version }
 }
 
@@ -605,6 +643,7 @@ export async function editRequirement(
     requiresTesting?: boolean
     verificationMethod?: string | null
     createdBy?: string
+    normReferenceIds?: number[]
     scenarioIds?: number[]
   },
 ) {
@@ -689,6 +728,26 @@ export async function editRequirement(
       )
     }
 
+    // Replace norm references: delete existing, then insert new
+    await db
+      .delete(requirementVersionNormReferences)
+      .where(
+        eq(
+          requirementVersionNormReferences.requirementVersionId,
+          currentVersion.id,
+        ),
+      )
+
+    if (data.normReferenceIds?.length) {
+      const uniqueIds = [...new Set(data.normReferenceIds)]
+      await db.insert(requirementVersionNormReferences).values(
+        uniqueIds.map(normReferenceId => ({
+          requirementVersionId: currentVersion.id,
+          normReferenceId,
+        })),
+      )
+    }
+
     const updated = await db.query.requirementVersions.findFirst({
       where: eq(requirementVersions.id, currentVersion.id),
     })
@@ -730,6 +789,17 @@ export async function editRequirement(
       uniqueIds.map(usageScenarioId => ({
         requirementVersionId: version.id,
         usageScenarioId,
+      })),
+    )
+  }
+
+  // Link norm references
+  if (data.normReferenceIds?.length) {
+    const uniqueIds = [...new Set(data.normReferenceIds)]
+    await db.insert(requirementVersionNormReferences).values(
+      uniqueIds.map(normReferenceId => ({
+        requirementVersionId: version.id,
+        normReferenceId,
       })),
     )
   }
@@ -1110,6 +1180,7 @@ export async function restoreVersion(
     where: eq(requirementVersions.id, versionId),
     with: {
       references: true,
+      versionNormReferences: true,
       versionScenarios: true,
     },
   })
@@ -1166,6 +1237,16 @@ export async function restoreVersion(
       oldVersion.versionScenarios.map(versionScenario => ({
         requirementVersionId: newVersion.id,
         usageScenarioId: versionScenario.usageScenarioId,
+      })),
+    )
+  }
+
+  // Copy norm references
+  if (oldVersion.versionNormReferences.length > 0) {
+    await db.insert(requirementVersionNormReferences).values(
+      oldVersion.versionNormReferences.map(vnr => ({
+        requirementVersionId: newVersion.id,
+        normReferenceId: vnr.normReferenceId,
       })),
     )
   }

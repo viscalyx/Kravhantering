@@ -1,8 +1,9 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Plus, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from '@/i18n/routing'
 
 interface FormData {
@@ -10,6 +11,7 @@ interface FormData {
   areaId: string
   categoryId: string
   description: string
+  normReferenceIds: number[]
   qualityCharacteristicId: string
   requiresTesting: boolean
   scenarioIds: number[]
@@ -18,7 +20,8 @@ interface FormData {
 }
 
 interface RequirementFormProps {
-  initialData?: Partial<Omit<FormData, 'scenarioIds'>>
+  initialData?: Partial<Omit<FormData, 'normReferenceIds' | 'scenarioIds'>>
+  initialNormReferenceIds?: number[]
   initialScenarioIds?: number[]
   mode: 'create' | 'edit'
   requirementId?: number | string
@@ -28,6 +31,15 @@ interface ScenarioOption {
   id: number
   nameEn: string
   nameSv: string
+}
+
+interface NormReferenceOption {
+  id: number
+  issuer: string
+  name: string
+  normReferenceId: string
+  reference: string
+  type: string
 }
 
 interface Option {
@@ -53,6 +65,7 @@ const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
 
 export default function RequirementForm({
   initialData,
+  initialNormReferenceIds,
   initialScenarioIds,
   requirementId,
   mode,
@@ -67,7 +80,21 @@ export default function RequirementForm({
   const [areas, setAreas] = useState<AreaOption[]>([])
   const [categories, setCategories] = useState<Option[]>([])
   const [types, setTypes] = useState<Option[]>([])
+  const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
+    [],
+  )
   const [scenarios, setScenarios] = useState<ScenarioOption[]>([])
+  const [showCreateNormRef, setShowCreateNormRef] = useState(false)
+  const [normRefForm, setNormRefForm] = useState({
+    normReferenceId: '',
+    name: '',
+    type: '',
+    reference: '',
+    version: '',
+    issuer: '',
+  })
+  const [normRefSubmitting, setNormRefSubmitting] = useState(false)
+  const [normRefError, setNormRefError] = useState<string | null>(null)
   const [qualityCharacteristics, setQualityCharacteristics] = useState<
     QualityCharacteristicOption[]
   >([])
@@ -96,6 +123,7 @@ export default function RequirementForm({
     description: initialData?.description ?? '',
     acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
     requiresTesting: initialData?.requiresTesting ?? false,
+    normReferenceIds: initialNormReferenceIds ?? [],
     scenarioIds: initialScenarioIds ?? [],
     verificationMethod: initialData?.verificationMethod ?? '',
   })
@@ -118,8 +146,15 @@ export default function RequirementForm({
       fetch('/api/requirement-categories'),
       fetch('/api/requirement-types'),
       fetch('/api/usage-scenarios'),
+      fetch('/api/norm-references'),
     ])
-    const [areasResult, catResult, typesResult, scenariosResult] = results
+    const [
+      areasResult,
+      catResult,
+      typesResult,
+      scenariosResult,
+      normRefsResult,
+    ] = results
     if (areasResult.status === 'fulfilled' && areasResult.value.ok)
       setAreas(
         ((await areasResult.value.json()) as { areas?: AreaOption[] }).areas ??
@@ -141,6 +176,14 @@ export default function RequirementForm({
             scenarios?: ScenarioOption[]
           }
         ).scenarios ?? [],
+      )
+    if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok)
+      setNormReferences(
+        (
+          (await normRefsResult.value.json()) as {
+            normReferences?: NormReferenceOption[]
+          }
+        ).normReferences ?? [],
       )
   }, [])
 
@@ -207,6 +250,12 @@ export default function RequirementForm({
           verificationMethod: form.requiresTesting
             ? form.verificationMethod || undefined
             : undefined,
+          normReferenceIds:
+            mode === 'edit'
+              ? form.normReferenceIds
+              : form.normReferenceIds.length > 0
+                ? form.normReferenceIds
+                : undefined,
           scenarioIds:
             mode === 'edit'
               ? form.scenarioIds
@@ -483,40 +532,150 @@ export default function RequirementForm({
           )}
         </div>
 
-        {scenarios.length > 0 && (
-          <div className="self-start lg:w-64">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-sm font-medium">{t('scenario')}</span>
-              {helpButton('scenario', t('scenario'))}
+        <div className="self-start lg:w-64 space-y-6">
+          {scenarios.length > 0 && (
+            <div>
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-sm font-medium">{t('scenario')}</span>
+                {helpButton('scenario', t('scenario'))}
+              </div>
+              {helpPanel('scenarioHelp', 'scenario')}
+              <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
+                {scenarios.map(s => (
+                  <label
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                    key={s.id}
+                  >
+                    <input
+                      checked={form.scenarioIds.includes(s.id)}
+                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                      onChange={e => {
+                        const checked = e.target.checked
+                        setForm(prev => ({
+                          ...prev,
+                          scenarioIds: checked
+                            ? [...prev.scenarioIds, s.id]
+                            : prev.scenarioIds.filter(id => id !== s.id),
+                        }))
+                      }}
+                      type="checkbox"
+                    />
+                    {getOptionName(s)}
+                  </label>
+                ))}
+              </div>
             </div>
-            {helpPanel('scenarioHelp', 'scenario')}
-            <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
-              {scenarios.map(s => (
-                <label
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                  key={s.id}
-                >
-                  <input
-                    checked={form.scenarioIds.includes(s.id)}
-                    className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                    onChange={e => {
-                      const checked = e.target.checked
-                      setForm(prev => ({
-                        ...prev,
-                        scenarioIds: checked
-                          ? [...prev.scenarioIds, s.id]
-                          : prev.scenarioIds.filter(id => id !== s.id),
-                      }))
-                    }}
-                    type="checkbox"
-                  />
-                  {getOptionName(s)}
-                </label>
-              ))}
+          )}
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-medium">
+                  {t('normReferences')}
+                </span>
+                {helpButton('normReferences', t('normReferences'))}
+              </div>
+              <button
+                className="btn-primary inline-flex items-center gap-1.5 text-xs py-1.5 px-2.5"
+                onClick={() => setShowCreateNormRef(true)}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                {tc('create')}
+              </button>
             </div>
+            {helpPanel('normReferencesHelp', 'normReferences')}
+            {normReferences.length > 0 && (
+              <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
+                {normReferences.map(nr => (
+                  <label
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                    key={nr.id}
+                  >
+                    <input
+                      checked={form.normReferenceIds.includes(nr.id)}
+                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                      onChange={e => {
+                        const checked = e.target.checked
+                        setForm(prev => ({
+                          ...prev,
+                          normReferenceIds: checked
+                            ? [...prev.normReferenceIds, nr.id]
+                            : prev.normReferenceIds.filter(id => id !== nr.id),
+                        }))
+                      }}
+                      type="checkbox"
+                    />
+                    <span>
+                      <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                        {nr.normReferenceId}
+                      </span>{' '}
+                      {nr.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
+
+      {showCreateNormRef &&
+        createPortal(
+          <NormReferenceModal
+            normRefError={normRefError}
+            normRefForm={normRefForm}
+            normRefSubmitting={normRefSubmitting}
+            onCancel={() => {
+              setShowCreateNormRef(false)
+              setNormRefError(null)
+            }}
+            onSave={async () => {
+              setNormRefSubmitting(true)
+              setNormRefError(null)
+              try {
+                const res = await fetch('/api/norm-references', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    normReferenceId: normRefForm.normReferenceId || undefined,
+                    name: normRefForm.name,
+                    type: normRefForm.type,
+                    reference: normRefForm.reference,
+                    version: normRefForm.version || null,
+                    issuer: normRefForm.issuer,
+                  }),
+                })
+                if (!res.ok) {
+                  const data = (await res.json()) as { error?: string }
+                  setNormRefError(data.error ?? tc('error'))
+                } else {
+                  const created = (await res.json()) as NormReferenceOption
+                  setNormReferences(prev => [...prev, created])
+                  setForm(prev => ({
+                    ...prev,
+                    normReferenceIds: [...prev.normReferenceIds, created.id],
+                  }))
+                  setNormRefForm({
+                    normReferenceId: '',
+                    name: '',
+                    type: '',
+                    reference: '',
+                    version: '',
+                    issuer: '',
+                  })
+                  setShowCreateNormRef(false)
+                }
+              } finally {
+                setNormRefSubmitting(false)
+              }
+            }}
+            onSetField={(field, value) =>
+              setNormRefForm(prev => ({ ...prev, [field]: value }))
+            }
+          />,
+          document.body,
+        )}
 
       {error && (
         <p className="mt-5 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -579,5 +738,230 @@ export default function RequirementForm({
         </div>
       </div>
     </form>
+  )
+}
+
+const NORM_REF_TYPE_SUGGESTIONS = [
+  'Lag',
+  'Förordning',
+  'Föreskrift',
+  'Standard',
+  'Riktlinje',
+  'Strategisk riktlinje',
+]
+
+interface NormReferenceModalProps {
+  normRefError: string | null
+  normRefForm: {
+    issuer: string
+    name: string
+    normReferenceId: string
+    reference: string
+    type: string
+    version: string
+  }
+  normRefSubmitting: boolean
+  onCancel: () => void
+  onSave: () => void
+  onSetField: (field: string, value: string) => void
+}
+
+function NormReferenceModal({
+  normRefError,
+  normRefForm,
+  normRefSubmitting,
+  onCancel,
+  onSave,
+  onSetField,
+}: NormReferenceModalProps) {
+  const t = useTranslations('requirement')
+  const tc = useTranslations('common')
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onCancel])
+
+  const fieldClass =
+    'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
+  const canSave =
+    !normRefSubmitting &&
+    normRefForm.name.trim() !== '' &&
+    normRefForm.type.trim() !== '' &&
+    normRefForm.reference.trim() !== '' &&
+    normRefForm.issuer.trim() !== ''
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      ref={overlayRef}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div
+        aria-modal="true"
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl animate-fade-in-up p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        role="dialog"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-secondary-900 dark:text-secondary-100">
+            {t('addNewNormReference')}
+          </h2>
+          <button
+            aria-label={tc('cancel')}
+            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50"
+            onClick={onCancel}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            {t('newNormReferenceWarning')}
+          </p>
+        </div>
+
+        {normRefError && (
+          <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+            {normRefError}
+          </p>
+        )}
+
+        <div className="space-y-3">
+          <div>
+            <label
+              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
+              htmlFor="modal-nr-id"
+            >
+              {t('normReferenceIdLabel')}
+            </label>
+            <input
+              className={fieldClass}
+              id="modal-nr-id"
+              onChange={e => onSetField('normReferenceId', e.target.value)}
+              placeholder={t('normReferenceIdPlaceholder')}
+              type="text"
+              value={normRefForm.normReferenceId}
+            />
+          </div>
+          <div>
+            <label
+              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
+              htmlFor="modal-nr-name"
+            >
+              {t('name')} *
+            </label>
+            <input
+              className={fieldClass}
+              id="modal-nr-name"
+              onChange={e => onSetField('name', e.target.value)}
+              required
+              type="text"
+              value={normRefForm.name}
+            />
+          </div>
+          <div>
+            <label
+              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
+              htmlFor="modal-nr-type"
+            >
+              {t('type')} *
+            </label>
+            <input
+              className={fieldClass}
+              id="modal-nr-type"
+              list="norm-ref-modal-type-options"
+              onChange={e => onSetField('type', e.target.value)}
+              placeholder={t('typePlaceholder')}
+              required
+              type="text"
+              value={normRefForm.type}
+            />
+            <datalist id="norm-ref-modal-type-options">
+              {NORM_REF_TYPE_SUGGESTIONS.map(s => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
+          </div>
+          <div>
+            <label
+              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
+              htmlFor="modal-nr-reference"
+            >
+              {t('reference')} *
+            </label>
+            <input
+              className={fieldClass}
+              id="modal-nr-reference"
+              onChange={e => onSetField('reference', e.target.value)}
+              placeholder="t.ex. SFS 2018:218, ISO 27001:2022"
+              required
+              type="text"
+              value={normRefForm.reference}
+            />
+          </div>
+          <div>
+            <label
+              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
+              htmlFor="modal-nr-version"
+            >
+              {t('version')}
+            </label>
+            <input
+              className={fieldClass}
+              id="modal-nr-version"
+              onChange={e => onSetField('version', e.target.value)}
+              type="text"
+              value={normRefForm.version}
+            />
+          </div>
+          <div>
+            <label
+              className="block text-xs font-medium mb-1 text-secondary-700 dark:text-secondary-300"
+              htmlFor="modal-nr-issuer"
+            >
+              {t('issuer')} *
+            </label>
+            <input
+              className={fieldClass}
+              id="modal-nr-issuer"
+              onChange={e => onSetField('issuer', e.target.value)}
+              required
+              type="text"
+              value={normRefForm.issuer}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button
+            className="btn-primary"
+            disabled={!canSave}
+            onClick={onSave}
+            type="button"
+          >
+            {normRefSubmitting ? tc('saving') : tc('save')}
+          </button>
+          <button
+            className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-600 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+            disabled={normRefSubmitting}
+            onClick={onCancel}
+            type="button"
+          >
+            {tc('cancel')}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

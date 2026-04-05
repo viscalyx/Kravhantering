@@ -158,6 +158,7 @@ function makeRequirementRecord() {
             },
           },
         ],
+        versionNormReferences: [],
       },
     ],
   }

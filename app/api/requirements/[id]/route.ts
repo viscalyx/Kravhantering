@@ -92,6 +92,11 @@ export async function PUT(
                 uri: reference.uri,
               }))
           : undefined,
+        normReferenceIds: Array.isArray(body.normReferenceIds)
+          ? body.normReferenceIds
+              .map(value => Number(value))
+              .filter(value => !Number.isNaN(value))
+          : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)

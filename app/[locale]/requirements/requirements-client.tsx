@@ -146,6 +146,9 @@ export default function RequirementsClient({
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
+  const [normReferenceOptions, setNormReferenceOptions] = useState<
+    { id: number; normReferenceId: string; name: string }[]
+  >([])
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
   const [sortState, setSortState] = useState<RequirementSortState>(
@@ -468,6 +471,30 @@ export default function RequirementsClient({
   }, [])
 
   useEffect(() => {
+    const statuses = filters.statuses ?? []
+    const params = new URLSearchParams()
+    params.set('linked', 'true')
+    for (const s of statuses) {
+      params.append('statuses', String(s))
+    }
+    fetch(`/api/norm-references?${params}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        const typed = data as {
+          normReferences?: {
+            id: number
+            normReferenceId: string
+            name: string
+          }[]
+        } | null
+        setNormReferenceOptions(typed?.normReferences ?? [])
+      })
+      .catch(() => {
+        setNormReferenceOptions([])
+      })
+  }, [filters.statuses])
+
+  useEffect(() => {
     let nextVisibleColumns = defaultVisibleColumns
 
     try {
@@ -717,6 +744,7 @@ export default function RequirementsClient({
               loading={loading}
               loadingMore={loadingMore}
               locale={locale}
+              normReferences={normReferenceOptions}
               onColumnWidthsChange={setColumnWidths}
               onFilterChange={val => {
                 setFilters(val)

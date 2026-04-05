@@ -97,6 +97,7 @@ describe('ui settings DAL', () => {
         'requiresTesting',
         'version',
         'needsReference',
+        'normReferences',
       ])
       expect(getRequirementColumnOrder(loadedColumns)).toEqual([
         'uniqueId',
@@ -109,6 +110,7 @@ describe('ui settings DAL', () => {
         'requiresTesting',
         'version',
         'needsReference',
+        'normReferences',
       ])
       expect(
         persistedRows.map(row => ({
@@ -131,6 +133,11 @@ describe('ui settings DAL', () => {
         { columnId: 'requiresTesting', isDefaultVisible: false, sortOrder: 7 },
         { columnId: 'version', isDefaultVisible: false, sortOrder: 8 },
         { columnId: 'needsReference', isDefaultVisible: false, sortOrder: 9 },
+        {
+          columnId: 'normReferences',
+          isDefaultVisible: false,
+          sortOrder: 10,
+        },
       ])
     } finally {
       sqlite.close()

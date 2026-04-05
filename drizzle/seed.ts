@@ -19,8 +19,10 @@ DELETE FROM requirement_packages;
 DELETE FROM package_responsibility_areas;
 DELETE FROM package_implementation_types;
 DELETE FROM requirement_version_usage_scenarios;
+DELETE FROM requirement_version_norm_references;
 DELETE FROM requirement_references;
 DELETE FROM requirement_versions;
+DELETE FROM norm_references;
 DELETE FROM usage_scenarios;
 DELETE FROM requirements;
 DELETE FROM requirement_areas;
@@ -484,7 +486,7 @@ INSERT OR IGNORE INTO requirement_versions (id, requirement_id, version_number, 
   (4,  3, 1, 'FTP-integration för filöverföring (utgått) [Version 1 testdata]', 'FTP-anslutning upprättas och fil överförs [Version 1 testdata]', 2, 1, 1, 4, 0, NULL, datetime('now', '-60 days'), 'seed', datetime('now', '-56 days'), datetime('now', '-55 days'), datetime('now', '-45 days')),
   (5,  4, 1, 'Alla API-anrop ska autentiseras med OAuth2 eller API-nycklar [Version 1 testdata]', 'Oautentiserade anrop avvisas med HTTP 401 [Version 1 testdata]', 2, 2, 26, 3, 0, NULL, datetime('now', '-25 days'), 'seed', datetime('now', '-23 days'), datetime('now', '-22 days'), NULL),
   (6,  5, 1, 'Personuppgifter ska krypteras vid lagring [Version 1 testdata]', 'Data i databasen är krypterat och kan inte läsas i klartext [Version 1 testdata]', 2, 2, 27, 2, 1, 'Penetrationstest och kryptografisk verifiering av krypterad lagringsintegritet', datetime('now', '-15 days'), 'seed', datetime('now', '-13 days'), NULL, NULL),
-  (7,  6, 1, 'Svarstid för API-anrop ska vara under 500ms vid normal last [Version 1 testdata]', '95:e percentilen av svarstider understiger 500ms [Version 1 testdata]', 2, 2, 6, 2, 0, NULL, datetime('now', '-18 days'), 'seed', datetime('now', '-16 days'), datetime('now', '-15 days'), NULL),
+  (7,  6, 1, 'Svarstid för API-anrop ska vara under 500ms vid normal last [Version 1 testdata]', '95:e percentilen av svarstider understiger 500ms [Version 1 testdata]', 2, 2, 6, 3, 0, NULL, datetime('now', '-18 days'), 'seed', datetime('now', '-16 days'), datetime('now', '-15 days'), NULL),
   (8,  7, 1, 'Användargränssnittet ska vara responsivt och fungera på mobila enheter [Version 1 testdata]', 'Gränssnittet anpassar sig korrekt för skärmbredder från 320px till 1920px [Version 1 testdata]', 1, 2, 15, 1, 1, 'Responsivitetstestning med BrowserStack på enheter från 320px till 1920px', datetime('now', '-12 days'), 'seed', datetime('now', '-10 days'), NULL, NULL),
   (9,  4, 2, 'Alla API-anrop ska autentiseras med OAuth2, API-nycklar eller mTLS-certifikat [Version 2 testdata]', 'Oautentiserade anrop avvisas med HTTP 401. mTLS-anslutningar valideras mot internt CA. [Version 2 testdata]', 2, 2, 26, 1, 1, 'Automatiserade e2e-tester som validerar inloggningsflödet och sessionshantering', datetime('now', '-5 days'), 'seed', datetime('now', '-3 days'), NULL, NULL),
   (10, 8, 1, 'Lösenord ska ha minst 8 tecken (utgått, ersatt av SSO-krav) [Version 1 testdata]', 'Lösenordspolicy verifieras vid registrering [Version 1 testdata]', 2, 2, 31, 4, 0, NULL, datetime('now', '-90 days'), 'seed', datetime('now', '-86 days'), datetime('now', '-85 days'), datetime('now', '-75 days')),
@@ -1406,6 +1408,40 @@ INSERT OR IGNORE INTO requirement_references (id, requirement_version_id, name, 
   (1, 5, 'OWASP API Security Top 10', 'https://owasp.org/API-Security/', 'owner-2', datetime('now')),
   (2, 6, 'GDPR Artikel 32', 'https://gdpr-info.eu/art-32-gdpr/', 'owner-2', datetime('now')),
   (3, 2, 'REST API Design Guidelines', 'https://restfulapi.net/', 'owner-1', datetime('now'));
+
+-- ─── Norm References ─────────────────────────────────────────────────────────
+INSERT OR IGNORE INTO norm_references (id, norm_reference_id, name, type, reference, version, issuer, created_at, updated_at) VALUES
+  (1, 'SFS 2018:218',       'Dataskyddsförordningen (GDPR)',                               'Lag',        'SFS 2018:218',       NULL,   'Riksdagen',                                             datetime('now'), datetime('now')),
+  (2, 'ISO/IEC 27001:2022', 'Ledningssystem för informationssäkerhet',                     'Standard',   'ISO/IEC 27001:2022', '2022', 'ISO/IEC',                                               datetime('now'), datetime('now')),
+  (3, 'MSBFS 2020:6',       'Föreskrifter om informationssäkerhet för statliga myndigheter','Föreskrift', 'MSBFS 2020:6',       NULL,   'Myndigheten för samhällsskydd och beredskap (MSB)',      datetime('now'), datetime('now')),
+  (4, 'RFC 6749',            'The OAuth 2.0 Authorization Framework',                       'Standard',   'RFC 6749',           NULL,   'IETF',                                                  datetime('now'), datetime('now')),
+  (5, 'ISO/IEC 25010:2023',  'Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)','Standard', 'ISO/IEC 25010:2023', '2023', 'ISO/IEC',                                               datetime('now'), datetime('now')),
+  (6, 'EU 2022/2555',        'NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå','Direktiv','EU 2022/2555',        NULL,   'Europeiska unionens råd och Europaparlamentet',          datetime('now'), datetime('now'));
+
+-- ─── Requirement Version ↔ Norm Reference links ───────────────────────────────
+-- version 5  = SÄK0001 v1 (OAuth2-autentisering, Published)
+-- version 6  = SÄK0002 v1 (Personuppgifter krypterade, Granskning)
+-- version 7  = PRE0001 v1 (API-svarstid, Published)
+-- version 9  = SÄK0001 v2 (OAuth2/mTLS, Utkast)
+-- version 17 = SÄK0004 v1 (TLS 1.3, Published)
+-- version 18 = SÄK0005 v1 (Sårbarhetsskanning, Published)
+-- version 19 = SÄK0006 v1 (Audit-loggning, Published)
+-- version 22 = SÄK0009 v1 (Databas audit trail, Utkast)
+INSERT OR IGNORE INTO requirement_version_norm_references (requirement_version_id, norm_reference_id) VALUES
+  (5,  2),  -- SÄK0001 v1 → ISO 27001
+  (5,  4),  -- SÄK0001 v1 → RFC 6749 (OAuth 2.0)
+  (6,  1),  -- SÄK0002 v1 → GDPR
+  (7,  5),  -- PRE0001 v1 → ISO 25010
+  (9,  2),  -- SÄK0001 v2 → ISO 27001
+  (9,  4),  -- SÄK0001 v2 → RFC 6749 (OAuth 2.0)
+  (17, 2),  -- SÄK0004 v1 → ISO 27001
+  (17, 3),  -- SÄK0004 v1 → MSBFS 2020:6
+  (18, 2),  -- SÄK0005 v1 → ISO 27001
+  (18, 3),  -- SÄK0005 v1 → MSBFS 2020:6
+  (19, 1),  -- SÄK0006 v1 → GDPR
+  (19, 3),  -- SÄK0006 v1 → MSBFS 2020:6
+  (22, 1),  -- SÄK0009 v1 → GDPR
+  (9,  6);  -- SÄK0001 v2 (Utkast) → NIS2-direktivet
 
 -- ─── Package Responsibility Areas (taxonomy) ───────────────────────────────────
 INSERT OR IGNORE INTO package_responsibility_areas (id, name_sv, name_en) VALUES

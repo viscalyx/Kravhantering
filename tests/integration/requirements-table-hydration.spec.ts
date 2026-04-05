@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test'
 
-const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v3'
-const COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v3.sv'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'requirements.visibleColumns.v4'
+const COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v4.sv'
 const VISIBLE_HEADER_CELL_SELECTOR =
   '[data-sticky-table-header-table="true"] thead th'
 const BODY_COLUMN_SELECTOR =

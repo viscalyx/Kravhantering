@@ -134,7 +134,7 @@ describe('AdminClient', () => {
     )
     expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
 
-    expect(panel.getAllByRole('link')).toHaveLength(8)
+    expect(panel.getAllByRole('link')).toHaveLength(9)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {

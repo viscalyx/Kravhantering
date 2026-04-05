@@ -2,7 +2,7 @@ import { expect, type Page, test } from '@playwright/test'
 
 // Keep this in sync with getRequirementColumnWidthsStorageKey('sv')
 // in lib/requirements/list-view.ts.
-const DESCRIPTION_COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v3.sv'
+const DESCRIPTION_COLUMN_WIDTHS_STORAGE_KEY = 'requirements.columnWidths.v4.sv'
 
 const viewportVariants = [
   {
