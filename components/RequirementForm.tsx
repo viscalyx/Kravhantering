@@ -577,7 +577,7 @@ export default function RequirementForm({
                 {helpButton('normReferences', t('normReferences'))}
               </div>
               <button
-                className="btn-primary inline-flex items-center gap-1.5 text-xs py-1.5 px-2.5"
+                className="btn-primary inline-flex items-center gap-1.5 min-h-[44px] min-w-[44px]"
                 onClick={() => setShowCreateNormRef(true)}
                 type="button"
               >
@@ -810,7 +810,8 @@ function NormReferenceModal({
           </h2>
           <button
             aria-label={tc('cancel')}
-            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50"
+            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:opacity-50 disabled:pointer-events-none"
+            disabled={normRefSubmitting}
             onClick={onCancel}
             type="button"
           >

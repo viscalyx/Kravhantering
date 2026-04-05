@@ -2908,8 +2908,9 @@ describe('RequirementsTable', () => {
         />,
       )
       const cells = container.querySelectorAll('td')
-      const normRefCell = Array.from(cells).find(c => c.textContent === '—')
-      expect(normRefCell).toBeTruthy()
+      // normReferences is the last column in normRefColumns, so select the last td
+      const normRefCell = cells[cells.length - 1]
+      expect(normRefCell?.textContent).toBe('—')
     })
 
     it('calls onVisibleColumnsChange when toggling normReferences column', async () => {

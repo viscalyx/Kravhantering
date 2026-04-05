@@ -84,6 +84,7 @@ const MESSAGE_BINDINGS: Record<
       ['nav', 'normReferences'],
       ['requirement', 'normReferences'],
     ],
+    singular: [['requirement', 'normReference']],
   },
   responsibilityArea: {
     plural: [

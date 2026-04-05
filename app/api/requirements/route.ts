@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     .getAll('normReferenceIds')
     .filter(v => v.trim() !== '')
     .map(Number)
-    .filter(n => !Number.isNaN(n))
+    .filter(n => Number.isInteger(n) && n > 0)
   const usageScenarioIds = url.searchParams
     .getAll('usageScenarioIds')
     .map(Number)
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
           ? body.normReferenceIds
               .filter((value: unknown) => String(value).trim() !== '')
               .map((value: unknown) => Number(value))
-              .filter((value: number) => !Number.isNaN(value))
+              .filter((value: number) => Number.isInteger(value) && value > 0)
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod

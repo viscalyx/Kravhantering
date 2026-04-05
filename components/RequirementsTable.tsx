@@ -3525,9 +3525,7 @@ export default function RequirementsTable({
               )}
             </div>
           )}
-        <div
-          className="overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900"
-        >
+        <div className="overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900">
           <div
             className="relative"
             data-sticky-table-header="true"

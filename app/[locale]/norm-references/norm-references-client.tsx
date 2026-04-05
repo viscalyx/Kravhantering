@@ -361,7 +361,7 @@ export default function NormReferencesClient() {
                               >
                                 <td className="py-2 px-3 font-medium">
                                   <Link
-                                    className="inline-flex items-center min-h-[44px] min-w-[44px] text-primary-700 dark:text-primary-300 hover:underline"
+                                    className="inline-flex items-center min-h-[44px] min-w-[44px] rounded text-primary-700 dark:text-primary-300 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus:outline-none"
                                     href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
                                   >
                                     {req.uniqueId}
@@ -406,6 +406,7 @@ export default function NormReferencesClient() {
         {deleteError && (
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
             {...devMarker({
               context: 'normReferences',
               name: 'error banner',
@@ -444,7 +445,9 @@ export default function NormReferencesClient() {
                   <th className="py-3 px-4 font-medium text-center">
                     {t('linkedRequirements')}
                   </th>
-                  <th className="py-3 px-4" />
+                  <th className="py-3 px-4">
+                    <span className="sr-only">{tc('actions')}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
