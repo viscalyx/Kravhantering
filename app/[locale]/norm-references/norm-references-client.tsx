@@ -85,6 +85,27 @@ export default function NormReferencesClient() {
     issuer: '',
   })
 
+  const initialForm = {
+    normReferenceId: '',
+    name: '',
+    type: '',
+    reference: '',
+    version: '',
+    issuer: '',
+  }
+
+  const isFormDirty = () => {
+    return Object.keys(initialForm).some(
+      key =>
+        form[key as keyof typeof form] !==
+        (editId
+          ? (normReferences.find(nr => nr.id === editId)?.[
+              key as keyof NormReference
+            ] ?? '')
+          : initialForm[key as keyof typeof initialForm]),
+    )
+  }
+
   const fetchNormReferences = useCallback(async () => {
     setLoading(true)
     try {
@@ -95,7 +116,7 @@ export default function NormReferencesClient() {
             .normReferences ?? [],
         )
     } catch {
-      setNormReferences([])
+      // Keep previous list on transient failures
     } finally {
       setLoading(false)
     }
@@ -177,7 +198,19 @@ export default function NormReferencesClient() {
     }
   }
 
-  const handleEdit = (nr: NormReference) => {
+  const guardUnsavedChanges = async (): Promise<boolean> => {
+    if (showForm && isFormDirty()) {
+      return confirm({
+        message: tc('unsavedChangesConfirm'),
+        variant: 'danger',
+        icon: 'warning',
+      })
+    }
+    return true
+  }
+
+  const handleEdit = async (nr: NormReference) => {
+    if (!(await guardUnsavedChanges())) return
     setEditId(nr.id)
     setFormError(null)
     setLinkedRequirements([])
@@ -218,6 +251,12 @@ export default function NormReferencesClient() {
         )
         return
       }
+      if (editId === id) {
+        setEditId(null)
+        setShowForm(false)
+        setLinkedRequirements([])
+        resetForm()
+      }
       fetchNormReferences()
     } catch {
       setDeleteError(tc('error'))
@@ -247,7 +286,8 @@ export default function NormReferencesClient() {
               priority: 350,
             })}
             disabled={submitting}
-            onClick={() => {
+            onClick={async () => {
+              if (!(await guardUnsavedChanges())) return
               setShowForm(true)
               setEditId(null)
               setLinkedRequirements([])

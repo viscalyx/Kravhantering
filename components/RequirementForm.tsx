@@ -129,6 +129,51 @@ export default function RequirementForm({
     verificationMethod: initialData?.verificationMethod ?? '',
   })
 
+  const hasUserEdited = useRef(false)
+  const prevInitialData = useRef(initialData)
+  const prevNormReferenceIds = useRef(initialNormReferenceIds)
+  const prevScenarioIds = useRef(initialScenarioIds)
+
+  useEffect(() => {
+    if (hasUserEdited.current) return
+    const dataChanged = initialData !== prevInitialData.current
+    const normRefsChanged =
+      initialNormReferenceIds !== prevNormReferenceIds.current
+    const scenariosChanged = initialScenarioIds !== prevScenarioIds.current
+    if (!dataChanged && !normRefsChanged && !scenariosChanged) return
+
+    prevInitialData.current = initialData
+    prevNormReferenceIds.current = initialNormReferenceIds
+    prevScenarioIds.current = initialScenarioIds
+
+    setForm(prev => ({
+      ...prev,
+      ...(dataChanged && initialData
+        ? {
+            areaId: initialData.areaId ?? prev.areaId,
+            categoryId: initialData.categoryId ?? prev.categoryId,
+            typeId: initialData.typeId ?? prev.typeId,
+            qualityCharacteristicId:
+              initialData.qualityCharacteristicId ??
+              prev.qualityCharacteristicId,
+            description: initialData.description ?? prev.description,
+            acceptanceCriteria:
+              initialData.acceptanceCriteria ?? prev.acceptanceCriteria,
+            requiresTesting:
+              initialData.requiresTesting ?? prev.requiresTesting,
+            verificationMethod:
+              initialData.verificationMethod ?? prev.verificationMethod,
+          }
+        : {}),
+      ...(normRefsChanged
+        ? { normReferenceIds: initialNormReferenceIds ?? prev.normReferenceIds }
+        : {}),
+      ...(scenariosChanged
+        ? { scenarioIds: initialScenarioIds ?? prev.scenarioIds }
+        : {}),
+    }))
+  }, [initialData, initialNormReferenceIds, initialScenarioIds])
+
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
       const next = new Set(prev)
@@ -213,6 +258,7 @@ export default function RequirementForm({
   }, [form.typeId, fetchQualityCharacteristics])
 
   const handleChange = (key: keyof FormData, value: string | boolean) => {
+    hasUserEdited.current = true
     setForm(prev => {
       const next = { ...prev, [key]: value }
       if (key === 'requiresTesting' && !value) {
@@ -551,6 +597,7 @@ export default function RequirementForm({
                       checked={form.scenarioIds.includes(s.id)}
                       className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
                       onChange={e => {
+                        hasUserEdited.current = true
                         const checked = e.target.checked
                         setForm(prev => ({
                           ...prev,
@@ -597,6 +644,7 @@ export default function RequirementForm({
                       checked={form.normReferenceIds.includes(nr.id)}
                       className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
                       onChange={e => {
+                        hasUserEdited.current = true
                         const checked = e.target.checked
                         setForm(prev => ({
                           ...prev,

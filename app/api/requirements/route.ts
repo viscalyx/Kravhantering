@@ -199,9 +199,14 @@ export async function POST(request: NextRequest) {
           : undefined,
         normReferenceIds: Array.isArray(body.normReferenceIds)
           ? body.normReferenceIds
-              .filter((value: unknown) => String(value).trim() !== '')
-              .map((value: unknown) => Number(value))
-              .filter((value: number) => Number.isInteger(value) && value > 0)
+              .filter(
+                (value: unknown): value is number | string =>
+                  (typeof value === 'number' &&
+                    Number.isInteger(value) &&
+                    value > 0) ||
+                  (typeof value === 'string' && /^\d+$/.test(value)),
+              )
+              .map((value: number | string) => Number(value))
           : undefined,
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod
