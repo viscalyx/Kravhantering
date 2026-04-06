@@ -48,6 +48,7 @@ import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requi
 
 const sampleAreas = [{ id: 1, nameSv: 'Område', nameEn: 'Area' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
+const sampleStatuses = [{ id: 1, nameSv: 'Utveckling', nameEn: 'Development' }]
 const samplePackages = [
   {
     id: 1,
@@ -55,8 +56,10 @@ const samplePackages = [
     uniqueId: 'PAKET-SV',
     packageResponsibilityAreaId: 1,
     packageImplementationTypeId: 1,
+    packageLifecycleStatusId: 1,
     responsibilityArea: sampleAreas[0],
     implementationType: sampleTypes[0],
+    lifecycleStatus: sampleStatuses[0],
     itemCount: 0,
     requirementAreas: [],
     businessNeedsReference: null,
@@ -82,6 +85,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
   })
@@ -145,6 +150,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -193,6 +200,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -219,6 +228,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -226,7 +237,7 @@ describe('RequirementPackagesClient', () => {
 
     const emptyState = await screen.findByText('package.emptyState')
     expect(emptyState).toBeInTheDocument()
-    expect(emptyState.closest('td')).toHaveAttribute('colspan', '6')
+    expect(emptyState.closest('td')).toHaveAttribute('colspan', '7')
   })
 
   it('renders requirement-area badges with a 44px minimum touch target', async () => {
@@ -246,6 +257,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -368,6 +381,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -409,6 +424,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -467,6 +484,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -505,6 +524,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -579,6 +600,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -632,6 +655,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 
@@ -677,6 +702,8 @@ describe('RequirementPackagesClient', () => {
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/package-implementation-types')
         return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/package-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
       return Promise.resolve(okJson({}))
     })
 

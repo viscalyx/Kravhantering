@@ -13,6 +13,7 @@ import type { ReportModel } from '@/lib/reports/types'
 interface PackageReportResponse {
   businessNeedsReference: string | null
   implementationType: { nameSv: string; nameEn: string } | null
+  lifecycleStatus: { nameSv: string; nameEn: string } | null
   name: string
   responsibilityArea: { nameSv: string; nameEn: string } | null
   uniqueId: string
@@ -97,6 +98,7 @@ export default function PrintListReportPage() {
                 uniqueId: pkg.uniqueId,
                 responsibilityArea: pickName(pkg.responsibilityArea),
                 implementationType: pickName(pkg.implementationType),
+                lifecycleStatus: pickName(pkg.lifecycleStatus),
                 businessNeedsReference: pkg.businessNeedsReference,
               }
             : undefined,

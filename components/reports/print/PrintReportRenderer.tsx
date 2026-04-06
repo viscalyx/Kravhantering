@@ -149,6 +149,21 @@ function PackageCoverSection({
             {section.implementationType ?? '—'}
           </dd>
         </div>
+        <div>
+          <dt
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              color: '#64748b',
+              marginBottom: '0.25rem',
+            }}
+          >
+            {t('packageCover.lifecycleStatus')}
+          </dt>
+          <dd style={{ fontSize: '0.875rem', margin: 0 }}>
+            {section.lifecycleStatus ?? '—'}
+          </dd>
+        </div>
         {section.businessNeedsReference && (
           <div style={{ gridColumn: '1 / -1' }}>
             <dt

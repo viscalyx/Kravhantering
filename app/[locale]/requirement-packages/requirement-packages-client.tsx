@@ -47,8 +47,10 @@ interface Package {
   id: number
   implementationType: TaxonomyItem | null
   itemCount: number
+  lifecycleStatus: TaxonomyItem | null
   name: string
   packageImplementationTypeId: number | null
+  packageLifecycleStatusId: number | null
   packageResponsibilityAreaId: number | null
   requirementAreas: RequirementArea[]
   responsibilityArea: TaxonomyItem | null
@@ -107,7 +109,7 @@ export default function RequirementPackagesClient() {
   const getName = (pkg: Package) => pkg.name
   const getTaxonomyName = (item: TaxonomyItem | null) =>
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
-  const packageTableColumnCount = 6
+  const packageTableColumnCount = 7
 
   const [packages, setPackages] = useState<Package[]>([])
   const [responsibilityAreas, setResponsibilityAreas] = useState<
@@ -116,6 +118,7 @@ export default function RequirementPackagesClient() {
   const [implementationTypes, setImplementationTypes] = useState<
     TaxonomyItem[]
   >([])
+  const [lifecycleStatuses, setLifecycleStatuses] = useState<TaxonomyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showSpinner, setShowSpinner] = useState(false)
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -135,6 +138,7 @@ export default function RequirementPackagesClient() {
     uniqueId: '',
     packageResponsibilityAreaId: '' as string,
     packageImplementationTypeId: '' as string,
+    packageLifecycleStatusId: '' as string,
     businessNeedsReference: '',
   })
   const deferredNameFilter = useDeferredValue(nameFilter)
@@ -151,6 +155,7 @@ export default function RequirementPackagesClient() {
     uniqueId: '',
     packageResponsibilityAreaId: '' as string,
     packageImplementationTypeId: '' as string,
+    packageLifecycleStatusId: '' as string,
     businessNeedsReference: '',
   })
 
@@ -239,9 +244,10 @@ export default function RequirementPackagesClient() {
   }, [])
 
   const fetchTaxonomies = useCallback(async () => {
-    const [areasRes, typesRes] = await Promise.all([
+    const [areasRes, typesRes, statusesRes] = await Promise.all([
       fetch('/api/package-responsibility-areas'),
       fetch('/api/package-implementation-types'),
+      fetch('/api/package-lifecycle-statuses'),
     ])
     if (areasRes.ok && isMountedRef.current)
       setResponsibilityAreas(
@@ -250,6 +256,11 @@ export default function RequirementPackagesClient() {
     if (typesRes.ok && isMountedRef.current)
       setImplementationTypes(
         ((await typesRes.json()) as { types?: TaxonomyItem[] }).types ?? [],
+      )
+    if (statusesRes.ok && isMountedRef.current)
+      setLifecycleStatuses(
+        ((await statusesRes.json()) as { statuses?: TaxonomyItem[] })
+          .statuses ?? [],
       )
   }, [])
 
@@ -293,6 +304,9 @@ export default function RequirementPackagesClient() {
           packageImplementationTypeId: form.packageImplementationTypeId
             ? Number(form.packageImplementationTypeId)
             : null,
+          packageLifecycleStatusId: form.packageLifecycleStatusId
+            ? Number(form.packageLifecycleStatusId)
+            : null,
           businessNeedsReference: form.businessNeedsReference || null,
         }),
       })
@@ -333,6 +347,7 @@ export default function RequirementPackagesClient() {
         pkg.packageResponsibilityAreaId?.toString() ?? '',
       packageImplementationTypeId:
         pkg.packageImplementationTypeId?.toString() ?? '',
+      packageLifecycleStatusId: pkg.packageLifecycleStatusId?.toString() ?? '',
       businessNeedsReference: pkg.businessNeedsReference ?? '',
     })
     setShowForm(true)
@@ -553,6 +568,36 @@ export default function RequirementPackagesClient() {
               <div className="mb-1 flex items-center gap-1.5">
                 <label
                   className="block text-sm font-medium"
+                  htmlFor="pkg-lifecycle-status"
+                >
+                  {t('lifecycleStatus')}
+                </label>
+                {helpButton('pkg-lifecycle-status', t('lifecycleStatus'))}
+              </div>
+              {helpPanel('lifecycleStatusHelp', 'pkg-lifecycle-status')}
+              <select
+                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                id="pkg-lifecycle-status"
+                onChange={e =>
+                  setForm(f => ({
+                    ...f,
+                    packageLifecycleStatusId: e.target.value,
+                  }))
+                }
+                value={form.packageLifecycleStatusId}
+              >
+                <option value="">—</option>
+                {lifecycleStatuses.map(ls => (
+                  <option key={ls.id} value={ls.id}>
+                    {locale === 'sv' ? ls.nameSv : ls.nameEn}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div className="mb-1 flex items-center gap-1.5">
+                <label
+                  className="block text-sm font-medium"
                   htmlFor="pkg-business-ref"
                 >
                   {t('businessNeedsReference')}
@@ -699,6 +744,9 @@ export default function RequirementPackagesClient() {
                     <th className="py-3 px-4 font-medium">
                       {t('implementationType')}
                     </th>
+                    <th className="py-3 px-4 font-medium">
+                      {t('lifecycleStatus')}
+                    </th>
                     <th className="py-3 px-4 font-medium">{t('itemCount')}</th>
                     <th className="py-3 px-4 font-medium">
                       {t('requirementAreas')}
@@ -725,6 +773,9 @@ export default function RequirementPackagesClient() {
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
                         {getTaxonomyName(pkg.implementationType)}
+                      </td>
+                      <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                        {getTaxonomyName(pkg.lifecycleStatus)}
                       </td>
                       <td className="py-3 px-4">
                         {pkg.itemCount > 0 ? (

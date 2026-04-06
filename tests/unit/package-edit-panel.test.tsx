@@ -15,11 +15,15 @@ function okJson(body: unknown) {
 let fetchMock: ReturnType<typeof vi.fn>
 
 const implementationTypes = [{ id: 2, nameEn: 'Program', nameSv: 'Program' }]
+const lifecycleStatuses = [
+  { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
+]
 const responsibilityAreas = [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }]
 const pkg = {
   businessNeedsReference: 'Current business need',
   name: 'Behörighet och IAM',
   packageImplementationTypeId: 2,
+  packageLifecycleStatusId: 3,
   packageResponsibilityAreaId: 1,
   uniqueId: 'BEHORIGHET-IAM',
 }
@@ -40,6 +44,7 @@ describe('PackageEditPanel', () => {
     const { container } = render(
       <PackageEditPanel
         implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
         packageSlug="BEHORIGHET-IAM"
@@ -64,6 +69,7 @@ describe('PackageEditPanel', () => {
     render(
       <PackageEditPanel
         implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
         onCancel={onCancel}
         onSaved={() => {}}
         packageSlug="BEHORIGHET-IAM"
@@ -80,6 +86,7 @@ describe('PackageEditPanel', () => {
     render(
       <PackageEditPanel
         implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
         packageSlug="BEHORIGHET-IAM"
@@ -101,6 +108,7 @@ describe('PackageEditPanel', () => {
     render(
       <PackageEditPanel
         implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={onSaved}
         packageSlug="BEHORIGHET-IAM"
@@ -128,6 +136,7 @@ describe('PackageEditPanel', () => {
       businessNeedsReference: 'Current business need',
       name: 'Nytt paketnamn',
       packageImplementationTypeId: 2,
+      packageLifecycleStatusId: 3,
       packageResponsibilityAreaId: 1,
       uniqueId: 'BEHORIGHET-IAM',
     })

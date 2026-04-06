@@ -13,6 +13,7 @@ export const UI_TERM_KEYS = [
   'normReferences',
   'responsibilityArea',
   'implementationType',
+  'lifecycleStatus',
   'referenceData',
   'references',
   'mcpRequirementView',
@@ -99,6 +100,13 @@ const MESSAGE_BINDINGS: Record<
       ['implementationTypeMgmt', 'title'],
     ],
     singular: [['package', 'implementationType']],
+  },
+  lifecycleStatus: {
+    plural: [
+      ['nav', 'lifecycleStatuses'],
+      ['lifecycleStatusMgmt', 'title'],
+    ],
+    singular: [['package', 'lifecycleStatus']],
   },
   referenceData: {
     plural: [
@@ -282,6 +290,18 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       definitePlural: 'Genomförandeformerna',
       plural: 'Genomförandeformer',
       singular: 'Genomförandeform',
+    },
+  },
+  lifecycleStatus: {
+    en: {
+      definitePlural: 'Lifecycle statuses',
+      plural: 'Lifecycle statuses',
+      singular: 'Lifecycle status',
+    },
+    sv: {
+      definitePlural: 'Livscykelstatusarna',
+      plural: 'Livscykelstatusar',
+      singular: 'Livscykelstatus',
     },
   },
   referenceData: {

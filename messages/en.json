@@ -68,6 +68,7 @@
     "qualityCharacteristics": "Quality characteristics",
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
+    "lifecycleStatuses": "Lifecycle statuses",
     "areaOwners": "Area owners",
     "normReferences": "Norm references",
     "admin": "Admin",
@@ -220,6 +221,8 @@
     "responsibilityAreaHelp": "Choose the business object the package belongs to, or leave it blank if the package spans multiple business objects.",
     "implementationType": "Implementation type",
     "implementationTypeHelp": "Choose the implementation type that best describes how this package will be delivered.",
+    "lifecycleStatus": "Lifecycle status",
+    "lifecycleStatusHelp": "Choose the lifecycle status that best describes the current phase of the package.",
     "needsReference": "Needs reference",
     "needsReferenceHelp": "Optionally attach an existing or new needs reference when linking the requirement to a package.",
     "newPackage": "New requirement package",
@@ -309,6 +312,7 @@
       "packageId": "Package ID",
       "responsibilityArea": "Responsibility area",
       "implementationType": "Implementation type",
+      "lifecycleStatus": "Lifecycle status",
       "businessNeedsReference": "Business needs reference"
     }
   },
@@ -391,6 +395,12 @@
     "newItem": "New implementation type",
     "editItem": "Edit implementation type"
   },
+  "lifecycleStatusMgmt": {
+    "name": "Name",
+    "title": "Lifecycle statuses",
+    "newItem": "New lifecycle status",
+    "editItem": "Edit lifecycle status"
+  },
   "theme": {
     "light": "Light",
     "dark": "Dark",
@@ -433,6 +443,7 @@
     "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirement packages.",
     "implementationTypesDescription": "Manage implementation types for requirement packages.",
+    "lifecycleStatusesDescription": "Manage lifecycle statuses for requirement packages.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
     "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements."
   },
@@ -501,6 +512,11 @@
       "singular": "Implementation type",
       "plural": "Implementation types",
       "definitePlural": "Implementation types"
+    },
+    "lifecycleStatus": {
+      "singular": "Lifecycle status",
+      "plural": "Lifecycle statuses",
+      "definitePlural": "Lifecycle statuses"
     },
     "referenceData": {
       "singular": "Reference data",
@@ -685,6 +701,17 @@
       "manage": {
         "heading": "Managing",
         "body": "Click the edit icon to rename an implementation type. Use the delete icon to remove it — only types not linked to any package can be deleted."
+      }
+    },
+    "lifecycleStatuses": {
+      "title": "Lifecycle Statuses",
+      "overview": {
+        "heading": "What are lifecycle statuses?",
+        "body": "Lifecycle statuses describe the current phase of a requirement package, for example procurement, implementation, development, or management. Assign one when creating or editing a package."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Click the edit icon to rename a lifecycle status. Use the delete icon to remove it — only statuses not linked to any package can be deleted."
       }
     },
     "admin": {

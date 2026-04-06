@@ -16,12 +16,14 @@ interface PackageMeta {
   businessNeedsReference: string | null
   name: string
   packageImplementationTypeId: number | null
+  packageLifecycleStatusId: number | null
   packageResponsibilityAreaId: number | null
   uniqueId: string
 }
 
 interface PackageEditPanelProps {
   implementationTypes: TaxonomyItem[]
+  lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
   onSaved: (newUniqueId: string) => Promise<void> | void
   packageSlug: string
@@ -33,6 +35,7 @@ interface PackageFormState {
   businessNeedsReference: string
   name: string
   packageImplementationTypeId: string
+  packageLifecycleStatusId: string
   packageResponsibilityAreaId: string
   uniqueId: string
 }
@@ -45,6 +48,7 @@ function buildFormState(pkg: PackageMeta): PackageFormState {
     name: pkg.name,
     packageImplementationTypeId:
       pkg.packageImplementationTypeId?.toString() ?? '',
+    packageLifecycleStatusId: pkg.packageLifecycleStatusId?.toString() ?? '',
     packageResponsibilityAreaId:
       pkg.packageResponsibilityAreaId?.toString() ?? '',
     uniqueId: pkg.uniqueId,
@@ -53,6 +57,7 @@ function buildFormState(pkg: PackageMeta): PackageFormState {
 
 export default function PackageEditPanel({
   implementationTypes,
+  lifecycleStatuses,
   onCancel,
   onSaved,
   packageSlug,
@@ -126,6 +131,9 @@ export default function PackageEditPanel({
             : null,
           packageImplementationTypeId: form.packageImplementationTypeId
             ? Number(form.packageImplementationTypeId)
+            : null,
+          packageLifecycleStatusId: form.packageLifecycleStatusId
+            ? Number(form.packageLifecycleStatusId)
             : null,
           businessNeedsReference: form.businessNeedsReference || null,
         }),
@@ -269,6 +277,37 @@ export default function PackageEditPanel({
               {locale === 'sv'
                 ? implementationType.nameSv
                 : implementationType.nameEn}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <div className="mb-1 flex items-center gap-1.5">
+          <label
+            className="block text-sm font-medium"
+            htmlFor="pkg-lifecycle-status"
+          >
+            {t('lifecycleStatus')}
+          </label>
+          {helpButton('pkg-lifecycle-status', t('lifecycleStatus'))}
+        </div>
+        {helpPanel('lifecycleStatusHelp', 'pkg-lifecycle-status')}
+        <select
+          className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+          id="pkg-lifecycle-status"
+          onChange={event =>
+            setForm(current => ({
+              ...current,
+              packageLifecycleStatusId: event.target.value,
+            }))
+          }
+          value={form.packageLifecycleStatusId}
+        >
+          <option value="">—</option>
+          {lifecycleStatuses.map(ls => (
+            <option key={ls.id} value={ls.id}>
+              {locale === 'sv' ? ls.nameSv : ls.nameEn}
             </option>
           ))}
         </select>

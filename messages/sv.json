@@ -68,6 +68,7 @@
     "qualityCharacteristics": "Kvalitetsegenskaper",
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
+    "lifecycleStatuses": "Livscykelstatusar",
     "areaOwners": "Områdesägare",
     "normReferences": "Normreferenser",
     "admin": "Administration",
@@ -220,6 +221,8 @@
     "responsibilityAreaHelp": "Välj det verksamhetsobjekt som paketet hör till, eller lämna tomt om paketet spänner över flera verksamhetsobjekt.",
     "implementationType": "Genomförandeform",
     "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur paketet ska levereras.",
+    "lifecycleStatus": "Livscykelstatus",
+    "lifecycleStatusHelp": "Välj den livscykelstatus som bäst beskriver paketets nuvarande fas.",
     "needsReference": "Behovsreferens",
     "needsReferenceHelp": "Lägg vid behov till en befintlig eller ny behovsreferens när kravet kopplas till ett paket.",
     "newPackage": "Nytt kravpaket",
@@ -309,6 +312,7 @@
       "packageId": "Kravpaket-ID",
       "responsibilityArea": "Verksamhetsobjekt",
       "implementationType": "Genomförandeform",
+      "lifecycleStatus": "Livscykelstatus",
       "businessNeedsReference": "Verksamhetsbehovsreferens"
     }
   },
@@ -391,6 +395,12 @@
     "newItem": "Ny genomförandeform",
     "editItem": "Redigera genomförandeform"
   },
+  "lifecycleStatusMgmt": {
+    "name": "Namn",
+    "title": "Livscykelstatusar",
+    "newItem": "Ny livscykelstatus",
+    "editItem": "Redigera livscykelstatus"
+  },
   "theme": {
     "light": "Ljust",
     "dark": "Mörkt",
@@ -433,6 +443,7 @@
     "qualityAttributesDescription": "Hantera kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravpaket.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravpaket.",
+    "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravpaket.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
     "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav."
   },
@@ -501,6 +512,11 @@
       "singular": "Genomförandeform",
       "plural": "Genomförandeformer",
       "definitePlural": "Genomförandeformerna"
+    },
+    "lifecycleStatus": {
+      "singular": "Livscykelstatus",
+      "plural": "Livscykelstatusar",
+      "definitePlural": "Livscykelstatusarna"
     },
     "referenceData": {
       "singular": "Referensdata",
@@ -685,6 +701,17 @@
       "manage": {
         "heading": "Hantera",
         "body": "Klicka på redigeringsikonen för att byta namn på en genomförandeform. Använd borttagningsikonen för att ta bort den – enbart former som inte är kopplade till några paket kan tas bort."
+      }
+    },
+    "lifecycleStatuses": {
+      "title": "Livscykelstatusar",
+      "overview": {
+        "heading": "Vad är livscykelstatusar?",
+        "body": "Livscykelstatusar beskriver den aktuella fasen för ett kravpaket, t.ex. upphandling, införande, utveckling eller förvaltning. Tilldela en livscykelstatus när du skapar eller redigerar ett paket."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Klicka på redigeringsikonen för att byta namn på en livscykelstatus. Använd borttagningsikonen för att ta bort den – enbart statusar som inte är kopplade till några paket kan tas bort."
       }
     },
     "admin": {

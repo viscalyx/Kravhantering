@@ -65,6 +65,7 @@ export type ReportSection =
       uniqueId: string
       responsibilityArea: string | null
       implementationType: string | null
+      lifecycleStatus: string | null
       businessNeedsReference: string | null
       locale: string
     }

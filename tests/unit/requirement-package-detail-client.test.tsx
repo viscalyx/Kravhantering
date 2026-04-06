@@ -107,8 +107,10 @@ describe('RequirementPackageDetailClient', () => {
               businessNeedsReference: 'Shared IAM business case',
               id: 8,
               implementationType: { nameEn: 'Program', nameSv: 'Program' },
+              lifecycleStatus: { nameEn: 'Development', nameSv: 'Utveckling' },
               name: 'Authorization and IAM',
               packageImplementationTypeId: 2,
+              packageLifecycleStatusId: 3,
               packageResponsibilityAreaId: 1,
               responsibilityArea: { nameEn: 'Platform', nameSv: 'Plattform' },
               uniqueId: 'BEHORIGHET-IAM',
@@ -232,6 +234,16 @@ describe('RequirementPackageDetailClient', () => {
           return Promise.resolve(
             okJson({
               types: [{ id: 2, nameEn: 'Program', nameSv: 'Program' }],
+            }),
+          )
+        }
+
+        if (url === '/api/package-lifecycle-statuses') {
+          return Promise.resolve(
+            okJson({
+              statuses: [
+                { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
+              ],
             }),
           )
         }

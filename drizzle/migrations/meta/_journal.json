@@ -57,6 +57,34 @@
       "when": 1775300000000,
       "tag": "0007_package_needs_references_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1775400000000,
+      "tag": "0008_requirement_package_items_needs_reference_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1775500000000,
+      "tag": "0009_norm_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1775600000000,
+      "tag": "0010_named_fk_requirement_version_norm_references",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1775700000000,
+      "tag": "0011_package_lifecycle_statuses",
+      "breakpoints": true
     }
   ]
 }

@@ -251,12 +251,19 @@ erDiagram
         text name_en UK
     }
 
+    package_lifecycle_statuses {
+        integer id PK
+        text name_sv UK
+        text name_en UK
+    }
+
     requirement_packages {
         integer id PK
         text unique_id UK
         text name
         integer package_responsibility_area_id FK
         integer package_implementation_type_id FK
+        integer package_lifecycle_status_id FK
         text business_needs_reference
         text created_at
         text updated_at
@@ -301,6 +308,7 @@ erDiagram
     requirement_packages ||--o{ requirement_package_items : "contains"
     package_responsibility_areas ||--o{ requirement_packages : "responsibility area"
     package_implementation_types ||--o{ requirement_packages : "implementation type"
+    package_lifecycle_statuses ||--o{ requirement_packages : "lifecycle status"
     package_needs_references ||--o{ requirement_package_items : "scoped needs reference"
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
@@ -537,6 +545,21 @@ Describes how a requirement package will be implemented
 **Seed values:** Upphandling (Procurement),
 Utveckling (Development).
 
+### `package_lifecycle_statuses`
+
+Describes the lifecycle phase of a requirement package
+(e.g. procurement, implementation, development, management).
+
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `name_sv` | text, unique | Swedish display name |
+| `name_en` | text, unique | English display name |
+
+**Seed values:** Upphandling (Procurement),
+Införande (Implementation), Utveckling (Development),
+Förvaltning (Management).
+
 ---
 
 ## UI Settings Tables
@@ -770,6 +793,7 @@ specific procurement or project.
 | `name` | text | Display name for the package |
 | `package_responsibility_area_id` | integer FK → `package_responsibility_areas.id` | Responsibility area classification (nullable) |
 | `package_implementation_type_id` | integer FK → `package_implementation_types.id` | Implementation type classification (nullable) |
+| `package_lifecycle_status_id` | integer FK → `package_lifecycle_statuses.id` | Lifecycle status classification (nullable) |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
@@ -902,6 +926,8 @@ its purpose and the table/column(s) it covers.
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate owner email addresses |
 | `uq_package_implementation_types_name_sv` | `package_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_package_implementation_types_name_en` | `package_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
+| `uq_package_lifecycle_statuses_name_sv` | `package_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish lifecycle status names |
+| `uq_package_lifecycle_statuses_name_en` | `package_lifecycle_statuses` | `name_en` | Prevents duplicate English lifecycle status names |
 | `uq_requirement_packages_unique_id` | `requirement_packages` | `unique_id` | Ensures each package has a stable unique identifier |
 | `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
 | `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
@@ -968,6 +994,7 @@ graph LR
     subgraph Packages
         PRA[package_responsibility_areas]
         PIT[package_implementation_types]
+        PLS[package_lifecycle_statuses]
         RP[requirement_packages]
         PNR[package_needs_references]
         RPI[requirement_package_items]

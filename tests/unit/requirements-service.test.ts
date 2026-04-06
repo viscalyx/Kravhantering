@@ -947,6 +947,7 @@ describe('createRequirementsService', () => {
         id: 7,
         implementationType: null,
         itemCount: 2,
+        lifecycleStatus: null,
         name: 'IAM Package',
         responsibilityArea: null,
         uniqueId: 'IAM-PACKAGE',

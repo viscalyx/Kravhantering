@@ -310,6 +310,14 @@ function PdfPackageCover({
             {section.implementationType ?? '—'}
           </Text>
         </View>
+        <View style={styles.metadataItem}>
+          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+            {sv ? 'Livscykelstatus' : 'Lifecycle status'}
+          </Text>
+          <Text style={styles.fieldValue}>
+            {section.lifecycleStatus ?? '—'}
+          </Text>
+        </View>
         {section.businessNeedsReference && (
           <View style={{ width: '100%' }}>
             <Text style={[styles.fieldLabel, { fontSize: 8 }]}>

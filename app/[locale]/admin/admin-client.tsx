@@ -11,6 +11,7 @@ import {
   Languages,
   Layers,
   LayoutPanelTop,
+  RefreshCw,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -313,6 +314,13 @@ export default function AdminClient({
       icon: Wrench,
       id: 'implementationTypes',
       label: tn('implementationTypes'),
+    },
+    {
+      description: ta('lifecycleStatusesDescription'),
+      href: '/requirement-packages/lifecycle-statuses',
+      icon: RefreshCw,
+      id: 'lifecycleStatuses',
+      label: tn('lifecycleStatuses'),
     },
     {
       description: ta('areaOwnersDescription'),
