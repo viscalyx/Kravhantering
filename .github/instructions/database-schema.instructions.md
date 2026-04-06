@@ -38,5 +38,32 @@ applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/mi
 
 ## Sync
 
-- Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected DAL/tests, and `docs/database-schema.md` in the same change.
-- If a deviation is required, add it to `Accepted Exceptions` in `docs/database-schema.md` in the same change.
+- Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected
+  DAL/tests, and `docs/database-schema.md` in the same change.
+- If a deviation is required, add it to `Accepted Exceptions` in
+  `docs/database-schema.md` in the same change.
+
+## Documentation Checklist
+
+When any database schema, migration, or seed change is made, review and
+update **every** applicable section of `docs/database-schema.md`:
+
+1. **Entity-Relationship Diagram** — add/remove/rename entities, columns,
+   and relationship lines in the Mermaid `erDiagram`.
+2. **Table documentation section** — add or update the column table, seed
+   values, and per-table index/constraint notes for every affected table.
+   Place new tables in the correct category: Lookup / Taxonomy, UI Settings,
+   Core Domain, or Join / Bridge.
+3. **Accepted Exceptions** — add a row when a new table deviates from the
+   naming standard (e.g. composite PK instead of `id`).
+4. **Indexes & Constraints Reference** — update all three sub-tables:
+   - *Unique Indexes* — add/remove rows for `uq_*` indexes.
+   - *Non-Unique Indexes* — add/remove rows for `idx_*` indexes.
+   - *Named Foreign Key Constraints* — add/remove rows for explicitly
+     named `fk_*` constraints (those using `foreignKey({ name })`).
+5. **Index Relationship Diagram** — add/remove nodes and edges in the
+   Mermaid `graph LR` diagram.
+6. **Status Workflow** — update the seed-transitions table and workflow
+   prose when status or transition rows change.
+7. **Database Naming Standard** — update rules or accepted exceptions
+   when a new naming pattern is introduced.
