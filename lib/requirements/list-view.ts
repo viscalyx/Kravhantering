@@ -4,6 +4,7 @@ export interface FilterValues {
   descriptionSearch?: string
   needsReferenceIds?: number[]
   normReferenceIds?: number[]
+  packageItemStatusIds?: number[]
   qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
   riskLevelIds?: number[]
@@ -47,6 +48,16 @@ export interface RiskLevelOption {
   sortOrder: number
 }
 
+export interface PackageItemStatusOption {
+  color: string
+  descriptionEn: string | null
+  descriptionSv: string | null
+  id: number
+  nameEn: string
+  nameSv: string
+  sortOrder: number
+}
+
 export interface RequirementRow {
   area: {
     name: string
@@ -57,6 +68,13 @@ export interface RequirementRow {
   needsReference?: string | null
   needsReferenceId?: number | null
   normReferenceIds?: string[]
+  packageItemId?: number
+  packageItemStatusColor?: string | null
+  packageItemStatusDescriptionEn?: string | null
+  packageItemStatusDescriptionSv?: string | null
+  packageItemStatusId?: number | null
+  packageItemStatusNameEn?: string | null
+  packageItemStatusNameSv?: string | null
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
   uniqueId: string
@@ -103,6 +121,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
     (values.riskLevelIds && values.riskLevelIds.length > 0) ||
+    (values.packageItemStatusIds && values.packageItemStatusIds.length > 0) ||
     (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
     (values.normReferenceIds && values.normReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
@@ -124,6 +143,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'requiresTesting',
   'version',
   'needsReference',
+  'packageItemStatus',
   'normReferences',
 ] as const
 
@@ -327,6 +347,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     labelNamespace: 'requirement',
     maxWidthPx: 400,
     minWidthPx: 140,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: false,
+    defaultVisible: false,
+    defaultWidthPx: 160,
+    id: 'packageItemStatus',
+    labelKey: 'packageItemStatus',
+    labelNamespace: 'requirement',
+    maxWidthPx: 260,
+    minWidthPx: 120,
     resizable: true,
   },
   {
@@ -589,6 +622,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('type', 'typeIds')
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
   clearIfHidden('riskLevel', 'riskLevelIds')
+  clearIfHidden('packageItemStatus', 'packageItemStatusIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')

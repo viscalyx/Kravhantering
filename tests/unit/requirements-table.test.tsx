@@ -976,7 +976,7 @@ describe('RequirementsTable', () => {
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
 
-    expect(getColumnPickerBadge(container)?.textContent).toBe('6/12')
+    expect(getColumnPickerBadge(container)?.textContent).toBe('6/13')
   })
 
   it('renders the floating pill in a centered square shell', () => {

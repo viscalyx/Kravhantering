@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import {
+  packageItemStatuses,
   packageNeedsReferences,
   qualityCharacteristics,
   requirementAreas,
@@ -14,6 +15,12 @@ import {
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { Database } from '@/lib/db'
 import { validationError } from '@/lib/requirements/errors'
+
+/**
+ * Seed ID for the "Included" / "Inkluderad" package-item status.
+ * Every newly added package item starts here.
+ */
+export const DEFAULT_PACKAGE_ITEM_STATUS_ID = 1
 
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
@@ -454,6 +461,7 @@ async function linkRequirementsToPackageWithD1Batch(
             requirement_id,
             requirement_version_id,
             needs_reference_id,
+            package_item_status_id,
             created_at
           )
           VALUES (
@@ -467,6 +475,7 @@ async function linkRequirementsToPackageWithD1Batch(
                 AND text = ?
               LIMIT 1
             ),
+            ?,
             ?
           )
           ON CONFLICT(requirement_package_id, requirement_id) DO NOTHING
@@ -478,6 +487,7 @@ async function linkRequirementsToPackageWithD1Batch(
         item.requirementVersionId,
         packageId,
         normalizedNeedsReferenceText,
+        DEFAULT_PACKAGE_ITEM_STATUS_ID,
         createdAt,
       ),
   )
@@ -638,7 +648,13 @@ export async function linkRequirementsToPackage(
   if (items.length === 0) return 0
   const inserted = await db
     .insert(requirementPackageItems)
-    .values(items.map(item => ({ packageId, ...item })))
+    .values(
+      items.map(item => ({
+        packageId,
+        ...item,
+        packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+      })),
+    )
     .onConflictDoNothing()
     .returning({ id: requirementPackageItems.id })
   return inserted.length
@@ -689,6 +705,13 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
       needsReferenceId: requirementPackageItems.needsReferenceId,
       needsReferenceText: packageNeedsReferences.text,
+      packageItemId: requirementPackageItems.id,
+      packageItemStatusId: requirementPackageItems.packageItemStatusId,
+      packageItemStatusNameSv: packageItemStatuses.nameSv,
+      packageItemStatusNameEn: packageItemStatuses.nameEn,
+      packageItemStatusColor: packageItemStatuses.color,
+      packageItemStatusDescriptionSv: packageItemStatuses.descriptionSv,
+      packageItemStatusDescriptionEn: packageItemStatuses.descriptionEn,
       usageScenarioIds: sql<string | null>`(
         SELECT GROUP_CONCAT(rvus.usage_scenario_id)
         FROM requirement_version_usage_scenarios rvus
@@ -731,6 +754,10 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       packageNeedsReferences,
       eq(packageNeedsReferences.id, requirementPackageItems.needsReferenceId),
     )
+    .leftJoin(
+      packageItemStatuses,
+      eq(packageItemStatuses.id, requirementPackageItems.packageItemStatusId),
+    )
     .where(eq(requirementPackageItems.packageId, packageId))
     .orderBy(requirements.uniqueId)
 
@@ -740,6 +767,13 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
     isArchived: row.isArchived,
     needsReference: row.needsReferenceText ?? null,
     needsReferenceId: row.needsReferenceId ?? null,
+    packageItemId: row.packageItemId,
+    packageItemStatusId: row.packageItemStatusId ?? null,
+    packageItemStatusNameSv: row.packageItemStatusNameSv ?? null,
+    packageItemStatusNameEn: row.packageItemStatusNameEn ?? null,
+    packageItemStatusColor: row.packageItemStatusColor ?? null,
+    packageItemStatusDescriptionSv: row.packageItemStatusDescriptionSv ?? null,
+    packageItemStatusDescriptionEn: row.packageItemStatusDescriptionEn ?? null,
     usageScenarioIds: row.usageScenarioIds
       ? row.usageScenarioIds.split(',').map(Number)
       : [],
@@ -760,4 +794,25 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
     },
   }))
+}
+
+export async function updatePackageItemFields(
+  db: Database,
+  itemId: number,
+  data: { packageItemStatusId?: number | null; note?: string | null },
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+  if ('packageItemStatusId' in data) {
+    updates.packageItemStatusId = data.packageItemStatusId ?? null
+    updates.statusUpdatedAt = new Date().toISOString()
+  }
+  if ('note' in data) {
+    updates.note = data.note ?? null
+  }
+  if (Object.keys(updates).length > 0) {
+    await db
+      .update(requirementPackageItems)
+      .set(updates)
+      .where(eq(requirementPackageItems.id, itemId))
+  }
 }

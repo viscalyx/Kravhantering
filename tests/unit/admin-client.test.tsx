@@ -147,7 +147,14 @@ describe('AdminClient', () => {
     )
     expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
 
-    expect(panel.getAllByRole('link')).toHaveLength(11)
+    expect(
+      panel.getByTestId('reference-data-card-packageItemStatuses'),
+    ).toHaveAttribute('href', '/package-item-statuses')
+    expect(
+      panel.getByTestId('reference-data-icon-packageItemStatuses'),
+    ).toBeTruthy()
+
+    expect(panel.getAllByRole('link')).toHaveLength(12)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {

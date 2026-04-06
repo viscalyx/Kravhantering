@@ -252,6 +252,10 @@ describe('RequirementPackageDetailClient', () => {
           return Promise.resolve(okJson({ normReferences: [] }))
         }
 
+        if (url === '/api/package-item-statuses') {
+          return Promise.resolve(okJson({ statuses: [] }))
+        }
+
         throw new Error(`Unmocked fetch: ${method} ${url}`)
       },
     )

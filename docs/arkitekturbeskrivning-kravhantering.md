@@ -550,6 +550,7 @@ erDiagram
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
     requirement_packages ||--o{ requirement_package_items : "innehåller"
     requirement_package_items }o--|| requirements : "pekar på krav"
+    requirement_package_items }o--o| package_item_statuses : "användningsstatus"
 ```
 
 <!-- markdownlint-enable MD013 -->

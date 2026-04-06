@@ -74,6 +74,7 @@
     "lifecycleStatuses": "Livscykelstatusar",
     "areaOwners": "Områdesägare",
     "normReferences": "Normreferenser",
+    "packageItemStatuses": "Användningsstatusar",
     "admin": "Administration",
     "openMenu": "Öppna meny",
     "closeMenu": "Stäng meny"
@@ -94,6 +95,7 @@
     "qualityCharacteristic": "Kvalitetsegenskap",
     "riskLevel": "Risknivå",
     "riskLevelHelp": "<strong>Välj risknivå för detta krav.</strong>\nRisknivån anger den potentiella påverkan om kravet inte uppfylls.",
+    "packageItemStatus": "Användningsstatus",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
     "verificationMethod": "Verifieringsmetod",
@@ -295,7 +297,8 @@
       "category": "Kategori",
       "type": "Typ",
       "qualityCharacteristic": "Kvalitetsegenskap",
-      "riskLevel": "Risknivå"
+      "riskLevel": "Risknivå",
+      "packageItemStatus": "Användningsstatus"
     },
     "printListReport": "Skriv ut kravlista",
     "downloadListReportPdf": "Ladda ner kravlista (PDF)"
@@ -457,7 +460,8 @@
     "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravpaket.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
     "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav.",
-    "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav."
+    "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
+    "packageItemStatusesDescription": "Hantera användningsstatusar för krav i paket."
   },
   "terminology": {
     "description": {
@@ -696,6 +700,10 @@
       "export": {
         "heading": "Exportera",
         "body": "Använd utskrifts- och PDF-knapparna för att exportera paketets kravlista som en rapport."
+      },
+      "packageItemStatus": {
+        "heading": "Användningsstatus",
+        "body": "Spåra hur långt varje krav har kommit i paketet: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
       }
     },
     "responsibilityAreas": {
@@ -837,6 +845,17 @@
         "heading": "Hantera",
         "body": "Lägg till nya risknivåer med Skapa-knappen. Redigera befintliga nivåer för att ändra namn, färg eller sorteringsordning. Risknivåer som är kopplade till befintliga krav kan inte tas bort."
       }
+    },
+    "packageItemStatuses": {
+      "title": "Hjälp för användningsstatusar",
+      "overview": {
+        "heading": "Om användningsstatusar",
+        "body": "Användningsstatusar spårar hur långt ett krav har kommit inom ett paket — från inkluderad till implementerad och verifierad. Varje status har ett namn, en färg och en sorteringsordning."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Lägg till nya statusar med Skapa-knappen. Redigera befintliga statusar för att ändra namn, färg eller sorteringsordning. Statusar som är kopplade till paketposter kan inte tas bort."
+      }
     }
   },
   "riskLevelAdmin": {
@@ -846,5 +865,27 @@
     "sortOrder": "Sorteringsordning",
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
+  },
+  "packageItemStatusAdmin": {
+    "title": "Användningsstatusar",
+    "name": "Namn",
+    "color": "Färg",
+    "colorHex": "Färgkod (hex)",
+    "sortOrder": "Sorteringsordning",
+    "linkedPackages": "Kopplade kravpaket",
+    "linkedItemCount": "Kopplade poster",
+    "itemCount": "{count, plural, =0 {0 poster} one {1 post} other {# poster}}",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "newItem": "Ny användningsstatus",
+    "editItem": "Redigera användningsstatus",
+    "nameSvHelp": "Ange det svenska namnet för denna status. Det visas när applikationens språk är svenska.",
+    "nameEnHelp": "Ange det engelska namnet för denna status. Det visas när applikationens språk är engelska.",
+    "definition": "Definition",
+    "definitionSvHelp": "Ange en svensk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
+    "definitionEnHelp": "Ange en engelsk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
+    "noStatus": "— Ingen status —",
+    "sortOrderLocked": "Sorteringsordningen för standardstatusen kan inte ändras.",
+    "package": "Paket",
+    "requirement": "Krav"
   }
 }

@@ -228,7 +228,8 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('version', 8, 0, datetime('now')),
   ('needsReference', 9, 0, datetime('now')),
   ('normReferences', 10, 0, datetime('now')),
-  ('riskLevel', 11, 0, datetime('now'));
+  ('riskLevel', 11, 0, datetime('now')),
+  ('packageItemStatus', 12, 0, datetime('now'));
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
@@ -301,6 +302,12 @@ UPDATE requirement_list_column_defaults SET
   is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'riskLevel';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 12,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'packageItemStatus';
 
 -- ─── Risk Levels ─────────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO risk_levels (id, name_sv, name_en, sort_order, color) VALUES
@@ -1525,6 +1532,22 @@ UPDATE package_lifecycle_statuses SET name_sv = 'Införande', name_en = 'Impleme
 UPDATE package_lifecycle_statuses SET name_sv = 'Utveckling', name_en = 'Development' WHERE id = 3;
 UPDATE package_lifecycle_statuses SET name_sv = 'Förvaltning', name_en = 'Management' WHERE id = 4;
 
+-- ─── Package Item Statuses (taxonomy) ───────────────────────────────────────
+INSERT OR IGNORE INTO package_item_statuses (id, name_sv, name_en, description_sv, description_en, color, sort_order) VALUES
+  (1, 'Inkluderad',      'Included',       'Kravet finns i paketet men inget arbete påbörjat',           'Requirement is in the package but no work started',           '#94a3b8', 1),
+  (2, 'Pågående',        'In Progress',    'Implementation pågår',                                       'Implementation is in progress',                               '#f59e0b', 2),
+  (3, 'Implementerad',   'Implemented',    'Kravet är implementerat',                                    'Requirement has been implemented',                            '#3b82f6', 3),
+  (4, 'Verifierad',      'Verified',       'Kravet är verifierat och testat',                            'Requirement has been verified and tested',                    '#22c55e', 4),
+  (5, 'Avviken',         'Deviated',       'Avsteg har registrerats för kravet',                         'A deviation has been registered for the requirement',         '#ef4444', 5),
+  (6, 'Ej tillämpbar',   'Not Applicable', 'Kravet gäller inte i denna kontext',                        'Requirement does not apply in this context',                  '#6b7280', 6);
+
+UPDATE package_item_statuses SET name_sv = 'Inkluderad',    name_en = 'Included',       description_sv = 'Kravet finns i paketet men inget arbete påbörjat',  description_en = 'Requirement is in the package but no work started',  color = '#94a3b8', sort_order = 1 WHERE id = 1;
+UPDATE package_item_statuses SET name_sv = 'Pågående',      name_en = 'In Progress',    description_sv = 'Implementation pågår',                              description_en = 'Implementation is in progress',                     color = '#f59e0b', sort_order = 2 WHERE id = 2;
+UPDATE package_item_statuses SET name_sv = 'Implementerad', name_en = 'Implemented',    description_sv = 'Kravet är implementerat',                           description_en = 'Requirement has been implemented',                   color = '#3b82f6', sort_order = 3 WHERE id = 3;
+UPDATE package_item_statuses SET name_sv = 'Verifierad',    name_en = 'Verified',       description_sv = 'Kravet är verifierat och testat',                   description_en = 'Requirement has been verified and tested',           color = '#22c55e', sort_order = 4 WHERE id = 4;
+UPDATE package_item_statuses SET name_sv = 'Avviken',       name_en = 'Deviated',       description_sv = 'Avsteg har registrerats för kravet',                description_en = 'A deviation has been registered for the requirement', color = '#ef4444', sort_order = 5 WHERE id = 5;
+UPDATE package_item_statuses SET name_sv = 'Ej tillämpbar', name_en = 'Not Applicable', description_sv = 'Kravet gäller inte i denna kontext',               description_en = 'Requirement does not apply in this context',         color = '#6b7280', sort_order = 6 WHERE id = 6;
+
 -- ─── Requirement Packages (10 packages) ─────────────────────────────────────
 -- All packages use only published (status=3) requirement versions.
 -- business_needs_reference added to several packages to show the field.
@@ -1592,55 +1615,60 @@ INSERT OR IGNORE INTO package_needs_references (id, package_id, text, created_at
 --   req=22 ver=24  req=24 ver=26  req=26 ver=28  req=27 ver=29  req=29 ver=31
 --   req=32 ver=33  req=33 ver=34  req=34 ver=35  req=38 ver=39  req=39 ver=40
 --   req=42 ver=43  req=43 ver=44  req=67 ver=101
-INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, requirement_id, requirement_version_id, needs_reference_id, created_at) VALUES
-  -- Package 1: Integrationsplattform 2026 (7 krav)
-  (1,  1,  1,  1,   1,    datetime('now', '-29 days')),
-  (2,  1,  2,  3,   2,    datetime('now', '-29 days')),
-  (3,  1,  4,  5,   3,    datetime('now', '-29 days')),
-  (4,  1,  11, 13,  4,    datetime('now', '-28 days')),
-  (5,  1,  13, 15,  5,    datetime('now', '-28 days')),
-  (6,  1,  22, 24,  NULL, datetime('now', '-27 days')),
-  (7,  1,  24, 26,  6,    datetime('now', '-27 days')),
-  -- Package 2: Säkerhetslyft Q2 (5 krav)
-  (8,  2,  15, 17,  7,    datetime('now', '-24 days')),
-  (9,  2,  16, 18,  8,    datetime('now', '-24 days')),
-  (10, 2,  17, 19,  9,    datetime('now', '-23 days')),
-  (11, 2,  19, 21,  10,   datetime('now', '-23 days')),
-  (12, 2,  42, 43,  NULL, datetime('now', '-22 days')),
-  -- Package 3: Prestanda och Skalbarhet (4 krav)
-  (13, 3,  21, 23,  NULL, datetime('now', '-19 days')),
-  (14, 3,  22, 24,  NULL, datetime('now', '-19 days')),
-  (15, 3,  24, 26,  NULL, datetime('now', '-18 days')),
-  (16, 3,  39, 40,  NULL, datetime('now', '-18 days')),
-  -- Package 4: Tillgänglighet Q3 2025 (3 krav)
-  (17, 4,  26, 28,  11,   datetime('now', '-17 days')),
-  (18, 4,  27, 29,  NULL, datetime('now', '-17 days')),
-  (19, 4,  29, 31,  NULL, datetime('now', '-16 days')),
-  -- Package 5: Datalagring och Backup (3 krav)
-  (20, 5,  32, 33,  NULL, datetime('now', '-14 days')),
-  (21, 5,  33, 34,  NULL, datetime('now', '-14 days')),
-  (22, 5,  34, 35,  12,   datetime('now', '-13 days')),
-  -- Package 6: Identitets- och åtkomsthantering (6 krav)
-  (23, 6,  11, 13,  13,   datetime('now', '-11 days')),
-  (24, 6,  13, 15,  14,   datetime('now', '-11 days')),
-  (25, 6,  17, 19,  15,   datetime('now', '-10 days')),
-  (26, 6,  38, 39,  16,   datetime('now', '-10 days')),
-  (27, 6,  42, 43,  17,   datetime('now', '-9 days')),
-  (28, 6,  43, 44,  18,   datetime('now', '-9 days')),
-  -- Package 7: GDPR-efterlevnad 2026 (2 krav)
-  (29, 7,  34, 35,  19,   datetime('now', '-9 days')),
-  (30, 7,  17, 19,  20,   datetime('now', '-8 days')),
-  -- Package 8: Behörighet och IAM (4 krav)
-  (31, 8,  38, 39,  NULL, datetime('now', '-7 days')),
-  (32, 8,  39, 40,  NULL, datetime('now', '-7 days')),
-  (33, 8,  42, 43,  NULL, datetime('now', '-6 days')),
-  (34, 8,  43, 44,  NULL, datetime('now', '-6 days')),
+INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, requirement_id, requirement_version_id, needs_reference_id, package_item_status_id, created_at) VALUES
+  -- Package 1: Integrationsplattform 2026 (7 krav) — mature package, most verified
+  (1,  1,  1,  1,   1,    4,    datetime('now', '-29 days')),
+  (2,  1,  2,  3,   2,    4,    datetime('now', '-29 days')),
+  (3,  1,  4,  5,   3,    3,    datetime('now', '-29 days')),
+  (4,  1,  11, 13,  4,    4,    datetime('now', '-28 days')),
+  (5,  1,  13, 15,  5,    3,    datetime('now', '-28 days')),
+  (6,  1,  22, 24,  NULL, 2,    datetime('now', '-27 days')),
+  (7,  1,  24, 26,  6,    4,    datetime('now', '-27 days')),
+  -- Package 2: Säkerhetslyft Q2 (5 krav) — mid-progress
+  (8,  2,  15, 17,  7,    3,    datetime('now', '-24 days')),
+  (9,  2,  16, 18,  8,    2,    datetime('now', '-24 days')),
+  (10, 2,  17, 19,  9,    3,    datetime('now', '-23 days')),
+  (11, 2,  19, 21,  10,   1,    datetime('now', '-23 days')),
+  (12, 2,  42, 43,  NULL, 5,    datetime('now', '-22 days')),
+  -- Package 3: Prestanda och Skalbarhet (4 krav) — early stage
+  (13, 3,  21, 23,  NULL, 1,    datetime('now', '-19 days')),
+  (14, 3,  22, 24,  NULL, 2,    datetime('now', '-19 days')),
+  (15, 3,  24, 26,  NULL, 1,    datetime('now', '-18 days')),
+  (16, 3,  39, 40,  NULL, 6,    datetime('now', '-18 days')),
+  -- Package 4: Tillgänglighet Q3 2025 (3 krav) — mixed
+  (17, 4,  26, 28,  11,   4,    datetime('now', '-17 days')),
+  (18, 4,  27, 29,  NULL, 3,    datetime('now', '-17 days')),
+  (19, 4,  29, 31,  NULL, 2,    datetime('now', '-16 days')),
+  -- Package 5: Datalagring och Backup (3 krav) — mostly included
+  (20, 5,  32, 33,  NULL, 1,    datetime('now', '-14 days')),
+  (21, 5,  33, 34,  NULL, 1,    datetime('now', '-14 days')),
+  (22, 5,  34, 35,  12,   2,    datetime('now', '-13 days')),
+  -- Package 6: Identitets- och åtkomsthantering (6 krav) — good progress
+  (23, 6,  11, 13,  13,   4,    datetime('now', '-11 days')),
+  (24, 6,  13, 15,  14,   3,    datetime('now', '-11 days')),
+  (25, 6,  17, 19,  15,   3,    datetime('now', '-10 days')),
+  (26, 6,  38, 39,  16,   2,    datetime('now', '-10 days')),
+  (27, 6,  42, 43,  17,   1,    datetime('now', '-9 days')),
+  (28, 6,  43, 44,  18,   1,    datetime('now', '-9 days')),
+  -- Package 7: GDPR-efterlevnad 2026 (2 krav) — just started
+  (29, 7,  34, 35,  19,   1,    datetime('now', '-9 days')),
+  (30, 7,  17, 19,  20,   1,    datetime('now', '-8 days')),
+  -- Package 8: Behörighet och IAM (4 krav) — just included
+  (31, 8,  38, 39,  NULL, 1,    datetime('now', '-7 days')),
+  (32, 8,  39, 40,  NULL, 1,    datetime('now', '-7 days')),
+  (33, 8,  42, 43,  NULL, 1,    datetime('now', '-6 days')),
+  (34, 8,  43, 44,  NULL, 1,    datetime('now', '-6 days')),
   -- Package 9: API Gateway och Kommunikation (3 krav)
-  (35, 9,  1,  1,   NULL, datetime('now', '-4 days')),
-  (36, 9,  4,  5,   NULL, datetime('now', '-4 days')),
-  (37, 9,  13, 15,  21,   datetime('now', '-3 days')),
+  (35, 9,  1,  1,   NULL, 2,    datetime('now', '-4 days')),
+  (36, 9,  4,  5,   NULL, 1,    datetime('now', '-4 days')),
+  (37, 9,  13, 15,  21,   1,    datetime('now', '-3 days')),
   -- Package 10: Systemövervakning Bas (1 krav)
-  (38, 10, 67, 101, 22,   datetime('now', '-2 days'));
+  (38, 10, 67, 101, 22,   1,    datetime('now', '-2 days'));
+
+-- Backfill: set any NULL package_item_status_id to 'Included' (1)
+UPDATE requirement_package_items
+  SET package_item_status_id = 1
+  WHERE package_item_status_id IS NULL;
 
 -- ─── Assign risk levels to ~50 % of requirement versions ─────────────────────
 -- Hög/High

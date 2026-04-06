@@ -257,6 +257,14 @@ erDiagram
         text name_en UK
     }
 
+    package_item_statuses {
+        integer id PK
+        text name_sv UK
+        text name_en UK
+        text color
+        integer sort_order UK
+    }
+
     requirement_packages {
         integer id PK
         text unique_id UK
@@ -282,6 +290,9 @@ erDiagram
         integer requirement_id FK
         integer requirement_version_id FK
         integer needs_reference_id FK
+        integer package_item_status_id FK
+        text note
+        text status_updated_at
         text unused_1
         text created_at
     }
@@ -309,6 +320,7 @@ erDiagram
     package_responsibility_areas ||--o{ requirement_packages : "responsibility area"
     package_implementation_types ||--o{ requirement_packages : "implementation type"
     package_lifecycle_statuses ||--o{ requirement_packages : "lifecycle status"
+    package_item_statuses ||--o{ requirement_package_items : "usage status"
     package_needs_references ||--o{ requirement_package_items : "scoped needs reference"
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
@@ -593,6 +605,33 @@ Describes the lifecycle phase of a requirement package
 **Seed values:** Upphandling (Procurement),
 Införande (Implementation), Utveckling (Development),
 Förvaltning (Management).
+
+---
+
+### `package_item_statuses`
+
+Lookup table for usage/implementation status of individual
+requirements within a package (e.g. included, in progress,
+implemented, verified).
+
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `name_sv` | text, unique | Swedish display name |
+| `name_en` | text, unique | English display name |
+| `color` | text | Hex color code for UI badges |
+| `sort_order` | integer, unique | Display ordering |
+
+<!-- markdownlint-disable MD013 -->
+
+**Seed values:** Inkluderad (Included, #94a3b8),
+Pågående (In Progress, #f59e0b),
+Implementerad (Implemented, #3b82f6),
+Verifierad (Verified, #22c55e),
+Avviken (Deviated, #ef4444),
+Ej tillämpbar (Not Applicable, #6b7280).
+
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -901,6 +940,9 @@ Links individual requirements (pinned to a specific version) into a package.
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
 | `needs_reference_id` | integer FK → `package_needs_references.(package_id, id)` | Optional package-scoped needs reference |
+| `package_item_status_id` | integer FK → `package_item_statuses.id` | Usage/implementation status (nullable) |
+| `note` | text | Optional free-text note (nullable) |
+| `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
 | `unused_1` | text | Retired legacy column kept for migration compatibility |
 | `created_at` | text (ISO 8601) | When the item was added |
 <!-- markdownlint-enable MD013 -->
@@ -909,7 +951,8 @@ Links individual requirements (pinned to a specific version) into a package.
 
 **Indexes:**
 `idx_requirement_package_items_requirement_package_id`,
-`idx_requirement_package_items_requirement_id`.
+`idx_requirement_package_items_requirement_id`,
+`idx_requirement_package_items_package_item_status_id`.
 
 ---
 
@@ -943,6 +986,9 @@ its purpose and the table/column(s) it covers.
 | `uq_package_implementation_types_name_en` | `package_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
 | `uq_package_lifecycle_statuses_name_sv` | `package_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish lifecycle status names |
 | `uq_package_lifecycle_statuses_name_en` | `package_lifecycle_statuses` | `name_en` | Prevents duplicate English lifecycle status names |
+| `uq_package_item_statuses_name_sv` | `package_item_statuses` | `name_sv` | Prevents duplicate Swedish usage status names |
+| `uq_package_item_statuses_name_en` | `package_item_statuses` | `name_en` | Prevents duplicate English usage status names |
+| `uq_package_item_statuses_sort_order` | `package_item_statuses` | `sort_order` | Ensures each usage status has a distinct display position |
 | `uq_requirement_packages_unique_id` | `requirement_packages` | `unique_id` | Ensures each package has a stable unique identifier |
 | `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
 | `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
@@ -962,6 +1008,7 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
 | `idx_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | Speed up listing items in a package |
 | `idx_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | Speed up finding which packages contain a requirement |
+| `idx_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | Speed up filtering items by usage status |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
 <!-- markdownlint-enable MD013 -->
@@ -991,6 +1038,7 @@ explicit `foreignKey({ name })`:
 | `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE |
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
 | `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
+| `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
@@ -1020,6 +1068,7 @@ graph LR
         PRA[package_responsibility_areas]
         PIT[package_implementation_types]
         PLS[package_lifecycle_statuses]
+        PIS[package_item_statuses]
         RP[requirement_packages]
         PNR[package_needs_references]
         RPI[requirement_package_items]
@@ -1053,9 +1102,11 @@ graph LR
 
     RPI -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
+    RPI -- "idx_..._package_item_status_id\n(package_item_status_id)" --> PIS
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
+    PIS -- "uq_..._name_sv / name_en / sort_order" --> PIS
 
     RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
     RVS -. "composite PK" .-> RSC

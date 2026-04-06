@@ -681,7 +681,7 @@ export default function RequirementsClient({
               categories={categories}
               columnDefaults={normalizedColumnDefaults}
               columnWidths={columnWidths}
-              excludeColumns={['needsReference']}
+              excludeColumns={['needsReference', 'packageItemStatus']}
               expandedId={selectedId}
               filterValues={filters}
               floatingActions={[

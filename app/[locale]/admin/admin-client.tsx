@@ -6,6 +6,7 @@ import {
   BookOpen,
   Briefcase,
   CircleDot,
+  ClipboardList,
   FolderCog,
   FolderTree,
   Gauge,
@@ -329,6 +330,13 @@ export default function AdminClient({
       icon: RefreshCw,
       id: 'lifecycleStatuses',
       label: tn('lifecycleStatuses'),
+    },
+    {
+      description: ta('packageItemStatusesDescription'),
+      href: '/package-item-statuses',
+      icon: ClipboardList,
+      id: 'packageItemStatuses',
+      label: tn('packageItemStatuses'),
     },
     {
       description: ta('areaOwnersDescription'),

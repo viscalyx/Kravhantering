@@ -98,6 +98,7 @@ describe('ui settings DAL', () => {
         'requiresTesting',
         'version',
         'needsReference',
+        'packageItemStatus',
         'normReferences',
       ])
       expect(getRequirementColumnOrder(loadedColumns)).toEqual([
@@ -112,6 +113,7 @@ describe('ui settings DAL', () => {
         'requiresTesting',
         'version',
         'needsReference',
+        'packageItemStatus',
         'normReferences',
       ])
       expect(
@@ -137,9 +139,14 @@ describe('ui settings DAL', () => {
         { columnId: 'version', isDefaultVisible: false, sortOrder: 9 },
         { columnId: 'needsReference', isDefaultVisible: false, sortOrder: 10 },
         {
-          columnId: 'normReferences',
+          columnId: 'packageItemStatus',
           isDefaultVisible: false,
           sortOrder: 11,
+        },
+        {
+          columnId: 'normReferences',
+          isDefaultVisible: false,
+          sortOrder: 12,
         },
       ])
     } finally {

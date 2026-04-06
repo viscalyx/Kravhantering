@@ -201,6 +201,31 @@ The behaviors below apply to the requirement list rendered by:
 - The left fade appears after the user has scrolled horizontally.
 - The fades must remain subtle enough to act as a cue, not as a primary visual element.
 
+## Package Item Usage Status Column
+
+- The `packageItemStatus` column is hidden by default (`defaultVisible: false`).
+- It is **excluded** from the main requirements catalog and the available-
+  requirements panel (right side) in the package detail view via
+  `excludeColumns`. It is only selectable in the package-items panel (left
+  side) of the package detail view.
+- In the **package detail** left panel (items in package), the column renders
+  an inline `<select>` dropdown for each item that has a `packageItemId`.
+  Changing the dropdown value calls `PATCH /api/requirement-packages/{id}/items/{itemId}`
+  and applies an optimistic update to the local row state.
+- When a requirement is **added** to a package, its usage status is
+  automatically set to **Included** (ID 1). The user can change it once
+  work on the requirement begins.
+- Outside the package detail context (e.g. the main requirements catalog),
+  the column renders a read-only color dot + label or an em dash if unset.
+- The column supports multi-select filtering via `packageItemStatusIds`.
+- Client-side filtering in the package detail matches on `packageItemStatusId`.
+- Sorting is disabled for this column (`canSort: false`).
+- Each status has an optional **definition** (bilingual `description_sv` /
+  `description_en`), editable from the admin panel under Usage Statuses.
+- The definition is shown as a native `title` tooltip on the cell (both
+  the inline `<select>` and the read-only display). Individual `<option>`
+  elements also carry the definition as a `title` attribute.
+
 ## Inline Detail Pane
 
 The inline detail pane is expanded inside the requirements table when a row is

@@ -74,6 +74,7 @@
     "lifecycleStatuses": "Lifecycle statuses",
     "areaOwners": "Area owners",
     "normReferences": "Norm references",
+    "packageItemStatuses": "Usage statuses",
     "admin": "Admin",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
@@ -94,6 +95,7 @@
     "qualityCharacteristic": "Quality characteristic",
     "riskLevel": "Risk level",
     "riskLevelHelp": "<strong>Select the risk level for this requirement.</strong>\nThe risk level indicates the potential impact if the requirement is not met.",
+    "packageItemStatus": "Usage status",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
     "verificationMethod": "Verification method",
@@ -295,7 +297,8 @@
       "category": "Category",
       "type": "Type",
       "qualityCharacteristic": "Quality characteristic",
-      "riskLevel": "Risk level"
+      "riskLevel": "Risk level",
+      "packageItemStatus": "Usage status"
     },
     "printListReport": "Print requirement list",
     "downloadListReportPdf": "Download requirement list (PDF)"
@@ -457,7 +460,8 @@
     "lifecycleStatusesDescription": "Manage lifecycle statuses for requirement packages.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
     "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements.",
-    "riskLevelsDescription": "Manage risk levels that can be assigned to requirements."
+    "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
+    "packageItemStatusesDescription": "Manage usage statuses for requirements in packages."
   },
   "terminology": {
     "description": {
@@ -696,6 +700,10 @@
       "export": {
         "heading": "Exporting",
         "body": "Use the print and PDF buttons to export the package's requirement list as a report."
+      },
+      "packageItemStatus": {
+        "heading": "Usage status",
+        "body": "Track how far each requirement has progressed within this package: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
       }
     },
     "responsibilityAreas": {
@@ -837,6 +845,17 @@
         "heading": "Managing",
         "body": "Add new risk levels using the Create button. Edit existing levels to change name, color, or sort order. Risk levels linked to existing requirements cannot be deleted."
       }
+    },
+    "packageItemStatuses": {
+      "title": "Usage Statuses Help",
+      "overview": {
+        "heading": "About usage statuses",
+        "body": "Usage statuses track how far a requirement has progressed within a package — from included to implemented and verified. Each status has a name, color, and sort order."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Add new statuses using the Create button. Edit existing statuses to change name, color, or sort order. Statuses linked to package items cannot be deleted."
+      }
     }
   },
   "riskLevelAdmin": {
@@ -846,5 +865,27 @@
     "sortOrder": "Sort order",
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
+  },
+  "packageItemStatusAdmin": {
+    "title": "Usage statuses",
+    "name": "Name",
+    "color": "Color",
+    "colorHex": "Color hex code",
+    "sortOrder": "Sort order",
+    "linkedPackages": "Linked requirement packages",
+    "linkedItemCount": "Linked items",
+    "itemCount": "{count, plural, =0 {0 items} one {1 item} other {# items}}",
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
+    "newItem": "New usage status",
+    "editItem": "Edit usage status",
+    "nameSvHelp": "Enter the Swedish name for this status. It is displayed when the application language is Swedish.",
+    "nameEnHelp": "Enter the English name for this status. It is displayed when the application language is English.",
+    "definition": "Definition",
+    "definitionSvHelp": "Enter a Swedish definition that describes what this status means. It is shown as a tooltip where the status is used.",
+    "definitionEnHelp": "Enter an English definition that describes what this status means. It is shown as a tooltip where the status is used.",
+    "noStatus": "— No status —",
+    "sortOrderLocked": "The sort order for the default status cannot be changed.",
+    "package": "Package",
+    "requirement": "Requirement"
   }
 }

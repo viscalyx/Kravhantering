@@ -630,6 +630,9 @@ export const requirementPackageItems = sqliteTable(
       .notNull()
       .references(() => requirementVersions.id),
     needsReferenceId: integer('needs_reference_id'),
+    packageItemStatusId: integer('package_item_status_id'),
+    note: text('note'),
+    statusUpdatedAt: text('status_updated_at'),
     unused1: text('unused_1'),
     createdAt: text('created_at')
       .notNull()
@@ -654,7 +657,41 @@ export const requirementPackageItems = sqliteTable(
       ],
       name: 'fk_requirement_package_items_requirement_package_id_needs_reference_id',
     }),
+    index('idx_requirement_package_items_package_item_status_id').on(
+      table.packageItemStatusId,
+    ),
+    foreignKey({
+      columns: [table.packageItemStatusId],
+      foreignColumns: [packageItemStatuses.id],
+      name: 'fk_requirement_package_items_package_item_status_id',
+    }).onDelete('set null'),
   ],
+)
+
+// ─── Package Item Statuses ───────────────────────────────────────────────────
+
+export const packageItemStatuses = sqliteTable(
+  'package_item_statuses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+    descriptionSv: text('description_sv'),
+    descriptionEn: text('description_en'),
+    color: text('color').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  table => [
+    uniqueIndex('uq_package_item_statuses_name_sv').on(table.nameSv),
+    uniqueIndex('uq_package_item_statuses_name_en').on(table.nameEn),
+  ],
+)
+
+export const packageItemStatusesRelations = relations(
+  packageItemStatuses,
+  ({ many }) => ({
+    packageItems: many(requirementPackageItems),
+  }),
 )
 
 export const requirementPackageItemsRelations = relations(
@@ -678,6 +715,10 @@ export const requirementPackageItemsRelations = relations(
         requirementPackageItems.needsReferenceId,
       ],
       references: [packageNeedsReferences.packageId, packageNeedsReferences.id],
+    }),
+    packageItemStatus: one(packageItemStatuses, {
+      fields: [requirementPackageItems.packageItemStatusId],
+      references: [packageItemStatuses.id],
     }),
   }),
 )

@@ -51,6 +51,11 @@ const REQUIREMENT_PACKAGE_DETAIL_HELP: HelpContent = {
     },
     {
       kind: 'text',
+      bodyKey: 'requirementPackageDetail.packageItemStatus.body',
+      headingKey: 'requirementPackageDetail.packageItemStatus.heading',
+    },
+    {
+      kind: 'text',
       bodyKey: 'requirementPackageDetail.export.body',
       headingKey: 'requirementPackageDetail.export.heading',
     },
@@ -145,6 +150,14 @@ export default function KravpaketDetailClient({
   >([])
   const [packageLifecycleStatuses, setPackageLifecycleStatuses] = useState<
     PackageTaxonomyItem[]
+  >([])
+  const [packageItemStatuses, setPackageItemStatuses] = useState<
+    (PackageTaxonomyItem & {
+      color: string
+      descriptionEn: string | null
+      descriptionSv: string | null
+      sortOrder: number
+    })[]
   >([])
   const [showEditPackageForm, setShowEditPackageForm] = useState(false)
 
@@ -389,6 +402,7 @@ export default function KravpaketDetailClient({
         packageAreasRes,
         packageTypesRes,
         packageStatusesRes,
+        packageItemStatusesRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/usage-scenarios'),
@@ -396,6 +410,7 @@ export default function KravpaketDetailClient({
         fetch('/api/package-responsibility-areas'),
         fetch('/api/package-implementation-types'),
         fetch('/api/package-lifecycle-statuses'),
+        fetch('/api/package-item-statuses'),
       ])
       if (areasRes.status === 'fulfilled' && areasRes.value.ok) {
         const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
@@ -433,6 +448,20 @@ export default function KravpaketDetailClient({
           statuses?: PackageTaxonomyItem[]
         }
         setPackageLifecycleStatuses(data.statuses ?? [])
+      }
+      if (
+        packageItemStatusesRes.status === 'fulfilled' &&
+        packageItemStatusesRes.value.ok
+      ) {
+        const data = (await packageItemStatusesRes.value.json()) as {
+          statuses?: (PackageTaxonomyItem & {
+            color: string
+            descriptionEn: string | null
+            descriptionSv: string | null
+            sortOrder: number
+          })[]
+        }
+        setPackageItemStatuses(data.statuses ?? [])
       }
     }
     void fetchTaxonomies()
@@ -560,6 +589,37 @@ export default function KravpaketDetailClient({
     tc,
   ])
 
+  const handlePackageItemStatusChange = useCallback(
+    async (packageItemId: number, statusId: number | null) => {
+      if (!pkg) return
+      // Optimistic update
+      setPackageItems(prev =>
+        prev.map(item => {
+          if (item.packageItemId !== packageItemId) return item
+          const status = statusId
+            ? packageItemStatuses.find(s => s.id === statusId)
+            : null
+          return {
+            ...item,
+            packageItemStatusId: statusId,
+            packageItemStatusNameSv: status?.nameSv ?? null,
+            packageItemStatusNameEn: status?.nameEn ?? null,
+            packageItemStatusColor: status?.color ?? null,
+          }
+        }),
+      )
+      await fetch(
+        `/api/requirement-packages/${pkg.id}/items/${packageItemId}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ packageItemStatusId: statusId }),
+        },
+      )
+    },
+    [pkg, packageItemStatuses],
+  )
+
   const handleRemoveSelected = useCallback(async () => {
     if (leftSelectedIds.size === 0) return
     await fetch(`/api/requirement-packages/${packageSlug}/items`, {
@@ -649,6 +709,16 @@ export default function KravpaketDetailClient({
         )
       }
     }
+    if (
+      leftFilters.packageItemStatusIds &&
+      leftFilters.packageItemStatusIds.length > 0
+    ) {
+      const statusSet = new Set(leftFilters.packageItemStatusIds)
+      rows = rows.filter(
+        r =>
+          r.packageItemStatusId != null && statusSet.has(r.packageItemStatusId),
+      )
+    }
     return rows
   }, [packageItems, leftFilters, areas, leftNormReferenceOptions])
 
@@ -668,6 +738,7 @@ export default function KravpaketDetailClient({
       t('csvHeaders.category'),
       t('csvHeaders.type'),
       t('csvHeaders.qualityCharacteristic'),
+      t('csvHeaders.packageItemStatus'),
     ]
     const csvRows = filteredPackageItems.map(r => ({
       [headers[0]]: r.uniqueId,
@@ -687,6 +758,10 @@ export default function KravpaketDetailClient({
         (locale === 'sv'
           ? r.version?.qualityCharacteristicNameSv
           : r.version?.qualityCharacteristicNameEn) ?? '',
+      [headers[8]]:
+        (locale === 'sv'
+          ? r.packageItemStatusNameSv
+          : r.packageItemStatusNameEn) ?? '',
     }))
     const csv = exportToCsv(headers, csvRows)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -1109,12 +1184,14 @@ export default function KravpaketDetailClient({
                     needsReferenceOptions={availableNeedsRefs}
                     normReferences={leftNormReferenceOptions}
                     onFilterChange={setLeftFilters}
+                    onPackageItemStatusChange={handlePackageItemStatusChange}
                     onRowClick={id =>
                       setLeftExpandedId(prev => (prev === id ? null : id))
                     }
                     onSelectionChange={setLeftSelectedIds}
                     onSortChange={setLeftSort}
                     onVisibleColumnsChange={setLeftVisibleCols}
+                    packageItemStatuses={packageItemStatuses}
                     renderExpanded={id => (
                       <RequirementDetailClient inline requirementId={id} />
                     )}
@@ -1161,7 +1238,7 @@ export default function KravpaketDetailClient({
               >
                 <RequirementsTable
                   areas={areas}
-                  excludeColumns={['needsReference']}
+                  excludeColumns={['needsReference', 'packageItemStatus']}
                   expandedId={rightExpandedId}
                   filterValues={rightFilters}
                   floatingActionRailPlacement="inline-top"
