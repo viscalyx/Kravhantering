@@ -52,7 +52,7 @@
     "db:seed": "node drizzle/seed.ts > /tmp/seed.sql && wrangler d1 execute kravhantering-db --local --file=/tmp/seed.sql",
     "db:reset": "find .wrangler -name '*.sqlite' -delete -o -name '*.sqlite-wal' -delete -o -name '*.sqlite-shm' -delete 2>/dev/null; echo 'Local D1 database removed'",
     "db:setup": "npm run db:reset && npm run db:migrate && npm run db:seed",
-    "db:browse": "find .wrangler -name '*.sqlite' -print0 | xargs -0 -r code",
+    "db:browse": "find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' ! -name 'metadata.sqlite' -print -quit | xargs -r code",
     "db:studio": "drizzle-kit studio",
     "check:port": "node ./scripts/check-port.js",
     "kill:port": "bash ./scripts/kill-dev-server.sh",
