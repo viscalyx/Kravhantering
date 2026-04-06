@@ -1,8 +1,10 @@
 'use client'
 
-import { HelpCircle } from 'lucide-react'
+import { HelpCircle, Plus, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import { useRouter } from '@/i18n/routing'
 
 interface FormData {
@@ -10,6 +12,7 @@ interface FormData {
   areaId: string
   categoryId: string
   description: string
+  normReferenceIds: number[]
   qualityCharacteristicId: string
   requiresTesting: boolean
   scenarioIds: number[]
@@ -18,7 +21,8 @@ interface FormData {
 }
 
 interface RequirementFormProps {
-  initialData?: Partial<Omit<FormData, 'scenarioIds'>>
+  initialData?: Partial<Omit<FormData, 'normReferenceIds' | 'scenarioIds'>>
+  initialNormReferenceIds?: number[]
   initialScenarioIds?: number[]
   mode: 'create' | 'edit'
   requirementId?: number | string
@@ -28,6 +32,15 @@ interface ScenarioOption {
   id: number
   nameEn: string
   nameSv: string
+}
+
+interface NormReferenceOption {
+  id: number
+  issuer: string
+  name: string
+  normReferenceId: string
+  reference: string
+  type: string
 }
 
 interface Option {
@@ -53,6 +66,7 @@ const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
 
 export default function RequirementForm({
   initialData,
+  initialNormReferenceIds,
   initialScenarioIds,
   requirementId,
   mode,
@@ -67,7 +81,21 @@ export default function RequirementForm({
   const [areas, setAreas] = useState<AreaOption[]>([])
   const [categories, setCategories] = useState<Option[]>([])
   const [types, setTypes] = useState<Option[]>([])
+  const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
+    [],
+  )
   const [scenarios, setScenarios] = useState<ScenarioOption[]>([])
+  const [showCreateNormRef, setShowCreateNormRef] = useState(false)
+  const [normRefForm, setNormRefForm] = useState({
+    normReferenceId: '',
+    name: '',
+    type: '',
+    reference: '',
+    version: '',
+    issuer: '',
+  })
+  const [normRefSubmitting, setNormRefSubmitting] = useState(false)
+  const [normRefError, setNormRefError] = useState<string | null>(null)
   const [qualityCharacteristics, setQualityCharacteristics] = useState<
     QualityCharacteristicOption[]
   >([])
@@ -96,9 +124,73 @@ export default function RequirementForm({
     description: initialData?.description ?? '',
     acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
     requiresTesting: initialData?.requiresTesting ?? false,
+    normReferenceIds: initialNormReferenceIds ?? [],
     scenarioIds: initialScenarioIds ?? [],
     verificationMethod: initialData?.verificationMethod ?? '',
   })
+
+  const dirtyFields = useRef<Set<string>>(new Set())
+  const prevInitialData = useRef(initialData)
+  const prevNormReferenceIds = useRef(initialNormReferenceIds)
+  const prevScenarioIds = useRef(initialScenarioIds)
+
+  useEffect(() => {
+    const dataChanged = initialData !== prevInitialData.current
+    const normRefsChanged =
+      initialNormReferenceIds !== prevNormReferenceIds.current
+    const scenariosChanged = initialScenarioIds !== prevScenarioIds.current
+    if (!dataChanged && !normRefsChanged && !scenariosChanged) return
+
+    prevInitialData.current = initialData
+    prevNormReferenceIds.current = initialNormReferenceIds
+    prevScenarioIds.current = initialScenarioIds
+
+    const dirty = dirtyFields.current
+
+    setForm(prev => ({
+      ...prev,
+      ...(dataChanged && initialData
+        ? {
+            ...(!dirty.has('areaId') && initialData.areaId != null
+              ? { areaId: initialData.areaId }
+              : {}),
+            ...(!dirty.has('categoryId') && initialData.categoryId != null
+              ? { categoryId: initialData.categoryId }
+              : {}),
+            ...(!dirty.has('typeId') && initialData.typeId != null
+              ? { typeId: initialData.typeId }
+              : {}),
+            ...(!dirty.has('qualityCharacteristicId') &&
+            initialData.qualityCharacteristicId != null
+              ? {
+                  qualityCharacteristicId: initialData.qualityCharacteristicId,
+                }
+              : {}),
+            ...(!dirty.has('description') && initialData.description != null
+              ? { description: initialData.description }
+              : {}),
+            ...(!dirty.has('acceptanceCriteria') &&
+            initialData.acceptanceCriteria != null
+              ? { acceptanceCriteria: initialData.acceptanceCriteria }
+              : {}),
+            ...(!dirty.has('requiresTesting') &&
+            initialData.requiresTesting != null
+              ? { requiresTesting: initialData.requiresTesting }
+              : {}),
+            ...(!dirty.has('verificationMethod') &&
+            initialData.verificationMethod != null
+              ? { verificationMethod: initialData.verificationMethod }
+              : {}),
+          }
+        : {}),
+      ...(normRefsChanged && !dirty.has('normReferenceIds')
+        ? { normReferenceIds: initialNormReferenceIds ?? prev.normReferenceIds }
+        : {}),
+      ...(scenariosChanged && !dirty.has('scenarioIds')
+        ? { scenarioIds: initialScenarioIds ?? prev.scenarioIds }
+        : {}),
+    }))
+  }, [initialData, initialNormReferenceIds, initialScenarioIds])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -118,8 +210,15 @@ export default function RequirementForm({
       fetch('/api/requirement-categories'),
       fetch('/api/requirement-types'),
       fetch('/api/usage-scenarios'),
+      fetch('/api/norm-references'),
     ])
-    const [areasResult, catResult, typesResult, scenariosResult] = results
+    const [
+      areasResult,
+      catResult,
+      typesResult,
+      scenariosResult,
+      normRefsResult,
+    ] = results
     if (areasResult.status === 'fulfilled' && areasResult.value.ok)
       setAreas(
         ((await areasResult.value.json()) as { areas?: AreaOption[] }).areas ??
@@ -142,6 +241,19 @@ export default function RequirementForm({
           }
         ).scenarios ?? [],
       )
+    if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok) {
+      const fetched =
+        (
+          (await normRefsResult.value.json()) as {
+            normReferences?: NormReferenceOption[]
+          }
+        ).normReferences ?? []
+      setNormReferences(prev => {
+        const ids = new Set(fetched.map(nr => nr.id))
+        const localOnly = prev.filter(nr => !ids.has(nr.id))
+        return [...localOnly, ...fetched]
+      })
+    }
   }, [])
 
   const fetchQualityCharacteristics = useCallback(async (typeId: string) => {
@@ -169,6 +281,7 @@ export default function RequirementForm({
   }, [form.typeId, fetchQualityCharacteristics])
 
   const handleChange = (key: keyof FormData, value: string | boolean) => {
+    dirtyFields.current.add(key)
     setForm(prev => {
       const next = { ...prev, [key]: value }
       if (key === 'requiresTesting' && !value) {
@@ -207,6 +320,12 @@ export default function RequirementForm({
           verificationMethod: form.requiresTesting
             ? form.verificationMethod || undefined
             : undefined,
+          normReferenceIds:
+            mode === 'edit'
+              ? form.normReferenceIds
+              : form.normReferenceIds.length > 0
+                ? form.normReferenceIds
+                : undefined,
           scenarioIds:
             mode === 'edit'
               ? form.scenarioIds
@@ -483,40 +602,158 @@ export default function RequirementForm({
           )}
         </div>
 
-        {scenarios.length > 0 && (
-          <div className="self-start lg:w-64">
-            <div className="flex items-center gap-1.5 mb-1">
-              <span className="text-sm font-medium">{t('scenario')}</span>
-              {helpButton('scenario', t('scenario'))}
+        <div className="self-start lg:w-64 space-y-6">
+          {scenarios.length > 0 && (
+            <fieldset className="border-0 m-0 p-0">
+              <div className="flex items-center gap-1.5 mb-1">
+                <legend className="text-sm font-medium contents">
+                  {t('scenario')}
+                </legend>
+                {helpButton('scenario', t('scenario'))}
+              </div>
+              {helpPanel('scenarioHelp', 'scenario')}
+              <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
+                {scenarios.map(s => (
+                  <label
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                    key={s.id}
+                  >
+                    <input
+                      checked={form.scenarioIds.includes(s.id)}
+                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                      onChange={e => {
+                        dirtyFields.current.add('scenarioIds')
+                        const checked = e.target.checked
+                        setForm(prev => ({
+                          ...prev,
+                          scenarioIds: checked
+                            ? [...prev.scenarioIds, s.id]
+                            : prev.scenarioIds.filter(id => id !== s.id),
+                        }))
+                      }}
+                      type="checkbox"
+                    />
+                    {getOptionName(s)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          <fieldset className="border-0 m-0 p-0">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <legend className="text-sm font-medium contents">
+                  {t('normReferences')}
+                </legend>
+                {helpButton('normReferences', t('normReferences'))}
+              </div>
+              <button
+                className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+                onClick={() => setShowCreateNormRef(true)}
+                type="button"
+              >
+                <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                {tc('create')}
+              </button>
             </div>
-            {helpPanel('scenarioHelp', 'scenario')}
-            <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
-              {scenarios.map(s => (
-                <label
-                  className="flex items-center gap-2 text-sm cursor-pointer"
-                  key={s.id}
-                >
-                  <input
-                    checked={form.scenarioIds.includes(s.id)}
-                    className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                    onChange={e => {
-                      const checked = e.target.checked
-                      setForm(prev => ({
-                        ...prev,
-                        scenarioIds: checked
-                          ? [...prev.scenarioIds, s.id]
-                          : prev.scenarioIds.filter(id => id !== s.id),
-                      }))
-                    }}
-                    type="checkbox"
-                  />
-                  {getOptionName(s)}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
+            {helpPanel('normReferencesHelp', 'normReferences')}
+            {normReferences.length > 0 && (
+              <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
+                {normReferences.map(nr => (
+                  <label
+                    className="flex items-center gap-2 text-sm cursor-pointer"
+                    key={nr.id}
+                  >
+                    <input
+                      checked={form.normReferenceIds.includes(nr.id)}
+                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
+                      onChange={e => {
+                        dirtyFields.current.add('normReferenceIds')
+                        const checked = e.target.checked
+                        setForm(prev => ({
+                          ...prev,
+                          normReferenceIds: checked
+                            ? [...prev.normReferenceIds, nr.id]
+                            : prev.normReferenceIds.filter(id => id !== nr.id),
+                        }))
+                      }}
+                      type="checkbox"
+                    />
+                    <span>
+                      <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                        {nr.normReferenceId}
+                      </span>{' '}
+                      {nr.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
+        </div>
       </div>
+
+      {showCreateNormRef &&
+        createPortal(
+          <NormReferenceModal
+            normRefError={normRefError}
+            normRefForm={normRefForm}
+            normRefSubmitting={normRefSubmitting}
+            onCancel={() => {
+              setShowCreateNormRef(false)
+              setNormRefError(null)
+            }}
+            onSave={async () => {
+              setNormRefSubmitting(true)
+              setNormRefError(null)
+              try {
+                const res = await fetch('/api/norm-references', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    normReferenceId: normRefForm.normReferenceId || undefined,
+                    name: normRefForm.name,
+                    type: normRefForm.type,
+                    reference: normRefForm.reference,
+                    version: normRefForm.version || null,
+                    issuer: normRefForm.issuer,
+                  }),
+                })
+                if (!res.ok) {
+                  const data = (await res.json().catch(() => null)) as {
+                    error?: string
+                  } | null
+                  setNormRefError(data?.error ?? tc('error'))
+                } else {
+                  const created = (await res.json()) as NormReferenceOption
+                  setNormReferences(prev => [...prev, created])
+                  setForm(prev => ({
+                    ...prev,
+                    normReferenceIds: [...prev.normReferenceIds, created.id],
+                  }))
+                  setNormRefForm({
+                    normReferenceId: '',
+                    name: '',
+                    type: '',
+                    reference: '',
+                    version: '',
+                    issuer: '',
+                  })
+                  setShowCreateNormRef(false)
+                }
+              } catch {
+                setNormRefError(tc('error'))
+              } finally {
+                setNormRefSubmitting(false)
+              }
+            }}
+            onSetField={(field, value) =>
+              setNormRefForm(prev => ({ ...prev, [field]: value }))
+            }
+          />,
+          document.body,
+        )}
 
       {error && (
         <p className="mt-5 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -579,5 +816,175 @@ export default function RequirementForm({
         </div>
       </div>
     </form>
+  )
+}
+
+interface NormReferenceModalProps {
+  normRefError: string | null
+  normRefForm: {
+    issuer: string
+    name: string
+    normReferenceId: string
+    reference: string
+    type: string
+    version: string
+  }
+  normRefSubmitting: boolean
+  onCancel: () => void
+  onSave: () => void
+  onSetField: (field: string, value: string) => void
+}
+
+function NormReferenceModal({
+  normRefError,
+  normRefForm,
+  normRefSubmitting,
+  onCancel,
+  onSave,
+  onSetField,
+}: NormReferenceModalProps) {
+  const t = useTranslations('requirement')
+  const tc = useTranslations('common')
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const previouslyFocused = useRef<Element | null>(null)
+
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement
+    // Focus the close button on open
+    closeButtonRef.current?.focus()
+
+    return () => {
+      // Restore focus on close
+      if (previouslyFocused.current instanceof HTMLElement) {
+        previouslyFocused.current.focus()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    const FOCUSABLE =
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !normRefSubmitting) {
+        onCancel()
+        return
+      }
+      if (e.key === 'Tab') {
+        const focusable = Array.from(
+          dialog.querySelectorAll<HTMLElement>(FOCUSABLE),
+        )
+        if (focusable.length === 0) return
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onCancel, normRefSubmitting])
+
+  const canSave =
+    !normRefSubmitting &&
+    normRefForm.name.trim() !== '' &&
+    normRefForm.type.trim() !== '' &&
+    normRefForm.reference.trim() !== '' &&
+    normRefForm.issuer.trim() !== ''
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      ref={overlayRef}
+    >
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={normRefSubmitting ? undefined : onCancel}
+      />
+      <div
+        aria-describedby="modal-desc-norm-ref"
+        aria-labelledby="modal-title-norm-ref"
+        aria-modal="true"
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl animate-fade-in-up p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        ref={dialogRef}
+        role="dialog"
+      >
+        <div className="flex items-center justify-between">
+          <h2
+            className="text-base font-semibold text-secondary-900 dark:text-secondary-100"
+            id="modal-title-norm-ref"
+          >
+            {t('addNewNormReference')}
+          </h2>
+          <button
+            aria-label={tc('cancel')}
+            className="inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 disabled:opacity-50 disabled:pointer-events-none"
+            disabled={normRefSubmitting}
+            onClick={onCancel}
+            ref={closeButtonRef}
+            type="button"
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div
+          className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-3 py-2"
+          id="modal-desc-norm-ref"
+        >
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            {t('newNormReferenceWarning')}
+          </p>
+        </div>
+
+        {normRefError && (
+          <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+            {normRefError}
+          </p>
+        )}
+
+        <div className="space-y-3">
+          <NormReferenceFormFields
+            form={normRefForm}
+            idPrefix="modal-nr"
+            onSetField={onSetField}
+          />
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <button
+            className="btn-primary"
+            disabled={!canSave}
+            onClick={onSave}
+            type="button"
+          >
+            {normRefSubmitting ? tc('saving') : tc('save')}
+          </button>
+          <button
+            className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-600 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2"
+            disabled={normRefSubmitting}
+            onClick={onCancel}
+            type="button"
+          >
+            {tc('cancel')}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

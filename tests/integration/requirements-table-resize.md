@@ -88,9 +88,10 @@ flowchart TD
 
 This test validates the failure mode reported in the browser: repeated
 left-right dragging of the `Beskrivning` divider must still resize the
-table, move the later visible divider lines during the live preview, and
-must not trigger React's "Maximum update depth exceeded" error in both
-the mobile and desktop layouts.
+table, update both the scrolling body column and the sticky header column
+during the live preview, move the later visible divider lines, and must
+not trigger React's "Maximum update depth exceeded" error in both the
+mobile and desktop layouts.
 
 ### Step-by-Step Flow
 
@@ -102,16 +103,20 @@ the mobile and desktop layouts.
    initial description column width.
 6. Record the initial position of the later `area` divider.
 7. Begin the drag and move the description divider right once.
-8. Assert that the `area` divider has already shifted right before mouse
+8. Assert that the scrolling-body description column width already
+   changed before mouse up.
+9. Assert that the sticky-header description column width already changed
+   before mouse up.
+10. Assert that the `area` divider has already shifted right before mouse
    up.
-9. Continue dragging back and forth with alternating left and right
+11. Continue dragging back and forth with alternating left and right
    deltas.
-10. Release the pointer to commit the resize.
-11. Assert that the description column width differs from the starting
+12. Release the pointer to commit the resize.
+13. Assert that the description column width differs from the starting
    value.
-12. Assert that the Swedish column-width storage entry now contains a
+14. Assert that the Swedish column-width storage entry now contains a
    `description` override.
-13. Assert that no captured error contains the render-loop signatures.
+15. Assert that no captured error contains the render-loop signatures.
 
 ### Sequence Diagram
 

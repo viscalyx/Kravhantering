@@ -8,12 +8,10 @@ const mockDb = {
 const mockTx = {}
 
 const mocks = {
-  getOrCreatePackageNeedsReference: vi.fn(),
   getPackageById: vi.fn(),
-  getPackageNeedsReferenceById: vi.fn(),
   getPackageBySlug: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
-  linkRequirementsToPackage: vi.fn(),
+  linkRequirementsToPackageAtomically: vi.fn(),
   listPackageItems: vi.fn(),
   unlinkRequirementsFromPackage: vi.fn(),
 }
@@ -27,22 +25,19 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
-  getOrCreatePackageNeedsReference: (...args: unknown[]) =>
-    mocks.getOrCreatePackageNeedsReference(...args),
   getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
-  getPackageNeedsReferenceById: (...args: unknown[]) =>
-    mocks.getPackageNeedsReferenceById(...args),
   getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
   getPublishedVersionIdForRequirement: (...args: unknown[]) =>
     mocks.getPublishedVersionIdForRequirement(...args),
-  linkRequirementsToPackage: (...args: unknown[]) =>
-    mocks.linkRequirementsToPackage(...args),
+  linkRequirementsToPackageAtomically: (...args: unknown[]) =>
+    mocks.linkRequirementsToPackageAtomically(...args),
   listPackageItems: (...args: unknown[]) => mocks.listPackageItems(...args),
   unlinkRequirementsFromPackage: (...args: unknown[]) =>
     mocks.unlinkRequirementsFromPackage(...args),
 }))
 
 import { DELETE, POST } from '@/app/api/requirement-packages/[id]/items/route'
+import { validationError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -56,13 +51,15 @@ describe('requirement-packages/[id]/items route', () => {
     )
     mocks.getPackageBySlug.mockResolvedValue({ id: 5 })
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(42)
-    mocks.getOrCreatePackageNeedsReference.mockResolvedValue(7)
-    mocks.getPackageNeedsReferenceById.mockResolvedValue({ id: 8 })
-    mocks.linkRequirementsToPackage.mockResolvedValue(1)
+    mocks.linkRequirementsToPackageAtomically.mockResolvedValue(1)
   })
 
   it('rejects needsReferenceId values that belong to another package', async () => {
-    mocks.getPackageNeedsReferenceById.mockResolvedValue(null)
+    mocks.linkRequirementsToPackageAtomically.mockRejectedValue(
+      validationError(
+        'needsReferenceId does not belong to this requirement package',
+      ),
+    )
 
     const request = new NextRequest(
       'http://localhost/api/requirement-packages/pkg/items',
@@ -82,15 +79,23 @@ describe('requirement-packages/[id]/items route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'needsReferenceId does not belong to this requirement package',
     })
-    expect(mocks.getPackageNeedsReferenceById).toHaveBeenCalledWith(
-      mockTx,
+    expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
+      mockDb,
       5,
-      99,
+      {
+        items: [
+          {
+            requirementId: 1,
+            requirementVersionId: 42,
+          },
+        ],
+        needsReferenceId: 99,
+        needsReferenceText: undefined,
+      },
     )
-    expect(mocks.linkRequirementsToPackage).not.toHaveBeenCalled()
   })
 
-  it('creates needs references and links items inside the same transaction', async () => {
+  it('delegates requirement linking to the transactional helper', async () => {
     const request = new NextRequest(
       'http://localhost/api/requirement-packages/pkg/items',
       {
@@ -106,19 +111,55 @@ describe('requirement-packages/[id]/items route', () => {
     const response = await POST(request, makeParams('pkg'))
 
     expect(response.status).toBe(201)
-    expect(mockDb.transaction).toHaveBeenCalledTimes(1)
-    expect(mocks.getOrCreatePackageNeedsReference).toHaveBeenCalledWith(
-      mockTx,
+    expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
+      mockDb,
       5,
-      'Shared need',
-    )
-    expect(mocks.linkRequirementsToPackage).toHaveBeenCalledWith(mockTx, 5, [
       {
-        needsReferenceId: 7,
-        requirementId: 1,
-        requirementVersionId: 42,
+        items: [
+          {
+            requirementId: 1,
+            requirementVersionId: 42,
+          },
+        ],
+        needsReferenceId: undefined,
+        needsReferenceText: 'Shared need',
       },
-    ])
+    )
+  })
+
+  it('returns 200 when linking is a no-op', async () => {
+    mocks.linkRequirementsToPackageAtomically.mockResolvedValueOnce(0)
+
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          needsReferenceText: 'Shared need',
+          requirementIds: [1],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('pkg'))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ addedCount: 0, ok: true })
+    expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      {
+        items: [
+          {
+            requirementId: 1,
+            requirementVersionId: 42,
+          },
+        ],
+        needsReferenceId: undefined,
+        needsReferenceText: 'Shared need',
+      },
+    )
   })
 
   it('rejects malformed requirementIds before any database work runs', async () => {
@@ -187,7 +228,7 @@ describe('requirement-packages/[id]/items route', () => {
       error: 'Provide either needsReferenceId or needsReferenceText, not both',
     })
     expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
-    expect(mockDb.transaction).not.toHaveBeenCalled()
+    expect(mocks.linkRequirementsToPackageAtomically).not.toHaveBeenCalled()
   })
 
   it('rejects malformed delete payloads before unlinking items', async () => {
@@ -209,6 +250,56 @@ describe('requirement-packages/[id]/items route', () => {
       error: 'requirementIds must be a non-empty array of positive integers',
     })
     expect(mocks.unlinkRequirementsFromPackage).not.toHaveBeenCalled()
+  })
+
+  it('returns a JSON 500 error when linking requirements fails unexpectedly', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.linkRequirementsToPackageAtomically.mockRejectedValue(
+      new Error('D1 transaction failed'),
+    )
+
+    try {
+      const request = new NextRequest(
+        'http://localhost/api/requirement-packages/pkg/items',
+        {
+          body: JSON.stringify({
+            needsReferenceText: 'Shared need',
+            requirementIds: [1],
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      )
+
+      const response = await POST(request, makeParams('pkg'))
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to add requirements',
+      })
+      expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
+        mockDb,
+        5,
+        {
+          items: [
+            {
+              requirementId: 1,
+              requirementVersionId: 42,
+            },
+          ],
+          needsReferenceId: undefined,
+          needsReferenceText: 'Shared need',
+        },
+      )
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to add requirements to requirement package',
+        expect.any(Error),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('unlinks requirement items for valid delete payloads', async () => {

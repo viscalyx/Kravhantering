@@ -165,6 +165,7 @@ describe('ui terminology helpers', () => {
       'Status',
       'Verifiable',
       'Version',
+      'Norm references',
     ])
   })
 

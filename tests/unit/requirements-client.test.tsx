@@ -293,6 +293,7 @@ function makeRequirementDetail(
         verificationMethod: null,
         versionNumber: 1,
         versionScenarios: [],
+        versionNormReferences: [],
       },
     ],
     ...overrides,
@@ -301,32 +302,37 @@ function makeRequirementDetail(
 
 function mockMetadataFetch(url: string) {
   if (url === '/api/requirement-areas') {
-    return okJson({ areas: [] })
+    return Promise.resolve(okJson({ areas: [] }))
   }
   if (url === '/api/requirement-categories') {
-    return okJson({ categories: [] })
+    return Promise.resolve(okJson({ categories: [] }))
   }
   if (url === '/api/requirement-types') {
-    return okJson({ types: [] })
+    return Promise.resolve(okJson({ types: [] }))
   }
   if (url === '/api/quality-characteristics') {
-    return okJson({ qualityCharacteristics: [] })
+    return Promise.resolve(okJson({ qualityCharacteristics: [] }))
   }
   if (url === '/api/requirement-statuses') {
-    return okJson({
-      statuses: [
-        {
-          color: '#22c55e',
-          id: 3,
-          nameEn: 'Published',
-          nameSv: 'Publicerad',
-          sortOrder: 3,
-        },
-      ],
-    })
+    return Promise.resolve(
+      okJson({
+        statuses: [
+          {
+            color: '#22c55e',
+            id: 3,
+            nameEn: 'Published',
+            nameSv: 'Publicerad',
+            sortOrder: 3,
+          },
+        ],
+      }),
+    )
   }
   if (url === '/api/usage-scenarios') {
-    return okJson([])
+    return Promise.resolve(okJson([]))
+  }
+  if (url.startsWith('/api/norm-references')) {
+    return Promise.resolve(okJson({ normReferences: [] }))
   }
 
   return null
@@ -568,7 +574,7 @@ describe('RequirementsClient', () => {
 
     const tableCard = Array.from(container.querySelectorAll('div')).find(node =>
       node.className.includes(
-        'relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm',
+        'relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm',
       ),
     )
 

@@ -114,6 +114,7 @@ describe('requirement list view helpers', () => {
       'requiresTesting',
       'version',
       'needsReference',
+      'normReferences',
     ])
     expect(getDefaultVisibleRequirementColumns(columnDefaults)).toEqual([
       'description',
@@ -184,7 +185,7 @@ describe('requirement list view helpers', () => {
       ),
     ).toEqual({ category: 190 })
     expect(getRequirementColumnWidthsStorageKey('sv')).toBe(
-      'requirements.columnWidths.v3.sv',
+      'requirements.columnWidths.v4.sv',
     )
   })
 

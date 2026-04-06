@@ -259,6 +259,7 @@ function makeVersion(
     verificationMethod: null,
     versionNumber,
     versionScenarios: toVersionScenarios(versionScenarios),
+    versionNormReferences: [],
     ...rest,
   }
 }

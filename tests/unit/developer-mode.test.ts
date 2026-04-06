@@ -369,6 +369,30 @@ describe('developer mode utilities', () => {
       )
       expect(targets.some(t => t.name === 'inline detail pane')).toBe(true)
     })
+
+    it('detects explicit requirements table column headers', () => {
+      const el = document.createElement('div')
+      Object.entries(
+        devMarker({
+          context: 'requirements table',
+          name: 'column header',
+          value: 'requirement id',
+        }),
+      ).forEach(([key, value]) => {
+        el.setAttribute(key, value)
+      })
+      document.body.appendChild(el)
+      mockRect(el, { left: 360, top: 12, width: 44 })
+
+      const targets = scanVisibleDeveloperModeTargets(
+        document.body as unknown as ParentNode,
+      )
+      const header = targets.find(t => t.name === 'column header')
+
+      expect(header).toBeDefined()
+      expect(header?.context).toBe('requirements table')
+      expect(header?.value).toBe('requirement id')
+    })
   })
 
   describe('scan role-based descriptors', () => {

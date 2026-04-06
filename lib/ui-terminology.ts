@@ -10,6 +10,7 @@ export const UI_TERM_KEYS = [
   'version',
   'acceptanceCriteria',
   'scenario',
+  'normReferences',
   'responsibilityArea',
   'implementationType',
   'referenceData',
@@ -77,6 +78,13 @@ const MESSAGE_BINDINGS: Record<
   scenario: {
     plural: [['nav', 'scenarios']],
     singular: [['requirement', 'scenario']],
+  },
+  normReferences: {
+    plural: [
+      ['nav', 'normReferences'],
+      ['requirement', 'normReferences'],
+    ],
+    singular: [['requirement', 'normReference']],
   },
   responsibilityArea: {
     plural: [
@@ -238,6 +246,18 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       definitePlural: 'Användningsscenarierna',
       plural: 'Användningsscenarier',
       singular: 'Användningsscenario',
+    },
+  },
+  normReferences: {
+    en: {
+      definitePlural: 'Norm references',
+      plural: 'Norm references',
+      singular: 'Norm reference',
+    },
+    sv: {
+      definitePlural: 'Normreferenserna',
+      plural: 'Normreferenser',
+      singular: 'Normreferens',
     },
   },
   responsibilityArea: {
@@ -476,6 +496,7 @@ export function getRequirementCsvHeaders(
     getLocalizedUiTerm(terminology, 'status', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'requiresTesting', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
+    getLocalizedUiTerm(terminology, 'normReferences', locale, 'plural'),
   ]
 }
 

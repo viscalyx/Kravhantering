@@ -92,4 +92,44 @@ describe('RequirementTypesClient', () => {
       expect(screen.getAllByText('common.noResults')).toHaveLength(2)
     })
   })
+
+  it('renders ISO/IEC 25010:2023 badge', async () => {
+    render(<RequirementTypesClient />)
+    await waitFor(() => {
+      expect(screen.getAllByText('ISO/IEC 25010:2023')).toHaveLength(
+        sampleTypes.length,
+      )
+    })
+  })
+
+  it('renders quality heading as h3', async () => {
+    render(<RequirementTypesClient />)
+    await waitFor(() => {
+      const headings = screen.getAllByRole('heading', { level: 3 })
+      const qualityHeadings = headings.filter(
+        h => h.textContent === 'help.requirementTypes.quality.heading',
+      )
+      expect(qualityHeadings).toHaveLength(sampleTypes.length)
+    })
+  })
+
+  it('renders two-column responsive grid', async () => {
+    const { container } = render(<RequirementTypesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Type A')).toBeInTheDocument()
+    })
+    const grid = container.querySelector('.grid-cols-1.lg\\:grid-cols-2')
+    expect(grid).toBeInTheDocument()
+  })
+
+  it('renders type cards with developer-mode marker', async () => {
+    const { container } = render(<RequirementTypesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Type A')).toBeInTheDocument()
+    })
+    const cards = container.querySelectorAll(
+      '[data-developer-mode-name="type card"]',
+    )
+    expect(cards).toHaveLength(sampleTypes.length)
+  })
 })

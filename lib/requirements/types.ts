@@ -21,6 +21,20 @@ export interface RequirementVersionScenario {
   scenario: RequirementScenarioSummary
 }
 
+export interface NormReferenceSummary {
+  id: number
+  issuer: string
+  name: string
+  normReferenceId: string
+  reference: string
+  type: string
+  version: string | null
+}
+
+export interface RequirementVersionNormReference {
+  normReference: NormReferenceSummary
+}
+
 export interface RequirementVersionDetail {
   acceptanceCriteria: string | null
   archivedAt: string | null
@@ -42,6 +56,7 @@ export interface RequirementVersionDetail {
   statusNameSv: string | null
   type: RequirementLocalizedEntity | null
   verificationMethod: string | null
+  versionNormReferences: RequirementVersionNormReference[]
   versionNumber: number
   versionScenarios: RequirementVersionScenario[]
 }

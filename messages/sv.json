@@ -9,7 +9,7 @@
     "cancel": "Avbryt",
     "delete": "Ta bort",
     "edit": "Redigera",
-    "create": "Skapa ny",
+    "create": "Ny",
     "search": "Sök",
     "clearSearch": "Rensa sökning",
     "filter": "Filtrera",
@@ -21,6 +21,7 @@
     "no": "Nej",
     "back": "Tillbaka",
     "confirm": "Bekräfta",
+    "unsavedChangesConfirm": "Du har osparade ändringar. Vill du förkasta dem?",
     "actions": "Åtgärder",
     "noResults": "Inga resultat hittades",
     "showArchived": "Visa arkiverade",
@@ -49,8 +50,11 @@
     "share": "Dela",
     "copied": "Kopierad",
     "help": "Hjälp",
+    "backToTop": "Till toppen",
     "selectAll": "Markera alla",
-    "selectRow": "Markera {id}"
+    "selectRow": "Markera {id}",
+    "showShortText": "Visa kortad text",
+    "showFullText": "Visa fullständig text"
   },
   "nav": {
     "catalog": "Kravkatalog",
@@ -65,6 +69,7 @@
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
     "areaOwners": "Områdesägare",
+    "normReferences": "Normreferenser",
     "admin": "Administration",
     "openMenu": "Öppna meny",
     "closeMenu": "Stäng meny"
@@ -166,7 +171,25 @@
     "reviewReportAllMustBeReview": "Alla valda krav måste ha status Granskning för att generera rapporten",
     "editNotAllowedStatusReview": "Detta krav kan inte redigeras eftersom det har status Granskning. Återställ det till Utkast-status först.",
     "editNotAllowedStatusArchived": "Detta krav är Arkiverat och måste återställas eller återaktiveras innan det kan redigeras.",
-    "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen och publicerats."
+    "editPublishedVersionNotice": "Detta krav är Publicerat. Att spara skapar en ny version i Utkast — den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen och publicerats.",
+    "issuer": "Utfärdare",
+    "name": "Benämning",
+    "version": "Version",
+    "normReference": "Normreferens",
+    "normReferences": "Normreferenser",
+    "normReferencesHelp": "<strong>Välj en eller flera normreferenser som styr detta krav.</strong>\nNormreferenser är till exempel styrande lagar, förordningar, standarder och riktlinjer som kravet härleds från eller måste uppfylla.",
+    "addNewNormReference": "Skapa ny normreferens",
+    "newNormReferenceWarning": "Normreferensen du skapar är gemensam och tillgänglig för alla krav i systemet. Säkerställ att du anger en korrekt och officiell normreferens.",
+    "normReferenceIdLabel": "Normreferens-ID",
+    "normReferenceIdPlaceholder": "Auto-genereras om tomt",
+    "normReferenceReferencePlaceholder": "T.ex. SFS 2018:218, ISO 27001:2022",
+    "normRefTypeSuggestionDirective": "Föreskrift",
+    "normRefTypeSuggestionGuideline": "Riktlinje",
+    "normRefTypeSuggestionLaw": "Lag",
+    "normRefTypeSuggestionRegulation": "Förordning",
+    "normRefTypeSuggestionStandard": "Standard",
+    "normRefTypeSuggestionStrategicGuideline": "Strategisk riktlinje",
+    "typePlaceholder": "T.ex. Lag, Standard, Förordning"
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -298,6 +321,34 @@
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
   },
+  "normReference": {
+    "editNormReference": "Redigera normreferens",
+    "issuer": "Utfärdare",
+    "issuerHelp": "<strong>Ange den myndighet eller organisation som utfärdat dokumentet.</strong>\nExempel: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
+    "linkedRequirements": "Kopplade krav",
+    "name": "Benämning",
+    "nameHelp": "<strong>Ange dokumentets officiella namn.</strong>\nAnvänd den fullständiga, vedertagna titeln. Exempel: Dataskyddsförordningen, Informationssäkerhet för samhällsviktiga och digitala tjänster.",
+    "newNormReference": "Ny normreferens",
+    "normReferenceId": "Normreferens-ID",
+    "normReferenceIdHelp": "<strong>En unik identifierare för denna normreferens.</strong>\nLämna tomt för att auto-generera från referensfältet, namnet eller ett löpnummer. Se hjälppanelen för normreferenser under referensdata för hela genereringsalgoritmen.",
+    "normReferenceIdPlaceholder": "Auto-genereras om tomt",
+    "reference": "Referens",
+    "referenceHelp": "<strong>Ange dokumentets formella beteckning.</strong>\nAnvänd den officiella numreringen, t.ex. SFS 2018:218, ISO/IEC 27001:2022 eller MSBFS 2020:6. Värdet används även för att auto-generera normreferens-ID.",
+    "referencePlaceholder": "T.ex. SFS 2018:218, ISO 27001:2022",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "type": "Typ",
+    "typeHelp": "<strong>Klassificera dokumenttypen.</strong>\nVälj eller skriv dokumentkategori: Lag, Förordning, Föreskrift, Standard, Riktlinje eller Strategisk riktlinje. Detta underlättar filtrering och gruppering.",
+    "typePlaceholder": "T.ex. Lag, Standard, Förordning",
+    "typeSuggestionDirective": "Föreskrift",
+    "typeSuggestionGuideline": "Riktlinje",
+    "typeSuggestionLaw": "Lag",
+    "typeSuggestionRegulation": "Förordning",
+    "typeSuggestionStandard": "Standard",
+    "typeSuggestionStrategicGuideline": "Strategisk riktlinje",
+    "version": "Version",
+    "versionHelp": "<strong>Ange valfritt dokumentets utgåva eller version.</strong>\nAnvänd detta för att skilja mellan revisioner av samma dokument, t.ex. 2022 eller 3:e utgåvan.",
+    "emptyState": "Inga normreferenser ännu. Skapa din första normreferens."
+  },
   "qualityCharacteristicMgmt": {
     "name": "Namn",
     "type": "Typ",
@@ -382,7 +433,8 @@
     "qualityAttributesDescription": "Hantera kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravpaket.",
     "implementationTypesDescription": "Hantera genomförandeformer för kravpaket.",
-    "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden."
+    "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
+    "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav."
   },
   "terminology": {
     "description": {
@@ -681,6 +733,21 @@
       "manage": {
         "heading": "Hantera",
         "body": "Skapa och redigera scenarier med verktygsfältet. Ett scenario kan kopplas till flera krav. Att ta bort ett scenario tar bara bort scenarioposten – kopplade krav påverkas inte."
+      }
+    },
+    "normReferences": {
+      "title": "Normreferenser",
+      "overview": {
+        "heading": "Vad är normreferenser?",
+        "body": "Normreferenser är de styrande dokument – lagar, förordningar, föreskrifter, standarder och riktlinjer – som ett krav härleds från eller måste uppfylla. Exempel: Dataskyddsförordningen (GDPR), ISO/IEC 27001:2022 eller MSBFS 2020:6.\n\nEn normreferens är ett delat objekt i systemet och kan kopplas till hur många krav som helst. Det innebär att om du uppdaterar en normreferens påverkar det alla krav som är kopplade till den."
+      },
+      "idGeneration": {
+        "heading": "Hur Normreferens-ID genereras automatiskt",
+        "body": "Om du lämnar ID-fältet tomt genereras ett ID automatiskt enligt följande prioritetsordning:\n\n1. Naturligt ID ur referensfältet – systemet försöker extrahera ett strukturerat ID ur referensfältet. Exempel: \"SFS 2018:218\" ger ID:t SFS-2018-218 och \"ISO 27001:2022\" ger ISO-27001-2022.\n2. Slug ur benämningen – om inget naturligt ID kan utläsas används benämningen som grund. Texten konverteras till versaler, diakritiska tecken normaliseras och resultatet trunkeras till 20 tecken. Exempel: \"Dataskyddsförordningen\" ger DATASKYDDSFORORDNINGEN.\n3. Sekvens som sista utväg – om ingen av ovanstående metoder ger ett användbart ID tilldelas ett sekvens-ID på formen NR-001, NR-002 och så vidare.\n4. Kollisionshantering – om det genererade ID:t redan används läggs ett suffix till: -2, -3 osv., tills ett unikt ID hittas."
+      },
+      "manage": {
+        "heading": "Hantera normreferenser",
+        "body": "Skapa normreferenser via knappen Skapa eller direkt i kravformuläret. Fyll i benämning, typ (t.ex. Lag, Standard), referens, valfri version och utfärdare.\n\nEn normreferens kan inte tas bort om den är kopplad till ett eller flera krav – ta bort kopplingarna från respektive krav först. Kopplade krav visas i tabellen när du redigerar en normreferens."
       }
     },
     "requirementStatuses": {

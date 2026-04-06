@@ -42,6 +42,9 @@ export default function EditRequirementClient({
     string,
     string | boolean
   > | null>(null)
+  const [initialNormReferenceIds, setInitialNormReferenceIds] = useState<
+    number[]
+  >([])
   const [initialScenarioIds, setInitialScenarioIds] = useState<number[]>([])
   const [uniqueId, setUniqueId] = useState('')
   const [isPublished, setIsPublished] = useState(false)
@@ -96,6 +99,11 @@ export default function EditRequirementClient({
         verificationMethod: String(latest.verificationMethod ?? ''),
         ownerId: String(latest.createdBy ?? ''),
       })
+      setInitialNormReferenceIds(
+        latest.versionNormReferences
+          .map(vnr => vnr.normReference.id)
+          .filter((id): id is number => id != null),
+      )
       setInitialScenarioIds(
         latest.versionScenarios
           .map(vs => vs.scenario.id)
@@ -160,6 +168,7 @@ export default function EditRequirementClient({
         <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6">
           <RequirementForm
             initialData={initialData ?? undefined}
+            initialNormReferenceIds={initialNormReferenceIds}
             initialScenarioIds={initialScenarioIds}
             mode="edit"
             requirementId={requirementId}

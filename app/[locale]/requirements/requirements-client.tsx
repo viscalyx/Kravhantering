@@ -146,6 +146,9 @@ export default function RequirementsClient({
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
+  const [normReferenceOptions, setNormReferenceOptions] = useState<
+    { id: number; normReferenceId: string; name: string }[]
+  >([])
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS)
   const [sortState, setSortState] = useState<RequirementSortState>(
@@ -468,6 +471,35 @@ export default function RequirementsClient({
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+    const statuses = filters.statuses ?? []
+    const params = new URLSearchParams()
+    params.set('linked', 'true')
+    for (const s of statuses) {
+      params.append('statuses', String(s))
+    }
+    fetch(`/api/norm-references?${params}`, { signal: controller.signal })
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        if (controller.signal.aborted) return
+        const typed = data as {
+          normReferences?: {
+            id: number
+            normReferenceId: string
+            name: string
+          }[]
+        } | null
+        setNormReferenceOptions(typed?.normReferences ?? [])
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setNormReferenceOptions([])
+        }
+      })
+    return () => controller.abort()
+  }, [filters.statuses])
+
+  useEffect(() => {
     let nextVisibleColumns = defaultVisibleColumns
 
     try {
@@ -617,7 +649,7 @@ export default function RequirementsClient({
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
       <div className="container-custom">
-        <div className="relative overflow-hidden rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:bg-secondary-900/60">
+        <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
           {shouldShowInitialLoadingState ? (
             <div
               aria-live="polite"
@@ -717,6 +749,7 @@ export default function RequirementsClient({
               loading={loading}
               loadingMore={loadingMore}
               locale={locale}
+              normReferences={normReferenceOptions}
               onColumnWidthsChange={setColumnWidths}
               onFilterChange={val => {
                 setFilters(val)

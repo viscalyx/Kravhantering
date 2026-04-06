@@ -9,7 +9,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
-    "create": "Create new",
+    "create": "New",
     "search": "Search",
     "clearSearch": "Clear search",
     "filter": "Filter",
@@ -21,6 +21,7 @@
     "no": "No",
     "back": "Back",
     "confirm": "Confirm",
+    "unsavedChangesConfirm": "You have unsaved changes. Discard them?",
     "actions": "Actions",
     "noResults": "No results found",
     "showArchived": "Show archived",
@@ -49,8 +50,11 @@
     "share": "Share",
     "copied": "Copied",
     "help": "Help",
+    "backToTop": "Back to top",
     "selectAll": "Select all",
-    "selectRow": "Select {id}"
+    "selectRow": "Select {id}",
+    "showShortText": "Show short text",
+    "showFullText": "Show full text"
   },
   "nav": {
     "catalog": "Requirements Catalog",
@@ -65,6 +69,7 @@
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
     "areaOwners": "Area owners",
+    "normReferences": "Norm references",
     "admin": "Admin",
     "openMenu": "Open menu",
     "closeMenu": "Close menu"
@@ -166,7 +171,25 @@
     "reviewReportAllMustBeReview": "All selected requirements must be in Review status to generate the report",
     "editNotAllowedStatusReview": "This requirement cannot be edited because it is in Review status. Return it to Draft status first.",
     "editNotAllowedStatusArchived": "This requirement is Archived and must be restored or reactivated before it can be edited.",
-    "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published version remains active until the new draft completes the review process and is published."
+    "editPublishedVersionNotice": "This requirement is Published. Saving will create a new Draft version — the published version remains active until the new draft completes the review process and is published.",
+    "issuer": "Issuer",
+    "name": "Name",
+    "version": "Version",
+    "normReference": "Norm reference",
+    "normReferences": "Norm references",
+    "normReferencesHelp": "<strong>Select one or more norm references governing this requirement.</strong>\nNorm references are for example governing laws, regulations, standards, and guidelines that the requirement is derived from or must comply with.",
+    "addNewNormReference": "Create new norm reference",
+    "newNormReferenceWarning": "The norm reference you create is shared and available to all requirements in the system. Make sure you enter a correct and official norm reference.",
+    "normReferenceIdLabel": "Norm reference ID",
+    "normReferenceIdPlaceholder": "Auto-generated if left blank",
+    "normReferenceReferencePlaceholder": "E.g. SFS 2018:218, ISO 27001:2022",
+    "normRefTypeSuggestionDirective": "Directive",
+    "normRefTypeSuggestionGuideline": "Guideline",
+    "normRefTypeSuggestionLaw": "Law",
+    "normRefTypeSuggestionRegulation": "Regulation",
+    "normRefTypeSuggestionStandard": "Standard",
+    "normRefTypeSuggestionStrategicGuideline": "Strategic guideline",
+    "typePlaceholder": "E.g. Law, Standard, Regulation"
   },
   "requirementsTable": {
     "clear": "Clear",
@@ -298,6 +321,34 @@
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
   },
+  "normReference": {
+    "editNormReference": "Edit norm reference",
+    "issuer": "Issuer",
+    "issuerHelp": "<strong>Specify the authority or organization that issued the document.</strong>\nExamples: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
+    "linkedRequirements": "Linked requirements",
+    "name": "Name",
+    "nameHelp": "<strong>Enter the official name of the governing document.</strong>\nUse the full, commonly recognized title. Example: General Data Protection Regulation, Informationssäkerhet för samhällsviktiga och digitala tjänster.",
+    "newNormReference": "New norm reference",
+    "normReferenceId": "Norm reference ID",
+    "normReferenceIdHelp": "<strong>A unique identifier for this norm reference.</strong>\nLeave blank to auto-generate from the reference field, name, or a sequential number. See the help panel for norm references under reference data for the full generation algorithm.",
+    "normReferenceIdPlaceholder": "Auto-generated if left blank",
+    "reference": "Reference",
+    "referenceHelp": "<strong>Enter the formal document identifier or designation.</strong>\nUse the official numbering such as SFS 2018:218, ISO/IEC 27001:2022, or MSBFS 2020:6. This value is also used for auto-generating the norm reference ID.",
+    "referencePlaceholder": "E.g. SFS 2018:218, ISO 27001:2022",
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
+    "type": "Type",
+    "typeHelp": "<strong>Classify the document type.</strong>\nChoose or type the document category: Law, Regulation, Directive, Standard, Guideline, or Strategic guideline. This helps filter and group norm references.",
+    "typePlaceholder": "E.g. Law, Standard, Regulation",
+    "typeSuggestionDirective": "Directive",
+    "typeSuggestionGuideline": "Guideline",
+    "typeSuggestionLaw": "Law",
+    "typeSuggestionRegulation": "Regulation",
+    "typeSuggestionStandard": "Standard",
+    "typeSuggestionStrategicGuideline": "Strategic guideline",
+    "version": "Version",
+    "versionHelp": "<strong>Optionally specify the edition or version of the document.</strong>\nUse this to distinguish between revisions of the same document, for example 2022 or 3rd edition.",
+    "emptyState": "No norm references yet. Create your first norm reference."
+  },
   "qualityCharacteristicMgmt": {
     "name": "Name",
     "type": "Type",
@@ -382,7 +433,8 @@
     "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirement packages.",
     "implementationTypesDescription": "Manage implementation types for requirement packages.",
-    "areaOwnersDescription": "Manage owners that can be assigned to requirement areas."
+    "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
+    "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements."
   },
   "terminology": {
     "description": {
@@ -681,6 +733,21 @@
       "manage": {
         "heading": "Managing",
         "body": "Create and edit scenarios using the toolbar. A scenario can be linked to multiple requirements. Removing a scenario only removes the scenario record; linked requirements are not affected."
+      }
+    },
+    "normReferences": {
+      "title": "Norm References",
+      "overview": {
+        "heading": "What are norm references?",
+        "body": "Norm references are the governing documents — laws, regulations, ordinances, standards, and guidelines — that a requirement is derived from or must comply with. Examples: the General Data Protection Regulation (GDPR), ISO/IEC 27001:2022, or MSBFS 2020:6.\n\nA norm reference is a shared object in the system and can be linked to any number of requirements. This means that updating a norm reference affects all requirements linked to it."
+      },
+      "idGeneration": {
+        "heading": "How the Norm Reference ID is auto-generated",
+        "body": "If you leave the ID field blank, an ID is generated automatically using the following priority order:\n\n1. Natural ID from the reference field — the system tries to extract a structured ID from the reference field. Example: \"SFS 2018:218\" produces SFS-2018-218 and \"ISO 27001:2022\" produces ISO-27001-2022.\n2. Slug from the name — if no natural ID can be derived, the name is used as a base. The text is converted to uppercase, diacritics are normalized, and the result is truncated to 20 characters. Example: \"General Data Protection Regulation\" gives GENERAL-DATA-PROTECTI.\n3. Sequence as a last resort — if neither method yields a usable ID, a sequential ID is assigned in the form NR-001, NR-002, and so on.\n4. Collision handling — if the generated ID already exists, a suffix is appended: -2, -3, etc., until a unique ID is found."
+      },
+      "manage": {
+        "heading": "Managing norm references",
+        "body": "Create norm references using the Create button or directly from the requirement form. Fill in name, type (e.g. Law, Standard), reference, optional version, and issuer.\n\nA norm reference cannot be deleted if it is linked to one or more requirements — remove the links from the relevant requirements first. Linked requirements are shown in the table when editing a norm reference."
       }
     },
     "requirementStatuses": {

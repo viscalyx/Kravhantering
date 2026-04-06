@@ -1,10 +1,11 @@
-# Requirements Table Column Picker Integration Tests
+# Requirements Table Floating Rail and Column Picker Integration Tests
 
 > Test flow documentation for [`requirements-table-column-picker.spec.ts`](tests/integration/requirements-table-column-picker.spec.ts)
 
-This suite verifies that the floating column-picker pill stays visible while
-the requirements table scrolls horizontally and that column toggles persist to
-browser storage on both mobile and desktop layouts.
+This suite verifies that the requirements-table floating rail stays visible
+while the page and table scroll, that the scroll-to-top pill restores the
+column headers, and that column toggles persist to browser storage on both
+mobile and desktop layouts.
 
 ## Data Model
 
@@ -13,6 +14,7 @@ browser storage on both mobile and desktop layouts.
 | --- | --- |
 | `COLUMN_VISIBILITY_STORAGE_KEY` | Persists the visible column list in `localStorage`. |
 | Floating pill trigger | Opens and closes the column picker popover. |
+| Scroll-to-top trigger | Returns the page to the table top once the headers have scrolled away. |
 | Scroll container | Horizontal overflow region used to verify pill placement while scrolled. |
 | Viewport matrix | Repeats the same scenario at `375x667` and `1280x720`. |
 <!-- markdownlint-enable MD013 -->
@@ -45,7 +47,10 @@ flowchart TD
     H --> I[Enable version]
     I --> J[Read COLUMN_VISIBILITY_STORAGE_KEY]
     J --> K{Stored columns updated?}
-    K -- Yes --> L[Test passes]
+    K -- Yes --> L[Scroll page until headers disappear]
+    L --> M[Click scroll-to-top trigger]
+    M --> N{Headers visible again?}
+    N -- Yes --> O[Test passes]
 ```
 
 ## Test Setup
@@ -124,4 +129,45 @@ flowchart LR
     D --> E[Reopen picker]
     E --> F[Enable version]
     F --> G[Verify localStorage]
+```
+
+## keeps the floating rail fixed during vertical scroll
+
+and scrolls back to the headers
+
+### Vertical Scroll Purpose
+
+This test confirms that the floating rail does not drift vertically while the
+page scrolls and that the conditional up-arrow returns the list to the table
+top once the header row has disappeared.
+
+### Vertical Scroll Step-by-Step Flow
+
+1. Open `/sv/requirements` for the current viewport variant.
+2. Expand the first inline detail pane to guarantee extra scroll height.
+3. Capture the initial column-picker trigger position.
+4. Scroll the page downward until the header row leaves the viewport.
+5. Assert that the scroll-to-top trigger appears.
+6. Assert that the column-picker trigger keeps the same vertical position.
+7. Click the scroll-to-top trigger.
+8. Assert that the trigger disappears and the page returns near the top.
+
+### Vertical Scroll Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as Page
+    participant T as Table
+    participant R as Floating Rail
+
+    U->>P: Open /sv/requirements
+    U->>T: Expand first row
+    P->>R: Record initial trigger position
+    U->>P: Scroll page down
+    Note over R: ✓ Rail stays fixed
+    R->>U: Show scroll-to-top trigger
+    U->>R: Click scroll-to-top trigger
+    P->>T: Scroll back to table top
+    Note over T: ✓ Column headers visible again
 ```

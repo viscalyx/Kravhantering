@@ -167,6 +167,41 @@ describe('RequirementsTable', () => {
     )
   }
 
+  function ControlledExpandedSwitchTable() {
+    const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+    const [expandedId, setExpandedId] = useState(1)
+
+    return (
+      <div>
+        <button onClick={() => setExpandedId(2)} type="button">
+          expand-second-row
+        </button>
+        <RequirementsTable
+          columnWidths={columnWidths}
+          expandedId={expandedId}
+          locale="sv"
+          onColumnWidthsChange={setColumnWidths}
+          renderExpanded={id => (
+            <div data-testid={`expanded-detail-content-${id}`}>
+              Expanded detail {id}
+            </div>
+          )}
+          rows={[
+            makeRow(),
+            makeRow({
+              id: 2,
+              uniqueId: 'INT0002',
+              version: {
+                ...makeRow().version,
+                description: 'Uppfoljning',
+              },
+            }),
+          ]}
+        />
+      </div>
+    )
+  }
+
   function ControlledSearchFilterTable() {
     const [filterValues, setFilterValues] = useState<FilterValues>({
       ...DEFAULT_FILTERS,
@@ -237,10 +272,24 @@ describe('RequirementsTable', () => {
     ) as HTMLDivElement | null
   }
 
+  function getStickyHeaderContent(container: HTMLElement) {
+    return container.querySelector(
+      '[data-sticky-table-header="true"]',
+    ) as HTMLDivElement | null
+  }
+
   function getColumnWidths(container: HTMLElement) {
-    return Array.from(container.querySelectorAll('col')).map(
-      col => (col as HTMLTableColElement).style.width,
-    )
+    return Array.from(
+      container.querySelectorAll(
+        '[data-requirements-scroll-container="true"] table col',
+      ),
+    ).map(col => (col as HTMLTableColElement).style.width)
+  }
+
+  function getStickyHeaderColumnWidths(container: HTMLElement) {
+    return Array.from(
+      container.querySelectorAll('[data-sticky-table-header-table="true"] col'),
+    ).map(col => (col as HTMLTableColElement).style.width)
   }
 
   function getResizeHandle(container: HTMLElement, columnId: string) {
@@ -361,21 +410,28 @@ describe('RequirementsTable', () => {
       .filter((value): value is string => value !== null)
   }
 
-  function getFloatingActionRailContainer(container: HTMLElement) {
-    const rail =
+  function getFloatingActionRail(container: HTMLElement) {
+    return (
       (container.querySelector(
         '[data-floating-action-rail="true"]',
       ) as HTMLDivElement | null) ??
       (document.querySelector(
         '[data-floating-action-rail="true"]',
       ) as HTMLDivElement | null)
+    )
+  }
 
-    return rail?.parentElement as HTMLDivElement | null
+  function getFloatingActionRailContainer(container: HTMLElement) {
+    const rail = getFloatingActionRail(container)
+
+    return (rail?.parentElement as HTMLDivElement | null) ?? null
   }
 
   function setHeaderMetrics(container: HTMLElement, widths: number[]) {
     const headers = Array.from(
-      container.querySelectorAll('thead th'),
+      container.querySelectorAll(
+        '[data-sticky-table-header-table="true"] thead th',
+      ),
     ) as HTMLTableCellElement[]
 
     let left = 0
@@ -758,12 +814,165 @@ describe('RequirementsTable', () => {
     expect(getFloatingActionRailContainer(container)?.style.left).toBe('268px')
   })
 
+  it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 560,
+      left: 24,
+      right: 340,
+      top: 120,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('resize'))
+    })
+
+    expect(getFloatingActionRailContainer(container)?.style.top).toBe('124px')
+
+    setElementRect(scrollContainer, {
+      bottom: 300,
+      left: 24,
+      right: 340,
+      top: -140,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(getFloatingActionRailContainer(container)?.style.top).toBe('80px')
+
+    setElementRect(scrollContainer, {
+      bottom: 60,
+      left: 24,
+      right: 340,
+      top: -380,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(getFloatingActionRailContainer(container)).toBeNull()
+  })
+
+  it('renders an inline top rail and sticky title bar when requested', () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActionRailPlacement="inline-top"
+        locale="sv"
+        rows={[makeRow()]}
+        stickyTitle={<h2>Package items</h2>}
+        stickyTitleActions={<button type="button">Remove selected</button>}
+      />,
+    )
+
+    const stickyTopBar = container.querySelector(
+      '[data-requirements-sticky-top-bar="true"]',
+    ) as HTMLDivElement | null
+    const inlineRail = container.querySelector(
+      '[data-floating-action-rail-placement="inline-top"]',
+    ) as HTMLDivElement | null
+    const actionGroup = stickyTopBar?.lastElementChild as HTMLDivElement | null
+
+    expect(stickyTopBar).toBeTruthy()
+    expect(stickyTopBar).toHaveTextContent('Package items')
+    expect(stickyTopBar).toHaveTextContent('Remove selected')
+    expect(stickyTopBar?.className).toContain('flex-wrap')
+    expect(stickyTopBar?.className).toContain('sm:flex-nowrap')
+    expect(inlineRail).toBeTruthy()
+    expect(inlineRail?.className).toContain('flex-wrap')
+    expect(inlineRail?.className).toContain('sm:flex-nowrap')
+    expect(actionGroup?.className).toContain('flex-wrap')
+    expect(actionGroup?.className).toContain('sm:flex-nowrap')
+    expect(actionGroup?.className).toContain('sm:shrink-0')
+    expect(
+      inlineRail?.querySelector('[data-column-picker-trigger="true"]'),
+    ).toBeTruthy()
+    expect(
+      document.querySelector(
+        '[data-floating-action-rail-placement="fixed-right"]',
+      ),
+    ).toBeNull()
+  })
+
+  it('renders the synced header inside a sticky table chrome container below the navigation', () => {
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        onSelectionChange={vi.fn()}
+        rows={[makeRow()]}
+        selectable
+        selectedIds={new Set()}
+      />,
+    )
+
+    const stickyTableChrome = container.querySelector(
+      '[data-sticky-table-chrome="true"]',
+    ) as HTMLDivElement | null
+    const stickyHeaderTable = container.querySelector(
+      '[data-sticky-table-header-table="true"]',
+    ) as HTMLTableElement | null
+    const stickyHeaderCells = Array.from(
+      container.querySelectorAll(
+        '[data-sticky-table-header-table="true"] thead th',
+      ),
+    )
+    const semanticHeaderCells = Array.from(
+      container.querySelectorAll(
+        '[data-requirements-data-table="true"] thead th',
+      ),
+    )
+
+    expect(stickyTableChrome?.className).toContain('sticky')
+    expect(stickyTableChrome?.className).toContain('top-16')
+    expect(stickyTableChrome?.className).toContain('rounded-t-2xl')
+    expect(stickyHeaderTable).toHaveAttribute('role', 'presentation')
+    expect(stickyHeaderCells.length).toBeGreaterThan(1)
+    expect(semanticHeaderCells.length).toBeGreaterThan(1)
+    for (const cell of stickyHeaderCells) {
+      expect(cell.className).toContain('bg-secondary-50')
+    }
+  })
+
+  it('supports overriding the sticky top offset classes for container-scrolled tables', () => {
+    const { container } = render(
+      <RequirementsTable
+        locale="sv"
+        rows={[makeRow()]}
+        stickyTopOffsetClassName="top-16 xl:top-0"
+      />,
+    )
+
+    const stickyTableChrome = container.querySelector(
+      '[data-sticky-table-chrome="true"]',
+    ) as HTMLDivElement | null
+
+    expect(stickyTableChrome?.className).toContain('top-16')
+    expect(stickyTableChrome?.className).toContain('xl:top-0')
+  })
+
   it('shows the floating pill badge in the default column state', () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
 
-    expect(getColumnPickerBadge(container)?.textContent).toBe('6/10')
+    expect(getColumnPickerBadge(container)?.textContent).toBe('6/11')
   })
 
   it('renders the floating pill in a centered square shell', () => {
@@ -826,6 +1035,136 @@ describe('RequirementsTable', () => {
       screen.getByRole('button', { name: 'columns' }).dataset
         .floatingActionVariant,
     ).toBe('default')
+  })
+
+  it('renders the scroll-to-top pill in a separate end group after vertical scroll', () => {
+    const { container } = render(
+      <RequirementsTable
+        floatingActions={[
+          {
+            ariaLabel: 'newRequirement',
+            href: '/requirements/new',
+            icon: <span aria-hidden="true">+</span>,
+            id: 'create',
+            position: 'beforeColumns',
+            variant: 'primary',
+          },
+          {
+            ariaLabel: 'print',
+            icon: <span aria-hidden="true">P</span>,
+            id: 'print',
+          },
+        ]}
+        locale="sv"
+        rows={[makeRow()]}
+      />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 520,
+      left: 24,
+      right: 340,
+      top: -120,
+      width: 316,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    expect(getFloatingActionIds(container)).toEqual([
+      'create',
+      'columns',
+      'print',
+      'scroll-top',
+    ])
+    const rail = getFloatingActionRail(container)
+    const scrollTopGroup = document.querySelector(
+      '[data-floating-action-group="scroll-top"]',
+    ) as HTMLDivElement | null
+    const scrollTopTrigger = document.querySelector(
+      '[data-scroll-top-trigger="true"]',
+    ) as HTMLButtonElement | null
+
+    expect(scrollTopGroup).toBeTruthy()
+    expect(scrollTopTrigger).toBeTruthy()
+    expect(rail?.lastElementChild).toBe(scrollTopGroup)
+    expect(scrollTopTrigger).toHaveAttribute(
+      'data-developer-mode-name',
+      'table action',
+    )
+    expect(scrollTopTrigger).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirements table',
+    )
+    expect(scrollTopTrigger).toHaveAttribute(
+      'data-developer-mode-value',
+      'scroll to top',
+    )
+  })
+
+  it('scrolls the table back to its top anchor from the end-cap pill', () => {
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    const scrollContainer = container.querySelector(
+      '[data-requirements-scroll-container="true"]',
+    ) as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    if (!scrollContainer) {
+      throw new Error('Expected the scroll container to be rendered.')
+    }
+
+    setElementRect(scrollContainer, {
+      bottom: 520,
+      left: 24,
+      right: 340,
+      top: -120,
+      width: 316,
+    })
+
+    const tableRoot = container.firstElementChild as HTMLDivElement | null
+    expect(tableRoot).toBeTruthy()
+    if (!tableRoot) {
+      throw new Error('Expected the table root to be rendered.')
+    }
+
+    const scrollIntoView = vi.fn()
+    Object.defineProperty(tableRoot, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    })
+
+    act(() => {
+      window.dispatchEvent(new Event('scroll'))
+    })
+
+    const scrollTopTrigger = document.querySelector(
+      '[data-scroll-top-trigger="true"]',
+    ) as HTMLButtonElement | null
+
+    expect(scrollTopTrigger).toBeTruthy()
+    if (!scrollTopTrigger) {
+      throw new Error('Expected the scroll-to-top trigger to be rendered.')
+    }
+
+    fireEvent.click(scrollTopTrigger)
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: 'auto',
+      block: 'start',
+    })
   })
 
   it('clamps floating action menus inside the viewport on narrow screens', async () => {
@@ -965,6 +1304,56 @@ describe('RequirementsTable', () => {
     expect(descriptionCell?.className).toContain('whitespace-normal')
     expect(descriptionCell?.className).toContain('break-words')
     expect(descriptionCell?.className).not.toContain('wrap-break-word')
+  })
+
+  it('syncs description wrapping when the prop changes on rerender', () => {
+    const { rerender } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
+
+    let descriptionCell = screen.getByText('Testkrav').closest('td')
+    expect(descriptionCell?.className).toContain('truncate')
+
+    rerender(
+      <RequirementsTable locale="sv" rows={[makeRow()]} wrapDescription />,
+    )
+
+    descriptionCell = screen.getByText('Testkrav').closest('td')
+    expect(descriptionCell?.className).toContain('whitespace-normal')
+    expect(descriptionCell?.className).toContain('break-words')
+
+    rerender(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    descriptionCell = screen.getByText('Testkrav').closest('td')
+    expect(descriptionCell?.className).toContain('truncate')
+  })
+
+  it('adds a visible focus ring to the description wrap toggle', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    const wrapToggle = screen.getByRole('button', { name: 'showFullText' })
+
+    expect(wrapToggle.className).toContain('focus-visible:outline-none')
+    expect(wrapToggle.className).toContain('focus-visible:ring-2')
+    expect(wrapToggle.className).toContain('focus-visible:ring-offset-2')
+  })
+
+  it('marks the description wrap toggle icons as decorative in both states', () => {
+    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+
+    let wrapToggle = screen.getByRole('button', { name: 'showFullText' })
+    let icon = wrapToggle.querySelector('svg')
+
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(icon).toHaveAttribute('focusable', 'false')
+
+    fireEvent.click(wrapToggle)
+
+    wrapToggle = screen.getByRole('button', { name: 'showShortText' })
+    icon = wrapToggle.querySelector('svg')
+
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    expect(icon).toHaveAttribute('focusable', 'false')
   })
 
   it('clears hidden column filters and resets hidden active sort', () => {
@@ -1463,6 +1852,45 @@ describe('RequirementsTable', () => {
     )
   })
 
+  it('keeps the sticky header preview widths aligned with the body during drag', async () => {
+    const { container } = render(<ControlledResizableTable />)
+
+    const handle = container.querySelector(
+      '[data-column-resize-handle="description"]',
+    )
+    const tableContent = getTableContent(container)
+    const stickyHeaderContent = getStickyHeaderContent(container)
+
+    expect(handle).toBeTruthy()
+
+    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    fireEvent.pointerMove(window, { clientX: 132 })
+    await act(async () => {
+      await new Promise<void>(resolve => {
+        window.requestAnimationFrame(() => resolve())
+      })
+    })
+
+    expect(getColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(getStickyHeaderColumnWidths(container)).toEqual([
+      '150px',
+      '392px',
+      '136px',
+      '152px',
+      '148px',
+      '176px',
+    ])
+    expect(tableContent?.style.width).toBe('1154px')
+    expect(stickyHeaderContent?.style.width).toBe('1154px')
+  })
+
   it('ignores pointer events from other pointers while a resize is active', async () => {
     const { container } = render(<ControlledResizableTable />)
 
@@ -1585,6 +2013,26 @@ describe('RequirementsTable', () => {
     )
   })
 
+  it('rounds clipped resize segments away from the expanded detail pane edges', () => {
+    const { container } = render(<ControlledExpandedResizableTable />)
+
+    syncResizeHandleMetrics(container)
+    setExpandedDetailMetrics(container, {
+      bottom: 240.4,
+      contentHeight: 360.4,
+      top: 120.6,
+    })
+
+    const topHandle = getResizeHandle(container, 'description')
+    const bottomSegment = container.querySelector(
+      '[data-column-resize-column="description"][data-column-resize-segment="bottom"]',
+    ) as HTMLDivElement | null
+
+    expect(topHandle?.style.height).toBe('120px')
+    expect(bottomSegment?.style.top).toBe('241px')
+    expect(bottomSegment?.style.height).toBe('48px')
+  })
+
   it('keeps clipped resize segments below 44px from expanding their hit area', () => {
     const { container } = render(<ControlledExpandedResizableTable />)
 
@@ -1617,6 +2065,32 @@ describe('RequirementsTable', () => {
     expect(screen.getByTestId('column-width-state').textContent).toBe(
       '{"description":392}',
     )
+  })
+
+  it('re-observes the expanded detail cell when the expanded row changes', async () => {
+    const { container } = render(<ControlledExpandedSwitchTable />)
+
+    const firstDetailCell = container.querySelector(
+      '[data-expanded-detail-cell="true"]',
+    ) as HTMLTableCellElement | null
+
+    expect(firstDetailCell).toBeTruthy()
+
+    resizeObserverObserve.mockClear()
+
+    fireEvent.click(screen.getByRole('button', { name: 'expand-second-row' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('expanded-detail-content-2')).toBeTruthy(),
+    )
+
+    const secondDetailCell = container.querySelector(
+      '[data-expanded-detail-cell="true"]',
+    ) as HTMLTableCellElement | null
+
+    expect(secondDetailCell).toBeTruthy()
+    expect(secondDetailCell).not.toBe(firstDetailCell)
+    expect(resizeObserverObserve).toHaveBeenCalledWith(secondDetailCell)
   })
 
   it('restores divider positions on pointer cancel', async () => {
@@ -2400,5 +2874,70 @@ describe('RequirementsTable', () => {
     } finally {
       globalThis.IntersectionObserver = OriginalIntersectionObserver
     }
+  })
+
+  describe('norm references column', () => {
+    const normRefColumns = [
+      ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+      'normReferences' as const,
+    ]
+
+    it('renders norm reference IDs in cell when column is visible', () => {
+      const row = makeRow({
+        normReferenceIds: ['SFS-2018-218', 'ISO-27001-2022'],
+      })
+      render(
+        <RequirementsTable
+          locale="sv"
+          rows={[row]}
+          visibleColumns={normRefColumns}
+        />,
+      )
+      expect(
+        screen.getByText('SFS-2018-218, ISO-27001-2022'),
+      ).toBeInTheDocument()
+    })
+
+    it('renders dash when no norm references', () => {
+      const row = makeRow({ normReferenceIds: [] })
+      const { container } = render(
+        <RequirementsTable
+          locale="sv"
+          rows={[row]}
+          visibleColumns={normRefColumns}
+        />,
+      )
+      const cells = container.querySelectorAll('td')
+      // normReferences is the last column in normRefColumns, so select the last td
+      const normRefCell = cells[cells.length - 1]
+      expect(normRefCell?.textContent).toBe('—')
+    })
+
+    it('calls onVisibleColumnsChange when toggling normReferences column', async () => {
+      const onVisibleColumnsChange = vi.fn()
+      const { container } = render(
+        <RequirementsTable
+          locale="sv"
+          onVisibleColumnsChange={onVisibleColumnsChange}
+          rows={[makeRow()]}
+          visibleColumns={DEFAULT_VISIBLE_REQUIREMENT_COLUMNS}
+        />,
+      )
+      const trigger = getColumnPickerTrigger(container)
+      expect(trigger).toBeTruthy()
+      await act(async () => {
+        fireEvent.click(trigger as HTMLButtonElement)
+      })
+      const normRefOption =
+        container.querySelector(
+          '[data-column-picker-option="normReferences"]',
+        ) ??
+        document.querySelector('[data-column-picker-option="normReferences"]')
+      expect(normRefOption).toBeTruthy()
+      await act(async () => {
+        fireEvent.click(normRefOption as Element)
+      })
+      expect(onVisibleColumnsChange).toHaveBeenCalled()
+    })
   })
 })

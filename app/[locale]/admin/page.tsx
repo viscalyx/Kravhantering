@@ -1,6 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
+import { routing } from '@/i18n/routing'
 import {
   getRequirementListColumnDefaults,
   getUiTerminology,
@@ -16,8 +17,16 @@ import AdminClient from './admin-client'
 
 const logger = createRequirementsLogger()
 
-export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('admin')
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale: requestedLocale } = await params
+  const locale = routing.locales.includes(requestedLocale as 'sv' | 'en')
+    ? (requestedLocale as 'sv' | 'en')
+    : routing.defaultLocale
+  const t = await getTranslations({ locale, namespace: 'admin' })
   return { title: t('title') }
 }
 

@@ -2,6 +2,7 @@
 
 import {
   AlertCircle,
+  AlignLeft,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -11,6 +12,7 @@ import {
   Filter,
   Search,
   SearchCheck,
+  WrapText,
   X,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -20,10 +22,10 @@ import {
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type PointerEvent as ReactPointerEvent,
-  type RefObject,
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -62,12 +64,11 @@ export interface RequirementsTableProps {
   areas?: AreaOption[]
   categories?: FilterOption[]
   columnDefaults?: RequirementListColumnDefault[]
-  columnsPickerContainer?: HTMLElement | null
-  columnsPickerInHeader?: boolean
   columnWidths?: RequirementColumnWidths
   excludeColumns?: RequirementColumnId[]
   expandedId?: number | null
   filterValues?: FilterValues
+  floatingActionRailPlacement?: 'fixed-right' | 'inline-top'
   floatingActions?: FloatingActionItem[]
   getName?: (opt: FilterOption) => string
   getStatusName?: (opt: StatusOption) => string
@@ -76,6 +77,7 @@ export interface RequirementsTableProps {
   loadingMore?: boolean
   locale: string
   needsReferenceOptions?: { id: number; text: string }[]
+  normReferences?: { id: number; normReferenceId: string; name: string }[]
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
@@ -91,6 +93,9 @@ export interface RequirementsTableProps {
   selectedIds?: Set<number>
   sortState?: RequirementSortState
   statusOptions?: StatusOption[]
+  stickyTitle?: ReactNode
+  stickyTitleActions?: ReactNode
+  stickyTopOffsetClassName?: string
   types?: FilterOption[]
   usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
@@ -522,8 +527,13 @@ function areExpandedDetailBoundsEqual(
 }
 
 const POPOVER_VIEWPORT_MARGIN = 8
+const FLOATING_ACTION_RAIL_MIN_TOP_OFFSET = 80
+const FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET = 4
+const FLOATING_ACTION_RAIL_WIDTH = 44
 const ROW_CLICK_INTERACTIVE_SELECTOR =
   'button, a, input, select, textarea, [contenteditable]:not([contenteditable="false"])'
+const useClientLayoutEffect =
+  typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
   if (typeof window === 'undefined') {
@@ -540,6 +550,23 @@ function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
   )
 
   return Math.min(Math.max(anchorLeft, POPOVER_VIEWPORT_MARGIN), maxLeft)
+}
+
+interface FloatingActionRailPosition {
+  left: number
+  top: number
+  visible: boolean
+}
+
+function areFloatingActionRailPositionsEqual(
+  left: FloatingActionRailPosition,
+  right: FloatingActionRailPosition,
+) {
+  return (
+    left.left === right.left &&
+    left.top === right.top &&
+    left.visible === right.visible
+  )
 }
 
 /* ── Filter popover for text search columns (uniqueId, description) ── */
@@ -988,16 +1015,12 @@ function GroupedMultiSelectFilterPopover({
 }
 
 function ColumnsPopover({
-  actions = [],
-  anchorRef,
   badgeLabel = null,
   columns,
   onReset,
   onToggle,
   visibleColumns,
 }: {
-  actions?: FloatingActionItem[]
-  anchorRef?: RefObject<HTMLElement | null>
   badgeLabel?: string | null
   columns: {
     canHide: boolean
@@ -1020,16 +1043,6 @@ function ColumnsPopover({
     left: 0,
     maxH: 300,
   })
-  const [outsidePillPos, setOutsidePillPos] = useState<{
-    left: number
-    top: number
-  } | null>(null)
-  const actionsBeforeColumns = actions.filter(
-    action => action.position === 'beforeColumns',
-  )
-  const actionsAfterColumns = actions.filter(
-    action => action.position !== 'beforeColumns',
-  )
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -1047,53 +1060,6 @@ function ColumnsPopover({
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
-
-  useEffect(() => {
-    if (!anchorRef?.current) {
-      setOutsidePillPos(null)
-      return
-    }
-
-    const anchor = anchorRef.current
-
-    const updatePosition = () => {
-      const rect = anchor.getBoundingClientRect()
-      const railWidth = 44
-      const railMargin = 8
-      const viewportWidth = Math.max(
-        window.innerWidth,
-        document.documentElement.clientWidth,
-      )
-      const maxLeft = viewportWidth - railWidth - railMargin
-      setOutsidePillPos({
-        left: Math.max(railMargin, Math.min(rect.right + 12, maxLeft)),
-        top: rect.top + 12,
-      })
-    }
-
-    updatePosition()
-
-    const handleResizeObserver: ResizeObserverCallback = (
-      _entries,
-      _observer,
-    ) => {
-      updatePosition()
-    }
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(handleResizeObserver)
-
-    resizeObserver?.observe(anchor)
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-
-    return () => {
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-    }
-  }, [anchorRef])
 
   const trigger = (
     <button
@@ -1154,55 +1120,13 @@ function ColumnsPopover({
 
   return (
     <>
-      {outsidePillPos ? (
-        createPortal(
-          <div
-            className="pointer-events-none fixed z-30"
-            style={{ left: outsidePillPos.left, top: outsidePillPos.top }}
-          >
-            <div
-              className="pointer-events-auto flex flex-col gap-3"
-              {...devMarker({
-                context: 'requirements table',
-                name: 'floating action rail',
-                priority: 340,
-              })}
-              data-floating-action-rail="true"
-            >
-              {actionsBeforeColumns.map(action => (
-                <FloatingActionPill action={action} key={action.id} />
-              ))}
-              <div
-                className="relative inline-flex"
-                data-column-picker-wrapper="true"
-                ref={ref}
-              >
-                {trigger}
-              </div>
-              {actionsAfterColumns.map(action => (
-                <FloatingActionPill action={action} key={action.id} />
-              ))}
-            </div>
-          </div>,
-          document.body,
-        )
-      ) : (
-        <div className="flex items-center gap-2">
-          {actionsBeforeColumns.map(action => (
-            <FloatingActionPill action={action} key={action.id} />
-          ))}
-          <div
-            className="relative inline-flex"
-            data-column-picker-wrapper="true"
-            ref={ref}
-          >
-            {trigger}
-          </div>
-          {actionsAfterColumns.map(action => (
-            <FloatingActionPill action={action} key={action.id} />
-          ))}
-        </div>
-      )}
+      <div
+        className="relative inline-flex"
+        data-column-picker-wrapper="true"
+        ref={ref}
+      >
+        {trigger}
+      </div>
       {open &&
         createPortal(
           <div
@@ -1381,13 +1305,12 @@ export default function RequirementsTable({
   areas = [],
   categories = [],
   columnDefaults,
-  columnsPickerContainer = null,
-  columnsPickerInHeader = false,
   columnWidths = {},
   excludeColumns,
   expandedId,
   filterValues,
   floatingActions = [],
+  floatingActionRailPlacement = 'fixed-right',
   getName = () => '',
   getStatusName = () => '',
   hasMore = false,
@@ -1395,6 +1318,7 @@ export default function RequirementsTable({
   loadingMore = false,
   locale,
   needsReferenceOptions = [],
+  normReferences = [],
   onFilterChange,
   onLoadMore,
   onRowClick,
@@ -1408,6 +1332,9 @@ export default function RequirementsTable({
   selectable = false,
   selectedIds,
   sortState = DEFAULT_REQUIREMENT_SORT,
+  stickyTopOffsetClassName = 'top-16',
+  stickyTitle,
+  stickyTitleActions,
   statusOptions = [],
   qualityCharacteristics = [],
   types = [],
@@ -1464,12 +1391,17 @@ export default function RequirementsTable({
       getRequirementColumnWidth(column.id, columnWidths),
     ]),
   ) as Record<RequirementColumnId, number>
+  const tableRootRef = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const stickyHeaderContentRef = useRef<HTMLDivElement>(null)
   const tableContentRef = useRef<HTMLDivElement>(null)
   const tableRef = useRef<HTMLTableElement>(null)
   const selectAllRef = useRef<HTMLInputElement>(null)
   const expandedDetailCellRef = useRef<HTMLTableCellElement>(null)
   const colRefs = useRef<
+    Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
+  >({})
+  const stickyHeaderColRefs = useRef<
     Partial<Record<RequirementColumnId, HTMLTableColElement | null>>
   >({})
   const headerCellRefs = useRef<
@@ -1557,21 +1489,54 @@ export default function RequirementsTable({
   >([])
   const [expandedDetailBounds, setExpandedDetailBounds] =
     useState<ExpandedDetailBounds | null>(null)
+  const [floatingRailPosition, setFloatingRailPosition] =
+    useState<FloatingActionRailPosition>({
+      left: POPOVER_VIEWPORT_MARGIN,
+      top: FLOATING_ACTION_RAIL_MIN_TOP_OFFSET,
+      visible: false,
+    })
+  const [showScrollTopAction, setShowScrollTopAction] = useState(false)
   const [scrollFadeState, setScrollFadeState] = useState({
     left: false,
     right: false,
   })
   const canResizeColumns = !!onColumnWidthsChange
-  const hasExpandedDetailRow =
+  const expandedDetailRowId =
     expandedId !== null &&
     expandedId !== undefined &&
     !!renderExpanded &&
     rows.some(row => row.id === expandedId)
+      ? expandedId
+      : null
+  const hasExpandedDetailRow = expandedDetailRowId !== null
   const clippedResizeHandleBounds = hasExpandedDetailRow
     ? expandedDetailBounds
     : null
   const shouldRenderResizeHandles =
     canResizeColumns && (!hasExpandedDetailRow || clippedResizeHandleBounds)
+  const actionsBeforeColumns = floatingActions.filter(
+    action => action.position === 'beforeColumns',
+  )
+  const actionsAfterColumns = floatingActions.filter(
+    action => action.position !== 'beforeColumns',
+  )
+  const shouldRenderInlineRail = floatingActionRailPlacement === 'inline-top'
+
+  const scrollTableToTop = useCallback(() => {
+    if (!tableRootRef.current) {
+      return
+    }
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ??
+        false)
+
+    tableRootRef.current.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }, [])
 
   const updateFilter = (patch: Partial<FilterValues>) => {
     if (!onFilterChange) {
@@ -1789,15 +1754,21 @@ export default function RequirementsTable({
 
   const applyVisibleWidthPreview = useCallback(
     (visibleWidths: Record<RequirementColumnId, number>) => {
+      const nextTableWidth =
+        columnDefinitions.reduce(
+          (total, column) =>
+            total +
+            (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
+          0,
+        ) + checkboxColumnWidth
+      const stickyHeaderContent = stickyHeaderContentRef.current
       const tableContent = tableContentRef.current
+
+      if (stickyHeaderContent) {
+        stickyHeaderContent.style.width = `${nextTableWidth}px`
+      }
+
       if (tableContent) {
-        const nextTableWidth =
-          columnDefinitions.reduce(
-            (total, column) =>
-              total +
-              (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
-            0,
-          ) + checkboxColumnWidth
         tableContent.style.width = `${nextTableWidth}px`
       }
 
@@ -1805,8 +1776,12 @@ export default function RequirementsTable({
         const width =
           visibleWidths[column.id] ?? renderedColumnWidths[column.id]
         const col = colRefs.current[column.id]
+        const stickyHeaderCol = stickyHeaderColRefs.current[column.id]
         if (col) {
           col.style.width = `${width}px`
+        }
+        if (stickyHeaderCol) {
+          stickyHeaderCol.style.width = `${width}px`
         }
       }
 
@@ -2102,7 +2077,7 @@ export default function RequirementsTable({
   }, [canResizeColumns, columnDefinitions])
 
   const updateExpandedDetailBounds = useCallback(() => {
-    if (!canResizeColumns || !hasExpandedDetailRow) {
+    if (!canResizeColumns || expandedDetailRowId === null) {
       setExpandedDetailBounds(previous => (previous ? null : previous))
       return
     }
@@ -2118,15 +2093,11 @@ export default function RequirementsTable({
     const cellRect = cell.getBoundingClientRect()
     const tableContentRect = tableContent.getBoundingClientRect()
     const contentHeight = Math.max(0, Math.round(tableContentRect.height))
-    const top = Math.min(
-      contentHeight,
-      Math.max(0, Math.round(cellRect.top - tableContentRect.top)),
-    )
+    const relativeTop = cellRect.top - tableContentRect.top
+    const relativeBottom = cellRect.bottom - tableContentRect.top
+    const top = Math.min(contentHeight, Math.max(0, Math.floor(relativeTop)))
     const nextBounds = {
-      bottom: Math.min(
-        contentHeight,
-        Math.max(top, Math.round(cellRect.bottom - tableContentRect.top)),
-      ),
+      bottom: Math.min(contentHeight, Math.max(top, Math.ceil(relativeBottom))),
       contentHeight,
       top,
     }
@@ -2136,7 +2107,88 @@ export default function RequirementsTable({
         ? previous
         : nextBounds,
     )
-  }, [canResizeColumns, hasExpandedDetailRow])
+  }, [canResizeColumns, expandedDetailRowId])
+
+  const updateFloatingRail = useCallback(() => {
+    if (shouldRenderInlineRail) {
+      setFloatingRailPosition(previous =>
+        previous.visible ? { ...previous, visible: false } : previous,
+      )
+      setShowScrollTopAction(previous => (previous ? false : previous))
+      return
+    }
+
+    const container = scrollContainerRef.current
+    const tableRoot = tableRootRef.current
+
+    if (!container || typeof window === 'undefined') {
+      setFloatingRailPosition(previous =>
+        previous.visible ? { ...previous, visible: false } : previous,
+      )
+      setShowScrollTopAction(previous => (previous ? false : previous))
+      return
+    }
+
+    const viewportWidth = Math.max(
+      window.innerWidth,
+      document.documentElement.clientWidth,
+    )
+    const viewportHeight = Math.max(
+      window.innerHeight,
+      document.documentElement.clientHeight,
+    )
+    const containerRect = container.getBoundingClientRect()
+    const tableRootRect = tableRoot?.getBoundingClientRect() ?? containerRect
+    const hasMeasuredContainerRect =
+      containerRect.width > 0 || containerRect.height > 0
+    const hasMeasuredTableRootRect =
+      tableRootRect.width > 0 || tableRootRect.height > 0
+    const effectiveTableRect = hasMeasuredTableRootRect
+      ? tableRootRect
+      : containerRect
+    const railLeft = hasMeasuredContainerRect
+      ? Math.max(
+          POPOVER_VIEWPORT_MARGIN,
+          Math.min(
+            containerRect.right + 12,
+            viewportWidth -
+              FLOATING_ACTION_RAIL_WIDTH -
+              POPOVER_VIEWPORT_MARGIN,
+          ),
+        )
+      : Math.max(
+          POPOVER_VIEWPORT_MARGIN,
+          viewportWidth - FLOATING_ACTION_RAIL_WIDTH - POPOVER_VIEWPORT_MARGIN,
+        )
+    const railTop = hasMeasuredContainerRect
+      ? Math.max(
+          FLOATING_ACTION_RAIL_MIN_TOP_OFFSET,
+          effectiveTableRect.top + FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET,
+        )
+      : FLOATING_ACTION_RAIL_MIN_TOP_OFFSET
+    const nextRailPosition = {
+      left: railLeft,
+      top: railTop,
+      visible: hasMeasuredContainerRect
+        ? effectiveTableRect.bottom > railTop &&
+          effectiveTableRect.top < viewportHeight - POPOVER_VIEWPORT_MARGIN
+        : true,
+    }
+    const nextShowScrollTopAction = hasMeasuredContainerRect
+      ? effectiveTableRect.top <
+          railTop - FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET &&
+        effectiveTableRect.bottom > railTop
+      : false
+
+    setFloatingRailPosition(previous =>
+      areFloatingActionRailPositionsEqual(previous, nextRailPosition)
+        ? previous
+        : nextRailPosition,
+    )
+    setShowScrollTopAction(previous =>
+      previous === nextShowScrollTopAction ? previous : nextShowScrollTopAction,
+    )
+  }, [shouldRenderInlineRail])
 
   const setResizeHoverCursor = useCallback((active: boolean) => {
     if (resizeStateRef.current) {
@@ -2229,17 +2281,80 @@ export default function RequirementsTable({
     }
   }, [updateExpandedDetailBounds, updateResizeHandleOffsets, updateScrollFades])
 
+  useClientLayoutEffect(() => {
+    updateFloatingRail()
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => updateFloatingRail())
+
+    if (scrollContainerRef.current) {
+      resizeObserver?.observe(scrollContainerRef.current)
+    }
+    if (tableRef.current) {
+      resizeObserver?.observe(tableRef.current)
+    }
+
+    window.addEventListener('resize', updateFloatingRail)
+    window.addEventListener('scroll', updateFloatingRail, true)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updateFloatingRail)
+      window.removeEventListener('scroll', updateFloatingRail, true)
+    }
+  }, [scrollLayoutSignature, updateFloatingRail])
+
   useEffect(() => {
     void scrollLayoutSignature
     updateScrollFades()
     updateResizeHandleOffsets()
     updateExpandedDetailBounds()
+    updateFloatingRail()
   }, [
     scrollLayoutSignature,
     updateExpandedDetailBounds,
+    updateFloatingRail,
     updateResizeHandleOffsets,
     updateScrollFades,
   ])
+
+  // Sync sticky header horizontal position with the scroll container.
+  // Uses ScrollTimeline (compositor-thread, zero JS lag) when available,
+  // falling back to a passive scroll listener.
+  useClientLayoutEffect(() => {
+    const container = scrollContainerRef.current
+    const header = stickyHeaderContentRef.current
+    if (!container || !header) return
+
+    const maxScrollLeft = container.scrollWidth - container.clientWidth
+
+    if (maxScrollLeft <= 0) {
+      header.style.transform = 'translateX(0px)'
+      return
+    }
+
+    if (typeof ScrollTimeline !== 'undefined') {
+      const timeline = new ScrollTimeline({ axis: 'inline', source: container })
+      const animation = header.animate(
+        [
+          { transform: 'translateX(0px)' },
+          { transform: `translateX(-${maxScrollLeft}px)` },
+        ],
+        { fill: 'both', timeline } as KeyframeAnimationOptions,
+      )
+      return () => animation.cancel()
+    }
+
+    // Fallback for browsers without ScrollTimeline
+    const sync = () => {
+      header.style.transform = `translateX(-${container.scrollLeft}px)`
+    }
+    sync()
+    container.addEventListener('scroll', sync, { passive: true })
+    return () => container.removeEventListener('scroll', sync)
+  }, [scrollLayoutSignature])
 
   const handleResizePointerDown = (
     columnId: RequirementColumnId,
@@ -2517,6 +2632,7 @@ export default function RequirementsTable({
             value={fv.needsReferenceIds ?? []}
           />
         )
+      case 'normReferences':
       case 'version':
         return null
     }
@@ -2639,6 +2755,7 @@ export default function RequirementsTable({
             values={fv.needsReferenceIds ?? []}
           />
         )
+      case 'normReferences':
       case 'version':
         return null
     }
@@ -2692,7 +2809,12 @@ export default function RequirementsTable({
       case 'description':
         return (
           <td
-            className={`py-2 px-2 ${wrapDescription ? 'whitespace-normal break-words' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
+            className={`py-2 px-2 ${descriptionWrapped ? 'whitespace-normal break-words' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
+            title={
+              !descriptionWrapped
+                ? (row.version?.description ?? undefined)
+                : undefined
+            }
           >
             {row.version?.description ?? '—'}
           </td>
@@ -2806,10 +2928,24 @@ export default function RequirementsTable({
             {row.needsReference ?? '—'}
           </td>
         )
+      case 'normReferences':
+        return (
+          <td
+            className={`py-2 px-2 truncate text-secondary-600 dark:text-secondary-400 ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.normReferenceIds && row.normReferenceIds.length > 0
+              ? row.normReferenceIds.join(', ')
+              : '—'}
+          </td>
+        )
     }
   }
 
+  const [descriptionWrapped, setDescriptionWrapped] = useState(wrapDescription)
   const [showSpinner, setShowSpinner] = useState(false)
+  useEffect(() => {
+    setDescriptionWrapped(wrapDescription)
+  }, [wrapDescription])
   useEffect(() => {
     if (!loading) {
       setShowSpinner(false)
@@ -2841,7 +2977,12 @@ export default function RequirementsTable({
   }, [hasMore, onLoadMore, stableLoadMore])
 
   const thBase =
-    'relative py-2 px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
+    'relative px-2 font-medium text-secondary-700 dark:text-secondary-300 align-top'
+  const headerCellSurfaceClassName =
+    'bg-secondary-50 shadow-[inset_0_-1px_0_rgba(148,163,184,0.24)] dark:bg-secondary-900 dark:shadow-[inset_0_-1px_0_rgba(51,65,85,0.6)]'
+  const stickyTableChromeClassName = `sticky ${stickyTopOffsetClassName} z-20 overflow-hidden rounded-t-2xl`
+  const stickyTopBarClassName =
+    'flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80'
   const resizeHandleBaseClassName =
     'group pointer-events-auto absolute left-0 z-20 m-0 min-w-[44px] -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
   const interactiveResizeHandleClassName = `${resizeHandleBaseClassName} focus-visible:outline-none hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400`
@@ -2858,12 +2999,6 @@ export default function RequirementsTable({
   }
   const columnsPopover = (
     <ColumnsPopover
-      actions={floatingActions}
-      anchorRef={
-        columnsPickerInHeader || columnsPickerContainer != null
-          ? undefined
-          : scrollContainerRef
-      }
       badgeLabel={columnPickerBadgeLabel}
       columns={allColumns.map(column => ({
         canHide: column.canHide,
@@ -2874,6 +3009,272 @@ export default function RequirementsTable({
       onToggle={toggleColumn}
       visibleColumns={columnDefinitions.map(column => column.id)}
     />
+  )
+  const floatingRailItems = (
+    <>
+      {actionsBeforeColumns.map(action => (
+        <FloatingActionPill action={action} key={action.id} />
+      ))}
+      {columnsPopover}
+      {actionsAfterColumns.map(action => (
+        <FloatingActionPill action={action} key={action.id} />
+      ))}
+    </>
+  )
+  const scrollTopRailGroup =
+    !shouldRenderInlineRail && showScrollTopAction ? (
+      <div
+        className="mt-2 flex flex-col gap-3"
+        data-floating-action-group="scroll-top"
+      >
+        <button
+          aria-label={tc('backToTop')}
+          className={getFloatingPillClassName()}
+          {...devMarker({
+            context: 'requirements table',
+            name: 'table action',
+            priority: 360,
+            value: 'scroll to top',
+          })}
+          data-floating-action-id="scroll-top"
+          data-floating-action-item="true"
+          data-floating-action-variant="default"
+          data-scroll-top-trigger="true"
+          onClick={scrollTableToTop}
+          title={tc('backToTop')}
+          type="button"
+        >
+          <span aria-hidden="true" className="flex items-center justify-center">
+            <ArrowUp className="h-4 w-4" />
+          </span>
+          <span className="sr-only">{tc('backToTop')}</span>
+        </button>
+      </div>
+    ) : null
+  const inlineFloatingRail = shouldRenderInlineRail ? (
+    <div
+      className="min-w-0 flex flex-wrap items-center gap-2 sm:flex-nowrap"
+      {...devMarker({
+        context: 'requirements table',
+        name: 'floating action rail',
+        priority: 340,
+      })}
+      data-floating-action-rail="true"
+      data-floating-action-rail-placement="inline-top"
+    >
+      {floatingRailItems}
+    </div>
+  ) : null
+  const floatingRail =
+    !shouldRenderInlineRail &&
+    floatingRailPosition.visible &&
+    typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className="pointer-events-none fixed z-30 motion-safe:transition-[top,left] motion-safe:duration-100 motion-safe:ease-linear motion-reduce:transition-none"
+            style={{
+              left: floatingRailPosition.left,
+              top: floatingRailPosition.top,
+              willChange: 'top, left',
+            }}
+          >
+            <div
+              className="pointer-events-auto flex flex-col gap-3"
+              {...devMarker({
+                context: 'requirements table',
+                name: 'floating action rail',
+                priority: 340,
+              })}
+              data-floating-action-rail="true"
+              data-floating-action-rail-placement="fixed-right"
+            >
+              <div
+                className="flex flex-col gap-3"
+                data-floating-action-group="primary"
+              >
+                {floatingRailItems}
+              </div>
+              {scrollTopRailGroup}
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
+  const renderTableHeader = (mode: 'interactive' | 'semantic') => (
+    <thead className={mode === 'semantic' ? 'h-0 overflow-hidden' : undefined}>
+      <tr className={mode === 'semantic' ? 'h-0 text-left' : 'text-left'}>
+        {selectable && (
+          <th
+            aria-label={mode === 'semantic' ? tc('selectAll') : undefined}
+            className={
+              mode === 'semantic'
+                ? 'h-0 w-9 overflow-hidden p-0 text-center'
+                : `${thBase} ${headerCellSurfaceClassName} w-9 py-2 text-center`
+            }
+            scope="col"
+          >
+            {mode === 'interactive' ? (
+              <input
+                aria-label={tc('selectAll')}
+                checked={
+                  rows.length > 0 && rows.every(r => selectedIds?.has(r.id))
+                }
+                className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
+                {...devMarker({
+                  context: 'requirements table',
+                  name: 'row checkbox',
+                  priority: 300,
+                  value: 'select all',
+                })}
+                onChange={e => {
+                  if (!onSelectionChange) return
+                  if (e.target.checked) {
+                    onSelectionChange(new Set(rows.map(r => r.id)))
+                  } else {
+                    onSelectionChange(new Set())
+                  }
+                }}
+                ref={selectAllRef}
+                type="checkbox"
+              />
+            ) : null}
+          </th>
+        )}
+        {columnDefinitions.map((column, columnIndex) => {
+          const label = getColumnLabel(column.id)
+          const isSortable = column.canSort
+          const isActiveSort = isSortable && sortState.by === column.id
+          const sortTooltip = getSortTooltip(label, isActiveSort)
+          const headerAlignClass =
+            column.align === 'center' ? 'text-center' : ''
+          const headerControlClass =
+            column.align === 'center' ? 'justify-center' : 'justify-start'
+          const isLastColumn = columnIndex === columnDefinitions.length - 1
+          const dividerClass = isLastColumn
+            ? ''
+            : 'border-r border-secondary-200/5 dark:border-secondary-700/5'
+
+          return (
+            <th
+              aria-label={mode === 'semantic' ? label : undefined}
+              aria-sort={
+                isSortable
+                  ? isActiveSort
+                    ? sortState.direction === 'asc'
+                      ? 'ascending'
+                      : 'descending'
+                    : 'none'
+                  : undefined
+              }
+              className={
+                mode === 'semantic'
+                  ? `h-0 overflow-hidden p-0 ${headerAlignClass}`
+                  : `${thBase} ${headerCellSurfaceClassName} py-2 ${headerAlignClass} ${dividerClass}`
+              }
+              data-requirement-semantic-header-label={
+                mode === 'semantic' ? column.id : undefined
+              }
+              key={`column-header-${column.id}`}
+              scope="col"
+              {...(mode === 'interactive'
+                ? devMarker({
+                    context: 'requirements table',
+                    name: 'column header',
+                    priority: 350,
+                    value: getRequirementColumnDeveloperModeLabel(column.id),
+                  })
+                : {})}
+              ref={
+                mode === 'interactive'
+                  ? node => {
+                      headerCellRefs.current[column.id] = node
+                    }
+                  : undefined
+              }
+            >
+              {mode === 'interactive' ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
+                      data-requirement-header-control={column.id}
+                    >
+                      {isSortable ? (
+                        <button
+                          className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
+                          {...devMarker({
+                            name: 'sort button',
+                            priority: 300,
+                            value: getRequirementColumnDeveloperModeLabel(
+                              column.id,
+                            ),
+                          })}
+                          onClick={() =>
+                            handleSortToggle(column.id as RequirementSortField)
+                          }
+                          title={sortTooltip}
+                          type="button"
+                        >
+                          <span
+                            className="min-w-0 flex-1 truncate"
+                            data-requirement-header-label={column.id}
+                          >
+                            {label}
+                          </span>
+                          {getSortIcon(column.id as RequirementSortField)}
+                        </button>
+                      ) : (
+                        <span
+                          className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
+                          data-requirement-header-label={column.id}
+                        >
+                          {label}
+                        </span>
+                      )}
+                      {renderFilterControl(column.id)}
+                      {column.id === 'description' && (
+                        <button
+                          aria-label={
+                            descriptionWrapped
+                              ? tc('showShortText')
+                              : tc('showFullText')
+                          }
+                          aria-pressed={descriptionWrapped}
+                          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded text-secondary-400 hover:text-secondary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-secondary-50 dark:focus-visible:ring-offset-secondary-900"
+                          onClick={() => setDescriptionWrapped(v => !v)}
+                          title={
+                            descriptionWrapped
+                              ? tc('showShortText')
+                              : tc('showFullText')
+                          }
+                          type="button"
+                        >
+                          {descriptionWrapped ? (
+                            <WrapText
+                              aria-hidden="true"
+                              focusable={false}
+                              size={16}
+                            />
+                          ) : (
+                            <AlignLeft
+                              aria-hidden="true"
+                              focusable={false}
+                              size={16}
+                            />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {renderFilterChips(column.id)}
+                </>
+              ) : null}
+            </th>
+          )
+        })}
+      </tr>
+    </thead>
   )
 
   const renderResizeHandle = (
@@ -3001,7 +3402,7 @@ export default function RequirementsTable({
   }
 
   return (
-    <div className="relative">
+    <div className="relative scroll-mt-20" ref={tableRootRef}>
       {showSpinner && (
         <output
           aria-live="polite"
@@ -3013,59 +3414,146 @@ export default function RequirementsTable({
           </p>
         </output>
       )}
-      {columnsPickerContainer ? (
-        createPortal(columnsPopover, columnsPickerContainer)
-      ) : columnsPickerInHeader ? (
-        <div className="flex justify-end px-2 pt-2 pb-1">{columnsPopover}</div>
-      ) : (
-        columnsPopover
-      )}
-      {usageScenarios.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-2 border-b text-sm">
-          <span className="text-xs font-medium text-secondary-600 dark:text-secondary-400 shrink-0">
-            {t('scenario')}:
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {usageScenarios.map(s => {
-              const active = (fv.usageScenarioIds ?? []).includes(s.id)
-              return (
+      {floatingRail}
+      <div
+        className={stickyTableChromeClassName}
+        data-sticky-table-chrome="true"
+      >
+        {(stickyTitle || stickyTitleActions || inlineFloatingRail) && (
+          <div
+            className={stickyTopBarClassName}
+            data-requirements-sticky-top-bar="true"
+          >
+            <div className="min-w-0 flex-1">{stickyTitle}</div>
+            <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:shrink-0">
+              {stickyTitleActions}
+              {inlineFloatingRail}
+            </div>
+          </div>
+        )}
+        {usageScenarios.length > 0 && (
+          <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
+            <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
+              {t('scenario')}:
+            </span>
+            <div className="flex flex-wrap gap-1">
+              {usageScenarios.map(s => {
+                const active = (fv.usageScenarioIds ?? []).includes(s.id)
+                return (
+                  <button
+                    aria-label={getName(s)}
+                    aria-pressed={active}
+                    className={`min-h-[44px] min-w-[44px] px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                      active
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
+                    }`}
+                    key={s.id}
+                    onClick={() => {
+                      const current = fv.usageScenarioIds ?? []
+                      const next = active
+                        ? current.filter(id => id !== s.id)
+                        : [...current, s.id]
+                      updateFilter({
+                        usageScenarioIds: next.length > 0 ? next : undefined,
+                      })
+                    }}
+                    type="button"
+                  >
+                    {getName(s)}
+                  </button>
+                )
+              })}
+            </div>
+            {(fv.usageScenarioIds ?? []).length > 0 && (
+              <button
+                aria-label={tc('clearFilters')}
+                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                onClick={() => updateFilter({ usageScenarioIds: undefined })}
+                type="button"
+              >
+                <X aria-hidden="true" className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
+        {normReferences.length > 0 &&
+          visibleColumnSet.has('normReferences') && (
+            <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
+              <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
+                {t('normReferences')}:
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {normReferences.map(nr => {
+                  const active = (fv.normReferenceIds ?? []).includes(nr.id)
+                  return (
+                    <button
+                      aria-label={`${nr.normReferenceId} ${nr.name}`}
+                      aria-pressed={active}
+                      className={`min-h-11 min-w-11 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                        active
+                          ? 'bg-primary-600 text-white'
+                          : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
+                      }`}
+                      key={nr.id}
+                      onClick={() => {
+                        const current = fv.normReferenceIds ?? []
+                        const next = active
+                          ? current.filter(id => id !== nr.id)
+                          : [...current, nr.id]
+                        updateFilter({
+                          normReferenceIds: next.length > 0 ? next : undefined,
+                        })
+                      }}
+                      title={nr.name}
+                      type="button"
+                    >
+                      {nr.normReferenceId}
+                    </button>
+                  )
+                })}
+              </div>
+              {(fv.normReferenceIds ?? []).length > 0 && (
                 <button
-                  aria-label={getName(s)}
-                  aria-pressed={active}
-                  className={`min-h-[44px] min-w-[44px] px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
-                    active
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
-                  }`}
-                  key={s.id}
-                  onClick={() => {
-                    const current = fv.usageScenarioIds ?? []
-                    const next = active
-                      ? current.filter(id => id !== s.id)
-                      : [...current, s.id]
-                    updateFilter({
-                      usageScenarioIds: next.length > 0 ? next : undefined,
-                    })
-                  }}
+                  aria-label={tc('clearFilters')}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  onClick={() => updateFilter({ normReferenceIds: undefined })}
                   type="button"
                 >
-                  {getName(s)}
+                  <X aria-hidden="true" className="h-3 w-3" />
                 </button>
-              )
-            })}
-          </div>
-          {(fv.usageScenarioIds ?? []).length > 0 && (
-            <button
-              aria-label={tc('clearFilters')}
-              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-xs text-secondary-400 hover:text-red-500 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-              onClick={() => updateFilter({ usageScenarioIds: undefined })}
-              type="button"
-            >
-              <X aria-hidden="true" className="h-3 w-3" />
-            </button>
+              )}
+            </div>
           )}
+        <div className="overflow-hidden border-b border-secondary-200/35 bg-secondary-50 dark:border-secondary-700/35 dark:bg-secondary-900">
+          <div
+            className="relative"
+            data-sticky-table-header="true"
+            ref={stickyHeaderContentRef}
+            style={{ width: `${tableWidth}px`, willChange: 'transform' }}
+          >
+            <table
+              className="w-full table-fixed text-sm"
+              data-sticky-table-header-table="true"
+              role="presentation"
+            >
+              <colgroup>
+                {selectable && <col style={{ width: '36px' }} />}
+                {columnDefinitions.map(column => (
+                  <col
+                    key={`sticky-header-column-${column.id}`}
+                    ref={node => {
+                      stickyHeaderColRefs.current[column.id] = node
+                    }}
+                    style={{ width: `${renderedColumnWidths[column.id]}px` }}
+                  />
+                ))}
+              </colgroup>
+              {renderTableHeader('interactive')}
+            </table>
+          </div>
         </div>
-      )}
+      </div>
       <div
         className="relative overflow-x-auto"
         {...devMarker({
@@ -3105,6 +3593,7 @@ export default function RequirementsTable({
           <table
             className="w-full table-fixed text-sm"
             {...devMarker({ name: 'requirements table', priority: 320 })}
+            data-requirements-data-table="true"
             ref={tableRef}
           >
             <colgroup>
@@ -3119,126 +3608,7 @@ export default function RequirementsTable({
                 />
               ))}
             </colgroup>
-            <thead>
-              <tr className="border-b border-secondary-200/35 bg-secondary-50/80 text-left dark:border-secondary-700/35 dark:bg-secondary-800/30">
-                {selectable && (
-                  <th className="w-9 px-2 py-5.5 text-center align-top">
-                    <input
-                      aria-label={tc('selectAll')}
-                      checked={
-                        rows.length > 0 &&
-                        rows.every(r => selectedIds?.has(r.id))
-                      }
-                      className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
-                      {...devMarker({
-                        context: 'requirements table',
-                        name: 'row checkbox',
-                        priority: 300,
-                        value: 'select all',
-                      })}
-                      onChange={e => {
-                        if (!onSelectionChange) return
-                        if (e.target.checked) {
-                          onSelectionChange(new Set(rows.map(r => r.id)))
-                        } else {
-                          onSelectionChange(new Set())
-                        }
-                      }}
-                      ref={selectAllRef}
-                      type="checkbox"
-                    />
-                  </th>
-                )}
-                {columnDefinitions.map((column, columnIndex) => {
-                  const label = getColumnLabel(column.id)
-                  const isSortable = column.canSort
-                  const isActiveSort = isSortable && sortState.by === column.id
-                  const sortTooltip = getSortTooltip(label, isActiveSort)
-                  const headerAlignClass =
-                    column.align === 'center' ? 'text-center' : ''
-                  const headerControlClass =
-                    column.align === 'center'
-                      ? 'justify-center'
-                      : 'justify-start'
-                  const isLastColumn =
-                    columnIndex === columnDefinitions.length - 1
-                  const dividerClass = isLastColumn
-                    ? ''
-                    : 'border-r border-secondary-200/5 dark:border-secondary-700/5'
-
-                  return (
-                    <th
-                      aria-sort={
-                        isSortable
-                          ? isActiveSort
-                            ? sortState.direction === 'asc'
-                              ? 'ascending'
-                              : 'descending'
-                            : 'none'
-                          : undefined
-                      }
-                      className={`${thBase} ${headerAlignClass} ${dividerClass}`}
-                      key={`column-header-${column.id}`}
-                      {...devMarker({
-                        context: 'requirements table',
-                        name: 'column header',
-                        priority: 350,
-                        value: getRequirementColumnDeveloperModeLabel(
-                          column.id,
-                        ),
-                      })}
-                      ref={node => {
-                        headerCellRefs.current[column.id] = node
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`flex min-w-0 flex-1 items-center gap-1 ${headerControlClass}`}
-                          data-requirement-header-control={column.id}
-                        >
-                          {isSortable ? (
-                            <button
-                              className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
-                              {...devMarker({
-                                name: 'sort button',
-                                priority: 300,
-                                value: getRequirementColumnDeveloperModeLabel(
-                                  column.id,
-                                ),
-                              })}
-                              onClick={() =>
-                                handleSortToggle(
-                                  column.id as RequirementSortField,
-                                )
-                              }
-                              title={sortTooltip}
-                              type="button"
-                            >
-                              <span
-                                className="min-w-0 flex-1 truncate"
-                                data-requirement-header-label={column.id}
-                              >
-                                {label}
-                              </span>
-                              {getSortIcon(column.id as RequirementSortField)}
-                            </button>
-                          ) : (
-                            <span
-                              className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
-                              data-requirement-header-label={column.id}
-                            >
-                              {label}
-                            </span>
-                          )}
-                          {renderFilterControl(column.id)}
-                        </div>
-                      </div>
-                      {renderFilterChips(column.id)}
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
+            {renderTableHeader('semantic')}
             <tbody
               className={`${showSpinner ? 'opacity-40' : ''} ${loading ? 'pointer-events-none' : ''}`}
             >

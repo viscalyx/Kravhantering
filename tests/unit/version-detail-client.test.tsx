@@ -46,6 +46,7 @@ function makeVersion(
     verificationMethod: null,
     versionNumber: 2,
     versionScenarios: [],
+    versionNormReferences: [],
     ...overrides,
   }
 }
