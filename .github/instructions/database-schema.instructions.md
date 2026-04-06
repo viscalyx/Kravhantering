@@ -67,3 +67,44 @@ update **every** applicable section of `docs/database-schema.md`:
    prose when status or transition rows change.
 7. **Database Naming Standard** — update rules or accepted exceptions
    when a new naming pattern is introduced.
+
+## Removal Cleanup
+
+When a table, column, index, or constraint is removed from the schema,
+remove **all** references to it from `docs/database-schema.md`:
+
+- The entity and its columns in the Mermaid `erDiagram`.
+- Relationship lines that reference the removed entity.
+- The table documentation section (column table, seed values, notes).
+- Rows in the Accepted Exceptions table that only apply to the removed
+  object.
+- Rows in the Unique Indexes, Non-Unique Indexes, and Named Foreign Key
+  Constraints tables.
+- Nodes and edges in the Index Relationship Diagram.
+- Any prose references in the Status Workflow or other narrative sections.
+
+## Migration Generation
+
+Every migration must produce three artifacts inside `drizzle/migrations/`:
+
+1. `NNNN_<name>.sql` — the migration SQL.
+2. `meta/_journal.json` — an entry for the new migration.
+3. `meta/NNNN_snapshot.json` — a full schema snapshot after the migration.
+
+Missing snapshots break `npx drizzle-kit generate` for all future runs.
+
+### Workflow
+
+1. Update `drizzle/schema.ts` to reflect the desired end state.
+2. Run `npx drizzle-kit generate`. This creates all three artifacts.
+3. Inspect the generated SQL. If it is correct, done.
+4. If the SQL is wrong (e.g. DROP-and-recreate instead of `ALTER TABLE`),
+   **edit only the `.sql` file**. Keep the generated journal entry and
+   snapshot file unchanged.
+5. Run `npm run db:setup` to verify the migration applies cleanly.
+
+### Prohibited
+
+- Never create a `.sql` migration without a matching snapshot in `meta/`.
+- Never hand-write or delete `meta/NNNN_snapshot.json` files.
+- Never add a journal entry without a corresponding snapshot.
