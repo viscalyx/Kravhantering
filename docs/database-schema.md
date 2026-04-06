@@ -197,13 +197,17 @@ erDiagram
         text created_by
     }
 
-    requirement_references {
+    norm_references {
         integer id PK
-        integer requirement_version_id FK
+        text norm_reference_id UK
         text name
+        text type
+        text reference
+        text version
+        text issuer
         text uri
-        text owner
         text created_at
+        text updated_at
     }
 
     usage_scenarios {
@@ -213,25 +217,11 @@ erDiagram
         text description_sv
         text description_en
         integer owner_id FK
-        text created_at
-        text updated_at
     }
 
     requirement_version_usage_scenarios {
         integer requirement_version_id FK, PK
         integer usage_scenario_id FK, PK
-    }
-
-    norm_references {
-        integer id PK
-        text norm_reference_id UK
-        text name
-        text type
-        text reference
-        text version
-        text issuer
-        text created_at
-        text updated_at
     }
 
     requirement_version_norm_references {
@@ -294,7 +284,6 @@ erDiagram
     requirement_versions }o--o| requirement_categories : "categorized as"
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
-    requirement_versions ||--o{ requirement_references : "has many"
     requirement_versions ||--o{ requirement_version_usage_scenarios : "linked via"
     usage_scenarios ||--o{ requirement_version_usage_scenarios : "linked via"
     requirement_versions ||--o{ requirement_version_norm_references : "linked via"
@@ -489,6 +478,7 @@ Column names are **not** localized — see
 | `reference` | text | Citation string |
 | `version` | text | Edition or version year (nullable) |
 | `issuer` | text | Issuing organization |
+| `uri` | text | URL to the official document (nullable) |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -757,26 +747,6 @@ requirement: Published > Archived > Review > Draft. See
 for details. When an archived requirement gets a replacement
 Draft or Review version, `requirements.is_archived` stays
 `true` until that newer version is published.
-
----
-
-### `requirement_references`
-
-External references (documents, URLs, standards) linked
-to a specific requirement version.
-
-<!-- markdownlint-disable MD013 -->
-| Column | Type | Description |
-| -------- | ------ | ------------- |
-| `id` | integer PK | Auto-increment primary key |
-| `requirement_version_id` | integer FK → `requirement_versions.id` | The version this reference belongs to |
-| `name` | text | Display name (e.g. "OWASP API Security Top 10") |
-| `uri` | text | URL or identifier (nullable) |
-| `owner` | text | Responsible party (nullable) |
-| `created_at` | text (ISO 8601) | Creation timestamp |
-<!-- markdownlint-enable MD013 -->
-
-**Index:** `idx_requirement_references_requirement_version_id`.
 
 ---
 
