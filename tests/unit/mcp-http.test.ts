@@ -521,4 +521,60 @@ describe('handleRequirementsMcpRequest', () => {
     await client.close()
     await transport.close()
   })
+
+  it('accepts normReferenceIds in manage_requirement', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        uniqueId: 'INT0001',
+        requirement: {
+          description: 'Updated description',
+          normReferenceIds: [1, 2],
+        },
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(fakeService.manageRequirement).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        requirement: expect.objectContaining({
+          normReferenceIds: [1, 2],
+        }),
+      }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('rejects the old references field in manage_requirement due to strict schema', async () => {
+    const { client, transport } = await createClient()
+
+    const result = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        uniqueId: 'INT0001',
+        requirement: {
+          description: 'Updated description',
+          references: [1],
+        },
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(result.isError).toBe(true)
+    const content = result.content as Array<{
+      text?: string
+      type: string
+    }>
+    expect(content[0]?.text).toMatch(/unrecognized/i)
+
+    await client.close()
+    await transport.close()
+  })
 })

@@ -924,10 +924,22 @@ its purpose and the table/column(s) it covers.
 
 ### Named Foreign Key Constraints
 
-Most foreign keys use Drizzle’s inline `.references()`
-and receive auto-generated constraint names. The
-following tables use explicit `foreignKey({ name })`
-for constraints that need stable, human-readable names.
+Most foreign keys use Drizzle's inline `.references()`
+with auto-generated constraint names. This is the
+standard pattern for simple single-column FKs with
+default `NO ACTION` semantics.
+
+Use the table-level `foreignKey({ name })` builder
+when a constraint needs a stable, human-readable name
+— for example composite FKs, `ON DELETE CASCADE`, or
+other non-default referential actions.
+`ReferenceConfig.actions` (`.references()`) has no
+`constraintName` option in drizzle-orm ≥ 0.45, so
+inline `.references()` **must not** be used when a
+named constraint is needed.
+
+The following table lists the constraints that use
+explicit `foreignKey({ name })`:
 
 <!-- markdownlint-disable MD013 -->
 | Constraint Name | Table | Column(s) | References | On Delete |
