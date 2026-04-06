@@ -143,6 +143,14 @@ erDiagram
         integer is_system "boolean"
     }
 
+    risk_levels {
+        integer id PK
+        text name_sv UK
+        text name_en UK
+        integer sort_order
+        text color
+    }
+
     requirement_status_transitions {
         integer id PK
         integer from_requirement_status_id FK
@@ -187,6 +195,7 @@ erDiagram
         integer requirement_category_id FK
         integer requirement_type_id FK
         integer quality_characteristic_id FK
+        integer risk_level_id FK
         integer requirement_status_id FK
         integer is_testing_required "boolean"
         text verification_method
@@ -285,6 +294,7 @@ erDiagram
     requirement_versions }o--o| requirement_categories : "categorized as"
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
+    requirement_versions }o--o| risk_levels : "risk level"
     requirement_versions ||--o{ requirement_version_usage_scenarios : "linked via"
     usage_scenarios ||--o{ requirement_version_usage_scenarios : "linked via"
     requirement_versions ||--o{ requirement_version_norm_references : "linked via"
@@ -438,11 +448,44 @@ The schema also allows `Granskning` → `Utkast`
 
 ---
 
+### `risk_levels`
+
+Classifies the risk associated with a requirement.
+
+| Column | Type | Description |
+| ------------ | --------------- | ----------------------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `name_sv` | text, unique | Swedish display name |
+| `name_en` | text, unique | English display name |
+| `sort_order` | integer | Display ordering |
+| `color` | text | Hex color code for UI badges |
+
+**Seed values:**
+
+| id | Swedish | English | Color |
+| ---- | ------- | ------- | ------------------- |
+| 1 | Låg | Low | `#22c55e` (green) |
+| 2 | Medel | Medium | `#eab308` (yellow) |
+| 3 | Hög | High | `#ef4444` (red) |
+
+---
+
 ### `usage_scenarios`
 
 Describes operational scenarios (e.g. "High load",
 "Disaster recovery") that requirement versions can be
 linked to.
+
+> **Applicability / Tillämpningsbarhet.**
+> Usage scenarios also serve as the mechanism for
+> expressing *applicability* — i.e. in which contexts or
+> environments a requirement applies. Instead of a
+> separate applicability table, create usage scenarios
+> such as "All systems", "Protected data", or
+> "Public services" and link them to requirement
+> versions via `requirement_version_usage_scenarios`.
+> The many-to-many relation lets a single requirement
+> apply to multiple contexts.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -722,6 +765,7 @@ complete audit history.
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Business / IT / Supplier classification (nullable) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
+| `risk_level_id` | integer FK → `risk_levels.id` | Risk level classification (nullable) |
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived) |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |

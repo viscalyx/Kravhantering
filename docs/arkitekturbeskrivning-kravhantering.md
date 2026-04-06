@@ -539,6 +539,7 @@ erDiagram
     requirement_versions }o--o| requirement_categories : "klassificerad som"
     requirement_versions }o--o| requirement_types : "av typ"
     requirement_versions }o--o| quality_characteristics : "kvalitetskaraktäristik"
+    requirement_versions }o--o| risk_levels : "risknivå"
     requirement_versions ||--o{ requirement_version_usage_scenarios : "kopplade scenarier"
     requirement_version_usage_scenarios }o--|| usage_scenarios : "refererar scenario"
     requirement_versions ||--o{ requirement_version_norm_references : "kopplade normreferenser"
@@ -552,6 +553,11 @@ erDiagram
 ```
 
 <!-- markdownlint-enable MD013 -->
+
+> **Tillämpningsbarhet via användningsscenarier.**
+> Tabellen `usage_scenarios` hanterar även
+> *tillämpningsbarhet* — d.v.s. i vilka kontexter
+> eller miljöer ett krav gäller (t.ex. "Alla system",
 
 ### Taxonomi och tvåspråkig design
 
