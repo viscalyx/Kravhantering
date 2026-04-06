@@ -83,6 +83,7 @@ Apply these rules to all schema objects.
 | Rule | Exception | Rationale |
 | ---- | --------- | --------- |
 | 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. SQLite does not support adding a PK via `ALTER TABLE`. |
+| 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the usage-scenarios join table above. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 <!-- markdownlint-enable MD013 -->
 
@@ -191,6 +192,7 @@ erDiagram
         text created_at
         text edited_at
         text published_at
+        text archive_initiated_at
         text archived_at
         text created_by
     }
@@ -218,6 +220,23 @@ erDiagram
     requirement_version_usage_scenarios {
         integer requirement_version_id FK, PK
         integer usage_scenario_id FK, PK
+    }
+
+    norm_references {
+        integer id PK
+        text norm_reference_id UK
+        text name
+        text type
+        text reference
+        text version
+        text issuer
+        text created_at
+        text updated_at
+    }
+
+    requirement_version_norm_references {
+        integer requirement_version_id FK, PK
+        integer norm_reference_id FK, PK
     }
 
     package_responsibility_areas {
@@ -271,6 +290,8 @@ erDiagram
     requirement_versions ||--o{ requirement_references : "has many"
     requirement_versions ||--o{ requirement_version_usage_scenarios : "linked via"
     usage_scenarios ||--o{ requirement_version_usage_scenarios : "linked via"
+    requirement_versions ||--o{ requirement_version_norm_references : "linked via"
+    norm_references ||--o{ requirement_version_norm_references : "linked via"
     owners |o--o{ usage_scenarios : "owns"
     requirement_types ||--o{ quality_characteristics : "has many"
     quality_characteristics ||--o{ quality_characteristics : "parent-child"
@@ -398,7 +419,8 @@ Defines the allowed state-machine transitions between statuses.
 | Utkast (1) | Granskning (2) |
 | Granskning (2) | Publicerad (3) |
 | Granskning (2) | Utkast (1) |
-| Publicerad (3) | Arkiverad (4) |
+| Publicerad (3) | Granskning (2) |
+| Granskning (2) | Arkiverad (4) |
 
 ---
 
@@ -406,10 +428,15 @@ Defines the allowed state-machine transitions between statuses.
 
 The seeded requirement workflow is:
 
-`Utkast` → `Granskning` → `Publicerad` → `Arkiverad`
+`Utkast` → `Granskning` → `Publicerad`
 
-The schema also allows the review step to move back to `Utkast` before
-publication.
+Archiving uses a two-step review process:
+
+`Publicerad` → `Granskning` (archiving review)
+→ `Arkiverad`
+
+The schema also allows `Granskning` → `Utkast`
+(reject back to draft).
 
 ---
 
@@ -430,6 +457,49 @@ linked to.
 | `owner_id` | integer FK → `owners.id` | Responsible owner (nullable) |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+---
+
+### `norm_references`
+
+External normative references such as laws, ISO standards,
+regulatory directives, and RFCs. Requirement versions can
+be linked to norm references via the
+`requirement_version_norm_references` join table.
+
+Column names are **not** localized — see
+[Accepted Exceptions](#accepted-exceptions).
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `norm_reference_id` | text, unique | Stable external identifier (e.g. `SFS 2018:218`, `ISO/IEC 27001:2022`) |
+| `name` | text | Full display name of the reference |
+| `type` | text | Classification (e.g. Lag, Standard, Föreskrift, Direktiv) |
+| `reference` | text | Citation string |
+| `version` | text | Edition or version year (nullable) |
+| `issuer` | text | Issuing organization |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Unique index:**
+`uq_norm_references_norm_reference_id`.
+
+<!-- cSpell:disable-next-line -->
+**Seed values:**
+
+<!-- markdownlint-disable MD013 -->
+| id | norm\_reference\_id | name | type | issuer |
+| --- | --- | --- | --- | --- |
+| 1 | SFS 2018:218 | Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning | Lag | Riksdagen |
+| 2 | ISO/IEC 27001:2022 | Ledningssystem för informationssäkerhet | Standard | ISO/IEC |
+| 3 | MSBFS 2020:6 | Föreskrifter om informationssäkerhet för statliga myndigheter | Föreskrift | MSB |
+| 4 | RFC 6749 | The OAuth 2.0 Authorization Framework | Standard | IETF |
+| 5 | ISO/IEC 25010:2023 | Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE) | Standard | ISO/IEC |
+| 6 | EU 2022/2555 | NIS2-direktivet | Direktiv | Europeiska unionens råd och Europaparlamentet |
 <!-- markdownlint-enable MD013 -->
 
 ---
@@ -644,6 +714,7 @@ complete audit history.
 | `created_at` | text (ISO 8601) | When this version was created |
 | `edited_at` | text (ISO 8601) | Last content edit timestamp (nullable) |
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
+| `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable) |
 | `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
 | `created_by` | text | User or system that created this version (nullable) |
 <!-- markdownlint-enable MD013 -->
@@ -748,6 +819,37 @@ scenario-to-requirement queries.
 
 ---
 
+### `requirement_version_norm_references`
+
+Many-to-many link between requirement versions and norm
+references. Deleting a requirement version cascades to
+remove its norm-reference links.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `requirement_version_id` | integer FK → `requirement_versions.id` | Composite PK part 1 (CASCADE DELETE) |
+| `norm_reference_id` | integer FK → `norm_references.id` | Composite PK part 2 |
+<!-- markdownlint-enable MD013 -->
+
+**Primary key:**
+`(requirement_version_id, norm_reference_id)`.
+
+**Named foreign keys:**
+<!-- markdownlint-disable MD013 -->
+`fk_requirement_version_norm_references_requirement_version_id`
+(on delete CASCADE),
+`fk_requirement_version_norm_references_norm_reference_id`.
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:**
+<!-- cSpell:disable-next-line -->
+`idx_requirement_version_norm_references_norm_reference_id`
+on `(norm_reference_id)` — reverse-lookup index for
+norm-reference-to-requirement queries.
+
+---
+
 ### `requirement_package_items`
 
 Links individual requirements (pinned to a specific version) into a package.
@@ -804,6 +906,7 @@ its purpose and the table/column(s) it covers.
 | `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
 | `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
 | `uq_requirement_package_items_package_requirement` | `requirement_package_items` | `(requirement_package_id, requirement_id)` | Prevents linking the same requirement into a package more than once |
+| `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
 <!-- markdownlint-enable MD013 -->
 
 ### Non-Unique Indexes
@@ -820,10 +923,27 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | Speed up listing items in a package |
 | `idx_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | Speed up finding which packages contain a requirement |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
+| `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
+<!-- markdownlint-enable MD013 -->
+
+### Named Foreign Key Constraints
+
+Most foreign keys use Drizzle’s inline `.references()`
+and receive auto-generated constraint names. The
+following tables use explicit `foreignKey({ name })`
+for constraints that need stable, human-readable names.
+
+<!-- markdownlint-disable MD013 -->
+| Constraint Name | Table | Column(s) | References | On Delete |
+| --------------- | ----- | --------- | ---------- | --------- |
+| `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE |
+| `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
+| `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
 
+<!-- cSpell:ignore RVNR -->
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 graph LR
@@ -834,6 +954,7 @@ graph LR
         RS[requirement_statuses]
         RST[requirement_status_transitions]
         RSC[usage_scenarios]
+        NR[norm_references]
     end
 
     subgraph Core Tables
@@ -854,6 +975,7 @@ graph LR
 
     subgraph Join Tables
         RVS[requirement_version_usage_scenarios]
+        RVNR[requirement_version_norm_references]
     end
 
     OW -- "uq_owners_email\n(email)" --> OW
@@ -885,6 +1007,10 @@ graph LR
 
     RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
     RVS -. "composite PK" .-> RSC
+
+    RVNR -. "composite PK\n(requirement_version_id,\nnorm_reference_id)" .-> RV
+    RVNR -. "composite PK" .-> NR
+    NR -- "uq_..._norm_reference_id\n(norm_reference_id)" --> NR
 ```
 <!-- markdownlint-enable MD013 -->
 
