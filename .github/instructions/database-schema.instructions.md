@@ -1,5 +1,5 @@
 ---
-applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md}"
+applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
 ---
 
 # Database Schema Changes
@@ -38,5 +38,80 @@ applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/mi
 
 ## Sync
 
-- Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected DAL/tests, and `docs/database-schema.md` in the same change.
-- If a deviation is required, add it to `Accepted Exceptions` in `docs/database-schema.md` in the same change.
+- Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected
+  DAL/tests, and `docs/database-schema.md` in the same change.
+- If a deviation is required, add it to `Accepted Exceptions` in
+  `docs/database-schema.md` in the same change.
+
+## Documentation Checklist
+
+When any database schema, migration, or seed change is made, review and
+update **every** applicable section of `docs/database-schema.md`:
+
+1. **Entity-Relationship Diagram** — add/remove/rename entities, columns,
+   and relationship lines in the Mermaid `erDiagram`.
+2. **Table documentation section** — add or update the column table, seed
+   values, and per-table index/constraint notes for every affected table.
+   Place new tables in the correct category: Lookup / Taxonomy, UI Settings,
+   Core Domain, or Join / Bridge.
+3. **Accepted Exceptions** — add a row when a new table deviates from the
+   naming standard (e.g. composite PK instead of `id`).
+4. **Indexes & Constraints Reference** — update all three sub-tables:
+   - *Unique Indexes* — add/remove rows for `uq_*` indexes.
+   - *Non-Unique Indexes* — add/remove rows for `idx_*` indexes.
+   - *Named Foreign Key Constraints* — add/remove rows for explicitly
+     named `fk_*` constraints (those using `foreignKey({ name })`).
+5. **Index Relationship Diagram** — add/remove nodes and edges in the
+   Mermaid `graph LR` diagram.
+6. **Status Workflow** — update the seed-transitions table and workflow
+   prose when status or transition rows change.
+7. **Database Naming Standard** — update rules or accepted exceptions
+   when a new naming pattern is introduced.
+
+## Architecture Data Model
+
+When tables or relationships are added, removed, or renamed, update the
+Mermaid `erDiagram` in the "Datamodell — kärnrelationer" section of
+`docs/arkitekturbeskrivning-kravhantering.md`. The ER diagram there must
+reflect the same entities and relationships as the schema.
+
+## Removal Cleanup
+
+When a table, column, index, or constraint is removed from the schema,
+remove **all** references to it from `docs/database-schema.md`:
+
+- The entity and its columns in the Mermaid `erDiagram`.
+- Relationship lines that reference the removed entity.
+- The table documentation section (column table, seed values, notes).
+- Rows in the Accepted Exceptions table that only apply to the removed
+  object.
+- Rows in the Unique Indexes, Non-Unique Indexes, and Named Foreign Key
+  Constraints tables.
+- Nodes and edges in the Index Relationship Diagram.
+- Any prose references in the Status Workflow or other narrative sections.
+
+## Migration Generation
+
+Every migration must produce three artifacts inside `drizzle/migrations/`:
+
+1. `NNNN_<name>.sql` — the migration SQL.
+2. `meta/_journal.json` — an entry for the new migration.
+3. `meta/NNNN_snapshot.json` — a full schema snapshot after the migration.
+
+Missing snapshots break `npx drizzle-kit generate` for all future runs.
+
+### Workflow
+
+1. Update `drizzle/schema.ts` to reflect the desired end state.
+2. Run `npx drizzle-kit generate`. This creates all three artifacts.
+3. Inspect the generated SQL. If it is correct, done.
+4. If the SQL is wrong (e.g. DROP-and-recreate instead of `ALTER TABLE`),
+   **edit only the `.sql` file**. Keep the generated journal entry and
+   snapshot file unchanged.
+5. Run `npm run db:setup` to verify the migration applies cleanly.
+
+### Prohibited
+
+- Never create a `.sql` migration without a matching snapshot in `meta/`.
+- Never hand-write or delete `meta/NNNN_snapshot.json` files.
+- Never add a journal entry without a corresponding snapshot.

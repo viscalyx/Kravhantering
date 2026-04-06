@@ -62,8 +62,10 @@ interface PackageMeta {
   businessNeedsReference: string | null
   id: number
   implementationType: { nameSv: string; nameEn: string } | null
+  lifecycleStatus: { nameSv: string; nameEn: string } | null
   name: string
   packageImplementationTypeId: number | null
+  packageLifecycleStatusId: number | null
   packageResponsibilityAreaId: number | null
   responsibilityArea: { nameSv: string; nameEn: string } | null
   uniqueId: string
@@ -139,6 +141,9 @@ export default function KravpaketDetailClient({
     PackageTaxonomyItem[]
   >([])
   const [packageImplementationTypes, setPackageImplementationTypes] = useState<
+    PackageTaxonomyItem[]
+  >([])
+  const [packageLifecycleStatuses, setPackageLifecycleStatuses] = useState<
     PackageTaxonomyItem[]
   >([])
   const [showEditPackageForm, setShowEditPackageForm] = useState(false)
@@ -383,12 +388,14 @@ export default function KravpaketDetailClient({
         needsRefsRes,
         packageAreasRes,
         packageTypesRes,
+        packageStatusesRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/usage-scenarios'),
         fetch(`/api/requirement-packages/${packageSlug}/needs-references`),
         fetch('/api/package-responsibility-areas'),
         fetch('/api/package-implementation-types'),
+        fetch('/api/package-lifecycle-statuses'),
       ])
       if (areasRes.status === 'fulfilled' && areasRes.value.ok) {
         const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
@@ -417,6 +424,15 @@ export default function KravpaketDetailClient({
           types?: PackageTaxonomyItem[]
         }
         setPackageImplementationTypes(data.types ?? [])
+      }
+      if (
+        packageStatusesRes.status === 'fulfilled' &&
+        packageStatusesRes.value.ok
+      ) {
+        const data = (await packageStatusesRes.value.json()) as {
+          statuses?: PackageTaxonomyItem[]
+        }
+        setPackageLifecycleStatuses(data.statuses ?? [])
       }
     }
     void fetchTaxonomies()
@@ -710,6 +726,7 @@ export default function KravpaketDetailClient({
         uniqueId: pkg.uniqueId,
         responsibilityArea: pickName(pkg.responsibilityArea),
         implementationType: pickName(pkg.implementationType),
+        lifecycleStatus: pickName(pkg.lifecycleStatus),
         businessNeedsReference: pkg.businessNeedsReference,
       }),
     )
@@ -958,7 +975,7 @@ export default function KravpaketDetailClient({
                 )}
               </div>
               <dl
-                className="grid gap-3 sm:grid-cols-2 xl:w-full xl:grid-cols-2"
+                className="grid gap-3 sm:grid-cols-2 xl:w-full xl:grid-cols-3"
                 data-package-detail-header-metadata="true"
               >
                 {pkg.responsibilityArea && (
@@ -981,12 +998,23 @@ export default function KravpaketDetailClient({
                     </dd>
                   </div>
                 )}
+                {pkg.lifecycleStatus && (
+                  <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
+                      {t('lifecycleStatus')}
+                    </dt>
+                    <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
+                      {localName(pkg.lifecycleStatus)}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </div>
             {showEditPackageForm && (
               <div className="mt-4">
                 <PackageEditPanel
                   implementationTypes={packageImplementationTypes}
+                  lifecycleStatuses={packageLifecycleStatuses}
                   onCancel={() => setShowEditPackageForm(false)}
                   onSaved={async savedUniqueId => {
                     setShowEditPackageForm(false)

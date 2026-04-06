@@ -14,7 +14,6 @@ import {
   qualityCharacteristics,
   requirementAreas,
   requirementCategories,
-  requirementReferences,
   requirementStatuses,
   requirementStatusTransitions,
   requirements,
@@ -326,6 +325,12 @@ export async function listRequirements(
         JOIN norm_references nr ON nr.id = vnr.norm_reference_id
         WHERE vnr.requirement_version_id = ${requirementVersions.id}
       )`.as('norm_reference_ids'),
+      normReferenceUris: sql<string | null>`(
+        SELECT GROUP_CONCAT(COALESCE(nr.uri, ''), ',')
+        FROM requirement_version_norm_references vnr
+        JOIN norm_references nr ON nr.id = vnr.norm_reference_id
+        WHERE vnr.requirement_version_id = ${requirementVersions.id}
+      )`.as('norm_reference_uris'),
     })
     .from(requirements)
     .innerJoin(
@@ -503,7 +508,6 @@ export async function getRequirementById(db: Database, id: number) {
           type: true,
           qualityCharacteristic: true,
           status: true,
-          references: true,
           versionNormReferences: {
             with: {
               normReference: true,
@@ -1022,44 +1026,90 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     throw conflictError('Only draft versions can be deleted')
   }
 
-  // Delete related references, scenarios, and norm references first
-  await db
-    .delete(requirementReferences)
-    .where(eq(requirementReferences.requirementVersionId, latestVersion.id))
-  await db
-    .delete(requirementVersionUsageScenarios)
-    .where(
-      eq(
-        requirementVersionUsageScenarios.requirementVersionId,
-        latestVersion.id,
-      ),
-    )
-  await db
-    .delete(requirementVersionNormReferences)
-    .where(
-      eq(
-        requirementVersionNormReferences.requirementVersionId,
-        latestVersion.id,
-      ),
-    )
+  const sessionName = (
+    db as {
+      session?: { constructor?: { name?: string } }
+    }
+  ).session?.constructor?.name
 
-  // Delete the draft version
-  await db
-    .delete(requirementVersions)
-    .where(eq(requirementVersions.id, latestVersion.id))
-
-  // If no versions remain, delete the requirement itself
-  const remaining = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(requirementVersions)
-    .where(eq(requirementVersions.requirementId, requirementId))
-
-  if (remaining[0]?.count === 0) {
-    await db.delete(requirements).where(eq(requirements.id, requirementId))
-    return { deleted: 'requirement' as const }
+  if (sessionName === 'BetterSQLiteSession') {
+    let result: { deleted: 'requirement' | 'version' } = {
+      deleted: 'version',
+    }
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'select'>,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      tx.delete(requirementVersionUsageScenarios)
+        .where(
+          eq(
+            requirementVersionUsageScenarios.requirementVersionId,
+            latestVersion.id,
+          ),
+        )
+        .run()
+      tx.delete(requirementVersionNormReferences)
+        .where(
+          eq(
+            requirementVersionNormReferences.requirementVersionId,
+            latestVersion.id,
+          ),
+        )
+        .run()
+      tx.delete(requirementVersions)
+        .where(eq(requirementVersions.id, latestVersion.id))
+        .run()
+      const remaining = tx
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(requirementVersions)
+        .where(eq(requirementVersions.requirementId, requirementId))
+        .all() as unknown as { count: number }[]
+      if (remaining[0]?.count === 0) {
+        tx.delete(requirements).where(eq(requirements.id, requirementId)).run()
+        result = { deleted: 'requirement' }
+      }
+    })
+    return result
   }
 
-  return { deleted: 'version' as const }
+  return await db.transaction(async tx => {
+    await tx
+      .delete(requirementVersionUsageScenarios)
+      .where(
+        eq(
+          requirementVersionUsageScenarios.requirementVersionId,
+          latestVersion.id,
+        ),
+      )
+    await tx
+      .delete(requirementVersionNormReferences)
+      .where(
+        eq(
+          requirementVersionNormReferences.requirementVersionId,
+          latestVersion.id,
+        ),
+      )
+    await tx
+      .delete(requirementVersions)
+      .where(eq(requirementVersions.id, latestVersion.id))
+
+    const remaining = await tx
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(requirementVersions)
+      .where(eq(requirementVersions.requirementId, requirementId))
+
+    if (remaining[0]?.count === 0) {
+      await tx.delete(requirements).where(eq(requirements.id, requirementId))
+      return { deleted: 'requirement' as const }
+    }
+
+    return { deleted: 'version' as const }
+  })
 }
 
 export async function reactivateRequirement(
@@ -1260,7 +1310,6 @@ export async function restoreVersion(
   const oldVersion = await db.query.requirementVersions.findFirst({
     where: eq(requirementVersions.id, versionId),
     with: {
-      references: true,
       versionNormReferences: true,
       versionScenarios: true,
     },
@@ -1301,18 +1350,6 @@ export async function restoreVersion(
     })
     .returning()
 
-  // Copy references
-  if (oldVersion.references.length > 0) {
-    await db.insert(requirementReferences).values(
-      oldVersion.references.map(ref => ({
-        requirementVersionId: newVersion.id,
-        name: ref.name,
-        owner: ref.owner,
-        uri: ref.uri,
-      })),
-    )
-  }
-
   if (oldVersion.versionScenarios.length > 0) {
     await db.insert(requirementVersionUsageScenarios).values(
       oldVersion.versionScenarios.map(versionScenario => ({
@@ -1344,7 +1381,6 @@ export async function getVersionHistory(db: Database, requirementId: number) {
       type: true,
       qualityCharacteristic: true,
       status: true,
-      references: true,
       versionScenarios: {
         with: {
           scenario: true,

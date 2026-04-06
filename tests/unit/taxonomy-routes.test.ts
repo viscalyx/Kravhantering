@@ -22,6 +22,15 @@ vi.mock('@/lib/dal/package-implementation-types', () => ({
   deletePackageImplementationType: (...a: unknown[]) => mockDeleteImpl(...a),
 }))
 
+const mockUpdateLifecycle = vi.fn()
+const mockDeleteLifecycle = vi.fn()
+vi.mock('@/lib/dal/package-lifecycle-statuses', () => ({
+  listPackageLifecycleStatuses: async () => [{ id: 1 }],
+  createPackageLifecycleStatus: async () => ({ id: 2 }),
+  updatePackageLifecycleStatus: (...a: unknown[]) => mockUpdateLifecycle(...a),
+  deletePackageLifecycleStatus: (...a: unknown[]) => mockDeleteLifecycle(...a),
+}))
+
 const mockUpdateArea = vi.fn()
 const mockDeleteArea = vi.fn()
 vi.mock('@/lib/dal/package-responsibility-areas', () => ({
@@ -86,6 +95,14 @@ import {
   GET as getImplTypes,
   POST as postImplType,
 } from '@/app/api/package-implementation-types/route'
+import {
+  DELETE as deleteLifecycle,
+  PUT as putLifecycle,
+} from '@/app/api/package-lifecycle-statuses/[id]/route'
+import {
+  GET as getLifecycleStatuses,
+  POST as postLifecycle,
+} from '@/app/api/package-lifecycle-statuses/route'
 import {
   DELETE as deleteRespArea,
   PUT as putRespArea,
@@ -172,6 +189,44 @@ describe('package-implementation-types routes', () => {
   it('DELETE deletes', async () => {
     mockDeleteImpl.mockResolvedValue(undefined)
     const r = await deleteImplType(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('1'),
+    )
+    expect(((await r.json()) as { ok: boolean }).ok).toBe(true)
+  })
+})
+
+describe('package-lifecycle-statuses routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('GET returns statuses', async () => {
+    const r = await getLifecycleStatuses()
+    const j = (await r.json()) as { statuses: { id: number }[] }
+    expect(j.statuses).toHaveLength(1)
+  })
+  it('POST creates with 201', async () => {
+    const r = await postLifecycle(
+      new Request('http://l', {
+        method: 'POST',
+        body: '{"nameSv":"A","nameEn":"B"}',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(201)
+  })
+  it('PUT updates', async () => {
+    mockUpdateLifecycle.mockResolvedValue({ id: 1 })
+    const r = await putLifecycle(
+      jsonReq('PUT', { nameEn: 'X' }),
+      makeParams('1'),
+    )
+    expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+  it('DELETE deletes', async () => {
+    mockDeleteLifecycle.mockResolvedValue(undefined)
+    const r = await deleteLifecycle(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )

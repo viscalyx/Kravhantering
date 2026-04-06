@@ -11,9 +11,9 @@ export interface VersionSummaryData {
   createdBy: string | null
   description: string | null
   editedAt: string | null
+  normReferences: { name: string; reference: string; uri: string | null }[]
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
-  references: { name: string; uri: string | null }[]
   requiresTesting: boolean
   scenarios: { nameSv: string; nameEn: string }[]
   status: { label: string; color: string | null }
@@ -65,6 +65,7 @@ export type ReportSection =
       uniqueId: string
       responsibilityArea: string | null
       implementationType: string | null
+      lifecycleStatus: string | null
       businessNeedsReference: string | null
       locale: string
     }

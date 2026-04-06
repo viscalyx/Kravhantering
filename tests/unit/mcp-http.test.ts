@@ -23,7 +23,9 @@ import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 function createFakeService(
-  references: Array<{ name?: string; uri?: string | null }> = [],
+  normReferences: Array<{
+    normReference?: { name?: string; reference?: string; uri?: string | null }
+  }> = [],
   requiresTesting = true,
 ) {
   return {
@@ -51,7 +53,7 @@ function createFakeService(
             },
             description: 'Support secure integration',
             id: 10,
-            references,
+            versionNormReferences: normReferences,
             requiresTesting,
             statusNameEn: 'Draft',
             statusNameSv: 'Utkast',
@@ -82,7 +84,7 @@ function createFakeService(
         },
         description: 'Support secure integration',
         id: 10,
-        references,
+        versionNormReferences: normReferences,
         requiresTesting,
         statusNameEn: 'Draft',
         statusNameSv: 'Utkast',
@@ -413,7 +415,9 @@ describe('handleRequirementsMcpRequest', () => {
   })
 
   it('localizes unnamed references in Swedish HTML resources', async () => {
-    serviceState.getService.mockReturnValue(createFakeService([{}]))
+    serviceState.getService.mockReturnValue(
+      createFakeService([{ normReference: {} }]),
+    )
 
     const { client, transport } = await createClient()
     const viewResource = await client.readResource({
@@ -492,8 +496,10 @@ describe('handleRequirementsMcpRequest', () => {
     serviceState.getService.mockReturnValue(
       createFakeService([
         {
-          name: 'Dangerous reference',
-          uri: 'javascript:alert(1)',
+          normReference: {
+            name: 'Dangerous reference',
+            uri: 'javascript:alert(1)',
+          },
         },
       ]),
     )
@@ -511,6 +517,62 @@ describe('handleRequirementsMcpRequest', () => {
 
     expect(viewText).toContain('Dangerous reference: javascript:alert(1)')
     expect(viewText).not.toContain('href="javascript:alert(1)"')
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('accepts normReferenceIds in manage_requirement', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        uniqueId: 'INT0001',
+        requirement: {
+          description: 'Updated description',
+          normReferenceIds: [1, 2],
+        },
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(fakeService.manageRequirement).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        requirement: expect.objectContaining({
+          normReferenceIds: [1, 2],
+        }),
+      }),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('rejects the old references field in manage_requirement due to strict schema', async () => {
+    const { client, transport } = await createClient()
+
+    const result = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        uniqueId: 'INT0001',
+        requirement: {
+          description: 'Updated description',
+          references: [1],
+        },
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(result.isError).toBe(true)
+    const content = result.content as Array<{
+      text?: string
+      type: string
+    }>
+    expect(content[0]?.text).toMatch(/unrecognized/i)
 
     await client.close()
     await transport.close()

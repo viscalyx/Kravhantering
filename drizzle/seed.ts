@@ -18,9 +18,9 @@ DELETE FROM package_needs_references;
 DELETE FROM requirement_packages;
 DELETE FROM package_responsibility_areas;
 DELETE FROM package_implementation_types;
+DELETE FROM package_lifecycle_statuses;
 DELETE FROM requirement_version_usage_scenarios;
 DELETE FROM requirement_version_norm_references;
-DELETE FROM requirement_references;
 DELETE FROM requirement_versions;
 DELETE FROM norm_references;
 DELETE FROM usage_scenarios;
@@ -1417,20 +1417,14 @@ INSERT OR IGNORE INTO requirement_version_usage_scenarios (requirement_version_i
   (69, 3),
   (70, 3);
 
--- ─── Requirement References (sample) ────────────────────────────────────────
-INSERT OR IGNORE INTO requirement_references (id, requirement_version_id, name, uri, owner, created_at) VALUES
-  (1, 5, 'OWASP API Security Top 10', 'https://owasp.org/API-Security/', 'owner-2', datetime('now')),
-  (2, 6, 'GDPR Artikel 32', 'https://gdpr-info.eu/art-32-gdpr/', 'owner-2', datetime('now')),
-  (3, 2, 'REST API Design Guidelines', 'https://restfulapi.net/', 'owner-1', datetime('now'));
-
 -- ─── Norm References ─────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO norm_references (id, norm_reference_id, name, type, reference, version, issuer, created_at, updated_at) VALUES
-  (1, 'SFS 2018:218',       'Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning', 'Lag', 'SFS 2018:218', NULL, 'Riksdagen', datetime('now'), datetime('now')),
-  (2, 'ISO/IEC 27001:2022', 'Ledningssystem för informationssäkerhet',                     'Standard',   'ISO/IEC 27001:2022', '2022', 'ISO/IEC',                                               datetime('now'), datetime('now')),
-  (3, 'MSBFS 2020:6',       'Föreskrifter om informationssäkerhet för statliga myndigheter','Föreskrift', 'MSBFS 2020:6',       NULL,   'Myndigheten för samhällsskydd och beredskap (MSB)',      datetime('now'), datetime('now')),
-  (4, 'RFC 6749',            'The OAuth 2.0 Authorization Framework',                       'Standard',   'RFC 6749',           NULL,   'IETF',                                                  datetime('now'), datetime('now')),
-  (5, 'ISO/IEC 25010:2023',  'Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)','Standard', 'ISO/IEC 25010:2023', '2023', 'ISO/IEC',                                               datetime('now'), datetime('now')),
-  (6, 'EU 2022/2555',        'NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå','Direktiv','EU 2022/2555',        NULL,   'Europeiska unionens råd och Europaparlamentet',          datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO norm_references (id, norm_reference_id, name, type, reference, version, issuer, uri, created_at, updated_at) VALUES
+  (1, 'SFS 2018:218',       'Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning', 'Lag', 'SFS 2018:218', NULL, 'Riksdagen', 'https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svensk-forfattningssamling/lag-2018218-med-kompletterande-bestammelser_sfs-2018-218/', datetime('now'), datetime('now')),
+  (2, 'ISO/IEC 27001:2022', 'Ledningssystem för informationssäkerhet',                     'Standard',   'ISO/IEC 27001:2022', '2022', 'ISO/IEC', 'https://www.iso.org/standard/27001', datetime('now'), datetime('now')),
+  (3, 'MSBFS 2020:6',       'Föreskrifter om informationssäkerhet för statliga myndigheter','Föreskrift', 'MSBFS 2020:6',       NULL,   'Myndigheten för samhällsskydd och beredskap (MSB)', NULL, datetime('now'), datetime('now')),
+  (4, 'RFC 6749',            'The OAuth 2.0 Authorization Framework',                       'Standard',   'RFC 6749',           NULL,   'IETF', 'https://datatracker.ietf.org/doc/html/rfc6749', datetime('now'), datetime('now')),
+  (5, 'ISO/IEC 25010:2023',  'Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)','Standard', 'ISO/IEC 25010:2023', '2023', 'ISO/IEC', NULL, datetime('now'), datetime('now')),
+  (6, 'EU 2022/2555',        'NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå','Direktiv','EU 2022/2555',        NULL,   'Europeiska unionens råd och Europaparlamentet', 'https://eur-lex.europa.eu/eli/dir/2022/2555', datetime('now'), datetime('now'));
 
 -- ─── Requirement Version ↔ Norm Reference links ───────────────────────────────
 -- version 5  = SÄK0001 v1 (OAuth2-autentisering, Published)
@@ -1479,31 +1473,43 @@ INSERT OR IGNORE INTO package_implementation_types (id, name_sv, name_en) VALUES
 UPDATE package_implementation_types SET name_sv = 'Upphandling', name_en = 'Procurement' WHERE id = 1;
 UPDATE package_implementation_types SET name_sv = 'Utveckling', name_en = 'Development' WHERE id = 2;
 
+-- ─── Package Lifecycle Statuses (taxonomy) ──────────────────────────────────────
+INSERT OR IGNORE INTO package_lifecycle_statuses (id, name_sv, name_en) VALUES
+  (1, 'Upphandling', 'Procurement'),
+  (2, 'Införande', 'Implementation'),
+  (3, 'Utveckling', 'Development'),
+  (4, 'Förvaltning', 'Management');
+
+UPDATE package_lifecycle_statuses SET name_sv = 'Upphandling', name_en = 'Procurement' WHERE id = 1;
+UPDATE package_lifecycle_statuses SET name_sv = 'Införande', name_en = 'Implementation' WHERE id = 2;
+UPDATE package_lifecycle_statuses SET name_sv = 'Utveckling', name_en = 'Development' WHERE id = 3;
+UPDATE package_lifecycle_statuses SET name_sv = 'Förvaltning', name_en = 'Management' WHERE id = 4;
+
 -- ─── Requirement Packages (10 packages) ─────────────────────────────────────
 -- All packages use only published (status=3) requirement versions.
 -- business_needs_reference added to several packages to show the field.
-INSERT OR IGNORE INTO requirement_packages (id, unique_id, name, package_responsibility_area_id, package_implementation_type_id, business_needs_reference, created_at, updated_at) VALUES
-  (1,  'INTPLATTFORM-2026',   'Integrationsplattform 2026',         1, 1, 'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform',  datetime('now', '-30 days'), datetime('now', '-30 days')),
-  (2,  'SAKLYFT-Q2',          'Säkerhetslyft Q2',                   1, 2, 'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas',    datetime('now', '-25 days'), datetime('now', '-25 days')),
-  (3,  'PRESTANDA-SKAL',      'Prestanda och Skalbarhet',            2, 2, NULL,                                                                                                   datetime('now', '-20 days'), datetime('now', '-20 days')),
-  (4,  'TILLGANGLIGHET-Q3',   'Tillgänglighet Q3 2025',              3, 2, 'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025',                   datetime('now', '-18 days'), datetime('now', '-18 days')),
-  (5,  'DATALAGRING-BACKUP',  'Datalagring och Backup',              4, 1, NULL,                                                                                                   datetime('now', '-15 days'), datetime('now', '-15 days')),
-  (6,  'IAM-IDENTITET',       'Identitets- och åtkomsthantering',   1, 2, 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet', datetime('now', '-12 days'), datetime('now', '-12 days')),
-  (7,  'GDPR-2026',           'GDPR-efterlevnad 2026',               5, 1, 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026',            datetime('now', '-10 days'), datetime('now', '-10 days')),
-  (8,  'BEHORIGHET-IAM',      'Behörighet och IAM',                  2, 2, NULL,                                                                                                   datetime('now', '-8 days'),  datetime('now', '-8 days')),
-  (9,  'API-GATEWAY',         'API Gateway och Kommunikation',       3, 1, NULL,                                                                                                   datetime('now', '-5 days'),  datetime('now', '-5 days')),
-  (10, 'SYSOVERVAKNING-BAS',  'Systemövervakning Bas',               4, 2, 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning',                       datetime('now', '-3 days'),  datetime('now', '-3 days'));
+INSERT OR IGNORE INTO requirement_packages (id, unique_id, name, package_responsibility_area_id, package_implementation_type_id, package_lifecycle_status_id, business_needs_reference, created_at, updated_at) VALUES
+  (1,  'INTPLATTFORM-2026',   'Integrationsplattform 2026',         1, 1, 1, 'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform',  datetime('now', '-30 days'), datetime('now', '-30 days')),
+  (2,  'SAKLYFT-Q2',          'Säkerhetslyft Q2',                   1, 2, 2, 'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas',    datetime('now', '-25 days'), datetime('now', '-25 days')),
+  (3,  'PRESTANDA-SKAL',      'Prestanda och Skalbarhet',            2, 2, 3, NULL,                                                                                                   datetime('now', '-20 days'), datetime('now', '-20 days')),
+  (4,  'TILLGANGLIGHET-Q3',   'Tillgänglighet Q3 2025',              3, 2, 4, 'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025',                   datetime('now', '-18 days'), datetime('now', '-18 days')),
+  (5,  'DATALAGRING-BACKUP',  'Datalagring och Backup',              4, 1, 1, NULL,                                                                                                   datetime('now', '-15 days'), datetime('now', '-15 days')),
+  (6,  'IAM-IDENTITET',       'Identitets- och åtkomsthantering',   1, 2, 3, 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet', datetime('now', '-12 days'), datetime('now', '-12 days')),
+  (7,  'GDPR-2026',           'GDPR-efterlevnad 2026',               5, 1, 4, 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026',            datetime('now', '-10 days'), datetime('now', '-10 days')),
+  (8,  'BEHORIGHET-IAM',      'Behörighet och IAM',                  2, 2, 2, NULL,                                                                                                   datetime('now', '-8 days'),  datetime('now', '-8 days')),
+  (9,  'API-GATEWAY',         'API Gateway och Kommunikation',       3, 1, 4, NULL,                                                                                                   datetime('now', '-5 days'),  datetime('now', '-5 days')),
+  (10, 'SYSOVERVAKNING-BAS',  'Systemövervakning Bas',               4, 2, 3, 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning',                       datetime('now', '-3 days'),  datetime('now', '-3 days'));
 
-UPDATE requirement_packages SET unique_id = 'INTPLATTFORM-2026',  name = 'Integrationsplattform 2026',       package_responsibility_area_id = 1, package_implementation_type_id = 1, business_needs_reference = 'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform'  WHERE id = 1;
-UPDATE requirement_packages SET unique_id = 'SAKLYFT-Q2',         name = 'Säkerhetslyft Q2',                 package_responsibility_area_id = 1, package_implementation_type_id = 2, business_needs_reference = 'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas'    WHERE id = 2;
-UPDATE requirement_packages SET unique_id = 'PRESTANDA-SKAL',     name = 'Prestanda och Skalbarhet',          package_responsibility_area_id = 2, package_implementation_type_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 3;
-UPDATE requirement_packages SET unique_id = 'TILLGANGLIGHET-Q3',  name = 'Tillgänglighet Q3 2025',            package_responsibility_area_id = 3, package_implementation_type_id = 2, business_needs_reference = 'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025'                   WHERE id = 4;
-UPDATE requirement_packages SET unique_id = 'DATALAGRING-BACKUP', name = 'Datalagring och Backup',            package_responsibility_area_id = 4, package_implementation_type_id = 1, business_needs_reference = NULL                                                                                                   WHERE id = 5;
-UPDATE requirement_packages SET unique_id = 'IAM-IDENTITET',      name = 'Identitets- och åtkomsthantering', package_responsibility_area_id = 1, package_implementation_type_id = 2, business_needs_reference = 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet' WHERE id = 6;
-UPDATE requirement_packages SET unique_id = 'GDPR-2026',          name = 'GDPR-efterlevnad 2026',             package_responsibility_area_id = 5, package_implementation_type_id = 1, business_needs_reference = 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026'            WHERE id = 7;
-UPDATE requirement_packages SET unique_id = 'BEHORIGHET-IAM',     name = 'Behörighet och IAM',                package_responsibility_area_id = 2, package_implementation_type_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 8;
-UPDATE requirement_packages SET unique_id = 'API-GATEWAY',        name = 'API Gateway och Kommunikation',     package_responsibility_area_id = 3, package_implementation_type_id = 1, business_needs_reference = NULL                                                                                                   WHERE id = 9;
-UPDATE requirement_packages SET unique_id = 'SYSOVERVAKNING-BAS', name = 'Systemövervakning Bas',             package_responsibility_area_id = 4, package_implementation_type_id = 2, business_needs_reference = 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning'                       WHERE id = 10;
+UPDATE requirement_packages SET unique_id = 'INTPLATTFORM-2026',  name = 'Integrationsplattform 2026',       package_responsibility_area_id = 1, package_implementation_type_id = 1, package_lifecycle_status_id = 1, business_needs_reference = 'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform'  WHERE id = 1;
+UPDATE requirement_packages SET unique_id = 'SAKLYFT-Q2',         name = 'Säkerhetslyft Q2',                 package_responsibility_area_id = 1, package_implementation_type_id = 2, package_lifecycle_status_id = 2, business_needs_reference = 'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas'    WHERE id = 2;
+UPDATE requirement_packages SET unique_id = 'PRESTANDA-SKAL',     name = 'Prestanda och Skalbarhet',          package_responsibility_area_id = 2, package_implementation_type_id = 2, package_lifecycle_status_id = 3, business_needs_reference = NULL                                                                                                   WHERE id = 3;
+UPDATE requirement_packages SET unique_id = 'TILLGANGLIGHET-Q3',  name = 'Tillgänglighet Q3 2025',            package_responsibility_area_id = 3, package_implementation_type_id = 2, package_lifecycle_status_id = 4, business_needs_reference = 'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025'                   WHERE id = 4;
+UPDATE requirement_packages SET unique_id = 'DATALAGRING-BACKUP', name = 'Datalagring och Backup',            package_responsibility_area_id = 4, package_implementation_type_id = 1, package_lifecycle_status_id = 1, business_needs_reference = NULL                                                                                                   WHERE id = 5;
+UPDATE requirement_packages SET unique_id = 'IAM-IDENTITET',      name = 'Identitets- och åtkomsthantering', package_responsibility_area_id = 1, package_implementation_type_id = 2, package_lifecycle_status_id = 3, business_needs_reference = 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet' WHERE id = 6;
+UPDATE requirement_packages SET unique_id = 'GDPR-2026',          name = 'GDPR-efterlevnad 2026',             package_responsibility_area_id = 5, package_implementation_type_id = 1, package_lifecycle_status_id = 4, business_needs_reference = 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026'            WHERE id = 7;
+UPDATE requirement_packages SET unique_id = 'BEHORIGHET-IAM',     name = 'Behörighet och IAM',                package_responsibility_area_id = 2, package_implementation_type_id = 2, package_lifecycle_status_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 8;
+UPDATE requirement_packages SET unique_id = 'API-GATEWAY',        name = 'API Gateway och Kommunikation',     package_responsibility_area_id = 3, package_implementation_type_id = 1, package_lifecycle_status_id = 4, business_needs_reference = NULL                                                                                                   WHERE id = 9;
+UPDATE requirement_packages SET unique_id = 'SYSOVERVAKNING-BAS', name = 'Systemövervakning Bas',             package_responsibility_area_id = 4, package_implementation_type_id = 2, package_lifecycle_status_id = 3, business_needs_reference = 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning'                       WHERE id = 10;
 
 -- ─── Package Needs References ─────────────────────────────────────────────────
 INSERT OR IGNORE INTO package_needs_references (id, package_id, text, created_at) VALUES

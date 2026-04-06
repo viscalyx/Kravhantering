@@ -31,7 +31,6 @@ const mocks = vi.hoisted(() => ({
   listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
   reactivateRequirement: vi.fn(),
-  replaceReferencesForVersion: vi.fn(),
   restoreVersion: vi.fn(),
   transitionStatus: vi.fn(),
 }))
@@ -56,10 +55,6 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   listPackageItems: mocks.listPackageItems,
   listPackages: mocks.listPackages,
   unlinkRequirementsFromPackage: mocks.unlinkRequirementsFromPackage,
-}))
-
-vi.mock('@/lib/dal/requirement-references', () => ({
-  replaceReferencesForVersion: mocks.replaceReferencesForVersion,
 }))
 
 vi.mock('@/lib/dal/usage-scenarios', () => ({
@@ -122,14 +117,6 @@ function makeRequirementRecord() {
         editedAt: '2026-03-08T00:00:00.000Z',
         id: 10,
         publishedAt: null,
-        references: [
-          {
-            id: 100,
-            name: 'ISO 27001',
-            owner: 'Security',
-            uri: 'https://example.com/iso-27001',
-          },
-        ],
         requiresTesting: true,
         status: 1,
         statusColor: '#3b82f6',
@@ -454,12 +441,6 @@ describe('createRequirementsService', () => {
       requirement: {
         areaId: 1,
         description: 'Support secure integration',
-        references: [
-          {
-            name: 'ISO 27001',
-            uri: 'https://example.com/iso-27001',
-          },
-        ],
         scenarioIds: [7],
       },
     })
@@ -471,16 +452,6 @@ describe('createRequirementsService', () => {
         requirementAreaId: 1,
         scenarioIds: [7],
       }),
-    )
-    expect(mocks.replaceReferencesForVersion).toHaveBeenCalledWith(
-      expect.anything(),
-      10,
-      [
-        {
-          name: 'ISO 27001',
-          uri: 'https://example.com/iso-27001',
-        },
-      ],
     )
     expect(result.detail?.uniqueId).toBe('INT0001')
   })
@@ -731,7 +702,6 @@ describe('createRequirementsService', () => {
 
   it('edits a requirement', async () => {
     mocks.editRequirement.mockResolvedValue({ id: 11 })
-    mocks.replaceReferencesForVersion.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
@@ -947,6 +917,7 @@ describe('createRequirementsService', () => {
         id: 7,
         implementationType: null,
         itemCount: 2,
+        lifecycleStatus: null,
         name: 'IAM Package',
         responsibilityArea: null,
         uniqueId: 'IAM-PACKAGE',

@@ -62,10 +62,13 @@ function toVersionSummary(
     editedAt: version.editedAt,
     publishedAt: version.publishedAt,
     archivedAt: version.archivedAt,
-    references: version.references.map(r => ({
-      name: r.name,
-      uri: r.uri,
-    })),
+    normReferences: version.versionNormReferences
+      .filter(vnr => vnr.normReference)
+      .map(vnr => ({
+        name: vnr.normReference.name,
+        reference: vnr.normReference.reference,
+        uri: vnr.normReference.uri,
+      })),
     scenarios: version.versionScenarios
       .filter(vs => vs.scenario)
       .map(vs => ({
@@ -146,12 +149,12 @@ function computeMetadataChanges(
     })
   }
 
-  const oldRefs = baseVersion.references
-    .map(r => r.name)
+  const oldRefs = baseVersion.versionNormReferences
+    .map(vnr => vnr.normReference?.name ?? '')
     .sort()
     .join(', ')
-  const newRefs = reviewVersion.references
-    .map(r => r.name)
+  const newRefs = reviewVersion.versionNormReferences
+    .map(vnr => vnr.normReference?.name ?? '')
     .sort()
     .join(', ')
   if (oldRefs !== newRefs) {

@@ -14,7 +14,6 @@ export interface RequirementReportVersion {
     nameEn: string
     nameSv: string
   } | null
-  references: { id: number; name: string; uri: string | null }[]
   requiresTesting: boolean
   status: number
   statusColor: string | null
@@ -22,6 +21,15 @@ export interface RequirementReportVersion {
   statusNameSv: string | null
   type: { id: number; nameEn: string; nameSv: string } | null
   verificationMethod: string | null
+  versionNormReferences: {
+    normReference: {
+      id: number
+      name: string
+      normReferenceId: string
+      reference: string
+      uri: string | null
+    }
+  }[]
   versionNumber: number
   versionScenarios: {
     scenario: {

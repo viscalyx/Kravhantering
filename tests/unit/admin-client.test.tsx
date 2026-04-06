@@ -128,13 +128,20 @@ describe('AdminClient', () => {
       panel.getByTestId('reference-data-icon-implementationTypes'),
     ).toBeTruthy()
 
+    expect(
+      panel.getByTestId('reference-data-card-lifecycleStatuses'),
+    ).toHaveAttribute('href', '/requirement-packages/lifecycle-statuses')
+    expect(
+      panel.getByTestId('reference-data-icon-lifecycleStatuses'),
+    ).toBeTruthy()
+
     expect(panel.getByTestId('reference-data-card-areaOwners')).toHaveAttribute(
       'href',
       '/owners',
     )
     expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
 
-    expect(panel.getAllByRole('link')).toHaveLength(9)
+    expect(panel.getAllByRole('link')).toHaveLength(10)
   })
 
   it('exposes the admin tabs through a tablist and updates selection on click', () => {

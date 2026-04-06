@@ -4,6 +4,7 @@ import type { ReportModel, ReportSection } from '../types'
 export interface PackageCoverInfo {
   businessNeedsReference: string | null
   implementationType: string | null
+  lifecycleStatus: string | null
   name: string
   responsibilityArea: string | null
   uniqueId: string

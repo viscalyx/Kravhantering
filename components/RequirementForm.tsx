@@ -93,6 +93,7 @@ export default function RequirementForm({
     reference: '',
     version: '',
     issuer: '',
+    uri: '',
   })
   const [normRefSubmitting, setNormRefSubmitting] = useState(false)
   const [normRefError, setNormRefError] = useState<string | null>(null)
@@ -718,6 +719,7 @@ export default function RequirementForm({
                     reference: normRefForm.reference,
                     version: normRefForm.version || null,
                     issuer: normRefForm.issuer,
+                    uri: normRefForm.uri || null,
                   }),
                 })
                 if (!res.ok) {
@@ -739,6 +741,7 @@ export default function RequirementForm({
                     reference: '',
                     version: '',
                     issuer: '',
+                    uri: '',
                   })
                   setShowCreateNormRef(false)
                 }
@@ -827,6 +830,7 @@ interface NormReferenceModalProps {
     normReferenceId: string
     reference: string
     type: string
+    uri: string
     version: string
   }
   normRefSubmitting: boolean

@@ -10,6 +10,7 @@ interface NormReferenceFormData {
   normReferenceId: string
   reference: string
   type: string
+  uri: string
   version: string
 }
 
@@ -186,6 +187,23 @@ export default function NormReferenceFormFields({
           onChange={e => onSetField('issuer', e.target.value)}
           required
           value={form.issuer}
+        />
+      </div>
+      <div>
+        <div className="flex items-center gap-1.5 mb-1">
+          <label className="text-sm font-medium" htmlFor={`${idPrefix}-uri`}>
+            {t('uri')}
+          </label>
+          {helpButton('uri', t('uri'))}
+        </div>
+        {helpPanel('uriHelp', 'uri')}
+        <input
+          className={fieldClass}
+          id={`${idPrefix}-uri`}
+          onChange={e => onSetField('uri', e.target.value)}
+          placeholder={t('uriPlaceholder')}
+          type="url"
+          value={form.uri}
         />
       </div>
     </>

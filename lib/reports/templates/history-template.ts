@@ -53,10 +53,13 @@ function toVersionSummary(
     editedAt: version.editedAt,
     publishedAt: version.publishedAt,
     archivedAt: version.archivedAt,
-    references: version.references.map(r => ({
-      name: r.name,
-      uri: r.uri,
-    })),
+    normReferences: version.versionNormReferences
+      .filter(vnr => vnr.normReference)
+      .map(vnr => ({
+        name: vnr.normReference.name,
+        reference: vnr.normReference.reference,
+        uri: vnr.normReference.uri,
+      })),
     scenarios: version.versionScenarios
       .filter(vs => vs.scenario)
       .map(vs => ({

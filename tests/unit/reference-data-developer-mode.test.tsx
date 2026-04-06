@@ -150,8 +150,10 @@ const pages: MarkerSpec[] = [
             uniqueId: 'P',
             packageResponsibilityAreaId: null,
             packageImplementationTypeId: null,
+            packageLifecycleStatusId: null,
             responsibilityArea: null,
             implementationType: null,
+            lifecycleStatus: null,
             itemCount: 0,
             requirementAreas: [],
             businessNeedsReference: null,
@@ -160,6 +162,7 @@ const pages: MarkerSpec[] = [
       }),
       okJson({ areas: [] }),
       okJson({ types: [] }),
+      okJson({ statuses: [] }),
     ],
     fetchHandler: input => {
       const url = String(input)
@@ -173,8 +176,10 @@ const pages: MarkerSpec[] = [
               uniqueId: 'P',
               packageResponsibilityAreaId: null,
               packageImplementationTypeId: null,
+              packageLifecycleStatusId: null,
               responsibilityArea: null,
               implementationType: null,
+              lifecycleStatus: null,
               itemCount: 0,
               requirementAreas: [],
               businessNeedsReference: null,
@@ -191,6 +196,10 @@ const pages: MarkerSpec[] = [
         return okJson({ types: [] }) as Response
       }
 
+      if (url === '/api/package-lifecycle-statuses') {
+        return okJson({ statuses: [] }) as Response
+      }
+
       return okJson({}) as Response
     },
     expectedMarkers: [
@@ -199,7 +208,7 @@ const pages: MarkerSpec[] = [
       'table action',
       'text field',
     ],
-    expectedFetchCalls: 3,
+    expectedFetchCalls: 4,
   },
   {
     label: 'AnsvarsomradenClient (responsibility areas)',

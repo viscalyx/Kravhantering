@@ -310,6 +310,14 @@ function PdfPackageCover({
             {section.implementationType ?? '—'}
           </Text>
         </View>
+        <View style={styles.metadataItem}>
+          <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
+            {sv ? 'Livscykelstatus' : 'Lifecycle status'}
+          </Text>
+          <Text style={styles.fieldValue}>
+            {section.lifecycleStatus ?? '—'}
+          </Text>
+        </View>
         {section.businessNeedsReference && (
           <View style={{ width: '100%' }}>
             <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
@@ -453,13 +461,13 @@ function PdfVersionSummary({
           />
         )}
       </View>
-      {version.references.length > 0 && (
+      {version.normReferences.length > 0 && (
         <View style={{ marginTop: 4 }}>
           <Text style={{ fontSize: 8, color: '#6b7280' }}>
             <Text style={{ fontFamily: 'Helvetica-Bold', color: '#374151' }}>
               {locale === 'sv' ? 'Referenser: ' : 'References: '}
             </Text>
-            {version.references.map(r => r.name).join(', ')}
+            {version.normReferences.map(r => r.name).join(', ')}
           </Text>
         </View>
       )}

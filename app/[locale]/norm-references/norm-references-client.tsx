@@ -40,6 +40,7 @@ interface NormReference {
   reference: string
   type: string
   updatedAt: string
+  uri: string | null
   version: string | null
 }
 
@@ -62,6 +63,7 @@ const INITIAL_FORM = {
   reference: '',
   version: '',
   issuer: '',
+  uri: '',
 }
 
 export default function NormReferencesClient() {
@@ -94,6 +96,7 @@ export default function NormReferencesClient() {
     reference: '',
     version: '',
     issuer: '',
+    uri: '',
   })
 
   const isFormDirty = () => {
@@ -191,6 +194,7 @@ export default function NormReferencesClient() {
           reference: form.reference,
           version: form.version || null,
           issuer: form.issuer,
+          uri: form.uri || null,
         }),
       })
       if (!res.ok) {
@@ -239,6 +243,7 @@ export default function NormReferencesClient() {
       reference: nr.reference,
       version: nr.version ?? '',
       issuer: nr.issuer,
+      uri: nr.uri ?? '',
     })
     setShowForm(true)
     fetchLinkedRequirements(nr.id)

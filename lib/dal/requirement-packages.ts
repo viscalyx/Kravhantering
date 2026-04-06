@@ -93,6 +93,13 @@ export async function listPackages(db: Database) {
       implementationTypeNameEn: sql<string | null>`it.name_en`.as(
         'implementation_type_name_en',
       ),
+      packageLifecycleStatusId: requirementPackages.packageLifecycleStatusId,
+      lifecycleStatusNameSv: sql<string | null>`ls.name_sv`.as(
+        'lifecycle_status_name_sv',
+      ),
+      lifecycleStatusNameEn: sql<string | null>`ls.name_en`.as(
+        'lifecycle_status_name_en',
+      ),
       itemCount: sql<number>`COUNT(DISTINCT rpi.requirement_id)`.as(
         'item_count',
       ),
@@ -110,6 +117,10 @@ export async function listPackages(db: Database) {
     .leftJoin(
       sql`package_implementation_types it`,
       sql`it.id = ${requirementPackages.packageImplementationTypeId}`,
+    )
+    .leftJoin(
+      sql`package_lifecycle_statuses ls`,
+      sql`ls.id = ${requirementPackages.packageLifecycleStatusId}`,
     )
     .leftJoin(
       sql`requirement_package_items rpi`,
@@ -134,6 +145,7 @@ export async function listPackages(db: Database) {
       name: row.name,
       packageResponsibilityAreaId: row.packageResponsibilityAreaId,
       packageImplementationTypeId: row.packageImplementationTypeId,
+      packageLifecycleStatusId: row.packageLifecycleStatusId,
       businessNeedsReference: row.businessNeedsReference,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -153,6 +165,14 @@ export async function listPackages(db: Database) {
               nameEn: row.implementationTypeNameEn ?? '',
             }
           : null,
+      lifecycleStatus:
+        row.lifecycleStatusNameSv && row.packageLifecycleStatusId
+          ? {
+              id: row.packageLifecycleStatusId,
+              nameSv: row.lifecycleStatusNameSv,
+              nameEn: row.lifecycleStatusNameEn ?? '',
+            }
+          : null,
       itemCount: row.itemCount,
       requirementAreas,
     }
@@ -165,6 +185,7 @@ export async function getPackageById(db: Database, id: number) {
     with: {
       responsibilityArea: true,
       implementationType: true,
+      lifecycleStatus: true,
     },
   })
   return result ?? null
@@ -176,6 +197,7 @@ export async function getPackageBySlug(db: Database, slug: string) {
     with: {
       responsibilityArea: true,
       implementationType: true,
+      lifecycleStatus: true,
     },
   })
   return result ?? null
@@ -203,6 +225,7 @@ export async function createPackage(
     name: string
     packageResponsibilityAreaId?: number | null
     packageImplementationTypeId?: number | null
+    packageLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
   },
 ) {
@@ -218,6 +241,7 @@ export async function updatePackage(
     name?: string
     packageResponsibilityAreaId?: number | null
     packageImplementationTypeId?: number | null
+    packageLifecycleStatusId?: number | null
     businessNeedsReference?: string | null
   },
 ) {

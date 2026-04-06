@@ -283,7 +283,6 @@ function makeRequirementDetail(
         ownerName: 'Owner',
         publishedAt: '2026-03-01T00:00:00Z',
         requiresTesting: false,
-        references: [],
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',

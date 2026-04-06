@@ -313,42 +313,8 @@ export const requirementVersionsRelations = relations(
       fields: [requirementVersions.qualityCharacteristicId],
       references: [qualityCharacteristics.id],
     }),
-    references: many(requirementReferences),
     versionScenarios: many(requirementVersionUsageScenarios),
     versionNormReferences: many(requirementVersionNormReferences),
-  }),
-)
-
-// ─── Requirement References ──────────────────────────────────────────────────
-
-export const requirementReferences = sqliteTable(
-  'requirement_references',
-  {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    requirementVersionId: integer('requirement_version_id')
-      .notNull()
-      .references(() => requirementVersions.id),
-    name: text('name').notNull(),
-    uri: text('uri'),
-    owner: text('owner'),
-    createdAt: text('created_at')
-      .notNull()
-      .$defaultFn(() => new Date().toISOString()),
-  },
-  table => [
-    index('idx_requirement_references_requirement_version_id').on(
-      table.requirementVersionId,
-    ),
-  ],
-)
-
-export const requirementReferencesRelations = relations(
-  requirementReferences,
-  ({ one }) => ({
-    version: one(requirementVersions, {
-      fields: [requirementReferences.requirementVersionId],
-      references: [requirementVersions.id],
-    }),
   }),
 )
 
@@ -429,6 +395,7 @@ export const normReferences = sqliteTable(
     reference: text('reference').notNull(),
     version: text('version'),
     issuer: text('issuer').notNull(),
+    uri: text('uri'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),
@@ -523,6 +490,21 @@ export const packageImplementationTypes = sqliteTable(
   ],
 )
 
+// ─── Package Lifecycle Statuses (taxonomy) ────────────────────────────────────
+
+export const packageLifecycleStatuses = sqliteTable(
+  'package_lifecycle_statuses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_package_lifecycle_statuses_name_sv').on(table.nameSv),
+    uniqueIndex('uq_package_lifecycle_statuses_name_en').on(table.nameEn),
+  ],
+)
+
 // ─── Requirement Packages ────────────────────────────────────────────────────
 
 export const requirementPackages = sqliteTable(
@@ -537,6 +519,9 @@ export const requirementPackages = sqliteTable(
     packageImplementationTypeId: integer(
       'package_implementation_type_id',
     ).references(() => packageImplementationTypes.id),
+    packageLifecycleStatusId: integer('package_lifecycle_status_id').references(
+      () => packageLifecycleStatuses.id,
+    ),
     businessNeedsReference: text('business_needs_reference'),
     createdAt: text('created_at')
       .notNull()
@@ -560,6 +545,10 @@ export const requirementPackagesRelations = relations(
     implementationType: one(packageImplementationTypes, {
       fields: [requirementPackages.packageImplementationTypeId],
       references: [packageImplementationTypes.id],
+    }),
+    lifecycleStatus: one(packageLifecycleStatuses, {
+      fields: [requirementPackages.packageLifecycleStatusId],
+      references: [packageLifecycleStatuses.id],
     }),
     items: many(requirementPackageItems),
     needsReferences: many(packageNeedsReferences),
