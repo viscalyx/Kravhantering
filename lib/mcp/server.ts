@@ -334,6 +334,7 @@ function renderRequirementHtml(
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'category', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.category?.nameSv : selectedVersion?.category?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'type', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.type?.nameSv : selectedVersion?.type?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'qualityCharacteristic', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'riskLevel', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'version', locale, 'singular'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
     '        </div>',
     '      </section>',
@@ -374,6 +375,7 @@ function createQueryCatalogSchema() {
       responseFormat: z.enum(['json', 'markdown']).default('markdown'),
       statuses: z.array(z.number().int().positive()).optional(),
       qualityCharacteristicIds: z.array(z.number().int().positive()).optional(),
+      riskLevelIds: z.array(z.number().int().positive()).optional(),
       typeId: z.number().int().positive().optional(),
       typeIds: z.array(z.number().int().positive()).optional(),
       uniqueIdSearch: z.string().max(100).optional(),
@@ -406,6 +408,7 @@ const RequirementMutationSchema = z
     scenarioIds: z.array(z.number().int().positive()).optional(),
     normReferenceIds: z.array(z.number().int().positive()).optional(),
     qualityCharacteristicId: z.number().int().positive().optional(),
+    riskLevelId: z.number().int().positive().optional(),
     typeId: z.number().int().positive().optional(),
   })
   .strict()
@@ -458,6 +461,7 @@ function toCatalogInput(
     responseFormat: toResponseFormat(input.responseFormat),
     statuses: input.statuses,
     qualityCharacteristicIds: input.qualityCharacteristicIds,
+    riskLevelIds: input.riskLevelIds,
     typeId: input.typeId,
     typeIds: input.typeIds,
     uniqueIdSearch: input.uniqueIdSearch,

@@ -29,6 +29,13 @@ export interface RequirementVersionNormReference {
   normReference: NormReferenceSummary
 }
 
+export interface RiskLevelSummary {
+  color: string
+  id: number
+  nameEn: string
+  nameSv: string
+}
+
 export interface RequirementVersionDetail {
   acceptanceCriteria: string | null
   archivedAt: string | null
@@ -43,6 +50,7 @@ export interface RequirementVersionDetail {
   publishedAt: string | null
   qualityCharacteristic: RequirementLocalizedEntity | null
   requiresTesting: boolean
+  riskLevel: RiskLevelSummary | null
   status: number
   statusColor: string | null
   statusNameEn: string | null

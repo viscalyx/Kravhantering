@@ -62,6 +62,10 @@ export async function GET(request: NextRequest) {
     .getAll('usageScenarioIds')
     .map(Number)
     .filter(n => !Number.isNaN(n))
+  const riskLevelIds = url.searchParams
+    .getAll('riskLevelIds')
+    .map(Number)
+    .filter(n => !Number.isNaN(n))
   const includeArchived = statuses.length === 0 || statuses.includes(4)
 
   try {
@@ -96,6 +100,7 @@ export async function GET(request: NextRequest) {
       uniqueIdSearch,
       normReferenceIds:
         normReferenceIds.length > 0 ? normReferenceIds : undefined,
+      riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
       usageScenarioIds:
         usageScenarioIds.length > 0 ? usageScenarioIds : undefined,
     })
@@ -119,6 +124,9 @@ export async function GET(request: NextRequest) {
           isSv
             ? (r.version?.qualityCharacteristicNameSv ?? '')
             : (r.version?.qualityCharacteristicNameEn ?? ''),
+          isSv
+            ? (r.version?.riskLevelNameSv ?? '')
+            : (r.version?.riskLevelNameEn ?? ''),
           isSv
             ? (r.version?.statusNameSv ?? '')
             : (r.version?.statusNameEn ?? ''),
@@ -199,6 +207,7 @@ export async function POST(request: NextRequest) {
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,
+        riskLevelId: body.riskLevelId ? Number(body.riskLevelId) : undefined,
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },
     })

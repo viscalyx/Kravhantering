@@ -32,6 +32,7 @@ DELETE FROM requirement_types;
 DELETE FROM requirement_categories;
 DELETE FROM requirement_status_transitions;
 DELETE FROM requirement_statuses;
+DELETE FROM risk_levels;
 -- ─── UI Terminology ──────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO ui_terminology (
   key,
@@ -56,6 +57,28 @@ INSERT OR IGNORE INTO ui_terminology (
   ('responsibilityArea', 'Verksamhetsobjekt', 'Verksamhetsobjekt', 'Verksamhetsobjekten', 'Business object', 'Business objects', 'Business objects', datetime('now')),
   ('implementationType', 'Genomförandeform', 'Genomförandeformer', 'Genomförandeformerna', 'Implementation type', 'Implementation types', 'Implementation types', datetime('now')),
   ('referenceData', 'Referensdata', 'Referensdata', 'Referensdata', 'Reference data', 'Reference data', 'Reference data', datetime('now'));
+
+INSERT OR IGNORE INTO ui_terminology (
+  key,
+  singular_sv,
+  plural_sv,
+  definite_plural_sv,
+  singular_en,
+  plural_en,
+  definite_plural_en,
+  updated_at
+) VALUES
+  ('riskLevel', 'Risknivå', 'Risknivåer', 'Risknivåerna', 'Risk level', 'Risk levels', 'Risk levels', datetime('now'));
+
+UPDATE ui_terminology SET
+  singular_sv = 'Risknivå',
+  plural_sv = 'Risknivåer',
+  definite_plural_sv = 'Risknivåerna',
+  singular_en = 'Risk level',
+  plural_en = 'Risk levels',
+  definite_plural_en = 'Risk levels',
+  updated_at = datetime('now')
+WHERE key = 'riskLevel';
 
 UPDATE ui_terminology SET
   singular_sv = 'Kravtext',
@@ -204,7 +227,8 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('requiresTesting', 7, 0, datetime('now')),
   ('version', 8, 0, datetime('now')),
   ('needsReference', 9, 0, datetime('now')),
-  ('normReferences', 10, 0, datetime('now'));
+  ('normReferences', 10, 0, datetime('now')),
+  ('riskLevel', 11, 0, datetime('now'));
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
@@ -271,6 +295,22 @@ UPDATE requirement_list_column_defaults SET
   is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'normReferences';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 11,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'riskLevel';
+
+-- ─── Risk Levels ─────────────────────────────────────────────────────────────
+INSERT OR IGNORE INTO risk_levels (id, name_sv, name_en, sort_order, color) VALUES
+  (1, 'Låg',    'Low',    1, '#22c55e'),
+  (2, 'Medel',  'Medium', 2, '#eab308'),
+  (3, 'Hög',    'High',   3, '#ef4444');
+
+UPDATE risk_levels SET name_sv = 'Låg',   name_en = 'Low',    sort_order = 1, color = '#22c55e' WHERE id = 1;
+UPDATE risk_levels SET name_sv = 'Medel', name_en = 'Medium', sort_order = 2, color = '#eab308' WHERE id = 2;
+UPDATE risk_levels SET name_sv = 'Hög',   name_en = 'High',   sort_order = 3, color = '#ef4444' WHERE id = 3;
 
 -- ─── Requirement Statuses ────────────────────────────────────────────────────
 -- 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad
@@ -1601,6 +1641,35 @@ INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, req
   (37, 9,  13, 15,  21,   datetime('now', '-3 days')),
   -- Package 10: Systemövervakning Bas (1 krav)
   (38, 10, 67, 101, 22,   datetime('now', '-2 days'));
+
+-- ─── Assign risk levels to ~50 % of requirement versions ─────────────────────
+-- Hög/High
+UPDATE requirement_versions SET risk_level_id = 3 WHERE id IN (
+  1, 2, 5, 15, 22, 36, 38, 40, 43, 45, 49, 56, 70, 74, 81,
+  83, 89, 108, 111, 112, 121, 134, 158, 163, 189, 202, 231, 235, 243, 249,
+  250, 257, 260, 264, 275, 297, 303, 309, 313, 321, 348, 349, 366, 369, 374,
+  387, 389, 392, 401, 402, 414, 425, 432, 435, 438, 440, 441, 445, 456, 463,
+  469, 471, 502
+);
+-- Medel/Medium
+UPDATE requirement_versions SET risk_level_id = 2 WHERE id IN (
+  3, 6, 7, 10, 14, 16, 20, 25, 33, 41, 53, 60, 73, 88, 102,
+  104, 105, 113, 120, 128, 131, 143, 155, 159, 160, 167, 169, 173, 175, 183,
+  186, 191, 197, 203, 209, 215, 217, 218, 220, 225, 227, 229, 253, 263, 274,
+  278, 279, 285, 288, 290, 296, 299, 308, 311, 315, 325, 329, 330, 331, 336,
+  337, 341, 346, 356, 357, 361, 373, 382, 386, 391, 398, 399, 404, 413, 419,
+  429, 442, 443, 450, 454, 458, 462, 479, 484, 488, 495, 496
+);
+-- Låg/Low
+UPDATE requirement_versions SET risk_level_id = 1 WHERE id IN (
+  8, 9, 11, 12, 13, 17, 18, 26, 29, 32, 37, 44, 46, 48, 51,
+  52, 54, 58, 61, 62, 64, 66, 72, 80, 82, 84, 86, 101, 106, 107,
+  109, 118, 119, 123, 127, 133, 136, 139, 142, 149, 150, 151, 157, 165, 168,
+  185, 187, 195, 200, 201, 204, 206, 214, 219, 226, 241, 242, 245, 246, 254,
+  277, 289, 291, 292, 301, 302, 310, 317, 318, 334, 342, 343, 351, 352, 359,
+  362, 364, 377, 380, 381, 384, 394, 400, 410, 418, 422, 428, 433, 434, 447,
+  457, 465, 473, 478, 482, 486, 499, 500, 501
+);
 `
 
 console.log(seedSQL)

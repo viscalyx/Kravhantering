@@ -97,6 +97,23 @@ export const requirementTypesRelations = relations(
   }),
 )
 
+// ─── Risk Levels ─────────────────────────────────────────────────────────────
+
+export const riskLevels = sqliteTable(
+  'risk_levels',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    color: text('color').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_risk_levels_name_sv').on(table.nameSv),
+    uniqueIndex('uq_risk_levels_name_en').on(table.nameEn),
+  ],
+)
+
 // ─── Quality Characteristics (ISO/IEC 25010:2023) ───────────────────────────
 
 export const qualityCharacteristics = sqliteTable(
@@ -264,6 +281,7 @@ export const requirementVersions = sqliteTable(
     qualityCharacteristicId: integer('quality_characteristic_id').references(
       () => qualityCharacteristics.id,
     ),
+    riskLevelId: integer('risk_level_id').references(() => riskLevels.id),
     statusId: integer('requirement_status_id')
       .notNull()
       .references(() => requirementStatuses.id),
@@ -312,6 +330,10 @@ export const requirementVersionsRelations = relations(
     qualityCharacteristic: one(qualityCharacteristics, {
       fields: [requirementVersions.qualityCharacteristicId],
       references: [qualityCharacteristics.id],
+    }),
+    riskLevel: one(riskLevels, {
+      fields: [requirementVersions.riskLevelId],
+      references: [riskLevels.id],
     }),
     versionScenarios: many(requirementVersionUsageScenarios),
     versionNormReferences: many(requirementVersionNormReferences),

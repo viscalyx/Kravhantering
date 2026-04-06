@@ -57,6 +57,7 @@ import {
   type RequirementRow,
   type RequirementSortField,
   type RequirementSortState,
+  type RiskLevelOption,
   type StatusOption,
 } from '@/lib/requirements/list-view'
 
@@ -88,6 +89,7 @@ export interface RequirementsTableProps {
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
+  riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
   selectedIds?: Set<number>
@@ -1328,6 +1330,7 @@ export default function RequirementsTable({
   onVisibleColumnsChange,
   pinnedIds,
   renderExpanded,
+  riskLevels = [],
   rows,
   selectable = false,
   selectedIds,
@@ -1570,6 +1573,10 @@ export default function RequirementsTable({
   const statusLabel = (id: number) => {
     const s = statusOptions.find(s => s.id === id)
     return s ? getStatusName(s) : String(id)
+  }
+  const riskLevelLabel = (id: number) => {
+    const rl = riskLevels.find(rl => rl.id === id)
+    return rl ? getName(rl) : String(id)
   }
   const _scenarioLabel = (id: number) => {
     const s = usageScenarios.find(s => s.id === id)
@@ -2586,6 +2593,22 @@ export default function RequirementsTable({
             value={fv.qualityCharacteristicIds ?? []}
           />
         )
+      case 'riskLevel':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.riskLevelIds ?? []).length}
+            developerModeValue={developerModeValue}
+            getLabel={option => riskLevelLabel(option.id)}
+            label={t('riskLevel')}
+            onChange={ids =>
+              updateFilter({
+                riskLevelIds: ids.length > 0 ? ids : undefined,
+              })
+            }
+            options={riskLevels}
+            value={fv.riskLevelIds ?? []}
+          />
+        )
       case 'status':
         return (
           <MultiSelectFilterPopover
@@ -2712,6 +2735,21 @@ export default function RequirementsTable({
               })
             }
             values={fv.qualityCharacteristicIds ?? []}
+          />
+        )
+      case 'riskLevel':
+        return (
+          <FilterChips
+            developerModeContext={developerModeContext}
+            getLabel={riskLevelLabel}
+            onRemove={id =>
+              updateFilter({
+                riskLevelIds: (fv.riskLevelIds ?? []).filter(
+                  value => value !== id,
+                ),
+              })
+            }
+            values={fv.riskLevelIds ?? []}
           />
         )
       case 'status':
@@ -2855,6 +2893,26 @@ export default function RequirementsTable({
             {(locale === 'sv'
               ? row.version?.qualityCharacteristicNameSv
               : row.version?.qualityCharacteristicNameEn) ?? '—'}
+          </td>
+        )
+      case 'riskLevel':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.version?.riskLevelColor ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: row.version.riskLevelColor }}
+                />
+                {(locale === 'sv'
+                  ? row.version?.riskLevelNameSv
+                  : row.version?.riskLevelNameEn) ?? '—'}
+              </span>
+            ) : (
+              '—'
+            )}
           </td>
         )
       case 'status':
@@ -3705,7 +3763,16 @@ export default function RequirementsTable({
                             id={`requirement-row-detail-${row.id}`}
                             ref={expandedDetailCellRef}
                           >
-                            {renderExpanded(row.id)}
+                            <div
+                              className="sticky left-0"
+                              style={
+                                scrollContainerWidth
+                                  ? { width: scrollContainerWidth }
+                                  : undefined
+                              }
+                            >
+                              {renderExpanded(row.id)}
+                            </div>
                           </td>
                         </tr>
                       )}

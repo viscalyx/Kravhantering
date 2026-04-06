@@ -29,6 +29,7 @@ import {
   restoreVersion,
   transitionStatus,
 } from '@/lib/dal/requirements'
+import { listRiskLevels } from '@/lib/dal/risk-levels'
 import {
   createUiSettingsLoader,
   type UiSettingsLoader,
@@ -73,6 +74,7 @@ export type CatalogKind =
   | 'categories'
   | 'types'
   | 'quality_characteristics'
+  | 'risk_levels'
   | 'statuses'
   | 'scenarios'
   | 'transitions'
@@ -86,6 +88,7 @@ export interface RequirementMutationInput {
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
   requiresTesting?: boolean
+  riskLevelId?: number
   scenarioIds?: number[]
   typeId?: number
   verificationMethod?: string | null
@@ -109,6 +112,7 @@ export interface QueryCatalogInput {
   qualityCharacteristicIds?: number[]
   requiresTesting?: boolean[]
   responseFormat?: ResponseFormat
+  riskLevelIds?: number[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -309,6 +313,10 @@ function formatRequirementListItem(
       description: item.description,
       id: item.versionId,
       requiresTesting: item.requiresTesting,
+      riskLevelId: item.riskLevelId,
+      riskLevelNameEn: item.riskLevelNameEn,
+      riskLevelNameSv: item.riskLevelNameSv,
+      riskLevelColor: item.riskLevelColor,
       status: item.status,
       statusColor: item.statusColor,
       statusNameEn: item.statusNameEn,
@@ -379,6 +387,14 @@ function formatRequirementDetail(
             id: version.qualityCharacteristic.id,
             nameEn: version.qualityCharacteristic.nameEn,
             nameSv: version.qualityCharacteristic.nameSv,
+          }
+        : null,
+      riskLevel: version.riskLevel
+        ? {
+            id: version.riskLevel.id,
+            nameEn: version.riskLevel.nameEn,
+            nameSv: version.riskLevel.nameSv,
+            color: version.riskLevel.color,
           }
         : null,
       versionNormReferences: version.versionNormReferences.map(vnr => ({
@@ -693,6 +709,7 @@ export function createRequirementsService(
               locale,
               offset,
               requiresTesting: input.requiresTesting,
+              riskLevelIds: input.riskLevelIds,
               sortBy: input.sortBy,
               sortDirection: input.sortDirection,
               statuses: input.statuses,
@@ -792,6 +809,22 @@ export function createRequirementsService(
                 getCatalogTitle('quality_characteristics', locale, terminology),
                 qualityCharacteristics.map(category =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
+                ),
+                responseFormat,
+              ),
+              pagination: null,
+            }
+          }
+
+          if (catalog === 'risk_levels') {
+            const levels = await listRiskLevels(db)
+            return {
+              catalog,
+              items: levels,
+              message: createServiceMessage(
+                locale === 'sv' ? 'Risknivåer' : 'Risk levels',
+                levels.map(level =>
+                  locale === 'sv' ? level.nameSv : level.nameEn,
                 ),
                 responseFormat,
               ),
@@ -1043,6 +1076,7 @@ export function createRequirementsService(
               qualityCharacteristicId: payload.qualityCharacteristicId,
               requirementTypeId: payload.typeId,
               requiresTesting: payload.requiresTesting,
+              riskLevelId: payload.riskLevelId,
               verificationMethod: payload.verificationMethod,
               scenarioIds: payload.scenarioIds,
             })
@@ -1102,6 +1136,7 @@ export function createRequirementsService(
               qualityCharacteristicId: payload.qualityCharacteristicId,
               requirementTypeId: payload.typeId,
               requiresTesting: payload.requiresTesting,
+              riskLevelId: payload.riskLevelId,
               verificationMethod: payload.verificationMethod,
               scenarioIds: payload.scenarioIds,
             })

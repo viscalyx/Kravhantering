@@ -250,6 +250,7 @@ function makeVersion(
     publishedAt: null,
     requiresTesting: false,
     qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
+    riskLevel: null,
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',

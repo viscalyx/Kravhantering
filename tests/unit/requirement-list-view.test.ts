@@ -35,6 +35,10 @@ function makeRow(overrides: Record<string, unknown> = {}) {
       statusNameSv: 'Publicerad',
       qualityCharacteristicNameEn: null,
       qualityCharacteristicNameSv: null,
+      riskLevelId: null,
+      riskLevelNameEn: null,
+      riskLevelNameSv: null,
+      riskLevelColor: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 2,
@@ -99,8 +103,9 @@ describe('requirement list view helpers', () => {
         defaultVisible: false,
         sortOrder: 6,
       },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
-      { columnId: 'version', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'riskLevel', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'version', defaultVisible: false, sortOrder: 9 },
     ])
 
     expect(getRequirementColumnOrder(columnDefaults)).toEqual([
@@ -111,6 +116,7 @@ describe('requirement list view helpers', () => {
       'category',
       'type',
       'qualityCharacteristic',
+      'riskLevel',
       'requiresTesting',
       'version',
       'needsReference',

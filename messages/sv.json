@@ -68,6 +68,7 @@
     "taxonomy": "Referensdata",
     "referenceData": "Referensdata",
     "qualityCharacteristics": "Kvalitetsegenskaper",
+    "riskLevels": "Risknivåer",
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
     "lifecycleStatuses": "Livscykelstatusar",
@@ -91,6 +92,8 @@
     "needsReference": "Behovsreferens",
     "type": "Typ",
     "qualityCharacteristic": "Kvalitetsegenskap",
+    "riskLevel": "Risknivå",
+    "riskLevelHelp": "<strong>Välj risknivå för detta krav.</strong>\nRisknivån anger den potentiella påverkan om kravet inte uppfylls.",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
     "verificationMethod": "Verifieringsmetod",
@@ -291,7 +294,8 @@
       "status": "Status",
       "category": "Kategori",
       "type": "Typ",
-      "qualityCharacteristic": "Kvalitetsegenskap"
+      "qualityCharacteristic": "Kvalitetsegenskap",
+      "riskLevel": "Risknivå"
     },
     "printListReport": "Skriv ut kravlista",
     "downloadListReportPdf": "Ladda ner kravlista (PDF)"
@@ -452,7 +456,8 @@
     "implementationTypesDescription": "Hantera genomförandeformer för kravpaket.",
     "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravpaket.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
-    "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav."
+    "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav.",
+    "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav."
   },
   "terminology": {
     "description": {
@@ -484,6 +489,11 @@
       "singular": "Kvalitetsegenskap",
       "plural": "Kvalitetsegenskaper",
       "definitePlural": "Kvalitetsegenskaperna"
+    },
+    "riskLevel": {
+      "singular": "Risknivå",
+      "plural": "Risknivåer",
+      "definitePlural": "Risknivåerna"
     },
     "requiresTesting": {
       "singular": "Verifierbar",
@@ -816,6 +826,25 @@
         "heading": "Hantera",
         "body": "Lägg till nya egenskaper eller underegenskaper med Nytt-knappen. En underegenskap måste tilldelas en överordnad egenskap. Egenskaper som är kopplade till befintliga krav kan inte tas bort."
       }
+    },
+    "riskLevels": {
+      "title": "Hjälp för risknivåer",
+      "overview": {
+        "heading": "Om risknivåer",
+        "body": "Risknivåer anger den potentiella påverkan om ett krav inte uppfylls. Varje nivå har ett namn, en färg och en sorteringsordning."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Lägg till nya risknivåer med Skapa-knappen. Redigera befintliga nivåer för att ändra namn, färg eller sorteringsordning. Risknivåer som är kopplade till befintliga krav kan inte tas bort."
+      }
     }
+  },
+  "riskLevelAdmin": {
+    "name": "Namn",
+    "color": "Färg",
+    "colorHex": "Färgkod (hex)",
+    "sortOrder": "Sorteringsordning",
+    "linkedRequirements": "Kopplade krav",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
   }
 }

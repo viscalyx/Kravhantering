@@ -53,6 +53,12 @@ function toVersionSummary(
           nameEn: version.qualityCharacteristic.nameEn,
         }
       : null,
+    riskLevel: version.riskLevel
+      ? {
+          nameSv: version.riskLevel.nameSv,
+          nameEn: version.riskLevel.nameEn,
+        }
+      : null,
     status: {
       label: getStatusLabel(version, locale),
       color: version.statusColor,
@@ -112,6 +118,16 @@ function computeMetadataChanges(
       field: locale === 'sv' ? 'Kvalitetsegenskap' : 'Quality Characteristic',
       oldValue: oldQc,
       newValue: newQc,
+    })
+  }
+
+  const oldRl = getName(baseVersion.riskLevel, locale)
+  const newRl = getName(reviewVersion.riskLevel, locale)
+  if (oldRl !== newRl) {
+    changes.push({
+      field: locale === 'sv' ? 'Risknivå' : 'Risk Level',
+      oldValue: oldRl,
+      newValue: newRl,
     })
   }
 

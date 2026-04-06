@@ -377,6 +377,12 @@ function VersionDetails({
             value={getName(version.qualityCharacteristic)}
           />
         )}
+        {getName(version.riskLevel) && (
+          <MetadataItem
+            label={locale === 'sv' ? 'Risknivå' : 'Risk Level'}
+            value={getName(version.riskLevel)}
+          />
+        )}
         <MetadataItem
           label={locale === 'sv' ? 'Kräver testning' : 'Requires Testing'}
           value={

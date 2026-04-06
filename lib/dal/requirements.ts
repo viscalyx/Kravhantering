@@ -21,6 +21,7 @@ import {
   requirementVersionNormReferences,
   requirementVersions,
   requirementVersionUsageScenarios,
+  riskLevels,
 } from '@/drizzle/schema'
 import type { Database } from '@/lib/db'
 import {
@@ -47,6 +48,7 @@ type ListRequirementsOptions = {
   locale?: 'en' | 'sv'
   offset?: number
   requiresTesting?: boolean[]
+  riskLevelIds?: number[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -120,6 +122,9 @@ function buildRequirementListConditions(opts: ListRequirementsOptions) {
         opts.qualityCharacteristicIds,
       ),
     )
+  }
+  if (opts.riskLevelIds && opts.riskLevelIds.length > 0) {
+    conditions.push(inArray(requirementVersions.riskLevelId, opts.riskLevelIds))
   }
   if (opts.requiresTesting && opts.requiresTesting.length > 0) {
     conditions.push(
@@ -303,6 +308,11 @@ export async function listRequirements(
       typeNameEn: requirementTypes.nameEn,
       qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
       qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
+      riskLevelId: requirementVersions.riskLevelId,
+      riskLevelNameSv: riskLevels.nameSv,
+      riskLevelNameEn: riskLevels.nameEn,
+      riskLevelColor: riskLevels.color,
+      riskLevelSortOrder: riskLevels.sortOrder,
       maxVersion: latestVersions.maxVersion,
       pendingVersionStatusColor: sql<string | null>`(
         SELECT CASE WHEN rv.requirement_status_id = ${STATUS_ARCHIVED} THEN NULL
@@ -371,6 +381,7 @@ export async function listRequirements(
         qualityCharacteristics.id,
       ),
     )
+    .leftJoin(riskLevels, eq(requirementVersions.riskLevelId, riskLevels.id))
     .$dynamic()
 
   if (conditions.length > 0) {
@@ -418,6 +429,11 @@ export async function listRequirements(
             : qualityCharacteristics.nameEn,
           sortDirection,
         ),
+      )
+      break
+    case 'riskLevel':
+      query = query.orderBy(
+        ...orderByNumber(riskLevels.sortOrder, sortDirection),
       )
       break
     case 'status':
@@ -507,6 +523,7 @@ export async function getRequirementById(db: Database, id: number) {
           category: true,
           type: true,
           qualityCharacteristic: true,
+          riskLevel: true,
           status: true,
           versionNormReferences: {
             with: {
@@ -555,6 +572,7 @@ export async function createRequirement(
     requirementCategoryId?: number
     requirementTypeId?: number
     qualityCharacteristicId?: number
+    riskLevelId?: number
     requiresTesting?: boolean
     verificationMethod?: string | null
     createdBy?: string
@@ -599,6 +617,7 @@ export async function createRequirement(
       requirementCategoryId: data.requirementCategoryId,
       requirementTypeId: data.requirementTypeId,
       qualityCharacteristicId: data.qualityCharacteristicId,
+      riskLevelId: data.riskLevelId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
       verificationMethod: data.requiresTesting
@@ -644,6 +663,7 @@ export async function editRequirement(
     requirementCategoryId?: number
     requirementTypeId?: number
     qualityCharacteristicId?: number
+    riskLevelId?: number
     requiresTesting?: boolean
     verificationMethod?: string | null
     createdBy?: string
@@ -702,6 +722,7 @@ export async function editRequirement(
       requirementCategoryId: data.requirementCategoryId,
       requirementTypeId: data.requirementTypeId,
       qualityCharacteristicId: data.qualityCharacteristicId,
+      riskLevelId: data.riskLevelId,
       requiresTesting: data.requiresTesting ?? false,
       verificationMethod: data.requiresTesting
         ? (data.verificationMethod ?? null)
@@ -849,6 +870,7 @@ export async function editRequirement(
       requirementCategoryId: data.requirementCategoryId,
       requirementTypeId: data.requirementTypeId,
       qualityCharacteristicId: data.qualityCharacteristicId,
+      riskLevelId: data.riskLevelId,
       statusId: STATUS_DRAFT,
       requiresTesting: data.requiresTesting ?? false,
       verificationMethod: data.requiresTesting

@@ -8,6 +8,7 @@ import {
   CircleDot,
   FolderCog,
   FolderTree,
+  Gauge,
   Languages,
   Layers,
   LayoutPanelTop,
@@ -300,6 +301,13 @@ export default function AdminClient({
       icon: ShieldCheck,
       id: 'qualityCharacteristics',
       label: tn('qualityCharacteristics'),
+    },
+    {
+      description: ta('riskLevelsDescription'),
+      href: '/risk-levels',
+      icon: Gauge,
+      id: 'riskLevels',
+      label: tn('riskLevels'),
     },
     {
       description: ta('responsibilityAreasDescription'),

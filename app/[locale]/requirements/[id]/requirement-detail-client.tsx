@@ -1306,7 +1306,7 @@ export default function RequirementDetailClient({
         onClose && !inline
           ? 'p-6 sm:p-8'
           : inline
-            ? 'p-6'
+            ? 'p-4'
             : 'section-padding px-4 sm:px-6 lg:px-8'
       }
     >
@@ -1397,7 +1397,7 @@ export default function RequirementDetailClient({
         <div className="grid grid-cols-1 gap-6">
           {/* Main content */}
           <div className="space-y-6">
-            <div className="relative flex gap-4">
+            <div className="relative flex gap-3">
               <div
                 className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
                 ref={cardRef}
@@ -1434,7 +1434,7 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-4">
                   {req.area && (
                     <div
                       {...devMarker({
@@ -1506,6 +1506,36 @@ export default function RequirementDetailClient({
                       </p>
                     </div>
                   )}
+                  <div
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'risk level',
+                    })}
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('riskLevel')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100 inline-flex items-center gap-1.5">
+                      {selectedVersion?.riskLevel ? (
+                        <>
+                          {selectedVersion.riskLevel.color && (
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{
+                                backgroundColor:
+                                  selectedVersion.riskLevel.color,
+                              }}
+                            />
+                          )}
+                          {localName(selectedVersion.riskLevel)}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  </div>
                   <div
                     {...devMarker({
                       context: detailContext,

@@ -6,6 +6,7 @@ export interface FilterValues {
   normReferenceIds?: number[]
   qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
+  riskLevelIds?: number[]
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
@@ -38,6 +39,14 @@ export interface StatusOption {
   sortOrder?: number
 }
 
+export interface RiskLevelOption {
+  color: string
+  id: number
+  nameEn: string
+  nameSv: string
+  sortOrder: number
+}
+
 export interface RequirementRow {
   area: {
     name: string
@@ -57,6 +66,10 @@ export interface RequirementRow {
     categoryNameSv: string | null
     description: string | null
     requiresTesting: boolean
+    riskLevelId: number | null
+    riskLevelNameEn: string | null
+    riskLevelNameSv: string | null
+    riskLevelColor: string | null
     status: number
     statusColor: string | null
     statusNameEn: string | null
@@ -89,6 +102,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.typeIds && values.typeIds.length > 0) ||
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
+    (values.riskLevelIds && values.riskLevelIds.length > 0) ||
     (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
     (values.normReferenceIds && values.normReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
@@ -105,6 +119,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'category',
   'type',
   'qualityCharacteristic',
+  'riskLevel',
   'status',
   'requiresTesting',
   'version',
@@ -121,6 +136,7 @@ export const REQUIREMENT_SORT_FIELDS = [
   'category',
   'type',
   'qualityCharacteristic',
+  'riskLevel',
   'status',
   'version',
 ] as const
@@ -246,6 +262,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     labelNamespace: 'requirement',
     maxWidthPx: 280,
     minWidthPx: 132,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: true,
+    defaultVisible: false,
+    defaultWidthPx: 136,
+    id: 'riskLevel',
+    labelKey: 'riskLevel',
+    labelNamespace: 'requirement',
+    maxWidthPx: 200,
+    minWidthPx: 100,
     resizable: true,
   },
   {
@@ -559,6 +588,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('category', 'categoryIds')
   clearIfHidden('type', 'typeIds')
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
+  clearIfHidden('riskLevel', 'riskLevelIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')
@@ -707,6 +737,11 @@ export function buildRequirementListParams({
   if (filters.qualityCharacteristicIds) {
     for (const id of filters.qualityCharacteristicIds) {
       params.append('qualityCharacteristicIds', String(id))
+    }
+  }
+  if (filters.riskLevelIds) {
+    for (const id of filters.riskLevelIds) {
+      params.append('riskLevelIds', String(id))
     }
   }
   if (filters.requiresTesting) {

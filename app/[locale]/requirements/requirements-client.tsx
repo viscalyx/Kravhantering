@@ -27,6 +27,7 @@ import {
   type RequirementListColumnDefault,
   type RequirementRow,
   type RequirementSortState,
+  type RiskLevelOption,
   type StatusOption,
   serializeRequirementColumnWidths,
   serializeRequirementVisibleColumns,
@@ -111,6 +112,10 @@ function mapRequirementDetailToRow(
             version.qualityCharacteristic?.nameEn ?? null,
           qualityCharacteristicNameSv:
             version.qualityCharacteristic?.nameSv ?? null,
+          riskLevelId: version.riskLevel?.id ?? null,
+          riskLevelNameEn: version.riskLevel?.nameEn ?? null,
+          riskLevelNameSv: version.riskLevel?.nameSv ?? null,
+          riskLevelColor: version.riskLevel?.color ?? null,
           typeNameEn: version.type?.nameEn ?? null,
           typeNameSv: version.type?.nameSv ?? null,
           versionNumber: version.versionNumber,
@@ -145,6 +150,7 @@ export default function RequirementsClient({
     QualityCharacteristicOption[]
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
+  const [riskLevels, setRiskLevels] = useState<RiskLevelOption[]>([])
   const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
   const [normReferenceOptions, setNormReferenceOptions] = useState<
     { id: number; normReferenceId: string; name: string }[]
@@ -418,6 +424,7 @@ export default function RequirementsClient({
         qualityCharacteristicsRes,
         statusesRes,
         scenariosRes,
+        riskLevelsRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/requirement-categories'),
@@ -425,6 +432,7 @@ export default function RequirementsClient({
         fetch('/api/quality-characteristics'),
         fetch('/api/requirement-statuses'),
         fetch('/api/usage-scenarios'),
+        fetch('/api/risk-levels'),
       ])
 
       const areasData = await readFilterResponse<{ areas?: AreaOption[] }>(
@@ -464,6 +472,12 @@ export default function RequirementsClient({
       }>(scenariosRes)
       if (scenariosData) {
         setUsageScenarios(scenariosData.scenarios ?? [])
+      }
+      const riskLevelsData = await readFilterResponse<{
+        riskLevels?: RiskLevelOption[]
+      }>(riskLevelsRes)
+      if (riskLevelsData) {
+        setRiskLevels(riskLevelsData.riskLevels ?? [])
       }
     }
 
@@ -782,6 +796,7 @@ export default function RequirementsClient({
                   requirementId={id}
                 />
               )}
+              riskLevels={riskLevels}
               rows={displayRows}
               selectable
               selectedIds={selectedIds}

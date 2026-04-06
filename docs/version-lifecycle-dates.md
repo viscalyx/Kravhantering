@@ -56,6 +56,7 @@ change:
 - description
 - acceptance criteria
 - category, type, type category
+- risk level
 - scenarios
 - requires-testing
 

@@ -44,6 +44,12 @@ function toVersionSummary(
           nameEn: version.qualityCharacteristic.nameEn,
         }
       : null,
+    riskLevel: version.riskLevel
+      ? {
+          nameSv: version.riskLevel.nameSv,
+          nameEn: version.riskLevel.nameEn,
+        }
+      : null,
     status: {
       label: getStatusLabel(version, locale),
       color: version.statusColor,

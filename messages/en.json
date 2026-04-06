@@ -68,6 +68,7 @@
     "taxonomy": "Reference data",
     "referenceData": "Reference data",
     "qualityCharacteristics": "Quality characteristics",
+    "riskLevels": "Risk levels",
     "responsibilityAreas": "Business objects",
     "implementationTypes": "Implementation types",
     "lifecycleStatuses": "Lifecycle statuses",
@@ -91,6 +92,8 @@
     "needsReference": "Needs reference",
     "type": "Type",
     "qualityCharacteristic": "Quality characteristic",
+    "riskLevel": "Risk level",
+    "riskLevelHelp": "<strong>Select the risk level for this requirement.</strong>\nThe risk level indicates the potential impact if the requirement is not met.",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
     "verificationMethod": "Verification method",
@@ -291,7 +294,8 @@
       "status": "Status",
       "category": "Category",
       "type": "Type",
-      "qualityCharacteristic": "Quality characteristic"
+      "qualityCharacteristic": "Quality characteristic",
+      "riskLevel": "Risk level"
     },
     "printListReport": "Print requirement list",
     "downloadListReportPdf": "Download requirement list (PDF)"
@@ -452,7 +456,8 @@
     "implementationTypesDescription": "Manage implementation types for requirement packages.",
     "lifecycleStatusesDescription": "Manage lifecycle statuses for requirement packages.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
-    "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements."
+    "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements.",
+    "riskLevelsDescription": "Manage risk levels that can be assigned to requirements."
   },
   "terminology": {
     "description": {
@@ -484,6 +489,11 @@
       "singular": "Quality characteristic",
       "plural": "Quality characteristics",
       "definitePlural": "Quality characteristics"
+    },
+    "riskLevel": {
+      "singular": "Risk level",
+      "plural": "Risk levels",
+      "definitePlural": "Risk levels"
     },
     "requiresTesting": {
       "singular": "Verifiable",
@@ -816,6 +826,25 @@
         "heading": "Managing",
         "body": "Add new characteristics or sub-characteristics using the New button. A sub-characteristic must be assigned to a parent. Characteristics linked to existing requirements cannot be deleted."
       }
+    },
+    "riskLevels": {
+      "title": "Risk Levels Help",
+      "overview": {
+        "heading": "About risk levels",
+        "body": "Risk levels indicate the potential impact if a requirement is not met. Each level has a name, color, and sort order."
+      },
+      "manage": {
+        "heading": "Managing",
+        "body": "Add new risk levels using the Create button. Edit existing levels to change name, color, or sort order. Risk levels linked to existing requirements cannot be deleted."
+      }
     }
+  },
+  "riskLevelAdmin": {
+    "name": "Name",
+    "color": "Color",
+    "colorHex": "Color hex code",
+    "sortOrder": "Sort order",
+    "linkedRequirements": "Linked requirements",
+    "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
   }
 }

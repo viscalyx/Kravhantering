@@ -42,6 +42,7 @@ The behaviors below apply to the requirement list rendered by:
 - Filters are attached to the visible header cells only.
 - If a filtered column is hidden, its filter is cleared immediately.
 - Status is filterable and sortable.
+- `riskLevel` is filterable and sortable.
 - `requiresTesting` is filterable, but not sortable.
 
 ## Column Visibility

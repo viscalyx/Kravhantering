@@ -15,6 +15,7 @@ export interface VersionSummaryData {
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requiresTesting: boolean
+  riskLevel: { nameSv: string; nameEn: string } | null
   scenarios: { nameSv: string; nameEn: string }[]
   status: { label: string; color: string | null }
   type: { nameSv: string; nameEn: string } | null

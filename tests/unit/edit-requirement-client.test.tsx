@@ -62,6 +62,7 @@ function makeVersion(
     publishedAt: null,
     qualityCharacteristic: null,
     requiresTesting: true,
+    riskLevel: null,
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',
