@@ -56,8 +56,6 @@ For admin-managed UI terminology and default column settings, see
 - `lib/dal/requirement-packages.ts`
   Persistence logic for requirement packages: listing packages and items,
   linking and unlinking requirements, and needs reference management.
-- `lib/dal/requirement-references.ts`
-  Reference synchronization for version mutations.
 
 ## Request Flow
 
