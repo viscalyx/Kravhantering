@@ -108,6 +108,7 @@ describe('RequirementPackagesClient', () => {
     })
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
+    expect(screen.getByText('Development')).toBeInTheDocument()
   })
 
   it('fetches and displays packages after strict-mode effect replays', async () => {

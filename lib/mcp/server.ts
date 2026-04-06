@@ -204,13 +204,15 @@ function renderRequirementHtml(
   const selectedVersion = payload.version ?? detail.versions[0]
 
   const normReferences = Array.isArray(selectedVersion?.versionNormReferences)
-    ? (selectedVersion.versionNormReferences as {
-        normReference?: {
-          name?: string
-          reference?: string
-          uri?: string | null
-        }
-      }[])
+    ? (
+        selectedVersion.versionNormReferences as {
+          normReference?: {
+            name?: string
+            reference?: string
+            uri?: string | null
+          }
+        }[]
+      ).filter(r => r?.normReference)
     : []
   const scenarios = Array.isArray(selectedVersion?.versionScenarios)
     ? (selectedVersion.versionScenarios as {
@@ -402,6 +404,7 @@ const RequirementMutationSchema = z
     requiresTesting: z.boolean().optional(),
     verificationMethod: z.string().max(4000).optional(),
     scenarioIds: z.array(z.number().int().positive()).optional(),
+    normReferenceIds: z.array(z.number().int().positive()).optional(),
     qualityCharacteristicId: z.number().int().positive().optional(),
     typeId: z.number().int().positive().optional(),
   })

@@ -54,7 +54,9 @@
     "selectAll": "Select all",
     "selectRow": "Select {id}",
     "showShortText": "Show short text",
-    "showFullText": "Show full text"
+    "showFullText": "Show full text",
+    "deleting": "Deleting…",
+    "unexpectedError": "An unexpected error occurred"
   },
   "nav": {
     "catalog": "Requirements Catalog",
@@ -402,7 +404,9 @@
     "name": "Name",
     "title": "Lifecycle statuses",
     "newItem": "New lifecycle status",
-    "editItem": "Edit lifecycle status"
+    "editItem": "Edit lifecycle status",
+    "nameSvHelp": "Enter the Swedish name for this lifecycle status. It is displayed when the application language is Swedish.",
+    "nameEnHelp": "Enter the English name for this lifecycle status. It is displayed when the application language is English."
   },
   "theme": {
     "light": "Light",
@@ -625,7 +629,7 @@
       "title": "Requirement Detail",
       "status": {
         "heading": "Status transitions",
-        "body": "Use the status bar to advance the requirement through its lifecycle: Draft → Review → Published → Archived. Each transition requires a confirmation. You can return to Draft from Review if more work is needed."
+        "body": "Use the status bar to advance the requirement through its lifecycle: Draft → Review → Published. To archive, the requirement goes through an archiving review: Published → Review (archiving) → Archived. Each transition requires a confirmation. You can return to Draft from Review if more work is needed."
       },
       "versions": {
         "heading": "Versions",

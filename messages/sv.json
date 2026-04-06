@@ -54,7 +54,9 @@
     "selectAll": "Markera alla",
     "selectRow": "Markera {id}",
     "showShortText": "Visa kortad text",
-    "showFullText": "Visa fullständig text"
+    "showFullText": "Visa fullständig text",
+    "deleting": "Tar bort…",
+    "unexpectedError": "Ett oväntat fel uppstod"
   },
   "nav": {
     "catalog": "Kravkatalog",
@@ -402,7 +404,9 @@
     "name": "Namn",
     "title": "Livscykelstatusar",
     "newItem": "Ny livscykelstatus",
-    "editItem": "Redigera livscykelstatus"
+    "editItem": "Redigera livscykelstatus",
+    "nameSvHelp": "Ange det svenska namnet för denna livscykelstatus. Det visas när applikationens språk är svenska.",
+    "nameEnHelp": "Ange det engelska namnet för denna livscykelstatus. Det visas när applikationens språk är engelska."
   },
   "theme": {
     "light": "Ljust",
@@ -625,7 +629,7 @@
       "title": "Kravdetalj",
       "status": {
         "heading": "Statusövergångar",
-        "body": "Använd statusfältet för att flytta kravet genom sin livscykel: Utkast → Granskning → Publicerad → Arkiverad. Varje övergång kräver en bekräftelse. Du kan återgå till Utkast från Granskning om mer arbete behövs."
+        "body": "Använd statusfältet för att flytta kravet genom sin livscykel: Utkast → Granskning → Publicerad. Arkivering sker via en arkiveringsgranskning: Publicerad → Granskning (arkivering) → Arkiverad. Varje övergång kräver en bekräftelse. Du kan återgå till Utkast från Granskning om mer arbete behövs."
       },
       "versions": {
         "heading": "Versioner",

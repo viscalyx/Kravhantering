@@ -68,10 +68,10 @@ describe('LifecycleStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     expect(
-      screen.getByLabelText(/lifecycleStatusMgmt\.name.+SV/),
+      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
     ).toBeInTheDocument()
     expect(
-      screen.getByLabelText(/lifecycleStatusMgmt\.name.+EN/),
+      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+EN/ }),
     ).toBeInTheDocument()
   })
 
@@ -82,12 +82,14 @@ describe('LifecycleStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/lifecycleStatusMgmt\.name.+SV/), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.change(screen.getByLabelText(/lifecycleStatusMgmt\.name.+EN/), {
-      target: { value: 'New' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
+      { target: { value: 'Ny' } },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+EN/ }),
+      { target: { value: 'New' } },
+    )
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
     fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleItems }))
@@ -113,9 +115,9 @@ describe('LifecycleStatusesClient', () => {
     fireEvent.click(editButtons[0])
     expect(
       (
-        screen.getByLabelText(
-          /lifecycleStatusMgmt\.name.+EN/,
-        ) as HTMLInputElement
+        screen.getByRole('textbox', {
+          name: /lifecycleStatusMgmt\.name.+EN/,
+        }) as HTMLInputElement
       ).value,
     ).toBe('Development')
   })
@@ -127,7 +129,9 @@ describe('LifecycleStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/lifecycleStatusMgmt\.name.+SV/)).toBeNull()
+    expect(
+      screen.queryByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
+    ).toBeNull()
   })
 
   it('deletes with confirm', async () => {

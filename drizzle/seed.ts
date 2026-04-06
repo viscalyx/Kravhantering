@@ -18,6 +18,7 @@ DELETE FROM package_needs_references;
 DELETE FROM requirement_packages;
 DELETE FROM package_responsibility_areas;
 DELETE FROM package_implementation_types;
+DELETE FROM package_lifecycle_statuses;
 DELETE FROM requirement_version_usage_scenarios;
 DELETE FROM requirement_version_norm_references;
 DELETE FROM requirement_versions;
