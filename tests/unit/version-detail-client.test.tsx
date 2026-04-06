@@ -36,7 +36,6 @@ function makeVersion(
     ownerName: null,
     publishedAt: null,
     qualityCharacteristic: { id: 4, nameSv: 'TC', nameEn: 'TypeCat' },
-    references: [],
     requiresTesting: true,
     status: 2,
     statusColor: '#eab308',

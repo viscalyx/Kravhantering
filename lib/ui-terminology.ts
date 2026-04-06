@@ -517,6 +517,7 @@ export function getRequirementCsvHeaders(
     getLocalizedUiTerm(terminology, 'requiresTesting', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'normReferences', locale, 'plural'),
+    locale === 'sv' ? 'Normreferens-URI' : 'Norm reference URI',
   ]
 }
 

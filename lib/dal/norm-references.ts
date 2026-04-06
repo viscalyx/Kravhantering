@@ -17,6 +17,7 @@ interface NormReferenceRow {
   reference: string
   type: string
   updatedAt: string
+  uri: string | null
   version: string | null
 }
 
@@ -187,6 +188,7 @@ export async function createNormReference(
     reference: string
     version?: string | null
     issuer: string
+    uri?: string | null
   },
 ): Promise<NormReferenceRow> {
   const normReferenceId =
@@ -201,6 +203,7 @@ export async function createNormReference(
       reference: data.reference,
       version: data.version ?? null,
       issuer: data.issuer,
+      uri: data.uri ?? null,
     })
     .returning()
   return row
@@ -216,6 +219,7 @@ export async function updateNormReference(
     reference?: string
     version?: string | null
     issuer?: string
+    uri?: string | null
   },
 ): Promise<NormReferenceRow | undefined> {
   const [updated] = await db

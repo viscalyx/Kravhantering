@@ -14,7 +14,6 @@ import {
   qualityCharacteristics,
   requirementAreas,
   requirementCategories,
-  requirementReferences,
   requirementStatuses,
   requirementStatusTransitions,
   requirements,
@@ -326,6 +325,12 @@ export async function listRequirements(
         JOIN norm_references nr ON nr.id = vnr.norm_reference_id
         WHERE vnr.requirement_version_id = ${requirementVersions.id}
       )`.as('norm_reference_ids'),
+      normReferenceUris: sql<string | null>`(
+        SELECT GROUP_CONCAT(COALESCE(nr.uri, ''), ',')
+        FROM requirement_version_norm_references vnr
+        JOIN norm_references nr ON nr.id = vnr.norm_reference_id
+        WHERE vnr.requirement_version_id = ${requirementVersions.id}
+      )`.as('norm_reference_uris'),
     })
     .from(requirements)
     .innerJoin(
@@ -503,7 +508,6 @@ export async function getRequirementById(db: Database, id: number) {
           type: true,
           qualityCharacteristic: true,
           status: true,
-          references: true,
           versionNormReferences: {
             with: {
               normReference: true,
@@ -1022,10 +1026,7 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     throw conflictError('Only draft versions can be deleted')
   }
 
-  // Delete related references, scenarios, and norm references first
-  await db
-    .delete(requirementReferences)
-    .where(eq(requirementReferences.requirementVersionId, latestVersion.id))
+  // Delete related scenarios and norm references first
   await db
     .delete(requirementVersionUsageScenarios)
     .where(
@@ -1260,7 +1261,6 @@ export async function restoreVersion(
   const oldVersion = await db.query.requirementVersions.findFirst({
     where: eq(requirementVersions.id, versionId),
     with: {
-      references: true,
       versionNormReferences: true,
       versionScenarios: true,
     },
@@ -1301,18 +1301,6 @@ export async function restoreVersion(
     })
     .returning()
 
-  // Copy references
-  if (oldVersion.references.length > 0) {
-    await db.insert(requirementReferences).values(
-      oldVersion.references.map(ref => ({
-        requirementVersionId: newVersion.id,
-        name: ref.name,
-        owner: ref.owner,
-        uri: ref.uri,
-      })),
-    )
-  }
-
   if (oldVersion.versionScenarios.length > 0) {
     await db.insert(requirementVersionUsageScenarios).values(
       oldVersion.versionScenarios.map(versionScenario => ({
@@ -1344,7 +1332,6 @@ export async function getVersionHistory(db: Database, requirementId: number) {
       type: true,
       qualityCharacteristic: true,
       status: true,
-      references: true,
       versionScenarios: {
         with: {
           scenario: true,

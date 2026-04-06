@@ -4,13 +4,6 @@ export interface RequirementLocalizedEntity {
   nameSv: string | null
 }
 
-export interface RequirementReference {
-  id: number
-  name: string
-  owner?: string | null
-  uri: string | null
-}
-
 export interface RequirementScenarioSummary extends RequirementLocalizedEntity {
   descriptionEn: string | null
   descriptionSv: string | null
@@ -28,6 +21,7 @@ export interface NormReferenceSummary {
   normReferenceId: string
   reference: string
   type: string
+  uri: string | null
   version: string | null
 }
 
@@ -48,7 +42,6 @@ export interface RequirementVersionDetail {
   ownerName: string | null
   publishedAt: string | null
   qualityCharacteristic: RequirementLocalizedEntity | null
-  references: RequirementReference[]
   requiresTesting: boolean
   status: number
   statusColor: string | null

@@ -20,7 +20,6 @@ DELETE FROM package_responsibility_areas;
 DELETE FROM package_implementation_types;
 DELETE FROM requirement_version_usage_scenarios;
 DELETE FROM requirement_version_norm_references;
-DELETE FROM requirement_references;
 DELETE FROM requirement_versions;
 DELETE FROM norm_references;
 DELETE FROM usage_scenarios;
@@ -1417,20 +1416,14 @@ INSERT OR IGNORE INTO requirement_version_usage_scenarios (requirement_version_i
   (69, 3),
   (70, 3);
 
--- ─── Requirement References (sample) ────────────────────────────────────────
-INSERT OR IGNORE INTO requirement_references (id, requirement_version_id, name, uri, owner, created_at) VALUES
-  (1, 5, 'OWASP API Security Top 10', 'https://owasp.org/API-Security/', 'owner-2', datetime('now')),
-  (2, 6, 'GDPR Artikel 32', 'https://gdpr-info.eu/art-32-gdpr/', 'owner-2', datetime('now')),
-  (3, 2, 'REST API Design Guidelines', 'https://restfulapi.net/', 'owner-1', datetime('now'));
-
 -- ─── Norm References ─────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO norm_references (id, norm_reference_id, name, type, reference, version, issuer, created_at, updated_at) VALUES
-  (1, 'SFS 2018:218',       'Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning', 'Lag', 'SFS 2018:218', NULL, 'Riksdagen', datetime('now'), datetime('now')),
-  (2, 'ISO/IEC 27001:2022', 'Ledningssystem för informationssäkerhet',                     'Standard',   'ISO/IEC 27001:2022', '2022', 'ISO/IEC',                                               datetime('now'), datetime('now')),
-  (3, 'MSBFS 2020:6',       'Föreskrifter om informationssäkerhet för statliga myndigheter','Föreskrift', 'MSBFS 2020:6',       NULL,   'Myndigheten för samhällsskydd och beredskap (MSB)',      datetime('now'), datetime('now')),
-  (4, 'RFC 6749',            'The OAuth 2.0 Authorization Framework',                       'Standard',   'RFC 6749',           NULL,   'IETF',                                                  datetime('now'), datetime('now')),
-  (5, 'ISO/IEC 25010:2023',  'Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)','Standard', 'ISO/IEC 25010:2023', '2023', 'ISO/IEC',                                               datetime('now'), datetime('now')),
-  (6, 'EU 2022/2555',        'NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå','Direktiv','EU 2022/2555',        NULL,   'Europeiska unionens råd och Europaparlamentet',          datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO norm_references (id, norm_reference_id, name, type, reference, version, issuer, uri, created_at, updated_at) VALUES
+  (1, 'SFS 2018:218',       'Lag (2018:218) med kompletterande bestämmelser till EU:s dataskyddsförordning', 'Lag', 'SFS 2018:218', NULL, 'Riksdagen', 'https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svensk-forfattningssamling/lag-2018218-med-kompletterande-bestammelser_sfs-2018-218/', datetime('now'), datetime('now')),
+  (2, 'ISO/IEC 27001:2022', 'Ledningssystem för informationssäkerhet',                     'Standard',   'ISO/IEC 27001:2022', '2022', 'ISO/IEC', 'https://www.iso.org/standard/27001', datetime('now'), datetime('now')),
+  (3, 'MSBFS 2020:6',       'Föreskrifter om informationssäkerhet för statliga myndigheter','Föreskrift', 'MSBFS 2020:6',       NULL,   'Myndigheten för samhällsskydd och beredskap (MSB)', NULL, datetime('now'), datetime('now')),
+  (4, 'RFC 6749',            'The OAuth 2.0 Authorization Framework',                       'Standard',   'RFC 6749',           NULL,   'IETF', 'https://datatracker.ietf.org/doc/html/rfc6749', datetime('now'), datetime('now')),
+  (5, 'ISO/IEC 25010:2023',  'Kvalitetskrav och utvärdering av system och mjukvara (SQuaRE)','Standard', 'ISO/IEC 25010:2023', '2023', 'ISO/IEC', NULL, datetime('now'), datetime('now')),
+  (6, 'EU 2022/2555',        'NIS2-direktivet – åtgärder för hög gemensam cybersäkerhetsnivå','Direktiv','EU 2022/2555',        NULL,   'Europeiska unionens råd och Europaparlamentet', 'https://eur-lex.europa.eu/eli/dir/2022/2555', datetime('now'), datetime('now'));
 
 -- ─── Requirement Version ↔ Norm Reference links ───────────────────────────────
 -- version 5  = SÄK0001 v1 (OAuth2-autentisering, Published)

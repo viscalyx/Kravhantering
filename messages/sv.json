@@ -349,6 +349,9 @@
     "typeSuggestionRegulation": "Förordning",
     "typeSuggestionStandard": "Standard",
     "typeSuggestionStrategicGuideline": "Strategisk riktlinje",
+    "uri": "URI",
+    "uriHelp": "<strong>Ange valfritt en webblänk till det officiella dokumentet.</strong>\nNär en URI är angiven blir normreferensens namn en klickbar länk i kravdetaljvyn.",
+    "uriPlaceholder": "https://example.com/document",
     "version": "Version",
     "versionHelp": "<strong>Ange valfritt dokumentets utgåva eller version.</strong>\nAnvänd detta för att skilja mellan revisioner av samma dokument, t.ex. 2022 eller 3:e utgåvan.",
     "emptyState": "Inga normreferenser ännu. Skapa din första normreferens."

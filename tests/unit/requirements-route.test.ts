@@ -71,6 +71,7 @@ describe('requirements route CSV locale fallback', () => {
         {
           area: { name: 'Integration' },
           normReferenceIds: ['ISO/IEC 27001:2022'],
+          normReferenceUris: ['https://www.iso.org/standard/27001'],
           uniqueId: 'REQ-1',
           version: {
             categoryNameEn: 'Business requirement',
@@ -129,10 +130,12 @@ describe('requirements route CSV locale fallback', () => {
       'Verifiable',
       'Version',
       'Norm references',
+      'Norm reference URI',
     ])
     expect(firstExportCall?.[1]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
+          'Norm reference URI': 'https://www.iso.org/standard/27001',
           'Norm references': 'ISO/IEC 27001:2022',
         }),
       ]),

@@ -203,10 +203,13 @@ function renderRequirementHtml(
   const detail = payload.requirement
   const selectedVersion = payload.version ?? detail.versions[0]
 
-  const references = Array.isArray(selectedVersion?.references)
-    ? (selectedVersion.references as {
-        name?: string
-        uri?: string | null
+  const normReferences = Array.isArray(selectedVersion?.versionNormReferences)
+    ? (selectedVersion.versionNormReferences as {
+        normReference?: {
+          name?: string
+          reference?: string
+          uri?: string | null
+        }
       }[])
     : []
   const scenarios = Array.isArray(selectedVersion?.versionScenarios)
@@ -251,20 +254,21 @@ function renderRequirementHtml(
     )
     .filter((name): name is string => Boolean(name))
 
-  const referenceMarkup =
-    references.length > 0
-      ? `<ul>${references
-          .map(reference => {
-            const label = escapeHtml(reference.name ?? unnamedReferenceLabel)
+  const normReferenceMarkup =
+    normReferences.length > 0
+      ? `<ul>${normReferences
+          .map(item => {
+            const nr = item.normReference
+            const label = escapeHtml(
+              nr?.name ?? nr?.reference ?? unnamedReferenceLabel,
+            )
             const safeHref =
-              typeof reference.uri === 'string'
-                ? getSafeReferenceHref(reference.uri)
-                : null
+              typeof nr?.uri === 'string' ? getSafeReferenceHref(nr.uri) : null
             if (safeHref) {
               return `<li><a href="${escapeHtml(safeHref)}">${label}</a></li>`
             }
-            if (reference.uri) {
-              return `<li>${label}: ${escapeHtml(reference.uri)}</li>`
+            if (nr?.uri) {
+              return `<li>${label}: ${escapeHtml(nr.uri)}</li>`
             }
             return `<li>${label}</li>`
           })
@@ -332,7 +336,7 @@ function renderRequirementHtml(
     '        </div>',
     '      </section>',
     '      <section class="split">',
-    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'references', locale, 'plural'))}</h2>${referenceMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'references', locale, 'plural'))}</h2>${normReferenceMarkup}</section>`,
     `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'scenario', locale, 'plural'))}</h2>${scenarioMarkup}</section>`,
     '      </section>',
     '    </article>',
@@ -388,15 +392,6 @@ function createGetRequirementSchema() {
     .strict()
 }
 
-const ReferenceInputSchema = z
-  .object({
-    id: z.number().int().positive().optional(),
-    name: z.string().min(1).max(200),
-    owner: z.string().max(200).optional(),
-    uri: z.string().url().optional(),
-  })
-  .strict()
-
 const RequirementMutationSchema = z
   .object({
     acceptanceCriteria: z.string().max(4000).optional(),
@@ -404,7 +399,6 @@ const RequirementMutationSchema = z
     categoryId: z.number().int().positive().optional(),
     createdBy: z.string().max(200).optional(),
     description: z.string().max(4000).optional(),
-    references: z.array(ReferenceInputSchema).optional(),
     requiresTesting: z.boolean().optional(),
     verificationMethod: z.string().max(4000).optional(),
     scenarioIds: z.array(z.number().int().positive()).optional(),

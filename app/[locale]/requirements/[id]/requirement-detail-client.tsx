@@ -1538,49 +1538,6 @@ export default function RequirementDetailClient({
                   </div>
                 </div>
 
-                {selectedVersion?.references &&
-                  selectedVersion.references.length > 0 && (
-                    <div
-                      {...devMarker({
-                        context: detailContext,
-                        name: 'detail section',
-                        priority: 350,
-                        value: 'references',
-                      })}
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('reference')}
-                      </h3>
-                      <ul className="space-y-1">
-                        {selectedVersion.references.map(ref => (
-                          <li
-                            className="text-sm"
-                            key={`reference-item-${ref.id}`}
-                            {...devMarker({
-                              context: buildDetailSectionContext('references'),
-                              name: 'reference item',
-                              priority: 360,
-                              value: ref.name,
-                            })}
-                          >
-                            {ref.uri ? (
-                              <a
-                                className="text-primary-700 dark:text-primary-300 hover:underline"
-                                href={ref.uri}
-                                rel="noopener noreferrer"
-                                target="_blank"
-                              >
-                                {ref.name}
-                              </a>
-                            ) : (
-                              ref.name
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
                 <div
                   {...devMarker({
                     context: detailContext,
@@ -1607,7 +1564,18 @@ export default function RequirementDetailClient({
                             value: vnr.normReference.normReferenceId,
                           })}
                         >
-                          {vnr.normReference.normReferenceId}
+                          {vnr.normReference.uri ? (
+                            <a
+                              className="underline hover:text-primary-600 dark:hover:text-primary-400"
+                              href={vnr.normReference.uri}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              {vnr.normReference.normReferenceId}
+                            </a>
+                          ) : (
+                            vnr.normReference.normReferenceId
+                          )}
                         </li>
                       ))}
                     </ul>

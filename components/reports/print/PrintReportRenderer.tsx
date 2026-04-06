@@ -396,13 +396,13 @@ function VersionDetails({
           />
         )}
       </div>
-      {version.references.length > 0 && (
+      {version.normReferences.length > 0 && (
         <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontWeight: 600, color: '#374151' }}>
             {locale === 'sv' ? 'Referenser' : 'References'}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
-            {version.references.map(r => r.name).join(', ')}
+            {version.normReferences.map(r => r.name).join(', ')}
           </span>
         </div>
       )}

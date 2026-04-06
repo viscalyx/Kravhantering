@@ -70,28 +70,6 @@ export async function PUT(
         categoryId: body.categoryId ? Number(body.categoryId) : undefined,
         createdBy: body.ownerId ? String(body.ownerId) : undefined,
         description: String(body.description ?? ''),
-        references: Array.isArray(body.references)
-          ? body.references
-              .filter(
-                (
-                  reference,
-                ): reference is {
-                  id?: number
-                  name?: string
-                  owner?: string
-                  uri?: string
-                } =>
-                  typeof reference === 'object' &&
-                  reference !== null &&
-                  typeof reference.name === 'string',
-              )
-              .map(reference => ({
-                id: reference.id,
-                name: reference.name ?? '',
-                owner: reference.owner,
-                uri: reference.uri,
-              }))
-          : undefined,
         normReferenceIds: Array.isArray(body.normReferenceIds)
           ? body.normReferenceIds
               .map(value => Number(value))

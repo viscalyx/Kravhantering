@@ -59,6 +59,7 @@ export async function POST(request: Request) {
       reference,
       version: typeof body.version === 'string' ? body.version || null : null,
       issuer,
+      uri: typeof body.uri === 'string' ? body.uri.trim() || null : null,
     })
     return NextResponse.json(normReference, { status: 201 })
   } catch {

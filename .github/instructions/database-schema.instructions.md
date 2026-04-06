@@ -1,5 +1,5 @@
 ---
-applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md}"
+applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
 ---
 
 # Database Schema Changes
@@ -67,6 +67,13 @@ update **every** applicable section of `docs/database-schema.md`:
    prose when status or transition rows change.
 7. **Database Naming Standard** — update rules or accepted exceptions
    when a new naming pattern is introduced.
+
+## Architecture Data Model
+
+When tables or relationships are added, removed, or renamed, update the
+Mermaid `erDiagram` in the "Datamodell — kärnrelationer" section of
+`docs/arkitekturbeskrivning-kravhantering.md`. The ER diagram there must
+reflect the same entities and relationships as the schema.
 
 ## Removal Cleanup
 

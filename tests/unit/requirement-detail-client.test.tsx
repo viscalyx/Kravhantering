@@ -248,7 +248,6 @@ function makeVersion(
     id: versionNumber,
     ownerName: 'Owner',
     publishedAt: null,
-    references: [],
     requiresTesting: false,
     qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
     status: 1,
@@ -565,9 +564,6 @@ describe('RequirementDetailClient', () => {
         acceptanceCriteria: 'Published acceptance',
         description: 'Published description',
         publishedAt: '2026-03-02',
-        references: [
-          { id: 1, name: 'API spec', uri: 'https://example.com/spec' },
-        ],
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -602,14 +598,6 @@ describe('RequirementDetailClient', () => {
         .getByText('Published acceptance')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'acceptance criteria')
-    expect(
-      screen
-        .getByText('API spec')
-        .closest('[data-developer-mode-name="reference item"]'),
-    ).toHaveAttribute(
-      'data-developer-mode-context',
-      `${detailContext} > detail section: references`,
-    )
     expect(
       screen
         .getByText('Bestallning')
@@ -792,9 +780,6 @@ describe('RequirementDetailClient', () => {
         category: { nameEn: 'Category', nameSv: 'Kategori' },
         description: 'Published description',
         publishedAt: '2026-03-02',
-        references: [
-          { id: 1, name: 'API spec', uri: 'https://example.com/spec' },
-        ],
         requiresTesting: true,
         status: 3,
         statusColor: '#22c55e',
@@ -828,10 +813,6 @@ describe('RequirementDetailClient', () => {
 
     expect(await screen.findByText('Published description')).toBeInTheDocument()
     expect(screen.getByText(/Pending version v3 Utkast/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'API spec' })).toHaveAttribute(
-      'href',
-      'https://example.com/spec',
-    )
     expect(screen.getByText('Bestallning')).toBeInTheDocument()
     expect(screen.getByText('Core platform')).toBeInTheDocument()
     expect(screen.getByText('Kategori')).toBeInTheDocument()

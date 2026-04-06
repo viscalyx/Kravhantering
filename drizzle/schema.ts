@@ -313,42 +313,8 @@ export const requirementVersionsRelations = relations(
       fields: [requirementVersions.qualityCharacteristicId],
       references: [qualityCharacteristics.id],
     }),
-    references: many(requirementReferences),
     versionScenarios: many(requirementVersionUsageScenarios),
     versionNormReferences: many(requirementVersionNormReferences),
-  }),
-)
-
-// ─── Requirement References ──────────────────────────────────────────────────
-
-export const requirementReferences = sqliteTable(
-  'requirement_references',
-  {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    requirementVersionId: integer('requirement_version_id')
-      .notNull()
-      .references(() => requirementVersions.id),
-    name: text('name').notNull(),
-    uri: text('uri'),
-    owner: text('owner'),
-    createdAt: text('created_at')
-      .notNull()
-      .$defaultFn(() => new Date().toISOString()),
-  },
-  table => [
-    index('idx_requirement_references_requirement_version_id').on(
-      table.requirementVersionId,
-    ),
-  ],
-)
-
-export const requirementReferencesRelations = relations(
-  requirementReferences,
-  ({ one }) => ({
-    version: one(requirementVersions, {
-      fields: [requirementReferences.requirementVersionId],
-      references: [requirementVersions.id],
-    }),
   }),
 )
 
@@ -429,6 +395,7 @@ export const normReferences = sqliteTable(
     reference: text('reference').notNull(),
     version: text('version'),
     issuer: text('issuer').notNull(),
+    uri: text('uri'),
     createdAt: text('created_at')
       .notNull()
       .$defaultFn(() => new Date().toISOString()),

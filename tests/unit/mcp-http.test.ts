@@ -23,7 +23,9 @@ import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 function createFakeService(
-  references: Array<{ name?: string; uri?: string | null }> = [],
+  normReferences: Array<{
+    normReference?: { name?: string; reference?: string; uri?: string | null }
+  }> = [],
   requiresTesting = true,
 ) {
   return {
@@ -51,7 +53,7 @@ function createFakeService(
             },
             description: 'Support secure integration',
             id: 10,
-            references,
+            versionNormReferences: normReferences,
             requiresTesting,
             statusNameEn: 'Draft',
             statusNameSv: 'Utkast',
@@ -82,7 +84,7 @@ function createFakeService(
         },
         description: 'Support secure integration',
         id: 10,
-        references,
+        versionNormReferences: normReferences,
         requiresTesting,
         statusNameEn: 'Draft',
         statusNameSv: 'Utkast',
@@ -413,7 +415,9 @@ describe('handleRequirementsMcpRequest', () => {
   })
 
   it('localizes unnamed references in Swedish HTML resources', async () => {
-    serviceState.getService.mockReturnValue(createFakeService([{}]))
+    serviceState.getService.mockReturnValue(
+      createFakeService([{ normReference: {} }]),
+    )
 
     const { client, transport } = await createClient()
     const viewResource = await client.readResource({
@@ -492,8 +496,10 @@ describe('handleRequirementsMcpRequest', () => {
     serviceState.getService.mockReturnValue(
       createFakeService([
         {
-          name: 'Dangerous reference',
-          uri: 'javascript:alert(1)',
+          normReference: {
+            name: 'Dangerous reference',
+            uri: 'javascript:alert(1)',
+          },
         },
       ]),
     )

@@ -131,6 +131,7 @@ export async function GET(request: NextRequest) {
               : 'No',
           String(r.version?.versionNumber ?? 1),
           (r.normReferenceIds ?? []).join(', '),
+          (r.normReferenceUris ?? []).filter(Boolean).join(', '),
         ]
         return Object.fromEntries(headers.map((h, i) => [h, values[i]]))
       })
@@ -175,28 +176,6 @@ export async function POST(request: NextRequest) {
         categoryId: body.categoryId ? Number(body.categoryId) : undefined,
         createdBy: body.ownerId ? String(body.ownerId) : undefined,
         description: String(body.description ?? ''),
-        references: Array.isArray(body.references)
-          ? body.references
-              .filter(
-                (
-                  reference,
-                ): reference is {
-                  id?: number
-                  name?: string
-                  owner?: string
-                  uri?: string
-                } =>
-                  typeof reference === 'object' &&
-                  reference !== null &&
-                  typeof reference.name === 'string',
-              )
-              .map(reference => ({
-                id: reference.id,
-                name: reference.name ?? '',
-                owner: reference.owner,
-                uri: reference.uri,
-              }))
-          : undefined,
         normReferenceIds: Array.isArray(body.normReferenceIds)
           ? body.normReferenceIds
               .filter(

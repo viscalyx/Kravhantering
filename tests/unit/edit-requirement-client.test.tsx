@@ -61,7 +61,6 @@ function makeVersion(
     ownerName: 'Owner',
     publishedAt: null,
     qualityCharacteristic: null,
-    references: [],
     requiresTesting: true,
     status: 1,
     statusColor: '#3b82f6',

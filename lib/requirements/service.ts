@@ -8,7 +8,6 @@ import {
   listPackages,
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
-import { replaceReferencesForVersion } from '@/lib/dal/requirement-references'
 import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
 import {
   listQualityCharacteristics,
@@ -78,13 +77,6 @@ export type CatalogKind =
   | 'scenarios'
   | 'transitions'
 
-export interface RequirementReferenceInput {
-  id?: number
-  name: string
-  owner?: string
-  uri?: string
-}
-
 export interface RequirementMutationInput {
   acceptanceCriteria?: string
   areaId?: number
@@ -93,7 +85,6 @@ export interface RequirementMutationInput {
   description?: string
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
-  references?: RequirementReferenceInput[]
   requiresTesting?: boolean
   scenarioIds?: number[]
   typeId?: number
@@ -306,6 +297,9 @@ function formatRequirementListItem(
     normReferenceIds: item.normReferenceIds
       ? item.normReferenceIds.split(',').filter(Boolean)
       : [],
+    normReferenceUris: item.normReferenceUris
+      ? item.normReferenceUris.split(',')
+      : [],
     uniqueId: item.uniqueId,
     version: {
       acceptanceCriteria: item.acceptanceCriteria,
@@ -367,12 +361,6 @@ function formatRequirementDetail(
       id: version.id,
       ownerName: version.createdBy ?? null,
       publishedAt: version.publishedAt,
-      references: version.references.map(reference => ({
-        id: reference.id,
-        name: reference.name,
-        owner: reference.owner,
-        uri: reference.uri,
-      })),
       requiresTesting: version.requiresTesting,
       verificationMethod: version.verificationMethod,
       status: version.status,
@@ -401,6 +389,7 @@ function formatRequirementDetail(
           normReferenceId: vnr.normReference?.normReferenceId ?? '',
           reference: vnr.normReference?.reference ?? '',
           type: vnr.normReference?.type ?? '',
+          uri: vnr.normReference?.uri ?? null,
           version: vnr.normReference?.version ?? null,
         },
       })),
@@ -554,14 +543,6 @@ async function resolveRequirementId(db: Database, ref: RequirementRefInput) {
   }
 
   return requirement.id
-}
-
-async function syncReferences(
-  db: Database,
-  versionId: number,
-  references: RequirementReferenceInput[] | undefined,
-) {
-  await replaceReferencesForVersion(db, versionId, references ?? [])
 }
 
 async function ensureAreaExists(db: Database, areaId: number | undefined) {
@@ -1065,7 +1046,6 @@ export function createRequirementsService(
               verificationMethod: payload.verificationMethod,
               scenarioIds: payload.scenarioIds,
             })
-            await syncReferences(db, created.version.id, payload.references)
 
             const detail = formatRequirementDetail(
               (await getRequirementById(db, created.requirement.id)) ??
@@ -1125,7 +1105,6 @@ export function createRequirementsService(
               verificationMethod: payload.verificationMethod,
               scenarioIds: payload.scenarioIds,
             })
-            await syncReferences(db, version.id, payload.references)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1289,10 +1268,6 @@ export function createRequirementsService(
             version.id,
             context.actor.id ?? undefined,
           )
-
-          if (input.requirement?.references) {
-            await syncReferences(db, restored.id, input.requirement.references)
-          }
 
           const detail = formatRequirementDetail(
             (await getRequirementById(db, requirementId)) ??
