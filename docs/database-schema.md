@@ -85,6 +85,7 @@ Apply these rules to all schema objects.
 | 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. SQLite does not support adding a PK via `ALTER TABLE`. |
 | 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the usage-scenarios join table above. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
+| Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
 <!-- markdownlint-enable MD013 -->
 
 ---
@@ -915,7 +916,6 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | Speed up listing requirements by area |
 | `idx_requirements_is_archived` | `requirements` | `is_archived` | Speed up filtering active vs archived requirements |
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
-| `idx_requirement_references_requirement_version_id` | `requirement_references` | `requirement_version_id` | Speed up fetching references for a version |
 | `idx_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | Speed up listing items in a package |
 | `idx_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | Speed up finding which packages contain a requirement |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
@@ -958,7 +958,6 @@ graph LR
         RA[requirement_areas]
         R[requirements]
         RV[requirement_versions]
-        RR[requirement_references]
     end
 
     subgraph Packages
@@ -985,7 +984,7 @@ graph LR
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
 
-    RR -- "idx_..._requirement_version_id\n(requirement_version_id)" --> RV
+    RVNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
 
     RTC -- "idx_..._requirement_type_id\n(requirement_type_id)" --> RT
     RTC -- "idx_..._parent_id\n(parent_id)" --> RTC
