@@ -92,6 +92,7 @@ export interface RequirementRow {
     riskLevelNameEn: string | null
     riskLevelNameSv: string | null
     riskLevelColor: string | null
+    riskLevelSortOrder: number | null
     status: number
     statusColor: string | null
     statusNameEn: string | null
@@ -954,8 +955,8 @@ export function compareRequirementRows(
       break
     case 'riskLevel':
       result = compareNumber(
-        left.version?.riskLevelId,
-        right.version?.riskLevelId,
+        left.version?.riskLevelSortOrder,
+        right.version?.riskLevelSortOrder,
         sort.direction,
       )
       break

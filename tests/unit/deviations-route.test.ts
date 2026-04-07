@@ -11,6 +11,7 @@ const mocks = {
   getDeviation: vi.fn(),
   getPackageById: vi.fn(),
   getPackageBySlug: vi.fn(),
+  getPackageItemById: vi.fn(),
   listDeviationsForPackage: vi.fn(),
   listDeviationsForPackageItem: vi.fn(),
   recordDecision: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('@/lib/dal/deviations', () => ({
 vi.mock('@/lib/dal/requirement-packages', () => ({
   getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
   getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
+  getPackageItemById: (...args: unknown[]) => mocks.getPackageItemById(...args),
 }))
 
 import { POST as postDecision } from '@/app/api/deviations/[id]/decision/route'
@@ -82,6 +84,7 @@ describe('deviation routes', () => {
     vi.clearAllMocks()
     mocks.getPackageBySlug.mockResolvedValue({ id: 5 })
     mocks.getPackageById.mockResolvedValue({ id: 5 })
+    mocks.getPackageItemById.mockResolvedValue({ id: 1, packageId: 5 })
   })
 
   describe('GET /requirement-packages/[id]/deviations', () => {

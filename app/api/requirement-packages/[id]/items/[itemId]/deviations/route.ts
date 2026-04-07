@@ -4,6 +4,7 @@ import {
   createDeviation,
   listDeviationsForPackageItem,
 } from '@/lib/dal/deviations'
+import { getPackageItemById } from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
@@ -25,6 +26,14 @@ export async function GET(
 
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
+
+  const item = await getPackageItemById(db, numericItemId)
+  if (!item || item.packageId !== numericId) {
+    return NextResponse.json(
+      { error: 'Item not found in package' },
+      { status: 404 },
+    )
+  }
 
   const deviations = await listDeviationsForPackageItem(db, numericItemId)
   return NextResponse.json({ deviations })
@@ -69,6 +78,14 @@ export async function POST(
 
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
+
+  const item = await getPackageItemById(db, numericItemId)
+  if (!item || item.packageId !== numericId) {
+    return NextResponse.json(
+      { error: 'Item not found in package' },
+      { status: 404 },
+    )
+  }
 
   try {
     const result = await createDeviation(db, {

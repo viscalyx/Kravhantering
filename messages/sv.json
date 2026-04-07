@@ -359,7 +359,8 @@
     "createdByPlaceholder": "Ange namn",
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast.",
-    "riskLevel": "Risknivå"
+    "riskLevel": "Risknivå",
+    "bulkDeviationPartialFail": "{count, plural, one {1 avstegsförfrågan misslyckades} other {# avstegsförfrågningar misslyckades}}"
   },
   "reports": {
     "errorTitle": "Fel",

@@ -359,7 +359,8 @@
     "createdByPlaceholder": "Enter name",
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft.",
-    "riskLevel": "Risk level"
+    "riskLevel": "Risk level",
+    "bulkDeviationPartialFail": "{count, plural, one {1 deviation request failed} other {# deviation requests failed}}"
   },
   "reports": {
     "errorTitle": "Error",

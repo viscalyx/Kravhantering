@@ -165,6 +165,9 @@ export default function KravpaketDetailClient({
   const [showEditPackageForm, setShowEditPackageForm] = useState(false)
   const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
   const [bulkDeviationSaving, setBulkDeviationSaving] = useState(false)
+  const [bulkDeviationError, setBulkDeviationError] = useState<string | null>(
+    null,
+  )
 
   // Left panel state
   const [leftSelectedIds, setLeftSelectedIds] = useState<Set<number>>(new Set())
@@ -673,6 +676,7 @@ export default function KravpaketDetailClient({
     async (motivation: string, createdBy: string) => {
       if (leftSelectedIds.size === 0) return
       setBulkDeviationSaving(true)
+      setBulkDeviationError(null)
       try {
         const items = packageItems.filter(r => leftSelectedIds.has(r.id))
         const results = await Promise.allSettled(
@@ -701,13 +705,17 @@ export default function KravpaketDetailClient({
             )
             .map(r => r.value),
         )
-        const allSucceeded = results.every(r => r.status === 'fulfilled')
+        const failedCount = results.filter(r => r.status === 'rejected').length
         setLeftSelectedIds(prev => {
           const next = new Set(prev)
           for (const id of succeededIds) next.delete(id)
           return next
         })
-        if (allSucceeded) {
+        if (failedCount > 0) {
+          setBulkDeviationError(
+            td('bulkDeviationPartialFail', { count: failedCount }),
+          )
+        } else {
           setShowBulkDeviationModal(false)
         }
         await fetchPackageItems()
@@ -715,7 +723,7 @@ export default function KravpaketDetailClient({
         setBulkDeviationSaving(false)
       }
     },
-    [fetchPackageItems, leftSelectedIds, packageItems, packageSlug],
+    [fetchPackageItems, leftSelectedIds, packageItems, packageSlug, td],
   )
 
   const getName = (opt: { nameSv: string; nameEn: string }) =>
@@ -1332,10 +1340,21 @@ export default function KravpaketDetailClient({
               )}
               <DeviationFormModal
                 loading={bulkDeviationSaving}
-                onClose={() => setShowBulkDeviationModal(false)}
+                onClose={() => {
+                  setShowBulkDeviationModal(false)
+                  setBulkDeviationError(null)
+                }}
                 onSubmit={handleBulkDeviation}
                 open={showBulkDeviationModal}
               />
+              {bulkDeviationError && showBulkDeviationModal && (
+                <div
+                  className="fixed bottom-6 left-1/2 z-60 -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-lg dark:border-red-900/60 dark:bg-red-950/90 dark:text-red-300"
+                  role="alert"
+                >
+                  {bulkDeviationError}
+                </div>
+              )}
             </div>
 
             {/* Right panel: Tillgängliga krav */}

@@ -325,6 +325,7 @@ function formatRequirementListItem(
       riskLevelNameEn: item.riskLevelNameEn,
       riskLevelNameSv: item.riskLevelNameSv,
       riskLevelColor: item.riskLevelColor,
+      riskLevelSortOrder: item.riskLevelSortOrder ?? null,
       status: item.status,
       statusColor: item.statusColor,
       statusNameEn: item.statusNameEn,

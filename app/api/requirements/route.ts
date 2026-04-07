@@ -207,11 +207,7 @@ export async function POST(request: NextRequest) {
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,
-        riskLevelId: body.riskLevelId
-          ? Number.isFinite(Number(body.riskLevelId))
-            ? Number(body.riskLevelId)
-            : undefined
-          : undefined,
+        riskLevelId: body.riskLevelId ? Number(body.riskLevelId) : undefined,
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },
     })

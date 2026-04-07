@@ -164,6 +164,7 @@ export default function PackageItemStatusesClient() {
   }
 
   const handleEdit = (s: PackageItemStatus) => {
+    setSubmitError(null)
     setEditId(s.id)
     setLinkedItems([])
     setForm({
@@ -203,6 +204,11 @@ export default function PackageItemStatusesClient() {
         )
         return
       }
+      if (editId === id) {
+        setEditId(null)
+        setShowForm(false)
+        setLinkedItems([])
+      }
       fetchStatuses()
     } catch {
       setDeleteError(tc('error'))
@@ -230,6 +236,7 @@ export default function PackageItemStatusesClient() {
             })}
             disabled={submitting}
             onClick={() => {
+              setSubmitError(null)
               setShowForm(true)
               setEditId(null)
               setLinkedItems([])
@@ -493,6 +500,7 @@ export default function PackageItemStatusesClient() {
         {deleteError && (
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
             {...devMarker({
               context: 'package-item-statuses',
               name: 'error banner',

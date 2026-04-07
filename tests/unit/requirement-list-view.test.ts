@@ -39,6 +39,7 @@ function makeRow(overrides: Record<string, unknown> = {}) {
       riskLevelNameEn: null,
       riskLevelNameSv: null,
       riskLevelColor: null,
+      riskLevelSortOrder: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 2,
