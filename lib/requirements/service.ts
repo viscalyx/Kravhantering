@@ -1813,13 +1813,14 @@ export function createRequirementsService(
             if (!input.packageItemId) {
               throw validationError('Package item ID is required')
             }
-            if (!input.motivation) {
+            const trimmedMotivation = input.motivation?.trim()
+            if (!trimmedMotivation) {
               throw validationError('Motivation is required')
             }
             const result = await createDeviation(db, {
               packageItemId: input.packageItemId,
-              motivation: input.motivation,
-              createdBy: input.createdBy,
+              motivation: trimmedMotivation,
+              createdBy: context.actor.id,
             })
             const summary =
               locale === 'sv'
@@ -1840,11 +1841,12 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'edit') {
-            if (!input.motivation) {
+            const trimmedMotivation = input.motivation?.trim()
+            if (!trimmedMotivation) {
               throw validationError('Motivation is required for editing')
             }
             await updateDeviation(db, input.deviationId, {
-              motivation: input.motivation,
+              motivation: trimmedMotivation,
             })
             const summary =
               locale === 'sv'
@@ -1861,19 +1863,21 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'record_decision') {
-            if (
-              input.decision == null ||
-              !input.decisionMotivation ||
-              !input.decidedBy
-            ) {
+            const trimmedDecisionMotivation = input.decisionMotivation?.trim()
+            if (input.decision == null || !trimmedDecisionMotivation) {
               throw validationError(
-                'Decision, decision motivation, and decided by are required',
+                'Decision and decision motivation are required',
+              )
+            }
+            if (!context.actor.id) {
+              throw validationError(
+                'Authenticated actor is required to record a decision',
               )
             }
             await recordDecision(db, input.deviationId, {
               decision: input.decision,
-              decisionMotivation: input.decisionMotivation,
-              decidedBy: input.decidedBy,
+              decisionMotivation: trimmedDecisionMotivation,
+              decidedBy: context.actor.id,
             })
             const decisionLabel =
               input.decision === 1

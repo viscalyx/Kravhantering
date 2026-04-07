@@ -13,6 +13,7 @@ import {
   requirements,
   requirementTypes,
   requirementVersions,
+  riskLevels,
 } from '@/drizzle/schema'
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { Database } from '@/lib/db'
@@ -711,6 +712,11 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       typeNameEn: requirementTypes.nameEn,
       qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
       qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
+      riskLevelId: requirementVersions.riskLevelId,
+      riskLevelNameSv: riskLevels.nameSv,
+      riskLevelNameEn: riskLevels.nameEn,
+      riskLevelColor: riskLevels.color,
+      riskLevelSortOrder: riskLevels.sortOrder,
       needsReferenceId: requirementPackageItems.needsReferenceId,
       needsReferenceText: packageNeedsReferences.text,
       packageItemId: requirementPackageItems.id,
@@ -758,6 +764,7 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
         requirementVersions.qualityCharacteristicId,
       ),
     )
+    .leftJoin(riskLevels, eq(riskLevels.id, requirementVersions.riskLevelId))
     .leftJoin(
       packageNeedsReferences,
       eq(packageNeedsReferences.id, requirementPackageItems.needsReferenceId),
@@ -790,11 +797,11 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       versionNumber: row.versionNumber,
       description: row.description,
       requiresTesting: row.requiresTesting,
-      riskLevelId: null,
-      riskLevelNameEn: null,
-      riskLevelNameSv: null,
-      riskLevelColor: null,
-      riskLevelSortOrder: null,
+      riskLevelId: row.riskLevelId ?? null,
+      riskLevelNameEn: row.riskLevelNameEn ?? null,
+      riskLevelNameSv: row.riskLevelNameSv ?? null,
+      riskLevelColor: row.riskLevelColor ?? null,
+      riskLevelSortOrder: row.riskLevelSortOrder ?? null,
       status: row.statusId,
       statusNameSv: row.statusNameSv ?? null,
       statusNameEn: row.statusNameEn ?? null,

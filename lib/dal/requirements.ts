@@ -1529,43 +1529,105 @@ export async function restoreVersion(
 
   const now = new Date().toISOString()
 
-  // Create new version with old data but status Utkast
-  const [newVersion] = await db
-    .insert(requirementVersions)
-    .values({
-      requirementId,
-      versionNumber: nextVersion,
-      description: oldVersion.description,
-      acceptanceCriteria: oldVersion.acceptanceCriteria,
-      requirementCategoryId: oldVersion.requirementCategoryId,
-      requirementTypeId: oldVersion.requirementTypeId,
-      qualityCharacteristicId: oldVersion.qualityCharacteristicId,
-      statusId: STATUS_DRAFT,
-      requiresTesting: oldVersion.requiresTesting,
-      verificationMethod: oldVersion.verificationMethod,
-      riskLevelId: oldVersion.riskLevelId,
-      createdBy: createdBy ?? oldVersion.createdBy,
-      editedAt: now,
-    })
-    .returning()
+  const sessionName = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
 
-  if (oldVersion.versionScenarios.length > 0) {
-    await db.insert(requirementVersionUsageScenarios).values(
-      oldVersion.versionScenarios.map(versionScenario => ({
-        requirementVersionId: newVersion.id,
-        usageScenarioId: versionScenario.usageScenarioId,
-      })),
-    )
+  // Create new version with old data but status Utkast
+  let newVersion!: typeof requirementVersions.$inferSelect
+
+  const versionData = {
+    requirementId,
+    versionNumber: nextVersion,
+    description: oldVersion.description,
+    acceptanceCriteria: oldVersion.acceptanceCriteria,
+    requirementCategoryId: oldVersion.requirementCategoryId,
+    requirementTypeId: oldVersion.requirementTypeId,
+    qualityCharacteristicId: oldVersion.qualityCharacteristicId,
+    statusId: STATUS_DRAFT,
+    requiresTesting: oldVersion.requiresTesting,
+    verificationMethod: oldVersion.verificationMethod,
+    riskLevelId: oldVersion.riskLevelId,
+    createdBy: createdBy ?? oldVersion.createdBy,
+    editedAt: now,
   }
 
-  // Copy norm references
-  if (oldVersion.versionNormReferences.length > 0) {
-    await db.insert(requirementVersionNormReferences).values(
-      oldVersion.versionNormReferences.map(vnr => ({
-        requirementVersionId: newVersion.id,
-        normReferenceId: vnr.normReferenceId,
-      })),
-    )
+  if (sessionName === 'BetterSQLiteSession') {
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      newVersion = (
+        tx.insert(requirementVersions).values(versionData) as unknown as {
+          returning: () => {
+            get: () => typeof requirementVersions.$inferSelect
+          }
+        }
+      )
+        .returning()
+        .get()
+
+      if (oldVersion.versionScenarios.length > 0) {
+        tx.insert(requirementVersionUsageScenarios)
+          .values(
+            oldVersion.versionScenarios.map(versionScenario => ({
+              requirementVersionId: newVersion.id,
+              usageScenarioId: versionScenario.usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (oldVersion.versionNormReferences.length > 0) {
+        tx.insert(requirementVersionNormReferences)
+          .values(
+            oldVersion.versionNormReferences.map(vnr => ({
+              requirementVersionId: newVersion.id,
+              normReferenceId: vnr.normReferenceId,
+            })),
+          )
+          .run()
+      }
+    })
+  } else {
+    await db.transaction(async tx => {
+      const [inserted] = await tx
+        .insert(requirementVersions)
+        .values(versionData)
+        .returning()
+
+      newVersion = inserted
+
+      if (oldVersion.versionScenarios.length > 0) {
+        await tx.insert(requirementVersionUsageScenarios).values(
+          oldVersion.versionScenarios.map(versionScenario => ({
+            requirementVersionId: inserted.id,
+            usageScenarioId: versionScenario.usageScenarioId,
+          })),
+        )
+      }
+
+      // Copy norm references
+      if (oldVersion.versionNormReferences.length > 0) {
+        await tx.insert(requirementVersionNormReferences).values(
+          oldVersion.versionNormReferences.map(vnr => ({
+            requirementVersionId: inserted.id,
+            normReferenceId: vnr.normReferenceId,
+          })),
+        )
+      }
+    })
   }
 
   return newVersion
