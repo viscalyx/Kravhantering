@@ -54,6 +54,7 @@ import {
   internalError,
   isRequirementsServiceError,
   notFoundError,
+  validationError,
 } from '@/lib/requirements/errors'
 import type {
   RequirementSortDirection,
@@ -404,6 +405,7 @@ function formatRequirementDetail(
             nameEn: version.riskLevel.nameEn,
             nameSv: version.riskLevel.nameSv,
             color: version.riskLevel.color,
+            sortOrder: version.riskLevel.sortOrder,
           }
         : null,
       versionNormReferences: version.versionNormReferences.map(vnr => ({
@@ -1809,10 +1811,10 @@ export function createRequirementsService(
         async () => {
           if (input.operation === 'create') {
             if (!input.packageItemId) {
-              throw notFoundError('Package item ID is required')
+              throw validationError('Package item ID is required')
             }
             if (!input.motivation) {
-              throw notFoundError('Motivation is required')
+              throw validationError('Motivation is required')
             }
             const result = await createDeviation(db, {
               packageItemId: input.packageItemId,
@@ -1834,10 +1836,13 @@ export function createRequirementsService(
           }
 
           if (!input.deviationId) {
-            throw notFoundError('Deviation ID is required')
+            throw validationError('Deviation ID is required')
           }
 
           if (input.operation === 'edit') {
+            if (!input.motivation) {
+              throw validationError('Motivation is required for editing')
+            }
             await updateDeviation(db, input.deviationId, {
               motivation: input.motivation,
             })
@@ -1861,7 +1866,7 @@ export function createRequirementsService(
               !input.decisionMotivation ||
               !input.decidedBy
             ) {
-              throw notFoundError(
+              throw validationError(
                 'Decision, decision motivation, and decided by are required',
               )
             }

@@ -605,6 +605,30 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('v2')).toBeTruthy()
   })
 
+  it('renders risk level label when column is visible and row has a risk level', () => {
+    const rows = [
+      makeRow({
+        version: {
+          ...makeRow().version,
+          riskLevelId: 3,
+          riskLevelNameEn: 'High',
+          riskLevelNameSv: 'Hög',
+          riskLevelColor: '#ef4444',
+          riskLevelSortOrder: 3,
+        },
+      }),
+    ]
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'riskLevel']}
+      />,
+    )
+
+    expect(screen.getByText('Hög')).toBeTruthy()
+  })
+
   it('toggles sorting from the header button and updates aria-sort', () => {
     const onSortChange = vi.fn()
 

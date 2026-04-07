@@ -1,5 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import {
+  DEVIATION_APPROVED,
+  deviations,
   packageItemStatuses,
   packageNeedsReferences,
   qualityCharacteristics,
@@ -820,7 +822,32 @@ export async function updatePackageItemFields(
 ): Promise<void> {
   const updates: Record<string, unknown> = {}
   if ('packageItemStatusId' in data) {
-    updates.packageItemStatusId = data.packageItemStatusId ?? null
+    const statusId = data.packageItemStatusId ?? null
+    if (statusId != null) {
+      const status = await db.query.packageItemStatuses.findFirst({
+        where: eq(packageItemStatuses.id, statusId),
+      })
+      if (!status) {
+        throw validationError('Invalid package item status ID', {
+          packageItemStatusId: statusId,
+        })
+      }
+      if (statusId === DEVIATED_PACKAGE_ITEM_STATUS_ID) {
+        const approvedDeviation = await db.query.deviations.findFirst({
+          where: and(
+            eq(deviations.packageItemId, itemId),
+            eq(deviations.decision, DEVIATION_APPROVED),
+          ),
+        })
+        if (!approvedDeviation) {
+          throw validationError(
+            'Deviated status requires an approved deviation',
+            { packageItemStatusId: statusId, itemId },
+          )
+        }
+      }
+    }
+    updates.packageItemStatusId = statusId
     updates.statusUpdatedAt = new Date().toISOString()
   }
   if ('note' in data) {

@@ -625,6 +625,8 @@ export async function createRequirement(
   ).session?.constructor?.name
 
   if (sessionName === 'BetterSQLiteSession') {
+    let req!: typeof requirements.$inferSelect
+    let version!: typeof requirementVersions.$inferSelect
     ;(
       db as unknown as {
         transaction: (
@@ -639,42 +641,55 @@ export async function createRequirement(
         .where(eq(requirementAreas.id, data.requirementAreaId))
         .run()
 
-      tx.insert(requirements)
-        .values({
+      // BetterSQLite3 .returning().get() is synchronous at runtime;
+      // the Promise wrapper only exists in the TypeScript types.
+      req = (
+        tx.insert(requirements).values({
           uniqueId,
           requirementAreaId: data.requirementAreaId,
           sequenceNumber: seq,
-        })
-        .run()
-    })
-
-    const req = await db.query.requirements.findFirst({
-      where: eq(requirements.uniqueId, uniqueId),
-    })
-    if (!req) throw notFoundError('Failed to retrieve created requirement')
-
-    const [version] = await db
-      .insert(requirementVersions)
-      .values({ ...versionValues, requirementId: req.id })
-      .returning()
-
-    if (uniqueScenarioIds.length) {
-      await db.insert(requirementVersionUsageScenarios).values(
-        uniqueScenarioIds.map(usageScenarioId => ({
-          requirementVersionId: version.id,
-          usageScenarioId,
-        })),
+        }) as unknown as {
+          returning: () => { get: () => typeof requirements.$inferSelect }
+        }
       )
-    }
+        .returning()
+        .get()
 
-    if (uniqueNormRefIds.length) {
-      await db.insert(requirementVersionNormReferences).values(
-        uniqueNormRefIds.map(normReferenceId => ({
-          requirementVersionId: version.id,
-          normReferenceId,
-        })),
+      version = (
+        tx.insert(requirementVersions).values({
+          ...versionValues,
+          requirementId: req.id,
+        }) as unknown as {
+          returning: () => {
+            get: () => typeof requirementVersions.$inferSelect
+          }
+        }
       )
-    }
+        .returning()
+        .get()
+
+      if (uniqueScenarioIds.length) {
+        tx.insert(requirementVersionUsageScenarios)
+          .values(
+            uniqueScenarioIds.map(usageScenarioId => ({
+              requirementVersionId: version.id,
+              usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (uniqueNormRefIds.length) {
+        tx.insert(requirementVersionNormReferences)
+          .values(
+            uniqueNormRefIds.map(normReferenceId => ({
+              requirementVersionId: version.id,
+              normReferenceId,
+            })),
+          )
+          .run()
+      }
+    })
 
     return { requirement: req, version }
   }

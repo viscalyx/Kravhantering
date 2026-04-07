@@ -116,7 +116,7 @@ function mapRequirementDetailToRow(
           riskLevelNameEn: version.riskLevel?.nameEn ?? null,
           riskLevelNameSv: version.riskLevel?.nameSv ?? null,
           riskLevelColor: version.riskLevel?.color ?? null,
-          riskLevelSortOrder: null,
+          riskLevelSortOrder: version.riskLevel?.sortOrder ?? null,
           typeNameEn: version.type?.nameEn ?? null,
           typeNameSv: version.type?.nameSv ?? null,
           versionNumber: version.versionNumber,

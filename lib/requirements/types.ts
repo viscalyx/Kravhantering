@@ -34,6 +34,7 @@ export interface RiskLevelSummary {
   id: number
   nameEn: string
   nameSv: string
+  sortOrder: number
 }
 
 export interface RequirementVersionDetail {
