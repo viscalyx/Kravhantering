@@ -5,6 +5,7 @@ import {
   createPackageItemStatus,
   listPackageItemStatuses,
 } from '@/lib/dal/package-item-statuses'
+import { DEVIATED_PACKAGE_ITEM_STATUS_ID } from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 
 export async function GET() {
@@ -17,6 +18,7 @@ export async function GET() {
   return NextResponse.json({
     statuses: statuses.map(s => ({
       ...s,
+      isDeviationStatus: s.id === DEVIATED_PACKAGE_ITEM_STATUS_ID,
       linkedItemCount: counts[s.id] ?? 0,
     })),
   })

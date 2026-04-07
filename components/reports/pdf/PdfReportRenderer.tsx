@@ -269,6 +269,8 @@ function PdfSectionRenderer({
       return <PdfPackageCover section={section} />
     case 'page-break':
       return null
+    case 'deviation-summary':
+      return <PdfDeviationSummary section={section} />
     default:
       return null
   }
@@ -382,8 +384,8 @@ function PdfVersionSummary({
   section: Extract<ReportSection, { type: 'version-summary' }>
   locale: string
 }) {
-  const { version, label, isUnpublished } = section
-  const borderColor = isUnpublished ? '#eab308' : '#22c55e'
+  const { version, label, isUnpublished, borderColor: customBorder } = section
+  const borderColor = customBorder ?? (isUnpublished ? '#eab308' : '#22c55e')
 
   const getName = (item: { nameSv: string; nameEn: string } | null) => {
     if (!item) return null
@@ -724,5 +726,70 @@ function PdfBadge({ label, color }: { label: string; color: string | null }) {
     >
       {label}
     </Text>
+  )
+}
+
+function PdfDeviationSummary({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'deviation-summary' }>
+}) {
+  const locale = section.locale
+  const riskName = section.riskLevel
+    ? locale === 'sv'
+      ? section.riskLevel.nameSv
+      : section.riskLevel.nameEn
+    : null
+  return (
+    <View
+      style={{
+        border: '2pt solid #f59e0b',
+        borderRadius: 8,
+        padding: 14,
+        marginBottom: 10,
+        backgroundColor: '#fffbeb',
+      }}
+    >
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: 'bold',
+          marginBottom: 8,
+          color: '#92400e',
+        }}
+      >
+        {locale === 'sv' ? 'Avvikelse' : 'Deviation'}
+      </Text>
+      {riskName && (
+        <Text style={{ fontSize: 9, marginBottom: 6, color: '#6b7280' }}>
+          {locale === 'sv' ? 'Risknivå:' : 'Risk Level:'} {riskName}
+        </Text>
+      )}
+      <Text
+        style={{
+          fontSize: 9,
+          color: '#6b7280',
+          marginBottom: 2,
+        }}
+      >
+        {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
+      </Text>
+      <Text style={{ fontSize: 10, lineHeight: 1.6, marginBottom: 8 }}>
+        {section.motivation}
+      </Text>
+      <View
+        style={{
+          borderTop: '1pt solid #fde68a',
+          paddingTop: 4,
+        }}
+      >
+        <Text style={{ fontSize: 8, color: '#6b7280' }}>
+          {section.createdBy
+            ? `${locale === 'sv' ? 'Inlämnad av' : 'Submitted by'}: ${section.createdBy} · `
+            : ''}
+          {new Date(section.createdAt).toLocaleDateString(locale)}
+        </Text>
+      </View>
+    </View>
   )
 }

@@ -4,7 +4,10 @@ import {
   requirementPackageItems,
   requirementPackages,
 } from '@/drizzle/schema'
-import { DEFAULT_PACKAGE_ITEM_STATUS_ID } from '@/lib/dal/requirement-packages'
+import {
+  DEFAULT_PACKAGE_ITEM_STATUS_ID,
+  DEVIATED_PACKAGE_ITEM_STATUS_ID,
+} from '@/lib/dal/requirement-packages'
 import type { Database } from '@/lib/db'
 
 export interface PackageItemStatusRow {
@@ -122,8 +125,10 @@ export async function updatePackageItemStatus(
   },
 ): Promise<PackageItemStatusRow | undefined> {
   const { sortOrder, ...rest } = data
-  const safeData =
-    id === DEFAULT_PACKAGE_ITEM_STATUS_ID ? rest : { ...rest, sortOrder }
+  const isLockedSortOrder =
+    id === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
+    id === DEVIATED_PACKAGE_ITEM_STATUS_ID
+  const safeData = isLockedSortOrder ? rest : { ...rest, sortOrder }
   const [updated] = await db
     .update(packageItemStatuses)
     .set(safeData)

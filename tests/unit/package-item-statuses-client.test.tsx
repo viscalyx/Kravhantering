@@ -34,6 +34,16 @@ import PackageItemStatusesClient from '@/app/[locale]/package-item-statuses/pack
 
 const sampleStatuses = [
   {
+    id: 5,
+    nameSv: 'Avviken',
+    nameEn: 'Deviated',
+    descriptionSv: 'Avsteg har registrerats för kravet',
+    descriptionEn: 'A deviation has been registered for the requirement',
+    color: '#ef4444',
+    sortOrder: 0,
+    linkedItemCount: 1,
+  },
+  {
     id: 1,
     nameSv: 'Inkluderad',
     nameEn: 'Included',
@@ -152,7 +162,7 @@ describe('PackageItemStatusesClient', () => {
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
-    fireEvent.click(editButtons[0])
+    fireEvent.click(editButtons[1])
     expect(
       (
         screen.getByLabelText(
@@ -187,7 +197,7 @@ describe('PackageItemStatusesClient', () => {
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })
-    fireEvent.click(deleteButtons[0])
+    fireEvent.click(deleteButtons[1])
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
@@ -203,11 +213,33 @@ describe('PackageItemStatusesClient', () => {
   it('disables sort order field when editing the default status (ID 1)', async () => {
     fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
     fetchMock.mockResolvedValueOnce(
-      okJson({ status: sampleStatuses[0], linkedItems: [] }),
+      okJson({ status: sampleStatuses[1], linkedItems: [] }),
     )
     render(<PackageItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
+    })
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[1])
+    const sortInput = screen.getByLabelText(
+      /packageItemStatusAdmin\.sortOrder/,
+    ) as HTMLInputElement
+    expect(sortInput.disabled).toBe(true)
+    expect(
+      screen.getByText('packageItemStatusAdmin.sortOrderLocked'),
+    ).toBeInTheDocument()
+  })
+
+  it('disables sort order field when editing the deviated status (ID 5)', async () => {
+    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValueOnce(
+      okJson({ status: sampleStatuses[0], linkedItems: [] }),
+    )
+    render(<PackageItemStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getAllByText('Deviated').length).toBeGreaterThanOrEqual(1)
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
@@ -225,7 +257,7 @@ describe('PackageItemStatusesClient', () => {
   it('enables sort order field when editing a non-default status', async () => {
     fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
     fetchMock.mockResolvedValueOnce(
-      okJson({ status: sampleStatuses[1], linkedItems: [] }),
+      okJson({ status: sampleStatuses[2], linkedItems: [] }),
     )
     render(<PackageItemStatusesClient />)
     await waitFor(() => {
@@ -234,7 +266,7 @@ describe('PackageItemStatusesClient', () => {
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
-    fireEvent.click(editButtons[1])
+    fireEvent.click(editButtons[2])
     const sortInput = screen.getByLabelText(
       /packageItemStatusAdmin\.sortOrder/,
     ) as HTMLInputElement

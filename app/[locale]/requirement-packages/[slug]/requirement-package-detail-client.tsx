@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  AlertTriangle,
   Download,
   HelpCircle,
   Pencil,
@@ -17,6 +18,7 @@ import PackageEditPanel, {
   PACKAGE_EDIT_FORM_ID,
 } from '@/app/[locale]/requirement-packages/[slug]/package-edit-panel'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
+import DeviationFormModal from '@/components/DeviationFormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
@@ -128,6 +130,7 @@ export default function KravpaketDetailClient({
   useHelpContent(REQUIREMENT_PACKAGE_DETAIL_HELP)
   const t = useTranslations('package')
   const tc = useTranslations('common')
+  const td = useTranslations('deviation')
   const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
@@ -160,6 +163,8 @@ export default function KravpaketDetailClient({
     })[]
   >([])
   const [showEditPackageForm, setShowEditPackageForm] = useState(false)
+  const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
+  const [bulkDeviationSaving, setBulkDeviationSaving] = useState(false)
 
   // Left panel state
   const [leftSelectedIds, setLeftSelectedIds] = useState<Set<number>>(new Set())
@@ -458,6 +463,7 @@ export default function KravpaketDetailClient({
             color: string
             descriptionEn: string | null
             descriptionSv: string | null
+            isDeviationStatus?: boolean
             sortOrder: number
           })[]
         }
@@ -654,6 +660,36 @@ export default function KravpaketDetailClient({
     leftSelectedIds,
     packageItems,
   ])
+
+  const handleBulkDeviation = useCallback(
+    async (motivation: string, createdBy: string) => {
+      if (leftSelectedIds.size === 0) return
+      setBulkDeviationSaving(true)
+      try {
+        const items = packageItems.filter(r => leftSelectedIds.has(r.id))
+        await Promise.all(
+          items
+            .filter(item => item.packageItemId != null)
+            .map(item =>
+              fetch(
+                `/api/requirement-packages/${packageSlug}/items/${item.packageItemId}/deviations`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ motivation, createdBy }),
+                },
+              ),
+            ),
+        )
+        setShowBulkDeviationModal(false)
+        setLeftSelectedIds(new Set())
+        await fetchPackageItems()
+      } finally {
+        setBulkDeviationSaving(false)
+      }
+    },
+    [fetchPackageItems, leftSelectedIds, packageItems, packageSlug],
+  )
 
   const getName = (opt: { nameSv: string; nameEn: string }) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
@@ -1192,9 +1228,20 @@ export default function KravpaketDetailClient({
                     onSortChange={setLeftSort}
                     onVisibleColumnsChange={setLeftVisibleCols}
                     packageItemStatuses={packageItemStatuses}
-                    renderExpanded={id => (
-                      <RequirementDetailClient inline requirementId={id} />
-                    )}
+                    renderExpanded={id => {
+                      const item = packageItems.find(r => r.id === id)
+                      return (
+                        <RequirementDetailClient
+                          inline
+                          onChange={async () => {
+                            await fetchPackageItems()
+                          }}
+                          packageItemId={item?.packageItemId}
+                          packageSlug={packageSlug}
+                          requirementId={id}
+                        />
+                      )
+                    }}
                     rows={filteredPackageItems}
                     selectable
                     selectedIds={leftSelectedIds}
@@ -1209,14 +1256,34 @@ export default function KravpaketDetailClient({
                     }
                     stickyTitleActions={
                       leftSelectedIds.size > 0 ? (
-                        <button
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                          onClick={() => void handleRemoveSelected()}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                          {t('removeSelected', { count: leftSelectedIds.size })}
-                        </button>
+                        <>
+                          <button
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+                            onClick={() => setShowBulkDeviationModal(true)}
+                            type="button"
+                          >
+                            <AlertTriangle
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {td('requestDeviationSelected', {
+                              count: leftSelectedIds.size,
+                            })}
+                          </button>
+                          <button
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                            onClick={() => void handleRemoveSelected()}
+                            type="button"
+                          >
+                            <Trash2
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {t('removeSelected', {
+                              count: leftSelectedIds.size,
+                            })}
+                          </button>
+                        </>
                       ) : null
                     }
                     stickyTopOffsetClassName={
@@ -1228,6 +1295,12 @@ export default function KravpaketDetailClient({
                   />
                 </div>
               )}
+              <DeviationFormModal
+                loading={bulkDeviationSaving}
+                onClose={() => setShowBulkDeviationModal(false)}
+                onSubmit={handleBulkDeviation}
+                open={showBulkDeviationModal}
+              />
             </div>
 
             {/* Right panel: Tillgängliga krav */}

@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
+import { countDeviationsPerItem } from '@/lib/dal/deviations'
 import {
   getPackageById,
   getPackageBySlug,
@@ -169,7 +170,19 @@ export async function GET(
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const items = await listPackageItems(db, packageId)
-  return NextResponse.json({ items })
+  const deviationCounts = await countDeviationsPerItem(db, packageId)
+  const enrichedItems = items.map(item => {
+    const dc = item.packageItemId
+      ? deviationCounts.get(item.packageItemId)
+      : undefined
+    return {
+      ...item,
+      deviationCount: dc?.total ?? 0,
+      hasApprovedDeviation: (dc?.approved ?? 0) > 0,
+      hasPendingDeviation: (dc?.pending ?? 0) > 0,
+    }
+  })
+  return NextResponse.json({ items: enrichedItems })
 }
 
 export async function POST(

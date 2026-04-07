@@ -77,6 +77,8 @@ function SectionRenderer({
       return <RequirementTableSection section={section} />
     case 'toc':
       return <TocSection section={section} />
+    case 'deviation-summary':
+      return <DeviationSummarySection section={section} />
     default:
       return null
   }
@@ -266,14 +268,14 @@ function VersionSummarySection({
   section: Extract<ReportSection, { type: 'version-summary' }>
   locale: string
 }) {
-  const { version, label, isUnpublished } = section
-  const borderColor = isUnpublished ? '#eab308' : '#22c55e'
+  const { version, label, isUnpublished, borderColor } = section
+  const border = borderColor ?? (isUnpublished ? '#eab308' : '#22c55e')
 
   return (
     <div
       className="print-avoid-break"
       style={{
-        border: `1px solid ${borderColor}`,
+        border: `1px solid ${border}`,
         borderRadius: '0.5rem',
         marginBottom: '1rem',
         padding: '1rem',
@@ -826,5 +828,93 @@ function StatusBadge({
     >
       {label}
     </span>
+  )
+}
+
+function DeviationSummarySection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'deviation-summary' }>
+}) {
+  const locale = section.locale
+  const riskName = section.riskLevel
+    ? locale === 'sv'
+      ? section.riskLevel.nameSv
+      : section.riskLevel.nameEn
+    : null
+  return (
+    <div
+      style={{
+        border: '2px solid #f59e0b',
+        borderRadius: '0.75rem',
+        padding: '1.25rem',
+        marginBottom: '1rem',
+        backgroundColor: '#fffbeb',
+      }}
+    >
+      <h3
+        style={{
+          fontSize: '1rem',
+          fontWeight: 600,
+          marginBottom: '0.75rem',
+          color: '#92400e',
+        }}
+      >
+        {locale === 'sv' ? 'Avvikelse' : 'Deviation'}
+      </h3>
+      {riskName && (
+        <div style={{ marginBottom: '0.75rem' }}>
+          <span
+            style={{
+              fontSize: '0.8125rem',
+              fontWeight: 500,
+              color: '#6b7280',
+            }}
+          >
+            {locale === 'sv' ? 'Risknivå:' : 'Risk Level:'}
+          </span>{' '}
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+            {riskName}
+          </span>
+        </div>
+      )}
+      <div style={{ marginBottom: '0.75rem' }}>
+        <div
+          style={{
+            fontSize: '0.8125rem',
+            fontWeight: 500,
+            color: '#6b7280',
+            marginBottom: '0.25rem',
+          }}
+        >
+          {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
+        </div>
+        <div
+          style={{
+            fontSize: '0.875rem',
+            lineHeight: 1.6,
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {section.motivation}
+        </div>
+      </div>
+      <div
+        style={{
+          fontSize: '0.75rem',
+          color: '#6b7280',
+          borderTop: '1px solid #fde68a',
+          paddingTop: '0.5rem',
+        }}
+      >
+        {section.createdBy && (
+          <span>
+            {locale === 'sv' ? 'Inlämnad av:' : 'Submitted by:'}{' '}
+            {section.createdBy} ·{' '}
+          </span>
+        )}
+        {new Date(section.createdAt).toLocaleDateString(locale)}
+      </div>
+    </div>
   )
 }

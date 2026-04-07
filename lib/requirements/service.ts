@@ -1,3 +1,11 @@
+import {
+  countDeviationsByPackage,
+  createDeviation,
+  deleteDeviation,
+  listDeviationsForPackage,
+  recordDecision,
+  updateDeviation,
+} from '@/lib/dal/deviations'
 import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import {
@@ -473,6 +481,34 @@ export interface RemoveFromPackageOutput {
   removedCount: number
 }
 
+export interface ListDeviationsOutput {
+  counts: {
+    approved: number
+    pending: number
+    rejected: number
+    total: number
+  }
+  deviations: {
+    createdAt: string
+    createdBy: string | null
+    decidedAt: string | null
+    decidedBy: string | null
+    decision: number | null
+    decisionMotivation: string | null
+    id: number
+    motivation: string
+    packageItemId: number
+    requirementDescription: string | null
+    requirementUniqueId: string | null
+  }[]
+  message: string
+}
+
+export interface ManageDeviationOutput {
+  message: string
+  result: unknown
+}
+
 export interface RequirementsService {
   addToPackage(
     context: RequestContext,
@@ -493,10 +529,34 @@ export interface RequirementsService {
     version?: RequirementVersionDetail
     versions?: RequirementDetail['versions']
   }>
+  listDeviations(
+    context: RequestContext,
+    input: {
+      locale?: ResponseLocale
+      packageId?: number
+      packageSlug?: string
+      responseFormat?: ResponseFormat
+    },
+  ): Promise<ListDeviationsOutput>
   listPackages(
     context: RequestContext,
     input: ListPackagesInput,
   ): Promise<ListPackagesOutput>
+  manageDeviation(
+    context: RequestContext,
+    input: {
+      createdBy?: string
+      decidedBy?: string
+      decision?: number
+      decisionMotivation?: string
+      deviationId?: number
+      locale?: ResponseLocale
+      motivation?: string
+      operation: 'create' | 'delete' | 'edit' | 'record_decision'
+      packageItemId?: number
+      responseFormat?: ResponseFormat
+    },
+  ): Promise<ManageDeviationOutput>
   manageRequirement(
     context: RequestContext,
     input: ManageRequirementInput,
@@ -1662,6 +1722,188 @@ export function createRequirementsService(
               responseFormat,
             ),
             removedCount,
+          }
+        },
+      )
+    },
+
+    async listDeviations(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'list_deviations',
+          packageId: input.packageId,
+          packageSlug: input.packageSlug,
+        } as RequirementsAction,
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.list_deviations',
+        {
+          package_id: input.packageId ?? null,
+          package_slug: input.packageSlug ?? null,
+        },
+        async () => {
+          const packageId = await resolvePackageIdOrThrow(db, input)
+          const rows = await listDeviationsForPackage(db, packageId)
+          const counts = await countDeviationsByPackage(db, packageId)
+
+          const title = locale === 'sv' ? 'Avvikelser' : 'Deviations'
+          const summary =
+            locale === 'sv'
+              ? `${counts.total} avvikelse(r): ${counts.pending} väntande, ${counts.approved} godkända, ${counts.rejected} avvisade.`
+              : `${counts.total} deviation(s): ${counts.pending} pending, ${counts.approved} approved, ${counts.rejected} rejected.`
+
+          return {
+            counts,
+            deviations: rows.map(r => ({
+              createdAt: r.createdAt,
+              createdBy: r.createdBy,
+              decidedAt: r.decidedAt,
+              decidedBy: r.decidedBy,
+              decision: r.decision,
+              decisionMotivation: r.decisionMotivation,
+              id: r.id,
+              motivation: r.motivation,
+              packageItemId: r.packageItemId,
+              requirementDescription: r.requirementDescription,
+              requirementUniqueId: r.requirementUniqueId,
+            })),
+            message: createServiceMessage(title, [summary], responseFormat),
+          }
+        },
+      )
+    },
+
+    async manageDeviation(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'manage_deviation',
+          operation: input.operation,
+          deviationId: input.deviationId,
+          packageItemId: input.packageItemId,
+        } as RequirementsAction,
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.manage_deviation',
+        {
+          operation: input.operation,
+          deviation_id: input.deviationId ?? null,
+          package_item_id: input.packageItemId ?? null,
+        },
+        async () => {
+          if (input.operation === 'create') {
+            if (!input.packageItemId) {
+              throw notFoundError('Package item ID is required')
+            }
+            if (!input.motivation) {
+              throw notFoundError('Motivation is required')
+            }
+            const result = await createDeviation(db, {
+              packageItemId: input.packageItemId,
+              motivation: input.motivation,
+              createdBy: input.createdBy,
+            })
+            const summary =
+              locale === 'sv'
+                ? `Avvikelse registrerad (ID ${result.id}).`
+                : `Deviation registered (ID ${result.id}).`
+            return {
+              message: createServiceMessage(
+                locale === 'sv' ? 'Avvikelse' : 'Deviation',
+                [summary],
+                responseFormat,
+              ),
+              result,
+            }
+          }
+
+          if (!input.deviationId) {
+            throw notFoundError('Deviation ID is required')
+          }
+
+          if (input.operation === 'edit') {
+            await updateDeviation(db, input.deviationId, {
+              motivation: input.motivation,
+            })
+            const summary =
+              locale === 'sv'
+                ? `Avvikelse ${input.deviationId} uppdaterad.`
+                : `Deviation ${input.deviationId} updated.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv' ? 'Avvikelse' : 'Deviation',
+                [summary],
+                responseFormat,
+              ),
+              result: { id: input.deviationId },
+            }
+          }
+
+          if (input.operation === 'record_decision') {
+            if (
+              input.decision == null ||
+              !input.decisionMotivation ||
+              !input.decidedBy
+            ) {
+              throw notFoundError(
+                'Decision, decision motivation, and decided by are required',
+              )
+            }
+            await recordDecision(db, input.deviationId, {
+              decision: input.decision,
+              decisionMotivation: input.decisionMotivation,
+              decidedBy: input.decidedBy,
+            })
+            const decisionLabel =
+              input.decision === 1
+                ? locale === 'sv'
+                  ? 'godkänd'
+                  : 'approved'
+                : locale === 'sv'
+                  ? 'avvisad'
+                  : 'rejected'
+            const summary =
+              locale === 'sv'
+                ? `Beslut registrerat för avvikelse ${input.deviationId}: ${decisionLabel}.`
+                : `Decision recorded for deviation ${input.deviationId}: ${decisionLabel}.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv' ? 'Avvikelsebeslut' : 'Deviation Decision',
+                [summary],
+                responseFormat,
+              ),
+              result: { id: input.deviationId, decision: input.decision },
+            }
+          }
+
+          // delete
+          await deleteDeviation(db, input.deviationId)
+          const summary =
+            locale === 'sv'
+              ? `Avvikelse ${input.deviationId} borttagen.`
+              : `Deviation ${input.deviationId} deleted.`
+          return {
+            message: createServiceMessage(
+              locale === 'sv' ? 'Avvikelse' : 'Deviation',
+              [summary],
+              responseFormat,
+            ),
+            result: { id: input.deviationId },
           }
         },
       )

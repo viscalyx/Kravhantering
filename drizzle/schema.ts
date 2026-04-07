@@ -696,7 +696,8 @@ export const packageItemStatusesRelations = relations(
 
 export const requirementPackageItemsRelations = relations(
   requirementPackageItems,
-  ({ one }) => ({
+  ({ one, many }) => ({
+    deviations: many(deviations),
     package: one(requirementPackages, {
       fields: [requirementPackageItems.packageId],
       references: [requirementPackages.id],
@@ -722,6 +723,45 @@ export const requirementPackageItemsRelations = relations(
     }),
   }),
 )
+
+// ─── Deviations ──────────────────────────────────────────────────────────────
+
+export const DEVIATION_APPROVED = 1
+export const DEVIATION_REJECTED = 2
+
+export const deviations = sqliteTable(
+  'deviations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    packageItemId: integer('package_item_id').notNull(),
+    motivation: text('motivation').notNull(),
+    isReviewRequested: integer('is_review_requested').notNull().default(0),
+    decision: integer('decision'),
+    decisionMotivation: text('decision_motivation'),
+    decidedBy: text('decided_by'),
+    decidedAt: text('decided_at'),
+    createdBy: text('created_by'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at'),
+  },
+  table => [
+    index('idx_deviations_package_item_id').on(table.packageItemId),
+    foreignKey({
+      columns: [table.packageItemId],
+      foreignColumns: [requirementPackageItems.id],
+      name: 'fk_deviations_package_item_id',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const deviationsRelations = relations(deviations, ({ one }) => ({
+  packageItem: one(requirementPackageItems, {
+    fields: [deviations.packageItemId],
+    references: [requirementPackageItems.id],
+  }),
+}))
 
 // ─── UI Terminology ──────────────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@
 
 const seedSQL = `
 -- ─── Clean stale seed data (dependency order) ───────────────────────────────
+DELETE FROM deviations;
 DELETE FROM requirement_package_items;
 DELETE FROM package_needs_references;
 DELETE FROM requirement_packages;
@@ -1538,14 +1539,14 @@ INSERT OR IGNORE INTO package_item_statuses (id, name_sv, name_en, description_s
   (2, 'Pågående',        'In Progress',    'Implementation pågår',                                       'Implementation is in progress',                               '#f59e0b', 2),
   (3, 'Implementerad',   'Implemented',    'Kravet är implementerat',                                    'Requirement has been implemented',                            '#3b82f6', 3),
   (4, 'Verifierad',      'Verified',       'Kravet är verifierat och testat',                            'Requirement has been verified and tested',                    '#22c55e', 4),
-  (5, 'Avviken',         'Deviated',       'Avsteg har registrerats för kravet',                         'A deviation has been registered for the requirement',         '#ef4444', 5),
+  (5, 'Avviken',         'Deviated',       'Avsteg har registrerats för kravet',                         'A deviation has been registered for the requirement',         '#ef4444', 0),
   (6, 'Ej tillämpbar',   'Not Applicable', 'Kravet gäller inte i denna kontext',                        'Requirement does not apply in this context',                  '#6b7280', 6);
 
 UPDATE package_item_statuses SET name_sv = 'Inkluderad',    name_en = 'Included',       description_sv = 'Kravet finns i paketet men inget arbete påbörjat',  description_en = 'Requirement is in the package but no work started',  color = '#94a3b8', sort_order = 1 WHERE id = 1;
 UPDATE package_item_statuses SET name_sv = 'Pågående',      name_en = 'In Progress',    description_sv = 'Implementation pågår',                              description_en = 'Implementation is in progress',                     color = '#f59e0b', sort_order = 2 WHERE id = 2;
 UPDATE package_item_statuses SET name_sv = 'Implementerad', name_en = 'Implemented',    description_sv = 'Kravet är implementerat',                           description_en = 'Requirement has been implemented',                   color = '#3b82f6', sort_order = 3 WHERE id = 3;
 UPDATE package_item_statuses SET name_sv = 'Verifierad',    name_en = 'Verified',       description_sv = 'Kravet är verifierat och testat',                   description_en = 'Requirement has been verified and tested',           color = '#22c55e', sort_order = 4 WHERE id = 4;
-UPDATE package_item_statuses SET name_sv = 'Avviken',       name_en = 'Deviated',       description_sv = 'Avsteg har registrerats för kravet',                description_en = 'A deviation has been registered for the requirement', color = '#ef4444', sort_order = 5 WHERE id = 5;
+UPDATE package_item_statuses SET name_sv = 'Avviken',       name_en = 'Deviated',       description_sv = 'Avsteg har registrerats för kravet',                description_en = 'A deviation has been registered for the requirement', color = '#ef4444', sort_order = 0 WHERE id = 5;
 UPDATE package_item_statuses SET name_sv = 'Ej tillämpbar', name_en = 'Not Applicable', description_sv = 'Kravet gäller inte i denna kontext',               description_en = 'Requirement does not apply in this context',         color = '#6b7280', sort_order = 6 WHERE id = 6;
 
 -- ─── Requirement Packages (10 packages) ─────────────────────────────────────
@@ -1669,6 +1670,19 @@ INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, req
 UPDATE requirement_package_items
   SET package_item_status_id = 1
   WHERE package_item_status_id IS NULL;
+
+-- ─── Deviations (formal waivers from mandatory requirements) ─────────────────
+INSERT OR IGNORE INTO deviations (id, package_item_id, motivation, is_review_requested, decision, decision_motivation, decided_by, decided_at, created_by, created_at, updated_at) VALUES
+  -- Package 1 item 3 (INT0002): approved deviation
+  (1, 3, 'Legacy system cannot support this integration pattern within project timeline. Alternative approach documented in architecture decision record ADR-047.', 1, 1, 'Accepted based on ADR-047 and compensating controls via API gateway.', 'Anna Lindqvist', datetime('now', '-20 days'), 'Erik Svensson', datetime('now', '-25 days'), datetime('now', '-20 days')),
+  -- Package 2 item 9 (SÄK0002): pending decision, review requested
+  (2, 9, 'Current infrastructure does not meet the encryption-at-rest requirement for the staging environment. Upgrade planned for Q3.', 1, NULL, NULL, NULL, NULL, 'Maria Johansson', datetime('now', '-18 days'), NULL),
+  -- Package 2 item 11 (SÄK0005): rejected deviation
+  (3, 11, 'Proposed to skip penetration testing due to budget constraints.', 1, 2, 'Penetration testing is a mandatory security control. Budget must be reallocated.', 'Anna Lindqvist', datetime('now', '-15 days'), 'Erik Svensson', datetime('now', '-20 days'), datetime('now', '-15 days')),
+  -- Package 3 item 14: approved deviation
+  (4, 14, 'Response time requirement of 200ms cannot be met for batch operations. Proposing 2000ms threshold for batch endpoints only.', 1, 1, 'Approved for batch endpoints only. Real-time endpoints must still meet 200ms SLA.', 'Karl Nilsson', datetime('now', '-12 days'), 'Maria Johansson', datetime('now', '-16 days'), datetime('now', '-12 days')),
+  -- Package 5 item 20: draft deviation (not yet submitted for review)
+  (5, 20, 'Accessibility requirement WCAG 2.1 AA cannot be fully met for legacy PDF export. Remediation requires vendor update expected in next release.', 0, NULL, NULL, NULL, NULL, 'Erik Svensson', datetime('now', '-5 days'), NULL);
 
 -- ─── Assign risk levels to ~50 % of requirement versions ─────────────────────
 -- Hög/High

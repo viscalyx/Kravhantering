@@ -6,6 +6,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
+import {
+  DEFAULT_PACKAGE_ITEM_STATUS_ID,
+  DEVIATED_PACKAGE_ITEM_STATUS_ID,
+} from '@/lib/dal/requirement-packages'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 const PACKAGE_ITEM_STATUSES_HELP: HelpContent = {
@@ -376,8 +380,11 @@ export default function PackageItemStatusesClient() {
                     {t('sortOrder')}
                   </label>
                   <input
-                    className={`${inputClass}${editId === 1 ? ' opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={editId === 1}
+                    className={`${inputClass}${editId === DEFAULT_PACKAGE_ITEM_STATUS_ID || editId === DEVIATED_PACKAGE_ITEM_STATUS_ID ? ' opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={
+                      editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
+                      editId === DEVIATED_PACKAGE_ITEM_STATUS_ID
+                    }
                     id="pis-sort-order"
                     min="0"
                     onChange={e =>
@@ -386,7 +393,8 @@ export default function PackageItemStatusesClient() {
                     type="number"
                     value={form.sortOrder}
                   />
-                  {editId === 1 && (
+                  {(editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
+                    editId === DEVIATED_PACKAGE_ITEM_STATUS_ID) && (
                     <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                       {t('sortOrderLocked')}
                     </p>

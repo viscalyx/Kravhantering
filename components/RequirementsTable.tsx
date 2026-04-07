@@ -3060,7 +3060,7 @@ export default function RequirementsTable({
             >
               <select
                 aria-label={t('packageItemStatus')}
-                className="w-full rounded-lg border bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 transition-all duration-200"
+                className="w-auto max-w-full rounded-lg border bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 transition-all duration-200"
                 onChange={e => {
                   const value = e.target.value
                   if (row.packageItemId != null) {
@@ -3075,15 +3075,17 @@ export default function RequirementsTable({
                 value={statusId ?? ''}
               >
                 <option value="">—</option>
-                {packageItemStatuses.map(s => {
-                  const desc =
-                    locale === 'sv' ? s.descriptionSv : s.descriptionEn
-                  return (
-                    <option key={s.id} title={desc || undefined} value={s.id}>
-                      {locale === 'sv' ? s.nameSv : s.nameEn}
-                    </option>
-                  )
-                })}
+                {packageItemStatuses
+                  .filter(s => !s.isDeviationStatus || row.hasApprovedDeviation)
+                  .map(s => {
+                    const desc =
+                      locale === 'sv' ? s.descriptionSv : s.descriptionEn
+                    return (
+                      <option key={s.id} title={desc || undefined} value={s.id}>
+                        {locale === 'sv' ? s.nameSv : s.nameEn}
+                      </option>
+                    )
+                  })}
               </select>
             </td>
           )
@@ -3886,11 +3888,18 @@ export default function RequirementsTable({
                             ref={expandedDetailCellRef}
                           >
                             <div
-                              className="sticky left-0"
+                              className="sticky left-0 box-border overflow-hidden"
                               style={
                                 scrollContainerWidth
-                                  ? { width: scrollContainerWidth }
-                                  : undefined
+                                  ? {
+                                      contain: 'inline-size',
+                                      maxWidth: scrollContainerWidth,
+                                      width: scrollContainerWidth,
+                                    }
+                                  : {
+                                      contain: 'inline-size',
+                                      maxWidth: '100vw',
+                                    }
                               }
                             >
                               {renderExpanded(row.id)}

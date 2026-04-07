@@ -551,6 +551,7 @@ erDiagram
     requirement_packages ||--o{ requirement_package_items : "innehåller"
     requirement_package_items }o--|| requirements : "pekar på krav"
     requirement_package_items }o--o| package_item_statuses : "användningsstatus"
+    requirement_package_items ||--o{ deviations : "har avsteg"
 ```
 
 <!-- markdownlint-enable MD013 -->

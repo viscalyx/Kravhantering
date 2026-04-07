@@ -22,6 +22,12 @@ import { validationError } from '@/lib/requirements/errors'
  */
 export const DEFAULT_PACKAGE_ITEM_STATUS_ID = 1
 
+/**
+ * Seed ID for the "Deviated" / "Avviken" package-item status.
+ * Only selectable when the package item has an approved deviation.
+ */
+export const DEVIATED_PACKAGE_ITEM_STATUS_ID = 5
+
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
 interface RequirementPackageLinkItem {

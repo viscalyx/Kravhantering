@@ -53,6 +53,7 @@ export interface PackageItemStatusOption {
   descriptionEn: string | null
   descriptionSv: string | null
   id: number
+  isDeviationStatus?: boolean
   nameEn: string
   nameSv: string
   sortOrder: number
@@ -62,6 +63,9 @@ export interface RequirementRow {
   area: {
     name: string
   } | null
+  deviationCount?: number
+  hasApprovedDeviation?: boolean
+  hasPendingDeviation?: boolean
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
@@ -354,12 +358,12 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     canHide: true,
     canSort: false,
     defaultVisible: false,
-    defaultWidthPx: 160,
+    defaultWidthPx: 180,
     id: 'packageItemStatus',
     labelKey: 'packageItemStatus',
     labelNamespace: 'requirement',
     maxWidthPx: 260,
-    minWidthPx: 120,
+    minWidthPx: 110,
     resizable: true,
   },
   {

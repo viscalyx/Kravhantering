@@ -297,6 +297,20 @@ erDiagram
         text created_at
     }
 
+    deviations {
+        integer id PK
+        integer package_item_id FK
+        text motivation
+        integer is_review_requested
+        integer decision
+        text decision_motivation
+        text decided_by
+        text decided_at
+        text created_by
+        text created_at
+        text updated_at
+    }
+
     %% Relationships
     owners |o--o{ requirement_areas : "owns"
     requirement_areas ||--o{ requirements : "has many"
@@ -324,6 +338,7 @@ erDiagram
     package_needs_references ||--o{ requirement_package_items : "scoped needs reference"
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
+    requirement_package_items ||--o{ deviations : "has deviations"
 ```
 
 ---
@@ -953,6 +968,32 @@ Links individual requirements (pinned to a specific version) into a package.
 `idx_requirement_package_items_requirement_package_id`,
 `idx_requirement_package_items_requirement_id`,
 `idx_requirement_package_items_package_item_status_id`.
+
+---
+
+### `deviations`
+
+Formal deviations from mandatory requirements within a
+package. Each deviation has a motivation and may receive
+a decision (approved or rejected) with its own rationale.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `package_item_id` | integer FK → `requirement_package_items.id` (CASCADE DELETE) | The package item this deviation applies to |
+| `motivation` | text NOT NULL | Why this mandatory requirement cannot be fulfilled |
+| `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
+| `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
+| `decision_motivation` | text | Rationale behind the approval or rejection |
+| `decided_by` | text | Who recorded the decision |
+| `decided_at` | text (ISO 8601) | When the decision was recorded |
+| `created_by` | text | Who registered the deviation |
+| `created_at` | text (ISO 8601) | When registered (default: now) |
+| `updated_at` | text (ISO 8601) | When last updated (default: now) |
+<!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_deviations_package_item_id`.
 
 ---
 
