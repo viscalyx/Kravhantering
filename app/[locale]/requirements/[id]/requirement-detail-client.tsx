@@ -67,15 +67,29 @@ interface TransitionTarget {
   nameSv: string
 }
 
-interface RequirementDetailClientProps {
+interface RequirementDetailClientPropsBase {
   defaultVersion?: number
   inline?: boolean
   onChange?: () => void | Promise<void>
   onClose?: () => void
-  packageItemId?: number
-  packageSlug?: string
   requirementId: number | string
 }
+
+interface RequirementDetailClientStandalone
+  extends RequirementDetailClientPropsBase {
+  packageItemId?: undefined
+  packageSlug?: undefined
+}
+
+interface RequirementDetailClientPackageItem
+  extends RequirementDetailClientPropsBase {
+  packageItemId: number
+  packageSlug: string
+}
+
+type RequirementDetailClientProps =
+  | RequirementDetailClientStandalone
+  | RequirementDetailClientPackageItem
 
 function getResponseMessage(body: unknown): string | null {
   if (typeof body === 'string') {
@@ -135,7 +149,7 @@ export default function RequirementDetailClient({
   const locale = useLocale()
   const { confirm } = useConfirmModal()
 
-  const isPackageItemContext = !!packageItemId
+  const isPackageItemContext = !!packageItemId && !!packageSlug
 
   const localName = (
     obj: { nameSv: string | null; nameEn: string | null } | null | undefined,
@@ -1624,7 +1638,7 @@ export default function RequirementDetailClient({
         <div className="grid grid-cols-1 gap-6">
           {/* Main content */}
           <div className="space-y-6">
-            <div className="relative flex gap-3">
+            <div className="relative flex flex-col sm:flex-row gap-3">
               <div
                 className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
                 ref={cardRef}
@@ -1661,7 +1675,7 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-4">
                   {req.area && (
                     <div
                       {...devMarker({

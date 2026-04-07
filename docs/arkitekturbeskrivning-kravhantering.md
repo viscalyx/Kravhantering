@@ -559,7 +559,7 @@ erDiagram
 > **Tillämpningsbarhet via användningsscenarier.**
 > Tabellen `usage_scenarios` hanterar även
 > *tillämpningsbarhet* — d.v.s. i vilka kontexter
-> eller miljöer ett krav gäller (t.ex. "Alla system",
+> eller miljöer ett krav gäller (t.ex. "Alla system").
 
 ### Taxonomi och tvåspråkig design
 

@@ -13,7 +13,11 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { itemId } = await params
+  const { id, itemId } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const numericItemId = Number(itemId)
   if (!Number.isInteger(numericItemId) || numericItemId < 1) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
@@ -30,7 +34,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { itemId } = await params
+  const { id, itemId } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const numericItemId = Number(itemId)
   if (!Number.isInteger(numericItemId) || numericItemId < 1) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })

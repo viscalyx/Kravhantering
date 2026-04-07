@@ -807,6 +807,11 @@ export function buildRequirementListParams({
       params.append('usageScenarioIds', String(id))
     }
   }
+  if (filters.packageItemStatusIds) {
+    for (const id of filters.packageItemStatusIds) {
+      params.append('packageItemStatusIds', String(id))
+    }
+  }
 
   return params
 }
@@ -944,6 +949,13 @@ export function compareRequirementRows(
       result = compareNumber(
         left.version?.versionNumber,
         right.version?.versionNumber,
+        sort.direction,
+      )
+      break
+    case 'riskLevel':
+      result = compareNumber(
+        left.version?.riskLevelId,
+        right.version?.riskLevelId,
         sort.direction,
       )
       break

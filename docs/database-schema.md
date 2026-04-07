@@ -1052,6 +1052,7 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | Speed up filtering items by usage status |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
+| `idx_deviations_package_item_id` | `deviations` | `package_item_id` | Speed up lookups of deviations by package item |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -1080,6 +1081,7 @@ explicit `foreignKey({ name })`:
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
 | `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
 | `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
+| `fk_deviations_package_item_id` | `deviations` | `package_item_id` | `requirement_package_items.id` | CASCADE |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram

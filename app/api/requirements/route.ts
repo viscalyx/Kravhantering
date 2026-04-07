@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
   const riskLevelIds = url.searchParams
     .getAll('riskLevelIds')
     .map(Number)
-    .filter(n => !Number.isNaN(n))
+    .filter(n => Number.isInteger(n) && n > 0)
   const includeArchived = statuses.length === 0 || statuses.includes(4)
 
   try {
@@ -207,7 +207,11 @@ export async function POST(request: NextRequest) {
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,
-        riskLevelId: body.riskLevelId ? Number(body.riskLevelId) : undefined,
+        riskLevelId: body.riskLevelId
+          ? Number.isFinite(Number(body.riskLevelId))
+            ? Number(body.riskLevelId)
+            : undefined
+          : undefined,
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },
     })

@@ -65,6 +65,7 @@ export default function PackageItemStatusesClient() {
   const [linkedItems, setLinkedItems] = useState<LinkedItem[]>([])
   const [linkedItemsLoading, setLinkedItemsLoading] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [form, setForm] = useState({
     nameSv: '',
@@ -137,7 +138,14 @@ export default function PackageItemStatusesClient() {
           sortOrder: Number(form.sortOrder) || 0,
         }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        setSubmitError(
+          (body as { error?: string } | null)?.error ?? tc('error'),
+        )
+        return
+      }
+      setSubmitError(null)
       setShowForm(false)
       setEditId(null)
       setLinkedItems([])
@@ -420,6 +428,14 @@ export default function PackageItemStatusesClient() {
                     {tc('cancel')}
                   </button>
                 </div>
+                {submitError && (
+                  <p
+                    className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                    role="alert"
+                  >
+                    {submitError}
+                  </p>
+                )}
               </form>
 
               {editId && (

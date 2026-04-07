@@ -598,6 +598,7 @@ export default function KravpaketDetailClient({
   const handlePackageItemStatusChange = useCallback(
     async (packageItemId: number, statusId: number | null) => {
       if (!pkg) return
+      const prev = packageItems
       // Optimistic update
       setPackageItems(prev =>
         prev.map(item => {
@@ -614,16 +615,23 @@ export default function KravpaketDetailClient({
           }
         }),
       )
-      await fetch(
-        `/api/requirement-packages/${pkg.id}/items/${packageItemId}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ packageItemStatusId: statusId }),
-        },
-      )
+      try {
+        const res = await fetch(
+          `/api/requirement-packages/${pkg.id}/items/${packageItemId}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ packageItemStatusId: statusId }),
+          },
+        )
+        if (!res.ok) {
+          setPackageItems(prev)
+        }
+      } catch {
+        setPackageItems(prev)
+      }
     },
-    [pkg, packageItemStatuses],
+    [pkg, packageItemStatuses, packageItems],
   )
 
   const handleRemoveSelected = useCallback(async () => {
@@ -667,7 +675,7 @@ export default function KravpaketDetailClient({
       setBulkDeviationSaving(true)
       try {
         const items = packageItems.filter(r => leftSelectedIds.has(r.id))
-        await Promise.all(
+        const results = await Promise.allSettled(
           items
             .filter(item => item.packageItemId != null)
             .map(item =>
@@ -678,11 +686,30 @@ export default function KravpaketDetailClient({
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ motivation, createdBy }),
                 },
-              ),
+              ).then(async res => {
+                if (!res.ok)
+                  throw new Error(`Failed for item ${item.packageItemId}`)
+                return item.id
+              }),
             ),
         )
-        setShowBulkDeviationModal(false)
-        setLeftSelectedIds(new Set())
+        const succeededIds = new Set(
+          results
+            .filter(
+              (r): r is PromiseFulfilledResult<number> =>
+                r.status === 'fulfilled',
+            )
+            .map(r => r.value),
+        )
+        const allSucceeded = results.every(r => r.status === 'fulfilled')
+        setLeftSelectedIds(prev => {
+          const next = new Set(prev)
+          for (const id of succeededIds) next.delete(id)
+          return next
+        })
+        if (allSucceeded) {
+          setShowBulkDeviationModal(false)
+        }
         await fetchPackageItems()
       } finally {
         setBulkDeviationSaving(false)
@@ -1230,14 +1257,22 @@ export default function KravpaketDetailClient({
                     packageItemStatuses={packageItemStatuses}
                     renderExpanded={id => {
                       const item = packageItems.find(r => r.id === id)
-                      return (
+                      return item?.packageItemId != null ? (
                         <RequirementDetailClient
                           inline
                           onChange={async () => {
                             await fetchPackageItems()
                           }}
-                          packageItemId={item?.packageItemId}
+                          packageItemId={item.packageItemId}
                           packageSlug={packageSlug}
+                          requirementId={id}
+                        />
+                      ) : (
+                        <RequirementDetailClient
+                          inline
+                          onChange={async () => {
+                            await fetchPackageItems()
+                          }}
                           requirementId={id}
                         />
                       )

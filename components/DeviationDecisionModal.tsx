@@ -162,7 +162,7 @@ export default function DeviationDecisionModal({
                   </p>
                 )}
                 <textarea
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   id="decision-motivation"
                   onChange={e => setMotivation(e.target.value)}
                   placeholder={td('decisionMotivationPlaceholder')}
@@ -200,7 +200,7 @@ export default function DeviationDecisionModal({
                   </p>
                 )}
                 <input
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   id="decision-decidedBy"
                   onChange={e => setDecidedBy(e.target.value)}
                   placeholder={td('decidedByPlaceholder')}

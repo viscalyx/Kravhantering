@@ -802,6 +802,12 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
   }))
 }
 
+export async function getPackageItemById(db: Database, itemId: number) {
+  return db.query.requirementPackageItems.findFirst({
+    where: eq(requirementPackageItems.id, itemId),
+  })
+}
+
 export async function updatePackageItemFields(
   db: Database,
   itemId: number,

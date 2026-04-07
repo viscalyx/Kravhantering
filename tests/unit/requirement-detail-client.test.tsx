@@ -489,9 +489,12 @@ function setupFetch({
 function renderSubject(
   props?: Partial<ComponentProps<typeof RequirementDetailClient>>,
 ) {
+  const merged = { requirementId: 123 as number | string, ...props }
   return render(
     <ConfirmModalProvider>
-      <RequirementDetailClient requirementId={123} {...props} />
+      <RequirementDetailClient
+        {...(merged as ComponentProps<typeof RequirementDetailClient>)}
+      />
     </ConfirmModalProvider>,
   )
 }

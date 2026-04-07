@@ -1,6 +1,9 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
-import { updatePackageItemFields } from '@/lib/dal/requirement-packages'
+import {
+  getPackageItemById,
+  updatePackageItemFields,
+} from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 
 type Params = Promise<{ id: string; itemId: string }>
@@ -24,6 +27,13 @@ export async function PATCH(
   }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
+  const item = await getPackageItemById(db, numericItemId)
+  if (!item || item.packageId !== numericPackageId) {
+    return NextResponse.json(
+      { error: 'Item not found in package' },
+      { status: 404 },
+    )
+  }
   await updatePackageItemFields(db, numericItemId, body)
   return NextResponse.json({ ok: true })
 }

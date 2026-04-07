@@ -1367,6 +1367,7 @@ export async function restoreVersion(
       statusId: STATUS_DRAFT,
       requiresTesting: oldVersion.requiresTesting,
       verificationMethod: oldVersion.verificationMethod,
+      riskLevelId: oldVersion.riskLevelId,
       createdBy: createdBy ?? oldVersion.createdBy,
       editedAt: now,
     })
