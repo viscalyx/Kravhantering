@@ -1,3 +1,4 @@
+import { DEVIATION_APPROVED, DEVIATION_REJECTED } from '@/drizzle/schema'
 import {
   countDeviationsByPackage,
   createDeviation,
@@ -885,7 +886,7 @@ export function createRequirementsService(
               catalog,
               items: levels,
               message: createServiceMessage(
-                locale === 'sv' ? 'Risknivåer' : 'Risk levels',
+                getCatalogTitle('risk_levels', locale, terminology),
                 levels.map(level =>
                   locale === 'sv' ? level.nameSv : level.nameEn,
                 ),
@@ -1868,6 +1869,12 @@ export function createRequirementsService(
               throw validationError(
                 'Decision and decision motivation are required',
               )
+            }
+            if (
+              input.decision !== DEVIATION_APPROVED &&
+              input.decision !== DEVIATION_REJECTED
+            ) {
+              throw validationError('Invalid decision value')
             }
             if (!context.actor.id) {
               throw validationError(
