@@ -261,8 +261,10 @@ erDiagram
         integer id PK
         text name_sv UK
         text name_en UK
+        text description_sv
+        text description_en
         text color
-        integer sort_order UK
+        integer sort_order
     }
 
     requirement_packages {
@@ -634,8 +636,10 @@ implemented, verified).
 | `id` | integer PK | Auto-increment primary key |
 | `name_sv` | text, unique | Swedish display name |
 | `name_en` | text, unique | English display name |
+| `description_sv` | text | Swedish description (nullable) |
+| `description_en` | text | English description (nullable) |
 | `color` | text | Hex color code for UI badges |
-| `sort_order` | integer, unique | Display ordering |
+| `sort_order` | integer | Display ordering |
 
 <!-- markdownlint-disable MD013 -->
 
@@ -1014,6 +1018,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_types_name_en` | `requirement_types` | `name_en` | Prevents duplicate English type names |
 | `uq_requirement_statuses_name_sv` | `requirement_statuses` | `name_sv` | Prevents duplicate Swedish status names |
 | `uq_requirement_statuses_name_en` | `requirement_statuses` | `name_en` | Prevents duplicate English status names |
+| `uq_risk_levels_name_sv` | `risk_levels` | `name_sv` | Prevents duplicate Swedish risk level names |
+| `uq_risk_levels_name_en` | `risk_levels` | `name_en` | Prevents duplicate English risk level names |
 | `uq_requirement_status_transitions_from_to` | `requirement_status_transitions` | `(from_requirement_status_id, to_requirement_status_id)` | Prevents duplicate transition rules |
 | `uq_ui_terminology_key` | `ui_terminology` | `key` | Prevents duplicate terminology overlays for the same UI term family |
 | `uq_requirement_list_column_defaults_column_id` | `requirement_list_column_defaults` | `column_id` | Ensures each requirement-list column has one org-managed default row |
@@ -1029,7 +1035,6 @@ its purpose and the table/column(s) it covers.
 | `uq_package_lifecycle_statuses_name_en` | `package_lifecycle_statuses` | `name_en` | Prevents duplicate English lifecycle status names |
 | `uq_package_item_statuses_name_sv` | `package_item_statuses` | `name_sv` | Prevents duplicate Swedish usage status names |
 | `uq_package_item_statuses_name_en` | `package_item_statuses` | `name_en` | Prevents duplicate English usage status names |
-| `uq_package_item_statuses_sort_order` | `package_item_statuses` | `sort_order` | Ensures each usage status has a distinct display position |
 | `uq_requirement_packages_unique_id` | `requirement_packages` | `unique_id` | Ensures each package has a stable unique identifier |
 | `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
 | `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
@@ -1097,6 +1102,7 @@ graph LR
         RS[requirement_statuses]
         RST[requirement_status_transitions]
         RSC[usage_scenarios]
+        RL[risk_levels]
         NR[norm_references]
     end
 
@@ -1142,6 +1148,7 @@ graph LR
     RC -- "uq_..._name_sv / name_en" --> RC
     RT -- "uq_..._name_sv / name_en" --> RT
     RS -- "uq_..._name_sv / name_en" --> RS
+    RL -- "uq_..._name_sv / name_en" --> RL
 
     RPI -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
@@ -1149,7 +1156,7 @@ graph LR
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
-    PIS -- "uq_..._name_sv / name_en / sort_order" --> PIS
+    PIS -- "uq_..._name_sv / name_en" --> PIS
 
     RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
     RVS -. "composite PK" .-> RSC
