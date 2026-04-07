@@ -1885,7 +1885,7 @@ export function createRequirementsService(
               decidedBy: context.actor.id,
             })
             const decisionLabel =
-              input.decision === 1
+              input.decision === DEVIATION_APPROVED
                 ? locale === 'sv'
                   ? 'godkänd'
                   : 'approved'
