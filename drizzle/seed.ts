@@ -13,12 +13,14 @@
 
 const seedSQL = `
 -- ─── Clean stale seed data (dependency order) ───────────────────────────────
+DELETE FROM deviations;
 DELETE FROM requirement_package_items;
 DELETE FROM package_needs_references;
 DELETE FROM requirement_packages;
 DELETE FROM package_responsibility_areas;
 DELETE FROM package_implementation_types;
 DELETE FROM package_lifecycle_statuses;
+DELETE FROM package_item_statuses;
 DELETE FROM requirement_version_usage_scenarios;
 DELETE FROM requirement_version_norm_references;
 DELETE FROM requirement_versions;
@@ -32,6 +34,7 @@ DELETE FROM requirement_types;
 DELETE FROM requirement_categories;
 DELETE FROM requirement_status_transitions;
 DELETE FROM requirement_statuses;
+DELETE FROM risk_levels;
 -- ─── UI Terminology ──────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO ui_terminology (
   key,
@@ -56,6 +59,28 @@ INSERT OR IGNORE INTO ui_terminology (
   ('responsibilityArea', 'Verksamhetsobjekt', 'Verksamhetsobjekt', 'Verksamhetsobjekten', 'Business object', 'Business objects', 'Business objects', datetime('now')),
   ('implementationType', 'Genomförandeform', 'Genomförandeformer', 'Genomförandeformerna', 'Implementation type', 'Implementation types', 'Implementation types', datetime('now')),
   ('referenceData', 'Referensdata', 'Referensdata', 'Referensdata', 'Reference data', 'Reference data', 'Reference data', datetime('now'));
+
+INSERT OR IGNORE INTO ui_terminology (
+  key,
+  singular_sv,
+  plural_sv,
+  definite_plural_sv,
+  singular_en,
+  plural_en,
+  definite_plural_en,
+  updated_at
+) VALUES
+  ('riskLevel', 'Risknivå', 'Risknivåer', 'Risknivåerna', 'Risk level', 'Risk levels', 'Risk levels', datetime('now'));
+
+UPDATE ui_terminology SET
+  singular_sv = 'Risknivå',
+  plural_sv = 'Risknivåer',
+  definite_plural_sv = 'Risknivåerna',
+  singular_en = 'Risk level',
+  plural_en = 'Risk levels',
+  definite_plural_en = 'Risk levels',
+  updated_at = datetime('now')
+WHERE key = 'riskLevel';
 
 UPDATE ui_terminology SET
   singular_sv = 'Kravtext',
@@ -204,7 +229,9 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('requiresTesting', 7, 0, datetime('now')),
   ('version', 8, 0, datetime('now')),
   ('needsReference', 9, 0, datetime('now')),
-  ('normReferences', 10, 0, datetime('now'));
+  ('normReferences', 10, 0, datetime('now')),
+  ('riskLevel', 11, 0, datetime('now')),
+  ('packageItemStatus', 12, 0, datetime('now'));
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
@@ -271,6 +298,28 @@ UPDATE requirement_list_column_defaults SET
   is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'normReferences';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 11,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'riskLevel';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 12,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'packageItemStatus';
+
+-- ─── Risk Levels ─────────────────────────────────────────────────────────────
+INSERT OR IGNORE INTO risk_levels (id, name_sv, name_en, sort_order, color) VALUES
+  (1, 'Låg',    'Low',    1, '#22c55e'),
+  (2, 'Medel',  'Medium', 2, '#eab308'),
+  (3, 'Hög',    'High',   3, '#ef4444');
+
+UPDATE risk_levels SET name_sv = 'Låg',   name_en = 'Low',    sort_order = 1, color = '#22c55e' WHERE id = 1;
+UPDATE risk_levels SET name_sv = 'Medel', name_en = 'Medium', sort_order = 2, color = '#eab308' WHERE id = 2;
+UPDATE risk_levels SET name_sv = 'Hög',   name_en = 'High',   sort_order = 3, color = '#ef4444' WHERE id = 3;
 
 -- ─── Requirement Statuses ────────────────────────────────────────────────────
 -- 1=Utkast, 2=Granskning, 3=Publicerad, 4=Arkiverad
@@ -1485,6 +1534,22 @@ UPDATE package_lifecycle_statuses SET name_sv = 'Införande', name_en = 'Impleme
 UPDATE package_lifecycle_statuses SET name_sv = 'Utveckling', name_en = 'Development' WHERE id = 3;
 UPDATE package_lifecycle_statuses SET name_sv = 'Förvaltning', name_en = 'Management' WHERE id = 4;
 
+-- ─── Package Item Statuses (taxonomy) ───────────────────────────────────────
+INSERT OR IGNORE INTO package_item_statuses (id, name_sv, name_en, description_sv, description_en, color, sort_order) VALUES
+  (1, 'Inkluderad',      'Included',       'Kravet finns i paketet men inget arbete påbörjat',           'Requirement is in the package but no work started',           '#94a3b8', 1),
+  (2, 'Pågående',        'In Progress',    'Implementation pågår',                                       'Implementation is in progress',                               '#f59e0b', 2),
+  (3, 'Implementerad',   'Implemented',    'Kravet är implementerat',                                    'Requirement has been implemented',                            '#3b82f6', 3),
+  (4, 'Verifierad',      'Verified',       'Kravet är verifierat och testat',                            'Requirement has been verified and tested',                    '#22c55e', 4),
+  (5, 'Avviken',         'Deviated',       'Avsteg har registrerats för kravet',                         'A deviation has been registered for the requirement',         '#ef4444', 0),
+  (6, 'Ej tillämpbar',   'Not Applicable', 'Kravet gäller inte i denna kontext',                        'Requirement does not apply in this context',                  '#6b7280', 6);
+
+UPDATE package_item_statuses SET name_sv = 'Inkluderad',    name_en = 'Included',       description_sv = 'Kravet finns i paketet men inget arbete påbörjat',  description_en = 'Requirement is in the package but no work started',  color = '#94a3b8', sort_order = 1 WHERE id = 1;
+UPDATE package_item_statuses SET name_sv = 'Pågående',      name_en = 'In Progress',    description_sv = 'Implementation pågår',                              description_en = 'Implementation is in progress',                     color = '#f59e0b', sort_order = 2 WHERE id = 2;
+UPDATE package_item_statuses SET name_sv = 'Implementerad', name_en = 'Implemented',    description_sv = 'Kravet är implementerat',                           description_en = 'Requirement has been implemented',                   color = '#3b82f6', sort_order = 3 WHERE id = 3;
+UPDATE package_item_statuses SET name_sv = 'Verifierad',    name_en = 'Verified',       description_sv = 'Kravet är verifierat och testat',                   description_en = 'Requirement has been verified and tested',           color = '#22c55e', sort_order = 4 WHERE id = 4;
+UPDATE package_item_statuses SET name_sv = 'Avviken',       name_en = 'Deviated',       description_sv = 'Avsteg har registrerats för kravet',                description_en = 'A deviation has been registered for the requirement', color = '#ef4444', sort_order = 0 WHERE id = 5;
+UPDATE package_item_statuses SET name_sv = 'Ej tillämpbar', name_en = 'Not Applicable', description_sv = 'Kravet gäller inte i denna kontext',               description_en = 'Requirement does not apply in this context',         color = '#6b7280', sort_order = 6 WHERE id = 6;
+
 -- ─── Requirement Packages (10 packages) ─────────────────────────────────────
 -- All packages use only published (status=3) requirement versions.
 -- business_needs_reference added to several packages to show the field.
@@ -1552,55 +1617,102 @@ INSERT OR IGNORE INTO package_needs_references (id, package_id, text, created_at
 --   req=22 ver=24  req=24 ver=26  req=26 ver=28  req=27 ver=29  req=29 ver=31
 --   req=32 ver=33  req=33 ver=34  req=34 ver=35  req=38 ver=39  req=39 ver=40
 --   req=42 ver=43  req=43 ver=44  req=67 ver=101
-INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, requirement_id, requirement_version_id, needs_reference_id, created_at) VALUES
-  -- Package 1: Integrationsplattform 2026 (7 krav)
-  (1,  1,  1,  1,   1,    datetime('now', '-29 days')),
-  (2,  1,  2,  3,   2,    datetime('now', '-29 days')),
-  (3,  1,  4,  5,   3,    datetime('now', '-29 days')),
-  (4,  1,  11, 13,  4,    datetime('now', '-28 days')),
-  (5,  1,  13, 15,  5,    datetime('now', '-28 days')),
-  (6,  1,  22, 24,  NULL, datetime('now', '-27 days')),
-  (7,  1,  24, 26,  6,    datetime('now', '-27 days')),
-  -- Package 2: Säkerhetslyft Q2 (5 krav)
-  (8,  2,  15, 17,  7,    datetime('now', '-24 days')),
-  (9,  2,  16, 18,  8,    datetime('now', '-24 days')),
-  (10, 2,  17, 19,  9,    datetime('now', '-23 days')),
-  (11, 2,  19, 21,  10,   datetime('now', '-23 days')),
-  (12, 2,  42, 43,  NULL, datetime('now', '-22 days')),
-  -- Package 3: Prestanda och Skalbarhet (4 krav)
-  (13, 3,  21, 23,  NULL, datetime('now', '-19 days')),
-  (14, 3,  22, 24,  NULL, datetime('now', '-19 days')),
-  (15, 3,  24, 26,  NULL, datetime('now', '-18 days')),
-  (16, 3,  39, 40,  NULL, datetime('now', '-18 days')),
-  -- Package 4: Tillgänglighet Q3 2025 (3 krav)
-  (17, 4,  26, 28,  11,   datetime('now', '-17 days')),
-  (18, 4,  27, 29,  NULL, datetime('now', '-17 days')),
-  (19, 4,  29, 31,  NULL, datetime('now', '-16 days')),
-  -- Package 5: Datalagring och Backup (3 krav)
-  (20, 5,  32, 33,  NULL, datetime('now', '-14 days')),
-  (21, 5,  33, 34,  NULL, datetime('now', '-14 days')),
-  (22, 5,  34, 35,  12,   datetime('now', '-13 days')),
-  -- Package 6: Identitets- och åtkomsthantering (6 krav)
-  (23, 6,  11, 13,  13,   datetime('now', '-11 days')),
-  (24, 6,  13, 15,  14,   datetime('now', '-11 days')),
-  (25, 6,  17, 19,  15,   datetime('now', '-10 days')),
-  (26, 6,  38, 39,  16,   datetime('now', '-10 days')),
-  (27, 6,  42, 43,  17,   datetime('now', '-9 days')),
-  (28, 6,  43, 44,  18,   datetime('now', '-9 days')),
-  -- Package 7: GDPR-efterlevnad 2026 (2 krav)
-  (29, 7,  34, 35,  19,   datetime('now', '-9 days')),
-  (30, 7,  17, 19,  20,   datetime('now', '-8 days')),
-  -- Package 8: Behörighet och IAM (4 krav)
-  (31, 8,  38, 39,  NULL, datetime('now', '-7 days')),
-  (32, 8,  39, 40,  NULL, datetime('now', '-7 days')),
-  (33, 8,  42, 43,  NULL, datetime('now', '-6 days')),
-  (34, 8,  43, 44,  NULL, datetime('now', '-6 days')),
+INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, requirement_id, requirement_version_id, needs_reference_id, package_item_status_id, created_at) VALUES
+  -- Package 1: Integrationsplattform 2026 (7 krav) — mature package, most verified
+  (1,  1,  1,  1,   1,    4,    datetime('now', '-29 days')),
+  (2,  1,  2,  3,   2,    4,    datetime('now', '-29 days')),
+  (3,  1,  4,  5,   3,    3,    datetime('now', '-29 days')),
+  (4,  1,  11, 13,  4,    4,    datetime('now', '-28 days')),
+  (5,  1,  13, 15,  5,    3,    datetime('now', '-28 days')),
+  (6,  1,  22, 24,  NULL, 2,    datetime('now', '-27 days')),
+  (7,  1,  24, 26,  6,    4,    datetime('now', '-27 days')),
+  -- Package 2: Säkerhetslyft Q2 (5 krav) — mid-progress
+  (8,  2,  15, 17,  7,    3,    datetime('now', '-24 days')),
+  (9,  2,  16, 18,  8,    2,    datetime('now', '-24 days')),
+  (10, 2,  17, 19,  9,    3,    datetime('now', '-23 days')),
+  (11, 2,  19, 21,  10,   1,    datetime('now', '-23 days')),
+  (12, 2,  42, 43,  NULL, 5,    datetime('now', '-22 days')),
+  -- Package 3: Prestanda och Skalbarhet (4 krav) — early stage
+  (13, 3,  21, 23,  NULL, 1,    datetime('now', '-19 days')),
+  (14, 3,  22, 24,  NULL, 2,    datetime('now', '-19 days')),
+  (15, 3,  24, 26,  NULL, 1,    datetime('now', '-18 days')),
+  (16, 3,  39, 40,  NULL, 6,    datetime('now', '-18 days')),
+  -- Package 4: Tillgänglighet Q3 2025 (3 krav) — mixed
+  (17, 4,  26, 28,  11,   4,    datetime('now', '-17 days')),
+  (18, 4,  27, 29,  NULL, 3,    datetime('now', '-17 days')),
+  (19, 4,  29, 31,  NULL, 2,    datetime('now', '-16 days')),
+  -- Package 5: Datalagring och Backup (3 krav) — mostly included
+  (20, 5,  32, 33,  NULL, 1,    datetime('now', '-14 days')),
+  (21, 5,  33, 34,  NULL, 1,    datetime('now', '-14 days')),
+  (22, 5,  34, 35,  12,   2,    datetime('now', '-13 days')),
+  -- Package 6: Identitets- och åtkomsthantering (6 krav) — good progress
+  (23, 6,  11, 13,  13,   4,    datetime('now', '-11 days')),
+  (24, 6,  13, 15,  14,   3,    datetime('now', '-11 days')),
+  (25, 6,  17, 19,  15,   3,    datetime('now', '-10 days')),
+  (26, 6,  38, 39,  16,   2,    datetime('now', '-10 days')),
+  (27, 6,  42, 43,  17,   1,    datetime('now', '-9 days')),
+  (28, 6,  43, 44,  18,   1,    datetime('now', '-9 days')),
+  -- Package 7: GDPR-efterlevnad 2026 (2 krav) — just started
+  (29, 7,  34, 35,  19,   1,    datetime('now', '-9 days')),
+  (30, 7,  17, 19,  20,   1,    datetime('now', '-8 days')),
+  -- Package 8: Behörighet och IAM (4 krav) — just included
+  (31, 8,  38, 39,  NULL, 1,    datetime('now', '-7 days')),
+  (32, 8,  39, 40,  NULL, 1,    datetime('now', '-7 days')),
+  (33, 8,  42, 43,  NULL, 1,    datetime('now', '-6 days')),
+  (34, 8,  43, 44,  NULL, 1,    datetime('now', '-6 days')),
   -- Package 9: API Gateway och Kommunikation (3 krav)
-  (35, 9,  1,  1,   NULL, datetime('now', '-4 days')),
-  (36, 9,  4,  5,   NULL, datetime('now', '-4 days')),
-  (37, 9,  13, 15,  21,   datetime('now', '-3 days')),
+  (35, 9,  1,  1,   NULL, 2,    datetime('now', '-4 days')),
+  (36, 9,  4,  5,   NULL, 1,    datetime('now', '-4 days')),
+  (37, 9,  13, 15,  21,   1,    datetime('now', '-3 days')),
   -- Package 10: Systemövervakning Bas (1 krav)
-  (38, 10, 67, 101, 22,   datetime('now', '-2 days'));
+  (38, 10, 67, 101, 22,   1,    datetime('now', '-2 days'));
+
+-- Backfill: set any NULL package_item_status_id to 'Included' (1)
+UPDATE requirement_package_items
+  SET package_item_status_id = 1
+  WHERE package_item_status_id IS NULL;
+
+-- ─── Deviations (formal waivers from mandatory requirements) ─────────────────
+INSERT OR IGNORE INTO deviations (id, package_item_id, motivation, is_review_requested, decision, decision_motivation, decided_by, decided_at, created_by, created_at, updated_at) VALUES
+  -- Package 1 item 3 (INT0002): approved deviation
+  (1, 3, 'Legacy system cannot support this integration pattern within project timeline. Alternative approach documented in architecture decision record ADR-047.', 1, 1, 'Accepted based on ADR-047 and compensating controls via API gateway.', 'Anna Lindqvist', datetime('now', '-20 days'), 'Erik Svensson', datetime('now', '-25 days'), datetime('now', '-20 days')),
+  -- Package 2 item 9 (SÄK0002): pending decision, review requested
+  (2, 9, 'Current infrastructure does not meet the encryption-at-rest requirement for the staging environment. Upgrade planned for Q3.', 1, NULL, NULL, NULL, NULL, 'Maria Johansson', datetime('now', '-18 days'), NULL),
+  -- Package 2 item 11 (SÄK0005): rejected deviation
+  (3, 11, 'Proposed to skip penetration testing due to budget constraints.', 1, 2, 'Penetration testing is a mandatory security control. Budget must be reallocated.', 'Anna Lindqvist', datetime('now', '-15 days'), 'Erik Svensson', datetime('now', '-20 days'), datetime('now', '-15 days')),
+  -- Package 3 item 14: approved deviation
+  (4, 14, 'Response time requirement of 200ms cannot be met for batch operations. Proposing 2000ms threshold for batch endpoints only.', 1, 1, 'Approved for batch endpoints only. Real-time endpoints must still meet 200ms SLA.', 'Karl Nilsson', datetime('now', '-12 days'), 'Maria Johansson', datetime('now', '-16 days'), datetime('now', '-12 days')),
+  -- Package 5 item 20: draft deviation (not yet submitted for review)
+  (5, 20, 'Accessibility requirement WCAG 2.1 AA cannot be fully met for legacy PDF export. Remediation requires vendor update expected in next release.', 0, NULL, NULL, NULL, NULL, 'Erik Svensson', datetime('now', '-5 days'), NULL);
+
+-- ─── Assign risk levels to ~50 % of requirement versions ─────────────────────
+-- Hög/High
+UPDATE requirement_versions SET risk_level_id = 3 WHERE id IN (
+  1, 2, 5, 15, 22, 36, 38, 40, 43, 45, 49, 56, 70, 74, 81,
+  83, 89, 108, 111, 112, 121, 134, 158, 163, 189, 202, 231, 235, 243, 249,
+  250, 257, 260, 264, 275, 297, 303, 309, 313, 321, 348, 349, 366, 369, 374,
+  387, 389, 392, 401, 402, 414, 425, 432, 435, 438, 440, 441, 445, 456, 463,
+  469, 471, 502
+);
+-- Medel/Medium
+UPDATE requirement_versions SET risk_level_id = 2 WHERE id IN (
+  3, 6, 7, 10, 14, 16, 20, 25, 33, 41, 53, 60, 73, 88, 102,
+  104, 105, 113, 120, 128, 131, 143, 155, 159, 160, 167, 169, 173, 175, 183,
+  186, 191, 197, 203, 209, 215, 217, 218, 220, 225, 227, 229, 253, 263, 274,
+  278, 279, 285, 288, 290, 296, 299, 308, 311, 315, 325, 329, 330, 331, 336,
+  337, 341, 346, 356, 357, 361, 373, 382, 386, 391, 398, 399, 404, 413, 419,
+  429, 442, 443, 450, 454, 458, 462, 479, 484, 488, 495, 496
+);
+-- Låg/Low
+UPDATE requirement_versions SET risk_level_id = 1 WHERE id IN (
+  8, 9, 11, 12, 13, 17, 18, 26, 29, 32, 37, 44, 46, 48, 51,
+  52, 54, 58, 61, 62, 64, 66, 72, 80, 82, 84, 86, 101, 106, 107,
+  109, 118, 119, 123, 127, 133, 136, 139, 142, 149, 150, 151, 157, 165, 168,
+  185, 187, 195, 200, 201, 204, 206, 214, 219, 226, 241, 242, 245, 246, 254,
+  277, 289, 291, 292, 301, 302, 310, 317, 318, 334, 342, 343, 351, 352, 359,
+  362, 364, 377, 380, 381, 384, 394, 400, 410, 418, 422, 428, 433, 434, 447,
+  457, 465, 473, 478, 482, 486, 499, 500, 501
+);
 `
 
 console.log(seedSQL)

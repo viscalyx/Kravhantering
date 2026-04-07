@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  AlertTriangle,
   Download,
   HelpCircle,
   Pencil,
@@ -17,6 +18,7 @@ import PackageEditPanel, {
   PACKAGE_EDIT_FORM_ID,
 } from '@/app/[locale]/requirement-packages/[slug]/package-edit-panel'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
+import DeviationFormModal from '@/components/DeviationFormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
@@ -48,6 +50,11 @@ const REQUIREMENT_PACKAGE_DETAIL_HELP: HelpContent = {
       kind: 'text',
       bodyKey: 'requirementPackageDetail.needsReference.body',
       headingKey: 'requirementPackageDetail.needsReference.heading',
+    },
+    {
+      kind: 'text',
+      bodyKey: 'requirementPackageDetail.packageItemStatus.body',
+      headingKey: 'requirementPackageDetail.packageItemStatus.heading',
     },
     {
       kind: 'text',
@@ -123,6 +130,7 @@ export default function KravpaketDetailClient({
   useHelpContent(REQUIREMENT_PACKAGE_DETAIL_HELP)
   const t = useTranslations('package')
   const tc = useTranslations('common')
+  const td = useTranslations('deviation')
   const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
@@ -146,7 +154,20 @@ export default function KravpaketDetailClient({
   const [packageLifecycleStatuses, setPackageLifecycleStatuses] = useState<
     PackageTaxonomyItem[]
   >([])
+  const [packageItemStatuses, setPackageItemStatuses] = useState<
+    (PackageTaxonomyItem & {
+      color: string
+      descriptionEn: string | null
+      descriptionSv: string | null
+      sortOrder: number
+    })[]
+  >([])
   const [showEditPackageForm, setShowEditPackageForm] = useState(false)
+  const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
+  const [bulkDeviationSaving, setBulkDeviationSaving] = useState(false)
+  const [bulkDeviationError, setBulkDeviationError] = useState<string | null>(
+    null,
+  )
 
   // Left panel state
   const [leftSelectedIds, setLeftSelectedIds] = useState<Set<number>>(new Set())
@@ -389,6 +410,7 @@ export default function KravpaketDetailClient({
         packageAreasRes,
         packageTypesRes,
         packageStatusesRes,
+        packageItemStatusesRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
         fetch('/api/usage-scenarios'),
@@ -396,6 +418,7 @@ export default function KravpaketDetailClient({
         fetch('/api/package-responsibility-areas'),
         fetch('/api/package-implementation-types'),
         fetch('/api/package-lifecycle-statuses'),
+        fetch('/api/package-item-statuses'),
       ])
       if (areasRes.status === 'fulfilled' && areasRes.value.ok) {
         const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
@@ -433,6 +456,21 @@ export default function KravpaketDetailClient({
           statuses?: PackageTaxonomyItem[]
         }
         setPackageLifecycleStatuses(data.statuses ?? [])
+      }
+      if (
+        packageItemStatusesRes.status === 'fulfilled' &&
+        packageItemStatusesRes.value.ok
+      ) {
+        const data = (await packageItemStatusesRes.value.json()) as {
+          statuses?: (PackageTaxonomyItem & {
+            color: string
+            descriptionEn: string | null
+            descriptionSv: string | null
+            isDeviationStatus?: boolean
+            sortOrder: number
+          })[]
+        }
+        setPackageItemStatuses(data.statuses ?? [])
       }
     }
     void fetchTaxonomies()
@@ -560,6 +598,45 @@ export default function KravpaketDetailClient({
     tc,
   ])
 
+  const handlePackageItemStatusChange = useCallback(
+    async (packageItemId: number, statusId: number | null) => {
+      if (!pkg) return
+      const prev = packageItems
+      // Optimistic update
+      setPackageItems(prev =>
+        prev.map(item => {
+          if (item.packageItemId !== packageItemId) return item
+          const status = statusId
+            ? packageItemStatuses.find(s => s.id === statusId)
+            : null
+          return {
+            ...item,
+            packageItemStatusId: statusId,
+            packageItemStatusNameSv: status?.nameSv ?? null,
+            packageItemStatusNameEn: status?.nameEn ?? null,
+            packageItemStatusColor: status?.color ?? null,
+          }
+        }),
+      )
+      try {
+        const res = await fetch(
+          `/api/requirement-packages/${pkg.id}/items/${packageItemId}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ packageItemStatusId: statusId }),
+          },
+        )
+        if (!res.ok) {
+          setPackageItems(prev)
+        }
+      } catch {
+        setPackageItems(prev)
+      }
+    },
+    [pkg, packageItemStatuses, packageItems],
+  )
+
   const handleRemoveSelected = useCallback(async () => {
     if (leftSelectedIds.size === 0) return
     await fetch(`/api/requirement-packages/${packageSlug}/items`, {
@@ -594,6 +671,60 @@ export default function KravpaketDetailClient({
     leftSelectedIds,
     packageItems,
   ])
+
+  const handleBulkDeviation = useCallback(
+    async (motivation: string, createdBy: string) => {
+      if (leftSelectedIds.size === 0) return
+      setBulkDeviationSaving(true)
+      setBulkDeviationError(null)
+      try {
+        const items = packageItems.filter(r => leftSelectedIds.has(r.id))
+        const results = await Promise.allSettled(
+          items
+            .filter(item => item.packageItemId != null)
+            .map(item =>
+              fetch(
+                `/api/requirement-packages/${packageSlug}/items/${item.packageItemId}/deviations`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ motivation, createdBy }),
+                },
+              ).then(async res => {
+                if (!res.ok)
+                  throw new Error(`Failed for item ${item.packageItemId}`)
+                return item.id
+              }),
+            ),
+        )
+        const succeededIds = new Set(
+          results
+            .filter(
+              (r): r is PromiseFulfilledResult<number> =>
+                r.status === 'fulfilled',
+            )
+            .map(r => r.value),
+        )
+        const failedCount = results.filter(r => r.status === 'rejected').length
+        setLeftSelectedIds(prev => {
+          const next = new Set(prev)
+          for (const id of succeededIds) next.delete(id)
+          return next
+        })
+        if (failedCount > 0) {
+          setBulkDeviationError(
+            td('bulkDeviationPartialFail', { count: failedCount }),
+          )
+        } else {
+          setShowBulkDeviationModal(false)
+        }
+        await fetchPackageItems()
+      } finally {
+        setBulkDeviationSaving(false)
+      }
+    },
+    [fetchPackageItems, leftSelectedIds, packageItems, packageSlug, td],
+  )
 
   const getName = (opt: { nameSv: string; nameEn: string }) =>
     locale === 'sv' ? opt.nameSv : opt.nameEn
@@ -649,6 +780,16 @@ export default function KravpaketDetailClient({
         )
       }
     }
+    if (
+      leftFilters.packageItemStatusIds &&
+      leftFilters.packageItemStatusIds.length > 0
+    ) {
+      const statusSet = new Set(leftFilters.packageItemStatusIds)
+      rows = rows.filter(
+        r =>
+          r.packageItemStatusId != null && statusSet.has(r.packageItemStatusId),
+      )
+    }
     return rows
   }, [packageItems, leftFilters, areas, leftNormReferenceOptions])
 
@@ -668,6 +809,7 @@ export default function KravpaketDetailClient({
       t('csvHeaders.category'),
       t('csvHeaders.type'),
       t('csvHeaders.qualityCharacteristic'),
+      t('csvHeaders.packageItemStatus'),
     ]
     const csvRows = filteredPackageItems.map(r => ({
       [headers[0]]: r.uniqueId,
@@ -687,6 +829,10 @@ export default function KravpaketDetailClient({
         (locale === 'sv'
           ? r.version?.qualityCharacteristicNameSv
           : r.version?.qualityCharacteristicNameEn) ?? '',
+      [headers[8]]:
+        (locale === 'sv'
+          ? r.packageItemStatusNameSv
+          : r.packageItemStatusNameEn) ?? '',
     }))
     const csv = exportToCsv(headers, csvRows)
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -1109,15 +1255,36 @@ export default function KravpaketDetailClient({
                     needsReferenceOptions={availableNeedsRefs}
                     normReferences={leftNormReferenceOptions}
                     onFilterChange={setLeftFilters}
+                    onPackageItemStatusChange={handlePackageItemStatusChange}
                     onRowClick={id =>
                       setLeftExpandedId(prev => (prev === id ? null : id))
                     }
                     onSelectionChange={setLeftSelectedIds}
                     onSortChange={setLeftSort}
                     onVisibleColumnsChange={setLeftVisibleCols}
-                    renderExpanded={id => (
-                      <RequirementDetailClient inline requirementId={id} />
-                    )}
+                    packageItemStatuses={packageItemStatuses}
+                    renderExpanded={id => {
+                      const item = packageItems.find(r => r.id === id)
+                      return item?.packageItemId != null ? (
+                        <RequirementDetailClient
+                          inline
+                          onChange={async () => {
+                            await fetchPackageItems()
+                          }}
+                          packageItemId={item.packageItemId}
+                          packageSlug={packageSlug}
+                          requirementId={id}
+                        />
+                      ) : (
+                        <RequirementDetailClient
+                          inline
+                          onChange={async () => {
+                            await fetchPackageItems()
+                          }}
+                          requirementId={id}
+                        />
+                      )
+                    }}
                     rows={filteredPackageItems}
                     selectable
                     selectedIds={leftSelectedIds}
@@ -1132,14 +1299,34 @@ export default function KravpaketDetailClient({
                     }
                     stickyTitleActions={
                       leftSelectedIds.size > 0 ? (
-                        <button
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                          onClick={() => void handleRemoveSelected()}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-                          {t('removeSelected', { count: leftSelectedIds.size })}
-                        </button>
+                        <>
+                          <button
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-700/60 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+                            onClick={() => setShowBulkDeviationModal(true)}
+                            type="button"
+                          >
+                            <AlertTriangle
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {td('requestDeviationSelected', {
+                              count: leftSelectedIds.size,
+                            })}
+                          </button>
+                          <button
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                            onClick={() => void handleRemoveSelected()}
+                            type="button"
+                          >
+                            <Trash2
+                              aria-hidden="true"
+                              className="h-3.5 w-3.5"
+                            />
+                            {t('removeSelected', {
+                              count: leftSelectedIds.size,
+                            })}
+                          </button>
+                        </>
                       ) : null
                     }
                     stickyTopOffsetClassName={
@@ -1149,6 +1336,23 @@ export default function KravpaketDetailClient({
                     visibleColumns={leftVisibleCols}
                     wrapDescription
                   />
+                </div>
+              )}
+              <DeviationFormModal
+                loading={bulkDeviationSaving}
+                onClose={() => {
+                  setShowBulkDeviationModal(false)
+                  setBulkDeviationError(null)
+                }}
+                onSubmit={handleBulkDeviation}
+                open={showBulkDeviationModal}
+              />
+              {bulkDeviationError && showBulkDeviationModal && (
+                <div
+                  className="fixed bottom-6 left-1/2 z-60 -translate-x-1/2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-lg dark:border-red-900/60 dark:bg-red-950/90 dark:text-red-300"
+                  role="alert"
+                >
+                  {bulkDeviationError}
                 </div>
               )}
             </div>
@@ -1161,7 +1365,7 @@ export default function KravpaketDetailClient({
               >
                 <RequirementsTable
                   areas={areas}
-                  excludeColumns={['needsReference']}
+                  excludeColumns={['needsReference', 'packageItemStatus']}
                   expandedId={rightExpandedId}
                   filterValues={rightFilters}
                   floatingActionRailPlacement="inline-top"

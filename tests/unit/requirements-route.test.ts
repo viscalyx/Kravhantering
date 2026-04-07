@@ -126,6 +126,7 @@ describe('requirements route CSV locale fallback', () => {
       'Category',
       'Type',
       'Quality characteristic',
+      'Risk level',
       'Status',
       'Verifiable',
       'Version',

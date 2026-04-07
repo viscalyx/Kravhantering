@@ -15,6 +15,7 @@ export interface VersionSummaryData {
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
   requiresTesting: boolean
+  riskLevel: { nameSv: string; nameEn: string } | null
   scenarios: { nameSv: string; nameEn: string }[]
   status: { label: string; color: string | null }
   type: { nameSv: string; nameEn: string } | null
@@ -52,6 +53,7 @@ export type ReportSection =
   | {
       type: 'version-summary'
       version: VersionSummaryData
+      borderColor?: string
       label?: string
       isUnpublished?: boolean
     }
@@ -84,6 +86,16 @@ export type ReportSection =
         items: { id: string; label: string; page: number }[]
       }[]
       title: string
+    }
+  | {
+      type: 'deviation-summary'
+      motivation: string
+      createdBy: string | null
+      createdAt: string
+      packageName: string | null
+      packageUniqueId: string | null
+      riskLevel: { nameSv: string; nameEn: string } | null
+      locale: string
     }
 
 export interface ReportModel {

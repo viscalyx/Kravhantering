@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertCircle,
+  AlertTriangle,
   Archive,
   Check,
   Clock,
@@ -19,6 +20,11 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import DeviationDecisionModal from '@/components/DeviationDecisionModal'
+import DeviationFormModal from '@/components/DeviationFormModal'
+import DeviationPill from '@/components/DeviationPill'
+import type { DeviationStep } from '@/components/DeviationStepper'
+import DeviationStepper from '@/components/DeviationStepper'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import StatusStepper from '@/components/StatusStepper'
@@ -61,13 +67,29 @@ interface TransitionTarget {
   nameSv: string
 }
 
-interface RequirementDetailClientProps {
+interface RequirementDetailClientPropsBase {
   defaultVersion?: number
   inline?: boolean
   onChange?: () => void | Promise<void>
   onClose?: () => void
   requirementId: number | string
 }
+
+interface RequirementDetailClientStandalone
+  extends RequirementDetailClientPropsBase {
+  packageItemId?: undefined
+  packageSlug?: undefined
+}
+
+interface RequirementDetailClientPackageItem
+  extends RequirementDetailClientPropsBase {
+  packageItemId: number
+  packageSlug: string
+}
+
+type RequirementDetailClientProps =
+  | RequirementDetailClientStandalone
+  | RequirementDetailClientPackageItem
 
 function getResponseMessage(body: unknown): string | null {
   if (typeof body === 'string') {
@@ -114,15 +136,20 @@ export default function RequirementDetailClient({
   inline,
   onChange,
   onClose,
+  packageItemId,
+  packageSlug,
   requirementId,
 }: RequirementDetailClientProps) {
   useHelpContent(inline ? null : REQUIREMENT_DETAIL_HELP)
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const tp = useTranslations('package')
+  const td = useTranslations('deviation')
   const router = useRouter()
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+
+  const isPackageItemContext = !!packageItemId && !!packageSlug
 
   const localName = (
     obj: { nameSv: string | null; nameEn: string | null } | null | undefined,
@@ -179,6 +206,200 @@ export default function RequirementDetailClient({
   > | null>(null)
   const addToPackageNeedsRefsRequestIdRef = useRef(0)
   const addToPackageNeedsRefsAbortRef = useRef<AbortController | null>(null)
+
+  // ─── Deviation workflow state ──────────────────────────────────────────────
+  interface DeviationData {
+    createdAt: string
+    createdBy: string | null
+    decidedAt: string | null
+    decidedBy: string | null
+    decision: number | null
+    decisionMotivation: string | null
+    id: number
+    isReviewRequested: number
+    motivation: string
+  }
+
+  const [deviations, setDeviations] = useState<DeviationData[]>([])
+  const [showDeviationForm, setShowDeviationForm] = useState(false)
+  const [showEditDeviationForm, setShowEditDeviationForm] = useState(false)
+  const [showDecisionForm, setShowDecisionForm] = useState(false)
+  const [deviationSaving, setDeviationSaving] = useState(false)
+
+  const latestDeviation = useMemo(() => {
+    if (deviations.length === 0) return null
+    return deviations[deviations.length - 1]
+  }, [deviations])
+
+  const deviationHistory = useMemo(
+    () => (deviations.length > 1 ? deviations.slice(0, -1) : []),
+    [deviations],
+  )
+
+  const deviationStep = useMemo((): DeviationStep | null => {
+    if (!latestDeviation) return null
+    if (latestDeviation.decision !== null) return 'decided'
+    if (latestDeviation.isReviewRequested === 1) return 'review_requested'
+    return 'draft'
+  }, [latestDeviation])
+
+  const fetchDeviations = useCallback(async () => {
+    if (!packageItemId || !packageSlug) return
+    try {
+      const res = await fetch(
+        `/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
+      )
+      if (res.ok) {
+        const data = (await res.json()) as { deviations: DeviationData[] }
+        setDeviations(data.deviations)
+      }
+    } catch {
+      // silently fail — deviation data is supplementary
+    }
+  }, [packageItemId, packageSlug])
+
+  useEffect(() => {
+    if (isPackageItemContext) {
+      void fetchDeviations()
+    }
+  }, [isPackageItemContext, fetchDeviations])
+
+  const handleCreateDeviation = useCallback(
+    async (motivation: string, createdBy: string) => {
+      if (!packageItemId || !packageSlug || !motivation) return
+      setDeviationSaving(true)
+      try {
+        const res = await fetch(
+          `/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              motivation,
+              createdBy: createdBy || null,
+            }),
+          },
+        )
+        if (res.ok) {
+          setShowDeviationForm(false)
+          await fetchDeviations()
+        }
+      } finally {
+        setDeviationSaving(false)
+      }
+    },
+    [packageItemId, packageSlug, fetchDeviations],
+  )
+
+  const handleEditDeviation = useCallback(
+    async (motivation: string, _createdBy: string) => {
+      if (!latestDeviation || !motivation) return
+      setDeviationSaving(true)
+      try {
+        const res = await fetch(`/api/deviations/${latestDeviation.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ motivation }),
+        })
+        if (res.ok) {
+          setShowEditDeviationForm(false)
+          await fetchDeviations()
+        }
+      } finally {
+        setDeviationSaving(false)
+      }
+    },
+    [latestDeviation, fetchDeviations],
+  )
+
+  const handleDeleteDeviation = useCallback(async () => {
+    if (!latestDeviation) return
+    const confirmed = await confirm({
+      message: td('deleteDeviationConfirm'),
+      title: td('deleteDeviationConfirmTitle'),
+      variant: 'danger',
+      icon: 'caution',
+    })
+    if (!confirmed) return
+    setDeviationSaving(true)
+    try {
+      const res = await fetch(`/api/deviations/${latestDeviation.id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        await fetchDeviations()
+      }
+    } finally {
+      setDeviationSaving(false)
+    }
+  }, [latestDeviation, fetchDeviations, confirm, td])
+
+  const handleRequestReview = useCallback(async () => {
+    if (!latestDeviation) return
+    setDeviationSaving(true)
+    try {
+      const res = await fetch(
+        `/api/deviations/${latestDeviation.id}/request-review`,
+        { method: 'POST' },
+      )
+      if (res.ok) {
+        await fetchDeviations()
+      }
+    } finally {
+      setDeviationSaving(false)
+    }
+  }, [latestDeviation, fetchDeviations])
+
+  const handleRevertToDraft = useCallback(async () => {
+    if (!latestDeviation) return
+    const confirmed = await confirm({
+      message: td('revertToDraftConfirm'),
+      title: td('revertToDraftConfirmTitle'),
+      variant: 'default',
+      icon: 'warning',
+    })
+    if (!confirmed) return
+    setDeviationSaving(true)
+    try {
+      const res = await fetch(
+        `/api/deviations/${latestDeviation.id}/revert-to-draft`,
+        { method: 'POST' },
+      )
+      if (res.ok) {
+        await fetchDeviations()
+      }
+    } finally {
+      setDeviationSaving(false)
+    }
+  }, [latestDeviation, fetchDeviations, confirm, td])
+
+  const handleRecordDecision = useCallback(
+    async (decision: 1 | 2, motivation: string, decidedBy: string) => {
+      if (!latestDeviation) return
+      setDeviationSaving(true)
+      try {
+        const res = await fetch(
+          `/api/deviations/${latestDeviation.id}/decision`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decision,
+              decisionMotivation: motivation,
+              decidedBy,
+            }),
+          },
+        )
+        if (res.ok) {
+          setShowDecisionForm(false)
+          await Promise.all([fetchDeviations(), onChange?.()])
+        }
+      } finally {
+        setDeviationSaving(false)
+      }
+    },
+    [latestDeviation, fetchDeviations, onChange],
+  )
 
   const clearAddToPackageCloseTimer = useCallback(() => {
     if (addToPackageCloseTimerRef.current) {
@@ -1306,7 +1527,7 @@ export default function RequirementDetailClient({
         onClose && !inline
           ? 'p-6 sm:p-8'
           : inline
-            ? 'p-6'
+            ? 'px-6 py-4'
             : 'section-padding px-4 sm:px-6 lg:px-8'
       }
     >
@@ -1379,25 +1600,45 @@ export default function RequirementDetailClient({
                 </span>
               </div>
             )}
-          <StatusStepper
-            currentStatusId={currentStatusId}
-            developerModeContext={detailContext}
-            statuses={
-              statuses.length === 0
-                ? statuses
-                : isArchiving || currentStatusId === STATUS_ARCHIVED
-                  ? [3, 2, 4]
-                      .map(id => statuses.find(s => s.id === id))
-                      .filter((s): s is (typeof statuses)[number] => s != null)
-                  : statuses.filter(s => s.id !== STATUS_ARCHIVED)
-            }
-          />
+          {isPackageItemContext && deviationStep ? (
+            <DeviationStepper
+              currentStep={deviationStep}
+              developerModeContext={detailContext}
+            />
+          ) : !isPackageItemContext ? (
+            <StatusStepper
+              currentStatusId={currentStatusId}
+              developerModeContext={detailContext}
+              statuses={
+                statuses.length === 0
+                  ? statuses
+                  : isArchiving || currentStatusId === STATUS_ARCHIVED
+                    ? [3, 2, 4]
+                        .map(id => statuses.find(s => s.id === id))
+                        .filter(
+                          (s): s is (typeof statuses)[number] => s != null,
+                        )
+                    : statuses.filter(s => s.id !== STATUS_ARCHIVED)
+              }
+            />
+          ) : null}
         </div>
+
+        {/* Deviation pill (above main content, only in package item context) */}
+        {isPackageItemContext && latestDeviation && (
+          <div className="mb-4">
+            <DeviationPill
+              developerModeContext={detailContext}
+              history={deviationHistory}
+              latest={latestDeviation}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-6">
           {/* Main content */}
           <div className="space-y-6">
-            <div className="relative flex gap-4">
+            <div className="relative flex flex-col sm:flex-row gap-3">
               <div
                 className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
                 ref={cardRef}
@@ -1434,7 +1675,7 @@ export default function RequirementDetailClient({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-4">
                   {req.area && (
                     <div
                       {...devMarker({
@@ -1506,6 +1747,36 @@ export default function RequirementDetailClient({
                       </p>
                     </div>
                   )}
+                  <div
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'risk level',
+                    })}
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('riskLevel')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100 inline-flex items-center gap-1.5">
+                      {selectedVersion?.riskLevel ? (
+                        <>
+                          {selectedVersion.riskLevel.color && (
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{
+                                backgroundColor:
+                                  selectedVersion.riskLevel.color,
+                              }}
+                            />
+                          )}
+                          {localName(selectedVersion.riskLevel)}
+                        </>
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  </div>
                   <div
                     {...devMarker({
                       context: detailContext,
@@ -1653,202 +1924,588 @@ export default function RequirementDetailClient({
                 )}
 
               {/* Action buttons column */}
-              <div className="flex flex-col gap-2 shrink-0">
-                <div className="relative" ref={reportMenuRef}>
-                  <button
-                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'report print button',
-                      priority: 290,
-                      value: 'reports',
-                    })}
-                    onClick={() => setShowReportMenu(prev => !prev)}
-                    title={tc('print')}
-                    type="button"
-                  >
-                    <Printer aria-hidden="true" className="h-4 w-4" />
-                    {tc('print')}
-                  </button>
-                  {showReportMenu && (
-                    <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        {...devMarker({
-                          context: detailContext,
-                          name: 'report option',
-                          priority: 295,
-                          value: 'print history',
-                        })}
-                        onClick={() => {
-                          setShowReportMenu(false)
-                          window.open(
-                            `/${locale}/requirements/reports/print/history/${requirementId}`,
-                            '_blank',
-                          )
-                        }}
-                        type="button"
-                      >
-                        <Printer aria-hidden="true" className="h-4 w-4" />
-                        {t('printHistoryReport')}
-                      </button>
-                      <button
-                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        {...devMarker({
-                          context: detailContext,
-                          name: 'report option',
-                          priority: 296,
-                          value: 'download history pdf',
-                        })}
-                        onClick={() => {
-                          setShowReportMenu(false)
-                          window.open(
-                            `/${locale}/requirements/reports/pdf/history/${requirementId}`,
-                            '_blank',
-                          )
-                        }}
-                        type="button"
-                      >
-                        <Printer aria-hidden="true" className="h-4 w-4" />
-                        {t('downloadHistoryReportPdf')}
-                      </button>
-                      {currentStatusId === STATUS_REVIEW && (
-                        <>
-                          <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
-                          <button
-                            className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                            {...devMarker({
-                              context: detailContext,
-                              name: 'report option',
-                              priority: 297,
-                              value: 'print review',
-                            })}
-                            onClick={() => {
-                              setShowReportMenu(false)
-                              window.open(
-                                `/${locale}/requirements/reports/print/review/${requirementId}`,
-                                '_blank',
-                              )
-                            }}
-                            type="button"
-                          >
-                            <Printer aria-hidden="true" className="h-4 w-4" />
-                            {t('printReviewReport')}
-                          </button>
-                          <button
-                            className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                            {...devMarker({
-                              context: detailContext,
-                              name: 'report option',
-                              priority: 298,
-                              value: 'download review pdf',
-                            })}
-                            onClick={() => {
-                              setShowReportMenu(false)
-                              window.open(
-                                `/${locale}/requirements/reports/pdf/review/${requirementId}`,
-                                '_blank',
-                              )
-                            }}
-                            type="button"
-                          >
-                            <Printer aria-hidden="true" className="h-4 w-4" />
-                            {t('downloadReviewReportPdf')}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {canAddToPackage && (
-                  <button
-                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail action',
-                      priority: 360,
-                      value: 'add to package',
-                    })}
-                    onClick={handleOpenAddToPackage}
-                    title={tp('addToPackage')}
-                    type="button"
-                  >
-                    <PackagePlus aria-hidden="true" className="h-4 w-4" />
-                    {tp('addToPackage')}
-                  </button>
-                )}
-                <div className="relative" ref={shareMenuRef}>
-                  <button
-                    className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'share toggle',
-                      priority: 300,
-                      value: 'share',
-                    })}
-                    onClick={() => setShowShareMenu(prev => !prev)}
-                    title={tc('share')}
-                    type="button"
-                  >
-                    {copied ? (
-                      <Check
-                        aria-hidden="true"
-                        className="h-4 w-4 text-green-500"
-                      />
-                    ) : (
-                      <Share2 aria-hidden="true" className="h-4 w-4" />
+              {isPackageItemContext ? (
+                <div className="flex flex-col gap-2 shrink-0">
+                  {/* Print button — always available */}
+                  <div className="relative" ref={reportMenuRef}>
+                    <button
+                      className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                      onClick={() => setShowReportMenu(prev => !prev)}
+                      title={tc('print')}
+                      type="button"
+                    >
+                      <Printer aria-hidden="true" className="h-4 w-4" />
+                      {tc('print')}
+                    </button>
+                    {showReportMenu && (
+                      <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                        {deviationStep === 'review_requested' ? (
+                          <>
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {td('printDeviationReviewReport')}
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {td('downloadDeviationReviewReportPdf')}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/print/history/${requirementId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {t('printHistoryReport')}
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/pdf/history/${requirementId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {t('downloadHistoryReportPdf')}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
-                    {copied ? tc('copied') : tc('share')}
-                  </button>
-                  {showShareMenu && (
-                    <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                  </div>
+                  {/* Deviation workflow buttons */}
+                  {deviationStep === null || deviationStep === 'decided' ? (
+                    <button
+                      className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]"
+                      disabled={deviationSaving}
+                      onClick={() => setShowDeviationForm(true)}
+                      type="button"
+                    >
+                      <AlertTriangle aria-hidden="true" className="h-4 w-4" />
+                      {td('requestDeviation')}
+                    </button>
+                  ) : deviationStep === 'draft' ? (
+                    <>
                       <button
-                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        {...devMarker({
-                          context: detailContext,
-                          name: 'share option',
-                          priority: 310,
-                          value: 'share inline',
-                        })}
-                        onClick={() => handleShare('inline')}
+                        className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]"
+                        disabled={deviationSaving}
+                        onClick={() => setShowEditDeviationForm(true)}
                         type="button"
                       >
-                        {copied === 'inline' ? (
-                          <Check
-                            aria-hidden="true"
-                            className="h-4 w-4 text-green-500"
-                          />
-                        ) : (
-                          <Share2 aria-hidden="true" className="h-4 w-4" />
-                        )}
-                        {t('shareLinkInline')}
+                        <Edit aria-hidden="true" className="h-4 w-4" />
+                        {td('editDeviation')}
                       </button>
                       <button
-                        className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                        {...devMarker({
-                          context: detailContext,
-                          name: 'share option',
-                          priority: 310,
-                          value: 'share page',
-                        })}
-                        onClick={() => handleShare('page')}
+                        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px]"
+                        disabled={deviationSaving}
+                        onClick={() => void handleDeleteDeviation()}
                         type="button"
                       >
-                        {copied === 'page' ? (
-                          <Check
-                            aria-hidden="true"
-                            className="h-4 w-4 text-green-500"
-                          />
-                        ) : (
-                          <Share2 aria-hidden="true" className="h-4 w-4" />
-                        )}
-                        {t('shareLinkPage')}
+                        <Trash2 aria-hidden="true" className="h-4 w-4" />
+                        {td('deleteDeviation')}
                       </button>
-                    </div>
-                  )}
+                      <button
+                        className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                        disabled={deviationSaving}
+                        onClick={handleRequestReview}
+                        type="button"
+                      >
+                        {td('requestReview')}
+                      </button>
+                    </>
+                  ) : deviationStep === 'review_requested' ? (
+                    <>
+                      <button
+                        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                        disabled={deviationSaving}
+                        onClick={handleRevertToDraft}
+                        type="button"
+                      >
+                        {td('revertToDraft')}
+                      </button>
+                      <button
+                        className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                        disabled={deviationSaving}
+                        onClick={() => setShowDecisionForm(true)}
+                        type="button"
+                      >
+                        {td('markDecided')}
+                      </button>
+                    </>
+                  ) : null}
+                  {/* Deviation creation modal */}
+                  <DeviationFormModal
+                    loading={deviationSaving}
+                    onClose={() => setShowDeviationForm(false)}
+                    onSubmit={handleCreateDeviation}
+                    open={showDeviationForm}
+                    riskLevel={
+                      selectedVersion?.riskLevel
+                        ? {
+                            color: selectedVersion.riskLevel.color,
+                            name: localName(selectedVersion.riskLevel),
+                          }
+                        : null
+                    }
+                  />
+                  {/* Deviation edit modal */}
+                  <DeviationFormModal
+                    initialCreatedBy={latestDeviation?.createdBy ?? ''}
+                    initialMotivation={latestDeviation?.motivation ?? ''}
+                    loading={deviationSaving}
+                    onClose={() => setShowEditDeviationForm(false)}
+                    onSubmit={handleEditDeviation}
+                    open={showEditDeviationForm}
+                    riskLevel={
+                      selectedVersion?.riskLevel
+                        ? {
+                            color: selectedVersion.riskLevel.color,
+                            name: localName(selectedVersion.riskLevel),
+                          }
+                        : null
+                    }
+                    title={td('editDeviation')}
+                  />
+                  {/* Decision modal */}
+                  <DeviationDecisionModal
+                    loading={deviationSaving}
+                    onClose={() => setShowDecisionForm(false)}
+                    onSubmit={handleRecordDecision}
+                    open={showDecisionForm}
+                  />
                 </div>
-                {isViewingHistory ? (
-                  <>
+              ) : (
+                <div className="flex flex-col gap-2 shrink-0">
+                  <div className="relative" ref={reportMenuRef}>
+                    <button
+                      className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'report print button',
+                        priority: 290,
+                        value: 'reports',
+                      })}
+                      onClick={() => setShowReportMenu(prev => !prev)}
+                      title={tc('print')}
+                      type="button"
+                    >
+                      <Printer aria-hidden="true" className="h-4 w-4" />
+                      {tc('print')}
+                    </button>
+                    {showReportMenu && (
+                      <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                        <button
+                          className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'report option',
+                            priority: 295,
+                            value: 'print history',
+                          })}
+                          onClick={() => {
+                            setShowReportMenu(false)
+                            window.open(
+                              `/${locale}/requirements/reports/print/history/${requirementId}`,
+                              '_blank',
+                            )
+                          }}
+                          type="button"
+                        >
+                          <Printer aria-hidden="true" className="h-4 w-4" />
+                          {t('printHistoryReport')}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'report option',
+                            priority: 296,
+                            value: 'download history pdf',
+                          })}
+                          onClick={() => {
+                            setShowReportMenu(false)
+                            window.open(
+                              `/${locale}/requirements/reports/pdf/history/${requirementId}`,
+                              '_blank',
+                            )
+                          }}
+                          type="button"
+                        >
+                          <Printer aria-hidden="true" className="h-4 w-4" />
+                          {t('downloadHistoryReportPdf')}
+                        </button>
+                        {currentStatusId === STATUS_REVIEW && (
+                          <>
+                            <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'report option',
+                                priority: 297,
+                                value: 'print review',
+                              })}
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/print/review/${requirementId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {t('printReviewReport')}
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'report option',
+                                priority: 298,
+                                value: 'download review pdf',
+                              })}
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/pdf/review/${requirementId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {t('downloadReviewReportPdf')}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {canAddToPackage && (
+                    <button
+                      className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'detail action',
+                        priority: 360,
+                        value: 'add to package',
+                      })}
+                      onClick={handleOpenAddToPackage}
+                      title={tp('addToPackage')}
+                      type="button"
+                    >
+                      <PackagePlus aria-hidden="true" className="h-4 w-4" />
+                      {tp('addToPackage')}
+                    </button>
+                  )}
+                  <div className="relative" ref={shareMenuRef}>
+                    <button
+                      className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                      {...devMarker({
+                        context: detailContext,
+                        name: 'share toggle',
+                        priority: 300,
+                        value: 'share',
+                      })}
+                      onClick={() => setShowShareMenu(prev => !prev)}
+                      title={tc('share')}
+                      type="button"
+                    >
+                      {copied ? (
+                        <Check
+                          aria-hidden="true"
+                          className="h-4 w-4 text-green-500"
+                        />
+                      ) : (
+                        <Share2 aria-hidden="true" className="h-4 w-4" />
+                      )}
+                      {copied ? tc('copied') : tc('share')}
+                    </button>
+                    {showShareMenu && (
+                      <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                        <button
+                          className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'share option',
+                            priority: 310,
+                            value: 'share inline',
+                          })}
+                          onClick={() => handleShare('inline')}
+                          type="button"
+                        >
+                          {copied === 'inline' ? (
+                            <Check
+                              aria-hidden="true"
+                              className="h-4 w-4 text-green-500"
+                            />
+                          ) : (
+                            <Share2 aria-hidden="true" className="h-4 w-4" />
+                          )}
+                          {t('shareLinkInline')}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'share option',
+                            priority: 310,
+                            value: 'share page',
+                          })}
+                          onClick={() => handleShare('page')}
+                          type="button"
+                        >
+                          {copied === 'page' ? (
+                            <Check
+                              aria-hidden="true"
+                              className="h-4 w-4 text-green-500"
+                            />
+                          ) : (
+                            <Share2 aria-hidden="true" className="h-4 w-4" />
+                          )}
+                          {t('shareLinkPage')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {isViewingHistory ? (
+                    <>
+                      <button
+                        className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'detail action',
+                          priority: 360,
+                          value: 'restore version',
+                        })}
+                        disabled={hasPendingWork}
+                        onClick={e =>
+                          handleRestore(
+                            selectedVersion?.versionNumber ?? 0,
+                            e.currentTarget as HTMLElement,
+                          )
+                        }
+                        title={
+                          hasPendingWork
+                            ? t('restoreBlockedByPendingWork')
+                            : undefined
+                        }
+                        type="button"
+                      >
+                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                        {tc('restoreVersion')}
+                      </button>
+                      <button
+                        className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                        {...devMarker({
+                          context: detailContext,
+                          name: 'detail action',
+                          priority: 360,
+                          value: 'back to latest',
+                        })}
+                        onClick={() =>
+                          handleVersionSelect(
+                            displayVersion?.versionNumber ?? 1,
+                          )
+                        }
+                        type="button"
+                      >
+                        {t('backToLatest')}
+                      </button>
+                    </>
+                  ) : !isLatestVersionArchived ? (
+                    isArchiving && isViewingLatest ? (
+                      <>
+                        <button
+                          className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'detail action',
+                            priority: 360,
+                            value: 'approve archiving',
+                          })}
+                          disabled={isTransitioning}
+                          onClick={handleApproveArchiving}
+                          title={t('approveArchivingTooltip')}
+                          type="button"
+                        >
+                          <Archive aria-hidden="true" className="h-4 w-4" />
+                          {t('approveArchiving')}
+                        </button>
+                        <button
+                          className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'detail action',
+                            priority: 360,
+                            value: 'cancel archiving',
+                          })}
+                          disabled={isTransitioning}
+                          onClick={handleCancelArchiving}
+                          title={t('cancelArchivingTooltip')}
+                          type="button"
+                        >
+                          <RotateCcw
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
+                          {t('cancelArchiving')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {isViewingLatest &&
+                          transitions
+                            .filter(tr => tr.id !== STATUS_ARCHIVED)
+                            .filter(
+                              tr =>
+                                !(
+                                  latestStatusForActions === STATUS_PUBLISHED &&
+                                  tr.id === STATUS_REVIEW
+                                ),
+                            )
+                            .map(tr => (
+                              <button
+                                className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
+                                key={`transition-action-${tr.id}`}
+                                {...devMarker({
+                                  context: detailContext,
+                                  name: 'detail action',
+                                  priority: 360,
+                                  value:
+                                    getTransitionActionDeveloperModeValue(tr),
+                                })}
+                                disabled={isTransitioning}
+                                onClick={e =>
+                                  handleTransition(tr.id, e.currentTarget)
+                                }
+                                title={t(`transitionTooltip${tr.nameSv}`)}
+                                type="button"
+                              >
+                                {t(`transitionTo${tr.nameSv}`)}
+                              </button>
+                            ))}
+                        {currentStatusId !== STATUS_REVIEW &&
+                          (hasPendingWorkAbovePublished &&
+                          !isViewingLatest &&
+                          currentStatusId === STATUS_PUBLISHED ? (
+                            <button
+                              className="btn-primary inline-flex items-center gap-1.5 w-full justify-center opacity-60 cursor-not-allowed"
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 360,
+                                value: 'edit',
+                              })}
+                              disabled
+                              title={t('editBlockedByPendingWork')}
+                              type="button"
+                            >
+                              <Edit aria-hidden="true" className="h-4 w-4" />
+                              {tc('edit')}
+                            </button>
+                          ) : (
+                            <Link
+                              className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 360,
+                                value: 'edit',
+                              })}
+                              href={`/requirements/${req.uniqueId}/edit`}
+                              title={tc('editTooltip')}
+                            >
+                              <span className="contents">
+                                <Edit aria-hidden="true" className="h-4 w-4" />
+                                {tc('edit')}
+                              </span>
+                            </Link>
+                          ))}
+                        {isViewingLatest &&
+                          latestStatusForActions === STATUS_PUBLISHED && (
+                            <button
+                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 360,
+                                value: 'archive',
+                              })}
+                              onClick={handleArchive}
+                              title={tc('archiveTooltip')}
+                              type="button"
+                            >
+                              <Archive aria-hidden="true" className="h-4 w-4" />
+                              {tc('archive')}
+                            </button>
+                          )}
+                        {hasPendingWorkAbovePublished &&
+                          !isViewingLatest &&
+                          currentStatusId === STATUS_PUBLISHED && (
+                            <button
+                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-400 dark:text-secondary-500 cursor-not-allowed opacity-60 w-full justify-center"
+                              disabled
+                              title={t('archiveBlockedByPendingWork')}
+                              type="button"
+                            >
+                              <Archive aria-hidden="true" className="h-4 w-4" />
+                              {tc('archive')}
+                            </button>
+                          )}
+                        {currentStatusId === STATUS_DRAFT &&
+                          isViewingLatest && (
+                            <button
+                              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
+                              {...devMarker({
+                                context: detailContext,
+                                name: 'detail action',
+                                priority: 360,
+                                value: 'delete draft',
+                              })}
+                              onClick={handleDeleteDraft}
+                              type="button"
+                            >
+                              <Trash2 aria-hidden="true" className="h-4 w-4" />
+                              {tc('delete')}
+                            </button>
+                          )}
+                      </>
+                    )
+                  ) : (
                     <button
                       className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
                       {...devMarker({
@@ -1874,205 +2531,9 @@ export default function RequirementDetailClient({
                       <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
                       {tc('restoreVersion')}
                     </button>
-                    <button
-                      className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                      {...devMarker({
-                        context: detailContext,
-                        name: 'detail action',
-                        priority: 360,
-                        value: 'back to latest',
-                      })}
-                      onClick={() =>
-                        handleVersionSelect(displayVersion?.versionNumber ?? 1)
-                      }
-                      type="button"
-                    >
-                      {t('backToLatest')}
-                    </button>
-                  </>
-                ) : !isLatestVersionArchived ? (
-                  isArchiving && isViewingLatest ? (
-                    <>
-                      <button
-                        className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                        {...devMarker({
-                          context: detailContext,
-                          name: 'detail action',
-                          priority: 360,
-                          value: 'approve archiving',
-                        })}
-                        disabled={isTransitioning}
-                        onClick={handleApproveArchiving}
-                        title={t('approveArchivingTooltip')}
-                        type="button"
-                      >
-                        <Archive aria-hidden="true" className="h-4 w-4" />
-                        {t('approveArchiving')}
-                      </button>
-                      <button
-                        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-                        {...devMarker({
-                          context: detailContext,
-                          name: 'detail action',
-                          priority: 360,
-                          value: 'cancel archiving',
-                        })}
-                        disabled={isTransitioning}
-                        onClick={handleCancelArchiving}
-                        title={t('cancelArchivingTooltip')}
-                        type="button"
-                      >
-                        <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-                        {t('cancelArchiving')}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {isViewingLatest &&
-                        transitions
-                          .filter(tr => tr.id !== STATUS_ARCHIVED)
-                          .filter(
-                            tr =>
-                              !(
-                                latestStatusForActions === STATUS_PUBLISHED &&
-                                tr.id === STATUS_REVIEW
-                              ),
-                          )
-                          .map(tr => (
-                            <button
-                              className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
-                              key={`transition-action-${tr.id}`}
-                              {...devMarker({
-                                context: detailContext,
-                                name: 'detail action',
-                                priority: 360,
-                                value:
-                                  getTransitionActionDeveloperModeValue(tr),
-                              })}
-                              disabled={isTransitioning}
-                              onClick={e =>
-                                handleTransition(tr.id, e.currentTarget)
-                              }
-                              title={t(`transitionTooltip${tr.nameSv}`)}
-                              type="button"
-                            >
-                              {t(`transitionTo${tr.nameSv}`)}
-                            </button>
-                          ))}
-                      {currentStatusId !== STATUS_REVIEW &&
-                        (hasPendingWorkAbovePublished &&
-                        !isViewingLatest &&
-                        currentStatusId === STATUS_PUBLISHED ? (
-                          <button
-                            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center opacity-60 cursor-not-allowed"
-                            {...devMarker({
-                              context: detailContext,
-                              name: 'detail action',
-                              priority: 360,
-                              value: 'edit',
-                            })}
-                            disabled
-                            title={t('editBlockedByPendingWork')}
-                            type="button"
-                          >
-                            <Edit aria-hidden="true" className="h-4 w-4" />
-                            {tc('edit')}
-                          </button>
-                        ) : (
-                          <Link
-                            className="btn-primary inline-flex items-center gap-1.5 w-full justify-center"
-                            {...devMarker({
-                              context: detailContext,
-                              name: 'detail action',
-                              priority: 360,
-                              value: 'edit',
-                            })}
-                            href={`/requirements/${req.uniqueId}/edit`}
-                            title={tc('editTooltip')}
-                          >
-                            <span className="contents">
-                              <Edit aria-hidden="true" className="h-4 w-4" />
-                              {tc('edit')}
-                            </span>
-                          </Link>
-                        ))}
-                      {isViewingLatest &&
-                        latestStatusForActions === STATUS_PUBLISHED && (
-                          <button
-                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
-                            {...devMarker({
-                              context: detailContext,
-                              name: 'detail action',
-                              priority: 360,
-                              value: 'archive',
-                            })}
-                            onClick={handleArchive}
-                            title={tc('archiveTooltip')}
-                            type="button"
-                          >
-                            <Archive aria-hidden="true" className="h-4 w-4" />
-                            {tc('archive')}
-                          </button>
-                        )}
-                      {hasPendingWorkAbovePublished &&
-                        !isViewingLatest &&
-                        currentStatusId === STATUS_PUBLISHED && (
-                          <button
-                            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-secondary-400 dark:text-secondary-500 cursor-not-allowed opacity-60 w-full justify-center"
-                            disabled
-                            title={t('archiveBlockedByPendingWork')}
-                            type="button"
-                          >
-                            <Archive aria-hidden="true" className="h-4 w-4" />
-                            {tc('archive')}
-                          </button>
-                        )}
-                      {currentStatusId === STATUS_DRAFT && isViewingLatest && (
-                        <button
-                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-all duration-200 w-full justify-center"
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'detail action',
-                            priority: 360,
-                            value: 'delete draft',
-                          })}
-                          onClick={handleDeleteDraft}
-                          type="button"
-                        >
-                          <Trash2 aria-hidden="true" className="h-4 w-4" />
-                          {tc('delete')}
-                        </button>
-                      )}
-                    </>
-                  )
-                ) : (
-                  <button
-                    className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail action',
-                      priority: 360,
-                      value: 'restore version',
-                    })}
-                    disabled={hasPendingWork}
-                    onClick={e =>
-                      handleRestore(
-                        selectedVersion?.versionNumber ?? 0,
-                        e.currentTarget as HTMLElement,
-                      )
-                    }
-                    title={
-                      hasPendingWork
-                        ? t('restoreBlockedByPendingWork')
-                        : undefined
-                    }
-                    type="button"
-                  >
-                    <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-                    {tc('restoreVersion')}
-                  </button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Version history */}

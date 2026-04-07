@@ -50,6 +50,7 @@ import {
   getRequirementColumnWidth,
   normalizeRequirementListColumnDefaults,
   orderRequirementVisibleColumns,
+  type PackageItemStatusOption,
   type QualityCharacteristicOption,
   type RequirementColumnId,
   type RequirementColumnWidths,
@@ -57,6 +58,7 @@ import {
   type RequirementRow,
   type RequirementSortField,
   type RequirementSortState,
+  type RiskLevelOption,
   type StatusOption,
 } from '@/lib/requirements/list-view'
 
@@ -81,13 +83,19 @@ export interface RequirementsTableProps {
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
+  onPackageItemStatusChange?: (
+    packageItemId: number,
+    statusId: number | null,
+  ) => void
   onRowClick?: (id: number) => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
+  packageItemStatuses?: PackageItemStatusOption[]
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
+  riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
   selectedIds?: Set<number>
@@ -1321,13 +1329,16 @@ export default function RequirementsTable({
   normReferences = [],
   onFilterChange,
   onLoadMore,
+  onPackageItemStatusChange,
   onRowClick,
   onColumnWidthsChange,
   onSelectionChange,
   onSortChange,
   onVisibleColumnsChange,
   pinnedIds,
+  packageItemStatuses = [],
   renderExpanded,
+  riskLevels = [],
   rows,
   selectable = false,
   selectedIds,
@@ -1570,6 +1581,20 @@ export default function RequirementsTable({
   const statusLabel = (id: number) => {
     const s = statusOptions.find(s => s.id === id)
     return s ? getStatusName(s) : String(id)
+  }
+  const riskLevelLabel = (id: number) => {
+    const rl = riskLevels.find(rl => rl.id === id)
+    return rl ? getName(rl) : String(id)
+  }
+  const packageItemStatusLabel = (id: number) => {
+    const s = packageItemStatuses.find(s => s.id === id)
+    return s ? getName(s) : String(id)
+  }
+  const packageItemStatusDescription = (id: number) => {
+    const s = packageItemStatuses.find(s => s.id === id)
+    if (!s) return undefined
+    const desc = locale === 'sv' ? s.descriptionSv : s.descriptionEn
+    return desc || undefined
   }
   const _scenarioLabel = (id: number) => {
     const s = usageScenarios.find(s => s.id === id)
@@ -2586,6 +2611,22 @@ export default function RequirementsTable({
             value={fv.qualityCharacteristicIds ?? []}
           />
         )
+      case 'riskLevel':
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.riskLevelIds ?? []).length}
+            developerModeValue={developerModeValue}
+            getLabel={option => riskLevelLabel(option.id)}
+            label={t('riskLevel')}
+            onChange={ids =>
+              updateFilter({
+                riskLevelIds: ids.length > 0 ? ids : undefined,
+              })
+            }
+            options={riskLevels}
+            value={fv.riskLevelIds ?? []}
+          />
+        )
       case 'status':
         return (
           <MultiSelectFilterPopover
@@ -2630,6 +2671,23 @@ export default function RequirementsTable({
             }
             options={needsReferenceOptions}
             value={fv.needsReferenceIds ?? []}
+          />
+        )
+      case 'packageItemStatus':
+        if (packageItemStatuses.length === 0) return null
+        return (
+          <MultiSelectFilterPopover
+            activeCount={(fv.packageItemStatusIds ?? []).length}
+            developerModeValue={developerModeValue}
+            getLabel={option => packageItemStatusLabel(option.id)}
+            label={t('packageItemStatus')}
+            onChange={ids =>
+              updateFilter({
+                packageItemStatusIds: ids.length > 0 ? ids : undefined,
+              })
+            }
+            options={packageItemStatuses}
+            value={fv.packageItemStatusIds ?? []}
           />
         )
       case 'normReferences':
@@ -2714,6 +2772,21 @@ export default function RequirementsTable({
             values={fv.qualityCharacteristicIds ?? []}
           />
         )
+      case 'riskLevel':
+        return (
+          <FilterChips
+            developerModeContext={developerModeContext}
+            getLabel={riskLevelLabel}
+            onRemove={id =>
+              updateFilter({
+                riskLevelIds: (fv.riskLevelIds ?? []).filter(
+                  value => value !== id,
+                ),
+              })
+            }
+            values={fv.riskLevelIds ?? []}
+          />
+        )
       case 'status':
         return (
           <FilterChips
@@ -2753,6 +2826,22 @@ export default function RequirementsTable({
               })
             }
             values={fv.needsReferenceIds ?? []}
+          />
+        )
+      case 'packageItemStatus':
+        if (packageItemStatuses.length === 0) return null
+        return (
+          <FilterChips
+            developerModeContext={developerModeContext}
+            getLabel={packageItemStatusLabel}
+            onRemove={id =>
+              updateFilter({
+                packageItemStatusIds: (fv.packageItemStatusIds ?? []).filter(
+                  v => v !== id,
+                ),
+              })
+            }
+            values={fv.packageItemStatusIds ?? []}
           />
         )
       case 'normReferences':
@@ -2857,6 +2946,26 @@ export default function RequirementsTable({
               : row.version?.qualityCharacteristicNameEn) ?? '—'}
           </td>
         )
+      case 'riskLevel':
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.version?.riskLevelColor ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: row.version.riskLevelColor }}
+                />
+                {(locale === 'sv'
+                  ? row.version?.riskLevelNameSv
+                  : row.version?.riskLevelNameEn) ?? '—'}
+              </span>
+            ) : (
+              '—'
+            )}
+          </td>
+        )
       case 'status':
         return (
           <td className={`py-2 px-2 ${dividerClass}`}>
@@ -2928,6 +3037,79 @@ export default function RequirementsTable({
             {row.needsReference ?? '—'}
           </td>
         )
+      case 'packageItemStatus': {
+        const statusId = row.packageItemStatusId
+        const statusColor = row.packageItemStatusColor
+        const statusLabel =
+          (locale === 'sv'
+            ? row.packageItemStatusNameSv
+            : row.packageItemStatusNameEn) ?? null
+        const statusDescription =
+          (locale === 'sv'
+            ? row.packageItemStatusDescriptionSv
+            : row.packageItemStatusDescriptionEn) ?? undefined
+
+        if (onPackageItemStatusChange && row.packageItemId != null) {
+          const selectTooltip = statusId
+            ? packageItemStatusDescription(statusId)
+            : undefined
+          return (
+            <td
+              className={`py-1 px-1 ${archivedContentClass} ${dividerClass}`}
+              title={selectTooltip}
+            >
+              <select
+                aria-label={t('packageItemStatus')}
+                className="w-auto max-w-full rounded-lg border bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 transition-all duration-200"
+                onChange={e => {
+                  const value = e.target.value
+                  if (row.packageItemId != null) {
+                    onPackageItemStatusChange(
+                      row.packageItemId,
+                      value === '' ? null : Number(value),
+                    )
+                  }
+                }}
+                onClick={e => e.stopPropagation()}
+                title={selectTooltip}
+                value={statusId ?? ''}
+              >
+                <option value="">—</option>
+                {packageItemStatuses
+                  .filter(s => !s.isDeviationStatus || row.hasApprovedDeviation)
+                  .map(s => {
+                    const desc =
+                      locale === 'sv' ? s.descriptionSv : s.descriptionEn
+                    return (
+                      <option key={s.id} title={desc || undefined} value={s.id}>
+                        {locale === 'sv' ? s.nameSv : s.nameEn}
+                      </option>
+                    )
+                  })}
+              </select>
+            </td>
+          )
+        }
+
+        return (
+          <td
+            className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
+            title={statusDescription}
+          >
+            {statusColor ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: statusColor }}
+                />
+                {statusLabel ?? '—'}
+              </span>
+            ) : (
+              '—'
+            )}
+          </td>
+        )
+      }
       case 'normReferences':
         return (
           <td
@@ -3705,7 +3887,23 @@ export default function RequirementsTable({
                             id={`requirement-row-detail-${row.id}`}
                             ref={expandedDetailCellRef}
                           >
-                            {renderExpanded(row.id)}
+                            <div
+                              className="sticky left-0 box-border overflow-hidden"
+                              style={
+                                scrollContainerWidth
+                                  ? {
+                                      contain: 'inline-size',
+                                      maxWidth: scrollContainerWidth,
+                                      width: scrollContainerWidth,
+                                    }
+                                  : {
+                                      contain: 'inline-size',
+                                      maxWidth: '100vw',
+                                    }
+                              }
+                            >
+                              {renderExpanded(row.id)}
+                            </div>
                           </td>
                         </tr>
                       )}

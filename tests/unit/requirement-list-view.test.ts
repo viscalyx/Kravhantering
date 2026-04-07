@@ -35,6 +35,11 @@ function makeRow(overrides: Record<string, unknown> = {}) {
       statusNameSv: 'Publicerad',
       qualityCharacteristicNameEn: null,
       qualityCharacteristicNameSv: null,
+      riskLevelId: null,
+      riskLevelNameEn: null,
+      riskLevelNameSv: null,
+      riskLevelColor: null,
+      riskLevelSortOrder: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 2,
@@ -99,8 +104,9 @@ describe('requirement list view helpers', () => {
         defaultVisible: false,
         sortOrder: 6,
       },
-      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
-      { columnId: 'version', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'riskLevel', defaultVisible: false, sortOrder: 7 },
+      { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 8 },
+      { columnId: 'version', defaultVisible: false, sortOrder: 9 },
     ])
 
     expect(getRequirementColumnOrder(columnDefaults)).toEqual([
@@ -111,9 +117,11 @@ describe('requirement list view helpers', () => {
       'category',
       'type',
       'qualityCharacteristic',
+      'riskLevel',
       'requiresTesting',
       'version',
       'needsReference',
+      'packageItemStatus',
       'normReferences',
     ])
     expect(getDefaultVisibleRequirementColumns(columnDefaults)).toEqual([
@@ -142,6 +150,7 @@ describe('requirement list view helpers', () => {
           areaIds: [1],
           descriptionSearch: 'secure',
           needsReferenceIds: [9],
+          packageItemStatusIds: [2],
           qualityCharacteristicIds: [5],
           statuses: [3],
           uniqueIdSearch: 'INT',
@@ -152,6 +161,7 @@ describe('requirement list view helpers', () => {
       areaIds: undefined,
       descriptionSearch: 'secure',
       needsReferenceIds: undefined,
+      packageItemStatusIds: undefined,
       qualityCharacteristicIds: undefined,
       statuses: undefined,
       uniqueIdSearch: 'INT',
@@ -297,6 +307,7 @@ describe('requirement list view helpers', () => {
     expect(hasActiveFilters({ qualityCharacteristicIds: [1] })).toBe(true)
     expect(hasActiveFilters({ requiresTesting: ['true'] })).toBe(true)
     expect(hasActiveFilters({ needsReferenceIds: [10] })).toBe(true)
+    expect(hasActiveFilters({ packageItemStatusIds: [1] })).toBe(true)
     expect(hasActiveFilters({ uniqueIdSearch: 'INT' })).toBe(true)
     expect(hasActiveFilters({ descriptionSearch: 'test' })).toBe(true)
     expect(hasActiveFilters({ statuses: [1, 2] })).toBe(true)

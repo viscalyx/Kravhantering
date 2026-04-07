@@ -97,6 +97,23 @@ export const requirementTypesRelations = relations(
   }),
 )
 
+// ─── Risk Levels ─────────────────────────────────────────────────────────────
+
+export const riskLevels = sqliteTable(
+  'risk_levels',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+    color: text('color').notNull(),
+  },
+  table => [
+    uniqueIndex('uq_risk_levels_name_sv').on(table.nameSv),
+    uniqueIndex('uq_risk_levels_name_en').on(table.nameEn),
+  ],
+)
+
 // ─── Quality Characteristics (ISO/IEC 25010:2023) ───────────────────────────
 
 export const qualityCharacteristics = sqliteTable(
@@ -264,6 +281,7 @@ export const requirementVersions = sqliteTable(
     qualityCharacteristicId: integer('quality_characteristic_id').references(
       () => qualityCharacteristics.id,
     ),
+    riskLevelId: integer('risk_level_id').references(() => riskLevels.id),
     statusId: integer('requirement_status_id')
       .notNull()
       .references(() => requirementStatuses.id),
@@ -312,6 +330,10 @@ export const requirementVersionsRelations = relations(
     qualityCharacteristic: one(qualityCharacteristics, {
       fields: [requirementVersions.qualityCharacteristicId],
       references: [qualityCharacteristics.id],
+    }),
+    riskLevel: one(riskLevels, {
+      fields: [requirementVersions.riskLevelId],
+      references: [riskLevels.id],
     }),
     versionScenarios: many(requirementVersionUsageScenarios),
     versionNormReferences: many(requirementVersionNormReferences),
@@ -608,6 +630,9 @@ export const requirementPackageItems = sqliteTable(
       .notNull()
       .references(() => requirementVersions.id),
     needsReferenceId: integer('needs_reference_id'),
+    packageItemStatusId: integer('package_item_status_id'),
+    note: text('note'),
+    statusUpdatedAt: text('status_updated_at'),
     unused1: text('unused_1'),
     createdAt: text('created_at')
       .notNull()
@@ -632,12 +657,47 @@ export const requirementPackageItems = sqliteTable(
       ],
       name: 'fk_requirement_package_items_requirement_package_id_needs_reference_id',
     }),
+    index('idx_requirement_package_items_package_item_status_id').on(
+      table.packageItemStatusId,
+    ),
+    foreignKey({
+      columns: [table.packageItemStatusId],
+      foreignColumns: [packageItemStatuses.id],
+      name: 'fk_requirement_package_items_package_item_status_id',
+    }).onDelete('set null'),
   ],
+)
+
+// ─── Package Item Statuses ───────────────────────────────────────────────────
+
+export const packageItemStatuses = sqliteTable(
+  'package_item_statuses',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    nameSv: text('name_sv').notNull(),
+    nameEn: text('name_en').notNull(),
+    descriptionSv: text('description_sv'),
+    descriptionEn: text('description_en'),
+    color: text('color').notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  table => [
+    uniqueIndex('uq_package_item_statuses_name_sv').on(table.nameSv),
+    uniqueIndex('uq_package_item_statuses_name_en').on(table.nameEn),
+  ],
+)
+
+export const packageItemStatusesRelations = relations(
+  packageItemStatuses,
+  ({ many }) => ({
+    packageItems: many(requirementPackageItems),
+  }),
 )
 
 export const requirementPackageItemsRelations = relations(
   requirementPackageItems,
-  ({ one }) => ({
+  ({ one, many }) => ({
+    deviations: many(deviations),
     package: one(requirementPackages, {
       fields: [requirementPackageItems.packageId],
       references: [requirementPackages.id],
@@ -657,8 +717,51 @@ export const requirementPackageItemsRelations = relations(
       ],
       references: [packageNeedsReferences.packageId, packageNeedsReferences.id],
     }),
+    packageItemStatus: one(packageItemStatuses, {
+      fields: [requirementPackageItems.packageItemStatusId],
+      references: [packageItemStatuses.id],
+    }),
   }),
 )
+
+// ─── Deviations ──────────────────────────────────────────────────────────────
+
+export const DEVIATION_APPROVED = 1
+export const DEVIATION_REJECTED = 2
+
+export const deviations = sqliteTable(
+  'deviations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    packageItemId: integer('package_item_id').notNull(),
+    motivation: text('motivation').notNull(),
+    isReviewRequested: integer('is_review_requested').notNull().default(0),
+    decision: integer('decision'),
+    decisionMotivation: text('decision_motivation'),
+    decidedBy: text('decided_by'),
+    decidedAt: text('decided_at'),
+    createdBy: text('created_by'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at'),
+  },
+  table => [
+    index('idx_deviations_package_item_id').on(table.packageItemId),
+    foreignKey({
+      columns: [table.packageItemId],
+      foreignColumns: [requirementPackageItems.id],
+      name: 'fk_deviations_package_item_id',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const deviationsRelations = relations(deviations, ({ one }) => ({
+  packageItem: one(requirementPackageItems, {
+    fields: [deviations.packageItemId],
+    references: [requirementPackageItems.id],
+  }),
+}))
 
 // ─── UI Terminology ──────────────────────────────────────────────────────────
 

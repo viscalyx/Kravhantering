@@ -68,11 +68,13 @@
     "taxonomy": "Referensdata",
     "referenceData": "Referensdata",
     "qualityCharacteristics": "Kvalitetsegenskaper",
+    "riskLevels": "Risknivåer",
     "responsibilityAreas": "Verksamhetsobjekt",
     "implementationTypes": "Genomförandeformer",
     "lifecycleStatuses": "Livscykelstatusar",
     "areaOwners": "Områdesägare",
     "normReferences": "Normreferenser",
+    "packageItemStatuses": "Användningsstatusar",
     "admin": "Administration",
     "openMenu": "Öppna meny",
     "closeMenu": "Stäng meny"
@@ -91,6 +93,9 @@
     "needsReference": "Behovsreferens",
     "type": "Typ",
     "qualityCharacteristic": "Kvalitetsegenskap",
+    "riskLevel": "Risknivå",
+    "riskLevelHelp": "<strong>Välj risknivå för detta krav.</strong>\nRisknivån anger den potentiella påverkan om kravet inte uppfylls.",
+    "packageItemStatus": "Användningsstatus",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
     "verificationMethod": "Verifieringsmetod",
@@ -291,10 +296,71 @@
       "status": "Status",
       "category": "Kategori",
       "type": "Typ",
-      "qualityCharacteristic": "Kvalitetsegenskap"
+      "qualityCharacteristic": "Kvalitetsegenskap",
+      "riskLevel": "Risknivå",
+      "packageItemStatus": "Användningsstatus"
     },
     "printListReport": "Skriv ut kravlista",
     "downloadListReportPdf": "Ladda ner kravlista (PDF)"
+  },
+  "deviation": {
+    "title": "Avsteg",
+    "deviation": "Avsteg",
+    "motivation": "Motivering",
+    "motivationHelp": "Motivera vad skälet är till varför detta krav inte kan uppfyllas.",
+    "motivationPlaceholder": "Motivera skälet till avsteget",
+    "decision": "Beslut",
+    "decisionMotivation": "Beslutsmotivering",
+    "decisionMotivationHelp": "Dokumentera resonemanget bakom godkännandet eller avslaget av detta avsteg.",
+    "decidedBy": "Beslutad av",
+    "decidedByHelp": "Ange namnet på den person som fattar detta beslut.",
+    "decidedAt": "Beslutad den",
+    "createdBy": "Registrerad av",
+    "createdAt": "Registrerad den",
+    "statusPending": "Väntande",
+    "statusApproved": "Godkänd",
+    "statusRejected": "Avslagen",
+    "newDeviation": "Registrera avsteg",
+    "editDeviation": "Redigera avsteg",
+    "deleteDeviation": "Ta bort avsteg",
+    "deleteDeviationConfirm": "Är du säker på att du vill ta bort detta avsteg? Det går inte att ångra.",
+    "deleteDeviationConfirmTitle": "Ta bort avsteg",
+    "printDeviationReviewReport": "Skriv ut granskningsrapport för avsteg",
+    "downloadDeviationReviewReportPdf": "Ladda ner granskningsrapport för avsteg (PDF)",
+    "recordDecision": "Registrera beslut",
+    "approve": "Godkänn",
+    "reject": "Avslå",
+    "deleteConfirm": "Är du säker på att du vill ta bort detta avsteg?",
+    "deleteFailed": "Kunde inte ta bort avsteget.",
+    "saveFailed": "Kunde inte spara avsteget.",
+    "decisionFailed": "Kunde inte registrera beslutet.",
+    "deviationCount": "{count, plural, =0 {Inga avsteg} one {1 avsteg} other {# avsteg}}",
+    "hasPendingDeviation": "Har väntande avsteg",
+    "noDeviations": "Inga avsteg registrerade för detta objekt.",
+    "cannotEditAfterDecision": "Ett avsteg kan inte redigeras efter att ett beslut har registrerats.",
+    "cannotDeleteAfterDecision": "Ett avsteg kan inte tas bort efter att ett beslut har registrerats.",
+    "stepDraft": "Utkast",
+    "stepReviewRequested": "Granskning begärd",
+    "stepDecided": "Beslutad",
+    "requestDeviation": "Begär ett avsteg",
+    "requestDeviationSelected": "Begär avsteg för valda ({count})",
+    "requestReview": "Granskning \u2197",
+    "revertToDraft": "\u2190 Utkast",
+    "markDecided": "Beslutad \u2197",
+    "deviationRequested": "Avsteg begärt med motivering:",
+    "decisionHeading": "Beslut:",
+    "revertToDraftConfirm": "Är du säker på att du vill återställa detta avsteg till utkast?",
+    "revertToDraftConfirmTitle": "Återställ till utkast",
+    "historyLabel": "Tidigare avsteg ({count})",
+    "decisionMotivationPlaceholder": "Ange resonemanget för beslutet",
+    "decidedByPlaceholder": "Ange namnet på beslutsfattaren",
+    "createdByLabel": "Ansvarig för kravställning",
+    "createdByHelp": "Ange namnet på den person som ansvarar för kravställningen i detta paket.",
+    "createdByPlaceholder": "Ange namn",
+    "reviewFailed": "Kunde inte begära granskning.",
+    "revertFailed": "Kunde inte återställa till utkast.",
+    "riskLevel": "Risknivå",
+    "bulkDeviationPartialFail": "{count, plural, one {1 avstegsförfrågan misslyckades} other {# avstegsförfrågningar misslyckades}}"
   },
   "reports": {
     "errorTitle": "Fel",
@@ -452,7 +518,9 @@
     "implementationTypesDescription": "Hantera genomförandeformer för kravpaket.",
     "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravpaket.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
-    "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav."
+    "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav.",
+    "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
+    "packageItemStatusesDescription": "Hantera användningsstatusar för krav i paket."
   },
   "terminology": {
     "description": {
@@ -484,6 +552,11 @@
       "singular": "Kvalitetsegenskap",
       "plural": "Kvalitetsegenskaper",
       "definitePlural": "Kvalitetsegenskaperna"
+    },
+    "riskLevel": {
+      "singular": "Risknivå",
+      "plural": "Risknivåer",
+      "definitePlural": "Risknivåerna"
     },
     "requiresTesting": {
       "singular": "Verifierbar",
@@ -686,6 +759,10 @@
       "export": {
         "heading": "Exportera",
         "body": "Använd utskrifts- och PDF-knapparna för att exportera paketets kravlista som en rapport."
+      },
+      "packageItemStatus": {
+        "heading": "Användningsstatus",
+        "body": "Spåra hur långt varje krav har kommit i paketet: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
       }
     },
     "responsibilityAreas": {
@@ -816,6 +893,58 @@
         "heading": "Hantera",
         "body": "Lägg till nya egenskaper eller underegenskaper med Nytt-knappen. En underegenskap måste tilldelas en överordnad egenskap. Egenskaper som är kopplade till befintliga krav kan inte tas bort."
       }
+    },
+    "riskLevels": {
+      "title": "Hjälp för risknivåer",
+      "overview": {
+        "heading": "Om risknivåer",
+        "body": "Risknivåer anger den potentiella påverkan om ett krav inte uppfylls. Varje nivå har ett namn, en färg och en sorteringsordning."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Lägg till nya risknivåer med Skapa-knappen. Redigera befintliga nivåer för att ändra namn, färg eller sorteringsordning. Risknivåer som är kopplade till befintliga krav kan inte tas bort."
+      }
+    },
+    "packageItemStatuses": {
+      "title": "Hjälp för användningsstatusar",
+      "overview": {
+        "heading": "Om användningsstatusar",
+        "body": "Användningsstatusar spårar hur långt ett krav har kommit inom ett paket — från inkluderad till implementerad och verifierad. Varje status har ett namn, en färg och en sorteringsordning."
+      },
+      "manage": {
+        "heading": "Hantera",
+        "body": "Lägg till nya statusar med Skapa-knappen. Redigera befintliga statusar för att ändra namn, färg eller sorteringsordning. Statusar som är kopplade till paketposter kan inte tas bort."
+      }
     }
+  },
+  "riskLevelAdmin": {
+    "name": "Namn",
+    "color": "Färg",
+    "colorHex": "Färgkod (hex)",
+    "sortOrder": "Sorteringsordning",
+    "linkedRequirements": "Kopplade krav",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
+  },
+  "packageItemStatusAdmin": {
+    "title": "Användningsstatusar",
+    "name": "Namn",
+    "color": "Färg",
+    "colorHex": "Färgkod (hex)",
+    "sortOrder": "Sorteringsordning",
+    "linkedPackages": "Kopplade kravpaket",
+    "linkedItemCount": "Kopplade poster",
+    "itemCount": "{count, plural, =0 {0 poster} one {1 post} other {# poster}}",
+    "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
+    "newItem": "Ny användningsstatus",
+    "editItem": "Redigera användningsstatus",
+    "nameSvHelp": "Ange det svenska namnet för denna status. Det visas när applikationens språk är svenska.",
+    "nameEnHelp": "Ange det engelska namnet för denna status. Det visas när applikationens språk är engelska.",
+    "definition": "Definition",
+    "definitionSvHelp": "Ange en svensk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
+    "definitionEnHelp": "Ange en engelsk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
+    "noStatus": "— Ingen status —",
+    "sortOrderLocked": "Sorteringsordningen för denna systemstatus kan inte ändras.",
+    "package": "Paket",
+    "requirement": "Krav"
   }
 }

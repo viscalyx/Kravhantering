@@ -98,6 +98,11 @@ describe('RequirementsTable', () => {
         categoryNameSv: 'Verksamhetskrav',
         description: 'Testkrav',
         requiresTesting: true,
+        riskLevelId: null,
+        riskLevelNameEn: null,
+        riskLevelNameSv: null,
+        riskLevelColor: null,
+        riskLevelSortOrder: null,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -600,6 +605,30 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('v2')).toBeTruthy()
   })
 
+  it('renders risk level label when column is visible and row has a risk level', () => {
+    const rows = [
+      makeRow({
+        version: {
+          ...makeRow().version,
+          riskLevelId: 3,
+          riskLevelNameEn: 'High',
+          riskLevelNameSv: 'Hög',
+          riskLevelColor: '#ef4444',
+          riskLevelSortOrder: 3,
+        },
+      }),
+    ]
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS, 'riskLevel']}
+      />,
+    )
+
+    expect(screen.getByText('Hög')).toBeTruthy()
+  })
+
   it('toggles sorting from the header button and updates aria-sort', () => {
     const onSortChange = vi.fn()
 
@@ -972,7 +1001,7 @@ describe('RequirementsTable', () => {
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
 
-    expect(getColumnPickerBadge(container)?.textContent).toBe('6/11')
+    expect(getColumnPickerBadge(container)?.textContent).toBe('6/13')
   })
 
   it('renders the floating pill in a centered square shell', () => {
@@ -2447,6 +2476,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
+          riskLevelId: null,
+          riskLevelNameEn: null,
+          riskLevelNameSv: null,
+          riskLevelColor: null,
+          riskLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2486,6 +2520,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
+          riskLevelId: null,
+          riskLevelNameEn: null,
+          riskLevelNameSv: null,
+          riskLevelColor: null,
+          riskLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2522,6 +2561,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
+          riskLevelId: null,
+          riskLevelNameEn: null,
+          riskLevelNameSv: null,
+          riskLevelColor: null,
+          riskLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 4,
@@ -2653,6 +2697,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
+          riskLevelId: null,
+          riskLevelNameEn: null,
+          riskLevelNameSv: null,
+          riskLevelColor: null,
+          riskLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,
@@ -2674,6 +2723,11 @@ describe('RequirementsTable', () => {
           typeNameEn: null,
           qualityCharacteristicNameSv: null,
           qualityCharacteristicNameEn: null,
+          riskLevelId: null,
+          riskLevelNameEn: null,
+          riskLevelNameSv: null,
+          riskLevelColor: null,
+          riskLevelSortOrder: null,
           requiresTesting: false,
           versionNumber: 1,
           status: 1,

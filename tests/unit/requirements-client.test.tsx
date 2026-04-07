@@ -241,6 +241,10 @@ function makeRequirementRow(
       statusNameSv: 'Publicerad',
       qualityCharacteristicNameEn: null,
       qualityCharacteristicNameSv: null,
+      riskLevelId: null,
+      riskLevelNameEn: null,
+      riskLevelNameSv: null,
+      riskLevelColor: null,
       typeNameEn: 'Functional',
       typeNameSv: 'Funktionellt',
       versionNumber: 1,
@@ -283,6 +287,7 @@ function makeRequirementDetail(
         ownerName: 'Owner',
         publishedAt: '2026-03-01T00:00:00Z',
         requiresTesting: false,
+        riskLevel: null,
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -326,6 +331,9 @@ function mockMetadataFetch(url: string) {
         ],
       }),
     )
+  }
+  if (url === '/api/risk-levels') {
+    return Promise.resolve(okJson({ riskLevels: [] }))
   }
   if (url === '/api/usage-scenarios') {
     return Promise.resolve(okJson([]))

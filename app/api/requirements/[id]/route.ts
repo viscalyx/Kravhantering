@@ -87,6 +87,7 @@ export async function PUT(
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,
+        riskLevelId: body.riskLevelId ? Number(body.riskLevelId) : undefined,
         typeId: body.typeId ? Number(body.typeId) : undefined,
       },
     })

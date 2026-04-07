@@ -21,6 +21,7 @@ import {
   requirementVersionNormReferences,
   requirementVersions,
   requirementVersionUsageScenarios,
+  riskLevels,
 } from '@/drizzle/schema'
 import type { Database } from '@/lib/db'
 import {
@@ -47,6 +48,7 @@ type ListRequirementsOptions = {
   locale?: 'en' | 'sv'
   offset?: number
   requiresTesting?: boolean[]
+  riskLevelIds?: number[]
   sortBy?: RequirementSortField
   sortDirection?: RequirementSortDirection
   statuses?: number[]
@@ -120,6 +122,9 @@ function buildRequirementListConditions(opts: ListRequirementsOptions) {
         opts.qualityCharacteristicIds,
       ),
     )
+  }
+  if (opts.riskLevelIds && opts.riskLevelIds.length > 0) {
+    conditions.push(inArray(requirementVersions.riskLevelId, opts.riskLevelIds))
   }
   if (opts.requiresTesting && opts.requiresTesting.length > 0) {
     conditions.push(
@@ -303,6 +308,11 @@ export async function listRequirements(
       typeNameEn: requirementTypes.nameEn,
       qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
       qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
+      riskLevelId: requirementVersions.riskLevelId,
+      riskLevelNameSv: riskLevels.nameSv,
+      riskLevelNameEn: riskLevels.nameEn,
+      riskLevelColor: riskLevels.color,
+      riskLevelSortOrder: riskLevels.sortOrder,
       maxVersion: latestVersions.maxVersion,
       pendingVersionStatusColor: sql<string | null>`(
         SELECT CASE WHEN rv.requirement_status_id = ${STATUS_ARCHIVED} THEN NULL
@@ -371,6 +381,7 @@ export async function listRequirements(
         qualityCharacteristics.id,
       ),
     )
+    .leftJoin(riskLevels, eq(requirementVersions.riskLevelId, riskLevels.id))
     .$dynamic()
 
   if (conditions.length > 0) {
@@ -418,6 +429,11 @@ export async function listRequirements(
             : qualityCharacteristics.nameEn,
           sortDirection,
         ),
+      )
+      break
+    case 'riskLevel':
+      query = query.orderBy(
+        ...orderByNumber(riskLevels.sortOrder, sortDirection),
       )
       break
     case 'status':
@@ -507,6 +523,7 @@ export async function getRequirementById(db: Database, id: number) {
           category: true,
           type: true,
           qualityCharacteristic: true,
+          riskLevel: true,
           status: true,
           versionNormReferences: {
             with: {
@@ -555,6 +572,7 @@ export async function createRequirement(
     requirementCategoryId?: number
     requirementTypeId?: number
     qualityCharacteristicId?: number
+    riskLevelId?: number
     requiresTesting?: boolean
     verificationMethod?: string | null
     createdBy?: string
@@ -570,14 +588,117 @@ export async function createRequirement(
 
   const seq = area.nextSequence
   const uniqueId = `${area.prefix}${String(seq).padStart(4, '0')}`
+  const now = new Date().toISOString()
 
-  // Update area next_sequence
+  const uniqueScenarioIds = data.scenarioIds?.length
+    ? [...new Set(data.scenarioIds)]
+    : []
+  const uniqueNormRefIds = data.normReferenceIds?.length
+    ? [...new Set(data.normReferenceIds)]
+    : []
+
+  const versionValues = {
+    versionNumber: 1,
+    description: data.description,
+    acceptanceCriteria: data.acceptanceCriteria,
+    requirementCategoryId: data.requirementCategoryId,
+    requirementTypeId: data.requirementTypeId,
+    qualityCharacteristicId: data.qualityCharacteristicId,
+    riskLevelId: data.riskLevelId,
+    statusId: STATUS_DRAFT,
+    requiresTesting: data.requiresTesting ?? false,
+    verificationMethod: data.requiresTesting
+      ? (data.verificationMethod ?? null)
+      : null,
+    createdBy: data.createdBy,
+    editedAt: now,
+  }
+
+  const sessionName = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
+
+  if (sessionName === 'BetterSQLiteSession') {
+    let req!: typeof requirements.$inferSelect
+    let version!: typeof requirementVersions.$inferSelect
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      tx.update(requirementAreas)
+        .set({ nextSequence: seq + 1 })
+        .where(eq(requirementAreas.id, data.requirementAreaId))
+        .run()
+
+      // BetterSQLite3 .returning().get() is synchronous at runtime;
+      // the Promise wrapper only exists in the TypeScript types.
+      req = (
+        tx.insert(requirements).values({
+          uniqueId,
+          requirementAreaId: data.requirementAreaId,
+          sequenceNumber: seq,
+        }) as unknown as {
+          returning: () => { get: () => typeof requirements.$inferSelect }
+        }
+      )
+        .returning()
+        .get()
+
+      version = (
+        tx.insert(requirementVersions).values({
+          ...versionValues,
+          requirementId: req.id,
+        }) as unknown as {
+          returning: () => {
+            get: () => typeof requirementVersions.$inferSelect
+          }
+        }
+      )
+        .returning()
+        .get()
+
+      if (uniqueScenarioIds.length) {
+        tx.insert(requirementVersionUsageScenarios)
+          .values(
+            uniqueScenarioIds.map(usageScenarioId => ({
+              requirementVersionId: version.id,
+              usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (uniqueNormRefIds.length) {
+        tx.insert(requirementVersionNormReferences)
+          .values(
+            uniqueNormRefIds.map(normReferenceId => ({
+              requirementVersionId: version.id,
+              normReferenceId,
+            })),
+          )
+          .run()
+      }
+    })
+
+    return { requirement: req, version }
+  }
+
   await db
     .update(requirementAreas)
     .set({ nextSequence: seq + 1 })
     .where(eq(requirementAreas.id, data.requirementAreaId))
 
-  // Insert requirement
   const [req] = await db
     .insert(requirements)
     .values({
@@ -587,48 +708,30 @@ export async function createRequirement(
     })
     .returning()
 
-  // Insert first version (always starts as Utkast)
-  const now = new Date().toISOString()
   const [version] = await db
     .insert(requirementVersions)
-    .values({
-      requirementId: req.id,
-      versionNumber: 1,
-      description: data.description,
-      acceptanceCriteria: data.acceptanceCriteria,
-      requirementCategoryId: data.requirementCategoryId,
-      requirementTypeId: data.requirementTypeId,
-      qualityCharacteristicId: data.qualityCharacteristicId,
-      statusId: STATUS_DRAFT,
-      requiresTesting: data.requiresTesting ?? false,
-      verificationMethod: data.requiresTesting
-        ? (data.verificationMethod ?? null)
-        : null,
-      createdBy: data.createdBy,
-      editedAt: now,
-    })
+    .values({ ...versionValues, requirementId: req.id })
     .returning()
 
-  // Link scenarios
-  if (data.scenarioIds?.length) {
-    const uniqueIds = [...new Set(data.scenarioIds)]
+  if (uniqueScenarioIds.length) {
     await db.insert(requirementVersionUsageScenarios).values(
-      uniqueIds.map(usageScenarioId => ({
+      uniqueScenarioIds.map(usageScenarioId => ({
         requirementVersionId: version.id,
         usageScenarioId,
       })),
     )
   }
 
-  // Link norm references
-  if (data.normReferenceIds?.length) {
-    const uniqueIds = [...new Set(data.normReferenceIds)]
+  if (uniqueNormRefIds.length) {
     await db.insert(requirementVersionNormReferences).values(
-      uniqueIds.map(normReferenceId => ({
+      uniqueNormRefIds.map(normReferenceId => ({
         requirementVersionId: version.id,
         normReferenceId,
       })),
     )
+  }
+  if (!req || !version) {
+    throw notFoundError('Failed to retrieve created requirement')
   }
 
   return { requirement: req, version }
@@ -644,6 +747,7 @@ export async function editRequirement(
     requirementCategoryId?: number
     requirementTypeId?: number
     qualityCharacteristicId?: number
+    riskLevelId?: number
     requiresTesting?: boolean
     verificationMethod?: string | null
     createdBy?: string
@@ -651,13 +755,8 @@ export async function editRequirement(
     scenarioIds?: number[]
   },
 ) {
-  // Update area on the requirement if provided
-  if (data.requirementAreaId != null) {
-    await db
-      .update(requirements)
-      .set({ requirementAreaId: data.requirementAreaId })
-      .where(eq(requirements.id, requirementId))
-  }
+  // Update area on the requirement if provided (inside transaction below for Draft)
+  const areaUpdateNeeded = data.requirementAreaId != null
 
   // Get current latest version
   const latestRows = await db
@@ -702,6 +801,7 @@ export async function editRequirement(
       requirementCategoryId: data.requirementCategoryId,
       requirementTypeId: data.requirementTypeId,
       qualityCharacteristicId: data.qualityCharacteristicId,
+      riskLevelId: data.riskLevelId,
       requiresTesting: data.requiresTesting ?? false,
       verificationMethod: data.requiresTesting
         ? (data.verificationMethod ?? null)
@@ -735,6 +835,13 @@ export async function editRequirement(
           ) => void
         }
       ).transaction(tx => {
+        if (areaUpdateNeeded) {
+          tx.update(requirements)
+            .set({ requirementAreaId: data.requirementAreaId as number })
+            .where(eq(requirements.id, requirementId))
+            .run()
+        }
+
         tx.update(requirementVersions)
           .set(versionSetData)
           .where(eq(requirementVersions.id, currentVersion.id))
@@ -781,48 +888,53 @@ export async function editRequirement(
         }
       })
     } else {
-      await db.transaction(async tx => {
-        await tx
-          .update(requirementVersions)
-          .set(versionSetData)
-          .where(eq(requirementVersions.id, currentVersion.id))
+      if (areaUpdateNeeded) {
+        await db
+          .update(requirements)
+          .set({ requirementAreaId: data.requirementAreaId as number })
+          .where(eq(requirements.id, requirementId))
+      }
 
-        await tx
-          .delete(requirementVersionUsageScenarios)
-          .where(
-            eq(
-              requirementVersionUsageScenarios.requirementVersionId,
-              currentVersion.id,
-            ),
-          )
+      await db
+        .update(requirementVersions)
+        .set(versionSetData)
+        .where(eq(requirementVersions.id, currentVersion.id))
 
-        if (uniqueScenarioIds.length) {
-          await tx.insert(requirementVersionUsageScenarios).values(
-            uniqueScenarioIds.map(usageScenarioId => ({
-              requirementVersionId: currentVersion.id,
-              usageScenarioId,
-            })),
-          )
-        }
+      await db
+        .delete(requirementVersionUsageScenarios)
+        .where(
+          eq(
+            requirementVersionUsageScenarios.requirementVersionId,
+            currentVersion.id,
+          ),
+        )
 
-        await tx
-          .delete(requirementVersionNormReferences)
-          .where(
-            eq(
-              requirementVersionNormReferences.requirementVersionId,
-              currentVersion.id,
-            ),
-          )
+      if (uniqueScenarioIds.length) {
+        await db.insert(requirementVersionUsageScenarios).values(
+          uniqueScenarioIds.map(usageScenarioId => ({
+            requirementVersionId: currentVersion.id,
+            usageScenarioId,
+          })),
+        )
+      }
 
-        if (uniqueNormRefIds.length) {
-          await tx.insert(requirementVersionNormReferences).values(
-            uniqueNormRefIds.map(normReferenceId => ({
-              requirementVersionId: currentVersion.id,
-              normReferenceId,
-            })),
-          )
-        }
-      })
+      await db
+        .delete(requirementVersionNormReferences)
+        .where(
+          eq(
+            requirementVersionNormReferences.requirementVersionId,
+            currentVersion.id,
+          ),
+        )
+
+      if (uniqueNormRefIds.length) {
+        await db.insert(requirementVersionNormReferences).values(
+          uniqueNormRefIds.map(normReferenceId => ({
+            requirementVersionId: currentVersion.id,
+            normReferenceId,
+          })),
+        )
+      }
     }
 
     const updated = await db.query.requirementVersions.findFirst({
@@ -838,48 +950,126 @@ export async function editRequirement(
 
   // Published status: create a new Draft version
   const nextVersion = currentMax + 1
+  const uniqueScenarioIdsForNew = data.scenarioIds?.length
+    ? [...new Set(data.scenarioIds)]
+    : []
+  const uniqueNormRefIdsForNew = data.normReferenceIds?.length
+    ? [...new Set(data.normReferenceIds)]
+    : []
+
+  const versionValues = {
+    requirementId,
+    versionNumber: nextVersion,
+    description: data.description,
+    acceptanceCriteria: data.acceptanceCriteria,
+    requirementCategoryId: data.requirementCategoryId,
+    requirementTypeId: data.requirementTypeId,
+    qualityCharacteristicId: data.qualityCharacteristicId,
+    riskLevelId: data.riskLevelId,
+    statusId: STATUS_DRAFT,
+    requiresTesting: data.requiresTesting ?? false,
+    verificationMethod: data.requiresTesting
+      ? (data.verificationMethod ?? null)
+      : null,
+    editedAt: now,
+    createdBy: data.createdBy,
+  }
+
+  const sessionNameForNew = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
+
+  if (sessionNameForNew === 'BetterSQLiteSession') {
+    let version!: typeof requirementVersions.$inferSelect
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      if (areaUpdateNeeded) {
+        tx.update(requirements)
+          .set({ requirementAreaId: data.requirementAreaId as number })
+          .where(eq(requirements.id, requirementId))
+          .run()
+      }
+
+      version = (
+        tx.insert(requirementVersions).values(versionValues) as unknown as {
+          returning: () => {
+            get: () => typeof requirementVersions.$inferSelect
+          }
+        }
+      )
+        .returning()
+        .get()
+
+      if (uniqueScenarioIdsForNew.length) {
+        tx.insert(requirementVersionUsageScenarios)
+          .values(
+            uniqueScenarioIdsForNew.map(usageScenarioId => ({
+              requirementVersionId: version.id,
+              usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (uniqueNormRefIdsForNew.length) {
+        tx.insert(requirementVersionNormReferences)
+          .values(
+            uniqueNormRefIdsForNew.map(normReferenceId => ({
+              requirementVersionId: version.id,
+              normReferenceId,
+            })),
+          )
+          .run()
+      }
+    })
+
+    return version
+  }
+
+  if (areaUpdateNeeded) {
+    await db
+      .update(requirements)
+      .set({ requirementAreaId: data.requirementAreaId as number })
+      .where(eq(requirements.id, requirementId))
+  }
 
   const [version] = await db
     .insert(requirementVersions)
-    .values({
-      requirementId,
-      versionNumber: nextVersion,
-      description: data.description,
-      acceptanceCriteria: data.acceptanceCriteria,
-      requirementCategoryId: data.requirementCategoryId,
-      requirementTypeId: data.requirementTypeId,
-      qualityCharacteristicId: data.qualityCharacteristicId,
-      statusId: STATUS_DRAFT,
-      requiresTesting: data.requiresTesting ?? false,
-      verificationMethod: data.requiresTesting
-        ? (data.verificationMethod ?? null)
-        : null,
-      editedAt: now,
-      createdBy: data.createdBy,
-    })
+    .values(versionValues)
     .returning()
 
-  // Link scenarios
-  if (data.scenarioIds?.length) {
-    const uniqueIds = [...new Set(data.scenarioIds)]
+  if (uniqueScenarioIdsForNew.length) {
     await db.insert(requirementVersionUsageScenarios).values(
-      uniqueIds.map(usageScenarioId => ({
+      uniqueScenarioIdsForNew.map(usageScenarioId => ({
         requirementVersionId: version.id,
         usageScenarioId,
       })),
     )
   }
 
-  // Link norm references
-  if (data.normReferenceIds?.length) {
-    const uniqueIds = [...new Set(data.normReferenceIds)]
+  if (uniqueNormRefIdsForNew.length) {
     await db.insert(requirementVersionNormReferences).values(
-      uniqueIds.map(normReferenceId => ({
+      uniqueNormRefIdsForNew.map(normReferenceId => ({
         requirementVersionId: version.id,
         normReferenceId,
       })),
     )
   }
+
+  if (!version) throw notFoundError('Failed to retrieve new version')
 
   return version
 }
@@ -1077,39 +1267,37 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     return result
   }
 
-  return await db.transaction(async tx => {
-    await tx
-      .delete(requirementVersionUsageScenarios)
-      .where(
-        eq(
-          requirementVersionUsageScenarios.requirementVersionId,
-          latestVersion.id,
-        ),
-      )
-    await tx
-      .delete(requirementVersionNormReferences)
-      .where(
-        eq(
-          requirementVersionNormReferences.requirementVersionId,
-          latestVersion.id,
-        ),
-      )
-    await tx
-      .delete(requirementVersions)
-      .where(eq(requirementVersions.id, latestVersion.id))
+  await db
+    .delete(requirementVersionUsageScenarios)
+    .where(
+      eq(
+        requirementVersionUsageScenarios.requirementVersionId,
+        latestVersion.id,
+      ),
+    )
+  await db
+    .delete(requirementVersionNormReferences)
+    .where(
+      eq(
+        requirementVersionNormReferences.requirementVersionId,
+        latestVersion.id,
+      ),
+    )
+  await db
+    .delete(requirementVersions)
+    .where(eq(requirementVersions.id, latestVersion.id))
 
-    const remaining = await tx
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(requirementVersions)
-      .where(eq(requirementVersions.requirementId, requirementId))
+  const remaining = await db
+    .select({ count: sql<number>`COUNT(*)` })
+    .from(requirementVersions)
+    .where(eq(requirementVersions.requirementId, requirementId))
 
-    if (remaining[0]?.count === 0) {
-      await tx.delete(requirements).where(eq(requirements.id, requirementId))
-      return { deleted: 'requirement' as const }
-    }
+  if (remaining[0]?.count === 0) {
+    await db.delete(requirements).where(eq(requirements.id, requirementId))
+    return { deleted: 'requirement' as const }
+  }
 
-    return { deleted: 'version' as const }
-  })
+  return { deleted: 'version' as const }
 }
 
 export async function reactivateRequirement(
@@ -1331,42 +1519,103 @@ export async function restoreVersion(
 
   const now = new Date().toISOString()
 
-  // Create new version with old data but status Utkast
-  const [newVersion] = await db
-    .insert(requirementVersions)
-    .values({
-      requirementId,
-      versionNumber: nextVersion,
-      description: oldVersion.description,
-      acceptanceCriteria: oldVersion.acceptanceCriteria,
-      requirementCategoryId: oldVersion.requirementCategoryId,
-      requirementTypeId: oldVersion.requirementTypeId,
-      qualityCharacteristicId: oldVersion.qualityCharacteristicId,
-      statusId: STATUS_DRAFT,
-      requiresTesting: oldVersion.requiresTesting,
-      verificationMethod: oldVersion.verificationMethod,
-      createdBy: createdBy ?? oldVersion.createdBy,
-      editedAt: now,
-    })
-    .returning()
+  const sessionName = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
 
-  if (oldVersion.versionScenarios.length > 0) {
-    await db.insert(requirementVersionUsageScenarios).values(
-      oldVersion.versionScenarios.map(versionScenario => ({
-        requirementVersionId: newVersion.id,
-        usageScenarioId: versionScenario.usageScenarioId,
-      })),
-    )
+  // Create new version with old data but status Utkast
+  let newVersion!: typeof requirementVersions.$inferSelect
+
+  const versionData = {
+    requirementId,
+    versionNumber: nextVersion,
+    description: oldVersion.description,
+    acceptanceCriteria: oldVersion.acceptanceCriteria,
+    requirementCategoryId: oldVersion.requirementCategoryId,
+    requirementTypeId: oldVersion.requirementTypeId,
+    qualityCharacteristicId: oldVersion.qualityCharacteristicId,
+    statusId: STATUS_DRAFT,
+    requiresTesting: oldVersion.requiresTesting,
+    verificationMethod: oldVersion.verificationMethod,
+    riskLevelId: oldVersion.riskLevelId,
+    createdBy: createdBy ?? oldVersion.createdBy,
+    editedAt: now,
   }
 
-  // Copy norm references
-  if (oldVersion.versionNormReferences.length > 0) {
-    await db.insert(requirementVersionNormReferences).values(
-      oldVersion.versionNormReferences.map(vnr => ({
-        requirementVersionId: newVersion.id,
-        normReferenceId: vnr.normReferenceId,
-      })),
-    )
+  if (sessionName === 'BetterSQLiteSession') {
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      newVersion = (
+        tx.insert(requirementVersions).values(versionData) as unknown as {
+          returning: () => {
+            get: () => typeof requirementVersions.$inferSelect
+          }
+        }
+      )
+        .returning()
+        .get()
+
+      if (oldVersion.versionScenarios.length > 0) {
+        tx.insert(requirementVersionUsageScenarios)
+          .values(
+            oldVersion.versionScenarios.map(versionScenario => ({
+              requirementVersionId: newVersion.id,
+              usageScenarioId: versionScenario.usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (oldVersion.versionNormReferences.length > 0) {
+        tx.insert(requirementVersionNormReferences)
+          .values(
+            oldVersion.versionNormReferences.map(vnr => ({
+              requirementVersionId: newVersion.id,
+              normReferenceId: vnr.normReferenceId,
+            })),
+          )
+          .run()
+      }
+    })
+  } else {
+    const [inserted] = await db
+      .insert(requirementVersions)
+      .values(versionData)
+      .returning()
+
+    newVersion = inserted
+
+    if (oldVersion.versionScenarios.length > 0) {
+      await db.insert(requirementVersionUsageScenarios).values(
+        oldVersion.versionScenarios.map(versionScenario => ({
+          requirementVersionId: inserted.id,
+          usageScenarioId: versionScenario.usageScenarioId,
+        })),
+      )
+    }
+
+    // Copy norm references
+    if (oldVersion.versionNormReferences.length > 0) {
+      await db.insert(requirementVersionNormReferences).values(
+        oldVersion.versionNormReferences.map(vnr => ({
+          requirementVersionId: inserted.id,
+          normReferenceId: vnr.normReferenceId,
+        })),
+      )
+    }
   }
 
   return newVersion

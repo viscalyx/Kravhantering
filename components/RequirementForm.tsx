@@ -15,6 +15,7 @@ interface FormData {
   normReferenceIds: number[]
   qualityCharacteristicId: string
   requiresTesting: boolean
+  riskLevelId: string
   scenarioIds: number[]
   typeId: string
   verificationMethod: string
@@ -100,6 +101,7 @@ export default function RequirementForm({
   const [qualityCharacteristics, setQualityCharacteristics] = useState<
     QualityCharacteristicOption[]
   >([])
+  const [riskLevels, setRiskLevels] = useState<Option[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
@@ -122,6 +124,7 @@ export default function RequirementForm({
     categoryId: initialData?.categoryId ?? '',
     typeId: initialData?.typeId ?? '',
     qualityCharacteristicId: initialData?.qualityCharacteristicId ?? '',
+    riskLevelId: initialData?.riskLevelId ?? '',
     description: initialData?.description ?? '',
     acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
     requiresTesting: initialData?.requiresTesting ?? false,
@@ -166,6 +169,9 @@ export default function RequirementForm({
               ? {
                   qualityCharacteristicId: initialData.qualityCharacteristicId,
                 }
+              : {}),
+            ...(!dirty.has('riskLevelId') && initialData.riskLevelId != null
+              ? { riskLevelId: initialData.riskLevelId }
               : {}),
             ...(!dirty.has('description') && initialData.description != null
               ? { description: initialData.description }
@@ -212,6 +218,7 @@ export default function RequirementForm({
       fetch('/api/requirement-types'),
       fetch('/api/usage-scenarios'),
       fetch('/api/norm-references'),
+      fetch('/api/risk-levels'),
     ])
     const [
       areasResult,
@@ -219,6 +226,7 @@ export default function RequirementForm({
       typesResult,
       scenariosResult,
       normRefsResult,
+      riskLevelsResult,
     ] = results
     if (areasResult.status === 'fulfilled' && areasResult.value.ok)
       setAreas(
@@ -255,6 +263,11 @@ export default function RequirementForm({
         return [...localOnly, ...fetched]
       })
     }
+    if (riskLevelsResult.status === 'fulfilled' && riskLevelsResult.value.ok)
+      setRiskLevels(
+        ((await riskLevelsResult.value.json()) as { riskLevels?: Option[] })
+          .riskLevels ?? [],
+      )
   }, [])
 
   const fetchQualityCharacteristics = useCallback(async (typeId: string) => {
@@ -315,6 +328,7 @@ export default function RequirementForm({
           qualityCharacteristicId: form.qualityCharacteristicId
             ? Number(form.qualityCharacteristicId)
             : undefined,
+          riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
           description: form.description || undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
           requiresTesting: form.requiresTesting,
@@ -561,6 +575,29 @@ export default function RequirementForm({
               </select>
             </div>
           )}
+
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <label className="text-sm font-medium" htmlFor="riskLevelId">
+                {t('riskLevel')}
+              </label>
+              {helpButton('riskLevelId', t('riskLevel'))}
+            </div>
+            {helpPanel('riskLevelHelp', 'riskLevelId')}
+            <select
+              className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+              id="riskLevelId"
+              onChange={e => handleChange('riskLevelId', e.target.value)}
+              value={form.riskLevelId}
+            >
+              <option value="">{t('riskLevel')}...</option>
+              {riskLevels.map(rl => (
+                <option key={rl.id} value={rl.id}>
+                  {getOptionName(rl)}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="flex items-center gap-2 text-sm">
             <label className="flex items-center gap-2">

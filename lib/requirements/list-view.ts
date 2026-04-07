@@ -4,8 +4,10 @@ export interface FilterValues {
   descriptionSearch?: string
   needsReferenceIds?: number[]
   normReferenceIds?: number[]
+  packageItemStatusIds?: number[]
   qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
+  riskLevelIds?: number[]
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
@@ -38,16 +40,45 @@ export interface StatusOption {
   sortOrder?: number
 }
 
+export interface RiskLevelOption {
+  color: string
+  id: number
+  nameEn: string
+  nameSv: string
+  sortOrder: number
+}
+
+export interface PackageItemStatusOption {
+  color: string
+  descriptionEn: string | null
+  descriptionSv: string | null
+  id: number
+  isDeviationStatus?: boolean
+  nameEn: string
+  nameSv: string
+  sortOrder: number
+}
+
 export interface RequirementRow {
   area: {
     name: string
   } | null
+  deviationCount?: number
+  hasApprovedDeviation?: boolean
+  hasPendingDeviation?: boolean
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
   needsReference?: string | null
   needsReferenceId?: number | null
   normReferenceIds?: string[]
+  packageItemId?: number
+  packageItemStatusColor?: string | null
+  packageItemStatusDescriptionEn?: string | null
+  packageItemStatusDescriptionSv?: string | null
+  packageItemStatusId?: number | null
+  packageItemStatusNameEn?: string | null
+  packageItemStatusNameSv?: string | null
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
   uniqueId: string
@@ -57,6 +88,11 @@ export interface RequirementRow {
     categoryNameSv: string | null
     description: string | null
     requiresTesting: boolean
+    riskLevelId: number | null
+    riskLevelNameEn: string | null
+    riskLevelNameSv: string | null
+    riskLevelColor: string | null
+    riskLevelSortOrder: number | null
     status: number
     statusColor: string | null
     statusNameEn: string | null
@@ -89,6 +125,8 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.typeIds && values.typeIds.length > 0) ||
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
+    (values.riskLevelIds && values.riskLevelIds.length > 0) ||
+    (values.packageItemStatusIds && values.packageItemStatusIds.length > 0) ||
     (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
     (values.normReferenceIds && values.normReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
@@ -105,10 +143,12 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'category',
   'type',
   'qualityCharacteristic',
+  'riskLevel',
   'status',
   'requiresTesting',
   'version',
   'needsReference',
+  'packageItemStatus',
   'normReferences',
 ] as const
 
@@ -121,6 +161,7 @@ export const REQUIREMENT_SORT_FIELDS = [
   'category',
   'type',
   'qualityCharacteristic',
+  'riskLevel',
   'status',
   'version',
 ] as const
@@ -252,6 +293,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     align: 'left',
     canHide: true,
     canSort: true,
+    defaultVisible: false,
+    defaultWidthPx: 136,
+    id: 'riskLevel',
+    labelKey: 'riskLevel',
+    labelNamespace: 'requirement',
+    maxWidthPx: 200,
+    minWidthPx: 100,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: true,
     defaultVisible: true,
     defaultWidthPx: 176,
     id: 'status',
@@ -298,6 +352,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     labelNamespace: 'requirement',
     maxWidthPx: 400,
     minWidthPx: 140,
+    resizable: true,
+  },
+  {
+    align: 'left',
+    canHide: true,
+    canSort: false,
+    defaultVisible: false,
+    defaultWidthPx: 180,
+    id: 'packageItemStatus',
+    labelKey: 'packageItemStatus',
+    labelNamespace: 'requirement',
+    maxWidthPx: 260,
+    minWidthPx: 110,
     resizable: true,
   },
   {
@@ -559,6 +626,8 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('category', 'categoryIds')
   clearIfHidden('type', 'typeIds')
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
+  clearIfHidden('riskLevel', 'riskLevelIds')
+  clearIfHidden('packageItemStatus', 'packageItemStatusIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')
@@ -709,6 +778,11 @@ export function buildRequirementListParams({
       params.append('qualityCharacteristicIds', String(id))
     }
   }
+  if (filters.riskLevelIds) {
+    for (const id of filters.riskLevelIds) {
+      params.append('riskLevelIds', String(id))
+    }
+  }
   if (filters.requiresTesting) {
     for (const value of filters.requiresTesting) {
       params.append('requiresTesting', value)
@@ -732,6 +806,11 @@ export function buildRequirementListParams({
   if (filters.usageScenarioIds) {
     for (const id of filters.usageScenarioIds) {
       params.append('usageScenarioIds', String(id))
+    }
+  }
+  if (filters.packageItemStatusIds) {
+    for (const id of filters.packageItemStatusIds) {
+      params.append('packageItemStatusIds', String(id))
     }
   }
 
@@ -871,6 +950,13 @@ export function compareRequirementRows(
       result = compareNumber(
         left.version?.versionNumber,
         right.version?.versionNumber,
+        sort.direction,
+      )
+      break
+    case 'riskLevel':
+      result = compareNumber(
+        left.version?.riskLevelSortOrder,
+        right.version?.riskLevelSortOrder,
         sort.direction,
       )
       break

@@ -15,6 +15,11 @@ export interface RequirementReportVersion {
     nameSv: string
   } | null
   requiresTesting: boolean
+  riskLevel: {
+    id: number
+    nameEn: string
+    nameSv: string
+  } | null
   status: number
   statusColor: string | null
   statusNameEn: string | null

@@ -143,6 +143,14 @@ erDiagram
         integer is_system "boolean"
     }
 
+    risk_levels {
+        integer id PK
+        text name_sv UK
+        text name_en UK
+        integer sort_order
+        text color
+    }
+
     requirement_status_transitions {
         integer id PK
         integer from_requirement_status_id FK
@@ -187,6 +195,7 @@ erDiagram
         integer requirement_category_id FK
         integer requirement_type_id FK
         integer quality_characteristic_id FK
+        integer risk_level_id FK
         integer requirement_status_id FK
         integer is_testing_required "boolean"
         text verification_method
@@ -248,6 +257,16 @@ erDiagram
         text name_en UK
     }
 
+    package_item_statuses {
+        integer id PK
+        text name_sv UK
+        text name_en UK
+        text description_sv
+        text description_en
+        text color
+        integer sort_order
+    }
+
     requirement_packages {
         integer id PK
         text unique_id UK
@@ -273,8 +292,25 @@ erDiagram
         integer requirement_id FK
         integer requirement_version_id FK
         integer needs_reference_id FK
+        integer package_item_status_id FK
+        text note
+        text status_updated_at
         text unused_1
         text created_at
+    }
+
+    deviations {
+        integer id PK
+        integer package_item_id FK
+        text motivation
+        integer is_review_requested
+        integer decision
+        text decision_motivation
+        text decided_by
+        text decided_at
+        text created_by
+        text created_at
+        text updated_at
     }
 
     %% Relationships
@@ -285,6 +321,7 @@ erDiagram
     requirement_versions }o--o| requirement_categories : "categorized as"
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
+    requirement_versions }o--o| risk_levels : "risk level"
     requirement_versions ||--o{ requirement_version_usage_scenarios : "linked via"
     usage_scenarios ||--o{ requirement_version_usage_scenarios : "linked via"
     requirement_versions ||--o{ requirement_version_norm_references : "linked via"
@@ -299,9 +336,11 @@ erDiagram
     package_responsibility_areas ||--o{ requirement_packages : "responsibility area"
     package_implementation_types ||--o{ requirement_packages : "implementation type"
     package_lifecycle_statuses ||--o{ requirement_packages : "lifecycle status"
+    package_item_statuses ||--o{ requirement_package_items : "usage status"
     package_needs_references ||--o{ requirement_package_items : "scoped needs reference"
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
+    requirement_package_items ||--o{ deviations : "has deviations"
 ```
 
 ---
@@ -438,11 +477,44 @@ The schema also allows `Granskning` → `Utkast`
 
 ---
 
+### `risk_levels`
+
+Classifies the risk associated with a requirement.
+
+| Column | Type | Description |
+| ------------ | --------------- | ----------------------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `name_sv` | text, unique | Swedish display name |
+| `name_en` | text, unique | English display name |
+| `sort_order` | integer | Display ordering |
+| `color` | text | Hex color code for UI badges |
+
+**Seed values:**
+
+| id | Swedish | English | Color |
+| ---- | ------- | ------- | ------------------- |
+| 1 | Låg | Low | `#22c55e` (green) |
+| 2 | Medel | Medium | `#eab308` (yellow) |
+| 3 | Hög | High | `#ef4444` (red) |
+
+---
+
 ### `usage_scenarios`
 
 Describes operational scenarios (e.g. "High load",
 "Disaster recovery") that requirement versions can be
 linked to.
+
+> **Applicability / Tillämpningsbarhet.**
+> Usage scenarios also serve as the mechanism for
+> expressing *applicability* — i.e. in which contexts or
+> environments a requirement applies. Instead of a
+> separate applicability table, create usage scenarios
+> such as "All systems", "Protected data", or
+> "Public services" and link them to requirement
+> versions via `requirement_version_usage_scenarios`.
+> The many-to-many relation lets a single requirement
+> apply to multiple contexts.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -550,6 +622,35 @@ Describes the lifecycle phase of a requirement package
 **Seed values:** Upphandling (Procurement),
 Införande (Implementation), Utveckling (Development),
 Förvaltning (Management).
+
+---
+
+### `package_item_statuses`
+
+Lookup table for usage/implementation status of individual
+requirements within a package (e.g. included, in progress,
+implemented, verified).
+
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `name_sv` | text, unique | Swedish display name |
+| `name_en` | text, unique | English display name |
+| `description_sv` | text | Swedish description (nullable) |
+| `description_en` | text | English description (nullable) |
+| `color` | text | Hex color code for UI badges |
+| `sort_order` | integer | Display ordering |
+
+<!-- markdownlint-disable MD013 -->
+
+**Seed values:** Inkluderad (Included, #94a3b8),
+Pågående (In Progress, #f59e0b),
+Implementerad (Implemented, #3b82f6),
+Verifierad (Verified, #22c55e),
+Avviken (Deviated, #ef4444),
+Ej tillämpbar (Not Applicable, #6b7280).
+
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -722,6 +823,7 @@ complete audit history.
 | `requirement_category_id` | integer FK → `requirement_categories.id` | Business / IT / Supplier classification (nullable) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
+| `risk_level_id` | integer FK → `risk_levels.id` | Risk level classification (nullable) |
 | `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived) |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
@@ -857,6 +959,9 @@ Links individual requirements (pinned to a specific version) into a package.
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
 | `needs_reference_id` | integer FK → `package_needs_references.(package_id, id)` | Optional package-scoped needs reference |
+| `package_item_status_id` | integer FK → `package_item_statuses.id` | Usage/implementation status (nullable) |
+| `note` | text | Optional free-text note (nullable) |
+| `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
 | `unused_1` | text | Retired legacy column kept for migration compatibility |
 | `created_at` | text (ISO 8601) | When the item was added |
 <!-- markdownlint-enable MD013 -->
@@ -865,7 +970,34 @@ Links individual requirements (pinned to a specific version) into a package.
 
 **Indexes:**
 `idx_requirement_package_items_requirement_package_id`,
-`idx_requirement_package_items_requirement_id`.
+`idx_requirement_package_items_requirement_id`,
+`idx_requirement_package_items_package_item_status_id`.
+
+---
+
+### `deviations`
+
+Formal deviations from mandatory requirements within a
+package. Each deviation has a motivation and may receive
+a decision (approved or rejected) with its own rationale.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `package_item_id` | integer FK → `requirement_package_items.id` (CASCADE DELETE) | The package item this deviation applies to |
+| `motivation` | text NOT NULL | Why this mandatory requirement cannot be fulfilled |
+| `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
+| `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
+| `decision_motivation` | text | Rationale behind the approval or rejection |
+| `decided_by` | text | Who recorded the decision |
+| `decided_at` | text (ISO 8601) | When the decision was recorded |
+| `created_by` | text | Who registered the deviation |
+| `created_at` | text (ISO 8601) | When registered (default: now) |
+| `updated_at` | text (ISO 8601) | When last updated (default: now) |
+<!-- markdownlint-enable MD013 -->
+
+**Index:** `idx_deviations_package_item_id`.
 
 ---
 
@@ -886,6 +1018,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_types_name_en` | `requirement_types` | `name_en` | Prevents duplicate English type names |
 | `uq_requirement_statuses_name_sv` | `requirement_statuses` | `name_sv` | Prevents duplicate Swedish status names |
 | `uq_requirement_statuses_name_en` | `requirement_statuses` | `name_en` | Prevents duplicate English status names |
+| `uq_risk_levels_name_sv` | `risk_levels` | `name_sv` | Prevents duplicate Swedish risk level names |
+| `uq_risk_levels_name_en` | `risk_levels` | `name_en` | Prevents duplicate English risk level names |
 | `uq_requirement_status_transitions_from_to` | `requirement_status_transitions` | `(from_requirement_status_id, to_requirement_status_id)` | Prevents duplicate transition rules |
 | `uq_ui_terminology_key` | `ui_terminology` | `key` | Prevents duplicate terminology overlays for the same UI term family |
 | `uq_requirement_list_column_defaults_column_id` | `requirement_list_column_defaults` | `column_id` | Ensures each requirement-list column has one org-managed default row |
@@ -899,6 +1033,8 @@ its purpose and the table/column(s) it covers.
 | `uq_package_implementation_types_name_en` | `package_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
 | `uq_package_lifecycle_statuses_name_sv` | `package_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish lifecycle status names |
 | `uq_package_lifecycle_statuses_name_en` | `package_lifecycle_statuses` | `name_en` | Prevents duplicate English lifecycle status names |
+| `uq_package_item_statuses_name_sv` | `package_item_statuses` | `name_sv` | Prevents duplicate Swedish usage status names |
+| `uq_package_item_statuses_name_en` | `package_item_statuses` | `name_en` | Prevents duplicate English usage status names |
 | `uq_requirement_packages_unique_id` | `requirement_packages` | `unique_id` | Ensures each package has a stable unique identifier |
 | `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
 | `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
@@ -918,8 +1054,10 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
 | `idx_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | Speed up listing items in a package |
 | `idx_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | Speed up finding which packages contain a requirement |
+| `idx_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | Speed up filtering items by usage status |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
+| `idx_deviations_package_item_id` | `deviations` | `package_item_id` | Speed up lookups of deviations by package item |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -947,6 +1085,8 @@ explicit `foreignKey({ name })`:
 | `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE |
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
 | `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
+| `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
+| `fk_deviations_package_item_id` | `deviations` | `package_item_id` | `requirement_package_items.id` | CASCADE |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
@@ -962,6 +1102,7 @@ graph LR
         RS[requirement_statuses]
         RST[requirement_status_transitions]
         RSC[usage_scenarios]
+        RL[risk_levels]
         NR[norm_references]
     end
 
@@ -976,6 +1117,7 @@ graph LR
         PRA[package_responsibility_areas]
         PIT[package_implementation_types]
         PLS[package_lifecycle_statuses]
+        PIS[package_item_statuses]
         RP[requirement_packages]
         PNR[package_needs_references]
         RPI[requirement_package_items]
@@ -1006,12 +1148,15 @@ graph LR
     RC -- "uq_..._name_sv / name_en" --> RC
     RT -- "uq_..._name_sv / name_en" --> RT
     RS -- "uq_..._name_sv / name_en" --> RS
+    RL -- "uq_..._name_sv / name_en" --> RL
 
     RPI -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
+    RPI -- "idx_..._package_item_status_id\n(package_item_status_id)" --> PIS
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
+    PIS -- "uq_..._name_sv / name_en" --> PIS
 
     RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
     RVS -. "composite PK" .-> RSC

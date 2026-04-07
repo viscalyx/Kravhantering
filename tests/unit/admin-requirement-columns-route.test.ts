@@ -63,9 +63,11 @@ describe('admin requirement columns route', () => {
       'category',
       'type',
       'qualityCharacteristic',
+      'riskLevel',
       'requiresTesting',
       'version',
       'needsReference',
+      'packageItemStatus',
       'normReferences',
     ])
   })
@@ -136,10 +138,12 @@ describe('admin requirement columns route', () => {
       'area',
       'type',
       'qualityCharacteristic',
+      'riskLevel',
       'status',
       'requiresTesting',
       'version',
       'needsReference',
+      'packageItemStatus',
       'normReferences',
     ])
   })

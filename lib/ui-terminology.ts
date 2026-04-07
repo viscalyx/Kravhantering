@@ -5,6 +5,7 @@ export const UI_TERM_KEYS = [
   'type',
   'status',
   'qualityCharacteristic',
+  'riskLevel',
   'requiresTesting',
   'requiresTestingOff',
   'version',
@@ -62,6 +63,10 @@ const MESSAGE_BINDINGS: Record<
   qualityCharacteristic: {
     plural: [['nav', 'qualityCharacteristics']],
     singular: [['requirement', 'qualityCharacteristic']],
+  },
+  riskLevel: {
+    plural: [['nav', 'riskLevels']],
+    singular: [['requirement', 'riskLevel']],
   },
   requiresTesting: {
     singular: [['requirement', 'requiresTesting']],
@@ -194,6 +199,18 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       definitePlural: 'Kvalitetsegenskaperna',
       plural: 'Kvalitetsegenskaper',
       singular: 'Kvalitetsegenskap',
+    },
+  },
+  riskLevel: {
+    en: {
+      definitePlural: 'Risk levels',
+      plural: 'Risk levels',
+      singular: 'Risk level',
+    },
+    sv: {
+      definitePlural: 'Risknivåerna',
+      plural: 'Risknivåer',
+      singular: 'Risknivå',
     },
   },
   requiresTesting: {
@@ -513,6 +530,7 @@ export function getRequirementCsvHeaders(
       locale,
       'singular',
     ),
+    getLocalizedUiTerm(terminology, 'riskLevel', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'status', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'requiresTesting', locale, 'singular'),
     getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
@@ -526,6 +544,7 @@ export function getCatalogTitle(
     | 'areas'
     | 'categories'
     | 'requirements'
+    | 'risk_levels'
     | 'scenarios'
     | 'statuses'
     | 'transitions'
@@ -548,6 +567,8 @@ export function getCatalogTitle(
         locale,
         'plural',
       )
+    case 'risk_levels':
+      return getLocalizedUiTerm(terminology, 'riskLevel', locale, 'plural')
     case 'statuses':
       return getLocalizedUiTerm(terminology, 'status', locale, 'plural')
     case 'scenarios':

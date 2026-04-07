@@ -1,5 +1,8 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import {
+  DEVIATION_APPROVED,
+  deviations,
+  packageItemStatuses,
   packageNeedsReferences,
   qualityCharacteristics,
   requirementAreas,
@@ -10,10 +13,23 @@ import {
   requirements,
   requirementTypes,
   requirementVersions,
+  riskLevels,
 } from '@/drizzle/schema'
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { Database } from '@/lib/db'
 import { validationError } from '@/lib/requirements/errors'
+
+/**
+ * Seed ID for the "Included" / "Inkluderad" package-item status.
+ * Every newly added package item starts here.
+ */
+export const DEFAULT_PACKAGE_ITEM_STATUS_ID = 1
+
+/**
+ * Seed ID for the "Deviated" / "Avviken" package-item status.
+ * Only selectable when the package item has an approved deviation.
+ */
+export const DEVIATED_PACKAGE_ITEM_STATUS_ID = 5
 
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
@@ -284,15 +300,13 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
-  await db.transaction(async tx => {
-    await tx
-      .delete(requirementPackageItems)
-      .where(eq(requirementPackageItems.packageId, id))
-    await tx
-      .delete(packageNeedsReferences)
-      .where(eq(packageNeedsReferences.packageId, id))
-    await tx.delete(requirementPackages).where(eq(requirementPackages.id, id))
-  })
+  await db
+    .delete(requirementPackageItems)
+    .where(eq(requirementPackageItems.packageId, id))
+  await db
+    .delete(packageNeedsReferences)
+    .where(eq(packageNeedsReferences.packageId, id))
+  await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
 }
 
 export async function getPublishedVersionIdForRequirement(
@@ -454,6 +468,7 @@ async function linkRequirementsToPackageWithD1Batch(
             requirement_id,
             requirement_version_id,
             needs_reference_id,
+            package_item_status_id,
             created_at
           )
           VALUES (
@@ -467,6 +482,7 @@ async function linkRequirementsToPackageWithD1Batch(
                 AND text = ?
               LIMIT 1
             ),
+            ?,
             ?
           )
           ON CONFLICT(requirement_package_id, requirement_id) DO NOTHING
@@ -478,6 +494,7 @@ async function linkRequirementsToPackageWithD1Batch(
         item.requirementVersionId,
         packageId,
         normalizedNeedsReferenceText,
+        DEFAULT_PACKAGE_ITEM_STATUS_ID,
         createdAt,
       ),
   )
@@ -594,36 +611,34 @@ export async function linkRequirementsToPackageAtomically(
     )
   }
 
-  return db.transaction(async tx => {
-    const resolvedNeedsReference =
-      await getOrCreatePackageNeedsReferenceWithMetadata(
-        tx,
-        packageId,
-        normalizedNeedsReferenceText,
-      )
-
-    const addedCount = await linkRequirementsToPackage(
-      tx,
+  const resolvedNeedsReference =
+    await getOrCreatePackageNeedsReferenceWithMetadata(
+      db,
       packageId,
-      items.map(item => ({
-        ...item,
-        needsReferenceId: resolvedNeedsReference.id,
-      })),
+      normalizedNeedsReferenceText,
     )
 
-    if (addedCount === 0 && resolvedNeedsReference.created) {
-      await tx
-        .delete(packageNeedsReferences)
-        .where(
-          and(
-            eq(packageNeedsReferences.id, resolvedNeedsReference.id),
-            eq(packageNeedsReferences.packageId, packageId),
-          ),
-        )
-    }
+  const addedCount = await linkRequirementsToPackage(
+    db,
+    packageId,
+    items.map(item => ({
+      ...item,
+      needsReferenceId: resolvedNeedsReference.id,
+    })),
+  )
 
-    return addedCount
-  })
+  if (addedCount === 0 && resolvedNeedsReference.created) {
+    await db
+      .delete(packageNeedsReferences)
+      .where(
+        and(
+          eq(packageNeedsReferences.id, resolvedNeedsReference.id),
+          eq(packageNeedsReferences.packageId, packageId),
+        ),
+      )
+  }
+
+  return addedCount
 }
 
 export async function linkRequirementsToPackage(
@@ -638,7 +653,13 @@ export async function linkRequirementsToPackage(
   if (items.length === 0) return 0
   const inserted = await db
     .insert(requirementPackageItems)
-    .values(items.map(item => ({ packageId, ...item })))
+    .values(
+      items.map(item => ({
+        packageId,
+        ...item,
+        packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+      })),
+    )
     .onConflictDoNothing()
     .returning({ id: requirementPackageItems.id })
   return inserted.length
@@ -687,8 +708,20 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       typeNameEn: requirementTypes.nameEn,
       qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
       qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
+      riskLevelId: requirementVersions.riskLevelId,
+      riskLevelNameSv: riskLevels.nameSv,
+      riskLevelNameEn: riskLevels.nameEn,
+      riskLevelColor: riskLevels.color,
+      riskLevelSortOrder: riskLevels.sortOrder,
       needsReferenceId: requirementPackageItems.needsReferenceId,
       needsReferenceText: packageNeedsReferences.text,
+      packageItemId: requirementPackageItems.id,
+      packageItemStatusId: requirementPackageItems.packageItemStatusId,
+      packageItemStatusNameSv: packageItemStatuses.nameSv,
+      packageItemStatusNameEn: packageItemStatuses.nameEn,
+      packageItemStatusColor: packageItemStatuses.color,
+      packageItemStatusDescriptionSv: packageItemStatuses.descriptionSv,
+      packageItemStatusDescriptionEn: packageItemStatuses.descriptionEn,
       usageScenarioIds: sql<string | null>`(
         SELECT GROUP_CONCAT(rvus.usage_scenario_id)
         FROM requirement_version_usage_scenarios rvus
@@ -727,9 +760,14 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
         requirementVersions.qualityCharacteristicId,
       ),
     )
+    .leftJoin(riskLevels, eq(riskLevels.id, requirementVersions.riskLevelId))
     .leftJoin(
       packageNeedsReferences,
       eq(packageNeedsReferences.id, requirementPackageItems.needsReferenceId),
+    )
+    .leftJoin(
+      packageItemStatuses,
+      eq(packageItemStatuses.id, requirementPackageItems.packageItemStatusId),
     )
     .where(eq(requirementPackageItems.packageId, packageId))
     .orderBy(requirements.uniqueId)
@@ -740,6 +778,13 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
     isArchived: row.isArchived,
     needsReference: row.needsReferenceText ?? null,
     needsReferenceId: row.needsReferenceId ?? null,
+    packageItemId: row.packageItemId,
+    packageItemStatusId: row.packageItemStatusId ?? null,
+    packageItemStatusNameSv: row.packageItemStatusNameSv ?? null,
+    packageItemStatusNameEn: row.packageItemStatusNameEn ?? null,
+    packageItemStatusColor: row.packageItemStatusColor ?? null,
+    packageItemStatusDescriptionSv: row.packageItemStatusDescriptionSv ?? null,
+    packageItemStatusDescriptionEn: row.packageItemStatusDescriptionEn ?? null,
     usageScenarioIds: row.usageScenarioIds
       ? row.usageScenarioIds.split(',').map(Number)
       : [],
@@ -748,6 +793,11 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       versionNumber: row.versionNumber,
       description: row.description,
       requiresTesting: row.requiresTesting,
+      riskLevelId: row.riskLevelId ?? null,
+      riskLevelNameEn: row.riskLevelNameEn ?? null,
+      riskLevelNameSv: row.riskLevelNameSv ?? null,
+      riskLevelColor: row.riskLevelColor ?? null,
+      riskLevelSortOrder: row.riskLevelSortOrder ?? null,
       status: row.statusId,
       statusNameSv: row.statusNameSv ?? null,
       statusNameEn: row.statusNameEn ?? null,
@@ -760,4 +810,110 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
       qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
     },
   }))
+}
+
+export async function getPackageItemById(db: Database, itemId: number) {
+  const result = await db.query.requirementPackageItems.findFirst({
+    where: eq(requirementPackageItems.id, itemId),
+  })
+  return result ?? null
+}
+
+export async function updatePackageItemFields(
+  db: Database,
+  itemId: number,
+  data: { packageItemStatusId?: number | null; note?: string | null },
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+  if ('packageItemStatusId' in data) {
+    const statusId = data.packageItemStatusId ?? null
+    if (statusId != null) {
+      const status = await db.query.packageItemStatuses.findFirst({
+        where: eq(packageItemStatuses.id, statusId),
+      })
+      if (!status) {
+        throw validationError('Invalid package item status ID', {
+          packageItemStatusId: statusId,
+        })
+      }
+    }
+    updates.packageItemStatusId = statusId
+    updates.statusUpdatedAt = new Date().toISOString()
+  }
+  if ('note' in data) {
+    updates.note = data.note ?? null
+  }
+  if (Object.keys(updates).length === 0) return
+
+  const needsDeviationCheck =
+    updates.packageItemStatusId === DEVIATED_PACKAGE_ITEM_STATUS_ID
+
+  const sessionName = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
+
+  if (sessionName === 'BetterSQLiteSession') {
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<
+              Database,
+              'delete' | 'insert' | 'query' | 'select' | 'update'
+            >,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      if (needsDeviationCheck) {
+        const rows = tx
+          .select({ id: deviations.id })
+          .from(deviations)
+          .where(
+            and(
+              eq(deviations.packageItemId, itemId),
+              eq(deviations.decision, DEVIATION_APPROVED),
+            ),
+          )
+          .limit(1)
+          .all() as unknown as { id: number }[]
+        if (!rows.length) {
+          throw validationError(
+            'Deviated status requires an approved deviation',
+            { packageItemStatusId: updates.packageItemStatusId, itemId },
+          )
+        }
+      }
+      tx.update(requirementPackageItems)
+        .set(updates)
+        .where(eq(requirementPackageItems.id, itemId))
+        .run()
+    })
+    return
+  }
+
+  if (needsDeviationCheck) {
+    const approvedDeviation = await db.query.deviations.findFirst({
+      where: and(
+        eq(deviations.packageItemId, itemId),
+        eq(deviations.decision, DEVIATION_APPROVED),
+      ),
+    })
+    if (!approvedDeviation) {
+      throw validationError('Deviated status requires an approved deviation', {
+        packageItemStatusId: updates.packageItemStatusId,
+        itemId,
+      })
+    }
+  }
+  await db
+    .update(requirementPackageItems)
+    .set(updates)
+    .where(eq(requirementPackageItems.id, itemId))
 }

@@ -61,6 +61,17 @@ export type RequirementsAction =
       uniqueId?: string
       id?: number
     }
+  | {
+      kind: 'list_deviations'
+      packageId?: number
+      packageSlug?: string
+    }
+  | {
+      kind: 'manage_deviation'
+      operation: string
+      deviationId?: number
+      packageItemId?: number
+    }
 
 export interface AuthorizationService {
   assertAuthorized(

@@ -93,6 +93,8 @@ export default function EditRequirementClient({
           latest.qualityCharacteristic?.id != null
             ? String(latest.qualityCharacteristic.id)
             : '',
+        riskLevelId:
+          latest.riskLevel?.id != null ? String(latest.riskLevel.id) : '',
         description: String(latest.description ?? ''),
         acceptanceCriteria: String(latest.acceptanceCriteria ?? ''),
         requiresTesting: Boolean(latest.requiresTesting ?? false),

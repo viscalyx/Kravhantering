@@ -93,10 +93,12 @@ describe('ui settings DAL', () => {
         'area',
         'type',
         'qualityCharacteristic',
+        'riskLevel',
         'status',
         'requiresTesting',
         'version',
         'needsReference',
+        'packageItemStatus',
         'normReferences',
       ])
       expect(getRequirementColumnOrder(loadedColumns)).toEqual([
@@ -106,10 +108,12 @@ describe('ui settings DAL', () => {
         'area',
         'type',
         'qualityCharacteristic',
+        'riskLevel',
         'status',
         'requiresTesting',
         'version',
         'needsReference',
+        'packageItemStatus',
         'normReferences',
       ])
       expect(
@@ -129,14 +133,20 @@ describe('ui settings DAL', () => {
           isDefaultVisible: false,
           sortOrder: 5,
         },
-        { columnId: 'status', isDefaultVisible: true, sortOrder: 6 },
-        { columnId: 'requiresTesting', isDefaultVisible: false, sortOrder: 7 },
-        { columnId: 'version', isDefaultVisible: false, sortOrder: 8 },
-        { columnId: 'needsReference', isDefaultVisible: false, sortOrder: 9 },
+        { columnId: 'riskLevel', isDefaultVisible: false, sortOrder: 6 },
+        { columnId: 'status', isDefaultVisible: true, sortOrder: 7 },
+        { columnId: 'requiresTesting', isDefaultVisible: false, sortOrder: 8 },
+        { columnId: 'version', isDefaultVisible: false, sortOrder: 9 },
+        { columnId: 'needsReference', isDefaultVisible: false, sortOrder: 10 },
+        {
+          columnId: 'packageItemStatus',
+          isDefaultVisible: false,
+          sortOrder: 11,
+        },
         {
           columnId: 'normReferences',
           isDefaultVisible: false,
-          sortOrder: 10,
+          sortOrder: 12,
         },
       ])
     } finally {

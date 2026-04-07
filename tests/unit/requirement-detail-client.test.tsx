@@ -250,6 +250,7 @@ function makeVersion(
     publishedAt: null,
     requiresTesting: false,
     qualityCharacteristic: toLocalizedEntity(qualityCharacteristic, 30),
+    riskLevel: null,
     status: 1,
     statusColor: '#3b82f6',
     statusNameEn: 'Draft',
@@ -488,9 +489,12 @@ function setupFetch({
 function renderSubject(
   props?: Partial<ComponentProps<typeof RequirementDetailClient>>,
 ) {
+  const merged = { requirementId: 123 as number | string, ...props }
   return render(
     <ConfirmModalProvider>
-      <RequirementDetailClient requirementId={123} {...props} />
+      <RequirementDetailClient
+        {...(merged as ComponentProps<typeof RequirementDetailClient>)}
+      />
     </ConfirmModalProvider>,
   )
 }

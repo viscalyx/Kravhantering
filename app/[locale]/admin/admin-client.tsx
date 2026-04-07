@@ -6,8 +6,10 @@ import {
   BookOpen,
   Briefcase,
   CircleDot,
+  ClipboardList,
   FolderCog,
   FolderTree,
+  Gauge,
   Languages,
   Layers,
   LayoutPanelTop,
@@ -302,6 +304,13 @@ export default function AdminClient({
       label: tn('qualityCharacteristics'),
     },
     {
+      description: ta('riskLevelsDescription'),
+      href: '/risk-levels',
+      icon: Gauge,
+      id: 'riskLevels',
+      label: tn('riskLevels'),
+    },
+    {
       description: ta('responsibilityAreasDescription'),
       href: '/requirement-packages/responsibility-areas',
       icon: Briefcase,
@@ -321,6 +330,13 @@ export default function AdminClient({
       icon: RefreshCw,
       id: 'lifecycleStatuses',
       label: tn('lifecycleStatuses'),
+    },
+    {
+      description: ta('packageItemStatusesDescription'),
+      href: '/package-item-statuses',
+      icon: ClipboardList,
+      id: 'packageItemStatuses',
+      label: tn('packageItemStatuses'),
     },
     {
       description: ta('areaOwnersDescription'),

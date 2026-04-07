@@ -136,11 +136,22 @@ async function seedPublishedStatus(db: TestDb) {
   })
 }
 
+async function seedIncludedPackageItemStatus(db: TestDb) {
+  await db.insert(schema.packageItemStatuses).values({
+    color: '#94a3b8',
+    id: 1,
+    nameEn: 'Included',
+    nameSv: 'Inkluderad',
+    sortOrder: 1,
+  })
+}
+
 describe('linkRequirementsToPackageAtomically', () => {
   let db: TestDb
 
-  beforeEach(() => {
+  beforeEach(async () => {
     ;({ db } = createAsyncTestDb())
+    await seedIncludedPackageItemStatus(db)
   })
 
   it('creates and links a trimmed needs reference in one transaction', async () => {
