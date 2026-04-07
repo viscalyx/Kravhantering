@@ -1,7 +1,7 @@
 # Arkitekturbeskrivning — Kravhantering
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager batchoperationer behörighetskontroll datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Flerkravsrapport granskningsrapport helsidevy Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin tvåstegs -->
+<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Flerkravsrapport granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravpakethantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Paketvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
 <!-- markdownlint-enable MD013 -->
 
 ## Inledning
@@ -110,7 +110,10 @@ graph TB
 │              << Business Layer >>                       │
 │                                                         │
 │  [Business Process]     [Business Process]              │
-│   Kravlivscykel          Rapportgenerering              │
+│   Kravlivscykel          Kravpakethantering             │
+│                                                         │
+│  [Business Process]     [Business Process]              │
+│   Avsteghantering        Rapportgenerering              │
 │                                                         │
 │  [Business Actor]       [Business Actor]                │
 │   Kravförfattare         Granskare                      │
@@ -249,6 +252,74 @@ flowchart TD
 | Administratör | Konfigurerar taxonomi, terminologi, kolumnstandard |
 <!-- markdownlint-enable MD013 -->
 
+### Kravpakethantering
+
+Kravpaket samlar ett urval av krav för en viss
+användning — t.ex. en upphandling, ett projekt
+eller en förvaltningsperiod. Processen omfattar:
+
+1. **Skapa paket** — Namn, beskrivning och slug
+   (URL-vänligt ID) anges.
+2. **Lägga till kravposter** — Krav läggs till i
+   paketet med en specifik kravversion.
+   Varje post får automatiskt statusen
+   *Inkluderad* (`Included`).
+3. **Statushantering per post** — Varje kravpost
+   i paketet har en egen användningsstatus.
+   Tillgängliga statusar hanteras i
+   uppslagstabellen `package_item_statuses`.
+4. **Spåra avsteg** — Om ett krav inte kan uppfyllas
+   helt kan ett avsteg registreras (se
+   *Avsteghantering* nedan).
+
+### Avsteghantering
+
+Avsteg (deviations) dokumenterar och beslutar om
+undantag från enskilda krav i ett kravpaket.
+Processen följer en trestegsmodell:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Utkast : Registrera avsteg
+    Utkast --> Granskning : Begär granskning
+    Granskning --> Utkast : Återta till utkast
+    Granskning --> Beslutat : Godkänn eller avslå
+
+    note right of Utkast
+        Motivation och skapare
+        anges. Kan redigeras
+        och raderas.
+    end note
+
+    note right of Granskning
+        Avsteget väntar på
+        formellt beslut.
+    end note
+
+    note right of Beslutat
+        Beslut (godkänt/avslaget),
+        motivering och beslutsfattare
+        registreras permanent.
+    end note
+```
+
+**Steg i detalj:**
+
+1. **Utkast** — Författaren registrerar ett avsteg
+   med motivering och valfri skapare. Avsteget kan
+   redigeras och raderas i detta steg.
+2. **Begärd granskning** — Avsteget skickas för
+   beslut. Det kan återtas till utkast om
+   komplettering behövs.
+3. **Beslutat** — Granskaren godkänner eller avslår
+   avsteget. Beslutsmotivering, beslutsfattare och
+   tidsstämpel registreras. Beslutet är permanent.
+
+Ett godkänt avsteg möjliggör att kravpostens
+användningsstatus ändras till *Avviken*
+(`Deviated`). Ett avslaget avsteg lämnar posten
+i befintlig status.
+
 ### Rapportprocesser
 
 Systemet stödjer fyra rapporttyper som stöder
@@ -341,6 +412,28 @@ Från detaljvyn kan användaren:
 - Redigera krav (skapar ny version om publicerat)
 - Generera och ladda ner rapporter (PDF eller utskrift)
 - Visa versionshistorik i sidopanel
+
+### Paketvyn
+
+Kravpaket nås via `/requirement-packages/[slug]`
+och visar samtliga kravposter i paketet med:
+
+- **Postöversikt** — Tabell med kravnamn,
+  kravversion, risknivå och användningsstatus.
+- **Statushantering** — Varje kravpost har en
+  egen status (t.ex. *Inkluderad* eller
+  *Avviken*) som kan ändras direkt i vyn.
+- **Avsteghantering** — Från en kravpost kan
+  användaren registrera, redigera och begära
+  granskning av avsteg. En stepper-komponent
+  (`DeviationStepper`) visar avstegsstatus
+  grafiskt (Utkast → Begärd granskning →
+  Beslutat). Beslutsfattande sker via en
+  dedikerad dialog (`DeviationDecisionModal`).
+- **Avsteghistorik** — Alla avsteg för en
+  kravpost visas med senaste avsteget
+  framhävt och äldre i en expanderbar
+  historiksektion (`DeviationPill`).
 
 ### Administrationscenter
 
