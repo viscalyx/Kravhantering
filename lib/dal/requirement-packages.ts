@@ -300,15 +300,13 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
-  await db.transaction(async tx => {
-    await tx
-      .delete(requirementPackageItems)
-      .where(eq(requirementPackageItems.packageId, id))
-    await tx
-      .delete(packageNeedsReferences)
-      .where(eq(packageNeedsReferences.packageId, id))
-    await tx.delete(requirementPackages).where(eq(requirementPackages.id, id))
-  })
+  await db
+    .delete(requirementPackageItems)
+    .where(eq(requirementPackageItems.packageId, id))
+  await db
+    .delete(packageNeedsReferences)
+    .where(eq(packageNeedsReferences.packageId, id))
+  await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
 }
 
 export async function getPublishedVersionIdForRequirement(
@@ -613,36 +611,34 @@ export async function linkRequirementsToPackageAtomically(
     )
   }
 
-  return db.transaction(async tx => {
-    const resolvedNeedsReference =
-      await getOrCreatePackageNeedsReferenceWithMetadata(
-        tx,
-        packageId,
-        normalizedNeedsReferenceText,
-      )
-
-    const addedCount = await linkRequirementsToPackage(
-      tx,
+  const resolvedNeedsReference =
+    await getOrCreatePackageNeedsReferenceWithMetadata(
+      db,
       packageId,
-      items.map(item => ({
-        ...item,
-        needsReferenceId: resolvedNeedsReference.id,
-      })),
+      normalizedNeedsReferenceText,
     )
 
-    if (addedCount === 0 && resolvedNeedsReference.created) {
-      await tx
-        .delete(packageNeedsReferences)
-        .where(
-          and(
-            eq(packageNeedsReferences.id, resolvedNeedsReference.id),
-            eq(packageNeedsReferences.packageId, packageId),
-          ),
-        )
-    }
+  const addedCount = await linkRequirementsToPackage(
+    db,
+    packageId,
+    items.map(item => ({
+      ...item,
+      needsReferenceId: resolvedNeedsReference.id,
+    })),
+  )
 
-    return addedCount
-  })
+  if (addedCount === 0 && resolvedNeedsReference.created) {
+    await db
+      .delete(packageNeedsReferences)
+      .where(
+        and(
+          eq(packageNeedsReferences.id, resolvedNeedsReference.id),
+          eq(packageNeedsReferences.packageId, packageId),
+        ),
+      )
+  }
+
+  return addedCount
 }
 
 export async function linkRequirementsToPackage(
@@ -817,9 +813,10 @@ export async function listPackageItems(db: DatabaseReader, packageId: number) {
 }
 
 export async function getPackageItemById(db: Database, itemId: number) {
-  return db.query.requirementPackageItems.findFirst({
+  const result = await db.query.requirementPackageItems.findFirst({
     where: eq(requirementPackageItems.id, itemId),
   })
+  return result ?? null
 }
 
 export async function updatePackageItemFields(
@@ -839,20 +836,6 @@ export async function updatePackageItemFields(
           packageItemStatusId: statusId,
         })
       }
-      if (statusId === DEVIATED_PACKAGE_ITEM_STATUS_ID) {
-        const approvedDeviation = await db.query.deviations.findFirst({
-          where: and(
-            eq(deviations.packageItemId, itemId),
-            eq(deviations.decision, DEVIATION_APPROVED),
-          ),
-        })
-        if (!approvedDeviation) {
-          throw validationError(
-            'Deviated status requires an approved deviation',
-            { packageItemStatusId: statusId, itemId },
-          )
-        }
-      }
     }
     updates.packageItemStatusId = statusId
     updates.statusUpdatedAt = new Date().toISOString()
@@ -860,10 +843,77 @@ export async function updatePackageItemFields(
   if ('note' in data) {
     updates.note = data.note ?? null
   }
-  if (Object.keys(updates).length > 0) {
-    await db
-      .update(requirementPackageItems)
-      .set(updates)
-      .where(eq(requirementPackageItems.id, itemId))
+  if (Object.keys(updates).length === 0) return
+
+  const needsDeviationCheck =
+    updates.packageItemStatusId === DEVIATED_PACKAGE_ITEM_STATUS_ID
+
+  const sessionName = (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
+
+  if (sessionName === 'BetterSQLiteSession') {
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<
+              Database,
+              'delete' | 'insert' | 'query' | 'select' | 'update'
+            >,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      if (needsDeviationCheck) {
+        const rows = tx
+          .select({ id: deviations.id })
+          .from(deviations)
+          .where(
+            and(
+              eq(deviations.packageItemId, itemId),
+              eq(deviations.decision, DEVIATION_APPROVED),
+            ),
+          )
+          .limit(1)
+          .all() as unknown as { id: number }[]
+        if (!rows.length) {
+          throw validationError(
+            'Deviated status requires an approved deviation',
+            { packageItemStatusId: updates.packageItemStatusId, itemId },
+          )
+        }
+      }
+      tx.update(requirementPackageItems)
+        .set(updates)
+        .where(eq(requirementPackageItems.id, itemId))
+        .run()
+    })
+    return
   }
+
+  if (needsDeviationCheck) {
+    const approvedDeviation = await db.query.deviations.findFirst({
+      where: and(
+        eq(deviations.packageItemId, itemId),
+        eq(deviations.decision, DEVIATION_APPROVED),
+      ),
+    })
+    if (!approvedDeviation) {
+      throw validationError('Deviated status requires an approved deviation', {
+        packageItemStatusId: updates.packageItemStatusId,
+        itemId,
+      })
+    }
+  }
+  await db
+    .update(requirementPackageItems)
+    .set(updates)
+    .where(eq(requirementPackageItems.id, itemId))
 }

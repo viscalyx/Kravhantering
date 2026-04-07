@@ -986,6 +986,7 @@ export async function editRequirement(
   ).session?.constructor?.name
 
   if (sessionNameForNew === 'BetterSQLiteSession') {
+    let version!: typeof requirementVersions.$inferSelect
     ;(
       db as unknown as {
         transaction: (
@@ -1002,34 +1003,38 @@ export async function editRequirement(
           .run()
       }
 
-      tx.insert(requirementVersions).values(versionValues).run()
-    })
-
-    const version = await db.query.requirementVersions.findFirst({
-      where: and(
-        eq(requirementVersions.requirementId, requirementId),
-        eq(requirementVersions.versionNumber, nextVersion),
-      ),
-    })
-    if (!version) throw notFoundError('Failed to retrieve new version')
-
-    if (uniqueScenarioIdsForNew.length) {
-      await db.insert(requirementVersionUsageScenarios).values(
-        uniqueScenarioIdsForNew.map(usageScenarioId => ({
-          requirementVersionId: version.id,
-          usageScenarioId,
-        })),
+      version = (
+        tx.insert(requirementVersions).values(versionValues) as unknown as {
+          returning: () => {
+            get: () => typeof requirementVersions.$inferSelect
+          }
+        }
       )
-    }
+        .returning()
+        .get()
 
-    if (uniqueNormRefIdsForNew.length) {
-      await db.insert(requirementVersionNormReferences).values(
-        uniqueNormRefIdsForNew.map(normReferenceId => ({
-          requirementVersionId: version.id,
-          normReferenceId,
-        })),
-      )
-    }
+      if (uniqueScenarioIdsForNew.length) {
+        tx.insert(requirementVersionUsageScenarios)
+          .values(
+            uniqueScenarioIdsForNew.map(usageScenarioId => ({
+              requirementVersionId: version.id,
+              usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (uniqueNormRefIdsForNew.length) {
+        tx.insert(requirementVersionNormReferences)
+          .values(
+            uniqueNormRefIdsForNew.map(normReferenceId => ({
+              requirementVersionId: version.id,
+              normReferenceId,
+            })),
+          )
+          .run()
+      }
+    })
 
     return version
   }

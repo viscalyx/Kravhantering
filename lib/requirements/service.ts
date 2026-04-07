@@ -549,8 +549,6 @@ export interface RequirementsService {
   manageDeviation(
     context: RequestContext,
     input: {
-      createdBy?: string
-      decidedBy?: string
       decision?: number
       decisionMotivation?: string
       deviationId?: number
