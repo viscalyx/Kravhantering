@@ -28,6 +28,11 @@ import DeviationStepper from '@/components/DeviationStepper'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import StatusStepper from '@/components/StatusStepper'
+import SuggestionFormModal from '@/components/SuggestionFormModal'
+import SuggestionPill from '@/components/SuggestionPill'
+import SuggestionResolutionModal from '@/components/SuggestionResolutionModal'
+import type { SuggestionStep } from '@/components/SuggestionStepper'
+import SuggestionStepper from '@/components/SuggestionStepper'
 import VersionHistory from '@/components/VersionHistory'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -145,6 +150,7 @@ export default function RequirementDetailClient({
   const tc = useTranslations('common')
   const tp = useTranslations('package')
   const td = useTranslations('deviation')
+  const tf = useTranslations('improvementSuggestion')
   const router = useRouter()
   const locale = useLocale()
   const { confirm } = useConfirmModal()
@@ -225,6 +231,7 @@ export default function RequirementDetailClient({
   const [showEditDeviationForm, setShowEditDeviationForm] = useState(false)
   const [showDecisionForm, setShowDecisionForm] = useState(false)
   const [deviationSaving, setDeviationSaving] = useState(false)
+  const [deviationError, setDeviationError] = useState<string | null>(null)
 
   const latestDeviation = useMemo(() => {
     if (deviations.length === 0) return null
@@ -243,6 +250,13 @@ export default function RequirementDetailClient({
     return 'draft'
   }, [latestDeviation])
 
+  const deviationFetchFailed = td('fetchFailed')
+  const deviationSaveFailed = td('saveFailed')
+  const deviationDeleteFailed = td('deleteFailed')
+  const deviationReviewFailed = td('reviewFailed')
+  const deviationRevertFailed = td('revertFailed')
+  const deviationDecisionFailed = td('decisionFailed')
+
   const fetchDeviations = useCallback(async () => {
     if (!packageItemId || !packageSlug) return
     try {
@@ -250,13 +264,16 @@ export default function RequirementDetailClient({
         `/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
       )
       if (res.ok) {
+        setDeviationError(null)
         const data = (await res.json()) as { deviations: DeviationData[] }
         setDeviations(data.deviations)
+      } else {
+        setDeviationError(deviationFetchFailed)
       }
     } catch {
-      // silently fail — deviation data is supplementary
+      setDeviationError(deviationFetchFailed)
     }
-  }, [packageItemId, packageSlug])
+  }, [packageItemId, packageSlug, deviationFetchFailed])
 
   useEffect(() => {
     if (isPackageItemContext) {
@@ -283,12 +300,14 @@ export default function RequirementDetailClient({
         if (res.ok) {
           setShowDeviationForm(false)
           await fetchDeviations()
+        } else {
+          setDeviationError(deviationSaveFailed)
         }
       } finally {
         setDeviationSaving(false)
       }
     },
-    [packageItemId, packageSlug, fetchDeviations],
+    [packageItemId, packageSlug, fetchDeviations, deviationSaveFailed],
   )
 
   const handleEditDeviation = useCallback(
@@ -304,12 +323,14 @@ export default function RequirementDetailClient({
         if (res.ok) {
           setShowEditDeviationForm(false)
           await fetchDeviations()
+        } else {
+          setDeviationError(deviationSaveFailed)
         }
       } finally {
         setDeviationSaving(false)
       }
     },
-    [latestDeviation, fetchDeviations],
+    [latestDeviation, fetchDeviations, deviationSaveFailed],
   )
 
   const handleDeleteDeviation = useCallback(async () => {
@@ -328,11 +349,13 @@ export default function RequirementDetailClient({
       })
       if (res.ok) {
         await fetchDeviations()
+      } else {
+        setDeviationError(deviationDeleteFailed)
       }
     } finally {
       setDeviationSaving(false)
     }
-  }, [latestDeviation, fetchDeviations, confirm, td])
+  }, [latestDeviation, fetchDeviations, confirm, td, deviationDeleteFailed])
 
   const handleRequestReview = useCallback(async () => {
     if (!latestDeviation) return
@@ -344,11 +367,13 @@ export default function RequirementDetailClient({
       )
       if (res.ok) {
         await fetchDeviations()
+      } else {
+        setDeviationError(deviationReviewFailed)
       }
     } finally {
       setDeviationSaving(false)
     }
-  }, [latestDeviation, fetchDeviations])
+  }, [latestDeviation, fetchDeviations, deviationReviewFailed])
 
   const handleRevertToDraft = useCallback(async () => {
     if (!latestDeviation) return
@@ -367,11 +392,13 @@ export default function RequirementDetailClient({
       )
       if (res.ok) {
         await fetchDeviations()
+      } else {
+        setDeviationError(deviationRevertFailed)
       }
     } finally {
       setDeviationSaving(false)
     }
-  }, [latestDeviation, fetchDeviations, confirm, td])
+  }, [latestDeviation, fetchDeviations, confirm, td, deviationRevertFailed])
 
   const handleRecordDecision = useCallback(
     async (decision: 1 | 2, motivation: string, decidedBy: string) => {
@@ -393,12 +420,252 @@ export default function RequirementDetailClient({
         if (res.ok) {
           setShowDecisionForm(false)
           await Promise.all([fetchDeviations(), onChange?.()])
+        } else {
+          setDeviationError(deviationDecisionFailed)
         }
       } finally {
         setDeviationSaving(false)
       }
     },
-    [latestDeviation, fetchDeviations, onChange],
+    [latestDeviation, fetchDeviations, onChange, deviationDecisionFailed],
+  )
+
+  // ─── Suggestion workflow state ──────────────────────────────────────────────
+  interface SuggestionData {
+    content: string
+    createdAt: string
+    createdBy: string | null
+    id: number
+    isReviewRequested: number
+    requirementVersionId: number | null
+    resolution: number | null
+    resolutionMotivation: string | null
+    resolvedAt: string | null
+    resolvedBy: string | null
+  }
+
+  const [suggestionItems, setSuggestionItems] = useState<SuggestionData[]>([])
+  const [showSuggestionForm, setShowSuggestionForm] = useState(false)
+  const [showEditSuggestionForm, setShowEditSuggestionForm] = useState(false)
+  const [editSuggestionTarget, setEditSuggestionTarget] =
+    useState<SuggestionData | null>(null)
+  const [showResolutionForm, setShowResolutionForm] = useState(false)
+  const [resolutionTarget, setResolutionTarget] =
+    useState<SuggestionData | null>(null)
+  const [suggestionSaving, setSuggestionSaving] = useState(false)
+  const [suggestionError, setSuggestionError] = useState<string | null>(null)
+
+  const suggestionFetchFailed = tf('fetchFailed')
+  const suggestionSaveFailed = tf('saveFailed')
+  const suggestionDeleteFailed = tf('deleteFailed')
+  const suggestionReviewFailed = tf('reviewFailed')
+  const suggestionRevertFailed = tf('revertFailed')
+  const suggestionResolutionFailed = tf('resolutionFailed')
+
+  const fetchSuggestions = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `/api/requirements/${requirementId}/improvement-suggestions`,
+      )
+      if (res.ok) {
+        setSuggestionError(null)
+        const data = (await res.json()) as { suggestions: SuggestionData[] }
+        setSuggestionItems(data.suggestions)
+      } else {
+        setSuggestionError(suggestionFetchFailed)
+      }
+    } catch {
+      setSuggestionError(suggestionFetchFailed)
+    }
+  }, [requirementId, suggestionFetchFailed])
+
+  useEffect(() => {
+    void fetchSuggestions()
+  }, [fetchSuggestions])
+
+  const performSuggestionMutation = useCallback(
+    async (
+      input: RequestInfo,
+      init?: RequestInit,
+      errorMessage?: string,
+    ): Promise<boolean> => {
+      const res = await fetch(input, init)
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        console.error('Suggestion mutation failed:', details ?? res.statusText)
+        setSuggestionError(errorMessage ?? details ?? res.statusText)
+        return false
+      }
+      await Promise.all([fetchSuggestions(), onChange?.()])
+      return true
+    },
+    [fetchSuggestions, onChange],
+  )
+
+  const handleCreateSuggestion = useCallback(
+    async (content: string, createdBy: string) => {
+      if (!content) return
+      setSuggestionSaving(true)
+      try {
+        const versionId =
+          req?.versions.find(v => v.versionNumber === selectedVersionNumber)
+            ?.id ?? null
+        const ok = await performSuggestionMutation(
+          `/api/requirements/${requirementId}/improvement-suggestions`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content,
+              createdBy: createdBy || null,
+              requirementVersionId: versionId,
+            }),
+          },
+          suggestionSaveFailed,
+        )
+        if (ok) {
+          setShowSuggestionForm(false)
+        }
+      } finally {
+        setSuggestionSaving(false)
+      }
+    },
+    [
+      requirementId,
+      req,
+      selectedVersionNumber,
+      performSuggestionMutation,
+      suggestionSaveFailed,
+    ],
+  )
+
+  const handleEditSuggestion = useCallback(
+    async (content: string, _createdBy: string) => {
+      if (!editSuggestionTarget || !content) return
+      setSuggestionSaving(true)
+      try {
+        const ok = await performSuggestionMutation(
+          `/api/improvement-suggestions/${editSuggestionTarget.id}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content }),
+          },
+          suggestionSaveFailed,
+        )
+        if (ok) {
+          setShowEditSuggestionForm(false)
+          setEditSuggestionTarget(null)
+        }
+      } finally {
+        setSuggestionSaving(false)
+      }
+    },
+    [editSuggestionTarget, performSuggestionMutation, suggestionSaveFailed],
+  )
+
+  const handleDeleteSuggestion = useCallback(
+    async (suggestionId: number, e?: React.MouseEvent<HTMLButtonElement>) => {
+      const anchorEl = e?.currentTarget
+      const confirmed = await confirm({
+        message: tf('deleteSuggestionConfirm'),
+        title: tf('deleteSuggestionConfirmTitle'),
+        variant: 'danger',
+        icon: 'caution',
+        anchorEl,
+      })
+      if (!confirmed) return
+      setSuggestionSaving(true)
+      try {
+        await performSuggestionMutation(
+          `/api/improvement-suggestions/${suggestionId}`,
+          { method: 'DELETE' },
+          suggestionDeleteFailed,
+        )
+      } finally {
+        setSuggestionSaving(false)
+      }
+    },
+    [performSuggestionMutation, confirm, tf, suggestionDeleteFailed],
+  )
+
+  const handleSuggestionRequestReview = useCallback(
+    async (suggestionId: number) => {
+      setSuggestionSaving(true)
+      try {
+        await performSuggestionMutation(
+          `/api/improvement-suggestions/${suggestionId}/request-review`,
+          { method: 'POST' },
+          suggestionReviewFailed,
+        )
+      } finally {
+        setSuggestionSaving(false)
+      }
+    },
+    [performSuggestionMutation, suggestionReviewFailed],
+  )
+
+  const handleSuggestionRevertToDraft = useCallback(
+    async (suggestionId: number, e?: React.MouseEvent<HTMLButtonElement>) => {
+      const anchorEl = e?.currentTarget
+      const confirmed = await confirm({
+        message: tf('revertToDraftConfirm'),
+        title: tf('revertToDraftConfirmTitle'),
+        variant: 'default',
+        icon: 'warning',
+        anchorEl,
+      })
+      if (!confirmed) return
+      setSuggestionSaving(true)
+      try {
+        await performSuggestionMutation(
+          `/api/improvement-suggestions/${suggestionId}/revert-to-draft`,
+          { method: 'POST' },
+          suggestionRevertFailed,
+        )
+      } finally {
+        setSuggestionSaving(false)
+      }
+    },
+    [performSuggestionMutation, confirm, tf, suggestionRevertFailed],
+  )
+
+  const handleRecordResolution = useCallback(
+    async (resolution: 1 | 2, motivation: string, resolvedBy: string) => {
+      if (!resolutionTarget) return
+      setSuggestionSaving(true)
+      try {
+        const ok = await performSuggestionMutation(
+          `/api/improvement-suggestions/${resolutionTarget.id}/resolution`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              resolution,
+              resolutionMotivation: motivation,
+              resolvedBy,
+            }),
+          },
+          suggestionResolutionFailed,
+        )
+        if (ok) {
+          setShowResolutionForm(false)
+          setResolutionTarget(null)
+        }
+      } finally {
+        setSuggestionSaving(false)
+      }
+    },
+    [resolutionTarget, performSuggestionMutation, suggestionResolutionFailed],
+  )
+
+  const getSuggestionStep = useCallback(
+    (fb: SuggestionData): SuggestionStep => {
+      if (fb.resolution !== null) return 'resolved'
+      if (fb.isReviewRequested === 1) return 'review_requested'
+      return 'draft'
+    },
+    [],
   )
 
   const clearAddToPackageCloseTimer = useCallback(() => {
@@ -711,6 +978,20 @@ export default function RequirementDetailClient({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showReportMenu])
+
+  // Filter suggestions to those linked to the currently selected version
+  const selectedVersionId = req?.versions.find(
+    v => v.versionNumber === selectedVersionNumber,
+  )?.id
+  const versionSuggestionItems = useMemo(
+    () =>
+      selectedVersionId != null
+        ? suggestionItems.filter(
+            s => s.requirementVersionId === selectedVersionId,
+          )
+        : suggestionItems,
+    [suggestionItems, selectedVersionId],
+  )
 
   if (loading) {
     const loadingContent = (
@@ -1807,6 +2088,21 @@ export default function RequirementDetailClient({
                       {selectedVersion?.verificationMethod || '—'}
                     </p>
                   </div>
+                  <div
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'package count',
+                    })}
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('packageCount')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {req.packageCount ?? 0}
+                    </p>
+                  </div>
                 </div>
 
                 <div
@@ -2000,12 +2296,49 @@ export default function RequirementDetailClient({
                               <Printer aria-hidden="true" className="h-4 w-4" />
                               {t('downloadHistoryReportPdf')}
                             </button>
+                            <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {t('printSuggestionHistoryReport')}
+                            </button>
+                            <button
+                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                              onClick={() => {
+                                setShowReportMenu(false)
+                                window.open(
+                                  `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
+                                  '_blank',
+                                )
+                              }}
+                              type="button"
+                            >
+                              <Printer aria-hidden="true" className="h-4 w-4" />
+                              {t('downloadSuggestionHistoryReportPdf')}
+                            </button>
                           </>
                         )}
                       </div>
                     )}
                   </div>
                   {/* Deviation workflow buttons */}
+                  {deviationError && (
+                    <p
+                      className="text-sm text-red-600 dark:text-red-400"
+                      role="alert"
+                    >
+                      {deviationError}
+                    </p>
+                  )}
                   {deviationStep === null || deviationStep === 'decided' ? (
                     <button
                       className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]"
@@ -2165,6 +2498,47 @@ export default function RequirementDetailClient({
                         >
                           <Printer aria-hidden="true" className="h-4 w-4" />
                           {t('downloadHistoryReportPdf')}
+                        </button>
+                        <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                        <button
+                          className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'report option',
+                            priority: 299,
+                            value: 'print suggestion history',
+                          })}
+                          onClick={() => {
+                            setShowReportMenu(false)
+                            window.open(
+                              `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
+                              '_blank',
+                            )
+                          }}
+                          type="button"
+                        >
+                          <Printer aria-hidden="true" className="h-4 w-4" />
+                          {t('printSuggestionHistoryReport')}
+                        </button>
+                        <button
+                          className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                          {...devMarker({
+                            context: detailContext,
+                            name: 'report option',
+                            priority: 300,
+                            value: 'download suggestion history pdf',
+                          })}
+                          onClick={() => {
+                            setShowReportMenu(false)
+                            window.open(
+                              `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
+                              '_blank',
+                            )
+                          }}
+                          type="button"
+                        >
+                          <Printer aria-hidden="true" className="h-4 w-4" />
+                          {t('downloadSuggestionHistoryReportPdf')}
                         </button>
                         {currentStatusId === STATUS_REVIEW && (
                           <>
@@ -2545,6 +2919,164 @@ export default function RequirementDetailClient({
                 selectedVersionNumber ?? currentVersionNumber
               }
               versions={req.versions}
+            />
+
+            {/* Improvement suggestions section */}
+            <div
+              className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-4"
+              {...devMarker({
+                context: detailContext,
+                name: 'detail section',
+                priority: 350,
+                value: 'improvement-suggestions',
+              })}
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                  {tf('title')}
+                  {versionSuggestionItems.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-secondary-500 dark:text-secondary-400">
+                      ({versionSuggestionItems.length})
+                    </span>
+                  )}
+                </h3>
+                <button
+                  className="btn-primary text-xs px-3 py-1.5 min-h-[44px] inline-flex items-center"
+                  disabled={suggestionSaving}
+                  onClick={() => setShowSuggestionForm(true)}
+                  type="button"
+                >
+                  + {tf('newSuggestion')}
+                </button>
+              </div>
+
+              {suggestionError && (
+                <p
+                  className="mt-2 text-sm text-red-600 dark:text-red-400"
+                  role="alert"
+                >
+                  {suggestionError}
+                </p>
+              )}
+
+              {!suggestionError && versionSuggestionItems.length === 0 ? (
+                <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                  {tf('noSuggestions')}
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {versionSuggestionItems.map(fb => {
+                    const step = getSuggestionStep(fb)
+                    const isResolved = fb.resolution !== null
+                    return (
+                      <div className="space-y-2" key={fb.id}>
+                        <SuggestionStepper
+                          currentStep={step}
+                          developerModeContext={detailContext}
+                        />
+                        <SuggestionPill
+                          developerModeContext={detailContext}
+                          step={step}
+                          suggestion={fb}
+                        />
+                        {!isResolved && (
+                          <div className="flex flex-wrap gap-2">
+                            {step === 'draft' && (
+                              <>
+                                <button
+                                  className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center"
+                                  disabled={suggestionSaving}
+                                  onClick={() => {
+                                    setEditSuggestionTarget(fb)
+                                    setShowEditSuggestionForm(true)
+                                  }}
+                                  type="button"
+                                >
+                                  {tf('editSuggestion')}
+                                </button>
+                                <button
+                                  className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center text-red-600 dark:text-red-400"
+                                  disabled={suggestionSaving}
+                                  onClick={e =>
+                                    void handleDeleteSuggestion(fb.id, e)
+                                  }
+                                  type="button"
+                                >
+                                  {tf('deleteSuggestion')}
+                                </button>
+                                <button
+                                  className="text-xs btn-primary px-3 py-1 min-h-[44px] inline-flex items-center"
+                                  disabled={suggestionSaving}
+                                  onClick={() =>
+                                    void handleSuggestionRequestReview(fb.id)
+                                  }
+                                  type="button"
+                                >
+                                  {tf('requestReview')}
+                                </button>
+                              </>
+                            )}
+                            {step === 'review_requested' && (
+                              <>
+                                <button
+                                  className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center"
+                                  disabled={suggestionSaving}
+                                  onClick={e =>
+                                    void handleSuggestionRevertToDraft(fb.id, e)
+                                  }
+                                  type="button"
+                                >
+                                  {tf('revertToDraft')}
+                                </button>
+                                <button
+                                  className="text-xs btn-primary px-3 py-1 min-h-[44px] inline-flex items-center"
+                                  disabled={suggestionSaving}
+                                  onClick={() => {
+                                    setResolutionTarget(fb)
+                                    setShowResolutionForm(true)
+                                  }}
+                                  type="button"
+                                >
+                                  {tf('markResolved')}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Suggestion modals */}
+            <SuggestionFormModal
+              loading={suggestionSaving}
+              onClose={() => setShowSuggestionForm(false)}
+              onSubmit={handleCreateSuggestion}
+              open={showSuggestionForm}
+            />
+            <SuggestionFormModal
+              initialContent={editSuggestionTarget?.content ?? ''}
+              initialCreatedBy={editSuggestionTarget?.createdBy ?? ''}
+              loading={suggestionSaving}
+              onClose={() => {
+                setShowEditSuggestionForm(false)
+                setEditSuggestionTarget(null)
+              }}
+              onSubmit={handleEditSuggestion}
+              open={showEditSuggestionForm}
+              title={tf('editSuggestion')}
+            />
+            <SuggestionResolutionModal
+              loading={suggestionSaving}
+              onClose={() => {
+                setShowResolutionForm(false)
+                setResolutionTarget(null)
+              }}
+              onSubmit={handleRecordResolution}
+              open={showResolutionForm}
             />
           </div>
         </div>

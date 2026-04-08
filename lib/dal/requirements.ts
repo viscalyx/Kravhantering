@@ -14,6 +14,7 @@ import {
   qualityCharacteristics,
   requirementAreas,
   requirementCategories,
+  requirementPackageItems,
   requirementStatuses,
   requirementStatusTransitions,
   requirements,
@@ -341,6 +342,10 @@ export async function listRequirements(
         JOIN norm_references nr ON nr.id = vnr.norm_reference_id
         WHERE vnr.requirement_version_id = ${requirementVersions.id}
       )`.as('norm_reference_uris'),
+      suggestionCount: sql<number>`(
+        SELECT COUNT(*) FROM improvement_suggestions s
+        WHERE s.requirement_id = ${requirements.id}
+      )`.as('suggestion_count'),
     })
     .from(requirements)
     .innerJoin(
@@ -542,9 +547,17 @@ export async function getRequirementById(db: Database, id: number) {
 
   if (!result) return null
 
+  const [countRow] = await db
+    .select({
+      count: sql<number>`COUNT(DISTINCT ${requirementPackageItems.packageId})`,
+    })
+    .from(requirementPackageItems)
+    .where(eq(requirementPackageItems.requirementId, id))
+
   // Map versions to include statusNameSv/En/Color for the client
   return {
     ...result,
+    packageCount: countRow?.count ?? 0,
     versions: result.versions.map(v => ({
       ...v,
       status: v.statusId,

@@ -21,7 +21,7 @@ For admin-managed UI terminology and default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 8
+- Exposed MCP tools: 10
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -35,7 +35,7 @@ For admin-managed UI terminology and default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the eight tools, the JSON resource, and the HTML UI resource.
+  Registers the ten tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads DB-backed UI terminology and default column settings.
 - `lib/ui-terminology.ts`
@@ -56,6 +56,9 @@ For admin-managed UI terminology and default column settings, see
 - `lib/dal/requirement-packages.ts`
   Persistence logic for requirement packages: listing packages and items,
   linking and unlinking requirements, and needs reference management.
+- `lib/dal/improvement-suggestions.ts`
+  Persistence logic for improvement suggestion CRUD, lifecycle
+  transitions, and counts.
 
 ## Request Flow
 
@@ -76,8 +79,9 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is split into two areas: individual requirements (four tools)
-and requirement packages (four tools).
+The MCP surface is split into three areas: individual requirements (four
+tools), requirement packages (four tools), and improvement suggestions (two
+tools).
 
 ### `requirements_query_catalog`
 
@@ -146,6 +150,31 @@ Unlinks requirements from a package. Accepts `packageId` (numeric) or
 `packageSlug` (e.g. `SAKLYFT-Q2`). The requirements themselves are not
 deleted. The operation is idempotent — removing an ID that is not in the
 package produces no error.
+
+### `requirements_list_improvement_suggestions`
+
+Lists improvement suggestions for a specific requirement. Identify the
+requirement by numeric `requirementId` or by `uniqueId` (e.g. `REQ-001`).
+Exactly one identifier must be provided.
+
+- **Inputs:** `requirementId` (number, optional), `uniqueId` (string,
+  optional), `locale` (`en` | `sv`), `responseFormat` (`json` | `markdown`)
+- **Output:** list of suggestions with content, lifecycle state, resolution,
+  and audit timestamps
+- **Grouping:** improvement suggestions
+
+### `requirements_manage_improvement_suggestion`
+
+Creates, edits, deletes, transitions, or resolves an improvement suggestion.
+
+- **Operations:** `create`, `edit`, `delete`, `request_review`,
+  `revert_to_draft`, `resolve`, `dismiss`
+- **Inputs:** `operation`, `suggestionId` (required except for `create`),
+  `requirementId` (required for `create`), `content` (required for
+  `create`/`edit`), `createdBy`, `requirementVersionId`,
+  `resolutionMotivation`, `resolvedBy`, `locale`, `responseFormat`
+- **Output:** confirmation message and updated suggestion data
+- **Grouping:** improvement suggestions
 
 ## Resource Design
 
@@ -322,7 +351,7 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp`
-- checking that all eight tools appear
+- checking that all ten tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support

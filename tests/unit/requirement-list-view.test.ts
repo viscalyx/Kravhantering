@@ -123,6 +123,7 @@ describe('requirement list view helpers', () => {
       'needsReference',
       'packageItemStatus',
       'normReferences',
+      'suggestionCount',
     ])
     expect(getDefaultVisibleRequirementColumns(columnDefaults)).toEqual([
       'description',

@@ -69,6 +69,7 @@ describe('admin requirement columns route', () => {
       'needsReference',
       'packageItemStatus',
       'normReferences',
+      'suggestionCount',
     ])
   })
 
@@ -145,6 +146,7 @@ describe('admin requirement columns route', () => {
       'needsReference',
       'packageItemStatus',
       'normReferences',
+      'suggestionCount',
     ])
   })
 

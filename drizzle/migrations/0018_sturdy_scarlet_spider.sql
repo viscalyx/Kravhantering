@@ -1,0 +1,1 @@
+ALTER TABLE `improvement_suggestions` ADD `review_requested_at` text;

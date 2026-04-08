@@ -8,6 +8,9 @@
     "NODE_ENV": "development",
     "NEXT_TELEMETRY_DISABLED": "1"
   },
+  "remoteEnv": {
+    "GH_TOKEN": "${localEnv:GH_TOKEN}"
+  },
 
   // Features to add to the dev container
   "features": {

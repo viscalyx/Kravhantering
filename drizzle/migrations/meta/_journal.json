@@ -120,6 +120,20 @@
       "when": 1775542341050,
       "tag": "0016_gigantic_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1775583948493,
+      "tag": "0017_high_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1775653932445,
+      "tag": "0018_sturdy_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }

@@ -70,6 +70,7 @@ vi.mock('next-intl', () => ({
         `Published version v${values?.version} is available`,
       'requirement.noPublishedVersion':
         'There is no published version of this requirement.',
+      'requirement.packageCount': 'Used in packages',
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm': 'Reactivate this requirement?',
       'requirement.reference': 'Reference',
@@ -292,6 +293,7 @@ function makeRequirement(
     createdAt: '2026-03-01T00:00:00Z',
     id: 123,
     isArchived: false,
+    packageCount: 0,
     uniqueId: 'REQ-123',
     versions,
     ...rest,
@@ -476,6 +478,14 @@ function setupFetch({
           return addToPackageHandler(addToPackageMatch[1] ?? '', init)
         }
         return response({})
+      }
+
+      if (
+        url ===
+          `/api/requirements/${currentRequirement.id}/improvement-suggestions` &&
+        method === 'GET'
+      ) {
+        return response({ suggestions: [] })
       }
 
       throw new Error(`Unhandled fetch: ${method} ${url}`)
@@ -665,6 +675,36 @@ describe('RequirementDetailClient', () => {
         .getByText('Quality characteristic')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
+  })
+
+  it('renders the package count in the detail view', async () => {
+    const requirement = makeRequirement(
+      [
+        makeVersion(1, {
+          description: 'Package count requirement',
+          publishedAt: '2026-03-01',
+          status: 3,
+          statusColor: '#22c55e',
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+        }),
+      ],
+      { packageCount: 5 },
+    )
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject({ inline: true })
+
+    expect(
+      await screen.findByText('Package count requirement'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Used in packages')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(
+      screen
+        .getByText('Used in packages')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'package count')
   })
 
   it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {

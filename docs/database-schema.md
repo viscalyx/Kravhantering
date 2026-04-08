@@ -341,6 +341,25 @@ erDiagram
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
     requirement_package_items ||--o{ deviations : "has deviations"
+
+    improvement_suggestions {
+        integer id PK
+        integer requirement_id FK
+        integer requirement_version_id FK
+        text content
+        text created_by
+        integer is_review_requested
+        text review_requested_at
+        integer resolution
+        text resolution_motivation
+        text resolved_by
+        text resolved_at
+        text created_at
+        text updated_at
+    }
+
+    requirements ||--o{ improvement_suggestions : "has suggestions"
+    requirement_versions ||--o{ improvement_suggestions : "version suggestions"
 ```
 
 ---
@@ -999,6 +1018,41 @@ a decision (approved or rejected) with its own rationale.
 
 **Index:** `idx_deviations_package_item_id`.
 
+### `improvement_suggestions`
+
+Improvement suggestions and change proposals linked to a
+requirement. Each suggestion follows a lifecycle:
+draft → review requested → resolved or dismissed.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `requirement_id` | integer FK → `requirements.id` (CASCADE DELETE) | The requirement this suggestion applies to |
+| `requirement_version_id` | integer FK → `requirement_versions.id` (SET NULL) | Optional: the specific version being reviewed |
+| `content` | text NOT NULL | The suggestion text |
+| `created_by` | text | Who submitted the suggestion |
+| `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
+| `review_requested_at` | text (ISO 8601) | When review was requested (null = draft) |
+| `resolution` | integer | Null = pending, 1 = resolved, 2 = dismissed |
+| `resolution_motivation` | text | Rationale for resolving or dismissing |
+| `resolved_by` | text | Who resolved/dismissed the suggestion |
+| `resolved_at` | text (ISO 8601) | When the resolution was recorded |
+| `created_at` | text (ISO 8601) | When registered (default: now) |
+| `updated_at` | text (ISO 8601) | When last updated (default: now) |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_improvement_suggestions_requirement_id`,
+`idx_improvement_suggestions_requirement_version_id`.
+
+**Triggers:**
+
+- `enforce_requirement_version_match_insert` — BEFORE INSERT: when
+  `requirement_version_id` is not null, aborts if the referenced version does
+  not belong to the same `requirement_id`.
+- `enforce_requirement_version_match_update` — BEFORE UPDATE: same guard as
+  above, applied on updates.
+
 ---
 
 ## Indexes & Constraints Reference
@@ -1058,6 +1112,8 @@ its purpose and the table/column(s) it covers.
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
 | `idx_deviations_package_item_id` | `deviations` | `package_item_id` | Speed up lookups of deviations by package item |
+| `idx_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | Speed up lookups of suggestions by requirement |
+| `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -1087,6 +1143,8 @@ explicit `foreignKey({ name })`:
 | `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
 | `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
 | `fk_deviations_package_item_id` | `deviations` | `package_item_id` | `requirement_package_items.id` | CASCADE |
+| `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE |
+| `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram

@@ -29,6 +29,16 @@ export interface MetadataChange {
   oldValue: string | null
 }
 
+export interface SuggestionReportItem {
+  content: string
+  createdAt: string
+  createdBy: string | null
+  resolutionMotivation: string | null
+  resolvedAt: string | null
+  resolvedBy: string | null
+  status: { label: string; color: string }
+}
+
 export interface TimelineEntryData {
   archivedAt: string | null
   createdAt: string
@@ -96,6 +106,12 @@ export type ReportSection =
       packageUniqueId: string | null
       riskLevel: { nameSv: string; nameEn: string } | null
       locale: string
+    }
+  | {
+      type: 'suggestion-list'
+      heading?: string
+      items: SuggestionReportItem[]
+      emptyLabel: string
     }
 
 export interface ReportModel {

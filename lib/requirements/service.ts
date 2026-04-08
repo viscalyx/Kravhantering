@@ -1,4 +1,9 @@
-import { DEVIATION_APPROVED, DEVIATION_REJECTED } from '@/drizzle/schema'
+import {
+  DEVIATION_APPROVED,
+  DEVIATION_REJECTED,
+  SUGGESTION_DISMISSED,
+  SUGGESTION_RESOLVED,
+} from '@/drizzle/schema'
 import {
   countDeviationsByPackage,
   createDeviation,
@@ -7,6 +12,16 @@ import {
   recordDecision,
   updateDeviation,
 } from '@/lib/dal/deviations'
+import {
+  countSuggestionsByRequirement,
+  createSuggestion,
+  deleteSuggestion,
+  listSuggestionsForRequirement,
+  recordResolution,
+  requestReview,
+  revertToDraft,
+  updateSuggestion,
+} from '@/lib/dal/improvement-suggestions'
 import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
 import { listCategories } from '@/lib/dal/requirement-categories'
 import {
@@ -314,6 +329,7 @@ function formatRequirementListItem(
     normReferenceUris: item.normReferenceUris
       ? item.normReferenceUris.split(',')
       : [],
+    suggestionCount: item.suggestionCount,
     uniqueId: item.uniqueId,
     version: {
       acceptanceCriteria: item.acceptanceCriteria,
@@ -361,6 +377,7 @@ function formatRequirementDetail(
     createdAt: requirement.createdAt,
     id: requirement.id,
     isArchived: requirement.isArchived,
+    packageCount: requirement.packageCount,
     uniqueId: requirement.uniqueId,
     versions: requirement.versions.map(version => ({
       acceptanceCriteria: version.acceptanceCriteria,
@@ -513,6 +530,35 @@ export interface ManageDeviationOutput {
   result: unknown
 }
 
+export interface ListSuggestionsOutput {
+  counts: {
+    total: number
+    pending: number
+    resolved: number
+    dismissed: number
+  }
+  message: string
+  suggestions: {
+    content: string
+    createdAt: string
+    createdBy: string | null
+    id: number
+    requirementId: number
+    requirementVersionId: number | null
+    resolution: number | null
+    resolutionMotivation: string | null
+    resolvedAt: string | null
+    resolvedBy: string | null
+    isReviewRequested: number
+    updatedAt: string | null
+  }[]
+}
+
+export interface ManageSuggestionOutput {
+  message: string
+  result: unknown
+}
+
 export interface RequirementsService {
   addToPackage(
     context: RequestContext,
@@ -546,6 +592,15 @@ export interface RequirementsService {
     context: RequestContext,
     input: ListPackagesInput,
   ): Promise<ListPackagesOutput>
+  listSuggestions(
+    context: RequestContext,
+    input: {
+      locale?: ResponseLocale
+      requirementId?: number
+      responseFormat?: ResponseFormat
+      uniqueId?: string
+    },
+  ): Promise<ListSuggestionsOutput>
   manageDeviation(
     context: RequestContext,
     input: {
@@ -568,6 +623,29 @@ export interface RequirementsService {
     operation: ManageRequirementInput['operation']
     result: unknown
   }>
+  manageSuggestion(
+    context: RequestContext,
+    input: {
+      content?: string
+      createdBy?: string
+      suggestionId?: number
+      locale?: ResponseLocale
+      operation:
+        | 'create'
+        | 'delete'
+        | 'dismiss'
+        | 'edit'
+        | 'request_review'
+        | 'resolve'
+        | 'revert_to_draft'
+      requirementId?: number
+      requirementVersionId?: number
+      resolution?: number
+      resolutionMotivation?: string
+      resolvedBy?: string
+      responseFormat?: ResponseFormat
+    },
+  ): Promise<ManageSuggestionOutput>
   queryCatalog(
     context: RequestContext,
     input: QueryCatalogInput,
@@ -1919,6 +1997,258 @@ export function createRequirementsService(
               responseFormat,
             ),
             result: { id: input.deviationId },
+          }
+        },
+      )
+    },
+
+    async listSuggestions(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'list_suggestions',
+          requirementId: input.requirementId,
+          uniqueId: input.uniqueId,
+        } as RequirementsAction,
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.list_suggestions',
+        {
+          requirement_id: input.requirementId ?? null,
+          unique_id: input.uniqueId ?? null,
+        },
+        async () => {
+          let requirementId = input.requirementId
+          if (!requirementId && input.uniqueId) {
+            const req = await getRequirementByUniqueId(db, input.uniqueId)
+            if (!req) {
+              throw notFoundError(`Requirement not found: ${input.uniqueId}`)
+            }
+            requirementId = req.id
+          }
+          if (!requirementId) {
+            throw validationError(
+              'Either requirementId or uniqueId is required',
+            )
+          }
+          const rows = await listSuggestionsForRequirement(db, requirementId)
+          const counts = await countSuggestionsByRequirement(db, requirementId)
+
+          const title =
+            locale === 'sv' ? 'Förbättringsförslag' : 'Improvement suggestions'
+          const summary =
+            locale === 'sv'
+              ? `${counts.total} förbättringsförslag: ${counts.pending} väntande, ${counts.resolved} åtgärdade, ${counts.dismissed} avvisade.`
+              : `${counts.total} improvement suggestion(s): ${counts.pending} pending, ${counts.resolved} resolved, ${counts.dismissed} dismissed.`
+
+          return {
+            counts,
+            suggestions: rows.map(r => ({
+              content: r.content,
+              createdAt: r.createdAt,
+              createdBy: r.createdBy,
+              id: r.id,
+              requirementId: r.requirementId,
+              requirementVersionId: r.requirementVersionId,
+              resolution: r.resolution,
+              resolutionMotivation: r.resolutionMotivation,
+              resolvedAt: r.resolvedAt,
+              resolvedBy: r.resolvedBy,
+              isReviewRequested: r.isReviewRequested,
+              updatedAt: r.updatedAt,
+            })),
+            message: createServiceMessage(title, [summary], responseFormat),
+          }
+        },
+      )
+    },
+
+    async manageSuggestion(context, input) {
+      const responseFormat = input.responseFormat ?? 'markdown'
+      const locale = input.locale ?? 'en'
+
+      await authorize(
+        authorization,
+        {
+          kind: 'manage_suggestion',
+          operation: input.operation,
+          suggestionId: input.suggestionId,
+          requirementId: input.requirementId,
+        } as RequirementsAction,
+        context,
+      )
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.manage_suggestion',
+        {
+          operation: input.operation,
+          suggestion_id: input.suggestionId ?? null,
+          requirement_id: input.requirementId ?? null,
+        },
+        async () => {
+          if (input.operation === 'create') {
+            if (!input.requirementId) {
+              throw validationError('Requirement ID is required')
+            }
+            const trimmedContent = input.content?.trim()
+            if (!trimmedContent) {
+              throw validationError('Content is required')
+            }
+            const result = await createSuggestion(db, {
+              requirementId: input.requirementId,
+              content: trimmedContent,
+              createdBy: input.createdBy ?? context.actor.id ?? null,
+              requirementVersionId: input.requirementVersionId ?? null,
+            })
+            const summary =
+              locale === 'sv'
+                ? `Förbättringsförslag registrerat (ID ${result.id}).`
+                : `Improvement suggestion registered (ID ${result.id}).`
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [summary],
+                responseFormat,
+              ),
+              result,
+            }
+          }
+
+          if (!input.suggestionId) {
+            throw validationError('Suggestion ID is required')
+          }
+
+          if (input.operation === 'edit') {
+            const trimmedContent = input.content?.trim()
+            if (!trimmedContent) {
+              throw validationError('Content is required for editing')
+            }
+            await updateSuggestion(db, input.suggestionId, {
+              content: trimmedContent,
+            })
+            const summary =
+              locale === 'sv'
+                ? `Förbättringsförslag ${input.suggestionId} uppdaterat.`
+                : `Improvement suggestion ${input.suggestionId} updated.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [summary],
+                responseFormat,
+              ),
+              result: { id: input.suggestionId },
+            }
+          }
+
+          if (input.operation === 'request_review') {
+            await requestReview(db, input.suggestionId)
+            const summary =
+              locale === 'sv'
+                ? `Förbättringsförslag ${input.suggestionId} skickat för granskning.`
+                : `Improvement suggestion ${input.suggestionId} sent for review.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [summary],
+                responseFormat,
+              ),
+              result: { id: input.suggestionId },
+            }
+          }
+
+          if (input.operation === 'revert_to_draft') {
+            await revertToDraft(db, input.suggestionId)
+            const summary =
+              locale === 'sv'
+                ? `Förbättringsförslag ${input.suggestionId} återställt till utkast.`
+                : `Improvement suggestion ${input.suggestionId} reverted to draft.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [summary],
+                responseFormat,
+              ),
+              result: { id: input.suggestionId },
+            }
+          }
+
+          if (input.operation === 'resolve' || input.operation === 'dismiss') {
+            const resolution =
+              input.operation === 'resolve'
+                ? SUGGESTION_RESOLVED
+                : SUGGESTION_DISMISSED
+            const trimmedMotivation = input.resolutionMotivation?.trim()
+            if (!trimmedMotivation) {
+              throw validationError('Resolution motivation is required')
+            }
+            const resolvedBy = input.resolvedBy ?? context.actor.id ?? undefined
+            if (!resolvedBy) {
+              throw validationError('Resolved-by is required')
+            }
+            await recordResolution(db, input.suggestionId, {
+              resolution,
+              resolutionMotivation: trimmedMotivation,
+              resolvedBy,
+            })
+            const resolutionLabel =
+              resolution === SUGGESTION_RESOLVED
+                ? locale === 'sv'
+                  ? 'åtgärdat'
+                  : 'resolved'
+                : locale === 'sv'
+                  ? 'avvisat'
+                  : 'dismissed'
+            const summary =
+              locale === 'sv'
+                ? `Förbättringsförslag ${input.suggestionId} ${resolutionLabel}.`
+                : `Improvement suggestion ${input.suggestionId} ${resolutionLabel}.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [summary],
+                responseFormat,
+              ),
+              result: {
+                id: input.suggestionId,
+                resolution,
+              },
+            }
+          }
+
+          // delete
+          await deleteSuggestion(db, input.suggestionId)
+          const summary =
+            locale === 'sv'
+              ? `Förbättringsförslag ${input.suggestionId} borttaget.`
+              : `Improvement suggestion ${input.suggestionId} deleted.`
+          return {
+            message: createServiceMessage(
+              locale === 'sv'
+                ? 'Förbättringsförslag'
+                : 'Improvement suggestion',
+              [summary],
+              responseFormat,
+            ),
+            result: { id: input.suggestionId },
           }
         },
       )
