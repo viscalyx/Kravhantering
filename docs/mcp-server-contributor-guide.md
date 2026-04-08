@@ -79,8 +79,9 @@ keeps lifecycle behavior aligned between REST and MCP.
 
 ## Tool Design
 
-The MCP surface is split into two areas: individual requirements (four tools)
-and requirement packages (four tools).
+The MCP surface is split into three areas: individual requirements (four
+tools), requirement packages (four tools), and improvement suggestions (two
+tools).
 
 ### `requirements_query_catalog`
 
@@ -149,6 +150,31 @@ Unlinks requirements from a package. Accepts `packageId` (numeric) or
 `packageSlug` (e.g. `SAKLYFT-Q2`). The requirements themselves are not
 deleted. The operation is idempotent — removing an ID that is not in the
 package produces no error.
+
+### `requirements_list_improvement_suggestions`
+
+Lists improvement suggestions for a specific requirement. Identify the
+requirement by numeric `requirementId` or by `uniqueId` (e.g. `REQ-001`).
+Exactly one identifier must be provided.
+
+- **Inputs:** `requirementId` (number, optional), `uniqueId` (string,
+  optional), `locale` (`en` | `sv`), `responseFormat` (`json` | `markdown`)
+- **Output:** list of suggestions with content, lifecycle state, resolution,
+  and audit timestamps
+- **Grouping:** improvement suggestions
+
+### `requirements_manage_improvement_suggestion`
+
+Creates, edits, deletes, transitions, or resolves an improvement suggestion.
+
+- **Operations:** `create`, `edit`, `delete`, `request_review`,
+  `revert_to_draft`, `resolve`, `dismiss`
+- **Inputs:** `operation`, `suggestionId` (required except for `create`),
+  `requirementId` (required for `create`), `content` (required for
+  `create`/`edit`), `createdBy`, `requirementVersionId`,
+  `resolutionMotivation`, `resolvedBy`, `locale`, `responseFormat`
+- **Output:** confirmation message and updated suggestion data
+- **Grouping:** improvement suggestions
 
 ## Resource Design
 

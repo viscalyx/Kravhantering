@@ -27,6 +27,7 @@ export interface ImprovementSuggestionRow {
   resolutionMotivation: string | null
   resolvedAt: string | null
   resolvedBy: string | null
+  reviewRequestedAt: string | null
   updatedAt: string | null
 }
 
@@ -50,6 +51,7 @@ const suggestionSelectFields = {
   createdBy: improvementSuggestions.createdBy,
   createdAt: improvementSuggestions.createdAt,
   updatedAt: improvementSuggestions.updatedAt,
+  reviewRequestedAt: improvementSuggestions.reviewRequestedAt,
   requirementUniqueId: requirements.uniqueId,
   requirementDescription: requirementVersions.description,
 } as const

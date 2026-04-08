@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
+import { SUGGESTION_DISMISSED, SUGGESTION_RESOLVED } from '@/drizzle/schema'
 import { recordResolution } from '@/lib/dal/improvement-suggestions'
 import { getDb } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
@@ -50,7 +51,7 @@ export async function POST(
   if (
     !Number.isFinite(resolution) ||
     !Number.isInteger(resolution) ||
-    (resolution !== 1 && resolution !== 2)
+    (resolution !== SUGGESTION_RESOLVED && resolution !== SUGGESTION_DISMISSED)
   ) {
     return NextResponse.json(
       { error: 'resolution must be 1 (resolved) or 2 (dismissed)' },

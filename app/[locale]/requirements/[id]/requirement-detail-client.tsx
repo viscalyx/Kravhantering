@@ -2929,8 +2929,8 @@ export default function RequirementDetailClient({
                                 <button
                                   className="text-xs btn-secondary px-3 py-1 text-red-600 dark:text-red-400"
                                   disabled={suggestionSaving}
-                                  onClick={() =>
-                                    void handleDeleteSuggestion(fb.id)
+                                  onClick={e =>
+                                    void handleDeleteSuggestion(fb.id, e)
                                   }
                                   type="button"
                                 >
@@ -2953,8 +2953,8 @@ export default function RequirementDetailClient({
                                 <button
                                   className="text-xs btn-secondary px-3 py-1"
                                   disabled={suggestionSaving}
-                                  onClick={() =>
-                                    void handleSuggestionRevertToDraft(fb.id)
+                                  onClick={e =>
+                                    void handleSuggestionRevertToDraft(fb.id, e)
                                   }
                                   type="button"
                                 >

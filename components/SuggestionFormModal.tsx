@@ -64,10 +64,11 @@ export default function SuggestionFormModal({
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation()
+        if (loading) return
         onClose()
       }
     },
-    [onClose],
+    [onClose, loading],
   )
 
   if (typeof window === 'undefined') return null
@@ -87,7 +88,7 @@ export default function SuggestionFormModal({
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
+            onClick={loading ? undefined : onClose}
           />
 
           <motion.div
@@ -127,7 +128,7 @@ export default function SuggestionFormModal({
                     aria-controls="help-content"
                     aria-expanded={openHelp.has('content')}
                     aria-label={`${tc('help')}: ${tf('content')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     onClick={() => toggleHelp('content')}
                     type="button"
                   >
@@ -165,7 +166,7 @@ export default function SuggestionFormModal({
                     aria-controls="help-createdBy"
                     aria-expanded={openHelp.has('createdBy')}
                     aria-label={`${tc('help')}: ${tf('createdBy')}`}
-                    className="inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     onClick={() => toggleHelp('createdBy')}
                     type="button"
                   >
