@@ -16,4 +16,22 @@ CREATE TABLE `improvement_suggestions` (
 );
 --> statement-breakpoint
 CREATE INDEX `idx_improvement_suggestions_requirement_id` ON `improvement_suggestions` (`requirement_id`);--> statement-breakpoint
-CREATE INDEX `idx_improvement_suggestions_requirement_version_id` ON `improvement_suggestions` (`requirement_version_id`);
+CREATE INDEX `idx_improvement_suggestions_requirement_version_id` ON `improvement_suggestions` (`requirement_version_id`);--> statement-breakpoint
+CREATE TRIGGER `enforce_requirement_version_match_insert`
+BEFORE INSERT ON `improvement_suggestions`
+WHEN NEW.`requirement_version_id` IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'requirement_version_id does not belong to the same requirement_id')
+  WHERE (
+    SELECT `requirement_id` FROM `requirement_versions` WHERE `id` = NEW.`requirement_version_id`
+  ) != NEW.`requirement_id`;
+END;--> statement-breakpoint
+CREATE TRIGGER `enforce_requirement_version_match_update`
+BEFORE UPDATE ON `improvement_suggestions`
+WHEN NEW.`requirement_version_id` IS NOT NULL
+BEGIN
+  SELECT RAISE(ABORT, 'requirement_version_id does not belong to the same requirement_id')
+  WHERE (
+    SELECT `requirement_id` FROM `requirement_versions` WHERE `id` = NEW.`requirement_version_id`
+  ) != NEW.`requirement_id`;
+END;

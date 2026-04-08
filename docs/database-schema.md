@@ -1045,6 +1045,14 @@ draft → review requested → resolved or dismissed.
 **Indexes:** `idx_improvement_suggestions_requirement_id`,
 `idx_improvement_suggestions_requirement_version_id`.
 
+**Triggers:**
+
+- `enforce_requirement_version_match_insert` — BEFORE INSERT: when
+  `requirement_version_id` is not null, aborts if the referenced version does
+  not belong to the same `requirement_id`.
+- `enforce_requirement_version_match_update` — BEFORE UPDATE: same guard as
+  above, applied on updates.
+
 ---
 
 ## Indexes & Constraints Reference
