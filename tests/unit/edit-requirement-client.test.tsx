@@ -91,6 +91,7 @@ function makeRequirementDetailResponse(
     createdAt: '2026-03-01T00:00:00Z',
     id: 1,
     isArchived: false,
+    packageCount: 0,
     uniqueId: 'REQ-001',
     versions: [makeVersion(versionOverrides)],
     ...overrides,

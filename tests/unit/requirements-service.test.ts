@@ -101,6 +101,7 @@ function makeRequirementRecord() {
     createdAt: '2026-03-08T00:00:00.000Z',
     id: 1,
     isArchived: false,
+    packageCount: 0,
     uniqueId: 'INT0001',
     versions: [
       {
@@ -498,6 +499,7 @@ describe('createRequirementsService', () => {
     })
 
     expect(result.requirement.versions).toHaveLength(1)
+    expect(result.requirement.packageCount).toBe(0)
     expect(result.requirement.versions[0]).toMatchObject({
       statusNameEn: 'Published',
       versionNumber: 1,

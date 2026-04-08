@@ -336,6 +336,7 @@ function renderRequirementHtml(
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'qualityCharacteristic', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'riskLevel', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'version', locale, 'singular'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'packageCount'], locale === 'sv' ? 'Används i kravpaket' : 'Used in packages'))}</h2><p>${escapeHtml(String(detail.packageCount ?? 0))}</p></section>`,
     '        </div>',
     '      </section>',
     '      <section class="split">',
@@ -1150,6 +1151,157 @@ export function createKravhanteringMcpServer(
             packageId: input.packageId,
             packageSlug: input.packageSlug,
             requirementIds: input.requirementIds,
+            responseFormat: toResponseFormat(input.responseFormat),
+          },
+        )
+        return {
+          content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  // ---------- Improvement suggestion tools ----------
+
+  server.registerTool(
+    'requirements_list_improvement_suggestions',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+        readOnlyHint: true,
+      },
+      description:
+        'List improvement suggestions for a specific requirement. Identify the requirement by numeric requirementId or by uniqueId (e.g. "REQ-001").',
+      inputSchema: z
+        .object({
+          locale: z.enum(['en', 'sv']).default('en'),
+          requirementId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Numeric ID of the requirement.'),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+          uniqueId: z
+            .string()
+            .optional()
+            .describe('Unique requirement ID, e.g. "REQ-001".'),
+        })
+        .strict()
+        .superRefine((val, ctx) => {
+          if ((val.requirementId == null) === (val.uniqueId == null)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Provide exactly one of requirementId or uniqueId.',
+            })
+          }
+        }),
+      title: 'List Improvement Suggestions for Requirement',
+    },
+    async input => {
+      try {
+        const payload = await service.listSuggestions(
+          getBaseContext(request, 'requirements_list_improvement_suggestions'),
+          {
+            locale: toResponseLocale(input.locale),
+            requirementId: input.requirementId,
+            responseFormat: toResponseFormat(input.responseFormat),
+            uniqueId: input.uniqueId,
+          },
+        )
+        return {
+          content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    'requirements_manage_improvement_suggestion',
+    {
+      annotations: {
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: false,
+        readOnlyHint: false,
+      },
+      description:
+        'Create, edit, delete, request review, revert to draft, resolve, or dismiss an improvement suggestion on a requirement.',
+      inputSchema: z
+        .object({
+          content: z
+            .string()
+            .optional()
+            .describe('Suggestion text content. Required for create and edit.'),
+          createdBy: z
+            .string()
+            .optional()
+            .describe('Who created the suggestion.'),
+          suggestionId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Numeric suggestion ID. Required for all operations except create.',
+            ),
+          locale: z.enum(['en', 'sv']).default('en'),
+          operation: z.enum([
+            'create',
+            'delete',
+            'dismiss',
+            'edit',
+            'request_review',
+            'resolve',
+            'revert_to_draft',
+          ]),
+          requirementId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Numeric requirement ID. Required for create.'),
+          requirementVersionId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe('Optional version ID to link the suggestion to.'),
+          resolutionMotivation: z
+            .string()
+            .optional()
+            .describe('Motivation text for resolve/dismiss.'),
+          resolvedBy: z
+            .string()
+            .optional()
+            .describe('Who resolved/dismissed the suggestion.'),
+          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+        })
+        .strict(),
+      title: 'Manage Improvement Suggestion',
+    },
+    async input => {
+      try {
+        const payload = await service.manageSuggestion(
+          getBaseContext(request, 'requirements_manage_improvement_suggestion'),
+          {
+            content: input.content,
+            createdBy: input.createdBy,
+            suggestionId: input.suggestionId,
+            locale: toResponseLocale(input.locale),
+            operation: input.operation,
+            requirementId: input.requirementId,
+            requirementVersionId: input.requirementVersionId,
+            resolutionMotivation: input.resolutionMotivation,
+            resolvedBy: input.resolvedBy,
             responseFormat: toResponseFormat(input.responseFormat),
           },
         )

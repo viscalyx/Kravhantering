@@ -1355,6 +1355,7 @@ export default function RequirementsTable({
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
+  const tfb = useTranslations('improvementSuggestion')
   const router = useRouter()
   const normalizedColumnDefaults =
     normalizeRequirementListColumnDefaults(columnDefaults)
@@ -1648,7 +1649,9 @@ export default function RequirementsTable({
 
     return column.labelNamespace === 'common'
       ? tc(column.labelKey)
-      : t(column.labelKey)
+      : column.labelNamespace === 'improvementSuggestion'
+        ? tfb(column.labelKey)
+        : t(column.labelKey)
   }
 
   const getColumnDeveloperModeContext = (columnId: RequirementColumnId) =>
@@ -2692,6 +2695,7 @@ export default function RequirementsTable({
         )
       case 'normReferences':
       case 'version':
+      case 'suggestionCount':
         return null
     }
   }
@@ -2846,6 +2850,7 @@ export default function RequirementsTable({
         )
       case 'normReferences':
       case 'version':
+      case 'suggestionCount':
         return null
     }
   }
@@ -3118,6 +3123,22 @@ export default function RequirementsTable({
             {row.normReferenceIds && row.normReferenceIds.length > 0
               ? row.normReferenceIds.join(', ')
               : '—'}
+          </td>
+        )
+      case 'suggestionCount':
+        return (
+          <td
+            className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
+          >
+            {row.suggestionCount != null && row.suggestionCount > 0 ? (
+              <span className="inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium min-w-[1.5rem] h-6 px-1.5">
+                {row.suggestionCount}
+              </span>
+            ) : (
+              <span className="text-secondary-400 dark:text-secondary-500">
+                —
+              </span>
+            )}
           </td>
         )
     }

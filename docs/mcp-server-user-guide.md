@@ -53,6 +53,17 @@ agents can use it reliably.
   Unlink one or more requirements from a package. The requirements themselves
   are not deleted. Use `packageId` or `packageSlug` to identify the package.
 
+#### Improvement Suggestions
+
+- `requirements_list_improvement_suggestions`
+  List improvement suggestions for a specific requirement. Identify the requirement
+  by numeric `requirementId` or by `uniqueId` (e.g. `REQ-001`). Returns
+  suggestions with lifecycle status and resolution details.
+- `requirements_manage_improvement_suggestion`
+  Create, edit, delete, request review, revert to draft, resolve, or dismiss
+  an improvement suggestion on a requirement. Operations: `create`, `edit`, `delete`,
+  `request_review`, `revert_to_draft`, `resolve`, `dismiss`.
+
 ### Resources
 
 - `requirements://requirement/{uniqueId}`

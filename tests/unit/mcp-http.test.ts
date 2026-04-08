@@ -42,6 +42,7 @@ function createFakeService(
         createdAt: '2026-03-08T00:00:00.000Z',
         id: 1,
         isArchived: false,
+        packageCount: 2,
         uniqueId: 'INT0001',
         versions: [
           {
@@ -252,6 +253,8 @@ describe('handleRequirementsMcpRequest', () => {
     expect(viewText).toContain('MCP Requirement View')
     expect(viewText).toContain('Requirement text')
     expect(viewText).toContain('References')
+    expect(viewText).toContain('Used in packages')
+    expect(viewText).toContain('>2<')
     expect(fakeService.getRequirement).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({

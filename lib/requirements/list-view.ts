@@ -81,6 +81,7 @@ export interface RequirementRow {
   packageItemStatusNameSv?: string | null
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
+  suggestionCount?: number
   uniqueId: string
   usageScenarioIds?: number[]
   version: {
@@ -150,6 +151,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'needsReference',
   'packageItemStatus',
   'normReferences',
+  'suggestionCount',
 ] as const
 
 export type RequirementColumnId = (typeof REQUIREMENT_COLUMN_ORDER)[number]
@@ -183,7 +185,7 @@ export interface RequirementColumnDefinition {
   grows?: boolean
   id: RequirementColumnId
   labelKey: string
-  labelNamespace: 'common' | 'requirement'
+  labelNamespace: 'common' | 'improvementSuggestion' | 'requirement'
   maxWidthPx?: number
   minWidthPx: number
   resizable: boolean
@@ -378,6 +380,19 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     labelNamespace: 'requirement',
     maxWidthPx: 400,
     minWidthPx: 140,
+    resizable: true,
+  },
+  {
+    align: 'center',
+    canHide: true,
+    canSort: false,
+    defaultVisible: false,
+    defaultWidthPx: 100,
+    id: 'suggestionCount',
+    labelKey: 'title',
+    labelNamespace: 'improvementSuggestion',
+    maxWidthPx: 160,
+    minWidthPx: 72,
     resizable: true,
   },
 ] as const

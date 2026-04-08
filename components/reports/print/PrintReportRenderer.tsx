@@ -6,6 +6,7 @@ import type {
   MetadataChange,
   ReportModel,
   ReportSection,
+  SuggestionReportItem,
   TimelineEntryData,
   VersionSummaryData,
 } from '@/lib/reports/types'
@@ -79,6 +80,8 @@ function SectionRenderer({
       return <TocSection section={section} />
     case 'deviation-summary':
       return <DeviationSummarySection section={section} />
+    case 'suggestion-list':
+      return <SuggestionListSection section={section} />
     default:
       return null
   }
@@ -915,6 +918,123 @@ function DeviationSummarySection({
         )}
         {new Date(section.createdAt).toLocaleDateString(locale)}
       </div>
+    </div>
+  )
+}
+
+function SuggestionListSection({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'suggestion-list' }>
+}) {
+  if (section.items.length === 0) {
+    return (
+      <div
+        style={{
+          color: '#94a3b8',
+          fontSize: '0.8125rem',
+          fontStyle: 'italic',
+          marginBottom: '1rem',
+          paddingLeft: '0.5rem',
+        }}
+      >
+        {section.emptyLabel}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ marginBottom: '1rem' }}>
+      {section.heading && (
+        <h4
+          style={{
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            color: '#374151',
+            marginBottom: '0.5rem',
+          }}
+        >
+          {section.heading}
+        </h4>
+      )}
+      {section.items.map((item, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static report items
+        <SuggestionCard item={item} key={i} />
+      ))}
+    </div>
+  )
+}
+
+function SuggestionCard({ item }: { item: SuggestionReportItem }) {
+  const isResolved = item.resolvedAt !== null
+
+  return (
+    <div
+      className="print-avoid-break"
+      style={{
+        border: `1px solid ${item.status.color}30`,
+        borderLeft: `3px solid ${item.status.color}`,
+        borderRadius: '0.375rem',
+        marginBottom: '0.5rem',
+        padding: '0.75rem 1rem',
+        fontSize: '0.8125rem',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '0.375rem',
+        }}
+      >
+        <StatusBadge color={item.status.color} label={item.status.label} />
+        <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
+          {item.createdBy && <span>{item.createdBy} · </span>}
+          {new Date(item.createdAt).toLocaleDateString()}
+        </span>
+      </div>
+      <div
+        style={{ color: '#374151', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
+      >
+        {item.content}
+      </div>
+      {isResolved && item.resolutionMotivation && (
+        <div
+          style={{
+            marginTop: '0.5rem',
+            paddingTop: '0.5rem',
+            borderTop: '1px solid #e2e8f0',
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 500,
+              color: '#6b7280',
+              marginBottom: '0.25rem',
+              fontSize: '0.75rem',
+            }}
+          >
+            Motivation:
+          </div>
+          <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>
+            {item.resolutionMotivation}
+          </div>
+          {item.resolvedBy && (
+            <div
+              style={{
+                color: '#6b7280',
+                fontSize: '0.75rem',
+                marginTop: '0.25rem',
+              }}
+            >
+              {item.resolvedBy}
+              {item.resolvedAt &&
+                ` · ${new Date(item.resolvedAt).toLocaleDateString()}`}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

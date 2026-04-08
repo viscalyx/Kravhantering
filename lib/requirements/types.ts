@@ -75,6 +75,7 @@ export interface RequirementDetail {
   createdAt: string
   id: number
   isArchived: boolean
+  packageCount: number
   uniqueId: string
   versions: RequirementVersionDetail[]
 }

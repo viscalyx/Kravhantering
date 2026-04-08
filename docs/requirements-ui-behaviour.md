@@ -238,8 +238,10 @@ The detail card renders sections in this fixed order:
 1. **Requirement text** (description) — always first
 2. **Acceptance criteria** — always second
 3. **Area** with owner — shown after the primary text sections
-4. **References** — if any exist
-5. **Scenarios** — if any exist
+4. **Package count** — read-only count of how many requirement packages
+   include this requirement (always shown, displays 0 when unused)
+5. **References** — if any exist
+6. **Scenarios** — if any exist
 
 Requirement text and acceptance criteria are the primary content. Classification
 metadata (area, owner, category, type, etc.) must not push the main content
@@ -303,6 +305,34 @@ down.
   (the router adds it automatically).
 
 For report architecture details, see [reports.md](./reports.md).
+
+## Improvement Suggestion Section
+
+The requirement detail view contains an "Improvement suggestions" section
+displayed after version history. It shows all improvement suggestions
+linked to the requirement.
+
+### Suggestion List
+
+Each suggestion item shows:
+
+- A `SuggestionStepper` indicating lifecycle state (Draft →
+  Review requested → Resolved/Dismissed)
+- A `SuggestionPill` with the suggestion content, creation info,
+  and resolution details (if resolved)
+- Contextual action buttons based on current state
+
+### Suggestion Actions
+
+- **Draft:** Edit, Delete, Request review
+- **Review requested:** Revert to draft, Resolve/Dismiss
+- **Resolved/Dismissed:** No actions (terminal states)
+
+### Suggestion Count Column
+
+The requirements list table has an optional `suggestionCount`
+column (hidden by default) that shows the total number of
+improvement suggestions for each requirement as a badge.
 
 ## Contributor Guardrails
 

@@ -1,7 +1,7 @@
 # Arkitekturbeskrivning — Kravhantering
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Flerkravsrapport granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravpakethantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Paketvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
+<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravpakethantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Paketvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
 <!-- markdownlint-enable MD013 -->
 
 ## Inledning
@@ -319,6 +319,31 @@ Ett godkänt avsteg möjliggör att kravpostens
 användningsstatus ändras till *Avviken*
 (`Deviated`). Ett avslaget avsteg lämnar posten
 i befintlig status.
+
+### Förbättringsförslag
+
+Förbättringsförslag (ändringsförslag, synpunkter) kopplas till ett
+krav och följer en egen livscykel.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Registrerad : Registrera förslag
+    Registrerad --> Granskning : Begär granskning
+    Granskning --> Registrerad : Återta till utkast
+    Granskning --> Åtgärdad : Åtgärda
+    Granskning --> Avvisad : Avvisa
+    Åtgärdad --> [*]
+    Avvisad --> [*]
+```
+
+**Steg i detalj:**
+
+1. **Registrerad (utkast)** — Förslaget registreras med
+   fritext. Det kan redigeras och raderas.
+2. **Granskning begärd** — Förslaget skickas för
+   bedömning. Det kan återtas till utkast.
+3. **Åtgärdad/Avvisad** — Granskaren åtgärdar eller
+   avvisar förslaget med motivering.
 
 ### Rapportprocesser
 
@@ -645,6 +670,7 @@ erDiagram
     requirement_package_items }o--|| requirements : "pekar på krav"
     requirement_package_items }o--o| package_item_statuses : "användningsstatus"
     requirement_package_items ||--o{ deviations : "har avsteg"
+    requirements ||--o{ improvement_suggestions : "har förbättringsförslag"
 ```
 
 <!-- markdownlint-enable MD013 -->

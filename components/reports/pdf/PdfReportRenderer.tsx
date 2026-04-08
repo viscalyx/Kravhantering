@@ -4,6 +4,7 @@ import type {
   MetadataChange,
   ReportModel,
   ReportSection,
+  SuggestionReportItem,
   TimelineEntryData,
 } from '@/lib/reports/types'
 
@@ -271,6 +272,8 @@ function PdfSectionRenderer({
       return null
     case 'deviation-summary':
       return <PdfDeviationSummary section={section} />
+    case 'suggestion-list':
+      return <PdfSuggestionList section={section} />
     default:
       return null
   }
@@ -790,6 +793,110 @@ function PdfDeviationSummary({
           {new Date(section.createdAt).toLocaleDateString(locale)}
         </Text>
       </View>
+    </View>
+  )
+}
+
+function PdfSuggestionList({
+  section,
+}: {
+  section: Extract<ReportSection, { type: 'suggestion-list' }>
+}) {
+  if (section.items.length === 0) {
+    return (
+      <View style={{ marginBottom: 8 }}>
+        <Text style={{ fontSize: 8, color: '#94a3b8', fontStyle: 'italic' }}>
+          {section.emptyLabel}
+        </Text>
+      </View>
+    )
+  }
+
+  return (
+    <View style={{ marginBottom: 8 }}>
+      {section.heading && (
+        <Text
+          style={{
+            fontSize: 9,
+            fontFamily: 'Helvetica-Bold',
+            color: '#374151',
+            marginBottom: 4,
+          }}
+        >
+          {section.heading}
+        </Text>
+      )}
+      {section.items.map((item, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static report items
+        <PdfSuggestionCard item={item} key={i} />
+      ))}
+    </View>
+  )
+}
+
+function PdfSuggestionCard({ item }: { item: SuggestionReportItem }) {
+  const isResolved = item.resolvedAt !== null
+
+  return (
+    <View
+      style={{
+        borderWidth: 1,
+        borderColor: `${item.status.color}40`,
+        borderLeftWidth: 2.5,
+        borderLeftColor: item.status.color,
+        borderRadius: 3,
+        marginBottom: 4,
+        padding: 8,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          marginBottom: 3,
+        }}
+      >
+        <PdfBadge color={item.status.color} label={item.status.label} />
+        <Text style={{ fontSize: 7, color: '#6b7280' }}>
+          {item.createdBy ? `${item.createdBy} \u00B7 ` : ''}
+          {new Date(item.createdAt).toLocaleDateString()}
+        </Text>
+      </View>
+      <Text style={{ fontSize: 9, color: '#374151', lineHeight: 1.5 }}>
+        {item.content}
+      </Text>
+      {isResolved && item.resolutionMotivation && (
+        <View
+          style={{
+            marginTop: 4,
+            paddingTop: 4,
+            borderTopWidth: 0.5,
+            borderTopColor: '#e2e8f0',
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 7,
+              fontFamily: 'Helvetica-Bold',
+              color: '#6b7280',
+              marginBottom: 2,
+            }}
+          >
+            Motivation:
+          </Text>
+          <Text style={{ fontSize: 8, color: '#4b5563' }}>
+            {item.resolutionMotivation}
+          </Text>
+          {item.resolvedBy && (
+            <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 2 }}>
+              {item.resolvedBy}
+              {item.resolvedAt &&
+                ` \u00B7 ${new Date(item.resolvedAt).toLocaleDateString()}`}
+            </Text>
+          )}
+        </View>
+      )}
     </View>
   )
 }

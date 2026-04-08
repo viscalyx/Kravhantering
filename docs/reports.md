@@ -63,6 +63,20 @@ formatted table.
 - Print opens a dedicated route; PDF is generated inline in the package
   detail view (not via a separate route page)
 
+### 6. Improvement Suggestion History Report
+
+Lists all improvement suggestions grouped under each requirement
+version, sorted in descending version order.
+
+- Available from the print dropdown in both normal and
+  package-item detail views
+- Each version section shows a version summary followed by
+  its suggestions (or an empty-state label)
+- Suggestion cards display status badge, content, author,
+  date, and resolution details when applicable
+- Status colors: Draft (blue), Review Requested (yellow),
+  Resolved (green), Dismissed (red)
+
 ## Architecture
 
 ```text
@@ -117,6 +131,9 @@ under `.../reports/pdf/`.
 - **List**: `.../print/list?ids=…` | `.../pdf/list?ids=…`
 - **Combined**: `.../print/review-combined?ids=…` |
   `.../pdf/review-combined?ids=…`
+- **Suggestion History**:
+  `.../print/suggestion-history/[id]` |
+  `.../pdf/suggestion-history/[id]`
 
 All routes above are prefixed with `/[locale]/requirements/reports`.
 
@@ -151,6 +168,9 @@ library's `Document`, `Page`, `View`, `Text` primitives with `StyleSheet`.
   (e.g., `Kombinerad granskningsrapport 2026-03-17 16.35.pdf`)
 - List (package): `{localized label} {package name} {package ID}.pdf`
   (e.g., `Kravlista Tillgänglighet PKG001.pdf`)
+- Suggestion History:
+  `{localized label} {uniqueId}.pdf`
+  (e.g., `Ändringsförslagshistorik ANV0022.pdf`)
 
 ## Report Page Rendering
 

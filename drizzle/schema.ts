@@ -257,6 +257,7 @@ export const requirementsRelations = relations(
     }),
     versions: many(requirementVersions),
     packageItems: many(requirementPackageItems),
+    improvementSuggestions: many(improvementSuggestions),
   }),
 )
 
@@ -762,6 +763,61 @@ export const deviationsRelations = relations(deviations, ({ one }) => ({
     references: [requirementPackageItems.id],
   }),
 }))
+
+// ─── Improvement Suggestions ─────────────────────────────────────────────────
+
+export const SUGGESTION_RESOLVED = 1
+export const SUGGESTION_DISMISSED = 2
+
+export const improvementSuggestions = sqliteTable(
+  'improvement_suggestions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    requirementId: integer('requirement_id').notNull(),
+    requirementVersionId: integer('requirement_version_id'),
+    content: text('content').notNull(),
+    isReviewRequested: integer('is_review_requested').notNull().default(0),
+    resolution: integer('resolution'),
+    resolutionMotivation: text('resolution_motivation'),
+    resolvedBy: text('resolved_by'),
+    resolvedAt: text('resolved_at'),
+    createdBy: text('created_by'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at'),
+  },
+  table => [
+    index('idx_improvement_suggestions_requirement_id').on(table.requirementId),
+    index('idx_improvement_suggestions_requirement_version_id').on(
+      table.requirementVersionId,
+    ),
+    foreignKey({
+      columns: [table.requirementId],
+      foreignColumns: [requirements.id],
+      name: 'fk_improvement_suggestions_requirement_id',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.requirementVersionId],
+      foreignColumns: [requirementVersions.id],
+      name: 'fk_improvement_suggestions_requirement_version_id',
+    }).onDelete('set null'),
+  ],
+)
+
+export const improvementSuggestionRelations = relations(
+  improvementSuggestions,
+  ({ one }) => ({
+    requirement: one(requirements, {
+      fields: [improvementSuggestions.requirementId],
+      references: [requirements.id],
+    }),
+    requirementVersion: one(requirementVersions, {
+      fields: [improvementSuggestions.requirementVersionId],
+      references: [requirementVersions.id],
+    }),
+  }),
+)
 
 // ─── UI Terminology ──────────────────────────────────────────────────────────
 

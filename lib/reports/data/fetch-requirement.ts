@@ -78,3 +78,34 @@ export async function fetchMultipleRequirements(
 ): Promise<RequirementReportData[]> {
   return Promise.all(ids.map(id => fetchRequirementForReport(id, locale)))
 }
+
+export interface SuggestionReportRow {
+  content: string
+  createdAt: string
+  createdBy: string | null
+  id: number
+  isReviewRequested: number
+  requirementVersionId: number | null
+  resolution: number | null
+  resolutionMotivation: string | null
+  resolvedAt: string | null
+  resolvedBy: string | null
+}
+
+export async function fetchSuggestionsForReport(
+  requirementId: number | string,
+): Promise<SuggestionReportRow[]> {
+  const baseUrl = typeof window !== 'undefined' ? '' : 'http://localhost:3000'
+  const response = await fetch(
+    `${baseUrl}/api/requirements/${requirementId}/improvement-suggestions`,
+  )
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch suggestions for requirement ${requirementId}: ${response.status}`,
+    )
+  }
+  const data = (await response.json()) as {
+    suggestions: SuggestionReportRow[]
+  }
+  return data.suggestions
+}

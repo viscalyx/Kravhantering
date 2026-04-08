@@ -72,6 +72,17 @@ export type RequirementsAction =
       deviationId?: number
       packageItemId?: number
     }
+  | {
+      kind: 'list_suggestions'
+      requirementId?: number
+      uniqueId?: string
+    }
+  | {
+      kind: 'manage_suggestion'
+      operation: string
+      suggestionId?: number
+      requirementId?: number
+    }
 
 export interface AuthorizationService {
   assertAuthorized(

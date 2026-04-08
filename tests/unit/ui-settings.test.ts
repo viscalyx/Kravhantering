@@ -100,6 +100,7 @@ describe('ui settings DAL', () => {
         'needsReference',
         'packageItemStatus',
         'normReferences',
+        'suggestionCount',
       ])
       expect(getRequirementColumnOrder(loadedColumns)).toEqual([
         'uniqueId',
@@ -115,6 +116,7 @@ describe('ui settings DAL', () => {
         'needsReference',
         'packageItemStatus',
         'normReferences',
+        'suggestionCount',
       ])
       expect(
         persistedRows.map(row => ({
@@ -147,6 +149,11 @@ describe('ui settings DAL', () => {
           columnId: 'normReferences',
           isDefaultVisible: false,
           sortOrder: 12,
+        },
+        {
+          columnId: 'suggestionCount',
+          isDefaultVisible: false,
+          sortOrder: 13,
         },
       ])
     } finally {

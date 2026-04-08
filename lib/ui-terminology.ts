@@ -17,6 +17,7 @@ export const UI_TERM_KEYS = [
   'lifecycleStatus',
   'referenceData',
   'references',
+  'improvementSuggestion',
   'mcpRequirementView',
 ] as const
 
@@ -121,6 +122,9 @@ const MESSAGE_BINDINGS: Record<
   },
   references: {
     singular: [['reference', 'unnamed']],
+  },
+  improvementSuggestion: {
+    singular: [['improvementSuggestion', 'title']],
   },
   mcpRequirementView: {},
 }
@@ -343,6 +347,18 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       definitePlural: 'Referenserna',
       plural: 'Referenser',
       singular: 'Referens',
+    },
+  },
+  improvementSuggestion: {
+    en: {
+      definitePlural: 'The improvement suggestions',
+      plural: 'Improvement suggestions',
+      singular: 'Improvement suggestion',
+    },
+    sv: {
+      definitePlural: 'Förbättringsförslagen',
+      plural: 'Förbättringsförslag',
+      singular: 'Förbättringsförslag',
     },
   },
   mcpRequirementView: {

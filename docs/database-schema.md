@@ -341,6 +341,24 @@ erDiagram
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
     requirement_package_items ||--o{ deviations : "has deviations"
+
+    improvement_suggestions {
+        integer id PK
+        integer requirement_id FK
+        integer requirement_version_id FK
+        text content
+        text created_by
+        text review_requested_at
+        integer resolution
+        text resolution_motivation
+        text resolved_by
+        text resolved_at
+        text created_at
+        text updated_at
+    }
+
+    requirements ||--o{ improvement_suggestions : "has suggestions"
+    requirement_versions ||--o{ improvement_suggestions : "version suggestions"
 ```
 
 ---
@@ -998,6 +1016,32 @@ a decision (approved or rejected) with its own rationale.
 <!-- markdownlint-enable MD013 -->
 
 **Index:** `idx_deviations_package_item_id`.
+
+### `improvement_suggestions`
+
+Improvement suggestions and change proposals linked to a
+requirement. Each suggestion follows a lifecycle:
+draft → review requested → resolved or dismissed.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `requirement_id` | integer FK → `requirements.id` (CASCADE DELETE) | The requirement this suggestion applies to |
+| `requirement_version_id` | integer FK → `requirement_versions.id` (SET NULL) | Optional: the specific version being reviewed |
+| `content` | text NOT NULL | The suggestion text |
+| `created_by` | text | Who submitted the suggestion |
+| `review_requested_at` | text (ISO 8601) | When review was requested (null = draft) |
+| `resolution` | integer | Null = pending, 1 = resolved, 2 = dismissed |
+| `resolution_motivation` | text | Rationale for resolving or dismissing |
+| `resolved_by` | text | Who resolved/dismissed the suggestion |
+| `resolved_at` | text (ISO 8601) | When the resolution was recorded |
+| `created_at` | text (ISO 8601) | When registered (default: now) |
+| `updated_at` | text (ISO 8601) | When last updated (default: now) |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_improvement_suggestions_requirement_id`,
+`idx_improvement_suggestions_requirement_version_id`.
 
 ---
 

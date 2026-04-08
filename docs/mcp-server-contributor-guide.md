@@ -35,7 +35,7 @@ For admin-managed UI terminology and default column settings, see
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
 - `lib/mcp/server.ts`
-  Registers the eight tools, the JSON resource, and the HTML UI resource.
+  Registers the ten tools, the JSON resource, and the HTML UI resource.
 - `lib/dal/ui-settings.ts`
   Loads DB-backed UI terminology and default column settings.
 - `lib/ui-terminology.ts`
@@ -56,6 +56,9 @@ For admin-managed UI terminology and default column settings, see
 - `lib/dal/requirement-packages.ts`
   Persistence logic for requirement packages: listing packages and items,
   linking and unlinking requirements, and needs reference management.
+- `lib/dal/improvement-suggestions.ts`
+  Persistence logic for improvement suggestion CRUD, lifecycle
+  transitions, and counts.
 
 ## Request Flow
 

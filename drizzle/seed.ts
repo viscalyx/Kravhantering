@@ -13,6 +13,7 @@
 
 const seedSQL = `
 -- ─── Clean stale seed data (dependency order) ───────────────────────────────
+DELETE FROM improvement_suggestions;
 DELETE FROM deviations;
 DELETE FROM requirement_package_items;
 DELETE FROM package_needs_references;
@@ -70,7 +71,8 @@ INSERT OR IGNORE INTO ui_terminology (
   definite_plural_en,
   updated_at
 ) VALUES
-  ('riskLevel', 'Risknivå', 'Risknivåer', 'Risknivåerna', 'Risk level', 'Risk levels', 'Risk levels', datetime('now'));
+  ('riskLevel', 'Risknivå', 'Risknivåer', 'Risknivåerna', 'Risk level', 'Risk levels', 'Risk levels', datetime('now')),
+  ('improvementSuggestion', 'Förbättringsförslag', 'Förbättringsförslag', 'Förbättringsförslagen', 'Improvement suggestion', 'Improvement suggestions', 'The improvement suggestions', datetime('now'));
 
 UPDATE ui_terminology SET
   singular_sv = 'Risknivå',
@@ -212,6 +214,16 @@ UPDATE ui_terminology SET
   updated_at = datetime('now')
 WHERE key = 'referenceData';
 
+UPDATE ui_terminology SET
+  singular_sv = 'Förbättringsförslag',
+  plural_sv = 'Förbättringsförslag',
+  definite_plural_sv = 'Förbättringsförslagen',
+  singular_en = 'Improvement suggestion',
+  plural_en = 'Improvement suggestions',
+  definite_plural_en = 'The improvement suggestions',
+  updated_at = datetime('now')
+WHERE key = 'improvementSuggestion';
+
 -- ─── Requirement List Column Defaults ────────────────────────────────────────
 INSERT OR IGNORE INTO requirement_list_column_defaults (
   column_id,
@@ -231,7 +243,8 @@ INSERT OR IGNORE INTO requirement_list_column_defaults (
   ('needsReference', 9, 0, datetime('now')),
   ('normReferences', 10, 0, datetime('now')),
   ('riskLevel', 11, 0, datetime('now')),
-  ('packageItemStatus', 12, 0, datetime('now'));
+  ('packageItemStatus', 12, 0, datetime('now')),
+  ('suggestionCount', 13, 0, datetime('now'));
 
 UPDATE requirement_list_column_defaults SET
   sort_order = 0,
@@ -310,6 +323,12 @@ UPDATE requirement_list_column_defaults SET
   is_default_visible = 0,
   updated_at = datetime('now')
 WHERE column_id = 'packageItemStatus';
+
+UPDATE requirement_list_column_defaults SET
+  sort_order = 13,
+  is_default_visible = 0,
+  updated_at = datetime('now')
+WHERE column_id = 'suggestionCount';
 
 -- ─── Risk Levels ─────────────────────────────────────────────────────────────
 INSERT OR IGNORE INTO risk_levels (id, name_sv, name_en, sort_order, color) VALUES
@@ -1684,6 +1703,27 @@ INSERT OR IGNORE INTO deviations (id, package_item_id, motivation, is_review_req
   (4, 14, 'Response time requirement of 200ms cannot be met for batch operations. Proposing 2000ms threshold for batch endpoints only.', 1, 1, 'Approved for batch endpoints only. Real-time endpoints must still meet 200ms SLA.', 'Karl Nilsson', datetime('now', '-12 days'), 'Maria Johansson', datetime('now', '-16 days'), datetime('now', '-12 days')),
   -- Package 5 item 20: draft deviation (not yet submitted for review)
   (5, 20, 'Accessibility requirement WCAG 2.1 AA cannot be fully met for legacy PDF export. Remediation requires vendor update expected in next release.', 0, NULL, NULL, NULL, NULL, 'Erik Svensson', datetime('now', '-5 days'), NULL);
+
+-- ─── Improvement Suggestions (synpunkter och ändringsförslag kopplade till krav) ─────────────
+INSERT OR IGNORE INTO improvement_suggestions (id, requirement_id, requirement_version_id, content, is_review_requested, resolution, resolution_motivation, resolved_by, resolved_at, created_by, created_at, updated_at) VALUES
+  -- Requirement 1 (INT0001): resolved suggestion
+  (1, 1, 1, 'The API timeout of 30 seconds seems too generous for a synchronous call. Consider reducing to 10 seconds to fail fast and avoid thread exhaustion under load.', 1, 1, 'Good catch. Timeout reduced to 10 s in version 2 per ADR-052.', 'Anna Lindqvist', datetime('now', '-10 days'), 'Karl Nilsson', datetime('now', '-30 days'), datetime('now', '-10 days')),
+  -- Requirement 4 (SÄK0001): review requested, pending resolution
+  (2, 4, 4, 'The requirement mentions TLS 1.2 but does not address TLS 1.3. We should explicitly require TLS 1.3 as preferred and allow 1.2 only as fallback.', 1, NULL, NULL, NULL, NULL, 'Maria Johansson', datetime('now', '-14 days'), NULL),
+  -- Requirement 6 (PRE0001): draft suggestion (not yet submitted for review)
+  (3, 6, 6, 'Response time SLA does not differentiate between read and write operations. Suggest splitting into separate targets: 200 ms for reads, 500 ms for writes.', 0, NULL, NULL, NULL, NULL, 'Erik Svensson', datetime('now', '-3 days'), NULL),
+  -- Requirement 7 (ANV0001): dismissed suggestion
+  (4, 7, 7, 'The color contrast ratio seems insufficient for users with visual impairments. Consider increasing to WCAG AAA level (7:1).', 1, 2, 'WCAG AA (4.5:1) is the organizational baseline. AAA is tracked as a stretch goal in the accessibility roadmap.', 'Anna Lindqvist', datetime('now', '-8 days'), 'Maria Johansson', datetime('now', '-20 days'), datetime('now', '-8 days')),
+  -- Requirement 1 (INT0001): second suggestion, still in draft
+  (5, 1, 1, 'Error response format should follow RFC 9457 (Problem Details). Current spec references a custom format that is harder to parse for external consumers.', 0, NULL, NULL, NULL, NULL, 'Karl Nilsson', datetime('now', '-2 days'), NULL),
+  -- Requirement 44 (IDN0001) v9: detailed draft suggestion about clarity and testability
+  (6, 44, 79, 'Det nuvarande kravet "Passkey-registrering och inloggning fungerar i Chrome, Safari och Edge [Version 9 testdata]" bedöms behöva förtydligas och avgränsas för att bli testbart, entydigt och långsiktigt förvaltningsbart. I sin nuvarande formulering finns flera tolkningsutrymmen som riskerar att skapa oklarheter både i utveckling, testgenomförande och godkännande. Framför allt är det oklart vad som avses med att funktionaliteten "fungerar", vilka versioner av respektive webbläsare som omfattas, vilka plattformar som ingår, samt på vilket sätt den angivna testdatan i Version 9 ska användas som del av verifieringen.', 0, NULL, NULL, NULL, NULL, 'Johan Eriksson', datetime('now', '-1 days'), NULL),
+  -- Requirement 44 (IDN0001) v9: review requested suggestion
+  (7, 44, 79, 'Kravet bör kompletteras med en explicit lista över minsta webbläsarversioner som ska stödjas, t.ex. Chrome 120+, Safari 17+ och Edge 120+. Utan versionsangivelse är kravet svårt att verifiera och riskerar att tolkas olika av utvecklare och testare.', 1, NULL, NULL, NULL, NULL, 'Maria Johansson', datetime('now', '-5 days'), NULL),
+  -- Requirement 44 (IDN0001) v9: dismissed suggestion
+  (8, 44, 79, 'Föreslår att kravet utökas till att även omfatta Firefox som stödd webbläsare för passkey-inloggning, eftersom Firefox har fullt WebAuthn-stöd sedan version 118.', 1, 2, 'Firefox ingår inte i organisationens webbläsarstandard. Stöd för Firefox kan övervägas i en framtida version om användarbasen motiverar det.', 'Anna Lindqvist', datetime('now', '-3 days'), 'Erik Svensson', datetime('now', '-7 days'), datetime('now', '-3 days')),
+  -- Requirement 44 (IDN0001) v9: resolved suggestion
+  (9, 44, 79, 'Kravet specificerar inte vilka plattformar (Windows, macOS, iOS, Android) som ska stödjas. Föreslår att plattformskrav förtydligas så att testmatrisen kan definieras entydigt.', 1, 1, 'Bra synpunkt. Plattformskrav har förtydligats i acceptanskriterierna: Windows 11, macOS 14+, iOS 17+ och Android 14+.', 'Anna Lindqvist', datetime('now', '-2 days'), 'Maria Johansson', datetime('now', '-6 days'), datetime('now', '-2 days'));
 
 -- ─── Assign risk levels to ~50 % of requirement versions ─────────────────────
 -- Hög/High
