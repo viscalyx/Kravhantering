@@ -22,6 +22,15 @@
   step-by-step flow, a Mermaid sequence diagram, and an optional supplementary
   Mermaid flowchart when branches or state transitions need clarification.
 
+## Playwright Style
+
+- Use auto-retrying web-first assertions (`await expect(locator).toHaveText()`,
+  `.toContainText()`, `.toHaveURL()`, `.toHaveCount()`). Avoid `.toBeVisible()`
+  unless explicitly testing a visibility change.
+- Never use `page.waitForTimeout()` or increase default timeouts. Rely on
+  Playwright auto-waiting.
+- Use `test.step()` to group related interactions within a test.
+
 ## General Rules
 
 - Follow
