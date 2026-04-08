@@ -2941,12 +2941,12 @@ export default function RequirementDetailClient({
                   )}
                 </h3>
                 <button
-                  className="btn-primary text-xs px-3 py-1.5"
+                  className="btn-primary text-xs px-3 py-1.5 min-h-[44px] inline-flex items-center"
                   disabled={suggestionSaving}
                   onClick={() => setShowSuggestionForm(true)}
                   type="button"
                 >
-                  {tf('newSuggestion')}
+                  + {tf('newSuggestion')}
                 </button>
               </div>
 
@@ -2984,7 +2984,7 @@ export default function RequirementDetailClient({
                             {step === 'draft' && (
                               <>
                                 <button
-                                  className="text-xs btn-secondary px-3 py-1"
+                                  className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center"
                                   disabled={suggestionSaving}
                                   onClick={() => {
                                     setEditSuggestionTarget(fb)
@@ -2995,7 +2995,7 @@ export default function RequirementDetailClient({
                                   {tf('editSuggestion')}
                                 </button>
                                 <button
-                                  className="text-xs btn-secondary px-3 py-1 text-red-600 dark:text-red-400"
+                                  className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center text-red-600 dark:text-red-400"
                                   disabled={suggestionSaving}
                                   onClick={e =>
                                     void handleDeleteSuggestion(fb.id, e)
@@ -3005,7 +3005,7 @@ export default function RequirementDetailClient({
                                   {tf('deleteSuggestion')}
                                 </button>
                                 <button
-                                  className="text-xs btn-primary px-3 py-1"
+                                  className="text-xs btn-primary px-3 py-1 min-h-[44px] inline-flex items-center"
                                   disabled={suggestionSaving}
                                   onClick={() =>
                                     void handleSuggestionRequestReview(fb.id)
@@ -3019,7 +3019,7 @@ export default function RequirementDetailClient({
                             {step === 'review_requested' && (
                               <>
                                 <button
-                                  className="text-xs btn-secondary px-3 py-1"
+                                  className="text-xs btn-secondary px-3 py-1 min-h-[44px] inline-flex items-center"
                                   disabled={suggestionSaving}
                                   onClick={e =>
                                     void handleSuggestionRevertToDraft(fb.id, e)
@@ -3029,7 +3029,7 @@ export default function RequirementDetailClient({
                                   {tf('revertToDraft')}
                                 </button>
                                 <button
-                                  className="text-xs btn-primary px-3 py-1"
+                                  className="text-xs btn-primary px-3 py-1 min-h-[44px] inline-flex items-center"
                                   disabled={suggestionSaving}
                                   onClick={() => {
                                     setResolutionTarget(fb)
