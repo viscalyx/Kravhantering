@@ -3318,29 +3318,31 @@ export default function RequirementsTable({
             scope="col"
           >
             {mode === 'interactive' ? (
-              <input
-                aria-label={tc('selectAll')}
-                checked={
-                  rows.length > 0 && rows.every(r => selectedIds?.has(r.id))
-                }
-                className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
-                {...devMarker({
-                  context: 'requirements table',
-                  name: 'row checkbox',
-                  priority: 300,
-                  value: 'select all',
-                })}
-                onChange={e => {
-                  if (!onSelectionChange) return
-                  if (e.target.checked) {
-                    onSelectionChange(new Set(rows.map(r => r.id)))
-                  } else {
-                    onSelectionChange(new Set())
+              <div className="flex min-h-[44px] items-center justify-center">
+                <input
+                  aria-label={tc('selectAll')}
+                  checked={
+                    rows.length > 0 && rows.every(r => selectedIds?.has(r.id))
                   }
-                }}
-                ref={selectAllRef}
-                type="checkbox"
-              />
+                  className="h-4 w-4 rounded border-secondary-300 accent-primary-600 cursor-pointer"
+                  {...devMarker({
+                    context: 'requirements table',
+                    name: 'row checkbox',
+                    priority: 300,
+                    value: 'select all',
+                  })}
+                  onChange={e => {
+                    if (!onSelectionChange) return
+                    if (e.target.checked) {
+                      onSelectionChange(new Set(rows.map(r => r.id)))
+                    } else {
+                      onSelectionChange(new Set())
+                    }
+                  }}
+                  ref={selectAllRef}
+                  type="checkbox"
+                />
+              </div>
             ) : null}
           </th>
         )}

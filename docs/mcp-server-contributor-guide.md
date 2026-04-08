@@ -21,7 +21,7 @@ For admin-managed UI terminology and default column settings, see
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
 - Supported locales: `en`, `sv`
-- Exposed MCP tools: 8
+- Exposed MCP tools: 10
 - Exposed MCP resources:
   - `requirements://requirement/{uniqueId}`
   - `ui://requirements/requirement-detail/{uniqueId}`
@@ -325,7 +325,7 @@ Useful commands:
 Manual verification should still include:
 
 - connecting an MCP client to `/api/mcp`
-- checking that all eight tools appear
+- checking that all ten tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support

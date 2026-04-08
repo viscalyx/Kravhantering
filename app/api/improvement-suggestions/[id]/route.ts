@@ -57,6 +57,10 @@ export async function PUT(
 
   const { content } = body as { content?: string }
 
+  if (typeof content !== 'string') {
+    return NextResponse.json({ error: 'Invalid content' }, { status: 400 })
+  }
+
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 

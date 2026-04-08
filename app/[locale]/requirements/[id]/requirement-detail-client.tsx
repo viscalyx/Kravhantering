@@ -449,6 +449,20 @@ export default function RequirementDetailClient({
     void fetchSuggestions()
   }, [fetchSuggestions])
 
+  const performSuggestionMutation = useCallback(
+    async (input: RequestInfo, init?: RequestInit): Promise<boolean> => {
+      const res = await fetch(input, init)
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        console.error('Suggestion mutation failed:', details ?? res.statusText)
+        return false
+      }
+      await Promise.all([fetchSuggestions(), onChange?.()])
+      return true
+    },
+    [fetchSuggestions, onChange],
+  )
+
   const handleCreateSuggestion = useCallback(
     async (content: string, createdBy: string) => {
       if (!content) return
@@ -457,7 +471,7 @@ export default function RequirementDetailClient({
         const versionId =
           req?.versions.find(v => v.versionNumber === selectedVersionNumber)
             ?.id ?? null
-        const res = await fetch(
+        const ok = await performSuggestionMutation(
           `/api/requirements/${requirementId}/improvement-suggestions`,
           {
             method: 'POST',
@@ -469,15 +483,14 @@ export default function RequirementDetailClient({
             }),
           },
         )
-        if (res.ok) {
+        if (ok) {
           setShowSuggestionForm(false)
-          await fetchSuggestions()
         }
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [requirementId, req, selectedVersionNumber, fetchSuggestions],
+    [requirementId, req, selectedVersionNumber, performSuggestionMutation],
   )
 
   const handleEditSuggestion = useCallback(
@@ -485,7 +498,7 @@ export default function RequirementDetailClient({
       if (!editSuggestionTarget || !content) return
       setSuggestionSaving(true)
       try {
-        const res = await fetch(
+        const ok = await performSuggestionMutation(
           `/api/improvement-suggestions/${editSuggestionTarget.id}`,
           {
             method: 'PUT',
@@ -493,90 +506,78 @@ export default function RequirementDetailClient({
             body: JSON.stringify({ content }),
           },
         )
-        if (res.ok) {
+        if (ok) {
           setShowEditSuggestionForm(false)
           setEditSuggestionTarget(null)
-          await fetchSuggestions()
         }
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [editSuggestionTarget, fetchSuggestions],
+    [editSuggestionTarget, performSuggestionMutation],
   )
 
   const handleDeleteSuggestion = useCallback(
-    async (suggestionId: number) => {
+    async (suggestionId: number, e?: React.MouseEvent<HTMLButtonElement>) => {
+      const anchorEl = e?.currentTarget
       const confirmed = await confirm({
         message: tf('deleteSuggestionConfirm'),
         title: tf('deleteSuggestionConfirmTitle'),
         variant: 'danger',
         icon: 'caution',
+        anchorEl,
       })
       if (!confirmed) return
       setSuggestionSaving(true)
       try {
-        const res = await fetch(
+        await performSuggestionMutation(
           `/api/improvement-suggestions/${suggestionId}`,
-          {
-            method: 'DELETE',
-          },
+          { method: 'DELETE' },
         )
-        if (res.ok) {
-          await fetchSuggestions()
-        }
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [fetchSuggestions, confirm, tf],
+    [performSuggestionMutation, confirm, tf],
   )
 
   const handleSuggestionRequestReview = useCallback(
     async (suggestionId: number) => {
       setSuggestionSaving(true)
       try {
-        const res = await fetch(
+        await performSuggestionMutation(
           `/api/improvement-suggestions/${suggestionId}/request-review`,
-          {
-            method: 'POST',
-          },
+          { method: 'POST' },
         )
-        if (res.ok) {
-          await fetchSuggestions()
-        }
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [fetchSuggestions],
+    [performSuggestionMutation],
   )
 
   const handleSuggestionRevertToDraft = useCallback(
-    async (suggestionId: number) => {
+    async (suggestionId: number, e?: React.MouseEvent<HTMLButtonElement>) => {
+      const anchorEl = e?.currentTarget
       const confirmed = await confirm({
         message: tf('revertToDraftConfirm'),
         title: tf('revertToDraftConfirmTitle'),
         variant: 'default',
         icon: 'warning',
+        anchorEl,
       })
       if (!confirmed) return
       setSuggestionSaving(true)
       try {
-        const res = await fetch(
+        await performSuggestionMutation(
           `/api/improvement-suggestions/${suggestionId}/revert-to-draft`,
-          {
-            method: 'POST',
-          },
+          { method: 'POST' },
         )
-        if (res.ok) {
-          await fetchSuggestions()
-        }
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [fetchSuggestions, confirm, tf],
+    [performSuggestionMutation, confirm, tf],
   )
 
   const handleRecordResolution = useCallback(
@@ -584,7 +585,7 @@ export default function RequirementDetailClient({
       if (!resolutionTarget) return
       setSuggestionSaving(true)
       try {
-        const res = await fetch(
+        const ok = await performSuggestionMutation(
           `/api/improvement-suggestions/${resolutionTarget.id}/resolution`,
           {
             method: 'POST',
@@ -596,16 +597,15 @@ export default function RequirementDetailClient({
             }),
           },
         )
-        if (res.ok) {
+        if (ok) {
           setShowResolutionForm(false)
           setResolutionTarget(null)
-          await fetchSuggestions()
         }
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [resolutionTarget, fetchSuggestions],
+    [resolutionTarget, performSuggestionMutation],
   )
 
   const getSuggestionStep = useCallback(

@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
 import {
@@ -14,6 +14,7 @@ import type { ReportModel } from '@/lib/reports/types'
 export default function PdfSuggestionHistoryReportPage() {
   const params = useParams<{ id: string }>()
   const locale = useLocale()
+  const t = useTranslations('reports')
   const [model, setModel] = useState<ReportModel | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,18 +38,15 @@ export default function PdfSuggestionHistoryReportPage() {
         fetchRequirementForReport(params.id, locale),
         fetchSuggestionsForReport(params.id),
       ])
-      const label =
-        locale === 'sv'
-          ? 'Ändringsförslagshistorik'
-          : 'Improvement Suggestion History'
+      const label = t('suggestionHistoryFilenameLabel')
       setFilename(`${label} ${requirement.uniqueId}.pdf`)
       setModel(buildSuggestionHistoryReport(requirement, suggestions, locale))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report')
+      setError(err instanceof Error ? err.message : t('failedToLoadReport'))
     } finally {
       setLoading(false)
     }
-  }, [params.id, locale])
+  }, [params.id, locale, t])
 
   useEffect(() => {
     loadReport()
@@ -68,17 +66,17 @@ export default function PdfSuggestionHistoryReportPage() {
     >
       {displayError ? (
         <div style={{ color: '#991b1b' }}>
-          <h2>Error</h2>
+          <h2>{t('errorTitle')}</h2>
           <p>{displayError}</p>
         </div>
       ) : loading ? (
-        <p style={{ color: '#64748b' }}>Loading report data...</p>
+        <p style={{ color: '#64748b' }}>{t('loadingData')}</p>
       ) : downloading ? (
-        <p style={{ color: '#64748b' }}>Generating PDF...</p>
+        <p style={{ color: '#64748b' }}>{t('generatingPdf')}</p>
       ) : (
         <div>
           <p style={{ color: '#166534', marginBottom: '1rem' }}>
-            PDF download started.
+            {t('pdfDownloadStarted')}
           </p>
           <button
             onClick={download}
@@ -92,7 +90,7 @@ export default function PdfSuggestionHistoryReportPage() {
             }}
             type="button"
           >
-            Download Again
+            {t('downloadAgain')}
           </button>
         </div>
       )}

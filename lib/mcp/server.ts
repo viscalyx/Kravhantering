@@ -1285,7 +1285,64 @@ export function createKravhanteringMcpServer(
             .describe('Who resolved/dismissed the suggestion.'),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
-        .strict(),
+        .strict()
+        .superRefine((data, ctx) => {
+          switch (data.operation) {
+            case 'create':
+              if (!data.requirementId) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: 'requirementId is required for the create operation',
+                  path: ['requirementId'],
+                })
+              }
+              if (!data.content) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: 'content is required for the create operation',
+                  path: ['content'],
+                })
+              }
+              break
+            case 'edit':
+              if (!data.suggestionId) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: 'suggestionId is required for the edit operation',
+                  path: ['suggestionId'],
+                })
+              }
+              if (!data.content) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: 'content is required for the edit operation',
+                  path: ['content'],
+                })
+              }
+              break
+            case 'resolve':
+            case 'dismiss':
+              if (!data.suggestionId) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `suggestionId is required for the ${data.operation} operation`,
+                  path: ['suggestionId'],
+                })
+              }
+              break
+            case 'delete':
+            case 'request_review':
+            case 'revert_to_draft':
+              if (!data.suggestionId) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: `suggestionId is required for the ${data.operation} operation`,
+                  path: ['suggestionId'],
+                })
+              }
+              break
+          }
+        }),
       title: 'Manage Improvement Suggestion',
     },
     async input => {

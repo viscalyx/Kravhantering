@@ -109,7 +109,7 @@ describe('requirements auth', () => {
       ).rejects.toThrow()
     })
 
-    it('allows when no policy defined for action kind', async () => {
+    it('denies when no policy defined for action kind', async () => {
       const svc = new RoleBasedAuthorizationService({})
       await expect(
         svc.assertAuthorized(
@@ -125,7 +125,7 @@ describe('requirements auth', () => {
             source: 'rest',
           },
         ),
-      ).resolves.toBeUndefined()
+      ).rejects.toThrow('No policy defined for action query_catalog')
     })
   })
 })

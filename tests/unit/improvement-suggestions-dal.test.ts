@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import * as schema from '@/drizzle/schema'
 import {
   countSuggestionsByRequirement,
+  countSuggestionsForRequirements,
   createSuggestion,
   deleteSuggestion,
   getSuggestion,
@@ -190,6 +191,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Resolved suggestion',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 1,
         resolutionMotivation: 'Fixed the issue',
@@ -203,6 +205,22 @@ describe('improvement suggestions DAL', () => {
         'Cannot edit an improvement suggestion after a resolution has been recorded',
       )
     })
+
+    it('throws conflict when suggestion is submitted for review', async () => {
+      await seedRequiredData(db)
+      const { id } = await createSuggestion(db as unknown as AppDatabase, {
+        requirementId: 1,
+        content: 'Under review',
+      })
+      await requestReview(db as unknown as AppDatabase, id)
+      await expect(
+        updateSuggestion(db as unknown as AppDatabase, id, {
+          content: 'Too late',
+        }),
+      ).rejects.toThrow(
+        'Cannot edit an improvement suggestion that has been submitted for review',
+      )
+    })
   })
 
   describe('recordResolution', () => {
@@ -212,6 +230,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Needs action',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 1,
         resolutionMotivation: 'Applied fix',
@@ -230,6 +249,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Not relevant',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 2,
         resolutionMotivation: 'Out of scope',
@@ -245,6 +265,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Already handled',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 1,
         resolutionMotivation: 'Done',
@@ -265,6 +286,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Invalid',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await expect(
         recordResolution(db as unknown as AppDatabase, id, {
           resolution: 99,
@@ -272,6 +294,23 @@ describe('improvement suggestions DAL', () => {
           resolvedBy: 'reviewer',
         }),
       ).rejects.toThrow('Resolution must be 1 (resolved) or 2 (dismissed)')
+    })
+
+    it('throws conflict when suggestion is still a draft', async () => {
+      await seedRequiredData(db)
+      const { id } = await createSuggestion(db as unknown as AppDatabase, {
+        requirementId: 1,
+        content: 'Still a draft',
+      })
+      await expect(
+        recordResolution(db as unknown as AppDatabase, id, {
+          resolution: 1,
+          resolutionMotivation: 'Premature',
+          resolvedBy: 'reviewer',
+        }),
+      ).rejects.toThrow(
+        'Can only resolve or dismiss suggestions that have been submitted for review',
+      )
     })
   })
 
@@ -294,6 +333,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Resolved',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 1,
         resolutionMotivation: 'Done',
@@ -303,6 +343,20 @@ describe('improvement suggestions DAL', () => {
         deleteSuggestion(db as unknown as AppDatabase, id),
       ).rejects.toThrow(
         'Cannot delete an improvement suggestion after a resolution has been recorded',
+      )
+    })
+
+    it('throws conflict when suggestion is submitted for review', async () => {
+      await seedRequiredData(db)
+      const { id } = await createSuggestion(db as unknown as AppDatabase, {
+        requirementId: 1,
+        content: 'Under review',
+      })
+      await requestReview(db as unknown as AppDatabase, id)
+      await expect(
+        deleteSuggestion(db as unknown as AppDatabase, id),
+      ).rejects.toThrow(
+        'Cannot delete an improvement suggestion that has been submitted for review',
       )
     })
   })
@@ -337,6 +391,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Already done',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 1,
         resolutionMotivation: 'Done',
@@ -378,6 +433,7 @@ describe('improvement suggestions DAL', () => {
         requirementId: 1,
         content: 'Resolved',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordResolution(db as unknown as AppDatabase, id, {
         resolution: 2,
         resolutionMotivation: 'Nah',
@@ -417,6 +473,7 @@ describe('improvement suggestions DAL', () => {
           content: 'To resolve',
         },
       )
+      await requestReview(db as unknown as AppDatabase, resolvedId)
       await recordResolution(db as unknown as AppDatabase, resolvedId, {
         resolution: 1,
         resolutionMotivation: 'Fixed',
@@ -429,6 +486,7 @@ describe('improvement suggestions DAL', () => {
           content: 'To dismiss',
         },
       )
+      await requestReview(db as unknown as AppDatabase, dismissedId)
       await recordResolution(db as unknown as AppDatabase, dismissedId, {
         resolution: 2,
         resolutionMotivation: 'Not relevant',
@@ -443,6 +501,87 @@ describe('improvement suggestions DAL', () => {
       expect(counts.pending).toBe(1)
       expect(counts.resolved).toBe(1)
       expect(counts.dismissed).toBe(1)
+    })
+  })
+
+  describe('countSuggestionsForRequirements', () => {
+    it('returns counts per requirement including zero counts', async () => {
+      await seedRequiredData(db)
+      // Add requirements 2 and 3
+      await db.insert(schema.requirements).values([
+        {
+          id: 2,
+          requirementAreaId: 1,
+          sequenceNumber: 2,
+          uniqueId: 'TST-002',
+        },
+        {
+          id: 3,
+          requirementAreaId: 1,
+          sequenceNumber: 3,
+          uniqueId: 'TST-003',
+        },
+      ])
+      await db.insert(schema.requirementVersions).values([
+        {
+          description: 'Req 2',
+          id: 2,
+          requirementId: 2,
+          requiresTesting: false,
+          statusId: 3,
+          versionNumber: 1,
+        },
+        {
+          description: 'Req 3',
+          id: 3,
+          requirementId: 3,
+          requiresTesting: false,
+          statusId: 3,
+          versionNumber: 1,
+        },
+      ])
+
+      // Req 1: 2 suggestions (1 pending, 1 resolved)
+      await createSuggestion(db as unknown as AppDatabase, {
+        requirementId: 1,
+        content: 'Pending on req 1',
+      })
+      const { id: resolvedId } = await createSuggestion(
+        db as unknown as AppDatabase,
+        { requirementId: 1, content: 'Resolved on req 1' },
+      )
+      await requestReview(db as unknown as AppDatabase, resolvedId)
+      await recordResolution(db as unknown as AppDatabase, resolvedId, {
+        resolution: 1,
+        resolutionMotivation: 'Done',
+        resolvedBy: 'r',
+      })
+
+      // Req 2: 1 suggestion (pending)
+      await createSuggestion(db as unknown as AppDatabase, {
+        requirementId: 2,
+        content: 'Pending on req 2',
+      })
+
+      // Req 3: no suggestions
+
+      const map = await countSuggestionsForRequirements(
+        db as unknown as AppDatabase,
+        [1, 2, 3],
+      )
+
+      const req1 = map.get(1)
+      expect(req1).toBeDefined()
+      expect(req1?.total).toBe(2)
+      expect(req1?.pending).toBe(1)
+
+      const req2 = map.get(2)
+      expect(req2).toBeDefined()
+      expect(req2?.total).toBe(1)
+      expect(req2?.pending).toBe(1)
+
+      // Req 3 has no suggestions, so it won't be in the map
+      expect(map.has(3)).toBe(false)
     })
   })
 })

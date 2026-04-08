@@ -143,7 +143,7 @@ export default function SuggestionFormModal({
                   </p>
                 )}
                 <textarea
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   id="suggestion-content"
                   onChange={e => setContent(e.target.value)}
                   placeholder={tf('contentPlaceholder')}
@@ -181,7 +181,7 @@ export default function SuggestionFormModal({
                   </p>
                 )}
                 <input
-                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   id="suggestion-createdBy"
                   onChange={e => setCreatedBy(e.target.value)}
                   placeholder={tf('createdByPlaceholder')}

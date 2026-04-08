@@ -777,6 +777,7 @@ export const improvementSuggestions = sqliteTable(
     requirementVersionId: integer('requirement_version_id'),
     content: text('content').notNull(),
     isReviewRequested: integer('is_review_requested').notNull().default(0),
+    reviewRequestedAt: text('review_requested_at'),
     resolution: integer('resolution'),
     resolutionMotivation: text('resolution_motivation'),
     resolvedBy: text('resolved_by'),

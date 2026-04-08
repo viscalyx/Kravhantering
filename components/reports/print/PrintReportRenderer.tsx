@@ -81,7 +81,7 @@ function SectionRenderer({
     case 'deviation-summary':
       return <DeviationSummarySection section={section} />
     case 'suggestion-list':
-      return <SuggestionListSection section={section} />
+      return <SuggestionListSection locale={locale} section={section} />
     default:
       return null
   }
@@ -923,8 +923,10 @@ function DeviationSummarySection({
 }
 
 function SuggestionListSection({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'suggestion-list' }>
 }) {
   if (section.items.length === 0) {
@@ -959,13 +961,19 @@ function SuggestionListSection({
       )}
       {section.items.map((item, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static report items
-        <SuggestionCard item={item} key={i} />
+        <SuggestionCard item={item} key={i} locale={locale} />
       ))}
     </div>
   )
 }
 
-function SuggestionCard({ item }: { item: SuggestionReportItem }) {
+function SuggestionCard({
+  item,
+  locale,
+}: {
+  item: SuggestionReportItem
+  locale: string
+}) {
   const isResolved = item.resolvedAt !== null
 
   return (
@@ -991,7 +999,7 @@ function SuggestionCard({ item }: { item: SuggestionReportItem }) {
         <StatusBadge color={item.status.color} label={item.status.label} />
         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
           {item.createdBy && <span>{item.createdBy} · </span>}
-          {new Date(item.createdAt).toLocaleDateString()}
+          {new Date(item.createdAt).toLocaleDateString(locale)}
         </span>
       </div>
       <div
@@ -1015,12 +1023,12 @@ function SuggestionCard({ item }: { item: SuggestionReportItem }) {
               fontSize: '0.75rem',
             }}
           >
-            Motivation:
+            {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
           </div>
           <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>
             {item.resolutionMotivation}
           </div>
-          {item.resolvedBy && (
+          {(item.resolvedBy || item.resolvedAt) && (
             <div
               style={{
                 color: '#6b7280',
@@ -1029,8 +1037,9 @@ function SuggestionCard({ item }: { item: SuggestionReportItem }) {
               }}
             >
               {item.resolvedBy}
+              {item.resolvedBy && item.resolvedAt && ' · '}
               {item.resolvedAt &&
-                ` · ${new Date(item.resolvedAt).toLocaleDateString()}`}
+                new Date(item.resolvedAt).toLocaleDateString(locale)}
             </div>
           )}
         </div>

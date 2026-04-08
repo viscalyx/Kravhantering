@@ -351,7 +351,7 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
   },
   improvementSuggestion: {
     en: {
-      definitePlural: 'The improvement suggestions',
+      definitePlural: 'Improvement suggestions',
       plural: 'Improvement suggestions',
       singular: 'Improvement suggestion',
     },

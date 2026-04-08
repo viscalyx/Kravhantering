@@ -243,7 +243,9 @@ Use a configuration like this:
         "requirements_list_packages",
         "requirements_get_package_items",
         "requirements_add_to_package",
-        "requirements_remove_from_package"
+        "requirements_remove_from_package",
+        "requirements_list_improvement_suggestions",
+        "requirements_manage_improvement_suggestion"
       ]
     }
   }
@@ -274,7 +276,9 @@ Example:
         "requirements_list_packages",
         "requirements_get_package_items",
         "requirements_add_to_package",
-        "requirements_remove_from_package"
+        "requirements_remove_from_package",
+        "requirements_list_improvement_suggestions",
+        "requirements_manage_improvement_suggestion"
       ],
       "headers": {
         "Authorization":

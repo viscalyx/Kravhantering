@@ -105,7 +105,13 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
   async assertAuthorized(action: RequirementsAction, context: RequestContext) {
     const requiredRoles = this.policies[action.kind]
 
-    if (!requiredRoles || requiredRoles.length === 0) {
+    if (requiredRoles === undefined) {
+      throw forbiddenError(`No policy defined for action ${action.kind}`, {
+        actorRoles: context.actor.roles,
+      })
+    }
+
+    if (requiredRoles.length === 0) {
       return
     }
 

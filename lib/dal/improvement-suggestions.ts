@@ -124,6 +124,22 @@ export async function createSuggestion(
     throw notFoundError(`Requirement ${data.requirementId} not found`)
   }
 
+  if (data.requirementVersionId) {
+    const version = await db
+      .select({ id: requirementVersions.id })
+      .from(requirementVersions)
+      .where(
+        sql`${requirementVersions.id} = ${data.requirementVersionId} AND ${requirementVersions.requirementId} = ${data.requirementId}`,
+      )
+      .limit(1)
+
+    if (version.length === 0) {
+      throw notFoundError(
+        `Requirement version ${data.requirementVersionId} not found for requirement ${data.requirementId}`,
+      )
+    }
+  }
+
   const now = new Date().toISOString()
   const [inserted] = await db
     .insert(improvementSuggestions)
@@ -148,6 +164,7 @@ export async function updateSuggestion(
     .select({
       id: improvementSuggestions.id,
       resolution: improvementSuggestions.resolution,
+      isReviewRequested: improvementSuggestions.isReviewRequested,
     })
     .from(improvementSuggestions)
     .where(eq(improvementSuggestions.id, suggestionId))
@@ -160,6 +177,12 @@ export async function updateSuggestion(
   if (existing[0].resolution !== null) {
     throw conflictError(
       'Cannot edit an improvement suggestion after a resolution has been recorded',
+    )
+  }
+
+  if (existing[0].isReviewRequested === 1) {
+    throw conflictError(
+      'Cannot edit an improvement suggestion that has been submitted for review',
     )
   }
 
@@ -208,6 +231,7 @@ export async function recordResolution(
     .select({
       id: improvementSuggestions.id,
       resolution: improvementSuggestions.resolution,
+      isReviewRequested: improvementSuggestions.isReviewRequested,
     })
     .from(improvementSuggestions)
     .where(eq(improvementSuggestions.id, suggestionId))
@@ -220,6 +244,12 @@ export async function recordResolution(
   if (existing[0].resolution !== null) {
     throw conflictError(
       'A resolution has already been recorded for this improvement suggestion',
+    )
+  }
+
+  if (existing[0].isReviewRequested !== 1) {
+    throw conflictError(
+      'Can only resolve or dismiss suggestions that have been submitted for review',
     )
   }
 
@@ -244,6 +274,7 @@ export async function deleteSuggestion(
     .select({
       id: improvementSuggestions.id,
       resolution: improvementSuggestions.resolution,
+      isReviewRequested: improvementSuggestions.isReviewRequested,
     })
     .from(improvementSuggestions)
     .where(eq(improvementSuggestions.id, suggestionId))
@@ -256,6 +287,12 @@ export async function deleteSuggestion(
   if (existing[0].resolution !== null) {
     throw conflictError(
       'Cannot delete an improvement suggestion after a resolution has been recorded',
+    )
+  }
+
+  if (existing[0].isReviewRequested === 1) {
+    throw conflictError(
+      'Cannot delete an improvement suggestion that has been submitted for review',
     )
   }
 
@@ -360,11 +397,13 @@ export async function requestReview(
     )
   }
 
+  const now = new Date().toISOString()
   await db
     .update(improvementSuggestions)
     .set({
       isReviewRequested: 1,
-      updatedAt: new Date().toISOString(),
+      reviewRequestedAt: now,
+      updatedAt: now,
     })
     .where(eq(improvementSuggestions.id, suggestionId))
 }
@@ -401,6 +440,7 @@ export async function revertToDraft(
     .update(improvementSuggestions)
     .set({
       isReviewRequested: 0,
+      reviewRequestedAt: null,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(improvementSuggestions.id, suggestionId))

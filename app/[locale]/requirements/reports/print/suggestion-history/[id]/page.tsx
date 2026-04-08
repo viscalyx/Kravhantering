@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
 import {
@@ -14,6 +14,7 @@ import type { ReportModel } from '@/lib/reports/types'
 export default function PrintSuggestionHistoryReportPage() {
   const params = useParams<{ id: string }>()
   const locale = useLocale()
+  const t = useTranslations('reports')
   const [model, setModel] = useState<ReportModel | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,9 +26,9 @@ export default function PrintSuggestionHistoryReportPage() {
       ])
       setModel(buildSuggestionHistoryReport(requirement, suggestions, locale))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report')
+      setError(err instanceof Error ? err.message : t('failedToLoadReport'))
     }
-  }, [params.id, locale])
+  }, [params.id, locale, t])
 
   useEffect(() => {
     loadReport()
@@ -43,7 +44,7 @@ export default function PrintSuggestionHistoryReportPage() {
   if (error) {
     return (
       <div style={{ padding: '2rem', color: '#991b1b' }}>
-        <h1>Error</h1>
+        <h1>{t('errorTitle')}</h1>
         <p>{error}</p>
       </div>
     )
@@ -52,7 +53,7 @@ export default function PrintSuggestionHistoryReportPage() {
   if (!model) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
-        Loading report...
+        {t('loading')}
       </div>
     )
   }

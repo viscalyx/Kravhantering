@@ -273,7 +273,7 @@ function PdfSectionRenderer({
     case 'deviation-summary':
       return <PdfDeviationSummary section={section} />
     case 'suggestion-list':
-      return <PdfSuggestionList section={section} />
+      return <PdfSuggestionList locale={locale} section={section} />
     default:
       return null
   }
@@ -798,8 +798,10 @@ function PdfDeviationSummary({
 }
 
 function PdfSuggestionList({
+  locale,
   section,
 }: {
+  locale: string
   section: Extract<ReportSection, { type: 'suggestion-list' }>
 }) {
   if (section.items.length === 0) {
@@ -828,13 +830,19 @@ function PdfSuggestionList({
       )}
       {section.items.map((item, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static report items
-        <PdfSuggestionCard item={item} key={i} />
+        <PdfSuggestionCard item={item} key={i} locale={locale} />
       ))}
     </View>
   )
 }
 
-function PdfSuggestionCard({ item }: { item: SuggestionReportItem }) {
+function PdfSuggestionCard({
+  item,
+  locale,
+}: {
+  item: SuggestionReportItem
+  locale: string
+}) {
   const isResolved = item.resolvedAt !== null
 
   return (
@@ -860,7 +868,7 @@ function PdfSuggestionCard({ item }: { item: SuggestionReportItem }) {
         <PdfBadge color={item.status.color} label={item.status.label} />
         <Text style={{ fontSize: 7, color: '#6b7280' }}>
           {item.createdBy ? `${item.createdBy} \u00B7 ` : ''}
-          {new Date(item.createdAt).toLocaleDateString()}
+          {new Date(item.createdAt).toLocaleDateString(locale)}
         </Text>
       </View>
       <Text style={{ fontSize: 9, color: '#374151', lineHeight: 1.5 }}>
@@ -883,16 +891,17 @@ function PdfSuggestionCard({ item }: { item: SuggestionReportItem }) {
               marginBottom: 2,
             }}
           >
-            Motivation:
+            {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
           </Text>
           <Text style={{ fontSize: 8, color: '#4b5563' }}>
             {item.resolutionMotivation}
           </Text>
-          {item.resolvedBy && (
+          {(item.resolvedBy || item.resolvedAt) && (
             <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 2 }}>
               {item.resolvedBy}
+              {item.resolvedBy && item.resolvedAt && ' \u00B7 '}
               {item.resolvedAt &&
-                ` \u00B7 ${new Date(item.resolvedAt).toLocaleDateString()}`}
+                new Date(item.resolvedAt).toLocaleDateString(locale)}
             </Text>
           )}
         </View>

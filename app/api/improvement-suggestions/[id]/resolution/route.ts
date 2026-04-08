@@ -47,6 +47,31 @@ export async function POST(
     )
   }
 
+  if (
+    !Number.isFinite(resolution) ||
+    !Number.isInteger(resolution) ||
+    (resolution !== 1 && resolution !== 2)
+  ) {
+    return NextResponse.json(
+      { error: 'resolution must be 1 (resolved) or 2 (dismissed)' },
+      { status: 400 },
+    )
+  }
+
+  if (!resolutionMotivation.trim()) {
+    return NextResponse.json(
+      { error: 'resolutionMotivation must not be empty' },
+      { status: 400 },
+    )
+  }
+
+  if (!resolvedBy.trim()) {
+    return NextResponse.json(
+      { error: 'resolvedBy must not be empty' },
+      { status: 400 },
+    )
+  }
+
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 

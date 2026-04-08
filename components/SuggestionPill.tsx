@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface SuggestionData {
@@ -29,6 +29,7 @@ export default function SuggestionPill({
   suggestion,
 }: SuggestionPillProps) {
   const t = useTranslations('improvementSuggestion')
+  const locale = useLocale()
   const isResolved = suggestion.resolution !== null
   const isActioned = suggestion.resolution === 1
   const effectiveStep =
@@ -72,7 +73,9 @@ export default function SuggestionPill({
         {suggestion.createdBy && <span>{suggestion.createdBy}</span>}
         {suggestion.createdBy && suggestion.createdAt && <span> · </span>}
         {suggestion.createdAt && (
-          <span>{new Date(suggestion.createdAt).toLocaleDateString()}</span>
+          <span>
+            {new Date(suggestion.createdAt).toLocaleDateString(locale)}
+          </span>
         )}
       </p>
 
@@ -100,7 +103,7 @@ export default function SuggestionPill({
             {suggestion.resolvedBy && suggestion.resolvedAt && <span> · </span>}
             {suggestion.resolvedAt && (
               <span>
-                {new Date(suggestion.resolvedAt).toLocaleDateString()}
+                {new Date(suggestion.resolvedAt).toLocaleDateString(locale)}
               </span>
             )}
           </p>
