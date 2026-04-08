@@ -480,6 +480,14 @@ function setupFetch({
         return response({})
       }
 
+      if (
+        url ===
+          `/api/requirements/${currentRequirement.id}/improvement-suggestions` &&
+        method === 'GET'
+      ) {
+        return response({ suggestions: [] })
+      }
+
       throw new Error(`Unhandled fetch: ${method} ${url}`)
     },
   )

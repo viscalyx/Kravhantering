@@ -231,6 +231,7 @@ export default function RequirementDetailClient({
   const [showEditDeviationForm, setShowEditDeviationForm] = useState(false)
   const [showDecisionForm, setShowDecisionForm] = useState(false)
   const [deviationSaving, setDeviationSaving] = useState(false)
+  const [deviationError, setDeviationError] = useState<string | null>(null)
 
   const latestDeviation = useMemo(() => {
     if (deviations.length === 0) return null
@@ -249,6 +250,13 @@ export default function RequirementDetailClient({
     return 'draft'
   }, [latestDeviation])
 
+  const deviationFetchFailed = td('fetchFailed')
+  const deviationSaveFailed = td('saveFailed')
+  const deviationDeleteFailed = td('deleteFailed')
+  const deviationReviewFailed = td('reviewFailed')
+  const deviationRevertFailed = td('revertFailed')
+  const deviationDecisionFailed = td('decisionFailed')
+
   const fetchDeviations = useCallback(async () => {
     if (!packageItemId || !packageSlug) return
     try {
@@ -256,13 +264,16 @@ export default function RequirementDetailClient({
         `/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
       )
       if (res.ok) {
+        setDeviationError(null)
         const data = (await res.json()) as { deviations: DeviationData[] }
         setDeviations(data.deviations)
+      } else {
+        setDeviationError(deviationFetchFailed)
       }
     } catch {
-      // silently fail — deviation data is supplementary
+      setDeviationError(deviationFetchFailed)
     }
-  }, [packageItemId, packageSlug])
+  }, [packageItemId, packageSlug, deviationFetchFailed])
 
   useEffect(() => {
     if (isPackageItemContext) {
@@ -289,12 +300,14 @@ export default function RequirementDetailClient({
         if (res.ok) {
           setShowDeviationForm(false)
           await fetchDeviations()
+        } else {
+          setDeviationError(deviationSaveFailed)
         }
       } finally {
         setDeviationSaving(false)
       }
     },
-    [packageItemId, packageSlug, fetchDeviations],
+    [packageItemId, packageSlug, fetchDeviations, deviationSaveFailed],
   )
 
   const handleEditDeviation = useCallback(
@@ -310,12 +323,14 @@ export default function RequirementDetailClient({
         if (res.ok) {
           setShowEditDeviationForm(false)
           await fetchDeviations()
+        } else {
+          setDeviationError(deviationSaveFailed)
         }
       } finally {
         setDeviationSaving(false)
       }
     },
-    [latestDeviation, fetchDeviations],
+    [latestDeviation, fetchDeviations, deviationSaveFailed],
   )
 
   const handleDeleteDeviation = useCallback(async () => {
@@ -334,11 +349,13 @@ export default function RequirementDetailClient({
       })
       if (res.ok) {
         await fetchDeviations()
+      } else {
+        setDeviationError(deviationDeleteFailed)
       }
     } finally {
       setDeviationSaving(false)
     }
-  }, [latestDeviation, fetchDeviations, confirm, td])
+  }, [latestDeviation, fetchDeviations, confirm, td, deviationDeleteFailed])
 
   const handleRequestReview = useCallback(async () => {
     if (!latestDeviation) return
@@ -350,11 +367,13 @@ export default function RequirementDetailClient({
       )
       if (res.ok) {
         await fetchDeviations()
+      } else {
+        setDeviationError(deviationReviewFailed)
       }
     } finally {
       setDeviationSaving(false)
     }
-  }, [latestDeviation, fetchDeviations])
+  }, [latestDeviation, fetchDeviations, deviationReviewFailed])
 
   const handleRevertToDraft = useCallback(async () => {
     if (!latestDeviation) return
@@ -373,11 +392,13 @@ export default function RequirementDetailClient({
       )
       if (res.ok) {
         await fetchDeviations()
+      } else {
+        setDeviationError(deviationRevertFailed)
       }
     } finally {
       setDeviationSaving(false)
     }
-  }, [latestDeviation, fetchDeviations, confirm, td])
+  }, [latestDeviation, fetchDeviations, confirm, td, deviationRevertFailed])
 
   const handleRecordDecision = useCallback(
     async (decision: 1 | 2, motivation: string, decidedBy: string) => {
@@ -399,12 +420,14 @@ export default function RequirementDetailClient({
         if (res.ok) {
           setShowDecisionForm(false)
           await Promise.all([fetchDeviations(), onChange?.()])
+        } else {
+          setDeviationError(deviationDecisionFailed)
         }
       } finally {
         setDeviationSaving(false)
       }
     },
-    [latestDeviation, fetchDeviations, onChange],
+    [latestDeviation, fetchDeviations, onChange, deviationDecisionFailed],
   )
 
   // ─── Suggestion workflow state ──────────────────────────────────────────────
@@ -430,6 +453,14 @@ export default function RequirementDetailClient({
   const [resolutionTarget, setResolutionTarget] =
     useState<SuggestionData | null>(null)
   const [suggestionSaving, setSuggestionSaving] = useState(false)
+  const [suggestionError, setSuggestionError] = useState<string | null>(null)
+
+  const suggestionFetchFailed = tf('fetchFailed')
+  const suggestionSaveFailed = tf('saveFailed')
+  const suggestionDeleteFailed = tf('deleteFailed')
+  const suggestionReviewFailed = tf('reviewFailed')
+  const suggestionRevertFailed = tf('revertFailed')
+  const suggestionResolutionFailed = tf('resolutionFailed')
 
   const fetchSuggestions = useCallback(async () => {
     try {
@@ -437,24 +468,32 @@ export default function RequirementDetailClient({
         `/api/requirements/${requirementId}/improvement-suggestions`,
       )
       if (res.ok) {
+        setSuggestionError(null)
         const data = (await res.json()) as { suggestions: SuggestionData[] }
         setSuggestionItems(data.suggestions)
+      } else {
+        setSuggestionError(suggestionFetchFailed)
       }
     } catch {
-      // silently fail — suggestion data is supplementary
+      setSuggestionError(suggestionFetchFailed)
     }
-  }, [requirementId])
+  }, [requirementId, suggestionFetchFailed])
 
   useEffect(() => {
     void fetchSuggestions()
   }, [fetchSuggestions])
 
   const performSuggestionMutation = useCallback(
-    async (input: RequestInfo, init?: RequestInit): Promise<boolean> => {
+    async (
+      input: RequestInfo,
+      init?: RequestInit,
+      errorMessage?: string,
+    ): Promise<boolean> => {
       const res = await fetch(input, init)
       if (!res.ok) {
         const details = await readResponseMessage(res)
         console.error('Suggestion mutation failed:', details ?? res.statusText)
+        setSuggestionError(errorMessage ?? details ?? res.statusText)
         return false
       }
       await Promise.all([fetchSuggestions(), onChange?.()])
@@ -482,6 +521,7 @@ export default function RequirementDetailClient({
               requirementVersionId: versionId,
             }),
           },
+          suggestionSaveFailed,
         )
         if (ok) {
           setShowSuggestionForm(false)
@@ -490,7 +530,13 @@ export default function RequirementDetailClient({
         setSuggestionSaving(false)
       }
     },
-    [requirementId, req, selectedVersionNumber, performSuggestionMutation],
+    [
+      requirementId,
+      req,
+      selectedVersionNumber,
+      performSuggestionMutation,
+      suggestionSaveFailed,
+    ],
   )
 
   const handleEditSuggestion = useCallback(
@@ -505,6 +551,7 @@ export default function RequirementDetailClient({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content }),
           },
+          suggestionSaveFailed,
         )
         if (ok) {
           setShowEditSuggestionForm(false)
@@ -514,7 +561,7 @@ export default function RequirementDetailClient({
         setSuggestionSaving(false)
       }
     },
-    [editSuggestionTarget, performSuggestionMutation],
+    [editSuggestionTarget, performSuggestionMutation, suggestionSaveFailed],
   )
 
   const handleDeleteSuggestion = useCallback(
@@ -533,12 +580,13 @@ export default function RequirementDetailClient({
         await performSuggestionMutation(
           `/api/improvement-suggestions/${suggestionId}`,
           { method: 'DELETE' },
+          suggestionDeleteFailed,
         )
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [performSuggestionMutation, confirm, tf],
+    [performSuggestionMutation, confirm, tf, suggestionDeleteFailed],
   )
 
   const handleSuggestionRequestReview = useCallback(
@@ -548,12 +596,13 @@ export default function RequirementDetailClient({
         await performSuggestionMutation(
           `/api/improvement-suggestions/${suggestionId}/request-review`,
           { method: 'POST' },
+          suggestionReviewFailed,
         )
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [performSuggestionMutation],
+    [performSuggestionMutation, suggestionReviewFailed],
   )
 
   const handleSuggestionRevertToDraft = useCallback(
@@ -572,12 +621,13 @@ export default function RequirementDetailClient({
         await performSuggestionMutation(
           `/api/improvement-suggestions/${suggestionId}/revert-to-draft`,
           { method: 'POST' },
+          suggestionRevertFailed,
         )
       } finally {
         setSuggestionSaving(false)
       }
     },
-    [performSuggestionMutation, confirm, tf],
+    [performSuggestionMutation, confirm, tf, suggestionRevertFailed],
   )
 
   const handleRecordResolution = useCallback(
@@ -596,6 +646,7 @@ export default function RequirementDetailClient({
               resolvedBy,
             }),
           },
+          suggestionResolutionFailed,
         )
         if (ok) {
           setShowResolutionForm(false)
@@ -605,7 +656,7 @@ export default function RequirementDetailClient({
         setSuggestionSaving(false)
       }
     },
-    [resolutionTarget, performSuggestionMutation],
+    [resolutionTarget, performSuggestionMutation, suggestionResolutionFailed],
   )
 
   const getSuggestionStep = useCallback(
@@ -2280,6 +2331,14 @@ export default function RequirementDetailClient({
                     )}
                   </div>
                   {/* Deviation workflow buttons */}
+                  {deviationError && (
+                    <p
+                      className="text-sm text-red-600 dark:text-red-400"
+                      role="alert"
+                    >
+                      {deviationError}
+                    </p>
+                  )}
                   {deviationStep === null || deviationStep === 'decided' ? (
                     <button
                       className="inline-flex items-center gap-1.5 w-full justify-center rounded-xl border border-amber-500 bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-600 hover:border-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 disabled:opacity-50 min-h-[44px] min-w-[44px]"
@@ -2891,7 +2950,16 @@ export default function RequirementDetailClient({
                 </button>
               </div>
 
-              {versionSuggestionItems.length === 0 ? (
+              {suggestionError && (
+                <p
+                  className="mt-2 text-sm text-red-600 dark:text-red-400"
+                  role="alert"
+                >
+                  {suggestionError}
+                </p>
+              )}
+
+              {!suggestionError && versionSuggestionItems.length === 0 ? (
                 <p className="text-sm text-secondary-500 dark:text-secondary-400">
                   {tf('noSuggestions')}
                 </p>
