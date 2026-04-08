@@ -1,9 +1,10 @@
 'use client'
 
-import { Download, FileText, Plus, Printer } from 'lucide-react'
+import { Download, FileText, Plus, Printer, Sparkles } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import AiRequirementGenerator from '@/components/AiRequirementGenerator'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementsTable from '@/components/RequirementsTable'
 import {
@@ -169,6 +170,7 @@ export default function RequirementsClient({
   const searchParams = useSearchParams()
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [pinnedRow, setPinnedRow] = useState<RequirementRow | null>(null)
+  const [aiModalOpen, setAiModalOpen] = useState(false)
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasLoadedColumnPreferences, setHasLoadedColumnPreferences] =
@@ -662,154 +664,174 @@ export default function RequirementsClient({
   }
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
-        <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
-          {shouldShowInitialLoadingState ? (
-            <div
-              aria-live="polite"
-              className="flex min-h-[20rem] flex-col items-center justify-center gap-3 px-6 py-16"
-              data-testid="requirements-card-loading"
-            >
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
-              <p className="text-secondary-600 dark:text-secondary-400">
-                {tc('loadingRequirements')}
-              </p>
-            </div>
-          ) : (
-            <RequirementsTable
-              areas={areas}
-              categories={categories}
-              columnDefaults={normalizedColumnDefaults}
-              columnWidths={columnWidths}
-              excludeColumns={['needsReference', 'packageItemStatus']}
-              expandedId={selectedId}
-              filterValues={filters}
-              floatingActions={[
-                {
-                  developerModeContext: 'requirements table',
-                  developerModeValue: 'new requirement',
-                  ariaLabel: t('newRequirement'),
-                  href: '/requirements/new',
-                  icon: <Plus aria-hidden="true" className="h-4 w-4" />,
-                  id: 'create',
-                  position: 'beforeColumns',
-                  variant: 'primary',
-                },
-                {
-                  developerModeContext: 'requirements table',
-                  developerModeValue: 'print',
-                  ariaLabel: tc('print'),
-                  icon: <Printer aria-hidden="true" className="h-4 w-4" />,
-                  id: 'print',
-                  menuItems: [
-                    {
-                      href: `/requirements/reports/print/list?ids=${displayRows.map(r => r.id).join(',')}`,
-                      id: 'print-list',
-                      label: t('printListReport'),
-                    },
-                    {
-                      href: `/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
-                      id: 'pdf-list',
-                      label: t('downloadListReportPdf'),
-                    },
-                  ],
-                },
-                {
-                  developerModeContext: 'requirements table',
-                  developerModeValue: 'export',
-                  ariaLabel: tc('export'),
-                  icon: <Download aria-hidden="true" className="h-4 w-4" />,
-                  id: 'export',
-                  onClick: handleExport,
-                },
-                ...(selectedIds.size > 0 && anySelectedIsReview
-                  ? [
+    <>
+      <div className="section-padding px-4 sm:px-6 lg:px-8">
+        <div className="container-custom">
+          <div className="relative rounded-2xl border bg-white/80 shadow-sm backdrop-blur-sm dark:border-secondary-700 dark:bg-secondary-900/60">
+            {shouldShowInitialLoadingState ? (
+              <div
+                aria-live="polite"
+                className="flex min-h-[20rem] flex-col items-center justify-center gap-3 px-6 py-16"
+                data-testid="requirements-card-loading"
+              >
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
+                <p className="text-secondary-600 dark:text-secondary-400">
+                  {tc('loadingRequirements')}
+                </p>
+              </div>
+            ) : (
+              <RequirementsTable
+                areas={areas}
+                categories={categories}
+                columnDefaults={normalizedColumnDefaults}
+                columnWidths={columnWidths}
+                excludeColumns={['needsReference', 'packageItemStatus']}
+                expandedId={selectedId}
+                filterValues={filters}
+                floatingActions={[
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'new requirement',
+                    ariaLabel: t('newRequirement'),
+                    href: '/requirements/new',
+                    icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                    id: 'create',
+                    position: 'beforeColumns',
+                    variant: 'primary',
+                  },
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'ai generate',
+                    ariaLabel: t('aiGenerate'),
+                    icon: <Sparkles aria-hidden="true" className="h-4 w-4" />,
+                    id: 'ai-generate',
+                    onClick: () => setAiModalOpen(true),
+                    position: 'beforeColumns',
+                  },
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'print',
+                    ariaLabel: tc('print'),
+                    icon: <Printer aria-hidden="true" className="h-4 w-4" />,
+                    id: 'print',
+                    menuItems: [
                       {
-                        ariaLabel: t('combinedReviewReport'),
-                        badge: selectedIds.size,
-                        customStyle: {
-                          borderColor: '#eab308',
-                          backgroundColor: '#eab30815',
-                        },
-                        developerModeContext: 'requirements table',
-                        developerModeValue: 'review report',
-                        disabled: !allSelectedAreReview,
-                        icon: (
-                          <FileText aria-hidden="true" className="h-4 w-4" />
-                        ),
-                        id: 'review-report',
-                        menuItems: [
-                          {
-                            href: `/requirements/reports/print/review-combined?ids=${Array.from(selectedIds).join(',')}`,
-                            id: 'review-report-print',
-                            label: t('printCombinedReport'),
-                          },
-                          {
-                            href: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
-                            id: 'review-report-pdf',
-                            label: t('downloadCombinedReportPdf'),
-                          },
-                        ],
-                        tooltip: !allSelectedAreReview
-                          ? t('reviewReportAllMustBeReview')
-                          : t('combinedReviewReport'),
+                        href: `/requirements/reports/print/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                        id: 'print-list',
+                        label: t('printListReport'),
                       },
-                    ]
-                  : []),
-              ]}
-              getName={getName}
-              getStatusName={getStatusName}
-              hasMore={hasMore}
-              loading={loading}
-              loadingMore={loadingMore}
-              locale={locale}
-              normReferences={normReferenceOptions}
-              onColumnWidthsChange={setColumnWidths}
-              onFilterChange={val => {
-                setFilters(val)
-                setSelectedId(null)
-                setPinnedRow(null)
-                setSelectedIds(new Set())
-              }}
-              onLoadMore={loadMore}
-              onRowClick={id => {
-                setSelectedId(prev => {
-                  const next = prev === id ? null : id
-                  if (prev !== id || next === null) setPinnedRow(null)
-                  return next
-                })
-              }}
-              onSelectionChange={setSelectedIds}
-              onSortChange={setSortState}
-              onVisibleColumnsChange={setVisibleColumns}
-              pinnedIds={pinnedIds}
-              qualityCharacteristics={qualityCharacteristics}
-              renderExpanded={id => (
-                <RequirementDetailClient
-                  inline
-                  onChange={refreshRows}
-                  onClose={() => {
-                    setSelectedId(null)
-                    setPinnedRow(null)
-                    fetchData()
-                  }}
-                  requirementId={id}
-                />
-              )}
-              riskLevels={riskLevels}
-              rows={displayRows}
-              selectable
-              selectedIds={selectedIds}
-              sortState={sortState}
-              statusOptions={statusOptions}
-              types={types}
-              usageScenarios={usageScenarios}
-              visibleColumns={visibleColumns}
-            />
-          )}
+                      {
+                        href: `/requirements/reports/pdf/list?ids=${displayRows.map(r => r.id).join(',')}`,
+                        id: 'pdf-list',
+                        label: t('downloadListReportPdf'),
+                      },
+                    ],
+                  },
+                  {
+                    developerModeContext: 'requirements table',
+                    developerModeValue: 'export',
+                    ariaLabel: tc('export'),
+                    icon: <Download aria-hidden="true" className="h-4 w-4" />,
+                    id: 'export',
+                    onClick: handleExport,
+                  },
+                  ...(selectedIds.size > 0 && anySelectedIsReview
+                    ? [
+                        {
+                          ariaLabel: t('combinedReviewReport'),
+                          badge: selectedIds.size,
+                          customStyle: {
+                            borderColor: '#eab308',
+                            backgroundColor: '#eab30815',
+                          },
+                          developerModeContext: 'requirements table',
+                          developerModeValue: 'review report',
+                          disabled: !allSelectedAreReview,
+                          icon: (
+                            <FileText aria-hidden="true" className="h-4 w-4" />
+                          ),
+                          id: 'review-report',
+                          menuItems: [
+                            {
+                              href: `/requirements/reports/print/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                              id: 'review-report-print',
+                              label: t('printCombinedReport'),
+                            },
+                            {
+                              href: `/requirements/reports/pdf/review-combined?ids=${Array.from(selectedIds).join(',')}`,
+                              id: 'review-report-pdf',
+                              label: t('downloadCombinedReportPdf'),
+                            },
+                          ],
+                          tooltip: !allSelectedAreReview
+                            ? t('reviewReportAllMustBeReview')
+                            : t('combinedReviewReport'),
+                        },
+                      ]
+                    : []),
+                ]}
+                getName={getName}
+                getStatusName={getStatusName}
+                hasMore={hasMore}
+                loading={loading}
+                loadingMore={loadingMore}
+                locale={locale}
+                normReferences={normReferenceOptions}
+                onColumnWidthsChange={setColumnWidths}
+                onFilterChange={val => {
+                  setFilters(val)
+                  setSelectedId(null)
+                  setPinnedRow(null)
+                  setSelectedIds(new Set())
+                }}
+                onLoadMore={loadMore}
+                onRowClick={id => {
+                  setSelectedId(prev => {
+                    const next = prev === id ? null : id
+                    if (prev !== id || next === null) setPinnedRow(null)
+                    return next
+                  })
+                }}
+                onSelectionChange={setSelectedIds}
+                onSortChange={setSortState}
+                onVisibleColumnsChange={setVisibleColumns}
+                pinnedIds={pinnedIds}
+                qualityCharacteristics={qualityCharacteristics}
+                renderExpanded={id => (
+                  <RequirementDetailClient
+                    inline
+                    onChange={refreshRows}
+                    onClose={() => {
+                      setSelectedId(null)
+                      setPinnedRow(null)
+                      fetchData()
+                    }}
+                    requirementId={id}
+                  />
+                )}
+                riskLevels={riskLevels}
+                rows={displayRows}
+                selectable
+                selectedIds={selectedIds}
+                sortState={sortState}
+                statusOptions={statusOptions}
+                types={types}
+                usageScenarios={usageScenarios}
+                visibleColumns={visibleColumns}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+      <AiRequirementGenerator
+        areas={areas}
+        onClose={() => setAiModalOpen(false)}
+        onCreated={() => {
+          fetchData()
+          refreshRows()
+        }}
+        open={aiModalOpen}
+      />
+    </>
   )
 }

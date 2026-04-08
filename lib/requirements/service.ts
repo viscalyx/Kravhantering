@@ -176,6 +176,21 @@ export interface TransitionRequirementInput extends RequirementRefInput {
   toStatusId: number
 }
 
+export interface GenerateRequirementsInput {
+  customInstruction?: string
+  locale?: ResponseLocale
+  model?: string
+  topic: string
+}
+
+export interface GenerateRequirementsOutput {
+  message: string
+  model: string
+  requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
+  stats: import('@/lib/ai/ollama-client').GenerationStats
+  thinking: string
+}
+
 export interface PackageRefInput {
   packageId?: number
   packageSlug?: string
@@ -564,6 +579,11 @@ export interface RequirementsService {
     context: RequestContext,
     input: AddToPackageInput,
   ): Promise<AddToPackageOutput>
+
+  generateRequirements(
+    context: RequestContext,
+    input: GenerateRequirementsInput,
+  ): Promise<GenerateRequirementsOutput>
   getPackageItems(
     context: RequestContext,
     input: GetPackageItemsInput,
@@ -2249,6 +2269,91 @@ export function createRequirementsService(
               responseFormat,
             ),
             result: { id: input.suggestionId },
+          }
+        },
+      )
+    },
+
+    async generateRequirements(context, input) {
+      const locale = input.locale ?? 'en'
+
+      await authorize(authorization, { kind: 'generate_requirements' }, context)
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.generate_requirements',
+        { topic: input.topic.slice(0, 100), model: input.model },
+        async () => {
+          const nameKey = locale === 'sv' ? 'nameSv' : 'nameEn'
+
+          const [categories, types, qcs, riskLevels, scenarios] =
+            await Promise.all([
+              listCategories(db),
+              listTypes(db),
+              listQualityCharacteristics(db),
+              listRiskLevels(db),
+              listScenarios(db),
+            ])
+
+          const qcMap = new Map(qcs.map(qc => [qc.id, qc]))
+
+          const taxonomy: import('@/lib/ai/requirement-prompt').TaxonomyData = {
+            categories: categories.map(c => ({ id: c.id, name: c[nameKey] })),
+            qualityCharacteristics: qcs.map(qc => ({
+              id: qc.id,
+              name: qc[nameKey],
+              parentName: qc.parentId
+                ? qcMap.get(qc.parentId)?.[nameKey]
+                : undefined,
+            })),
+            riskLevels: riskLevels.map(r => ({ id: r.id, name: r[nameKey] })),
+            scenarios: scenarios.map(s => ({ id: s.id, name: s[nameKey] })),
+            types: types.map(t => ({ id: t.id, name: t[nameKey] })),
+          }
+
+          const {
+            buildSystemPrompt,
+            buildUserPrompt,
+            REQUIREMENT_FORMAT_SCHEMA,
+            validateGeneratedRequirements,
+          } = await import('@/lib/ai/requirement-prompt')
+          const { generateChat } = await import('@/lib/ai/ollama-client')
+
+          const systemPrompt = buildSystemPrompt(
+            taxonomy,
+            locale as 'en' | 'sv',
+          )
+          const userPrompt = buildUserPrompt(
+            input.topic,
+            input.customInstruction,
+            locale as 'en' | 'sv',
+          )
+
+          const result = await generateChat<{
+            requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
+          }>({
+            format: REQUIREMENT_FORMAT_SCHEMA,
+            messages: [
+              { content: systemPrompt, role: 'system' },
+              { content: userPrompt, role: 'user' },
+            ],
+            model: input.model,
+          })
+
+          const validated = validateGeneratedRequirements(
+            result.content.requirements,
+            taxonomy,
+          )
+
+          const model = input.model ?? process.env.OLLAMA_MODEL ?? 'qwen3:14b'
+
+          return {
+            message: `Generated ${validated.length} requirements for topic: ${input.topic}`,
+            model,
+            requirements: validated,
+            stats: result.stats,
+            thinking: result.thinking,
           }
         },
       )

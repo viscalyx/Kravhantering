@@ -118,6 +118,93 @@ docs when working on it:
 - [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
 - [docs/TODO-mcp-server-auth-plan.md](docs/TODO-mcp-server-auth-plan.md)
 
+## Ollama (AI Requirement Generation)
+
+The dev container includes an **Ollama** sidecar for local AI-powered
+requirement generation. Ollama runs as a separate Docker Compose
+service and auto-pulls the configured model on first start.
+
+### Configuration
+
+| Variable       | Default                         | Description               |
+| -------------- | ------------------------------- | ------------------------- |
+| `OLLAMA_HOST`  | `http://ollama:11434`           | Ollama API URL            |
+| `OLLAMA_MODEL` | `qwen3:14b`                     | Model to auto-pull        |
+
+Override these in `.env` or `.devcontainer/docker-compose.yml`.
+
+### Checking Ollama Status (Inside Dev Container)
+
+```bash
+# Is Ollama running?
+curl -sf http://ollama:11434/
+# → "Ollama is running"
+
+# List downloaded models
+curl -s http://ollama:11434/api/tags | jq .
+
+# List models via the app's API
+curl -s http://localhost:3000/api/ai/models | jq .
+```
+
+### Checking Ollama Status (From Host)
+
+VS Code starts the Compose project with its own project name, so
+bare `docker compose` commands won't find the containers. Use
+`docker ps` to find the actual Ollama container first:
+
+```bash
+# Find the Ollama container name/ID
+docker ps --filter "ancestor=ollama/ollama" \
+  --format "{{.ID}}  {{.Names}}  {{.Status}}"
+
+# View its logs (shows entrypoint + pull progress)
+docker logs -f <container_name>
+
+# Exec into the Ollama container
+docker exec -it <container_name> bash
+
+# Once inside, test the entrypoint logic
+ollama list
+```
+
+To restart the Ollama sidecar (re-runs the entrypoint):
+
+```bash
+docker restart <container_name>
+docker logs -f <container_name>
+```
+
+### Pulling Models Manually
+
+If the auto-pull didn't run (e.g. first start before the
+entrypoint fix), pull from inside the dev container:
+
+```bash
+# Pull the default model (~9 GB)
+curl -X POST http://ollama:11434/api/pull \
+  -d '{"name": "qwen3:14b"}' --no-buffer
+
+# Or pull a smaller model for quick testing (~1.5 GB)
+curl -X POST http://ollama:11434/api/pull \
+  -d '{"name": "qwen3:1.7b"}' --no-buffer
+```
+
+### GPU Acceleration
+
+For NVIDIA GPU support, add the GPU override when starting:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml \
+  -f .devcontainer/docker-compose.gpu.yml up -d
+```
+
+### Persistent Storage
+
+Downloaded models are stored in the `ollama-data` Docker volume.
+Models persist across container rebuilds — only the first start
+requires a download.
+
 ## Internationalization
 
 The application supports **Swedish** (default) and **English**.

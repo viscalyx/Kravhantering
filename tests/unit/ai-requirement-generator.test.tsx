@@ -1,0 +1,131 @@
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('next-intl', () => ({
+  useLocale: () => 'en',
+  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return Object.entries(params).reduce(
+        (s, [k, v]) => s.replace(`{${k}}`, String(v)),
+        key,
+      )
+    }
+    return key
+  },
+}))
+
+vi.mock('@/components/ConfirmModal', () => ({
+  useConfirmModal: () => ({
+    confirm: vi.fn().mockResolvedValue(true),
+  }),
+}))
+
+// Mock fetch globally
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
+
+import AiRequirementGenerator from '@/components/AiRequirementGenerator'
+
+const testAreas = [
+  { id: 1, name: 'Security' },
+  { id: 2, name: 'Performance' },
+]
+
+describe('AiRequirementGenerator', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    // Default: models endpoint returns models
+    mockFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/ai/models') {
+        return {
+          json: async () => ({
+            models: [
+              { name: 'qwen3:14b', parameter_size: '14B', size: 9300000000 },
+            ],
+          }),
+          ok: true,
+        }
+      }
+      return { json: async () => ({}), ok: true }
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it('renders when open', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    expect(screen.getByText('generateTitle')).toBeInTheDocument()
+    expect(screen.getByLabelText('topicLabel')).toBeInTheDocument()
+    expect(screen.getByLabelText('areaLabel')).toBeInTheDocument()
+    expect(screen.getByLabelText('modelLabel')).toBeInTheDocument()
+  })
+
+  it('does not render when closed', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open={false}
+      />,
+    )
+
+    expect(screen.queryByText('generateTitle')).not.toBeInTheDocument()
+  })
+
+  it('renders area options', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    const areaSelect = screen.getByLabelText('areaLabel')
+    expect(areaSelect).toBeInTheDocument()
+    expect(screen.getByText('Security')).toBeInTheDocument()
+    expect(screen.getByText('Performance')).toBeInTheDocument()
+  })
+
+  it('disables generate button when topic or area is empty', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    const generateButton = screen.getByRole('button', {
+      name: /generateButton/i,
+    })
+    expect(generateButton).toBeDisabled()
+  })
+
+  it('has a close button', () => {
+    const onClose = vi.fn()
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={onClose}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    expect(screen.getByLabelText('close')).toBeInTheDocument()
+  })
+})
