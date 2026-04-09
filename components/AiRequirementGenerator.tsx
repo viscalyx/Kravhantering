@@ -455,7 +455,7 @@ export default function AiRequirementGenerator({
             </h2>
             <button
               aria-label={tc('close')}
-              className="rounded-lg p-1.5 text-secondary-500 transition-colors hover:bg-secondary-100 hover:text-secondary-700 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-200"
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-secondary-500 transition-colors hover:bg-secondary-100 hover:text-secondary-700 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-200"
               onClick={handleClose}
               type="button"
             >

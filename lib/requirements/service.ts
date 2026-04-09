@@ -2290,32 +2290,8 @@ export function createRequirementsService(
         'requirements.generate_requirements',
         { topic: topic.slice(0, 100), model: input.model },
         async () => {
-          const nameKey = locale === 'sv' ? 'nameSv' : 'nameEn'
-
-          const [categories, types, qcs, riskLevels, scenarios] =
-            await Promise.all([
-              listCategories(db),
-              listTypes(db),
-              listQualityCharacteristics(db),
-              listRiskLevels(db),
-              listScenarios(db),
-            ])
-
-          const qcMap = new Map(qcs.map(qc => [qc.id, qc]))
-
-          const taxonomy: import('@/lib/ai/requirement-prompt').TaxonomyData = {
-            categories: categories.map(c => ({ id: c.id, name: c[nameKey] })),
-            qualityCharacteristics: qcs.map(qc => ({
-              id: qc.id,
-              name: qc[nameKey],
-              parentName: qc.parentId
-                ? qcMap.get(qc.parentId)?.[nameKey]
-                : undefined,
-            })),
-            riskLevels: riskLevels.map(r => ({ id: r.id, name: r[nameKey] })),
-            scenarios: scenarios.map(s => ({ id: s.id, name: s[nameKey] })),
-            types: types.map(t => ({ id: t.id, name: t[nameKey] })),
-          }
+          const { loadTaxonomy } = await import('@/lib/ai/taxonomy')
+          const taxonomy = await loadTaxonomy(db, locale as 'en' | 'sv')
 
           const {
             buildSystemPrompt,
