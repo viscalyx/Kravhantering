@@ -83,6 +83,9 @@ export type RequirementsAction =
       suggestionId?: number
       requirementId?: number
     }
+  | {
+      kind: 'generate_requirements'
+    }
 
 export interface AuthorizationService {
   assertAuthorized(

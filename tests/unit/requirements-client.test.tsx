@@ -48,6 +48,10 @@ vi.mock('@/components/HelpPanel', () => ({
   useHelpContent: helpPanelState.useHelpContent,
 }))
 
+vi.mock('@/components/AiRequirementGenerator', () => ({
+  default: () => null,
+}))
+
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: RequirementsTableProps) => {
     const {
@@ -594,7 +598,7 @@ describe('RequirementsClient', () => {
       ),
     )
     expect(screen.getByTestId('floating-actions-order').textContent).toBe(
-      'create:beforeColumns:primary,print:afterColumns:default,export:afterColumns:default',
+      'create:beforeColumns:primary,ai-generate:beforeColumns:default,print:afterColumns:default,export:afterColumns:default',
     )
     expect(screen.queryByText('newRequirement')).toBeNull()
     expect(

@@ -1,0 +1,12 @@
+# GPU override for Ollama
+# Usage: set DEVCONTAINER_COMPOSE_FILES in devcontainer.json or run manually:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

@@ -19,12 +19,34 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
-    # Intentionally omit seccomp=unconfined in the strict opt-out configuration.
-    # This keeps the container closer to the default runtime profile, but nested
-    # sandbox tooling such as Bubblewrap-based agent edits may stop working.
+      - OLLAMA_HOST=http://ollama:11434
+    # Intentionally omit cap_add SYS_ADMIN, seccomp=unconfined, and
+    # systempaths=unconfined.  This keeps the container closer to the default
+    # Docker runtime profile, but Bubblewrap-based agent sandboxing will fall
+    # back to unsandboxed execution.
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true
+    depends_on:
+      ollama:
+        condition: service_healthy
 
-# volumes:
-# npm-cache:
+  ollama:
+    image: ollama/ollama:0.20.4
+    volumes:
+      - ollama-data:/root/.ollama
+      - ../../.devcontainer/ollama-entrypoint.sh:/ollama-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/ollama-entrypoint.sh"]
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
+    expose:
+      - "11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+    init: true
+
+volumes:
+  ollama-data:

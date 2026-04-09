@@ -19,15 +19,45 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+      - OLLAMA_HOST=http://ollama:11434
+    cap_add:
+      # Allow bwrap/unshare to mount /proc inside its namespace so that
+      # sandbox-wrapped agent commands work without falling back to
+      # unsandboxed execution.
+      - SYS_ADMIN
     security_opt:
       # Allow nested tool sandboxes (for example Bubblewrap/unshare) without
       # granting the whole devcontainer privileged mode.
-      # If the same error ever shows up on a different Linux host, the next narrow
-      # fallback would be apparmor=unconfined
       - seccomp=unconfined
+      # Docker masks certain /proc paths (kcore, keys, etc.) by default.
+      # The kernel refuses to mount a new procfs in a child PID namespace
+      # when the parent proc has masked entries, which breaks bwrap
+      # --unshare-pid.  Unmasking system paths fixes this narrowly.
+      - systempaths=unconfined
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true
+    depends_on:
+      ollama:
+        condition: service_healthy
 
-# volumes:
-# npm-cache:
+  ollama:
+    image: ollama/ollama:0.20.4
+    volumes:
+      - ollama-data:/root/.ollama
+      - ../.devcontainer/ollama-entrypoint.sh:/ollama-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/ollama-entrypoint.sh"]
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
+    expose:
+      - "11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+    # Proper init system for signal handling
+    init: true
+
+volumes:
+  ollama-data:
