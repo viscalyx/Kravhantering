@@ -269,9 +269,9 @@ after you pull the latest repo changes, rebuild the
 Codespace/devcontainer so the updated `.devcontainer/docker-compose.yml`
 security setting takes effect.
 
-If you intentionally selected the
-**Kravhantering Development (Strict)** configuration, those
-errors can be expected because that opt-out configuration does
+If you intentionally selected the default
+**Kravhantering Development** configuration, those
+errors can be expected because that configuration does
 not include `seccomp=unconfined`.
 
 <!-- markdownlint-disable MD013 -->

@@ -19,6 +19,9 @@ services:
     environment:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
+    # WARNING: This profile grants elevated privileges (SYS_ADMIN,
+    # seccomp=unconfined) and is intended only for trusted code.
+    # It must remain opt-in — do not use as the default configuration.
     cap_add:
       # Allow bwrap/unshare to mount /proc inside its namespace so that
       # sandbox-wrapped agent commands work without falling back to

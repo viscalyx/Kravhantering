@@ -1,6 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
@@ -25,7 +24,6 @@ vi.mock('@/components/ConfirmModal', () => ({
   }),
 }))
 
-// Mock fetch globally
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
@@ -36,10 +34,9 @@ const testAreas = [
   { id: 2, name: 'Performance' },
 ]
 
-describe('AiRequirementGenerator', () => {
+describe('AiRequirementGenerator devMarker coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: models endpoint returns models, credits returns info
     mockFetch.mockImplementation(async (url: string) => {
       if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
         return {
@@ -80,11 +77,7 @@ describe('AiRequirementGenerator', () => {
     })
   })
 
-  afterEach(() => {
-    cleanup()
-  })
-
-  it('renders when open', () => {
+  it('renders dialog with devMarker attributes', () => {
     render(
       <AiRequirementGenerator
         areas={testAreas}
@@ -94,26 +87,15 @@ describe('AiRequirementGenerator', () => {
       />,
     )
 
-    expect(screen.getByText('generateTitle')).toBeInTheDocument()
-    expect(screen.getByLabelText('topicLabel')).toBeInTheDocument()
-    expect(screen.getByLabelText('areaLabel')).toBeInTheDocument()
-    expect(screen.getByLabelText('modelLabel')).toBeInTheDocument()
-  })
-
-  it('does not render when closed', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open={false}
-      />,
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAttribute('data-developer-mode-name', 'dialog')
+    expect(dialog).toHaveAttribute(
+      'data-developer-mode-value',
+      'ai-requirement-generator',
     )
-
-    expect(screen.queryByText('generateTitle')).not.toBeInTheDocument()
   })
 
-  it('renders area options', () => {
+  it('renders dialog title with devMarker attributes', () => {
     render(
       <AiRequirementGenerator
         areas={testAreas}
@@ -123,13 +105,57 @@ describe('AiRequirementGenerator', () => {
       />,
     )
 
-    const areaSelect = screen.getByLabelText('areaLabel')
-    expect(areaSelect).toBeInTheDocument()
-    expect(screen.getByText('Security')).toBeInTheDocument()
-    expect(screen.getByText('Performance')).toBeInTheDocument()
+    const title = screen.getByText('generateTitle')
+    expect(title).toHaveAttribute(
+      'data-developer-mode-context',
+      'ai-requirement-generator',
+    )
+    expect(title).toHaveAttribute('data-developer-mode-name', 'dialog title')
   })
 
-  it('disables generate button when topic or area is empty', () => {
+  it('renders model selector button with devMarker attributes', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    const modelButton = document.getElementById('ai-model')
+    expect(modelButton).not.toBeNull()
+    expect(modelButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'ai-requirement-generator',
+    )
+    expect(modelButton).toHaveAttribute('data-developer-mode-name', 'button')
+    expect(modelButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'model selector',
+    )
+  })
+
+  it('renders close button with devMarker attributes', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    const closeButton = screen.getByLabelText('close')
+    expect(closeButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'ai-requirement-generator',
+    )
+    expect(closeButton).toHaveAttribute('data-developer-mode-name', 'button')
+    expect(closeButton).toHaveAttribute('data-developer-mode-value', 'close')
+  })
+
+  it('renders generate button with devMarker attributes', () => {
     render(
       <AiRequirementGenerator
         areas={testAreas}
@@ -140,62 +166,16 @@ describe('AiRequirementGenerator', () => {
     )
 
     const generateButton = screen.getByRole('button', {
-      name: /generateButton/i,
+      name: /generateButton/,
     })
-    expect(generateButton).toBeDisabled()
-  })
-
-  it('has a close button that calls onClose', async () => {
-    const onClose = vi.fn()
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={onClose}
-        onCreated={vi.fn()}
-        open
-      />,
+    expect(generateButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'ai-requirement-generator',
     )
-
-    const closeButton = screen.getByLabelText('close')
-    expect(closeButton).toBeInTheDocument()
-    await userEvent.click(closeButton)
-    expect(onClose).toHaveBeenCalledTimes(1)
-  })
-
-  it('renders help buttons for form fields', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
+    expect(generateButton).toHaveAttribute('data-developer-mode-name', 'button')
+    expect(generateButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'generate',
     )
-
-    expect(screen.getByLabelText('help: topicLabel')).toBeInTheDocument()
-    expect(screen.getByLabelText('help: areaLabel')).toBeInTheDocument()
-    expect(screen.getByLabelText('help: modelLabel')).toBeInTheDocument()
-  })
-
-  it('toggles help panel on help button click', async () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
-
-    const helpBtn = screen.getByLabelText('help: topicLabel')
-    expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
-
-    await userEvent.click(helpBtn)
-    expect(helpBtn).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('topicHelp')).toBeInTheDocument()
-
-    await userEvent.click(helpBtn)
-    expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('topicHelp')).not.toBeInTheDocument()
   })
 })

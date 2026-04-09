@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     customInstruction?: string
     locale?: string
     model?: string
+    reasoningEffort?: string
     supportedParameters?: string[]
     topic?: string
   }
@@ -92,6 +93,10 @@ export async function POST(request: Request) {
             { content: userPrompt, role: 'user' },
           ],
           model: body.model,
+          reasoningEffort:
+            typeof body.reasoningEffort === 'string'
+              ? body.reasoningEffort
+              : undefined,
           signal: request.signal,
           supportedParameters: Array.isArray(body.supportedParameters)
             ? body.supportedParameters

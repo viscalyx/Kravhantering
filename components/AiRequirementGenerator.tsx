@@ -24,6 +24,7 @@ import {
   getDefaultInstruction,
   type TaxonomyData,
 } from '@/lib/ai/requirement-prompt'
+import { devMarker } from '@/lib/developer-mode-markers'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,7 +61,10 @@ interface CreditInfo {
 
 type Phase = 'done' | 'error' | 'generating' | 'idle' | 'thinking'
 
-const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
+const richTags = {
+  em: (chunks: ReactNode) => <em>{chunks}</em>,
+  strong: (chunks: ReactNode) => <strong>{chunks}</strong>,
+}
 
 // ---------------------------------------------------------------------------
 // Provider display names
@@ -168,6 +172,7 @@ export default function AiRequirementGenerator({
   const [activeFilters, setActiveFilters] = useState<string[]>([])
   const [showCapSettings, setShowCapSettings] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+  const [reasoningEffort, setReasoningEffort] = useState('high')
 
   // Credits
   const [credits, setCredits] = useState<CreditInfo | null>(null)
@@ -464,6 +469,7 @@ export default function AiRequirementGenerator({
           customInstruction: customInstruction || undefined,
           locale,
           model: model || undefined,
+          reasoningEffort,
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
         }),
@@ -563,7 +569,16 @@ export default function AiRequirementGenerator({
         setError((err as Error).message)
       }
     }
-  }, [topic, areaId, model, models, customInstruction, locale, t])
+  }, [
+    topic,
+    areaId,
+    model,
+    models,
+    customInstruction,
+    locale,
+    reasoningEffort,
+    t,
+  ])
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort()
@@ -613,10 +628,13 @@ export default function AiRequirementGenerator({
         })
         if (!res.ok) {
           const errBody = (await res.json().catch(() => null)) as {
+            error?: string
             message?: string
           } | null
-          console.error('[AI Create] POST failed:', res.status, errBody)
-          errors.push(errBody?.message ?? `HTTP ${res.status}`)
+          const errText =
+            errBody?.error ?? errBody?.message ?? `HTTP ${res.status}`
+          console.error('[AI Create] POST failed:', res.status, errText)
+          errors.push(errText)
         } else {
           console.log('[AI Create] POST succeeded:', res.status)
           succeededIndices.push(selectedIndices[si])
@@ -724,6 +742,11 @@ export default function AiRequirementGenerator({
             aria-labelledby="ai-requirement-dialog-title"
             aria-modal="true"
             className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl transition-[max-width] duration-300 dark:bg-secondary-900 ${thinking || (rawResponse && phase === 'done') ? 'max-w-6xl' : 'max-w-3xl'}`}
+            {...devMarker({
+              name: 'dialog',
+              priority: 420,
+              value: 'ai-requirement-generator',
+            })}
             exit={{ opacity: 0, scale: 0.95 }}
             initial={{ opacity: 0, scale: 0.95 }}
             role="dialog"
@@ -735,6 +758,10 @@ export default function AiRequirementGenerator({
                 <h2
                   className="flex items-center gap-2 text-lg font-semibold text-secondary-900 dark:text-secondary-100"
                   id="ai-requirement-dialog-title"
+                  {...devMarker({
+                    context: 'ai-requirement-generator',
+                    name: 'dialog title',
+                  })}
                 >
                   <Sparkles
                     aria-hidden="true"
@@ -798,6 +825,11 @@ export default function AiRequirementGenerator({
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-secondary-500 transition-colors hover:bg-secondary-100 hover:text-secondary-700 disabled:opacity-50 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-200"
                 disabled={creating}
                 onClick={handleClose}
+                {...devMarker({
+                  context: 'ai-requirement-generator',
+                  name: 'button',
+                  value: 'close',
+                })}
                 type="button"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
@@ -969,6 +1001,11 @@ export default function AiRequirementGenerator({
                           id="ai-model"
                           onClick={() => setModelDropdownOpen(o => !o)}
                           ref={dropdownBtnRef}
+                          {...devMarker({
+                            context: 'ai-requirement-generator',
+                            name: 'button',
+                            value: 'model selector',
+                          })}
                           type="button"
                         >
                           <span className="truncate">
@@ -1118,6 +1155,40 @@ export default function AiRequirementGenerator({
                           )}
                       </div>
                     </div>
+
+                    {/* Reasoning effort – right column, under Model */}
+                    {models
+                      .find(m => m.id === model)
+                      ?.supportedParameters.includes('reasoning') && (
+                      <div className="col-start-1 sm:col-start-2">
+                        <div className="mb-1 flex items-center gap-1.5">
+                          <label
+                            className="text-sm font-medium text-secondary-700 dark:text-secondary-300"
+                            htmlFor="ai-reasoning-effort"
+                          >
+                            {t('reasoningEffortLabel')}
+                          </label>
+                          {helpButton(
+                            'reasoningEffort',
+                            t('reasoningEffortLabel'),
+                          )}
+                        </div>
+                        {helpPanel('reasoningEffortHelp', 'reasoningEffort')}
+                        <select
+                          className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100"
+                          disabled={isBusy}
+                          id="ai-reasoning-effort"
+                          onChange={e => setReasoningEffort(e.target.value)}
+                          value={reasoningEffort}
+                        >
+                          <option value="xhigh">{t('effortXhigh')}</option>
+                          <option value="high">{t('effortHigh')}</option>
+                          <option value="medium">{t('effortMedium')}</option>
+                          <option value="low">{t('effortLow')}</option>
+                          <option value="none">{t('effortNone')}</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
 
                   {/* Advanced */}
@@ -1528,7 +1599,13 @@ export default function AiRequirementGenerator({
 
               {/* Side panels: thinking trace + raw output */}
               {(thinking || (rawResponse && phase === 'done')) && (
-                <div className="flex w-80 shrink-0 flex-col border-l border-secondary-200 dark:border-secondary-700">
+                <div
+                  className="flex w-80 shrink-0 flex-col border-l border-secondary-200 dark:border-secondary-700"
+                  {...devMarker({
+                    context: 'ai-requirement-generator',
+                    name: 'side panel',
+                  })}
+                >
                   {thinking && (
                     <div className="flex min-h-0 flex-1 flex-col">
                       <div className="flex items-center gap-2 border-b border-secondary-200 px-4 py-3 dark:border-secondary-700">
@@ -1573,6 +1650,11 @@ export default function AiRequirementGenerator({
                   <button
                     className="min-h-11 w-full rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 sm:w-auto dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
                     onClick={handleCancel}
+                    {...devMarker({
+                      context: 'ai-requirement-generator',
+                      name: 'button',
+                      value: 'cancel',
+                    })}
                     type="button"
                   >
                     {t('cancelButton')}
@@ -1582,6 +1664,11 @@ export default function AiRequirementGenerator({
                     className="min-h-11 w-full rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 disabled:opacity-50 sm:w-auto dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
                     disabled={creating}
                     onClick={handleClose}
+                    {...devMarker({
+                      context: 'ai-requirement-generator',
+                      name: 'button',
+                      value: 'close',
+                    })}
                     type="button"
                   >
                     {creating ? tc('loading') : tc('close')}
@@ -1594,6 +1681,11 @@ export default function AiRequirementGenerator({
                     className="min-h-11 w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 sm:w-auto dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
                     disabled={selected.size === 0 || creating}
                     onClick={handleCreate}
+                    {...devMarker({
+                      context: 'ai-requirement-generator',
+                      name: 'button',
+                      value: 'create',
+                    })}
                     type="button"
                   >
                     {creating
@@ -1610,6 +1702,11 @@ export default function AiRequirementGenerator({
                       !topic.trim() || !areaId || isBusy || modelsLoading
                     }
                     onClick={handleGenerate}
+                    {...devMarker({
+                      context: 'ai-requirement-generator',
+                      name: 'button',
+                      value: 'generate',
+                    })}
                     type="button"
                   >
                     <span className="flex items-center gap-2">

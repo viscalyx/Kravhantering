@@ -169,7 +169,7 @@ describe('generateChat (non-streaming)', () => {
     expect(body.response_format).toEqual({ type: 'json_object' })
   })
 
-  it('sends json_object when model lacks structured_outputs', async () => {
+  it('sends json_schema when supportedParameters is undefined (MCP callers)', async () => {
     mockFetch.mockResolvedValueOnce({
       json: async () => ({
         choices: [{ message: { content: '{"requirements":[]}' } }],
@@ -183,13 +183,13 @@ describe('generateChat (non-streaming)', () => {
         type: 'object',
       },
       messages: [],
-      supportedParameters: ['reasoning', 'stream', 'response_format'],
+      // supportedParameters intentionally omitted
     })
 
     const body = JSON.parse(
       (mockFetch.mock.calls[0][1] as { body: string }).body,
     )
-    expect(body.response_format).toEqual({ type: 'json_object' })
+    expect(body.response_format.type).toBe('json_schema')
   })
 
   it('throws on non-OK response', async () => {

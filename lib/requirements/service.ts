@@ -2288,7 +2288,7 @@ export function createRequirementsService(
         logger,
         context,
         'requirements.generate_requirements',
-        { topic: topic.slice(0, 100), model: input.model },
+        { topicLength: topic.length, model: input.model },
         async () => {
           const { loadTaxonomy } = await import('@/lib/ai/taxonomy')
           const taxonomy = await loadTaxonomy(db, locale as 'en' | 'sv')
@@ -2311,6 +2311,11 @@ export function createRequirementsService(
             locale as 'en' | 'sv',
           )
 
+          const resolvedModel =
+            input.model ||
+            process.env.NEXT_PUBLIC_DEFAULT_MODEL ||
+            'anthropic/claude-sonnet-4'
+
           const result = await generateChat<{
             requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
           }>({
@@ -2319,7 +2324,7 @@ export function createRequirementsService(
               { content: systemPrompt, role: 'system' },
               { content: userPrompt, role: 'user' },
             ],
-            model: input.model,
+            model: resolvedModel,
           })
 
           if (!result?.content || !Array.isArray(result.content.requirements)) {
@@ -2333,9 +2338,6 @@ export function createRequirementsService(
             taxonomy,
           )
 
-          const model =
-            input.model ?? process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? ''
-
           const message =
             locale === 'sv'
               ? `Genererade ${validated.length} krav för ämne: ${topic}`
@@ -2343,7 +2345,7 @@ export function createRequirementsService(
 
           return {
             message,
-            model,
+            model: resolvedModel,
             requirements: validated,
             stats: result.stats,
             thinking: result.thinking,

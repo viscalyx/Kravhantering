@@ -253,7 +253,8 @@
     "mistralai",
     "logprobs",
     "råsvar",
-    "zhipu"
+    "zhipu",
+    "xhigh"
   ],
   "flagWords": [],
   "ignorePaths": [

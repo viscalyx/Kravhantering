@@ -1083,6 +1083,13 @@
     "detailVerification": "Verifieringsmetod",
     "detailScenarios": "Scenarier",
     "detailYes": "Ja",
-    "detailNo": "Nej"
+    "detailNo": "Nej",
+    "reasoningEffortLabel": "Resonemangsansträngning",
+    "reasoningEffortHelp": "Styr hur mycket <strong>resonemang</strong> modellen utför. Högre ansträngning ger bättre resultat men använder fler tokens och tar längre tid. <em>Extra hög</em> allokerar ~95% av tokens till resonemang, <em>Av</em> stänger av det helt.",
+    "effortXhigh": "Extra hög",
+    "effortHigh": "Hög (standard)",
+    "effortMedium": "Medel",
+    "effortLow": "Låg",
+    "effortNone": "Av"
   }
 }

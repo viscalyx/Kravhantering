@@ -50,6 +50,8 @@ interface GenerateOptions {
   format?: Record<string, unknown>
   messages: ChatMessage[]
   model?: string
+  /** Reasoning effort level (default: 'high'). Use 'none' to disable reasoning. */
+  reasoningEffort?: string
   signal?: AbortSignal
   /** Model's supported_parameters from OpenRouter, used to decide response_format strategy */
   supportedParameters?: string[]
@@ -112,10 +114,11 @@ export async function generateChat<T>(
   const apiKey = getApiKey()
   const model = options.model || getDefaultModel()
 
+  const effort = options.reasoningEffort || 'high'
   const body: Record<string, unknown> = {
     messages: options.messages,
     model,
-    reasoning: { effort: 'high' },
+    reasoning: effort === 'none' ? { enabled: false } : { effort },
     stream: false,
   }
 
@@ -123,15 +126,33 @@ export async function generateChat<T>(
     applyResponseFormat(body, options.format, options.supportedParameters)
   }
 
-  const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
-    body: JSON.stringify(body),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-    signal: options.signal,
-  })
+  // Default timeout of 120 seconds when no abort signal is provided.
+  // Combines with the caller's signal when present.
+  const DEFAULT_TIMEOUT_MS = 120_000
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  let signal: AbortSignal
+  if (options.signal) {
+    signal = options.signal
+  } else {
+    const controller = new AbortController()
+    timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
+    signal = controller.signal
+  }
+
+  let response: Response
+  try {
+    response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      signal,
+    })
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId)
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
@@ -192,11 +213,12 @@ export async function* generateChatStream(
   const apiKey = getApiKey()
   const model = options.model || getDefaultModel()
 
+  const effort = options.reasoningEffort || 'high'
   const body: Record<string, unknown> = {
-    include_reasoning: true,
+    include_reasoning: effort !== 'none',
     messages: options.messages,
     model,
-    reasoning: { effort: 'high' },
+    reasoning: effort === 'none' ? { enabled: false } : { effort },
     stream: true,
   }
 

@@ -1083,6 +1083,13 @@
     "detailVerification": "Verification method",
     "detailScenarios": "Scenarios",
     "detailYes": "Yes",
-    "detailNo": "No"
+    "detailNo": "No",
+    "reasoningEffortLabel": "Reasoning Effort",
+    "reasoningEffortHelp": "Control how much <strong>reasoning</strong> the model performs. Higher effort produces better results but uses more tokens and takes longer. <em>Extra high</em> allocates ~95% of tokens to reasoning, <em>Off</em> disables it entirely.",
+    "effortXhigh": "Extra high",
+    "effortHigh": "High (default)",
+    "effortMedium": "Medium",
+    "effortLow": "Low",
+    "effortNone": "Off"
   }
 }
