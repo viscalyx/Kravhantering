@@ -28,9 +28,12 @@ services:
     security_opt:
       # Allow nested tool sandboxes (for example Bubblewrap/unshare) without
       # granting the whole devcontainer privileged mode.
-      # If the same error ever shows up on a different Linux host, the next narrow
-      # fallback would be apparmor=unconfined
       - seccomp=unconfined
+      # Docker masks certain /proc paths (kcore, keys, etc.) by default.
+      # The kernel refuses to mount a new procfs in a child PID namespace
+      # when the parent proc has masked entries, which breaks bwrap
+      # --unshare-pid.  Unmasking system paths fixes this narrowly.
+      - systempaths=unconfined
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true
