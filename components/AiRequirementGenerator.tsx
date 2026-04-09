@@ -92,6 +92,7 @@ export default function AiRequirementGenerator({
   const [requirements, setRequirements] = useState<RequirementWithId[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
 
   // Refs
   const abortRef = useRef<AbortController | null>(null)
@@ -151,6 +152,7 @@ export default function AiRequirementGenerator({
       setPhase('idle')
       setThinking('')
       setError('')
+      setCreateError('')
       setStats(null)
       setRequirements([])
       setSelected(new Set())
@@ -211,6 +213,7 @@ export default function AiRequirementGenerator({
     topic.trim().length > 0 || requirements.length > 0 || inProgress
 
   const handleClose = useCallback(async () => {
+    if (creating) return
     if (!hasPendingWork) {
       onClose()
       return
@@ -229,7 +232,7 @@ export default function AiRequirementGenerator({
       }
       onClose()
     }
-  }, [hasPendingWork, inProgress, onClose, confirm, t, tc])
+  }, [hasPendingWork, inProgress, creating, onClose, confirm, t, tc])
 
   // ── Generate ────────────────────────────────────────────────────────
   const handleGenerate = useCallback(async () => {
@@ -239,6 +242,7 @@ export default function AiRequirementGenerator({
     setThinking('')
 
     setError('')
+    setCreateError('')
     setStats(null)
     setRequirements([])
     setSelected(new Set())
@@ -409,16 +413,14 @@ export default function AiRequirementGenerator({
         })
       }
       if (errors.length > 0) {
-        setPhase('error')
-        setError(`${t('createError')}: ${errors[0]}`)
+        setCreateError(`${t('createError')}: ${errors[0]}`)
         return
       }
       onCreated()
       onClose()
     } catch (err) {
       console.error('Failed to create AI-generated requirements:', err)
-      setPhase('error')
-      setError(t('createError'))
+      setCreateError(t('createError'))
     } finally {
       setCreating(false)
     }
@@ -480,7 +482,8 @@ export default function AiRequirementGenerator({
               </h2>
               <button
                 aria-label={tc('close')}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-secondary-500 transition-colors hover:bg-secondary-100 hover:text-secondary-700 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-200"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-1.5 text-secondary-500 transition-colors hover:bg-secondary-100 hover:text-secondary-700 disabled:opacity-50 dark:text-secondary-400 dark:hover:bg-secondary-800 dark:hover:text-secondary-200"
+                disabled={creating}
                 onClick={handleClose}
                 type="button"
               >
@@ -743,6 +746,13 @@ export default function AiRequirementGenerator({
                 </div>
               )}
 
+              {/* Create error banner (shown during done phase) */}
+              {phase === 'done' && createError && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+                  {createError}
+                </div>
+              )}
+
               {/* Stats */}
               {phase === 'done' && stats && speed && (
                 <div className="mt-4 text-xs text-secondary-500 dark:text-secondary-400">
@@ -858,11 +868,12 @@ export default function AiRequirementGenerator({
                   </button>
                 ) : (
                   <button
-                    className="min-h-11 w-full rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 sm:w-auto dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
+                    className="min-h-11 w-full rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 disabled:opacity-50 sm:w-auto dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
+                    disabled={creating}
                     onClick={handleClose}
                     type="button"
                   >
-                    {tc('close')}
+                    {creating ? tc('loading') : tc('close')}
                   </button>
                 )}
               </div>
