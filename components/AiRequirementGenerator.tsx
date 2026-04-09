@@ -85,9 +85,9 @@ function formatProvider(slug: string): string {
   return PROVIDER_NAMES[slug] ?? slug.charAt(0).toUpperCase() + slug.slice(1)
 }
 
-function formatPrice(priceStr: string): string {
+function formatPrice(priceStr: string, freeLabel: string): string {
   const perToken = Number.parseFloat(priceStr)
-  if (Number.isNaN(perToken) || perToken === 0) return 'Free'
+  if (Number.isNaN(perToken) || perToken === 0) return freeLabel
   // Price per million tokens
   const perMillion = perToken * 1_000_000
   if (perMillion < 0.01) return '<$0.01/M'
@@ -242,15 +242,19 @@ export default function AiRequirementGenerator({
           const list = data.models ?? []
           setModelsError(data.error ?? null)
           setModels(list)
-          if (list.length > 0 && !modelRef.current) {
-            // Pick first favorite, then NEXT_PUBLIC_DEFAULT_MODEL, then first model
-            const savedFavorites = loadFavorites()
-            const favModel = list.find(m => savedFavorites.has(m.id))
-            const defaultModel = process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? ''
-            const defModel = defaultModel
-              ? list.find(m => m.id === defaultModel)
-              : undefined
-            setModel(favModel?.id ?? defModel?.id ?? list[0].id)
+          if (list.length > 0) {
+            const needsSelection =
+              !modelRef.current || !list.some(m => m.id === modelRef.current)
+            if (needsSelection) {
+              // Pick first favorite, then NEXT_PUBLIC_DEFAULT_MODEL, then first model
+              const savedFavorites = loadFavorites()
+              const favModel = list.find(m => savedFavorites.has(m.id))
+              const defaultModel = process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? ''
+              const defModel = defaultModel
+                ? list.find(m => m.id === defaultModel)
+                : undefined
+              setModel(favModel?.id ?? defModel?.id ?? list[0].id)
+            }
           }
         })
         .catch((err: unknown) => {
@@ -311,6 +315,8 @@ export default function AiRequirementGenerator({
       setShowSystemPrompt(false)
       setSystemPrompt('')
       setShowCapSettings(false)
+      setModelDropdownOpen(false)
+      setDropdownPos(null)
       setPhase('idle')
       setThinking('')
       setError('')
@@ -511,6 +517,7 @@ export default function AiRequirementGenerator({
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let receivedTerminal = false
 
       for (;;) {
         const { done, value } = await reader.read()
@@ -542,6 +549,7 @@ export default function AiRequirementGenerator({
               setPhase('generating')
               break
             case 'done': {
+              receivedTerminal = true
               const rawContent = payload.rawContent as string
               let parsed: { requirements: GeneratedRequirement[] }
               try {
@@ -579,11 +587,20 @@ export default function AiRequirementGenerator({
               break
             }
             case 'error':
+              receivedTerminal = true
               setPhase('error')
               setError(payload.message as string)
               break
           }
         }
+      }
+
+      // Handle unexpected EOF — stream ended without a done/error event
+      if (!receivedTerminal) {
+        setPhase('error')
+        setError(t('streamClosedUnexpectedly'))
+        setThinking('')
+        setStats(null)
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
@@ -1040,7 +1057,7 @@ export default function AiRequirementGenerator({
                                 : (() => {
                                     const sel = models.find(m => m.id === model)
                                     return sel
-                                      ? `${sel.name} — ${formatPrice(sel.pricing.prompt)} in / ${formatPrice(sel.pricing.completion)} out`
+                                      ? `${sel.name} — ${formatPrice(sel.pricing.prompt, t('priceFree'))} ${t('pricingIn')} / ${formatPrice(sel.pricing.completion, t('priceFree'))} ${t('pricingOut')}`
                                       : model
                                   })()}
                           </span>
@@ -1093,8 +1110,16 @@ export default function AiRequirementGenerator({
                                     >
                                       <span className="flex-1 truncate">
                                         {m.name} —{' '}
-                                        {formatPrice(m.pricing.prompt)} in /{' '}
-                                        {formatPrice(m.pricing.completion)} out
+                                        {formatPrice(
+                                          m.pricing.prompt,
+                                          t('priceFree'),
+                                        )}{' '}
+                                        {t('pricingIn')} /{' '}
+                                        {formatPrice(
+                                          m.pricing.completion,
+                                          t('priceFree'),
+                                        )}{' '}
+                                        {t('pricingOut')}
                                       </span>
                                       <button
                                         aria-label={t('removeFavorite')}
@@ -1147,9 +1172,16 @@ export default function AiRequirementGenerator({
                                       >
                                         <span className="flex-1 truncate">
                                           {m.name} —{' '}
-                                          {formatPrice(m.pricing.prompt)} in /{' '}
-                                          {formatPrice(m.pricing.completion)}{' '}
-                                          out
+                                          {formatPrice(
+                                            m.pricing.prompt,
+                                            t('priceFree'),
+                                          )}{' '}
+                                          {t('pricingIn')} /{' '}
+                                          {formatPrice(
+                                            m.pricing.completion,
+                                            t('priceFree'),
+                                          )}{' '}
+                                          {t('pricingOut')}
                                         </span>
                                         <button
                                           aria-label={
@@ -1723,7 +1755,11 @@ export default function AiRequirementGenerator({
                   <button
                     className="min-h-11 w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 sm:w-auto dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
                     disabled={
-                      !topic.trim() || !areaId || isBusy || modelsLoading
+                      !topic.trim() ||
+                      !areaId ||
+                      isBusy ||
+                      modelsLoading ||
+                      !models.some(m => m.id === model)
                     }
                     onClick={handleGenerate}
                     {...devMarker({

@@ -1090,6 +1090,10 @@
     "effortHigh": "Hög (standard)",
     "effortMedium": "Medel",
     "effortLow": "Låg",
-    "effortNone": "Av"
+    "effortNone": "Av",
+    "priceFree": "Gratis",
+    "pricingIn": "in",
+    "pricingOut": "ut",
+    "streamClosedUnexpectedly": "Svarsströmmen stängdes oväntat. Försök igen."
   }
 }

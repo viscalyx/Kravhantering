@@ -1090,6 +1090,10 @@
     "effortHigh": "High (default)",
     "effortMedium": "Medium",
     "effortLow": "Low",
-    "effortNone": "Off"
+    "effortNone": "Off",
+    "priceFree": "Free",
+    "pricingIn": "in",
+    "pricingOut": "out",
+    "streamClosedUnexpectedly": "The response stream closed unexpectedly. Please try again."
   }
 }

@@ -155,57 +155,64 @@ export async function generateChat<T>(
       method: 'POST',
       signal: childController.signal,
     })
+  } catch (err) {
+    clearTimeout(timeoutId)
+    options.signal?.removeEventListener('abort', onCallerAbort)
+    throw err
+  }
+
+  try {
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new Error(`OpenRouter request failed (${response.status}): ${text}`)
+    }
+
+    const data = (await response.json()) as {
+      choices: Array<{
+        message: {
+          content: string | null
+          reasoning?: string
+        }
+      }>
+      usage?: {
+        completion_tokens?: number
+        cost?: number
+        prompt_tokens?: number
+        completion_tokens_details?: {
+          reasoning_tokens?: number
+        }
+      }
+    }
+
+    const message = data.choices?.[0]?.message
+    if (!message?.content) {
+      throw new Error('OpenRouter returned empty response')
+    }
+
+    let content: T
+    try {
+      content = JSON.parse(message.content) as T
+    } catch {
+      throw new Error('Failed to parse OpenRouter JSON response')
+    }
+
+    const usage = data.usage
+    return {
+      content,
+      stats: {
+        completionTokens: usage?.completion_tokens ?? 0,
+        cost: usage?.cost ?? 0,
+        promptTokens: usage?.prompt_tokens ?? 0,
+        reasoningTokens:
+          usage?.completion_tokens_details?.reasoning_tokens ?? 0,
+        totalTokens:
+          (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
+      },
+      thinking: message.reasoning ?? '',
+    }
   } finally {
     clearTimeout(timeoutId)
     options.signal?.removeEventListener('abort', onCallerAbort)
-  }
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    throw new Error(`OpenRouter request failed (${response.status}): ${text}`)
-  }
-
-  const data = (await response.json()) as {
-    choices: Array<{
-      message: {
-        content: string | null
-        reasoning?: string
-      }
-    }>
-    usage?: {
-      completion_tokens?: number
-      cost?: number
-      prompt_tokens?: number
-      completion_tokens_details?: {
-        reasoning_tokens?: number
-      }
-    }
-  }
-
-  const message = data.choices?.[0]?.message
-  if (!message?.content) {
-    throw new Error('OpenRouter returned empty response')
-  }
-
-  let content: T
-  try {
-    content = JSON.parse(message.content) as T
-  } catch {
-    throw new Error('Failed to parse OpenRouter JSON response')
-  }
-
-  const usage = data.usage
-  return {
-    content,
-    stats: {
-      completionTokens: usage?.completion_tokens ?? 0,
-      cost: usage?.cost ?? 0,
-      promptTokens: usage?.prompt_tokens ?? 0,
-      reasoningTokens: usage?.completion_tokens_details?.reasoning_tokens ?? 0,
-      totalTokens:
-        (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
-    },
-    thinking: message.reasoning ?? '',
   }
 }
 

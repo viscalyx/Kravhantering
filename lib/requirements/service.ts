@@ -181,6 +181,7 @@ export interface GenerateRequirementsInput {
   locale?: ResponseLocale
   model?: string
   reasoningEffort?: string
+  supportedParameters?: string[]
   topic: string
 }
 
@@ -2327,6 +2328,7 @@ export function createRequirementsService(
             ],
             model: resolvedModel,
             reasoningEffort: input.reasoningEffort,
+            supportedParameters: input.supportedParameters,
           })
 
           if (!result?.content || !Array.isArray(result.content.requirements)) {
