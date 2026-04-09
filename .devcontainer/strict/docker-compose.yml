@@ -29,10 +29,10 @@ services:
     init: true
     depends_on:
       ollama:
-        condition: service_started
+        condition: service_healthy
 
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.20.4
     volumes:
       - ollama-data:/root/.ollama
       - ../../.devcontainer/ollama-entrypoint.sh:/ollama-entrypoint.sh:ro
@@ -41,6 +41,11 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
     expose:
       - "11434"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
     init: true
 
 volumes:
