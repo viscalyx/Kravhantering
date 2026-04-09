@@ -97,6 +97,7 @@ export default function AdminClient({
   const tc = useTranslations('common')
   const tn = useTranslations('nav')
   const tr = useTranslations('requirement')
+  const tis = useTranslations('improvementSuggestion')
   const terminologyLabel = useTranslations('terminology')
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<AdminTab>('terminology')
@@ -632,7 +633,9 @@ export default function AdminClient({
                 const label =
                   column.labelNamespace === 'common'
                     ? tc(column.labelKey)
-                    : tr(column.labelKey)
+                    : column.labelNamespace === 'improvementSuggestion'
+                      ? tis(column.labelKey)
+                      : tr(column.labelKey)
 
                 return (
                   <article

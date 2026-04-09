@@ -4,7 +4,7 @@
  * and ISO/IEC 25010:2023 standards.
  */
 
-import type { GenerationStats } from '@/lib/ai/ollama-client'
+import type { GenerationStats } from '@/lib/ai/openrouter-client'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,7 +43,7 @@ export interface TaxonomyData {
 }
 
 // ---------------------------------------------------------------------------
-// JSON schema for Ollama `format` parameter
+// JSON schema for OpenRouter `response_format` parameter
 // ---------------------------------------------------------------------------
 
 export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
@@ -51,24 +51,40 @@ export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
     requirements: {
       items: {
         properties: {
-          acceptanceCriteria: { type: 'string' },
-          categoryId: { type: 'integer' },
+          acceptanceCriteria: { type: ['string', 'null'] },
+          categoryId: { type: ['integer', 'null'] },
           description: { type: 'string' },
-          qualityCharacteristicId: { type: 'integer' },
+          qualityCharacteristicId: { type: ['integer', 'null'] },
           rationale: { type: 'string' },
           requiresTesting: { type: 'boolean' },
-          riskLevelId: { type: 'integer' },
-          scenarioIds: { items: { type: 'integer' }, type: 'array' },
+          riskLevelId: { type: ['integer', 'null'] },
+          scenarioIds: {
+            items: { type: 'integer' },
+            type: ['array', 'null'],
+          },
           typeId: { type: 'integer' },
-          verificationMethod: { type: 'string' },
+          verificationMethod: { type: ['string', 'null'] },
         },
-        required: ['description', 'typeId', 'requiresTesting', 'rationale'],
+        required: [
+          'acceptanceCriteria',
+          'categoryId',
+          'description',
+          'qualityCharacteristicId',
+          'rationale',
+          'requiresTesting',
+          'riskLevelId',
+          'scenarioIds',
+          'typeId',
+          'verificationMethod',
+        ],
+        additionalProperties: false,
         type: 'object',
       },
       type: 'array',
     },
   },
   required: ['requirements'],
+  additionalProperties: false,
   type: 'object',
 }
 

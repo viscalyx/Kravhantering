@@ -1,5 +1,5 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { generateChatStream } from '@/lib/ai/ollama-client'
+import { generateChatStream } from '@/lib/ai/openrouter-client'
 import {
   buildSystemPrompt,
   buildUserPrompt,
@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     customInstruction?: string
     locale?: string
     model?: string
+    supportedParameters?: string[]
     topic?: string
   }
   try {
@@ -92,6 +93,9 @@ export async function POST(request: Request) {
           ],
           model: body.model,
           signal: request.signal,
+          supportedParameters: Array.isArray(body.supportedParameters)
+            ? body.supportedParameters
+            : undefined,
         })) {
           switch (event.phase) {
             case 'thinking':
@@ -121,9 +125,11 @@ export async function POST(request: Request) {
                 // If parsing fails, send raw content; client will handle the error
               }
               send('done', {
-                model: body.model ?? process.env.OLLAMA_MODEL ?? 'qwen3:14b',
+                model:
+                  body.model ?? process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? '',
                 rawContent: validated,
                 stats: event.stats,
+                taxonomy,
                 thinking: event.thinking,
               })
               break

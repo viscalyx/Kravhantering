@@ -6,11 +6,12 @@
   "shutdownAction": "stopCompose",
   "containerEnv": {
     "NODE_ENV": "development",
-    "NEXT_TELEMETRY_DISABLED": "1",
-    "OLLAMA_HOST": "http://ollama:11434"
+    "NEXT_TELEMETRY_DISABLED": "1"
   },
   "remoteEnv": {
-    "GH_TOKEN": "${localEnv:GH_TOKEN}"
+    "GH_TOKEN": "${localEnv:GH_TOKEN}",
+    "OPENROUTER_API_KEY": "${localEnv:OPENROUTER_API_KEY}",
+    "OPENROUTER_MGMT_API_KEY": "${localEnv:OPENROUTER_MGMT_API_KEY}"
   },
 
   // Features to add to the dev container
@@ -181,7 +182,7 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [3000, 3001, 4443, 8787, 9323, 11434, 51204],
+  "forwardPorts": [3000, 3001, 4443, 8787, 9323, 51204],
   "portsAttributes": {
     "3000": {
       "label": "Next.js Dev Server 1",
@@ -203,10 +204,6 @@
     "9323": {
       "label": "Playwright Report",
       "onAutoForward": "notify"
-    },
-    "11434": {
-      "label": "Ollama API",
-      "onAutoForward": "silent"
     },
     "51204": {
       "label": "Vitest UI",

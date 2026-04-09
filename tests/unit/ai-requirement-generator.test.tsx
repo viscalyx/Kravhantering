@@ -39,14 +39,36 @@ const testAreas = [
 describe('AiRequirementGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default: models endpoint returns models
+    // Default: models endpoint returns models, credits returns info
     mockFetch.mockImplementation(async (url: string) => {
-      if (url === '/api/ai/models') {
+      if (typeof url === 'string' && url.startsWith('/api/ai/models')) {
         return {
           json: async () => ({
             models: [
-              { name: 'qwen3:14b', parameter_size: '14B', size: 9300000000 },
+              {
+                contextLength: 200000,
+                id: 'anthropic/claude-sonnet-4',
+                name: 'Claude Sonnet 4',
+                pricing: {
+                  completion: '0.000015',
+                  prompt: '0.000003',
+                  reasoning: '0.000015',
+                },
+                provider: 'anthropic',
+                supportedParameters: ['reasoning', 'stream'],
+              },
             ],
+          }),
+          ok: true,
+        }
+      }
+      if (typeof url === 'string' && url.startsWith('/api/ai/credits')) {
+        return {
+          json: async () => ({
+            isFreeTier: false,
+            limit: 50,
+            limitRemaining: 37.5,
+            usage: 12.5,
           }),
           ok: true,
         }

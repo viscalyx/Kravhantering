@@ -7,13 +7,11 @@ consistent development environment. Open the project in VS Code and
 use **Reopen in Container** to get started automatically.
 
 If VS Code prompts you to choose a configuration, use
-**Kravhantering Development** for the default container. If you want
-the stricter opt-out variant that does not set
-`seccomp=unconfined`, choose
-**Kravhantering Development (Strict)** from
-[`.devcontainer/strict/devcontainer.json`](.devcontainer/strict/devcontainer.json).
-That stricter variant can prevent AI agents from working correctly
-when they rely on nested sandboxing features.
+**Kravhantering Development** for the default container. If you need
+elevated container permissions (e.g. `SYS_ADMIN`, `seccomp=unconfined`)
+for VS Code agent sandboxing features, choose
+**Kravhantering Development (Elevated)** from
+[`.devcontainer/elevated/devcontainer.json`](.devcontainer/elevated/devcontainer.json).
 
 ## Available Scripts
 
@@ -118,92 +116,39 @@ docs when working on it:
 - [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
 - [docs/TODO-mcp-server-auth-plan.md](docs/TODO-mcp-server-auth-plan.md)
 
-## Ollama (AI Requirement Generation)
+## OpenRouter (AI Requirement Generation)
 
-The dev container includes an **Ollama** sidecar for local AI-powered
-requirement generation. Ollama runs as a separate Docker Compose
-service and auto-pulls the configured model on first start.
+The application uses **OpenRouter** as its AI backend for requirement
+generation. OpenRouter provides access to many reasoning models from
+multiple providers (Anthropic, Google, OpenAI, DeepSeek, Qwen, etc.)
+via a single API key.
 
 ### Configuration
 
-| Variable       | Default                         | Description               |
-| -------------- | ------------------------------- | ------------------------- |
-| `OLLAMA_HOST`  | `http://ollama:11434`           | Ollama API URL            |
-| `OLLAMA_MODEL` | `qwen3:14b`                     | Model to auto-pull        |
+| Variable                     | Default | Description                          |
+| ---------------------------- | ------- | ------------------------------------ |
+| `OPENROUTER_API_KEY`         | —       | OpenRouter API key                   |
+| `OPENROUTER_MGMT_API_KEY`    | —       | Management key (org credits display) |
+| `NEXT_PUBLIC_DEFAULT_MODEL`  | —       | Default model ID                     |
 
-Override these in `.env` or `.devcontainer/docker-compose.yml`.
+1. Get an API key at <https://openrouter.ai/keys>
+2. Add it to `.env.development.local`:
 
-### Checking Ollama Status (Inside Dev Container)
+   ```env
+   OPENROUTER_API_KEY=sk-or-v1-...
+   ```
 
-```bash
-# Is Ollama running?
-curl -sf http://ollama:11434/
-# → "Ollama is running"
+3. Restart the dev server — the AI modal will show available models.
 
-# List downloaded models
-curl -s http://ollama:11434/api/tags | jq .
-
-# List models via the app's API
-curl -s http://localhost:3000/api/ai/models | jq .
-```
-
-### Checking Ollama Status (From Host)
-
-VS Code starts the Compose project with its own project name, so
-bare `docker compose` commands won't find the containers. Use
-`docker ps` to find the actual Ollama container first:
+### Verifying the Setup
 
 ```bash
-# Find the Ollama container name/ID
-docker ps --filter "ancestor=ollama/ollama" \
-  --format "{{.ID}}  {{.Names}}  {{.Status}}"
+# List available models via the app's API
+curl -s http://localhost:3000/api/ai/models | jq '.models | length'
 
-# View its logs (shows entrypoint + pull progress)
-docker logs -f <container_name>
-
-# Exec into the Ollama container
-docker exec -it <container_name> bash
-
-# Once inside, test the entrypoint logic
-ollama list
+# Check credit balance
+curl -s http://localhost:3000/api/ai/credits | jq .
 ```
-
-To restart the Ollama sidecar (re-runs the entrypoint):
-
-```bash
-docker restart <container_name>
-docker logs -f <container_name>
-```
-
-### Pulling Models Manually
-
-If the auto-pull didn't run (e.g. first start before the
-entrypoint fix), pull from inside the dev container:
-
-```bash
-# Pull the default model (~9 GB)
-curl -X POST http://ollama:11434/api/pull \
-  -d '{"name": "qwen3:14b"}' --no-buffer
-
-# Or pull a smaller model for quick testing (~1.5 GB)
-curl -X POST http://ollama:11434/api/pull \
-  -d '{"name": "qwen3:1.7b"}' --no-buffer
-```
-
-### GPU Acceleration
-
-For NVIDIA GPU support, add the GPU override when starting:
-
-```bash
-docker compose -f .devcontainer/docker-compose.yml \
-  -f .devcontainer/docker-compose.gpu.yml up -d
-```
-
-### Persistent Storage
-
-Downloaded models are stored in the `ollama-data` Docker volume.
-Models persist across container rebuilds — only the first start
-requires a download.
 
 ## Internationalization
 

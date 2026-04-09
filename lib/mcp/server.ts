@@ -1384,7 +1384,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'Generate system requirements using AI (Ollama/Qwen3) based on a topic. ' +
+        'Generate system requirements using AI (OpenRouter) based on a topic. ' +
         'Returns generated requirements with thinking trace. ' +
         'To create the generated requirements, call requirements_manage_requirement ' +
         'with operation "create" for each requirement, setting requirement.areaId ' +
@@ -1415,7 +1415,7 @@ export function createKravhanteringMcpServer(
             .max(100)
             .optional()
             .describe(
-              'Ollama model name (e.g. "qwen3:14b"). Uses OLLAMA_MODEL env var if omitted.',
+              'OpenRouter model ID (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
             ),
           topic: z
             .string()

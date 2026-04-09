@@ -1,5 +1,5 @@
 {
-  "name": "Kravhantering Development (Strict)",
+  "name": "Kravhantering Development (Elevated)",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspace",
@@ -7,6 +7,10 @@
   "containerEnv": {
     "NODE_ENV": "development",
     "NEXT_TELEMETRY_DISABLED": "1"
+  },
+  "remoteEnv": {
+    "OPENROUTER_API_KEY": "${localEnv:OPENROUTER_API_KEY}",
+    "OPENROUTER_MGMT_API_KEY": "${localEnv:OPENROUTER_MGMT_API_KEY}"
   },
 
   // Features to add to the dev container

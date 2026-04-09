@@ -26,13 +26,11 @@ No local installs are required — everything runs in the cloud.
 3. Switch to the **Codespaces** tab in the dropdown.
 4. Click **Create codespace on main**.
 
-If you want the stricter opt-out devcontainer that does **not**
-set `seccomp=unconfined`, choose the
-**Kravhantering Development (Strict)** dev container
+If you need elevated container permissions for VS Code agent
+sandboxing (e.g. `SYS_ADMIN`, `seccomp=unconfined`), choose the
+**Kravhantering Development (Elevated)** dev container
 configuration before you create the Codespace. The default
-configuration keeps `seccomp=unconfined` enabled so Codex agent
-tooling can use nested sandboxing features such as
-`apply_patch`.
+configuration uses the standard Docker security profile.
 
 > **Visual reference:** GitHub's documentation has annotated
 > screenshots of this flow — see

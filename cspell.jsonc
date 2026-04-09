@@ -85,9 +85,9 @@
     "nvmrc",
     "oautentiserade",
     "oavvislighet",
-    "ollama",
     "opennext",
     "opennextjs",
+    "openrouter",
     "postcss",
     "referensdatasidorna",
     "predev",
@@ -248,7 +248,10 @@
     "affordances",
     "Normalise",
     "misroutes",
-    "misalign"
+    "misalign",
+    "deepseek",
+    "mistralai",
+    "logprobs"
   ],
   "flagWords": [],
   "ignorePaths": [

@@ -187,7 +187,7 @@ export interface GenerateRequirementsOutput {
   message: string
   model: string
   requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
-  stats: import('@/lib/ai/ollama-client').GenerationStats
+  stats: import('@/lib/ai/openrouter-client').GenerationStats
   thinking: string
 }
 
@@ -2299,7 +2299,7 @@ export function createRequirementsService(
             REQUIREMENT_FORMAT_SCHEMA,
             validateGeneratedRequirements,
           } = await import('@/lib/ai/requirement-prompt')
-          const { generateChat } = await import('@/lib/ai/ollama-client')
+          const { generateChat } = await import('@/lib/ai/openrouter-client')
 
           const systemPrompt = buildSystemPrompt(
             taxonomy,
@@ -2333,7 +2333,8 @@ export function createRequirementsService(
             taxonomy,
           )
 
-          const model = input.model ?? process.env.OLLAMA_MODEL ?? 'qwen3:14b'
+          const model =
+            input.model ?? process.env.NEXT_PUBLIC_DEFAULT_MODEL ?? ''
 
           const message =
             locale === 'sv'
