@@ -1043,6 +1043,10 @@
     "topicHelp": "Describe the <strong>system or feature</strong> you want requirements for. The AI uses this as context when generating requirements.",
     "areaHelp": "Choose which <strong>area</strong> the generated requirements will be placed in. This determines where they appear in the requirements list.",
     "modelHelp": "Select the <strong>AI model</strong> to use. Larger models produce higher-quality results but take longer to generate.",
-    "customInstructionHelp": "Override the <strong>default instruction</strong> sent to the AI. Use this to steer the style, scope, or format of the generated requirements."
+    "customInstructionHelp": "Override the <strong>default instruction</strong> sent to the AI. Use this to steer the style, scope, or format of the generated requirements.",
+    "errors": {
+      "failedToLoadModels": "Failed to load models",
+      "failedToLoadSystemPrompt": "Failed to load system prompt"
+    }
   }
 }

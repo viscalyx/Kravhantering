@@ -1043,6 +1043,10 @@
     "topicHelp": "Beskriv det <strong>system eller den funktion</strong> du vill ha krav för. AI:n använder detta som kontext vid generering.",
     "areaHelp": "Välj vilket <strong>område</strong> de genererade kraven ska placeras i. Det avgör var de visas i kravlistan.",
     "modelHelp": "Välj vilken <strong>AI-modell</strong> som ska användas. Större modeller ger resultat av högre kvalitet men tar längre tid.",
-    "customInstructionHelp": "Skriv över den <strong>standardinstruktion</strong> som skickas till AI:n. Använd detta för att styra stil, omfattning eller format på de genererade kraven."
+    "customInstructionHelp": "Skriv över den <strong>standardinstruktion</strong> som skickas till AI:n. Använd detta för att styra stil, omfattning eller format på de genererade kraven.",
+    "errors": {
+      "failedToLoadModels": "Kunde inte läsa in modeller",
+      "failedToLoadSystemPrompt": "Kunde inte läsa in systemprompt"
+    }
   }
 }

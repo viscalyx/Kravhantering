@@ -119,11 +119,11 @@ export default function AiRequirementGenerator({
       .catch((err: unknown) => {
         setModels([])
         setModelsError(
-          err instanceof Error ? err.message : 'Failed to load models',
+          err instanceof Error ? err.message : t('errors.failedToLoadModels'),
         )
       })
       .finally(() => setModelsLoading(false))
-  }, [open])
+  }, [open, t])
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -168,6 +168,7 @@ export default function AiRequirementGenerator({
   }, [thinking])
 
   const inProgress = phase === 'thinking' || phase === 'generating'
+  const isBusy = inProgress || creating
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -187,7 +188,7 @@ export default function AiRequirementGenerator({
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
       className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
-      disabled={inProgress}
+      disabled={isBusy}
       onClick={() => toggleHelp(field)}
       type="button"
     >
@@ -351,7 +352,8 @@ export default function AiRequirementGenerator({
 
   // ── Create selected requirements ────────────────────────────────────
   const handleCreate = useCallback(async () => {
-    const selectedReqs = requirements.filter((_, i) => selected.has(i))
+    const selectedIndices = [...selected].sort((a, b) => a - b)
+    const selectedReqs = selectedIndices.map(i => requirements[i])
     if (selectedReqs.length === 0) return
 
     const areaName = areas.find(a => a.id === areaId)?.name ?? ''
@@ -369,7 +371,9 @@ export default function AiRequirementGenerator({
     setCreating(true)
     try {
       const errors: string[] = []
-      for (const req of selectedReqs) {
+      const succeededIndices: number[] = []
+      for (let si = 0; si < selectedReqs.length; si++) {
+        const req = selectedReqs[si]
         const res = await fetch('/api/requirements', {
           body: JSON.stringify({
             acceptanceCriteria: req.acceptanceCriteria,
@@ -394,7 +398,15 @@ export default function AiRequirementGenerator({
           errors.push(errBody?.message ?? `HTTP ${res.status}`)
         } else {
           console.log('[AI Create] POST succeeded:', res.status)
+          succeededIndices.push(selectedIndices[si])
         }
+      }
+      if (succeededIndices.length > 0) {
+        setSelected(prev => {
+          const next = new Set(prev)
+          for (const idx of succeededIndices) next.delete(idx)
+          return next
+        })
       }
       if (errors.length > 0) {
         setPhase('error')
@@ -446,14 +458,20 @@ export default function AiRequirementGenerator({
         >
           <motion.div
             animate={{ opacity: 1, scale: 1 }}
+            aria-labelledby="ai-requirement-dialog-title"
+            aria-modal="true"
             className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-secondary-900"
             exit={{ opacity: 0, scale: 0.95 }}
             initial={{ opacity: 0, scale: 0.95 }}
+            role="dialog"
             transition={{ duration: 0.15 }}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-secondary-200 px-6 py-4 dark:border-secondary-700">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+              <h2
+                className="flex items-center gap-2 text-lg font-semibold text-secondary-900 dark:text-secondary-100"
+                id="ai-requirement-dialog-title"
+              >
                 <Sparkles
                   aria-hidden="true"
                   className="h-5 w-5 text-primary-500"
@@ -488,7 +506,7 @@ export default function AiRequirementGenerator({
                   {helpPanel('topicHelp', 'topic')}
                   <textarea
                     className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100 dark:placeholder:text-secondary-500"
-                    disabled={inProgress}
+                    disabled={isBusy}
                     id="ai-topic"
                     onChange={e => setTopic(e.target.value)}
                     placeholder={t('topicPlaceholder')}
@@ -512,7 +530,7 @@ export default function AiRequirementGenerator({
                     {helpPanel('areaHelp', 'area')}
                     <select
                       className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100"
-                      disabled={inProgress}
+                      disabled={isBusy}
                       id="ai-area"
                       onChange={e =>
                         setAreaId(e.target.value ? Number(e.target.value) : '')
@@ -541,7 +559,7 @@ export default function AiRequirementGenerator({
                     {helpPanel('modelHelp', 'model')}
                     <select
                       className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100"
-                      disabled={inProgress || modelsLoading}
+                      disabled={isBusy || modelsLoading}
                       id="ai-model"
                       onChange={e => setModel(e.target.value)}
                       value={model}
@@ -566,7 +584,7 @@ export default function AiRequirementGenerator({
                     aria-controls="advanced-section"
                     aria-expanded={showAdvanced}
                     className="flex min-h-11 min-w-11 items-center gap-1 text-sm text-primary-600 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-primary-400 dark:hover:text-primary-300 dark:focus-visible:ring-primary-400"
-                    disabled={inProgress}
+                    disabled={isBusy}
                     onClick={() => setShowAdvanced(!showAdvanced)}
                     type="button"
                   >
@@ -629,7 +647,7 @@ export default function AiRequirementGenerator({
                         )}
                         <textarea
                           className="w-full rounded-lg border border-secondary-300 bg-white px-3 py-2 text-sm text-secondary-900 placeholder:text-secondary-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-100 dark:placeholder:text-secondary-500"
-                          disabled={inProgress}
+                          disabled={isBusy}
                           id="ai-instruction"
                           onChange={e => setCustomInstruction(e.target.value)}
                           placeholder={t('customInstructionPlaceholder')}
@@ -659,7 +677,9 @@ export default function AiRequirementGenerator({
                                 }
                                 setSystemPrompt(data.prompt ?? '')
                               } catch {
-                                setSystemPrompt('Failed to load system prompt')
+                                setSystemPrompt(
+                                  t('errors.failedToLoadSystemPrompt'),
+                                )
                               } finally {
                                 setSystemPromptLoading(false)
                               }
@@ -826,11 +846,11 @@ export default function AiRequirementGenerator({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between border-t border-secondary-200 px-6 py-4 dark:border-secondary-700">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2 border-t border-secondary-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0 dark:border-secondary-700">
+              <div className="flex w-full justify-center gap-2 sm:w-auto sm:justify-start">
                 {inProgress ? (
                   <button
-                    className="min-h-11 rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
+                    className="min-h-11 w-full rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 sm:w-auto dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
                     onClick={handleCancel}
                     type="button"
                   >
@@ -838,7 +858,7 @@ export default function AiRequirementGenerator({
                   </button>
                 ) : (
                   <button
-                    className="min-h-11 rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
+                    className="min-h-11 w-full rounded-lg border border-secondary-300 px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-400 sm:w-auto dark:border-secondary-600 dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-secondary-500"
                     onClick={handleClose}
                     type="button"
                   >
@@ -846,10 +866,10 @@ export default function AiRequirementGenerator({
                   </button>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex w-full justify-center gap-2 sm:w-auto sm:justify-end">
                 {phase === 'done' && requirements.length > 0 && (
                   <button
-                    className="min-h-11 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
+                    className="min-h-11 w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 sm:w-auto dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
                     disabled={selected.size === 0 || creating}
                     onClick={handleCreate}
                     type="button"
@@ -863,9 +883,9 @@ export default function AiRequirementGenerator({
                   phase === 'done' ||
                   phase === 'error') && (
                   <button
-                    className="min-h-11 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
+                    className="min-h-11 w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:opacity-50 sm:w-auto dark:bg-primary-500 dark:hover:bg-primary-600 dark:focus-visible:ring-primary-400"
                     disabled={
-                      !topic.trim() || !areaId || inProgress || modelsLoading
+                      !topic.trim() || !areaId || isBusy || modelsLoading
                     }
                     onClick={handleGenerate}
                     type="button"
