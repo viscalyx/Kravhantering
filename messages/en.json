@@ -1028,6 +1028,7 @@
     "rateLimited": "Rate limited, please try again",
     "parseError": "Failed to parse generated requirements",
     "showRawResponse": "Show raw response",
+    "tokensCount": "{count} tokens",
     "requirementsGenerated": "requirements generated",
     "selectAll": "Select all",
     "deselectAll": "Deselect all",

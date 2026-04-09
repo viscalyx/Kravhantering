@@ -1028,6 +1028,7 @@
     "rateLimited": "Hastighetsbegränsad, försök igen",
     "parseError": "Kunde inte tolka genererade krav",
     "showRawResponse": "Visa råsvar",
+    "tokensCount": "{count} tokens",
     "requirementsGenerated": "krav genererade",
     "selectAll": "Markera alla",
     "deselectAll": "Avmarkera alla",

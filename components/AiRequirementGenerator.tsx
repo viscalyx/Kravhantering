@@ -208,6 +208,7 @@ export default function AiRequirementGenerator({
   const abortRef = useRef<AbortController | null>(null)
   const thinkingRef = useRef<HTMLPreElement>(null)
   const modelRef = useRef(model)
+  const modelsAbortRef = useRef<AbortController | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const dropdownBtnRef = useRef<HTMLButtonElement>(null)
   const [dropdownPos, setDropdownPos] = useState<{
@@ -226,6 +227,9 @@ export default function AiRequirementGenerator({
   // Fetch models (reacts to activeFilters changes)
   const fetchModels = useCallback(
     (refresh = false) => {
+      modelsAbortRef.current?.abort()
+      const ac = new AbortController()
+      modelsAbortRef.current = ac
       setModelsLoading(true)
       const params = new URLSearchParams()
       if (refresh) params.set('refresh', '1')
@@ -233,12 +237,13 @@ export default function AiRequirementGenerator({
         params.set('supported_parameters', activeFilters.join(','))
       }
       const qs = params.toString()
-      fetch(`/api/ai/models${qs ? `?${qs}` : ''}`)
+      fetch(`/api/ai/models${qs ? `?${qs}` : ''}`, { signal: ac.signal })
         .then(
           r =>
             r.json() as Promise<{ error?: string; models?: OpenRouterModel[] }>,
         )
         .then(data => {
+          if (ac.signal.aborted) return
           const list = data.models ?? []
           setModelsError(data.error ?? null)
           setModels(list)
@@ -258,12 +263,15 @@ export default function AiRequirementGenerator({
           }
         })
         .catch((err: unknown) => {
+          if (ac.signal.aborted) return
           setModels([])
           setModelsError(
             err instanceof Error ? err.message : t('errors.failedToLoadModels'),
           )
         })
-        .finally(() => setModelsLoading(false))
+        .finally(() => {
+          if (!ac.signal.aborted) setModelsLoading(false)
+        })
     },
     [activeFilters, t],
   )
@@ -307,6 +315,8 @@ export default function AiRequirementGenerator({
     if (!open) {
       abortRef.current?.abort()
       abortRef.current = null
+      modelsAbortRef.current?.abort()
+      modelsAbortRef.current = null
       setTopic('')
       setAreaId('')
       setCustomInstruction('')
@@ -314,6 +324,7 @@ export default function AiRequirementGenerator({
       setShowDefaultInstruction(false)
       setShowSystemPrompt(false)
       setSystemPrompt('')
+      setSystemPromptLoading(false)
       setShowCapSettings(false)
       setModelDropdownOpen(false)
       setDropdownPos(null)
@@ -353,10 +364,14 @@ export default function AiRequirementGenerator({
         8,
         Math.min(idealTop, window.innerHeight - panelHeight - 8),
       )
-      setDropdownPos({
-        right: window.innerWidth - rect.right,
-        top,
-      })
+      // sm breakpoint = 640px; below that the panel is calc(100vw-2rem)
+      const panelWidth = window.innerWidth < 640 ? window.innerWidth - 32 : 384
+      const idealRight = window.innerWidth - rect.right
+      const right = Math.max(
+        8,
+        Math.min(idealRight, window.innerWidth - panelWidth - 8),
+      )
+      setDropdownPos({ right, top })
     }
     updatePos()
     function handleClick(e: MouseEvent) {
@@ -427,7 +442,11 @@ export default function AiRequirementGenerator({
 
   // Pending work = form has content or results exist
   const hasPendingWork =
-    topic.trim().length > 0 || requirements.length > 0 || inProgress
+    topic.trim().length > 0 ||
+    customInstruction.trim().length > 0 ||
+    Boolean(areaId) ||
+    requirements.length > 0 ||
+    inProgress
 
   const handleClose = useCallback(async () => {
     if (creating) return
@@ -722,7 +741,7 @@ export default function AiRequirementGenerator({
   // Speed calculation (tokens per second)
   const speed =
     stats && stats.completionTokens > 0
-      ? `${stats.completionTokens} tokens`
+      ? t('tokensCount', { count: stats.completionTokens })
       : null
 
   const toggleFavorite = useCallback((modelId: string) => {
@@ -1676,7 +1695,7 @@ export default function AiRequirementGenerator({
                         </h3>
                       </div>
                       <pre
-                        className="flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400"
+                        className="flex-1 overflow-y-auto whitespace-pre-wrap break-words p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400"
                         ref={thinkingRef}
                       >
                         {thinking}
@@ -1690,7 +1709,7 @@ export default function AiRequirementGenerator({
                           {t('rawOutput')}
                         </h3>
                       </div>
-                      <pre className="flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400">
+                      <pre className="flex-1 overflow-y-auto whitespace-pre-wrap break-words p-4 font-mono text-xs text-secondary-500 dark:text-secondary-400">
                         {rawResponse}
                       </pre>
                     </div>

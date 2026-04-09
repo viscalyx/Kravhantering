@@ -2279,9 +2279,23 @@ export function createRequirementsService(
     async generateRequirements(context, input) {
       const locale = input.locale ?? 'en'
       const topic = (input.topic ?? '').trim()
+      const customInstruction = (input.customInstruction ?? '').trim()
+
+      const MAX_TOPIC_LENGTH = 1000
+      const MAX_CUSTOM_INSTRUCTION_LENGTH = 5000
 
       if (!topic) {
         throw validationError('topic is required and cannot be empty')
+      }
+      if (topic.length > MAX_TOPIC_LENGTH) {
+        throw validationError(
+          `topic must not exceed ${MAX_TOPIC_LENGTH} characters`,
+        )
+      }
+      if (customInstruction.length > MAX_CUSTOM_INSTRUCTION_LENGTH) {
+        throw validationError(
+          `customInstruction must not exceed ${MAX_CUSTOM_INSTRUCTION_LENGTH} characters`,
+        )
       }
 
       await authorize(authorization, { kind: 'generate_requirements' }, context)
@@ -2309,7 +2323,7 @@ export function createRequirementsService(
           )
           const userPrompt = buildUserPrompt(
             topic,
-            input.customInstruction,
+            customInstruction || undefined,
             locale as 'en' | 'sv',
           )
 
