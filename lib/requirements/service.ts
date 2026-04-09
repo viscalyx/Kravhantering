@@ -2356,6 +2356,15 @@ export function createRequirementsService(
             taxonomy,
           )
 
+          if (
+            validated.length === 0 &&
+            result.content.requirements.length > 0
+          ) {
+            throw validationError(
+              'No valid requirements after taxonomy validation',
+            )
+          }
+
           const message =
             locale === 'sv'
               ? `Genererade ${validated.length} krav för ämne: ${topic}`

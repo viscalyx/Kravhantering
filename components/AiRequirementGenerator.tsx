@@ -615,7 +615,7 @@ export default function AiRequirementGenerator({
       }
 
       // Handle unexpected EOF — stream ended without a done/error event
-      if (!receivedTerminal) {
+      if (!receivedTerminal && !ac.signal.aborted) {
         setPhase('error')
         setError(t('streamClosedUnexpectedly'))
         setThinking('')
@@ -1675,7 +1675,7 @@ export default function AiRequirementGenerator({
               {/* Side panels: thinking trace + raw output */}
               {(thinking || (rawResponse && phase === 'done')) && (
                 <div
-                  className="hidden w-80 shrink-0 flex-col border-l border-secondary-200 sm:flex dark:border-secondary-700"
+                  className="flex w-full flex-col border-t border-secondary-200 sm:w-80 sm:shrink-0 sm:border-l sm:border-t-0 dark:border-secondary-700"
                   {...devMarker({
                     context: 'ai-requirement-generator',
                     name: 'side panel',
