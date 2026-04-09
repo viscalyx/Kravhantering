@@ -126,17 +126,22 @@ export async function generateChat<T>(
     applyResponseFormat(body, options.format, options.supportedParameters)
   }
 
-  // Default timeout of 120 seconds when no abort signal is provided.
-  // Combines with the caller's signal when present.
+  // Always enforce a 120 s timeout. When the caller also provides a signal,
+  // wire it so that either the timeout or the caller's abort cancels the fetch.
   const DEFAULT_TIMEOUT_MS = 120_000
-  let timeoutId: ReturnType<typeof setTimeout> | undefined
-  let signal: AbortSignal
+  const childController = new AbortController()
+  const timeoutId = setTimeout(
+    () => childController.abort(),
+    DEFAULT_TIMEOUT_MS,
+  )
+
+  const onCallerAbort = () => childController.abort()
   if (options.signal) {
-    signal = options.signal
-  } else {
-    const controller = new AbortController()
-    timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS)
-    signal = controller.signal
+    if (options.signal.aborted) {
+      childController.abort()
+    } else {
+      options.signal.addEventListener('abort', onCallerAbort, { once: true })
+    }
   }
 
   let response: Response
@@ -148,10 +153,11 @@ export async function generateChat<T>(
         'Content-Type': 'application/json',
       },
       method: 'POST',
-      signal,
+      signal: childController.signal,
     })
   } finally {
-    if (timeoutId !== undefined) clearTimeout(timeoutId)
+    clearTimeout(timeoutId)
+    options.signal?.removeEventListener('abort', onCallerAbort)
   }
 
   if (!response.ok) {
@@ -226,17 +232,45 @@ export async function* generateChatStream(
     applyResponseFormat(body, options.format, options.supportedParameters)
   }
 
-  const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
-    body: JSON.stringify(body),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    method: 'POST',
-    signal: options.signal,
-  })
+  // Timeout + caller-signal support, mirroring generateChat hardening.
+  const STREAM_TIMEOUT_MS = 120_000
+  const childController = new AbortController()
+  const streamTimeoutId = setTimeout(
+    () => childController.abort(),
+    STREAM_TIMEOUT_MS,
+  )
+
+  const onCallerAbort = () => childController.abort()
+  if (options.signal) {
+    if (options.signal.aborted) {
+      childController.abort()
+    } else {
+      options.signal.addEventListener('abort', onCallerAbort, { once: true })
+    }
+  }
+
+  let response: Response
+  try {
+    response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
+      body: JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
+      signal: childController.signal,
+    })
+  } catch (err) {
+    clearTimeout(streamTimeoutId)
+    options.signal?.removeEventListener('abort', onCallerAbort)
+    const message = err instanceof Error ? err.message : 'Fetch failed'
+    yield { message: `OpenRouter fetch error: ${message}`, phase: 'error' }
+    return
+  }
 
   if (!response.ok) {
+    clearTimeout(streamTimeoutId)
+    options.signal?.removeEventListener('abort', onCallerAbort)
     const text = await response.text().catch(() => '')
     yield {
       message: `OpenRouter error (${response.status}): ${text}`,
@@ -246,6 +280,8 @@ export async function* generateChatStream(
   }
 
   if (!response.body) {
+    clearTimeout(streamTimeoutId)
+    options.signal?.removeEventListener('abort', onCallerAbort)
     yield { message: 'No response body from OpenRouter', phase: 'error' }
     return
   }
@@ -344,6 +380,8 @@ export async function* generateChatStream(
       thinking: thinkingSoFar,
     }
   } finally {
+    clearTimeout(streamTimeoutId)
+    options.signal?.removeEventListener('abort', onCallerAbort)
     reader.releaseLock()
   }
 }

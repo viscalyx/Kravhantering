@@ -180,6 +180,7 @@ export interface GenerateRequirementsInput {
   customInstruction?: string
   locale?: ResponseLocale
   model?: string
+  reasoningEffort?: string
   topic: string
 }
 
@@ -2325,6 +2326,7 @@ export function createRequirementsService(
               { content: userPrompt, role: 'user' },
             ],
             model: resolvedModel,
+            reasoningEffort: input.reasoningEffort,
           })
 
           if (!result?.content || !Array.isArray(result.content.requirements)) {

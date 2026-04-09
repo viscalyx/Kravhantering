@@ -478,7 +478,31 @@ export default function AiRequirementGenerator({
         signal: ac.signal,
       })
 
-      if (!response.ok || !response.body) {
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`
+        try {
+          const errorBody = (await response.json()) as Record<string, unknown>
+          const extracted =
+            typeof errorBody.error === 'string'
+              ? errorBody.error
+              : typeof errorBody.message === 'string'
+                ? errorBody.message
+                : null
+          if (extracted) errorMessage = extracted
+        } catch {
+          try {
+            const text = await response.text()
+            if (text) errorMessage = text
+          } catch {
+            // keep default
+          }
+        }
+        setPhase('error')
+        setError(errorMessage)
+        return
+      }
+
+      if (!response.body) {
         setPhase('error')
         setError(`HTTP ${response.status}`)
         return
@@ -1031,7 +1055,7 @@ export default function AiRequirementGenerator({
                           dropdownPos &&
                           createPortal(
                             <div
-                              className="fixed z-9999 w-96 overflow-auto rounded-lg border border-secondary-300 bg-white py-1 text-sm shadow-xl dark:border-secondary-600 dark:bg-secondary-800"
+                              className="fixed z-9999 w-[calc(100vw-2rem)] overflow-auto rounded-lg border border-secondary-300 bg-white py-1 text-sm shadow-xl sm:w-96 dark:border-secondary-600 dark:bg-secondary-800"
                               ref={dropdownRef}
                               role="listbox"
                               style={{
@@ -1600,7 +1624,7 @@ export default function AiRequirementGenerator({
               {/* Side panels: thinking trace + raw output */}
               {(thinking || (rawResponse && phase === 'done')) && (
                 <div
-                  className="flex w-80 shrink-0 flex-col border-l border-secondary-200 dark:border-secondary-700"
+                  className="hidden w-80 shrink-0 flex-col border-l border-secondary-200 sm:flex dark:border-secondary-700"
                   {...devMarker({
                     context: 'ai-requirement-generator',
                     name: 'side panel',
