@@ -20,6 +20,11 @@ services:
       - NODE_ENV=development
       - NEXT_TELEMETRY_DISABLED=1
       - OLLAMA_HOST=http://ollama:11434
+    cap_add:
+      # Allow bwrap/unshare to mount /proc inside its namespace so that
+      # sandbox-wrapped agent commands work without falling back to
+      # unsandboxed execution.
+      - SYS_ADMIN
     security_opt:
       # Allow nested tool sandboxes (for example Bubblewrap/unshare) without
       # granting the whole devcontainer privileged mode.
@@ -41,8 +46,8 @@ services:
     entrypoint: ["/bin/bash", "/ollama-entrypoint.sh"]
     environment:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
-    ports:
-      - "11434:11434"
+    expose:
+      - "11434"
     # Proper init system for signal handling
     init: true
 

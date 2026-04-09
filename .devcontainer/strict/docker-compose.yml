@@ -38,8 +38,8 @@ services:
     entrypoint: ["/bin/bash", "/ollama-entrypoint.sh"]
     environment:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen3:14b}
-    ports:
-      - "11434:11434"
+    expose:
+      - "11434"
     init: true
 
 volumes:

@@ -1387,9 +1387,18 @@ export function createKravhanteringMcpServer(
         'Generate system requirements using AI (Ollama/Qwen3) based on a topic. ' +
         'Returns generated requirements with thinking trace. ' +
         'To create the generated requirements, call requirements_manage_requirement ' +
-        'with operation "create" for each requirement.',
+        'with operation "create" for each requirement, setting requirement.areaId ' +
+        "to the areaId provided in this tool's input.",
       inputSchema: z
         .object({
+          areaId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Area ID to assign to generated requirements when creating them via requirements_manage_requirement',
+            ),
           customInstruction: z
             .string()
             .max(4000)
@@ -1433,6 +1442,10 @@ export function createKravhanteringMcpServer(
           )
           .join('\n')
 
+        const areaNote = (input as { areaId?: number }).areaId
+          ? ` Set \`areaId: ${(input as { areaId?: number }).areaId}\` on each requirement.`
+          : ' Remember to set `areaId` on each requirement.'
+
         const text = [
           `Generated ${payload.requirements.length} requirements (model: ${payload.model})`,
           '',
@@ -1445,7 +1458,7 @@ export function createKravhanteringMcpServer(
             : '(no thinking trace)',
           '',
           '---',
-          'To create these requirements, call `requirements_manage_requirement` with `operation: "create"` for each one.',
+          `To create these requirements, call \`requirements_manage_requirement\` with \`operation: "create"\` for each one.${areaNote}`,
         ].join('\n')
 
         return {

@@ -2276,6 +2276,11 @@ export function createRequirementsService(
 
     async generateRequirements(context, input) {
       const locale = input.locale ?? 'en'
+      const topic = (input.topic ?? '').trim()
+
+      if (!topic) {
+        throw validationError('topic is required and cannot be empty')
+      }
 
       await authorize(authorization, { kind: 'generate_requirements' }, context)
 
@@ -2283,7 +2288,7 @@ export function createRequirementsService(
         logger,
         context,
         'requirements.generate_requirements',
-        { topic: input.topic.slice(0, 100), model: input.model },
+        { topic: topic.slice(0, 100), model: input.model },
         async () => {
           const nameKey = locale === 'sv' ? 'nameSv' : 'nameEn'
 
@@ -2325,7 +2330,7 @@ export function createRequirementsService(
             locale as 'en' | 'sv',
           )
           const userPrompt = buildUserPrompt(
-            input.topic,
+            topic,
             input.customInstruction,
             locale as 'en' | 'sv',
           )
@@ -2341,6 +2346,12 @@ export function createRequirementsService(
             model: input.model,
           })
 
+          if (!result?.content || !Array.isArray(result.content.requirements)) {
+            throw validationError(
+              'AI model returned an invalid response: missing requirements array',
+            )
+          }
+
           const validated = validateGeneratedRequirements(
             result.content.requirements,
             taxonomy,
@@ -2348,8 +2359,13 @@ export function createRequirementsService(
 
           const model = input.model ?? process.env.OLLAMA_MODEL ?? 'qwen3:14b'
 
+          const message =
+            locale === 'sv'
+              ? `Genererade ${validated.length} krav för ämne: ${topic}`
+              : `Generated ${validated.length} requirements for topic: ${topic}`
+
           return {
-            message: `Generated ${validated.length} requirements for topic: ${input.topic}`,
+            message,
             model,
             requirements: validated,
             stats: result.stats,

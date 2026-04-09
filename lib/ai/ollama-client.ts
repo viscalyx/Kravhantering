@@ -92,6 +92,7 @@ export async function generateChat<T>(options: {
   messages: OllamaChatMessage[]
   model?: string
   signal?: AbortSignal
+  timeoutMs?: number
 }): Promise<NonStreamingResult<T>> {
   const model = options.model ?? getDefaultModel()
   const host = getOllamaHost()
@@ -109,7 +110,7 @@ export async function generateChat<T>(options: {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
-    signal: options.signal ?? AbortSignal.timeout(180_000),
+    signal: options.signal ?? AbortSignal.timeout(options.timeoutMs ?? 180_000),
   })
 
   if (!response.ok) {
@@ -149,6 +150,7 @@ export async function* generateChatStream(options: {
   messages: OllamaChatMessage[]
   model?: string
   signal?: AbortSignal
+  timeoutMs?: number
 }): AsyncGenerator<StreamEvent> {
   const model = options.model ?? getDefaultModel()
   const host = getOllamaHost()
@@ -166,7 +168,7 @@ export async function* generateChatStream(options: {
     body: JSON.stringify(body),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
-    signal: options.signal ?? AbortSignal.timeout(300_000),
+    signal: options.signal ?? AbortSignal.timeout(options.timeoutMs ?? 300_000),
   })
 
   if (!response.ok) {
@@ -193,6 +195,7 @@ export async function* generateChatStream(options: {
     totalDuration: 0,
   }
   let buffer = ''
+  let hadError = false
 
   try {
     for (;;) {
@@ -238,15 +241,59 @@ export async function* generateChatStream(options: {
         }
       }
     }
+
+    // Process any leftover data in the buffer after the stream ends
+    const remaining = buffer.trim()
+    if (remaining) {
+      try {
+        const chunk = JSON.parse(remaining) as OllamaChatResponse
+
+        if (chunk.message?.thinking) {
+          thinkingSoFar += chunk.message.thinking
+          yield {
+            chunk: chunk.message.thinking,
+            phase: 'thinking',
+            thinkingSoFar,
+          }
+        }
+
+        if (chunk.message?.content) {
+          contentSoFar += chunk.message.content
+          yield { chunk: chunk.message.content, phase: 'generating' }
+        }
+
+        if (chunk.done) {
+          finalStats = {
+            evalCount: chunk.eval_count ?? 0,
+            evalDuration: chunk.eval_duration ?? 0,
+            totalDuration: chunk.total_duration ?? 0,
+          }
+        }
+      } catch {
+        // Ignore malformed leftover
+      }
+    }
+  } catch (err) {
+    hadError = true
+    if (err instanceof Error && err.name === 'AbortError') {
+      yield { message: 'Request was aborted', phase: 'error' }
+    } else {
+      yield {
+        message: err instanceof Error ? err.message : 'Stream error',
+        phase: 'error',
+      }
+    }
   } finally {
     reader.releaseLock()
   }
 
-  yield {
-    phase: 'done',
-    rawContent: contentSoFar,
-    stats: finalStats,
-    thinking: thinkingSoFar,
+  if (!hadError) {
+    yield {
+      phase: 'done',
+      rawContent: contentSoFar,
+      stats: finalStats,
+      thinking: thinkingSoFar,
+    }
   }
 }
 

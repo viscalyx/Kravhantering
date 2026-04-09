@@ -1,16 +1,21 @@
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
-    if (params) {
-      return Object.entries(params).reduce(
-        (s, [k, v]) => s.replace(`{${k}}`, String(v)),
-        key,
-      )
+  useTranslations: () => {
+    const t = (key: string, params?: Record<string, unknown>) => {
+      if (params) {
+        return Object.entries(params).reduce(
+          (s, [k, v]) => s.replace(`{${k}}`, String(v)),
+          key,
+        )
+      }
+      return key
     }
-    return key
+    t.rich = (key: string) => key
+    return t
   },
 }))
 
@@ -115,7 +120,7 @@ describe('AiRequirementGenerator', () => {
     expect(generateButton).toBeDisabled()
   })
 
-  it('has a close button', () => {
+  it('has a close button that calls onClose', async () => {
     const onClose = vi.fn()
     render(
       <AiRequirementGenerator
@@ -126,6 +131,46 @@ describe('AiRequirementGenerator', () => {
       />,
     )
 
-    expect(screen.getByLabelText('close')).toBeInTheDocument()
+    const closeButton = screen.getByLabelText('close')
+    expect(closeButton).toBeInTheDocument()
+    await userEvent.click(closeButton)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders help buttons for form fields', () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    expect(screen.getByLabelText('help: topicLabel')).toBeInTheDocument()
+    expect(screen.getByLabelText('help: areaLabel')).toBeInTheDocument()
+    expect(screen.getByLabelText('help: modelLabel')).toBeInTheDocument()
+  })
+
+  it('toggles help panel on help button click', async () => {
+    render(
+      <AiRequirementGenerator
+        areas={testAreas}
+        onClose={vi.fn()}
+        onCreated={vi.fn()}
+        open
+      />,
+    )
+
+    const helpBtn = screen.getByLabelText('help: topicLabel')
+    expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
+
+    await userEvent.click(helpBtn)
+    expect(helpBtn).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('topicHelp')).toBeInTheDocument()
+
+    await userEvent.click(helpBtn)
+    expect(helpBtn).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('topicHelp')).not.toBeInTheDocument()
   })
 })

@@ -5,34 +5,66 @@ import {
   buildUserPrompt,
   type GeneratedRequirement,
   REQUIREMENT_FORMAT_SCHEMA,
-  type TaxonomyData,
   validateGeneratedRequirements,
 } from '@/lib/ai/requirement-prompt'
-import { listCategories } from '@/lib/dal/requirement-categories'
-import {
-  listQualityCharacteristics,
-  listTypes,
-} from '@/lib/dal/requirement-types'
-import { listRiskLevels } from '@/lib/dal/risk-levels'
-import { listScenarios } from '@/lib/dal/usage-scenarios'
+import { loadTaxonomy } from '@/lib/ai/taxonomy'
 import { getDb } from '@/lib/db'
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as {
+  let body: {
     customInstruction?: string
-    locale?: 'en' | 'sv'
+    locale?: string
     model?: string
-    topic: string
+    topic?: string
+  }
+  try {
+    body = (await request.json()) as typeof body
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 400,
+    })
   }
 
-  if (!body.topic?.trim()) {
+  if (typeof body.topic !== 'string' || !body.topic.trim()) {
     return new Response(JSON.stringify({ error: 'topic is required' }), {
       headers: { 'Content-Type': 'application/json' },
       status: 400,
     })
   }
 
-  const locale = body.locale ?? 'en'
+  if (body.topic.length > 4000) {
+    return new Response(
+      JSON.stringify({ error: 'topic exceeds maximum length of 4000' }),
+      { headers: { 'Content-Type': 'application/json' }, status: 400 },
+    )
+  }
+
+  if (
+    body.customInstruction !== undefined &&
+    (typeof body.customInstruction !== 'string' ||
+      body.customInstruction.length > 4000)
+  ) {
+    return new Response(
+      JSON.stringify({
+        error: 'customInstruction must be a string with max length 4000',
+      }),
+      { headers: { 'Content-Type': 'application/json' }, status: 400 },
+    )
+  }
+
+  if (
+    body.model !== undefined &&
+    (typeof body.model !== 'string' || body.model.length > 100)
+  ) {
+    return new Response(
+      JSON.stringify({ error: 'model must be a string with max length 100' }),
+      { headers: { 'Content-Type': 'application/json' }, status: 400 },
+    )
+  }
+
+  const locale: 'en' | 'sv' =
+    body.locale === 'en' || body.locale === 'sv' ? body.locale : 'en'
 
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
@@ -117,34 +149,4 @@ export async function POST(request: Request) {
       'Content-Type': 'text/event-stream',
     },
   })
-}
-
-async function loadTaxonomy(
-  db: Parameters<typeof listCategories>[0],
-  locale: 'en' | 'sv',
-): Promise<TaxonomyData> {
-  const nameKey = locale === 'sv' ? 'nameSv' : 'nameEn'
-
-  const [categories, types, qcs, riskLevels, scenarios] = await Promise.all([
-    listCategories(db),
-    listTypes(db),
-    listQualityCharacteristics(db),
-    listRiskLevels(db),
-    listScenarios(db),
-  ])
-
-  // Build parent name map for quality characteristics
-  const qcMap = new Map(qcs.map(qc => [qc.id, qc]))
-
-  return {
-    categories: categories.map(c => ({ id: c.id, name: c[nameKey] })),
-    qualityCharacteristics: qcs.map(qc => ({
-      id: qc.id,
-      name: qc[nameKey],
-      parentName: qc.parentId ? qcMap.get(qc.parentId)?.[nameKey] : undefined,
-    })),
-    riskLevels: riskLevels.map(r => ({ id: r.id, name: r[nameKey] })),
-    scenarios: scenarios.map(s => ({ id: s.id, name: s[nameKey] })),
-    types: types.map(t => ({ id: t.id, name: t[nameKey] })),
-  }
 }

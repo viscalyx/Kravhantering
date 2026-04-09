@@ -828,7 +828,6 @@ export default function RequirementsClient({
         onClose={() => setAiModalOpen(false)}
         onCreated={() => {
           fetchData()
-          refreshRows()
         }}
         open={aiModalOpen}
       />

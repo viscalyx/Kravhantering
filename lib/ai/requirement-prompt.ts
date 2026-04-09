@@ -226,7 +226,7 @@ export function buildUserPrompt(
   customInstruction?: string,
   locale?: 'en' | 'sv',
 ): string {
-  const instruction = customInstruction ?? getDefaultInstruction(locale)
+  const instruction = customInstruction?.trim() || getDefaultInstruction(locale)
   const header =
     locale === 'sv' ? 'Ämne / Systemkontext' : 'Topic / System Context'
   return `${instruction}
