@@ -249,3 +249,14 @@ __pycache__/
 /temp-test-content/
 .claude
 .codex
+
+# Sandbox runtime artifacts (bwrap copies these into workspace root temporarily)
+.bash_profile
+.bashrc
+.gitconfig
+.gitmodules
+.mcp.json
+.profile
+.ripgreprc
+.zprofile
+.zshrc

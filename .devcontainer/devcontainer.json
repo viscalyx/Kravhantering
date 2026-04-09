@@ -9,7 +9,9 @@
     "NEXT_TELEMETRY_DISABLED": "1"
   },
   "remoteEnv": {
-    "GH_TOKEN": "${localEnv:GH_TOKEN}"
+    "GH_TOKEN": "${localEnv:GH_TOKEN}",
+    "OPENROUTER_API_KEY": "${localEnv:OPENROUTER_API_KEY}",
+    "OPENROUTER_MGMT_API_KEY": "${localEnv:OPENROUTER_MGMT_API_KEY}"
   },
 
   // Features to add to the dev container

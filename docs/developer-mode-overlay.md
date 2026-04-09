@@ -133,6 +133,12 @@ The emitted attributes are:
   `report-print:renderer`.
 - Requirement package list PDF pages expose `report state` markers with values
   `report-pdf:error`, `report-pdf:loading`, and `report-pdf:ready`.
+- AI Requirement Generator dialog uses the `ai-requirement-generator` context
+  with `dialog: ai-requirement-generator` on the modal container,
+  `dialog title` on the heading, `button: model selector` on the model
+  dropdown trigger, `button: generate` / `button: create` / `button: close` /
+  `button: cancel` on the footer actions, and `side panel` on the thinking
+  trace / raw output pane.
 - `data-developer-mode-priority`: optional numeric priority;
   higher values win collisions
 
@@ -165,6 +171,8 @@ The current canonical labels include:
 - `version pill`
 - `version history toggle`
 - `dialog`
+- `dialog title`
+- `side panel`
 - `tab panel`
 - `navigation`
 - `create button`
@@ -197,6 +205,7 @@ Developer Mode is covered by:
 - `tests/unit/requirement-package-detail-client.test.tsx`
 - `tests/unit/navigation.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`
+- `tests/unit/ai-requirement-generator-dev-markers.test.tsx`
 - `tests/integration/developer-mode-overlay.spec.ts`
 - `tests/integration/requirements-table-column-picker.spec.ts`
 

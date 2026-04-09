@@ -176,6 +176,23 @@ export interface TransitionRequirementInput extends RequirementRefInput {
   toStatusId: number
 }
 
+export interface GenerateRequirementsInput {
+  customInstruction?: string
+  locale?: ResponseLocale
+  model?: string
+  reasoningEffort?: string
+  supportedParameters?: string[]
+  topic: string
+}
+
+export interface GenerateRequirementsOutput {
+  message: string
+  model: string
+  requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
+  stats: import('@/lib/ai/openrouter-client').GenerationStats
+  thinking: string
+}
+
 export interface PackageRefInput {
   packageId?: number
   packageSlug?: string
@@ -564,6 +581,11 @@ export interface RequirementsService {
     context: RequestContext,
     input: AddToPackageInput,
   ): Promise<AddToPackageOutput>
+
+  generateRequirements(
+    context: RequestContext,
+    input: GenerateRequirementsInput,
+  ): Promise<GenerateRequirementsOutput>
   getPackageItems(
     context: RequestContext,
     input: GetPackageItemsInput,
@@ -2249,6 +2271,111 @@ export function createRequirementsService(
               responseFormat,
             ),
             result: { id: input.suggestionId },
+          }
+        },
+      )
+    },
+
+    async generateRequirements(context, input) {
+      const locale = input.locale ?? 'en'
+      const topic = (input.topic ?? '').trim()
+      const customInstruction = (input.customInstruction ?? '').trim()
+
+      const MAX_TOPIC_LENGTH = 1000
+      const MAX_CUSTOM_INSTRUCTION_LENGTH = 5000
+
+      if (!topic) {
+        throw validationError('topic is required and cannot be empty')
+      }
+      if (topic.length > MAX_TOPIC_LENGTH) {
+        throw validationError(
+          `topic must not exceed ${MAX_TOPIC_LENGTH} characters`,
+        )
+      }
+      if (customInstruction.length > MAX_CUSTOM_INSTRUCTION_LENGTH) {
+        throw validationError(
+          `customInstruction must not exceed ${MAX_CUSTOM_INSTRUCTION_LENGTH} characters`,
+        )
+      }
+
+      await authorize(authorization, { kind: 'generate_requirements' }, context)
+
+      return withLogging(
+        logger,
+        context,
+        'requirements.generate_requirements',
+        { topicLength: topic.length, model: input.model },
+        async () => {
+          const { loadTaxonomy } = await import('@/lib/ai/taxonomy')
+          const taxonomy = await loadTaxonomy(db, locale as 'en' | 'sv')
+
+          const {
+            buildSystemPrompt,
+            buildUserPrompt,
+            REQUIREMENT_FORMAT_SCHEMA,
+            validateGeneratedRequirements,
+          } = await import('@/lib/ai/requirement-prompt')
+          const { generateChat } = await import('@/lib/ai/openrouter-client')
+
+          const systemPrompt = buildSystemPrompt(
+            taxonomy,
+            locale as 'en' | 'sv',
+          )
+          const userPrompt = buildUserPrompt(
+            topic,
+            customInstruction || undefined,
+            locale as 'en' | 'sv',
+          )
+
+          const resolvedModel =
+            input.model ||
+            process.env.NEXT_PUBLIC_DEFAULT_MODEL ||
+            'anthropic/claude-sonnet-4'
+
+          const result = await generateChat<{
+            requirements: import('@/lib/ai/requirement-prompt').GeneratedRequirement[]
+          }>({
+            format: REQUIREMENT_FORMAT_SCHEMA,
+            messages: [
+              { content: systemPrompt, role: 'system' },
+              { content: userPrompt, role: 'user' },
+            ],
+            model: resolvedModel,
+            reasoningEffort: input.reasoningEffort,
+            supportedParameters: input.supportedParameters,
+          })
+
+          if (!result?.content || !Array.isArray(result.content.requirements)) {
+            throw validationError(
+              'AI model returned an invalid response: missing requirements array',
+            )
+          }
+
+          const validated = validateGeneratedRequirements(
+            result.content.requirements,
+            taxonomy,
+          )
+
+          if (
+            validated.length === 0 &&
+            result.content.requirements.length > 0
+          ) {
+            throw validationError(
+              'No valid requirements after taxonomy validation',
+            )
+          }
+
+          const message =
+            locale === 'sv'
+              ? `Genererade ${validated.length} krav för ämne: ${topic}`
+              : `Generated ${validated.length} requirements for topic: ${topic}`
+
+          return {
+            message,
+            model: resolvedModel,
+            requirements: validated,
+            stats: result.stats,
+            thinking: result.thinking,
           }
         },
       )

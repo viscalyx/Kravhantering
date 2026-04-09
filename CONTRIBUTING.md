@@ -7,13 +7,11 @@ consistent development environment. Open the project in VS Code and
 use **Reopen in Container** to get started automatically.
 
 If VS Code prompts you to choose a configuration, use
-**Kravhantering Development** for the default container. If you want
-the stricter opt-out variant that does not set
-`seccomp=unconfined`, choose
-**Kravhantering Development (Strict)** from
-[`.devcontainer/strict/devcontainer.json`](.devcontainer/strict/devcontainer.json).
-That stricter variant can prevent AI agents from working correctly
-when they rely on nested sandboxing features.
+**Kravhantering Development** for the default container. If you need
+elevated container permissions (e.g. `SYS_ADMIN`, `seccomp=unconfined`)
+for VS Code agent sandboxing features, choose
+**Kravhantering Development (Elevated)** from
+[`.devcontainer/elevated/devcontainer.json`](.devcontainer/elevated/devcontainer.json).
 
 ## Available Scripts
 
@@ -117,6 +115,40 @@ docs when working on it:
 - [docs/mcp-server-user-guide.md](docs/mcp-server-user-guide.md)
 - [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
 - [docs/TODO-mcp-server-auth-plan.md](docs/TODO-mcp-server-auth-plan.md)
+
+## OpenRouter (AI Requirement Generation)
+
+The application uses **OpenRouter** as its AI backend for requirement
+generation. OpenRouter provides access to many reasoning models from
+multiple providers (Anthropic, Google, OpenAI, DeepSeek, Qwen, etc.)
+via a single API key.
+
+### Configuration
+
+| Variable                    | Default | Description                    |
+| --------------------------- | ------- | ------------------------------ |
+| `OPENROUTER_API_KEY`        | —       | OpenRouter API key             |
+| `OPENROUTER_MGMT_API_KEY`   | —       | Management key (org credits)   |
+| `NEXT_PUBLIC_DEFAULT_MODEL` | —       | Default model ID               |
+
+1. Get an API key at <https://openrouter.ai/keys>
+2. Add it to `.env.development.local`:
+
+   ```env
+   OPENROUTER_API_KEY=sk-or-v1-...
+   ```
+
+3. Restart the dev server — the AI modal will show available models.
+
+### Verifying the Setup
+
+```bash
+# List available models via the app's API
+curl -s http://localhost:3000/api/ai/models | jq '.models | length'
+
+# Check credit balance
+curl -s http://localhost:3000/api/ai/credits | jq .
+```
 
 ## Internationalization
 

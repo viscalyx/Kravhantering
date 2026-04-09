@@ -14,6 +14,7 @@ import {
 import {
   buildRequirementViewUri,
   createRequirementsService,
+  type GenerateRequirementsInput,
   type GetRequirementInput,
   type ManageRequirementInput,
   type QueryCatalogInput,
@@ -1364,6 +1365,104 @@ export function createKravhanteringMcpServer(
         )
         return {
           content: [{ text: payload.message, type: 'text' }],
+          structuredContent: payload as unknown as Record<string, unknown>,
+        }
+      } catch (error) {
+        return formatError(error)
+      }
+    },
+  )
+
+  // ── AI Requirement Generation ───────────────────────────────────────
+  server.registerTool(
+    'requirements_generate_requirements',
+    {
+      annotations: {
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+        readOnlyHint: true,
+      },
+      description:
+        'Generate system requirements using AI (OpenRouter) based on a topic. ' +
+        'Returns generated requirements with thinking trace. ' +
+        'To create the generated requirements, call requirements_manage_requirement ' +
+        'with operation "create" for each requirement, setting requirement.areaId ' +
+        "to the areaId provided in this tool's input.",
+      inputSchema: z
+        .object({
+          areaId: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .describe(
+              'Area ID to assign to generated requirements when creating them via requirements_manage_requirement',
+            ),
+          customInstruction: z
+            .string()
+            .max(4000)
+            .optional()
+            .describe(
+              'Custom instruction to override the default generation prompt',
+            ),
+          locale: z
+            .enum(['en', 'sv'])
+            .default('en')
+            .describe('Locale for taxonomy names in the prompt'),
+          model: z
+            .string()
+            .max(100)
+            .optional()
+            .describe(
+              'OpenRouter model ID (e.g. "anthropic/claude-sonnet-4"). Uses NEXT_PUBLIC_DEFAULT_MODEL env var if omitted.',
+            ),
+          topic: z
+            .string()
+            .min(1)
+            .max(4000)
+            .describe(
+              'The topic or system context to generate requirements for',
+            ),
+        })
+        .strict(),
+      title: 'Generate Requirements (AI)',
+    },
+    async input => {
+      try {
+        const payload = await service.generateRequirements(
+          getBaseContext(request, 'requirements_generate_requirements'),
+          input as GenerateRequirementsInput,
+        )
+
+        const reqSummary = payload.requirements
+          .map(
+            (r, i) =>
+              `${i + 1}. [Type ${r.typeId}] ${r.description.slice(0, 120)}`,
+          )
+          .join('\n')
+
+        const areaNote = (input as { areaId?: number }).areaId
+          ? ` Set \`areaId: ${(input as { areaId?: number }).areaId}\` on each requirement.`
+          : ' Remember to set `areaId` on each requirement.'
+
+        const text = [
+          `Generated ${payload.requirements.length} requirements (model: ${payload.model})`,
+          '',
+          '## Requirements',
+          reqSummary,
+          '',
+          '## Thinking Trace',
+          payload.thinking
+            ? payload.thinking.slice(0, 2000)
+            : '(no thinking trace)',
+          '',
+          '---',
+          `To create these requirements, call \`requirements_manage_requirement\` with \`operation: "create"\` for each one.${areaNote}`,
+        ].join('\n')
+
+        return {
+          content: [{ text, type: 'text' }],
           structuredContent: payload as unknown as Record<string, unknown>,
         }
       } catch (error) {

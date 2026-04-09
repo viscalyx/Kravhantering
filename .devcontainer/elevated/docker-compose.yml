@@ -1,0 +1,41 @@
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      # Mount the root folder that contains .git
+      - ../..:/workspace:cached
+      # Persistent npm cache for faster installs across rebuilds (commented out - not needed for infrequent rebuilds)
+      # - npm-cache:/home/vscode/.npm
+      - type: bind
+        source: ${HOME}/.codex
+        target: /home/vscode/.codex
+        bind:
+          create_host_path: true
+    # Keep container running
+    command: sleep infinity
+    # Set environment variables
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    # WARNING: This profile grants elevated privileges (SYS_ADMIN,
+    # seccomp=unconfined) and is intended only for trusted code.
+    # It must remain opt-in — do not use as the default configuration.
+    cap_add:
+      # Allow bwrap/unshare to mount /proc inside its namespace so that
+      # sandbox-wrapped agent commands work without falling back to
+      # unsandboxed execution.
+      - SYS_ADMIN
+    security_opt:
+      # Allow nested tool sandboxes (for example Bubblewrap/unshare) without
+      # granting the whole devcontainer privileged mode.
+      - seccomp=unconfined
+      # Docker masks certain /proc paths (kcore, keys, etc.) by default.
+      # The kernel refuses to mount a new procfs in a child PID namespace
+      # when the parent proc has masked entries, which breaks bwrap
+      # --unshare-pid.  Unmasking system paths fixes this narrowly.
+      - systempaths=unconfined
+    # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
+    # Proper init system for signal handling and zombie process reaping
+    init: true
