@@ -125,11 +125,11 @@ via a single API key.
 
 ### Configuration
 
-| Variable                     | Default | Description                          |
-| ---------------------------- | ------- | ------------------------------------ |
-| `OPENROUTER_API_KEY`         | —       | OpenRouter API key                   |
-| `OPENROUTER_MGMT_API_KEY`    | —       | Management key (org credits display) |
-| `NEXT_PUBLIC_DEFAULT_MODEL`  | —       | Default model ID                     |
+| Variable                    | Default | Description                    |
+| --------------------------- | ------- | ------------------------------ |
+| `OPENROUTER_API_KEY`        | —       | OpenRouter API key             |
+| `OPENROUTER_MGMT_API_KEY`   | —       | Management key (org credits)   |
+| `NEXT_PUBLIC_DEFAULT_MODEL` | —       | Default model ID               |
 
 1. Get an API key at <https://openrouter.ai/keys>
 2. Add it to `.env.development.local`:

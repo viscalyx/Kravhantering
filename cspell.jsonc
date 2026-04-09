@@ -251,7 +251,9 @@
     "misalign",
     "deepseek",
     "mistralai",
-    "logprobs"
+    "logprobs",
+    "råsvar",
+    "zhipu"
   ],
   "flagWords": [],
   "ignorePaths": [
