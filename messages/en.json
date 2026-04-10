@@ -689,6 +689,62 @@
         "heading": "Inline detail view",
         "body": "Click a row to open its detail view directly underneath. There you can read the requirement text, acceptance criteria, metadata, references, scenarios, status steps, and version history. If the requirement has a published version, that version is normally shown first; otherwise an archived version is shown, and otherwise the latest working version. The buttons on the right only show the actions that are available for the version and status you are currently viewing."
       },
+      "properties": {
+        "heading": "Requirement properties",
+        "body": "Each requirement carries a set of properties that describe what it demands, how it is classified, and where it fits in the organization's processes. Below is an overview of every property and how it supports the requirement lifecycle.",
+        "requirementId": {
+          "heading": "Requirement ID",
+          "body": "Generated automatically from the area prefix and a sequence number. This is the stable identifier used for traceability across requirement packages, reports, and cross-references. You cannot edit it directly — it is assigned when the requirement is created."
+        },
+        "area": {
+          "heading": "Area",
+          "body": "Groups requirements by domain, such as Integration or Case Management. The area determines the ID prefix and which team is responsible for the requirement. It must be set when creating a new requirement and cannot be changed afterward."
+        },
+        "description": {
+          "heading": "Requirement text",
+          "body": "The core statement of what must be fulfilled. This is the main content that stakeholders review during the Review phase and that becomes binding once the requirement is published. Keep it clear and testable."
+        },
+        "acceptanceCriteria": {
+          "heading": "Acceptance criteria",
+          "body": "Measurable conditions that must be met for the requirement to be considered fulfilled. They are essential during verification and testing, and help reviewers understand the precise intent behind the requirement text."
+        },
+        "category": {
+          "heading": "Category",
+          "body": "Classifies the requirement as Business, IT, or Supplier. This supports filtering in the catalog and makes it easier to assign responsibility to the right team or stakeholder group."
+        },
+        "type": {
+          "heading": "Type",
+          "body": "Indicates whether the requirement is Functional or Non-functional. Both types unlock the quality characteristic field, but non-functional requirements offer a wider set of characteristics from the ISO/IEC 25010 standard while functional requirements have a smaller subset."
+        },
+        "qualityCharacteristic": {
+          "heading": "Quality characteristic",
+          "body": "Follows the ISO/IEC 25010 standard and lets you classify requirements by qualities such as Security, Performance efficiency, or Usability. Non-functional requirements have access to the full set of characteristics, while functional requirements offer a smaller subset. This helps prioritize and group related requirements during review and implementation planning."
+        },
+        "riskLevel": {
+          "heading": "Risk level",
+          "body": "Marks the requirement as Low, Medium, or High risk. Higher risk levels signal that the requirement needs more thorough review, more rigorous testing, and closer follow-up during implementation. The risk level also plays a role when a deviation is requested within a requirement package — a deviation for a high-risk requirement carries greater potential impact and therefore demands stricter scrutiny during the deviation review."
+        },
+        "verifiable": {
+          "heading": "Verifiable",
+          "body": "Indicates whether the requirement can be tested. When you enable this toggle, you must also specify a verification method. The verification method is used within requirement packages where the requirement is included, for example in connection with a procurement, implementation, or management process."
+        },
+        "verificationMethod": {
+          "heading": "Verification method",
+          "body": "Describes exactly how the requirement will be verified — for example through automated tests, manual inspection, or user acceptance testing. This field is required when Verifiable is turned on. The method is applied within the requirement packages where the requirement is used, providing concrete guidance for how verification should be carried out in each context."
+        },
+        "scenarios": {
+          "heading": "Usage scenarios",
+          "body": "Describes the contexts or situations where the requirement applies. Scenarios can for example represent operational conditions such as high load or disaster recovery, group functional requirements that belong together, or gather requirements tied to a specific legal framework. Each scenario has an owner who is responsible for the requirements within that context. Linking scenarios helps scope requirement packages and lets you filter requirements by the contexts that matter for a particular delivery."
+        },
+        "normReferences": {
+          "heading": "Norm references",
+          "body": "Connects the requirement to external standards, laws, or regulations. These links support compliance auditing and make it possible to trace every requirement back to its legal or normative origin."
+        },
+        "status": {
+          "heading": "Status",
+          "body": "Reflects the current lifecycle state — Draft, Review, Published, or Archived. Status is managed automatically through workflow actions and controls which operations are available. See the Process illustration and Requirement process sections below for details."
+        }
+      },
       "filtering": {
         "heading": "Searching and filtering",
         "body": "Use the search field for free-text searches in requirement IDs and content. Click the filter icon on any column header to narrow the list to the right area, status, or other metadata. Turn on \"Show archived\" when you need to include requirements that are no longer active."

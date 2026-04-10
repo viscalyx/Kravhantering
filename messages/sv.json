@@ -689,6 +689,62 @@
         "heading": "Detaljvy i listan",
         "body": "Klicka på en rad för att öppna detaljvyn direkt under raden. Där ser du kravtext, acceptanskriterier, metadata, referenser, scenarier, statussteg och versionshistorik. Om kravet har en publicerad version visas den normalt först, annars en arkiverad version och annars den senaste arbetsversionen. Knapparna till höger visar bara de åtgärder som är möjliga för den version och status du tittar på."
       },
+      "properties": {
+        "heading": "Kravets egenskaper",
+        "body": "Varje krav har en uppsättning egenskaper som beskriver vad det ställer för krav, hur det klassificeras och var det passar in i organisationens processer. Nedan följer en översikt av varje egenskap och hur den stödjer kravets livscykel.",
+        "requirementId": {
+          "heading": "Krav-ID",
+          "body": "Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravpaket, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas."
+        },
+        "area": {
+          "heading": "Område",
+          "body": "Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Området styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt."
+        },
+        "description": {
+          "heading": "Kravtext",
+          "body": "Den centrala beskrivningen av vad som ska uppfyllas. Det är huvudinnehållet som intressenter granskar under granskningsfasen och som blir bindande när kravet publiceras. Håll texten tydlig och testbar."
+        },
+        "acceptanceCriteria": {
+          "heading": "Acceptanskriterier",
+          "body": "Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper granskare att förstå den exakta avsikten bakom kravtexten."
+        },
+        "category": {
+          "heading": "Kategori",
+          "body": "Klassificerar kravet som Verksamhet, IT eller Leverantör. Det underlättar filtrering i katalogen och gör det enklare att tilldela ansvar till rätt team eller intressentgrupp."
+        },
+        "type": {
+          "heading": "Typ",
+          "body": "Anger om kravet är Funktionellt eller Icke-funktionellt. Båda typerna låser upp fältet för kvalitetsegenskap, men icke-funktionella krav erbjuder ett bredare urval av egenskaper från standarden ISO/IEC 25010 medan funktionella krav har en mindre delmängd."
+        },
+        "qualityCharacteristic": {
+          "heading": "Kvalitetsegenskap",
+          "body": "Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering."
+        },
+        "riskLevel": {
+          "heading": "Risknivå",
+          "body": "Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avvikelse inom ett kravpaket — en avvikelse för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avvikelsegranskningen."
+        },
+        "verifiable": {
+          "heading": "Verifierbar",
+          "body": "Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravpaket där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning."
+        },
+        "verificationMethod": {
+          "heading": "Verifieringsmetod",
+          "body": "Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravpaket där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang."
+        },
+        "scenarios": {
+          "heading": "Användningsscenarier",
+          "body": "Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravpaket och filtrera krav efter de sammanhang som är relevanta för en viss leverans."
+        },
+        "normReferences": {
+          "heading": "Normreferenser",
+          "body": "Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung."
+        },
+        "status": {
+          "heading": "Status",
+          "body": "Visar kravets aktuella livscykelfas — Utkast, Granskning, Publicerad eller Arkiverad. Status hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer."
+        }
+      },
       "filtering": {
         "heading": "Sökning och filter",
         "body": "Använd sökfältet för fritextsökning i krav-ID och innehåll. Klicka på filterikonen i en kolumnrubrik för att begränsa listan till rätt område, status eller annan metadata. Aktivera \"Visa arkiverade\" när du behöver se krav som inte längre är aktiva."
