@@ -2,11 +2,13 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
   HelpCircle,
+  ImagePlus,
   Info,
   Loader2,
   Lock,
@@ -164,7 +166,27 @@ const OPTIONAL_CAPABILITIES = [
     labelKey: 'capabilityLogprobs',
     tooltipKey: 'capabilityLogprobsTooltip',
   },
+  {
+    key: 'vision',
+    labelKey: 'capabilityVision',
+    tooltipKey: 'capabilityVisionTooltip',
+  },
 ] as const
+
+// Image attachment constraints
+const ALLOWED_IMAGE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+]
+const MAX_IMAGES = 3
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
+
+interface AttachedImage {
+  dataUrl: string
+  name: string
+}
 
 const DATA_POLICY_OPTIONS = [
   {
@@ -209,6 +231,11 @@ export default function AiRequirementGenerator({
   const [showSystemPrompt, setShowSystemPrompt] = useState(false)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [systemPromptLoading, setSystemPromptLoading] = useState(false)
+
+  // Image attachments
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([])
+  const [imageError, setImageError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Model list
   const [models, setModels] = useState<OpenRouterModel[]>([])
@@ -380,6 +407,8 @@ export default function AiRequirementGenerator({
       setShowCapSettings(false)
       setModelDropdownOpen(false)
       setDropdownPos(null)
+      setAttachedImages([])
+      setImageError('')
       setPhase('idle')
       setThinking('')
       setError('')
@@ -566,6 +595,9 @@ export default function AiRequirementGenerator({
           reasoningEffort,
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
+          ...(attachedImages.length > 0 && {
+            images: attachedImages.map(img => ({ dataUrl: img.dataUrl })),
+          }),
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
@@ -707,6 +739,7 @@ export default function AiRequirementGenerator({
     dataPolicies,
     locale,
     reasoningEffort,
+    attachedImages,
     t,
   ])
 
@@ -842,6 +875,71 @@ export default function AiRequirementGenerator({
       saveDataPolicies(next)
       return next
     })
+  }, [])
+
+  // ── Image attachment handling ───────────────────────────────────────
+  const visionEnabled = activeFilters.includes('vision')
+
+  const processFiles = useCallback(
+    (files: FileList | File[]) => {
+      setImageError('')
+      const fileArr = Array.from(files)
+
+      for (const f of fileArr) {
+        if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+          setImageError(t('imageErrorType', { name: f.name }))
+          return
+        }
+        if (f.size > MAX_IMAGE_BYTES) {
+          setImageError(t('imageErrorSize', { name: f.name }))
+          return
+        }
+      }
+
+      // Read all files, then append in one state update
+      const readFile = (f: File): Promise<AttachedImage> =>
+        new Promise(resolve => {
+          const reader = new FileReader()
+          reader.onload = () =>
+            resolve({ dataUrl: reader.result as string, name: f.name })
+          reader.readAsDataURL(f)
+        })
+
+      void Promise.all(fileArr.map(readFile)).then(newImages => {
+        setAttachedImages(prev => {
+          const remaining = MAX_IMAGES - prev.length
+          if (remaining <= 0) {
+            setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+            return prev
+          }
+          const toAdd = newImages.slice(0, remaining)
+          if (newImages.length > remaining) {
+            setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+          }
+          return [...prev, ...toAdd]
+        })
+      })
+    },
+    [t],
+  )
+
+  const removeImage = useCallback((index: number) => {
+    setAttachedImages(prev => prev.filter((_, i) => i !== index))
+    setImageError('')
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer.files.length > 0) {
+        processFiles(e.dataTransfer.files)
+      }
+    },
+    [processFiles],
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
   }, [])
 
   // Group models: favorites first, then by provider
@@ -1005,6 +1103,92 @@ export default function AiRequirementGenerator({
                       value={topic}
                     />
                   </div>
+
+                  {/* Image attachments (visible when Vision filter is active) */}
+                  {visionEnabled && (
+                    <div>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                          {t('imageAttachLabel')}
+                        </span>
+                      </div>
+                      <button
+                        aria-label={t('imageDropZone')}
+                        className="flex min-h-[64px] w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        type="button"
+                      >
+                        <ImagePlus
+                          aria-hidden="true"
+                          className="mr-2 h-5 w-5"
+                        />
+                        <span>{t('imageDropZone')}</span>
+                      </button>
+                      <input
+                        accept="image/png,image/jpeg,image/gif,image/webp"
+                        className="hidden"
+                        multiple
+                        onChange={e => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            processFiles(e.target.files)
+                            e.target.value = ''
+                          }
+                        }}
+                        ref={fileInputRef}
+                        type="file"
+                      />
+                      <p className="mt-1 text-xs text-secondary-400 dark:text-secondary-500">
+                        {t('imageAttachHint')}
+                      </p>
+
+                      {/* Image previews */}
+                      {attachedImages.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {attachedImages.map((img, i) => (
+                            <div
+                              className="group relative"
+                              key={`${img.name}-${i}`}
+                            >
+                              {/* biome-ignore lint/performance/noImgElement: base64 data URL preview thumbnails cannot be optimized by next/image */}
+                              <img
+                                alt={img.name}
+                                className="h-16 w-16 rounded-md border border-secondary-200 object-cover dark:border-secondary-700"
+                                src={img.dataUrl}
+                              />
+                              <button
+                                aria-label={`${t('imageRemove')}: ${img.name}`}
+                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100"
+                                onClick={() => removeImage(i)}
+                                type="button"
+                              >
+                                <X aria-hidden="true" className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Token cost warning */}
+                      {attachedImages.length > 0 && (
+                        <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                          <AlertTriangle
+                            aria-hidden="true"
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                          />
+                          <span>{t('imageTokenWarning')}</span>
+                        </div>
+                      )}
+
+                      {/* Image error */}
+                      {imageError && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                          {imageError}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Area + Model row */}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

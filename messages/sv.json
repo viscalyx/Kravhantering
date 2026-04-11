@@ -1117,6 +1117,8 @@
     "capabilityResponseFormatTooltip": "Modellen stöder strukturerad JSON-utdata. Detta krävs för att genererade krav ska kunna tolkas och importeras. Om Strikt JSON-schema är aktiverat ersätts detta läge.",
     "capabilityLogprobs": "Logg-sannolikheter",
     "capabilityLogprobsTooltip": "Modellen kan returnera sannolikheter på token-nivå, användbart för konfidenspoäng. Krävs inte för kravgenerering.",
+    "capabilityVision": "Vision (bildinmatning)",
+    "capabilityVisionTooltip": "Modellen kan analysera bilder som arkitekturdiagram, wireframes eller skärmbilder. När aktiverat kan du bifoga bilder som kontext för kravgenerering.",
     "modelsMatch": "{count} modeller matchar",
     "dataPolicySettings": "Dataintegritet",
     "dataPolicyProviderNote": "Dataintegritet styr hur AI-leverantörer hanterar dina promptar och svar — om de lagrar, tränar på eller behåller din data. Dessa inställningar filtrerar leverantörer vid varje förfrågan och kan minska tillgängliga leverantörer för vald modell.",
@@ -1166,6 +1168,14 @@
     "priceFree": "Gratis",
     "pricingIn": "in",
     "pricingOut": "ut",
-    "streamClosedUnexpectedly": "Svarsströmmen stängdes oväntat. Försök igen."
+    "streamClosedUnexpectedly": "Svarsströmmen stängdes oväntat. Försök igen.",
+    "imageAttachLabel": "Bifoga bilder",
+    "imageAttachHint": "PNG, JPEG, GIF eller WebP — max 10 MB styck, upp till 3 bilder",
+    "imageDropZone": "Släpp bilder här eller klicka för att bläddra",
+    "imageTokenWarning": "Bilder kan förbruka 1 000+ tokens styck, vilket ökar genereringskostnaden.",
+    "imageRemove": "Ta bort bild",
+    "imageErrorType": "Filtypen stöds inte: {name}. Använd PNG, JPEG, GIF eller WebP.",
+    "imageErrorSize": "{name} överskrider gränsen på 10 MB.",
+    "imageErrorCount": "Du kan bifoga upp till {max} bilder."
   }
 }

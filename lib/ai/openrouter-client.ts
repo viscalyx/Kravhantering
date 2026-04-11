@@ -10,6 +10,7 @@
 export interface OpenRouterModel {
   contextLength: number
   id: string
+  modality?: string
   name: string
   pricing: { completion: string; prompt: string; reasoning: string }
   provider: string
@@ -41,8 +42,20 @@ export interface NonStreamingResult<T> {
   thinking: string
 }
 
+export interface TextContentPart {
+  text: string
+  type: 'text'
+}
+
+export interface ImageContentPart {
+  image_url: { detail?: string; url: string }
+  type: 'image_url'
+}
+
+export type ContentPart = ImageContentPart | TextContentPart
+
 interface ChatMessage {
-  content: string
+  content: ContentPart[] | string
   role: 'assistant' | 'system' | 'user'
 }
 
@@ -455,6 +468,7 @@ export async function listModels(
   return (data.data ?? []).map(m => ({
     contextLength: m.context_length ?? 0,
     id: m.id,
+    modality: m.architecture?.modality,
     name: m.name,
     pricing: {
       completion: m.pricing?.completion ?? '0',

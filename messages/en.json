@@ -1117,6 +1117,8 @@
     "capabilityResponseFormatTooltip": "The model supports returning structured JSON output. This is required so generated requirements can be parsed and imported. If Strict JSON schema is enabled, it replaces this mode.",
     "capabilityLogprobs": "Log probabilities",
     "capabilityLogprobsTooltip": "The model can return token-level log probabilities, useful for confidence scoring. Not required for requirement generation.",
+    "capabilityVision": "Vision (image input)",
+    "capabilityVisionTooltip": "The model can analyze images such as architecture diagrams, wireframes, or screenshots. When enabled, you can attach images as context for requirement generation.",
     "modelsMatch": "{count} models match",
     "dataPolicySettings": "Data privacy",
     "dataPolicyProviderNote": "Data privacy controls how AI providers handle your prompts and responses — whether they store, train on, or retain your data. These settings filter providers at request time and may reduce available providers for the selected model.",
@@ -1166,6 +1168,14 @@
     "priceFree": "Free",
     "pricingIn": "in",
     "pricingOut": "out",
-    "streamClosedUnexpectedly": "The response stream closed unexpectedly. Please try again."
+    "streamClosedUnexpectedly": "The response stream closed unexpectedly. Please try again.",
+    "imageAttachLabel": "Attach images",
+    "imageAttachHint": "PNG, JPEG, GIF or WebP — max 10 MB each, up to 3 images",
+    "imageDropZone": "Drop images here or click to browse",
+    "imageTokenWarning": "Images can consume 1,000+ tokens each, which increases generation cost.",
+    "imageRemove": "Remove image",
+    "imageErrorType": "Unsupported file type: {name}. Use PNG, JPEG, GIF or WebP.",
+    "imageErrorSize": "{name} exceeds the 10 MB size limit.",
+    "imageErrorCount": "You can attach up to {max} images."
   }
 }

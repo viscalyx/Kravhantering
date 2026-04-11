@@ -39,17 +39,14 @@ export async function GET(request: NextRequest) {
       listModels(structuredFilter),
     ])
     const structuredIds = new Set(structuredModels.map(m => m.id))
-    const enriched = models.map(m =>
-      structuredIds.has(m.id)
-        ? {
-            ...m,
-            supportedParameters: [
-              ...m.supportedParameters,
-              'structured_outputs',
-            ],
-          }
-        : m,
-    )
+    const enriched = models.map(m => {
+      const extra: string[] = []
+      if (structuredIds.has(m.id)) extra.push('structured_outputs')
+      if (m.modality?.includes('image')) extra.push('vision')
+      return extra.length > 0
+        ? { ...m, supportedParameters: [...m.supportedParameters, ...extra] }
+        : m
+    })
     modelCache.set(cacheKey, { models: enriched, timestamp: Date.now() })
     return NextResponse.json({ models: enriched })
   } catch (err) {

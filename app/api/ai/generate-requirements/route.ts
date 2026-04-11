@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import {
+  type ContentPart,
   generateChatStream,
   type ProviderPreferences,
 } from '@/lib/ai/openrouter-client'
@@ -16,6 +17,7 @@ import { getDb } from '@/lib/db'
 export async function POST(request: Request) {
   let body: {
     customInstruction?: string
+    images?: Array<{ dataUrl: string }>
     locale?: string
     model?: string
     providerPreferences?: ProviderPreferences
@@ -120,12 +122,74 @@ export async function POST(request: Request) {
   const locale: 'en' | 'sv' =
     body.locale === 'en' || body.locale === 'sv' ? body.locale : 'en'
 
+  // Validate images (optional)
+  const ALLOWED_IMAGE_MIMES = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+  ]
+  const MAX_IMAGES = 3
+  const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
+
+  const images = body.images ?? []
+  if (!Array.isArray(images)) {
+    return new Response(JSON.stringify({ error: 'images must be an array' }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 400,
+    })
+  }
+  if (images.length > MAX_IMAGES) {
+    return new Response(
+      JSON.stringify({
+        error: `Maximum ${MAX_IMAGES} images allowed`,
+      }),
+      { headers: { 'Content-Type': 'application/json' }, status: 400 },
+    )
+  }
+  for (const img of images) {
+    if (typeof img?.dataUrl !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Each image must have a dataUrl string' }),
+        { headers: { 'Content-Type': 'application/json' }, status: 400 },
+      )
+    }
+    const mimeMatch = img.dataUrl.match(/^data:([^;]+);base64,/)
+    if (!mimeMatch || !ALLOWED_IMAGE_MIMES.includes(mimeMatch[1])) {
+      return new Response(
+        JSON.stringify({
+          error: 'Unsupported image type. Use PNG, JPEG, GIF or WebP.',
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 400 },
+      )
+    }
+    // Check approximate decoded size (base64 inflates ~33%)
+    const base64Data = img.dataUrl.slice(img.dataUrl.indexOf(',') + 1)
+    const approxBytes = (base64Data.length * 3) / 4
+    if (approxBytes > MAX_IMAGE_BYTES) {
+      return new Response(
+        JSON.stringify({ error: 'Image exceeds the 10 MB size limit' }),
+        { headers: { 'Content-Type': 'application/json' }, status: 400 },
+      )
+    }
+  }
+
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
   const taxonomy = await loadTaxonomy(db, locale)
   const systemPrompt = buildSystemPrompt(taxonomy, locale)
   const userPrompt = buildUserPrompt(body.topic, body.customInstruction, locale)
+
+  // Build user message content: text-only or multipart with images
+  let userContent: ContentPart[] | string = userPrompt
+  if (images.length > 0) {
+    const parts: ContentPart[] = [{ text: userPrompt, type: 'text' }]
+    for (const img of images) {
+      parts.push({ image_url: { url: img.dataUrl }, type: 'image_url' })
+    }
+    userContent = parts
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -142,7 +206,7 @@ export async function POST(request: Request) {
           format: REQUIREMENT_FORMAT_SCHEMA,
           messages: [
             { content: systemPrompt, role: 'system' },
-            { content: userPrompt, role: 'user' },
+            { content: userContent, role: 'user' },
           ],
           model: body.model,
           providerPreferences,
