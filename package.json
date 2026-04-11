@@ -41,7 +41,7 @@
     "clean": "rimraf .next out .open-next",
     "test:integration:all": "npm run test:integration && npm run test:integration:preview",
     "generate:guide": "npm run db:setup && playwright test --config playwright.guide.config.ts",
-    "generate:guide:report": "npm run db:setup && playwright show-report --host 0.0.0.0 playwright-report-guide",
+    "generate:guide:report": "playwright show-report --host 0.0.0.0 playwright-report-guide",
     "clean:all": "rimraf .next out .open-next .wrangler && echo 'Run npm run db:setup to restore the local database'",
     "prepreview": "rimraf .open-next && npm run cf-typegen",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
