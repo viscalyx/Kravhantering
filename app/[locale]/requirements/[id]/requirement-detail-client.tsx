@@ -2007,23 +2007,23 @@ export default function RequirementDetailClient({
                       </p>
                     </div>
                   )}
-                  {selectedVersion?.qualityCharacteristic && (
-                    <div
-                      {...devMarker({
-                        context: detailContext,
-                        name: 'detail section',
-                        priority: 350,
-                        value: 'quality characteristic',
-                      })}
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('qualityCharacteristic')}
-                      </h3>
-                      <p className="text-secondary-900 dark:text-secondary-100">
-                        {localName(selectedVersion.qualityCharacteristic)}
-                      </p>
-                    </div>
-                  )}
+                  <div
+                    {...devMarker({
+                      context: detailContext,
+                      name: 'detail section',
+                      priority: 350,
+                      value: 'quality characteristic',
+                    })}
+                  >
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
+                      {t('qualityCharacteristic')}
+                    </h3>
+                    <p className="text-secondary-900 dark:text-secondary-100">
+                      {selectedVersion?.qualityCharacteristic
+                        ? localName(selectedVersion.qualityCharacteristic)
+                        : '—'}
+                    </p>
+                  </div>
                   <div
                     {...devMarker({
                       context: detailContext,
