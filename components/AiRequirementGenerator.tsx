@@ -1363,17 +1363,19 @@ export default function AiRequirementGenerator({
                           </div>
                           {/* Optional toggles */}
                           {capabilityCounts.map(cap => (
-                            <label
-                              className="mb-1 flex cursor-pointer items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
+                            <div
+                              className="mb-1 flex items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
                               key={cap.key}
                             >
-                              <input
-                                checked={activeFilters.includes(cap.key)}
-                                className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
-                                onChange={() => toggleFilter(cap.key)}
-                                type="checkbox"
-                              />
-                              {t(cap.labelKey)}
+                              <label className="flex cursor-pointer items-center gap-1.5">
+                                <input
+                                  checked={activeFilters.includes(cap.key)}
+                                  className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                                  onChange={() => toggleFilter(cap.key)}
+                                  type="checkbox"
+                                />
+                                {t(cap.labelKey)}
+                              </label>
                               <button
                                 aria-label={t(cap.tooltipKey)}
                                 className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
@@ -1388,7 +1390,7 @@ export default function AiRequirementGenerator({
                               <span className="text-secondary-400 dark:text-secondary-500">
                                 ({cap.count}/{models.length})
                               </span>
-                            </label>
+                            </div>
                           ))}
                           <div className="mt-2 text-secondary-400 dark:text-secondary-500">
                             {t('modelsMatch', { count: models.length })}
@@ -1421,17 +1423,19 @@ export default function AiRequirementGenerator({
                               </p>
                             )}
                             {DATA_POLICY_OPTIONS.map(opt => (
-                              <label
-                                className="mb-1 flex cursor-pointer items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
+                              <div
+                                className="mb-1 flex items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
                                 key={opt.key}
                               >
-                                <input
-                                  checked={dataPolicies.includes(opt.key)}
-                                  className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
-                                  onChange={() => toggleDataPolicy(opt.key)}
-                                  type="checkbox"
-                                />
-                                {t(opt.labelKey)}
+                                <label className="flex cursor-pointer items-center gap-1.5">
+                                  <input
+                                    checked={dataPolicies.includes(opt.key)}
+                                    className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                                    onChange={() => toggleDataPolicy(opt.key)}
+                                    type="checkbox"
+                                  />
+                                  {t(opt.labelKey)}
+                                </label>
                                 <button
                                   aria-label={t(opt.tooltipKey)}
                                   className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
@@ -1443,7 +1447,7 @@ export default function AiRequirementGenerator({
                                     className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
                                   />
                                 </button>
-                              </label>
+                              </div>
                             ))}
                           </div>
                         </div>
