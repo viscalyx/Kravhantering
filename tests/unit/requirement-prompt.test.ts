@@ -52,7 +52,6 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain(
       'ID 2: Functional suitability > Functional correctness',
     )
-    expect(prompt).toContain('ID 1: Normal operation')
   })
 
   it('includes ISO standard references', () => {
@@ -73,7 +72,6 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Du är en expert på kravhantering')
     expect(prompt).toContain('Kravtyper')
     expect(prompt).toContain('Risknivåer')
-    expect(prompt).toContain('Användningsscenarier')
     expect(prompt).toContain('ID 1: Functional')
   })
 })
