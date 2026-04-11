@@ -1222,11 +1222,20 @@ export default function RequirementDetailClient({
       return
     setIsTransitioning(true)
     try {
-      await fetch(`/api/requirement-transitions/${requirementId}`, {
+      const res = await fetch(`/api/requirement-transitions/${requirementId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statusId: STATUS_ARCHIVED }),
       })
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        console.error('Approve archiving failed:', details ?? res.statusText)
+        await confirm({
+          message: details ?? t('transitionFailed'),
+          showCancel: false,
+        })
+        return
+      }
       await onChange?.()
       if (onClose) onClose()
       else router.push('/requirements')
@@ -1248,11 +1257,20 @@ export default function RequirementDetailClient({
       return
     setIsTransitioning(true)
     try {
-      await fetch(`/api/requirement-transitions/${requirementId}`, {
+      const res = await fetch(`/api/requirement-transitions/${requirementId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statusId: STATUS_PUBLISHED }),
       })
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        console.error('Cancel archiving failed:', details ?? res.statusText)
+        await confirm({
+          message: details ?? t('transitionFailed'),
+          showCancel: false,
+        })
+        return
+      }
       await Promise.all([fetchRequirement(), onChange?.()])
     } finally {
       setIsTransitioning(false)
@@ -1315,11 +1333,20 @@ export default function RequirementDetailClient({
     }
     setIsTransitioning(true)
     try {
-      await fetch(`/api/requirement-transitions/${requirementId}`, {
+      const res = await fetch(`/api/requirement-transitions/${requirementId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statusId: targetStatusId }),
       })
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        console.error('Status transition failed:', details ?? res.statusText)
+        await confirm({
+          message: details ?? t('transitionFailed'),
+          showCancel: false,
+        })
+        return
+      }
       await Promise.all([fetchRequirement(), onChange?.()])
     } finally {
       setIsTransitioning(false)
@@ -2919,7 +2946,7 @@ export default function RequirementDetailClient({
 
             {/* Improvement suggestions section */}
             <section
-              aria-label="improvement-suggestions"
+              aria-labelledby="improvementSuggestionsHeading"
               className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-4"
               {...devMarker({
                 context: detailContext,
@@ -2929,7 +2956,10 @@ export default function RequirementDetailClient({
               })}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                <h3
+                  className="text-sm font-semibold text-secondary-900 dark:text-secondary-100"
+                  id="improvementSuggestionsHeading"
+                >
                   {tf('title')}
                   {versionSuggestionItems.length > 0 && (
                     <span className="ml-2 text-xs font-normal text-secondary-500 dark:text-secondary-400">
