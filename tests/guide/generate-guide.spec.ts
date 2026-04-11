@@ -551,16 +551,19 @@ test.describe('Kravhantering — Guidegenerering', () => {
     })
 
     await test.step('Inline-detaljvy — öppna', async () => {
-      // IDN0001 filter is already active from the previous step
+      // IDN0001 column filter is active from the previous step — click the single row to open detail
       await expect(page.locator('tbody tr').first()).toBeVisible({
         timeout: 10_000,
       })
       const firstRow = page.locator('tbody tr').first()
       if ((await firstRow.count()) > 0) {
-        await firstRow.evaluate(el => (el as HTMLElement).click())
+        await firstRow.evaluate((el: Element) => (el as HTMLElement).click())
         await expect(
           page.locator('[data-expanded-detail-cell="true"]'),
         ).toBeVisible({ timeout: 10_000 })
+        // Remove any stale annotation and blur focus so neither shows in screenshot
+        await removeAnnotation(page)
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
         await snap(
           page,
           'inline-detaljvy',
@@ -793,6 +796,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await expect(page.locator('tbody tr').first()).toBeVisible({
           timeout: 10_000,
         })
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
         // Give React time to settle selection state after filter re-render
         await page.waitForTimeout(500)
       }
@@ -824,6 +828,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
       await page.waitForTimeout(150)
       await page.setViewportSize({ width: 1440, height: 1200 })
+      // Remove any stale annotations and blur focus so neither shows in screenshot
+      await removeAnnotation(page)
+      await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
 
       await snap(
         page,
@@ -899,6 +906,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await expect(page.locator('tbody tr').first()).toBeVisible({
           timeout: 10_000,
         })
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
         await page.waitForTimeout(500)
       }
 
@@ -945,6 +953,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
       await publicera.click()
       const confirmBtn = page.getByRole('button', { name: 'Bekräfta' })
       await expect(confirmBtn).toBeVisible({ timeout: 5_000 })
+      // Wait for the framer-motion enter animation (duration: 0.15s) to finish
+      await page.waitForTimeout(200)
 
       await snap(
         page,
@@ -995,6 +1005,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await expect(page.locator('tbody tr').first()).toBeVisible({
           timeout: 10_000,
         })
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
         await page.waitForTimeout(500)
       }
 
@@ -1109,8 +1120,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         if ((await firstCheckbox.count()) > 0) {
           await firstCheckbox.check()
         } else {
-          await rightRows.first().evaluate(el => (el as HTMLElement).click())
+          await rightRows.first().evaluate((el: Element) => (el as HTMLElement).click())
         }
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
         await page.waitForTimeout(300)
 
         await snap(
@@ -1202,7 +1214,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       if (rowCount > 0) {
         // BEH0002 is seeded without deviations — locate it by identifier text.
         const firstRow = allRows.filter({ hasText: 'BEH0002' })
-        await firstRow.first().evaluate(el => (el as HTMLElement).click())
+        await firstRow.first().evaluate((el: Element) => (el as HTMLElement).click())
         await expect(
           page.locator('[data-expanded-detail-cell="true"]'),
         ).toBeVisible({ timeout: 10_000 })
@@ -1213,6 +1225,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
           name: 'Begär ett avsteg',
         })
         await deviationBtn.waitFor({ state: 'visible', timeout: 10_000 })
+        // Blur active element so no focus ring appears in the screenshot
+        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
         await snap(
           page,
           'krav-i-paket-expanderat',
