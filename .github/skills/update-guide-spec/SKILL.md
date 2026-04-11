@@ -95,7 +95,7 @@ instead of `row.click()` or `row.click({ force: true })`.
 ### Status transitions
 
 - **Draft → Granskning**: no confirmation dialog. Use `waitForResponse` to
-  capture the `/transition` API call and fail fast if the server returns an error.
+  capture the `/api/requirement-transitions/:id` POST and fail fast if the server returns an error.
 - **Granskning → Publicerad**: requires a **"Bekräfta"** confirmation dialog.
   Always click it before waiting for the transition to complete.
 - After any transition, wait for the `onChange` refresh cycle to settle before
