@@ -2246,113 +2246,133 @@ export default function RequirementDetailClient({
               {isPackageItemContext ? (
                 <div className="flex flex-col gap-2 shrink-0">
                   {/* Print button — hidden when deviation is in draft state */}
-                  {deviationStep !== 'draft' && <div className="relative" ref={reportMenuRef}>
-                    <button
-                      className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
-                      onClick={() => setShowReportMenu(prev => !prev)}
-                      title={tc('print')}
-                      type="button"
-                    >
-                      <Printer aria-hidden="true" className="h-4 w-4" />
-                      {tc('print')}
-                    </button>
-                    {showReportMenu && (
-                      <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
-                        {deviationStep === 'review_requested' ? (
-                          <>
-                            <button
-                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                              onClick={() => {
-                                setShowReportMenu(false)
-                                window.open(
-                                  `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
-                                  '_blank',
-                                )
-                              }}
-                              type="button"
-                            >
-                              <Printer aria-hidden="true" className="h-4 w-4" />
-                              {td('printDeviationReviewReport')}
-                            </button>
-                            <button
-                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                              onClick={() => {
-                                setShowReportMenu(false)
-                                window.open(
-                                  `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
-                                  '_blank',
-                                )
-                              }}
-                              type="button"
-                            >
-                              <Printer aria-hidden="true" className="h-4 w-4" />
-                              {td('downloadDeviationReviewReportPdf')}
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                              onClick={() => {
-                                setShowReportMenu(false)
-                                window.open(
-                                  `/${locale}/requirements/reports/print/history/${requirementId}`,
-                                  '_blank',
-                                )
-                              }}
-                              type="button"
-                            >
-                              <Printer aria-hidden="true" className="h-4 w-4" />
-                              {t('printHistoryReport')}
-                            </button>
-                            <button
-                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                              onClick={() => {
-                                setShowReportMenu(false)
-                                window.open(
-                                  `/${locale}/requirements/reports/pdf/history/${requirementId}`,
-                                  '_blank',
-                                )
-                              }}
-                              type="button"
-                            >
-                              <Printer aria-hidden="true" className="h-4 w-4" />
-                              {t('downloadHistoryReportPdf')}
-                            </button>
-                            <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
-                            <button
-                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                              onClick={() => {
-                                setShowReportMenu(false)
-                                window.open(
-                                  `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
-                                  '_blank',
-                                )
-                              }}
-                              type="button"
-                            >
-                              <Printer aria-hidden="true" className="h-4 w-4" />
-                              {t('printSuggestionHistoryReport')}
-                            </button>
-                            <button
-                              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
-                              onClick={() => {
-                                setShowReportMenu(false)
-                                window.open(
-                                  `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
-                                  '_blank',
-                                )
-                              }}
-                              type="button"
-                            >
-                              <Printer aria-hidden="true" className="h-4 w-4" />
-                              {t('downloadSuggestionHistoryReportPdf')}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>}
+                  {deviationStep !== 'draft' && (
+                    <div className="relative" ref={reportMenuRef}>
+                      <button
+                        className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
+                        onClick={() => setShowReportMenu(prev => !prev)}
+                        title={tc('print')}
+                        type="button"
+                      >
+                        <Printer aria-hidden="true" className="h-4 w-4" />
+                        {tc('print')}
+                      </button>
+                      {showReportMenu && (
+                        <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+                          {deviationStep === 'review_requested' ? (
+                            <>
+                              <button
+                                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                                onClick={() => {
+                                  setShowReportMenu(false)
+                                  window.open(
+                                    `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
+                                    '_blank',
+                                  )
+                                }}
+                                type="button"
+                              >
+                                <Printer
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {td('printDeviationReviewReport')}
+                              </button>
+                              <button
+                                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                                onClick={() => {
+                                  setShowReportMenu(false)
+                                  window.open(
+                                    `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
+                                    '_blank',
+                                  )
+                                }}
+                                type="button"
+                              >
+                                <Printer
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {td('downloadDeviationReviewReportPdf')}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                                onClick={() => {
+                                  setShowReportMenu(false)
+                                  window.open(
+                                    `/${locale}/requirements/reports/print/history/${requirementId}`,
+                                    '_blank',
+                                  )
+                                }}
+                                type="button"
+                              >
+                                <Printer
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {t('printHistoryReport')}
+                              </button>
+                              <button
+                                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                                onClick={() => {
+                                  setShowReportMenu(false)
+                                  window.open(
+                                    `/${locale}/requirements/reports/pdf/history/${requirementId}`,
+                                    '_blank',
+                                  )
+                                }}
+                                type="button"
+                              >
+                                <Printer
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {t('downloadHistoryReportPdf')}
+                              </button>
+                              <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
+                              <button
+                                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                                onClick={() => {
+                                  setShowReportMenu(false)
+                                  window.open(
+                                    `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
+                                    '_blank',
+                                  )
+                                }}
+                                type="button"
+                              >
+                                <Printer
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {t('printSuggestionHistoryReport')}
+                              </button>
+                              <button
+                                className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                                onClick={() => {
+                                  setShowReportMenu(false)
+                                  window.open(
+                                    `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,
+                                    '_blank',
+                                  )
+                                }}
+                                type="button"
+                              >
+                                <Printer
+                                  aria-hidden="true"
+                                  className="h-4 w-4"
+                                />
+                                {t('downloadSuggestionHistoryReportPdf')}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {/* Deviation workflow buttons */}
                   {deviationError && (
                     <p
