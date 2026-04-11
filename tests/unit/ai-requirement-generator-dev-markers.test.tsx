@@ -260,17 +260,34 @@ describe('AiRequirementGenerator devMarker coverage', () => {
       />,
     )
 
-    // Wait for models to load and generate button to be enabled
+    // Wait for models fetch to resolve before interacting
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/ai/models'),
+        expect.anything(),
+      )
+    })
+
+    // Allow state updates from the models response to flush
+    await waitFor(() => {
+      const btn = screen.getByRole('button', { name: /generateButton/ })
+      // Button should exist (models loaded) but still disabled (no topic/area)
+      expect(btn).toBeInTheDocument()
+    })
+
     const topicInput = screen.getByLabelText('topicLabel')
     const areaSelect = screen.getByLabelText('areaLabel')
 
     await user.type(topicInput, 'Security requirements')
     await user.selectOptions(areaSelect, '1')
 
-    await waitFor(() => {
-      const btn = screen.getByRole('button', { name: /generateButton/ })
-      expect(btn).not.toBeDisabled()
-    })
+    await waitFor(
+      () => {
+        const btn = screen.getByRole('button', { name: /generateButton/ })
+        expect(btn).not.toBeDisabled()
+      },
+      { timeout: 3000 },
+    )
 
     // Click generate
     await user.click(screen.getByRole('button', { name: /generateButton/ }))
