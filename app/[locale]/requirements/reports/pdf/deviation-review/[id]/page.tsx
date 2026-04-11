@@ -30,10 +30,9 @@ export default function PdfDeviationReviewReportPage() {
   })
 
   const loadReport = useCallback(async () => {
-    const pkg = searchParams.get('pkg')
     const item = searchParams.get('item')
-    if (!pkg || !item) {
-      setError('Missing package slug or item ID in URL')
+    if (!item) {
+      setError('Missing item ID in URL')
       setLoading(false)
       return
     }

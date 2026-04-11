@@ -16,10 +16,9 @@ export default function PrintDeviationReviewReportPage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadReport = useCallback(async () => {
-    const pkg = searchParams.get('pkg')
     const item = searchParams.get('item')
-    if (!pkg || !item) {
-      setError('Missing package slug or item ID in URL')
+    if (!item) {
+      setError('Missing item ID in URL')
       return
     }
     try {
