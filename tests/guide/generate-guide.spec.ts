@@ -172,6 +172,9 @@ async function gotoRetry(
     if (!is404) return
     if (attempt < retries) await page.waitForTimeout(waitMs)
   }
+  throw new Error(
+    `gotoRetry: page at ${url} still showed 404 after ${retries} retries`,
+  )
 }
 
 type ArrowSide = 'left' | 'right' | 'top' | 'bottom'
@@ -574,7 +577,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         // ends after the version pills, without the suggestions section.
         await page.evaluate(() => {
           const el = document.querySelector(
-            'section[aria-label="improvement-suggestions"]',
+            'section[aria-labelledby="improvementSuggestionsHeading"]',
           ) as HTMLElement | null
           if (el) el.style.display = 'none'
         })
@@ -603,7 +606,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
         await page.evaluate(() => {
           const el = document.querySelector(
-            'section[aria-label="improvement-suggestions"]',
+            'section[aria-labelledby="improvementSuggestionsHeading"]',
           ) as HTMLElement | null
           if (el) el.style.display = ''
         })
@@ -622,7 +625,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           // Hide suggestions only for the screenshots that need it (010, 011)
           await page.evaluate(() => {
             const el = document.querySelector(
-              'section[aria-label="improvement-suggestions"]',
+              'section[aria-labelledby="improvementSuggestionsHeading"]',
             ) as HTMLElement | null
             if (el) el.style.display = 'none'
           })
@@ -656,7 +659,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           // in its natural state (same as when 009 was taken)
           await page.evaluate(() => {
             const el = document.querySelector(
-              'section[aria-label="improvement-suggestions"]',
+              'section[aria-labelledby="improvementSuggestionsHeading"]',
             ) as HTMLElement | null
             if (el) el.style.display = ''
           })
@@ -678,7 +681,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           await page.waitForTimeout(150)
           await page.evaluate(() => {
             const el = document.querySelector(
-              'section[aria-label="improvement-suggestions"]',
+              'section[aria-labelledby="improvementSuggestionsHeading"]',
             ) as HTMLElement | null
             if (el) el.style.display = 'none'
           })
@@ -698,7 +701,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         // subsequent steps start from a clean, known state.
         await page.evaluate(() => {
           const el = document.querySelector(
-            'section[aria-label="improvement-suggestions"]',
+            'section[aria-labelledby="improvementSuggestionsHeading"]',
           ) as HTMLElement | null
           if (el) el.style.display = ''
         })
@@ -1197,9 +1200,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
       const rowCount = await allRows.count()
 
       if (rowCount > 0) {
-        // BEH0002 (second row) is seeded without deviations — use it directly.
-        const firstRow = allRows.nth(1)
-        await firstRow.evaluate(el => (el as HTMLElement).click())
+        // BEH0002 is seeded without deviations — locate it by identifier text.
+        const firstRow = allRows.filter({ hasText: 'BEH0002' })
+        await firstRow.first().evaluate(el => (el as HTMLElement).click())
         await expect(
           page.locator('[data-expanded-detail-cell="true"]'),
         ).toBeVisible({ timeout: 10_000 })
@@ -1358,7 +1361,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       // Scroll the improvement suggestions section into view
       const suggSection = page.locator(
-        'section[aria-label="improvement-suggestions"]',
+        'section[aria-labelledby="improvementSuggestionsHeading"]',
       )
       await suggSection.scrollIntoViewIfNeeded()
       await page.waitForTimeout(300)
@@ -1407,7 +1410,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       ).not.toBeVisible({ timeout: 5_000 })
 
       const suggSection = page.locator(
-        'section[aria-label="improvement-suggestions"]',
+        'section[aria-labelledby="improvementSuggestionsHeading"]',
       )
       await suggSection.scrollIntoViewIfNeeded()
       await page.waitForTimeout(500)
@@ -1416,7 +1419,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'forslag-registrerat',
         'Förbättringsförslag registrerat',
-        'Det registrerade förslaget visas i sektionen med sin arbetsflödesstatus: **Inlämnat → Under granskning → Beslutat**. Förslaget kan redigeras och skickas för granskning via knappen **"Granskning ↗"**.',
+        'Det registrerade förslaget visas i sektionen med sin arbetsflödesstatus: **Utkast → Granskning begärd → Granskad**. Förslaget kan redigeras och skickas för granskning via knappen **"Granskning ↗"**.',
         { fullPage: false },
       )
     })
@@ -1430,7 +1433,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       ).toBeVisible({ timeout: 10_000 })
 
       const suggSection = page.locator(
-        'section[aria-label="improvement-suggestions"]',
+        'section[aria-labelledby="improvementSuggestionsHeading"]',
       )
       await suggSection.scrollIntoViewIfNeeded()
       await page.waitForTimeout(300)
