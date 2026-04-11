@@ -2245,8 +2245,8 @@ export default function RequirementDetailClient({
               {/* Action buttons column */}
               {isPackageItemContext ? (
                 <div className="flex flex-col gap-2 shrink-0">
-                  {/* Print button — always available */}
-                  <div className="relative" ref={reportMenuRef}>
+                  {/* Print button — hidden when deviation is in draft state */}
+                  {deviationStep !== 'draft' && <div className="relative" ref={reportMenuRef}>
                     <button
                       className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
                       onClick={() => setShowReportMenu(prev => !prev)}
@@ -2352,7 +2352,7 @@ export default function RequirementDetailClient({
                         )}
                       </div>
                     )}
-                  </div>
+                  </div>}
                   {/* Deviation workflow buttons */}
                   {deviationError && (
                     <p
