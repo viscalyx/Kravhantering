@@ -273,6 +273,7 @@ describe('AiRequirementGenerator devMarker coverage', () => {
       const btn = screen.getByRole('button', { name: /generateButton/ })
       // Button should exist (models loaded) but still disabled (no topic/area)
       expect(btn).toBeInTheDocument()
+      expect(btn).toBeDisabled()
     })
 
     const topicInput = screen.getByLabelText('topicLabel')
