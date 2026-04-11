@@ -462,13 +462,105 @@ tilldelas en ägare som är ansvarig för kravens kvalitet och aktualitet.
 
 ## Rapporter
 
+Systemet erbjuder flera rapporttyper för granskning, spårbarhet och
+beslutsunderlag. Rapporter kan genereras som **utskriftsvänliga HTML-sidor**
+eller laddas ned som **PDF**. Nedan listas de tillgängliga rapporterna.
+
+### Historikrapport
+
+Visar tidslinjen för alla ändringar av ett enskilt krav. Rapporten listar varje
+version i omvänd kronologisk ordning med status, författare, tidsstämplar och
+utdrag ur kravtexten. Den publicerade versionen (om den finns) visas överst,
+följd av opublicerade versioner markerade som utkast eller granskning.
+
+**Åtkomst:** Rapportmenyn i kravdetaljvyn (alla statusar).
+
+**Rutt:** `/requirements/reports/print/history/[id]` (utskrift) ·
+`/requirements/reports/pdf/history/[id]` (PDF)
+
+### Granskningsrapport
+
+Jämför en version i **Granskning** med den senast publicerade eller arkiverade
+versionen. Rapporten visar ord-för-ord-skillnader i kravtext och
+acceptanskriterier samt förändringar i metadata (kategori, typ,
+kvalitetsegenskaper, risknivå, normreferenser, scenarier m.m.). Om ingen
+publicerad/arkiverad version finns noteras detta.
+
+**Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status
+*Granskning*).
+
+**Rutt:** `/requirements/reports/print/review/[id]` (utskrift) ·
+`/requirements/reports/pdf/review/[id]` (PDF)
+
+### Kombinerad granskningsrapport
+
+En samlad rapport för flera krav som har status *Granskning*. Rapporten
+genereras genom att markera flera krav i katalogen. Den innehåller en
+innehållsförteckning med sidnummer, grupperad efter rapporttyp
+(arkiveringsförfrågningar först, sedan granskningsändringar). Varje krav börjar
+på en ny sida.
+
+**Åtkomst:** Flytande verktygsfält i kravkatalogen när minst ett markerat krav
+har status *Granskning*.
+
+**Rutt:** `/requirements/reports/print/review-combined?ids=...` (utskrift) ·
+`/requirements/reports/pdf/review-combined?ids=...` (PDF)
+
+### Granskningsrapport för avsteg
+
+Granskar ett specifikt avsteg kopplat till ett krav i ett kravpaket. Rapporten
+visar den kravversion som är kopplad till paketet, avstegets motivering och
+kompletterande paketkontext.
+
+**Åtkomst:** Rapportmenyn i kravdetaljvyn i paketkontexten (visas när avsteget
+är i status *Granskning begärd* eller *Beslutad*).
+
+**Rutt:**
+`/requirements/reports/print/deviation-review/[id]?pkg={slug}&item={itemId}`
+(utskrift) · `.../pdf/...` (PDF)
+
+### Kravlista
+
+Skriver ut de krav som för närvarande visas i kravkatalogen som en formaterad
+tabell med Krav-ID, kravtext (trunkerad), område och status. Rubriken visar
+antal krav och tidsstämpel.
+
+**Åtkomst:** Utskriftsknappen i kravkatalogens verktygsfält (alltid
+tillgänglig).
+
+**Rutt:** `/requirements/reports/print/list?ids=...` (utskrift) ·
+`/requirements/reports/pdf/list?ids=...` (PDF)
+
+### Kravlista — Kravpaket
+
+Skriver ut kraven som ingår i ett specifikt kravpaket som en formaterad tabell.
+Rapporten inkluderar paketets metadata (namn, ID, verksamhetsområde,
+genomförandeform, behovsreferens) som rubrik.
+
+**Åtkomst:** Utskriftsknappen i kravpaketdetaljvyns verktygsfält.
+
+**Rutt:** `/requirement-packages/[slug]/reports/print/list?ids=...` (utskrift) ·
+PDF genereras direkt i vyn.
+
+### Ändringsförslagshistorik
+
+Listar alla förbättringsförslag grupperade per kravversion i fallande
+versionsordning. Varje förslag visar status, innehåll, författare, datum och
+eventuella beslutsmotiveringar. Statusfärger: *Utkast* (blå), *Granskning
+begärd* (gul), *Beslutad* (grön), *Avvisad* (röd).
+
+**Åtkomst:** Rapportmenyn i kravdetaljvyn eller paketkravdetaljvyn.
+
+**Rutt:** `/requirements/reports/print/suggestion-history/[id]` (utskrift) ·
+`/requirements/reports/pdf/suggestion-history/[id]` (PDF)
+
 ### Rapportgenerering från katalogen
 
 Markera ett eller flera krav i katalogen för att aktivera rapportknappar i
 verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag,
 avstegsöversikter, ändringshistorik och mer.
 
-![Rapportgenerering från katalogen](images/050-rapporter-kravkatalog.png)
+![Rapportgenerering från katalogen](images/057-rapporter-kravkatalog.png)
 
 ### Rapporter från kravdetaljsidan
 
@@ -476,4 +568,4 @@ Från kravdetaljsidan kan du öppna rapportmenyn för att ladda ned eller skriva
 ut: **Ändringshistorik** (alla versioner), **Förbättringsförslagshistorik** och
 granskningsunderlag. Rapporterna är formaterade för utskrift och PDF-export.
 
-![Rapporter från kravdetaljsidan](images/051-rapporter-kravdetalj.png)
+![Rapporter från kravdetaljsidan](images/058-rapporter-kravdetalj.png)

@@ -149,6 +149,9 @@ async function snap(
     .waitFor({ state: 'hidden', timeout: 15_000 })
     .catch(() => {})
 
+  // Let animations (Framer Motion, CSS transitions) settle for consistent screenshots
+  await page.waitForTimeout(600)
+
   seq++
   const filename = `${String(seq).padStart(3, '0')}-${name}.png`
   const filepath = path.join(IMAGES_DIR, filename)
@@ -1675,21 +1678,27 @@ test.describe('Kravhantering — Guidegenerering', () => {
       if ((await firstCheckbox.count()) > 0) {
         await firstCheckbox.click()
         await page.waitForTimeout(300)
+        await addAnnotation(page, '[data-developer-mode-value="print"]')
         await snap(
           page,
           'rapporter-kravkatalog',
           'Rapportgenerering från katalogen',
           'Markera ett eller flera krav i katalogen för att aktivera rapportknappar i verktygsfältet. Du kan generera PDF-rapporter för granskningsunderlag, avstegsöversikter, ändringshistorik och mer.',
+          { fullPage: false },
         )
+        await removeAnnotation(page)
         // Deselect
         await firstCheckbox.click()
       } else {
+        await addAnnotation(page, '[data-developer-mode-value="print"]')
         await snap(
           page,
           'rapporter-kravkatalog',
           'Rapporter',
           'Markera krav i katalogen för att aktivera rapportfunktionerna. Systemet stödjer PDF- och utskriftsrapporter för granskning, avstegsöversikter och ändringshistorik.',
+          { fullPage: false },
         )
+        await removeAnnotation(page)
       }
     })
 
