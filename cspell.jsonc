@@ -318,6 +318,10 @@
     {
       "filename": "**/package.json",
       "enabled": false
+    },
+    {
+      "filename": "tests/guide/generate-guide.spec.ts",
+      "words": ["annot", "sugg"]
     }
   ],
   "useGitignore": true,
