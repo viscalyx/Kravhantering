@@ -563,7 +563,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         ).toBeVisible({ timeout: 10_000 })
         // Remove any stale annotation and blur focus so neither shows in screenshot
         await removeAnnotation(page)
-        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+        await page.evaluate(() =>
+          (document.activeElement as HTMLElement)?.blur(),
+        )
         await snap(
           page,
           'inline-detaljvy',
@@ -796,7 +798,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await expect(page.locator('tbody tr').first()).toBeVisible({
           timeout: 10_000,
         })
-        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+        await page.evaluate(() =>
+          (document.activeElement as HTMLElement)?.blur(),
+        )
         // Give React time to settle selection state after filter re-render
         await page.waitForTimeout(500)
       }
@@ -906,7 +910,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await expect(page.locator('tbody tr').first()).toBeVisible({
           timeout: 10_000,
         })
-        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+        await page.evaluate(() =>
+          (document.activeElement as HTMLElement)?.blur(),
+        )
         await page.waitForTimeout(500)
       }
 
@@ -1005,7 +1011,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await expect(page.locator('tbody tr').first()).toBeVisible({
           timeout: 10_000,
         })
-        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+        await page.evaluate(() =>
+          (document.activeElement as HTMLElement)?.blur(),
+        )
         await page.waitForTimeout(500)
       }
 
@@ -1120,9 +1128,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
         if ((await firstCheckbox.count()) > 0) {
           await firstCheckbox.check()
         } else {
-          await rightRows.first().evaluate((el: Element) => (el as HTMLElement).click())
+          await rightRows
+            .first()
+            .evaluate((el: Element) => (el as HTMLElement).click())
         }
-        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+        await page.evaluate(() =>
+          (document.activeElement as HTMLElement)?.blur(),
+        )
         await page.waitForTimeout(300)
 
         await snap(
@@ -1214,7 +1226,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
       if (rowCount > 0) {
         // BEH0002 is seeded without deviations — locate it by identifier text.
         const firstRow = allRows.filter({ hasText: 'BEH0002' })
-        await firstRow.first().evaluate((el: Element) => (el as HTMLElement).click())
+        await firstRow
+          .first()
+          .evaluate((el: Element) => (el as HTMLElement).click())
         await expect(
           page.locator('[data-expanded-detail-cell="true"]'),
         ).toBeVisible({ timeout: 10_000 })
@@ -1226,7 +1240,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
         })
         await deviationBtn.waitFor({ state: 'visible', timeout: 10_000 })
         // Blur active element so no focus ring appears in the screenshot
-        await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
+        await page.evaluate(() =>
+          (document.activeElement as HTMLElement)?.blur(),
+        )
         await snap(
           page,
           'krav-i-paket-expanderat',
