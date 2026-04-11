@@ -276,10 +276,11 @@ describe('AiRequirementGenerator devMarker coverage', () => {
       expect(btn).toBeDisabled()
     })
 
-    // Wait for models to fully load (selector becomes enabled)
+    // Wait for models to fully load (selector becomes enabled and shows model name)
     await waitFor(() => {
       const modelBtn = document.getElementById('ai-model') as HTMLButtonElement
       expect(modelBtn).not.toBeDisabled()
+      expect(modelBtn.textContent).toContain('Claude Sonnet 4')
     })
 
     const topicInput = screen.getByLabelText('topicLabel')

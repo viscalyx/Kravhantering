@@ -1291,7 +1291,7 @@ export default function AiRequirementGenerator({
                             {t('capabilityReasoning')}
                             <button
                               aria-label={t('capabilityReasoningTooltip')}
-                              className="cursor-help appearance-none border-0 bg-transparent p-0"
+                              className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                               title={t('capabilityReasoningTooltip')}
                               type="button"
                             >
@@ -1306,7 +1306,7 @@ export default function AiRequirementGenerator({
                             {t('capabilityStreaming')}
                             <button
                               aria-label={t('capabilityStreamingTooltip')}
-                              className="cursor-help appearance-none border-0 bg-transparent p-0"
+                              className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                               title={t('capabilityStreamingTooltip')}
                               type="button"
                             >
@@ -1329,7 +1329,7 @@ export default function AiRequirementGenerator({
                             </span>
                             <button
                               aria-label={t('capabilityResponseFormatTooltip')}
-                              className="cursor-help appearance-none border-0 bg-transparent p-0"
+                              className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                               title={t('capabilityResponseFormatTooltip')}
                               type="button"
                             >
@@ -1357,12 +1357,17 @@ export default function AiRequirementGenerator({
                                 type="checkbox"
                               />
                               {t(cap.labelKey)}
-                              <span title={t(cap.tooltipKey)}>
+                              <button
+                                aria-label={t(cap.tooltipKey)}
+                                className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                title={t(cap.tooltipKey)}
+                                type="button"
+                              >
                                 <Info
                                   aria-hidden="true"
                                   className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
                                 />
-                              </span>
+                              </button>
                               <span className="text-secondary-400 dark:text-secondary-500">
                                 ({cap.count}/{models.length})
                               </span>
@@ -1410,12 +1415,17 @@ export default function AiRequirementGenerator({
                                   type="checkbox"
                                 />
                                 {t(opt.labelKey)}
-                                <span title={t(opt.tooltipKey)}>
+                                <button
+                                  aria-label={t(opt.tooltipKey)}
+                                  className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                  title={t(opt.tooltipKey)}
+                                  type="button"
+                                >
                                   <Info
                                     aria-hidden="true"
                                     className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
                                   />
-                                </span>
+                                </button>
                               </label>
                             ))}
                           </div>

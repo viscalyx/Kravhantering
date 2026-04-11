@@ -68,7 +68,7 @@ const MOCK_SUGGESTION =
 
 interface ScreenshotEntry {
   description: string
-  filename: string
+  filename: string | null
   heading: string
   section: string
   seq: number
@@ -84,6 +84,19 @@ const sectionIntros = new Map<string, string>()
 function setSectionIntro(text: string) {
   sectionIntros.set(currentSection, text)
 }
+
+/** Add a text-only entry (no screenshot) to the current section. */
+function textEntry(heading: string, description: string) {
+  seq++
+  entries.push({
+    seq,
+    filename: null,
+    heading,
+    description,
+    section: currentSection,
+  })
+}
+
 // The uniqueId of the requirement created during the guide run (e.g. "ANV0042")
 let createdRequirementUniqueId = ''
 
@@ -330,10 +343,12 @@ function buildMarkdown(allEntries: ScreenshotEntry[]): string {
     .map(section => {
       const sectionEntries = allEntries.filter(e => e.section === section)
       const content = sectionEntries
-        .map(
-          e =>
-            `### ${e.heading}\n\n${wrapProse(e.description)}\n\n![${e.heading}](images/${e.filename})`,
-        )
+        .map(e => {
+          const img = e.filename
+            ? `\n\n![${e.heading}](images/${e.filename})`
+            : ''
+          return `### ${e.heading}\n\n${wrapProse(e.description)}${img}`
+        })
         .join('\n\n')
       const intro = sectionIntros.get(section)
       const introBlock = intro ? `${wrapProse(intro)}\n\n` : ''
@@ -1591,6 +1606,60 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
     // ── Sektion 10: Rapporter ─────────────────────────────────────────────
     currentSection = 'Rapporter'
+    setSectionIntro(
+      'Systemet erbjuder flera rapporttyper för granskning, spårbarhet och beslutsunderlag. Rapporter kan genereras som **utskriftsvänliga HTML-sidor** eller laddas ned som **PDF**. Nedan listas de tillgängliga rapporterna.',
+    )
+
+    await test.step('Rapportöversikt', async () => {
+      textEntry(
+        'Historikrapport',
+        'Visar tidslinjen för alla ändringar av ett enskilt krav. Rapporten listar varje version i omvänd kronologisk ordning med status, författare, tidsstämplar och utdrag ur kravtexten. Den publicerade versionen (om den finns) visas överst, följd av opublicerade versioner markerade som utkast eller granskning.\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravdetaljvyn (alla statusar).\n\n' +
+          '**Rutt:** `/requirements/reports/print/history/[id]` (utskrift) · `/requirements/reports/pdf/history/[id]` (PDF)',
+      )
+
+      textEntry(
+        'Granskningsrapport',
+        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, risknivå, normreferenser, scenarier m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status *Granskning*).\n\n' +
+          '**Rutt:** `/requirements/reports/print/review/[id]` (utskrift) · `/requirements/reports/pdf/review/[id]` (PDF)',
+      )
+
+      textEntry(
+        'Kombinerad granskningsrapport',
+        'En samlad rapport för flera krav som har status *Granskning*. Rapporten genereras genom att markera flera krav i katalogen. Den innehåller en innehållsförteckning med sidnummer, grupperad efter rapporttyp (arkiveringsförfrågningar först, sedan granskningsändringar). Varje krav börjar på en ny sida.\n\n' +
+          '**Åtkomst:** Flytande verktygsfält i kravkatalogen när minst ett markerat krav har status *Granskning*.\n\n' +
+          '**Rutt:** `/requirements/reports/print/review-combined?ids=...` (utskrift) · `/requirements/reports/pdf/review-combined?ids=...` (PDF)',
+      )
+
+      textEntry(
+        'Granskningsrapport för avsteg',
+        'Granskar ett specifikt avsteg kopplat till ett krav i ett kravpaket. Rapporten visar den kravversion som är kopplad till paketet, avstegets motivering och kompletterande paketkontext.\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravdetaljvyn i paketkontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
+          '**Rutt:** `/requirements/reports/print/deviation-review/[id]?pkg={slug}&item={itemId}` (utskrift) · `.../pdf/...` (PDF)',
+      )
+
+      textEntry(
+        'Kravlista',
+        'Skriver ut de krav som för närvarande visas i kravkatalogen som en formaterad tabell med Krav-ID, kravtext (trunkerad), område och status. Rubriken visar antal krav och tidsstämpel.\n\n' +
+          '**Åtkomst:** Utskriftsknappen i kravkatalogens verktygsfält (alltid tillgänglig).\n\n' +
+          '**Rutt:** `/requirements/reports/print/list?ids=...` (utskrift) · `/requirements/reports/pdf/list?ids=...` (PDF)',
+      )
+
+      textEntry(
+        'Kravlista — Kravpaket',
+        'Skriver ut kraven som ingår i ett specifikt kravpaket som en formaterad tabell. Rapporten inkluderar paketets metadata (namn, ID, verksamhetsområde, genomförandeform, behovsreferens) som rubrik.\n\n' +
+          '**Åtkomst:** Utskriftsknappen i kravpaketdetaljvyns verktygsfält.\n\n' +
+          '**Rutt:** `/requirement-packages/[slug]/reports/print/list?ids=...` (utskrift) · PDF genereras direkt i vyn.',
+      )
+
+      textEntry(
+        'Ändringsförslagshistorik',
+        'Listar alla förbättringsförslag grupperade per kravversion i fallande versionsordning. Varje förslag visar status, innehåll, författare, datum och eventuella beslutsmotiveringar. Statusfärger: *Utkast* (blå), *Granskning begärd* (gul), *Beslutad* (grön), *Avvisad* (röd).\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravdetaljvyn eller paketkravdetaljvyn.\n\n' +
+          '**Rutt:** `/requirements/reports/print/suggestion-history/[id]` (utskrift) · `/requirements/reports/pdf/suggestion-history/[id]` (PDF)',
+      )
+    })
 
     await test.step('Rapporter från kravkatalogen', async () => {
       await page.goto('/sv/requirements')
