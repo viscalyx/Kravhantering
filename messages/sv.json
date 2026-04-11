@@ -1177,6 +1177,7 @@
     "imageRemove": "Ta bort bild",
     "imageErrorType": "Filtypen stöds inte: {name}. Använd PNG, JPEG, GIF eller WebP.",
     "imageErrorSize": "{name} överskrider gränsen på 10 MB.",
-    "imageErrorCount": "Du kan bifoga upp till {max} bilder."
+    "imageErrorCount": "Du kan bifoga upp till {max} bilder.",
+    "imageErrorRead": "Kunde inte läsa en eller flera bildfiler. Försök igen."
   }
 }

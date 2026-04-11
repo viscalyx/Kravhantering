@@ -238,6 +238,7 @@ export default function AiRequirementGenerator({
   const [imageError, setImageError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadSessionRef = useRef(0)
+  const isBusyRef = useRef(false)
 
   // Model list
   const [models, setModels] = useState<OpenRouterModel[]>([])
@@ -411,6 +412,7 @@ export default function AiRequirementGenerator({
       setDropdownPos(null)
       setAttachedImages([])
       setImageError('')
+      uploadSessionRef.current++
       setPhase('idle')
       setThinking('')
       setError('')
@@ -486,6 +488,7 @@ export default function AiRequirementGenerator({
 
   const inProgress = phase === 'thinking' || phase === 'generating'
   const isBusy = inProgress || creating
+  isBusyRef.current = isBusy
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -891,11 +894,13 @@ export default function AiRequirementGenerator({
     if (!visionEnabled) {
       setAttachedImages([])
       setImageError('')
+      uploadSessionRef.current++
     }
   }, [visionEnabled])
 
   const processFiles = useCallback(
     (files: FileList | File[]) => {
+      if (isBusyRef.current) return
       setImageError('')
       const fileArr = Array.from(files)
 
@@ -912,7 +917,7 @@ export default function AiRequirementGenerator({
 
       // Read all files, then append in one state update
       const readFile = (f: File): Promise<AttachedImage> =>
-        new Promise(resolve => {
+        new Promise((resolve, reject) => {
           const reader = new FileReader()
           reader.onload = () =>
             resolve({
@@ -920,25 +925,34 @@ export default function AiRequirementGenerator({
               dataUrl: reader.result as string,
               name: f.name,
             })
+          reader.onerror = () =>
+            reject(new Error(`Failed to read file: ${f.name}`))
+          reader.onabort = () =>
+            reject(new Error(`File read aborted: ${f.name}`))
           reader.readAsDataURL(f)
         })
 
       const session = ++uploadSessionRef.current
-      void Promise.all(fileArr.map(readFile)).then(newImages => {
-        if (uploadSessionRef.current !== session) return
-        setAttachedImages(prev => {
-          const remaining = MAX_IMAGES - prev.length
-          if (remaining <= 0) {
-            setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
-            return prev
-          }
-          const toAdd = newImages.slice(0, remaining)
-          if (newImages.length > remaining) {
-            setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
-          }
-          return [...prev, ...toAdd]
+      void Promise.all(fileArr.map(readFile))
+        .then(newImages => {
+          if (uploadSessionRef.current !== session) return
+          setAttachedImages(prev => {
+            const remaining = MAX_IMAGES - prev.length
+            if (remaining <= 0) {
+              setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+              return prev
+            }
+            const toAdd = newImages.slice(0, remaining)
+            if (newImages.length > remaining) {
+              setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+            }
+            return [...prev, ...toAdd]
+          })
         })
-      })
+        .catch(() => {
+          if (uploadSessionRef.current !== session) return
+          setImageError(t('imageErrorRead'))
+        })
     },
     [t],
   )
@@ -951,6 +965,7 @@ export default function AiRequirementGenerator({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
+      if (isBusyRef.current) return
       if (e.dataTransfer.files.length > 0) {
         processFiles(e.dataTransfer.files)
       }
@@ -1136,7 +1151,8 @@ export default function AiRequirementGenerator({
                       {helpPanel('imageAttachHelp', 'imageAttach')}
                       <button
                         aria-label={t('imageDropZone')}
-                        className="flex min-h-[64px] w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
+                        className="flex min-h-[64px] w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
+                        disabled={isBusy}
                         onClick={() => fileInputRef.current?.click()}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
@@ -1178,7 +1194,8 @@ export default function AiRequirementGenerator({
                               />
                               <button
                                 aria-label={`${t('imageRemove')}: ${img.name}`}
-                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
+                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 disabled:opacity-50"
+                                disabled={isBusy}
                                 onClick={() => removeImage(i)}
                                 type="button"
                               >
