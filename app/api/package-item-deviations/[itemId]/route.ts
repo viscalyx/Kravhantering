@@ -22,8 +22,16 @@ export async function GET(
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
-  const deviations = await listDeviationsForPackageItem(db, numericItemId)
-  return NextResponse.json({ deviations })
+  try {
+    const deviations = await listDeviationsForPackageItem(db, numericItemId)
+    return NextResponse.json({ deviations })
+  } catch (error) {
+    console.error('Failed to list deviations for package item', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 },
+    )
+  }
 }
 
 export async function POST(
