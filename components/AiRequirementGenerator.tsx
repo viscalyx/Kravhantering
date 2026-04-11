@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   HelpCircle,
+  Info,
   Loader2,
   Lock,
   RefreshCw,
@@ -129,11 +130,58 @@ function saveFilters(filters: string[]) {
   localStorage.setItem(FILTERS_KEY, JSON.stringify(filters))
 }
 
+const DATA_POLICIES_KEY = 'ai-data-policies'
+const DATA_POLICIES_DEFAULT = ['data_collection']
+
+function loadDataPolicies(): string[] {
+  try {
+    const raw = localStorage.getItem(DATA_POLICIES_KEY)
+    if (raw) return JSON.parse(raw) as string[]
+  } catch {
+    /* empty */
+  }
+  return DATA_POLICIES_DEFAULT
+}
+
+function saveDataPolicies(policies: string[]) {
+  localStorage.setItem(DATA_POLICIES_KEY, JSON.stringify(policies))
+}
+
 // Optional capability toggles (shown in settings when they'd filter results)
 const OPTIONAL_CAPABILITIES = [
-  { key: 'structured_outputs', labelKey: 'capabilityStructuredOutputs' },
-  { key: 'tools', labelKey: 'capabilityTools' },
-  { key: 'logprobs', labelKey: 'capabilityLogprobs' },
+  {
+    key: 'structured_outputs',
+    labelKey: 'capabilityStructuredOutputs',
+    tooltipKey: 'capabilityStructuredOutputsTooltip',
+  },
+  {
+    key: 'tools',
+    labelKey: 'capabilityTools',
+    tooltipKey: 'capabilityToolsTooltip',
+  },
+  {
+    key: 'logprobs',
+    labelKey: 'capabilityLogprobs',
+    tooltipKey: 'capabilityLogprobsTooltip',
+  },
+] as const
+
+const DATA_POLICY_OPTIONS = [
+  {
+    key: 'data_collection',
+    labelKey: 'dataPolicyDenyTraining',
+    tooltipKey: 'dataPolicyDenyTrainingTooltip',
+  },
+  {
+    key: 'zdr',
+    labelKey: 'dataPolicyZdr',
+    tooltipKey: 'dataPolicyZdrTooltip',
+  },
+  {
+    key: 'enforce_distillable_text',
+    labelKey: 'dataPolicyDistillable',
+    tooltipKey: 'dataPolicyDistillableTooltip',
+  },
 ] as const
 
 // ---------------------------------------------------------------------------
@@ -170,6 +218,9 @@ export default function AiRequirementGenerator({
   // Favorites & capability filters
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set())
   const [activeFilters, setActiveFilters] = useState<string[]>([])
+  const [dataPolicies, setDataPolicies] = useState<string[]>(
+    DATA_POLICIES_DEFAULT,
+  )
   const [showCapSettings, setShowCapSettings] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [reasoningEffort, setReasoningEffort] = useState('high')
@@ -222,6 +273,7 @@ export default function AiRequirementGenerator({
     if (!open) return
     setFavorites(loadFavorites())
     setActiveFilters(loadFilters())
+    setDataPolicies(loadDataPolicies())
   }, [open])
 
   // Fetch models (reacts to activeFilters changes)
@@ -489,11 +541,28 @@ export default function AiRequirementGenerator({
 
     try {
       const selectedModel = models.find(m => m.id === model)
+
+      // Build provider preferences from active data policies
+      const providerPreferences: Record<string, unknown> = {}
+      if (dataPolicies.includes('data_collection')) {
+        providerPreferences.data_collection = 'deny'
+      }
+      if (dataPolicies.includes('zdr')) {
+        providerPreferences.zdr = true
+      }
+      if (dataPolicies.includes('enforce_distillable_text')) {
+        providerPreferences.enforce_distillable_text = true
+      }
+
       const response = await fetch('/api/ai/generate-requirements', {
         body: JSON.stringify({
           customInstruction: customInstruction || undefined,
           locale,
           model: model || undefined,
+          providerPreferences:
+            Object.keys(providerPreferences).length > 0
+              ? providerPreferences
+              : undefined,
           reasoningEffort,
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
@@ -635,6 +704,7 @@ export default function AiRequirementGenerator({
     model,
     models,
     customInstruction,
+    dataPolicies,
     locale,
     reasoningEffort,
     t,
@@ -760,6 +830,16 @@ export default function AiRequirementGenerator({
         ? prev.filter(c => c !== cap)
         : [...prev, cap]
       saveFilters(next)
+      return next
+    })
+  }, [])
+
+  const toggleDataPolicy = useCallback((key: string) => {
+    setDataPolicies(prev => {
+      const next = prev.includes(key)
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+      saveDataPolicies(next)
       return next
     })
   }, [])
@@ -1006,10 +1086,22 @@ export default function AiRequirementGenerator({
                           <div className="mb-1 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
                             {t('capabilityReasoning')}
+                            <span title={t('capabilityReasoningTooltip')}>
+                              <Info
+                                aria-hidden="true"
+                                className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                              />
+                            </span>
                           </div>
                           <div className="mb-1 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
                             {t('capabilityStreaming')}
+                            <span title={t('capabilityStreamingTooltip')}>
+                              <Info
+                                aria-hidden="true"
+                                className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                              />
+                            </span>
                           </div>
                           <div className="mb-2 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
@@ -1021,6 +1113,12 @@ export default function AiRequirementGenerator({
                               }
                             >
                               {t('capabilityResponseFormat')}
+                            </span>
+                            <span title={t('capabilityResponseFormatTooltip')}>
+                              <Info
+                                aria-hidden="true"
+                                className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                              />
                             </span>
                             {activeFilters.includes('structured_outputs') && (
                               <span className="text-primary-600 dark:text-primary-400">
@@ -1041,6 +1139,12 @@ export default function AiRequirementGenerator({
                                 type="checkbox"
                               />
                               {t(cap.labelKey)}
+                              <span title={t(cap.tooltipKey)}>
+                                <Info
+                                  aria-hidden="true"
+                                  className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                                />
+                              </span>
                               <span className="text-secondary-400 dark:text-secondary-500">
                                 ({cap.count}/{models.length})
                               </span>
@@ -1048,6 +1152,54 @@ export default function AiRequirementGenerator({
                           ))}
                           <div className="mt-2 text-secondary-400 dark:text-secondary-500">
                             {t('modelsMatch', { count: models.length })}
+                          </div>
+
+                          {/* Data privacy settings */}
+                          <div className="mt-3 border-t border-secondary-200 pt-3 dark:border-secondary-700">
+                            <div className="mb-1 flex items-center gap-1 font-medium text-secondary-700 dark:text-secondary-300">
+                              {t('dataPolicySettings')}
+                              <button
+                                aria-controls="help-dataPolicy"
+                                aria-expanded={openHelp.has('dataPolicy')}
+                                aria-label={`${tc('help')}: ${t('dataPolicySettings')}`}
+                                className="inline-flex items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                                onClick={() => toggleHelp('dataPolicy')}
+                                type="button"
+                              >
+                                <HelpCircle
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              </button>
+                            </div>
+                            {openHelp.has('dataPolicy') && (
+                              <p
+                                className="mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
+                                id="help-dataPolicy"
+                              >
+                                {t('dataPolicyProviderNote')}
+                              </p>
+                            )}
+                            {DATA_POLICY_OPTIONS.map(opt => (
+                              <label
+                                className="mb-1 flex cursor-pointer items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
+                                key={opt.key}
+                              >
+                                <input
+                                  checked={dataPolicies.includes(opt.key)}
+                                  className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                                  onChange={() => toggleDataPolicy(opt.key)}
+                                  type="checkbox"
+                                />
+                                {t(opt.labelKey)}
+                                <span title={t(opt.tooltipKey)}>
+                                  <Info
+                                    aria-hidden="true"
+                                    className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                                  />
+                                </span>
+                              </label>
+                            ))}
                           </div>
                         </div>
                       )}

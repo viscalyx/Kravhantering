@@ -46,10 +46,18 @@ interface ChatMessage {
   role: 'assistant' | 'system' | 'user'
 }
 
+export interface ProviderPreferences {
+  data_collection?: 'allow' | 'deny'
+  enforce_distillable_text?: boolean
+  zdr?: boolean
+}
+
 interface GenerateOptions {
   format?: Record<string, unknown>
   messages: ChatMessage[]
   model?: string
+  /** OpenRouter provider-level data-policy preferences */
+  providerPreferences?: ProviderPreferences
   /** Reasoning effort level (default: 'high'). Use 'none' to disable reasoning. */
   reasoningEffort?: string
   signal?: AbortSignal
@@ -124,6 +132,10 @@ export async function generateChat<T>(
 
   if (options.format) {
     applyResponseFormat(body, options.format, options.supportedParameters)
+  }
+
+  if (options.providerPreferences) {
+    body.provider = options.providerPreferences
   }
 
   // Always enforce a 120 s timeout. When the caller also provides a signal,
@@ -237,6 +249,10 @@ export async function* generateChatStream(
 
   if (options.format) {
     applyResponseFormat(body, options.format, options.supportedParameters)
+  }
+
+  if (options.providerPreferences) {
+    body.provider = options.providerPreferences
   }
 
   // Timeout + caller-signal support, mirroring generateChat hardening.

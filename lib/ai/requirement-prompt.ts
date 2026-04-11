@@ -154,9 +154,6 @@ export function buildSystemPrompt(
   const riskList = taxonomy.riskLevels
     .map(r => `  - ID ${r.id}: ${r.name}`)
     .join('\n')
-  const scenarioList = taxonomy.scenarios
-    .map(s => `  - ID ${s.id}: ${s.name}`)
-    .join('\n')
 
   const qcList = taxonomy.qualityCharacteristics
     .map(
@@ -185,9 +182,6 @@ ${qcList}
 ## Risknivåer
 ${riskList}
 
-## Användningsscenarier
-${scenarioList}
-
 ## Outputregler
 - Generera giltig JSON som matchar det angivna schemat
 - Använd exakta ID:n från taxonomin ovan
@@ -195,7 +189,6 @@ ${scenarioList}
 - qualityCharacteristicId rekommenderas för icke-funktionella krav
 - categoryId bör sättas när kategorin är tydlig
 - riskLevelId bör alltid sättas
-- scenarioIds bör referera till tillämpliga användningsscenarier
 - requiresTesting måste vara true för funktionella krav och säkerhetskrav
 - verificationMethod bör beskriva hur kravet verifieras när requiresTesting är true
 - rationale måste förklara varför kravet är viktigt för systemet
@@ -221,9 +214,6 @@ ${qcList}
 ## Risk Levels
 ${riskList}
 
-## Usage Scenarios
-${scenarioList}
-
 ## Output Rules
 - Output valid JSON matching the provided schema
 - Use exact IDs from the taxonomy above
@@ -231,7 +221,6 @@ ${scenarioList}
 - qualityCharacteristicId is recommended for non-functional requirements
 - categoryId should be set when the category is clear
 - riskLevelId should always be set
-- scenarioIds should reference applicable usage scenarios
 - requiresTesting must be true for functional requirements and security requirements
 - verificationMethod should describe how to verify the requirement when requiresTesting is true
 - rationale must explain why the requirement matters for the system`

@@ -1,5 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
-import { generateChatStream } from '@/lib/ai/openrouter-client'
+import {
+  generateChatStream,
+  type ProviderPreferences,
+} from '@/lib/ai/openrouter-client'
 import {
   buildSystemPrompt,
   buildUserPrompt,
@@ -15,6 +18,7 @@ export async function POST(request: Request) {
     customInstruction?: string
     locale?: string
     model?: string
+    providerPreferences?: ProviderPreferences
     reasoningEffort?: string
     supportedParameters?: string[]
     topic?: string
@@ -65,6 +69,54 @@ export async function POST(request: Request) {
     )
   }
 
+  // Validate providerPreferences
+  let providerPreferences: ProviderPreferences | undefined
+  if (body.providerPreferences !== undefined) {
+    const pp = body.providerPreferences
+    if (typeof pp !== 'object' || pp === null || Array.isArray(pp)) {
+      return new Response(
+        JSON.stringify({ error: 'providerPreferences must be an object' }),
+        { headers: { 'Content-Type': 'application/json' }, status: 400 },
+      )
+    }
+    providerPreferences = {}
+    if (pp.data_collection !== undefined) {
+      if (pp.data_collection !== 'allow' && pp.data_collection !== 'deny') {
+        return new Response(
+          JSON.stringify({
+            error:
+              'providerPreferences.data_collection must be "allow" or "deny"',
+          }),
+          { headers: { 'Content-Type': 'application/json' }, status: 400 },
+        )
+      }
+      providerPreferences.data_collection = pp.data_collection
+    }
+    if (pp.zdr !== undefined) {
+      if (typeof pp.zdr !== 'boolean') {
+        return new Response(
+          JSON.stringify({
+            error: 'providerPreferences.zdr must be a boolean',
+          }),
+          { headers: { 'Content-Type': 'application/json' }, status: 400 },
+        )
+      }
+      providerPreferences.zdr = pp.zdr
+    }
+    if (pp.enforce_distillable_text !== undefined) {
+      if (typeof pp.enforce_distillable_text !== 'boolean') {
+        return new Response(
+          JSON.stringify({
+            error:
+              'providerPreferences.enforce_distillable_text must be a boolean',
+          }),
+          { headers: { 'Content-Type': 'application/json' }, status: 400 },
+        )
+      }
+      providerPreferences.enforce_distillable_text = pp.enforce_distillable_text
+    }
+  }
+
   const locale: 'en' | 'sv' =
     body.locale === 'en' || body.locale === 'sv' ? body.locale : 'en'
 
@@ -93,6 +145,7 @@ export async function POST(request: Request) {
             { content: userPrompt, role: 'user' },
           ],
           model: body.model,
+          providerPreferences,
           reasoningEffort:
             typeof body.reasoningEffort === 'string'
               ? body.reasoningEffort
