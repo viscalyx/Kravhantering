@@ -185,6 +185,7 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
 
 interface AttachedImage {
   dataUrl: string
+  id: string
   name: string
 }
 
@@ -901,7 +902,11 @@ export default function AiRequirementGenerator({
         new Promise(resolve => {
           const reader = new FileReader()
           reader.onload = () =>
-            resolve({ dataUrl: reader.result as string, name: f.name })
+            resolve({
+              id: crypto.randomUUID(),
+              dataUrl: reader.result as string,
+              name: f.name,
+            })
           reader.readAsDataURL(f)
         })
 
@@ -1147,10 +1152,7 @@ export default function AiRequirementGenerator({
                       {attachedImages.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {attachedImages.map((img, i) => (
-                            <div
-                              className="group relative"
-                              key={`${img.name}-${i}`}
-                            >
+                            <div className="group relative" key={img.id}>
                               {/* biome-ignore lint/performance/noImgElement: base64 data URL preview thumbnails cannot be optimized by next/image */}
                               <img
                                 alt={img.name}
