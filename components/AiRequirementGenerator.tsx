@@ -237,6 +237,7 @@ export default function AiRequirementGenerator({
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([])
   const [imageError, setImageError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadSessionRef = useRef(0)
 
   // Model list
   const [models, setModels] = useState<OpenRouterModel[]>([])
@@ -922,7 +923,9 @@ export default function AiRequirementGenerator({
           reader.readAsDataURL(f)
         })
 
+      const session = ++uploadSessionRef.current
       void Promise.all(fileArr.map(readFile)).then(newImages => {
+        if (uploadSessionRef.current !== session) return
         setAttachedImages(prev => {
           const remaining = MAX_IMAGES - prev.length
           if (remaining <= 0) {
@@ -1175,7 +1178,7 @@ export default function AiRequirementGenerator({
                               />
                               <button
                                 aria-label={`${t('imageRemove')}: ${img.name}`}
-                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100"
+                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1"
                                 onClick={() => removeImage(i)}
                                 type="button"
                               >
@@ -1286,22 +1289,32 @@ export default function AiRequirementGenerator({
                           <div className="mb-1 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
                             {t('capabilityReasoning')}
-                            <span title={t('capabilityReasoningTooltip')}>
+                            <button
+                              aria-label={t('capabilityReasoningTooltip')}
+                              className="cursor-help appearance-none border-0 bg-transparent p-0"
+                              title={t('capabilityReasoningTooltip')}
+                              type="button"
+                            >
                               <Info
                                 aria-hidden="true"
                                 className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
                               />
-                            </span>
+                            </button>
                           </div>
                           <div className="mb-1 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
                             {t('capabilityStreaming')}
-                            <span title={t('capabilityStreamingTooltip')}>
+                            <button
+                              aria-label={t('capabilityStreamingTooltip')}
+                              className="cursor-help appearance-none border-0 bg-transparent p-0"
+                              title={t('capabilityStreamingTooltip')}
+                              type="button"
+                            >
                               <Info
                                 aria-hidden="true"
                                 className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
                               />
-                            </span>
+                            </button>
                           </div>
                           <div className="mb-2 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
@@ -1314,12 +1327,17 @@ export default function AiRequirementGenerator({
                             >
                               {t('capabilityResponseFormat')}
                             </span>
-                            <span title={t('capabilityResponseFormatTooltip')}>
+                            <button
+                              aria-label={t('capabilityResponseFormatTooltip')}
+                              className="cursor-help appearance-none border-0 bg-transparent p-0"
+                              title={t('capabilityResponseFormatTooltip')}
+                              type="button"
+                            >
                               <Info
                                 aria-hidden="true"
                                 className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
                               />
-                            </span>
+                            </button>
                             {activeFilters.includes('structured_outputs') && (
                               <span className="text-primary-600 dark:text-primary-400">
                                 → {t('capabilityStructuredOutputs')}
