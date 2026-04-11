@@ -61,7 +61,7 @@ await snap(page, 'filename', 'Heading', 'Description', { selector: '[data-sticky
 - Use `{ selector }` to crop tightly to a single element (e.g. the sticky header).
 - If a section below a crop point should be hidden (e.g. improvement suggestions),
   use `page.evaluate` to temporarily set `display: none` before snapping, then
-  restore it afterwards:
+  restore it afterward:
   ```typescript
   await page.evaluate(() => {
     const el = document.querySelector('[data-developer-mode-value="improvement-suggestions"]') as HTMLElement | null
@@ -110,7 +110,7 @@ Mock data constants (`MOCK_DESCRIPTION`, `MOCK_CRITERIA`, etc.) are also in Swed
 ### DB state
 
 The guide mutates the database (creates requirements, suggestions, deviations).
-Run `npm run db:setup` to reset to seed state afterwards.
+Run `npm run db:setup` to reset to seed state afterward.
 Seeded requirements useful for guide steps:
 - `IDN0001` — has multiple improvement suggestions; good for showing suggestion lists.
 - `ANV0002` — clean requirement with no suggestions; good for "create first suggestion" demo.
