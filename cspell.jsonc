@@ -260,7 +260,6 @@
     "xhigh",
     "admininställningar",
     "administrationscenterets",
-    "annot",
     "detaljvyer",
     "ETJANSTPLATT",
     "kolumnkonfig",
@@ -274,15 +273,13 @@
     "kravtabell",
     "kritikalitet",
     "multifaktorautentisering",
-    "narb",
     "networkidle",
     "referensdatahantering",
     "screenshotting",
     "standardvyer",
     "stegaren",
     "statusstegare",
-    "statusstegaren",
-    "sugg"
+    "statusstegaren"
   ],
   "flagWords": [],
   "ignorePaths": [
