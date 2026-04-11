@@ -683,14 +683,11 @@ export default function KravpaketDetailClient({
           items
             .filter(item => item.packageItemId != null)
             .map(item =>
-              fetch(
-                `/api/requirement-packages/${packageSlug}/items/${item.packageItemId}/deviations`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ motivation, createdBy }),
-                },
-              ).then(async res => {
+              fetch(`/api/package-item-deviations/${item.packageItemId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ motivation, createdBy }),
+              }).then(async res => {
                 if (!res.ok)
                   throw new Error(`Failed for item ${item.packageItemId}`)
                 return item.id
@@ -723,7 +720,7 @@ export default function KravpaketDetailClient({
         setBulkDeviationSaving(false)
       }
     },
-    [fetchPackageItems, leftSelectedIds, packageItems, packageSlug, td],
+    [fetchPackageItems, leftSelectedIds, packageItems, td],
   )
 
   const getName = (opt: { nameSv: string; nameEn: string }) =>

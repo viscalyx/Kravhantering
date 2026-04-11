@@ -2,11 +2,14 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  AlertTriangle,
   ChevronDown,
   ChevronRight,
   Eye,
   EyeOff,
   HelpCircle,
+  ImagePlus,
+  Info,
   Loader2,
   Lock,
   RefreshCw,
@@ -129,11 +132,79 @@ function saveFilters(filters: string[]) {
   localStorage.setItem(FILTERS_KEY, JSON.stringify(filters))
 }
 
+const DATA_POLICIES_KEY = 'ai-data-policies'
+const DATA_POLICIES_DEFAULT = ['data_collection']
+
+function loadDataPolicies(): string[] {
+  try {
+    const raw = localStorage.getItem(DATA_POLICIES_KEY)
+    if (raw) return JSON.parse(raw) as string[]
+  } catch {
+    /* empty */
+  }
+  return DATA_POLICIES_DEFAULT
+}
+
+function saveDataPolicies(policies: string[]) {
+  localStorage.setItem(DATA_POLICIES_KEY, JSON.stringify(policies))
+}
+
 // Optional capability toggles (shown in settings when they'd filter results)
 const OPTIONAL_CAPABILITIES = [
-  { key: 'structured_outputs', labelKey: 'capabilityStructuredOutputs' },
-  { key: 'tools', labelKey: 'capabilityTools' },
-  { key: 'logprobs', labelKey: 'capabilityLogprobs' },
+  {
+    key: 'structured_outputs',
+    labelKey: 'capabilityStructuredOutputs',
+    tooltipKey: 'capabilityStructuredOutputsTooltip',
+  },
+  {
+    key: 'tools',
+    labelKey: 'capabilityTools',
+    tooltipKey: 'capabilityToolsTooltip',
+  },
+  {
+    key: 'logprobs',
+    labelKey: 'capabilityLogprobs',
+    tooltipKey: 'capabilityLogprobsTooltip',
+  },
+  {
+    key: 'vision',
+    labelKey: 'capabilityVision',
+    tooltipKey: 'capabilityVisionTooltip',
+  },
+] as const
+
+// Image attachment constraints
+const ALLOWED_IMAGE_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+]
+const MAX_IMAGES = 3
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
+
+interface AttachedImage {
+  dataUrl: string
+  id: string
+  name: string
+}
+
+const DATA_POLICY_OPTIONS = [
+  {
+    key: 'data_collection',
+    labelKey: 'dataPolicyDenyTraining',
+    tooltipKey: 'dataPolicyDenyTrainingTooltip',
+  },
+  {
+    key: 'zdr',
+    labelKey: 'dataPolicyZdr',
+    tooltipKey: 'dataPolicyZdrTooltip',
+  },
+  {
+    key: 'enforce_distillable_text',
+    labelKey: 'dataPolicyDistillable',
+    tooltipKey: 'dataPolicyDistillableTooltip',
+  },
 ] as const
 
 // ---------------------------------------------------------------------------
@@ -162,6 +233,13 @@ export default function AiRequirementGenerator({
   const [systemPrompt, setSystemPrompt] = useState('')
   const [systemPromptLoading, setSystemPromptLoading] = useState(false)
 
+  // Image attachments
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([])
+  const [imageError, setImageError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadSessionRef = useRef(0)
+  const isBusyRef = useRef(false)
+
   // Model list
   const [models, setModels] = useState<OpenRouterModel[]>([])
   const [modelsLoading, setModelsLoading] = useState(false)
@@ -170,6 +248,9 @@ export default function AiRequirementGenerator({
   // Favorites & capability filters
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set())
   const [activeFilters, setActiveFilters] = useState<string[]>([])
+  const [dataPolicies, setDataPolicies] = useState<string[]>(
+    DATA_POLICIES_DEFAULT,
+  )
   const [showCapSettings, setShowCapSettings] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [reasoningEffort, setReasoningEffort] = useState('high')
@@ -222,6 +303,7 @@ export default function AiRequirementGenerator({
     if (!open) return
     setFavorites(loadFavorites())
     setActiveFilters(loadFilters())
+    setDataPolicies(loadDataPolicies())
   }, [open])
 
   // Fetch models (reacts to activeFilters changes)
@@ -328,6 +410,9 @@ export default function AiRequirementGenerator({
       setShowCapSettings(false)
       setModelDropdownOpen(false)
       setDropdownPos(null)
+      setAttachedImages([])
+      setImageError('')
+      uploadSessionRef.current++
       setPhase('idle')
       setThinking('')
       setError('')
@@ -403,6 +488,7 @@ export default function AiRequirementGenerator({
 
   const inProgress = phase === 'thinking' || phase === 'generating'
   const isBusy = inProgress || creating
+  isBusyRef.current = isBusy
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -440,11 +526,14 @@ export default function AiRequirementGenerator({
       </p>
     )
 
+  const visionEnabled = activeFilters.includes('vision')
+
   // Pending work = form has content or results exist
   const hasPendingWork =
     topic.trim().length > 0 ||
     customInstruction.trim().length > 0 ||
     Boolean(areaId) ||
+    attachedImages.length > 0 ||
     requirements.length > 0 ||
     inProgress
 
@@ -489,14 +578,35 @@ export default function AiRequirementGenerator({
 
     try {
       const selectedModel = models.find(m => m.id === model)
+
+      // Build provider preferences from active data policies
+      const providerPreferences: Record<string, unknown> = {}
+      if (dataPolicies.includes('data_collection')) {
+        providerPreferences.data_collection = 'deny'
+      }
+      if (dataPolicies.includes('zdr')) {
+        providerPreferences.zdr = true
+      }
+      if (dataPolicies.includes('enforce_distillable_text')) {
+        providerPreferences.enforce_distillable_text = true
+      }
+
       const response = await fetch('/api/ai/generate-requirements', {
         body: JSON.stringify({
           customInstruction: customInstruction || undefined,
           locale,
           model: model || undefined,
+          providerPreferences:
+            Object.keys(providerPreferences).length > 0
+              ? providerPreferences
+              : undefined,
           reasoningEffort,
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
+          ...(visionEnabled &&
+            attachedImages.length > 0 && {
+              images: attachedImages.map(img => ({ dataUrl: img.dataUrl })),
+            }),
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
@@ -635,8 +745,11 @@ export default function AiRequirementGenerator({
     model,
     models,
     customInstruction,
+    dataPolicies,
     locale,
     reasoningEffort,
+    attachedImages,
+    visionEnabled,
     t,
   ])
 
@@ -762,6 +875,106 @@ export default function AiRequirementGenerator({
       saveFilters(next)
       return next
     })
+  }, [])
+
+  const toggleDataPolicy = useCallback((key: string) => {
+    setDataPolicies(prev => {
+      const next = prev.includes(key)
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+      saveDataPolicies(next)
+      return next
+    })
+  }, [])
+
+  // ── Image attachment handling ───────────────────────────────────────
+
+  // Clear stale image attachments when vision support is turned off
+  useEffect(() => {
+    if (!visionEnabled) {
+      setAttachedImages([])
+      setImageError('')
+      uploadSessionRef.current++
+    }
+  }, [visionEnabled])
+
+  const processFiles = useCallback(
+    (files: FileList | File[]) => {
+      if (isBusyRef.current) return
+      setImageError('')
+      const fileArr = Array.from(files)
+
+      for (const f of fileArr) {
+        if (!ALLOWED_IMAGE_TYPES.includes(f.type)) {
+          setImageError(t('imageErrorType', { name: f.name }))
+          return
+        }
+        if (f.size > MAX_IMAGE_BYTES) {
+          setImageError(t('imageErrorSize', { name: f.name }))
+          return
+        }
+      }
+
+      // Read all files, then append in one state update
+      const readFile = (f: File): Promise<AttachedImage> =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () =>
+            resolve({
+              id: crypto.randomUUID(),
+              dataUrl: reader.result as string,
+              name: f.name,
+            })
+          reader.onerror = () =>
+            reject(new Error(`Failed to read file: ${f.name}`))
+          reader.onabort = () =>
+            reject(new Error(`File read aborted: ${f.name}`))
+          reader.readAsDataURL(f)
+        })
+
+      const session = ++uploadSessionRef.current
+      void Promise.all(fileArr.map(readFile))
+        .then(newImages => {
+          if (uploadSessionRef.current !== session) return
+          setAttachedImages(prev => {
+            const remaining = MAX_IMAGES - prev.length
+            if (remaining <= 0) {
+              setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+              return prev
+            }
+            const toAdd = newImages.slice(0, remaining)
+            if (newImages.length > remaining) {
+              setImageError(t('imageErrorCount', { max: MAX_IMAGES }))
+            }
+            return [...prev, ...toAdd]
+          })
+        })
+        .catch(() => {
+          if (uploadSessionRef.current !== session) return
+          setImageError(t('imageErrorRead'))
+        })
+    },
+    [t],
+  )
+
+  const removeImage = useCallback((index: number) => {
+    setAttachedImages(prev => prev.filter((_, i) => i !== index))
+    setImageError('')
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      if (isBusyRef.current) return
+      if (e.dataTransfer.files.length > 0) {
+        processFiles(e.dataTransfer.files)
+      }
+    },
+    [processFiles],
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
   }, [])
 
   // Group models: favorites first, then by provider
@@ -926,6 +1139,93 @@ export default function AiRequirementGenerator({
                     />
                   </div>
 
+                  {/* Image attachments (visible when Vision filter is active) */}
+                  {visionEnabled && (
+                    <div>
+                      <div className="mb-1 flex items-center gap-1.5">
+                        <span className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                          {t('imageAttachLabel')}
+                        </span>
+                        {helpButton('imageAttach', t('imageAttachLabel'))}
+                      </div>
+                      {helpPanel('imageAttachHelp', 'imageAttach')}
+                      <button
+                        aria-label={t('imageDropZone')}
+                        className="flex min-h-[64px] w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"
+                        disabled={isBusy}
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
+                        type="button"
+                      >
+                        <ImagePlus
+                          aria-hidden="true"
+                          className="mr-2 h-5 w-5"
+                        />
+                        <span>{t('imageDropZone')}</span>
+                      </button>
+                      <input
+                        accept="image/png,image/jpeg,image/gif,image/webp"
+                        className="hidden"
+                        multiple
+                        onChange={e => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            processFiles(e.target.files)
+                            e.target.value = ''
+                          }
+                        }}
+                        ref={fileInputRef}
+                        type="file"
+                      />
+                      <p className="mt-1 text-xs text-secondary-400 dark:text-secondary-500">
+                        {t('imageAttachHint')}
+                      </p>
+
+                      {/* Image previews */}
+                      {attachedImages.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {attachedImages.map((img, i) => (
+                            <div className="group relative" key={img.id}>
+                              {/* biome-ignore lint/performance/noImgElement: base64 data URL preview thumbnails cannot be optimized by next/image */}
+                              <img
+                                alt={img.name}
+                                className="h-16 w-16 rounded-md border border-secondary-200 object-cover dark:border-secondary-700"
+                                src={img.dataUrl}
+                              />
+                              <button
+                                aria-label={`${t('imageRemove')}: ${img.name}`}
+                                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white opacity-0 shadow transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-1 disabled:opacity-50"
+                                disabled={isBusy}
+                                onClick={() => removeImage(i)}
+                                type="button"
+                              >
+                                <X aria-hidden="true" className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Token cost warning */}
+                      {attachedImages.length > 0 && (
+                        <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                          <AlertTriangle
+                            aria-hidden="true"
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                          />
+                          <span>{t('imageTokenWarning')}</span>
+                        </div>
+                      )}
+
+                      {/* Image error */}
+                      {imageError && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                          {imageError}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Area + Model row */}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
@@ -1006,10 +1306,32 @@ export default function AiRequirementGenerator({
                           <div className="mb-1 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
                             {t('capabilityReasoning')}
+                            <button
+                              aria-label={t('capabilityReasoningTooltip')}
+                              className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                              title={t('capabilityReasoningTooltip')}
+                              type="button"
+                            >
+                              <Info
+                                aria-hidden="true"
+                                className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                              />
+                            </button>
                           </div>
                           <div className="mb-1 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
                             {t('capabilityStreaming')}
+                            <button
+                              aria-label={t('capabilityStreamingTooltip')}
+                              className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                              title={t('capabilityStreamingTooltip')}
+                              type="button"
+                            >
+                              <Info
+                                aria-hidden="true"
+                                className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                              />
+                            </button>
                           </div>
                           <div className="mb-2 flex items-center gap-1.5 text-secondary-500 dark:text-secondary-400">
                             <Lock aria-hidden="true" className="h-3 w-3" />
@@ -1022,6 +1344,17 @@ export default function AiRequirementGenerator({
                             >
                               {t('capabilityResponseFormat')}
                             </span>
+                            <button
+                              aria-label={t('capabilityResponseFormatTooltip')}
+                              className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                              title={t('capabilityResponseFormatTooltip')}
+                              type="button"
+                            >
+                              <Info
+                                aria-hidden="true"
+                                className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                              />
+                            </button>
                             {activeFilters.includes('structured_outputs') && (
                               <span className="text-primary-600 dark:text-primary-400">
                                 → {t('capabilityStructuredOutputs')}
@@ -1030,24 +1363,92 @@ export default function AiRequirementGenerator({
                           </div>
                           {/* Optional toggles */}
                           {capabilityCounts.map(cap => (
-                            <label
-                              className="mb-1 flex cursor-pointer items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
+                            <div
+                              className="mb-1 flex items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
                               key={cap.key}
                             >
-                              <input
-                                checked={activeFilters.includes(cap.key)}
-                                className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
-                                onChange={() => toggleFilter(cap.key)}
-                                type="checkbox"
-                              />
-                              {t(cap.labelKey)}
+                              <label className="flex cursor-pointer items-center gap-1.5">
+                                <input
+                                  checked={activeFilters.includes(cap.key)}
+                                  className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                                  onChange={() => toggleFilter(cap.key)}
+                                  type="checkbox"
+                                />
+                                {t(cap.labelKey)}
+                              </label>
+                              <button
+                                aria-label={t(cap.tooltipKey)}
+                                className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                title={t(cap.tooltipKey)}
+                                type="button"
+                              >
+                                <Info
+                                  aria-hidden="true"
+                                  className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                                />
+                              </button>
                               <span className="text-secondary-400 dark:text-secondary-500">
                                 ({cap.count}/{models.length})
                               </span>
-                            </label>
+                            </div>
                           ))}
                           <div className="mt-2 text-secondary-400 dark:text-secondary-500">
                             {t('modelsMatch', { count: models.length })}
+                          </div>
+
+                          {/* Data privacy settings */}
+                          <div className="mt-3 border-t border-secondary-200 pt-3 dark:border-secondary-700">
+                            <div className="mb-1 flex items-center gap-1 font-medium text-secondary-700 dark:text-secondary-300">
+                              {t('dataPolicySettings')}
+                              <button
+                                aria-controls="help-dataPolicy"
+                                aria-expanded={openHelp.has('dataPolicy')}
+                                aria-label={`${tc('help')}: ${t('dataPolicySettings')}`}
+                                className="inline-flex items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+                                onClick={() => toggleHelp('dataPolicy')}
+                                type="button"
+                              >
+                                <HelpCircle
+                                  aria-hidden="true"
+                                  className="h-3.5 w-3.5"
+                                />
+                              </button>
+                            </div>
+                            {openHelp.has('dataPolicy') && (
+                              <p
+                                className="mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
+                                id="help-dataPolicy"
+                              >
+                                {t('dataPolicyProviderNote')}
+                              </p>
+                            )}
+                            {DATA_POLICY_OPTIONS.map(opt => (
+                              <div
+                                className="mb-1 flex items-center gap-1.5 text-secondary-600 dark:text-secondary-300"
+                                key={opt.key}
+                              >
+                                <label className="flex cursor-pointer items-center gap-1.5">
+                                  <input
+                                    checked={dataPolicies.includes(opt.key)}
+                                    className="h-3.5 w-3.5 rounded border-secondary-300 text-primary-600 focus:ring-primary-500"
+                                    onChange={() => toggleDataPolicy(opt.key)}
+                                    type="checkbox"
+                                  />
+                                  {t(opt.labelKey)}
+                                </label>
+                                <button
+                                  aria-label={t(opt.tooltipKey)}
+                                  className="cursor-help appearance-none rounded border-0 bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                                  title={t(opt.tooltipKey)}
+                                  type="button"
+                                >
+                                  <Info
+                                    aria-hidden="true"
+                                    className="h-3 w-3 text-secondary-400 dark:text-secondary-500"
+                                  />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}

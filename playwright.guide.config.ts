@@ -1,0 +1,54 @@
+import { defineConfig, devices } from '@playwright/test'
+
+/**
+ * Playwright configuration for generating the user guide.
+ *
+ * Run with: npm run generate-guide
+ *
+ * Outputs:
+ *   docs/guide/README.md   — generated markdown guide
+ *   docs/guide/images/     — screenshots
+ *
+ * NOTE: This is a one-shot guide generator, not a repeatable test suite.
+ * It mutates the database (creates requirements, deviations, suggestions).
+ * Run `npm run db:setup` to reset the database to seed state afterwards if needed.
+ */
+export default defineConfig({
+  testDir: './tests/guide',
+  outputDir: 'test-results/guide',
+  // The guide is a single long-running script — allow 10 minutes
+  timeout: 10 * 60 * 1_000,
+  fullyParallel: false,
+  forbidOnly: !!process.env.CI,
+  retries: 0,
+  workers: 1,
+  reporter: [
+    ['html', { outputFolder: 'playwright-report-guide', open: 'never' }],
+    ['list'],
+  ],
+  use: {
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000',
+    trace: 'retain-on-failure',
+    screenshot: 'on',
+    viewport: { width: 1440, height: 900 },
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+  webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
+    ? undefined
+    : [
+        {
+          command: 'npm run dev',
+          url: 'http://127.0.0.1:3000',
+          reuseExistingServer: true,
+          timeout: 120_000,
+          env: {
+            NODE_ENV: 'development',
+          },
+        },
+      ],
+})

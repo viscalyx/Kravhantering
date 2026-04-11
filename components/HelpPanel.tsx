@@ -27,6 +27,8 @@ export interface HelpTextSection extends HelpSection {
   /** Key relative to the 'help' namespace, e.g. 'requirements.overview.heading' */
   headingKey: string
   kind: 'text'
+  /** Render as an indented sub-section under the preceding heading */
+  subheading?: boolean
 }
 
 export type HelpVisualId = 'requirementLifecycle'
@@ -551,8 +553,21 @@ function HelpPanelInner({
               >
                 <div className="space-y-6">
                   {content.sections.map(section => (
-                    <div key={section.headingKey}>
-                      <h3 className="mb-1.5 text-sm font-semibold text-secondary-900 dark:text-secondary-100">
+                    <div
+                      className={
+                        section.kind === 'text' && section.subheading
+                          ? 'ml-3 border-l-2 border-secondary-200 pl-3 dark:border-secondary-700'
+                          : undefined
+                      }
+                      key={section.headingKey}
+                    >
+                      <h3
+                        className={
+                          section.kind === 'text' && section.subheading
+                            ? 'mb-1 text-[13px] font-medium text-secondary-800 dark:text-secondary-200'
+                            : 'mb-1.5 text-sm font-semibold text-secondary-900 dark:text-secondary-100'
+                        }
+                      >
                         {t(section.headingKey as Parameters<typeof t>[0])}
                       </h3>
 

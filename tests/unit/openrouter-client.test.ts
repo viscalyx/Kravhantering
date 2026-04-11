@@ -14,6 +14,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.stubEnv('OPENROUTER_API_KEY', 'sk-or-v1-test-key')
   vi.stubEnv('NEXT_PUBLIC_DEFAULT_MODEL', 'anthropic/claude-sonnet-4')
+  delete process.env.OPENROUTER_MGMT_API_KEY
 })
 
 afterEach(() => {

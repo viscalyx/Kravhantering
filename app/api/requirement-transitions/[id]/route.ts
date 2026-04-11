@@ -6,7 +6,7 @@ import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
-import { parseRequirementRef } from '../../parse-requirement-ref'
+import { parseRequirementRef } from '../../requirements/parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
 

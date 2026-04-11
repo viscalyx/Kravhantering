@@ -45,12 +45,12 @@ that the filter input and the "Nytt kravpaket" button share the same row.
 1. *(Desktop only)* Assert that the bottom edges of the filter and button are
    within 6 px of each other and that the button starts to the right of the
    filter.
-1. Type `Behörighet` into the name filter.
-1. Assert "Behörighet och IAM" link is visible.
+1. Type `e-tjänst` into the name filter.
+1. Assert "Införande av e-tjänstplattform" link is visible.
 1. Assert "Säkerhetslyft Q2" link is hidden.
 1. Click "Rensa sökning".
 1. Assert the filter input value is empty.
-1. Assert "Behörighet och IAM" is visible again.
+1. Assert "Införande av e-tjänstplattform" is visible again.
 1. Verify "Säkerhetslyft Q2" is visible again.
 
 ### Sequence Diagram
@@ -63,9 +63,9 @@ sequenceDiagram
 
     U->>P: Open /sv/requirement-packages
     Note over P: ✓ Heading and controls visible
-    U->>F: Fill "Behörighet"
+    U->>F: Fill "e-tjänst"
     F->>P: Filter list
-    Note over P: ✓ "Behörighet och IAM" visible
+    Note over P: ✓ "Införande av e-tjänstplattform" visible
     Note over P: ✓ "Säkerhetslyft Q2" hidden
     U->>F: Click clear search
     F->>P: Reset filter

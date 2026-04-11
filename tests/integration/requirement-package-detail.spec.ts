@@ -12,10 +12,13 @@ for (const viewport of viewports) {
     test('opens the package edit view from the title action', async ({
       page,
     }) => {
-      await page.goto('/sv/requirement-packages/BEHORIGHET-IAM')
+      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
 
       await expect(
-        page.getByRole('heading', { level: 1, name: 'Behörighet och IAM' }),
+        page.getByRole('heading', {
+          level: 1,
+          name: 'Införande av e-tjänstplattform',
+        }),
       ).toBeVisible()
 
       await page.getByRole('button', { name: 'Redigera kravpaket' }).click()
@@ -24,7 +27,7 @@ for (const viewport of viewports) {
         page.getByRole('heading', { level: 2, name: 'Redigera kravpaket' }),
       ).toBeVisible()
       await expect(page.getByRole('textbox', { name: /^Namn/ })).toHaveValue(
-        'Behörighet och IAM',
+        'Införande av e-tjänstplattform',
       )
     })
 
@@ -33,7 +36,7 @@ for (const viewport of viewports) {
         page,
       }) => {
         await page.setViewportSize({ width: viewport.width, height: 560 })
-        await page.goto('/sv/requirement-packages/BEHORIGHET-IAM')
+        await page.goto('/sv/requirement-packages/ETJANSTPLATT')
         const activeViewport = page.viewportSize()
         const activeViewportWidth = activeViewport?.width ?? viewport.width
         const activeViewportHeight = activeViewport?.height ?? 560

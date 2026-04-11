@@ -4,21 +4,16 @@ import {
   createDeviation,
   listDeviationsForPackageItem,
 } from '@/lib/dal/deviations'
-import { getPackageItemById } from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
-type Params = Promise<{ id: string; itemId: string }>
+type Params = Promise<{ itemId: string }>
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id, itemId } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const { itemId } = await params
   const numericItemId = Number(itemId)
   if (!Number.isInteger(numericItemId) || numericItemId < 1) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
@@ -27,27 +22,23 @@ export async function GET(
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
-  const item = await getPackageItemById(db, numericItemId)
-  if (!item || item.packageId !== numericId) {
+  try {
+    const deviations = await listDeviationsForPackageItem(db, numericItemId)
+    return NextResponse.json({ deviations })
+  } catch (error) {
+    console.error('Failed to list deviations for package item', error)
     return NextResponse.json(
-      { error: 'Item not found in package' },
-      { status: 404 },
+      { error: 'Internal server error' },
+      { status: 500 },
     )
   }
-
-  const deviations = await listDeviationsForPackageItem(db, numericItemId)
-  return NextResponse.json({ deviations })
 }
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id, itemId } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const { itemId } = await params
   const numericItemId = Number(itemId)
   if (!Number.isInteger(numericItemId) || numericItemId < 1) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
@@ -78,14 +69,6 @@ export async function POST(
 
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-
-  const item = await getPackageItemById(db, numericItemId)
-  if (!item || item.packageId !== numericId) {
-    return NextResponse.json(
-      { error: 'Item not found in package' },
-      { status: 404 },
-    )
-  }
 
   try {
     const result = await createDeviation(db, {

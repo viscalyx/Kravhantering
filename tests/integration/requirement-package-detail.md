@@ -25,7 +25,7 @@ the page, while keeping the sticky title bar fixed at the top of each panel.
 
 ```mermaid
 flowchart TD
-    A[Start viewport variant] --> B[Open /sv/requirement-packages/BEHORIGHET-IAM]
+    A[Start viewport variant] --> B[Open /sv/requirement-packages/ETJANSTPLATT]
     B --> C[Assert heading visible]
     C --> D[Click Redigera kravpaket]
     D --> E[Assert edit form visible with prefilled name]
@@ -65,11 +65,11 @@ page title.
 
 ### Step-by-Step Flow
 
-1. Navigate to `/sv/requirement-packages/BEHORIGHET-IAM`.
-2. Assert the `h1` "Behörighet och IAM" heading is visible.
+1. Navigate to `/sv/requirement-packages/ETJANSTPLATT`.
+2. Assert the `h1` "Införande av e-tjänstplattform" heading is visible.
 3. Click "Redigera kravpaket".
 4. Assert the `h2` "Redigera kravpaket" heading is visible.
-5. Assert the name text input has value `"Behörighet och IAM"`.
+5. Assert the name text input has value `"Införande av e-tjänstplattform"`.
 
 ### Sequence Diagram
 
@@ -79,12 +79,12 @@ sequenceDiagram
     participant P as Page
     participant F as EditForm
 
-    U->>P: Open /sv/requirement-packages/BEHORIGHET-IAM
-    Note over P: ✓ h1 "Behörighet och IAM" visible
+    U->>P: Open /sv/requirement-packages/ETJANSTPLATT
+    Note over P: ✓ h1 "Införande av e-tjänstplattform" visible
     U->>P: Click "Redigera kravpaket"
     P->>F: Open edit form
     Note over F: ✓ h2 "Redigera kravpaket" visible
-    Note over F: ✓ Name input = "Behörighet och IAM"
+    Note over F: ✓ Name input = "Införande av e-tjänstplattform"
 ```
 
 ## lets the package-detail lists scroll independently and keeps the title bar sticky
@@ -97,7 +97,7 @@ fixed at the same vertical position while the panel scrolls beneath it.
 
 ### Step-by-Step Flow: Independent Panel Scroll
 
-1. Navigate to `/sv/requirement-packages/BEHORIGHET-IAM` at 560 px height.
+1. Navigate to `/sv/requirement-packages/ETJANSTPLATT` at 560 px height.
 2. Assert the available-requirements panel, its sticky bar, trigger, title,
    and Krav-ID header are visible, and `scrollY` is 0.
 3. Assert the left side shows either the `items` list panel with its own
@@ -130,7 +130,7 @@ sequenceDiagram
     participant R as RightPanel
     participant Bar as RightStickyTitleBar
 
-    U->>P: Open BEHORIGHET-IAM at height 560px
+    U->>P: Open ETJANSTPLATT at height 560px
     P->>L: Render "Krav i paketet" panel or empty state
     P->>R: Render "Tillgängliga krav"
     Note over L,R: ✓ Right panel visible, left side may be empty

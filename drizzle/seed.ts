@@ -1580,7 +1580,7 @@ INSERT OR IGNORE INTO requirement_packages (id, unique_id, name, package_respons
   (5,  'DATALAGRING-BACKUP',  'Datalagring och Backup',              4, 1, 1, NULL,                                                                                                   datetime('now', '-15 days'), datetime('now', '-15 days')),
   (6,  'IAM-IDENTITET',       'Identitets- och åtkomsthantering',   1, 2, 3, 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet', datetime('now', '-12 days'), datetime('now', '-12 days')),
   (7,  'GDPR-2026',           'GDPR-efterlevnad 2026',               5, 1, 4, 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026',            datetime('now', '-10 days'), datetime('now', '-10 days')),
-  (8,  'BEHORIGHET-IAM',      'Behörighet och IAM',                  2, 2, 2, NULL,                                                                                                   datetime('now', '-8 days'),  datetime('now', '-8 days')),
+  (8,  'ETJANSTPLATT',         'Införande av e-tjänstplattform',      2, 2, 2, NULL,                                                                                                   datetime('now', '-8 days'),  datetime('now', '-8 days')),
   (9,  'API-GATEWAY',         'API Gateway och Kommunikation',       3, 1, 4, NULL,                                                                                                   datetime('now', '-5 days'),  datetime('now', '-5 days')),
   (10, 'SYSOVERVAKNING-BAS',  'Systemövervakning Bas',               4, 2, 3, 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning',                       datetime('now', '-3 days'),  datetime('now', '-3 days'));
 
@@ -1591,7 +1591,7 @@ UPDATE requirement_packages SET unique_id = 'TILLGANGLIGHET-Q3',  name = 'Tillg�
 UPDATE requirement_packages SET unique_id = 'DATALAGRING-BACKUP', name = 'Datalagring och Backup',            package_responsibility_area_id = 4, package_implementation_type_id = 1, package_lifecycle_status_id = 1, business_needs_reference = NULL                                                                                                   WHERE id = 5;
 UPDATE requirement_packages SET unique_id = 'IAM-IDENTITET',      name = 'Identitets- och åtkomsthantering', package_responsibility_area_id = 1, package_implementation_type_id = 2, package_lifecycle_status_id = 3, business_needs_reference = 'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet' WHERE id = 6;
 UPDATE requirement_packages SET unique_id = 'GDPR-2026',          name = 'GDPR-efterlevnad 2026',             package_responsibility_area_id = 5, package_implementation_type_id = 1, package_lifecycle_status_id = 4, business_needs_reference = 'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026'            WHERE id = 7;
-UPDATE requirement_packages SET unique_id = 'BEHORIGHET-IAM',     name = 'Behörighet och IAM',                package_responsibility_area_id = 2, package_implementation_type_id = 2, package_lifecycle_status_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 8;
+UPDATE requirement_packages SET unique_id = 'ETJANSTPLATT',       name = 'Införande av e-tjänstplattform',    package_responsibility_area_id = 2, package_implementation_type_id = 2, package_lifecycle_status_id = 2, business_needs_reference = NULL                                                                                                   WHERE id = 8;
 UPDATE requirement_packages SET unique_id = 'API-GATEWAY',        name = 'API Gateway och Kommunikation',     package_responsibility_area_id = 3, package_implementation_type_id = 1, package_lifecycle_status_id = 4, business_needs_reference = NULL                                                                                                   WHERE id = 9;
 UPDATE requirement_packages SET unique_id = 'SYSOVERVAKNING-BAS', name = 'Systemövervakning Bas',             package_responsibility_area_id = 4, package_implementation_type_id = 2, package_lifecycle_status_id = 3, business_needs_reference = 'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning'                       WHERE id = 10;
 
@@ -1674,7 +1674,7 @@ INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, req
   -- Package 7: GDPR-efterlevnad 2026 (2 krav) — just started
   (29, 7,  34, 35,  19,   1,    datetime('now', '-9 days')),
   (30, 7,  17, 19,  20,   1,    datetime('now', '-8 days')),
-  -- Package 8: Behörighet och IAM (4 krav) — just included
+  -- Package 8: Införande av e-tjänstplattform (4 krav) — just included
   (31, 8,  38, 39,  NULL, 1,    datetime('now', '-7 days')),
   (32, 8,  39, 40,  NULL, 1,    datetime('now', '-7 days')),
   (33, 8,  42, 43,  NULL, 1,    datetime('now', '-6 days')),

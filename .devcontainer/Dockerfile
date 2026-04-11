@@ -8,7 +8,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         python3 \
-        python3-yaml && \
+        python3-yaml \
+        sqlite3 && \
     rm -rf /var/lib/apt/lists/*
 
 # Set the working directory

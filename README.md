@@ -14,6 +14,10 @@ kravmodell och kravprocess.*
 
 ### English
 
+There is no English user guide, but the
+[Swedish guide](docs/guide/README.md) includes
+screenshots that may be helpful.
+
 The application supports the full requirements lifecycle:
 
 1. **Register** — create a new requirement or a new version
@@ -83,6 +87,10 @@ graph TD
 <!-- cSpell:disable -->
 
 ### Svenska
+
+Se även
+[Användarguide](docs/guide/README.md)
+för steg-för-steg-instruktioner med skärmdumpar.
 
 Applikationen stödjer hela kravlivscykeln:
 

@@ -30,15 +30,14 @@ export default function PdfDeviationReviewReportPage() {
   })
 
   const loadReport = useCallback(async () => {
-    const pkg = searchParams.get('pkg')
     const item = searchParams.get('item')
-    if (!pkg || !item) {
-      setError('Missing package slug or item ID in URL')
+    if (!item) {
+      setError('Missing item ID in URL')
       setLoading(false)
       return
     }
     try {
-      const data = await fetchDeviationForReport(params.id, pkg, item, locale)
+      const data = await fetchDeviationForReport(params.id, item, locale)
       const label =
         locale === 'sv'
           ? 'Granskningsrapport avvikelse'
