@@ -630,11 +630,13 @@ function SearchFilterPopover({
         !dropRef.current.contains(target)
       ) {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
     document.addEventListener('mousedown', handler)
@@ -789,11 +791,13 @@ function MultiSelectFilterPopover({
         !dropRef.current.contains(target)
       ) {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
     document.addEventListener('mousedown', handler)
@@ -933,11 +937,13 @@ function GroupedMultiSelectFilterPopover({
         !dropRef.current.contains(target)
       ) {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
     document.addEventListener('mousedown', handler)
@@ -1090,12 +1096,14 @@ function ColumnsPopover({
         !dropRef.current.contains(target)
       ) {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
 
     const keyHandler = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setOpen(false)
+        btnRef.current?.focus()
       }
     }
 
