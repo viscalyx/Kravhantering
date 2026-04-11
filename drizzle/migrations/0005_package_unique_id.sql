@@ -14,7 +14,7 @@ UPDATE `requirement_packages` SET `unique_id` = 'IAM-IDENTITET' WHERE `id` = 6;
 --> statement-breakpoint
 UPDATE `requirement_packages` SET `unique_id` = 'GDPR-2026' WHERE `id` = 7;
 --> statement-breakpoint
-UPDATE `requirement_packages` SET `unique_id` = 'BEHORIGHET-IAM' WHERE `id` = 8;
+UPDATE `requirement_packages` SET `unique_id` = 'ETJANSTPLATT' WHERE `id` = 8;
 --> statement-breakpoint
 UPDATE `requirement_packages` SET `unique_id` = 'API-GATEWAY' WHERE `id` = 9;
 --> statement-breakpoint
