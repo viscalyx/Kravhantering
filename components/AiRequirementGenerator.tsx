@@ -522,11 +522,14 @@ export default function AiRequirementGenerator({
       </p>
     )
 
+  const visionEnabled = activeFilters.includes('vision')
+
   // Pending work = form has content or results exist
   const hasPendingWork =
     topic.trim().length > 0 ||
     customInstruction.trim().length > 0 ||
     Boolean(areaId) ||
+    attachedImages.length > 0 ||
     requirements.length > 0 ||
     inProgress
 
@@ -596,9 +599,10 @@ export default function AiRequirementGenerator({
           reasoningEffort,
           supportedParameters: selectedModel?.supportedParameters,
           topic: topic.trim(),
-          ...(attachedImages.length > 0 && {
-            images: attachedImages.map(img => ({ dataUrl: img.dataUrl })),
-          }),
+          ...(visionEnabled &&
+            attachedImages.length > 0 && {
+              images: attachedImages.map(img => ({ dataUrl: img.dataUrl })),
+            }),
         }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
@@ -741,6 +745,7 @@ export default function AiRequirementGenerator({
     locale,
     reasoningEffort,
     attachedImages,
+    visionEnabled,
     t,
   ])
 
@@ -879,7 +884,14 @@ export default function AiRequirementGenerator({
   }, [])
 
   // ── Image attachment handling ───────────────────────────────────────
-  const visionEnabled = activeFilters.includes('vision')
+
+  // Clear stale image attachments when vision support is turned off
+  useEffect(() => {
+    if (!visionEnabled) {
+      setAttachedImages([])
+      setImageError('')
+    }
+  }, [visionEnabled])
 
   const processFiles = useCallback(
     (files: FileList | File[]) => {
@@ -1116,7 +1128,9 @@ export default function AiRequirementGenerator({
                         <span className="text-sm font-medium text-secondary-700 dark:text-secondary-300">
                           {t('imageAttachLabel')}
                         </span>
+                        {helpButton('imageAttach', t('imageAttachLabel'))}
                       </div>
+                      {helpPanel('imageAttachHelp', 'imageAttach')}
                       <button
                         aria-label={t('imageDropZone')}
                         className="flex min-h-[64px] w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-secondary-300 bg-secondary-50 px-4 py-3 text-sm text-secondary-500 transition-colors hover:border-primary-400 hover:bg-primary-50/50 dark:border-secondary-600 dark:bg-secondary-800/50 dark:text-secondary-400 dark:hover:border-primary-500 dark:hover:bg-primary-900/20"

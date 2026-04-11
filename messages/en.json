@@ -1170,6 +1170,7 @@
     "pricingOut": "out",
     "streamClosedUnexpectedly": "The response stream closed unexpectedly. Please try again.",
     "imageAttachLabel": "Attach images",
+    "imageAttachHelp": "Attach up to 3 images (PNG, JPEG, GIF or WebP, max 10 MB each) for the AI model to analyze. The selected model must support <strong>Vision</strong>. Images can consume 1,000+ tokens each, which increases generation cost.",
     "imageAttachHint": "PNG, JPEG, GIF or WebP — max 10 MB each, up to 3 images",
     "imageDropZone": "Drop images here or click to browse",
     "imageTokenWarning": "Images can consume 1,000+ tokens each, which increases generation cost.",

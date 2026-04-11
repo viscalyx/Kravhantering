@@ -1170,6 +1170,7 @@
     "pricingOut": "ut",
     "streamClosedUnexpectedly": "Svarsströmmen stängdes oväntat. Försök igen.",
     "imageAttachLabel": "Bifoga bilder",
+    "imageAttachHelp": "Bifoga upp till 3 bilder (PNG, JPEG, GIF eller WebP, max 10 MB styck) för AI-modellen att analysera. Den valda modellen måste stödja <strong>Vision</strong>. Bilder kan förbruka 1 000+ tokens styck, vilket ökar genereringskostnaden.",
     "imageAttachHint": "PNG, JPEG, GIF eller WebP — max 10 MB styck, upp till 3 bilder",
     "imageDropZone": "Släpp bilder här eller klicka för att bläddra",
     "imageTokenWarning": "Bilder kan förbruka 1 000+ tokens styck, vilket ökar genereringskostnaden.",
