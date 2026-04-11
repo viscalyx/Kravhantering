@@ -1237,12 +1237,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
         })
 
         await test.step('Avstegsformulär — ifyllt', async () => {
-          await setReactInputValue(page, 'deviation-motivation', MOCK_DEVIATION)
-          await setReactInputValue(
-            page,
-            'deviation-createdBy',
-            'Playwright Guide',
-          )
+          await page.locator('#deviation-motivation').fill(MOCK_DEVIATION)
+          await page.locator('#deviation-createdBy').fill('Playwright Guide')
 
           await snap(
             page,
@@ -1257,24 +1253,24 @@ test.describe('Kravhantering — Guidegenerering', () => {
           const submitBtn = page.getByRole('button', {
             name: 'Registrera avsteg',
           })
-          // Wait for the POST response before asserting the dialog is gone
-          const [deviationRes] = await Promise.all([
-            page.waitForResponse(
-              res =>
-                res.url().includes('/deviations') &&
-                res.request().method() === 'POST',
-              { timeout: 10_000 },
-            ),
-            submitBtn.click(),
-          ])
+          // Ensure button is enabled (fill() should have updated React state)
+          await expect(submitBtn).toBeEnabled({ timeout: 3_000 })
+          // Set up the response listener BEFORE clicking so we don't miss a fast response
+          const deviationResPromise = page.waitForResponse(
+            /\/api\/package-item-deviations\//,
+            { timeout: 15_000 },
+          )
+          await submitBtn.click()
+          const deviationRes = await deviationResPromise
           if (!deviationRes.ok()) {
             throw new Error(
               `Deviation POST failed: ${deviationRes.status()} ${await deviationRes.text()}`,
             )
           }
-          await expect(
-            page.getByRole('dialog', { name: /Begär ett avsteg/i }),
-          ).not.toBeVisible({ timeout: 5_000 })
+          // Dialog closes on success
+          await expect(page.locator('[role="dialog"]')).not.toBeVisible({
+            timeout: 5_000,
+          })
           await page.waitForTimeout(500)
 
           await snap(
