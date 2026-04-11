@@ -276,6 +276,12 @@ describe('AiRequirementGenerator devMarker coverage', () => {
       expect(btn).toBeDisabled()
     })
 
+    // Wait for models to fully load (selector becomes enabled)
+    await waitFor(() => {
+      const modelBtn = document.getElementById('ai-model') as HTMLButtonElement
+      expect(modelBtn).not.toBeDisabled()
+    })
+
     const topicInput = screen.getByLabelText('topicLabel')
     const areaSelect = screen.getByLabelText('areaLabel')
 
