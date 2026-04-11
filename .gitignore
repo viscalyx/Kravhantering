@@ -239,9 +239,7 @@ __pycache__/
 
 # Playwright
 /test-results/
-/playwright-report/
-/playwright-report-dev/
-/playwright-report-preview/
+/playwright-report*/
 /blob-report/
 /playwright/.cache/
 
