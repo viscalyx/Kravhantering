@@ -25,7 +25,7 @@ vi.mock('@/lib/requirements/service', () => ({
   }),
 }))
 
-import { POST } from '@/app/api/requirements/[id]/transition/route'
+import { POST } from '@/app/api/requirement-transitions/[id]/route'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }

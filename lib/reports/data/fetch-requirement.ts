@@ -97,7 +97,7 @@ export async function fetchSuggestionsForReport(
 ): Promise<SuggestionReportRow[]> {
   const baseUrl = typeof window !== 'undefined' ? '' : 'http://localhost:3000'
   const response = await fetch(
-    `${baseUrl}/api/requirements/${requirementId}/improvement-suggestions`,
+    `${baseUrl}/api/requirement-suggestions/${requirementId}`,
   )
   if (!response.ok) {
     throw new Error(

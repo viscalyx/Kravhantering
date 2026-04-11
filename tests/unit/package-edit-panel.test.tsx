@@ -21,11 +21,11 @@ const lifecycleStatuses = [
 const responsibilityAreas = [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }]
 const pkg = {
   businessNeedsReference: 'Current business need',
-  name: 'Behörighet och IAM',
+  name: 'Införande av e-tjänstplattform',
   packageImplementationTypeId: 2,
   packageLifecycleStatusId: 3,
   packageResponsibilityAreaId: 1,
-  uniqueId: 'BEHORIGHET-IAM',
+  uniqueId: 'ETJANSTPLATT',
 }
 
 describe('PackageEditPanel', () => {
@@ -47,14 +47,14 @@ describe('PackageEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        packageSlug="BEHORIGHET-IAM"
+        packageSlug="ETJANSTPLATT"
         pkg={pkg}
         responsibilityAreas={responsibilityAreas}
       />,
     )
 
     expect(screen.getByRole('textbox', { name: /package\.name/ })).toHaveValue(
-      'Behörighet och IAM',
+      'Införande av e-tjänstplattform',
     )
 
     const form = container.querySelector(
@@ -72,7 +72,7 @@ describe('PackageEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={onCancel}
         onSaved={() => {}}
-        packageSlug="BEHORIGHET-IAM"
+        packageSlug="ETJANSTPLATT"
         pkg={pkg}
         responsibilityAreas={responsibilityAreas}
       />,
@@ -89,7 +89,7 @@ describe('PackageEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        packageSlug="BEHORIGHET-IAM"
+        packageSlug="ETJANSTPLATT"
         pkg={pkg}
         responsibilityAreas={responsibilityAreas}
       />,
@@ -111,7 +111,7 @@ describe('PackageEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={onSaved}
-        packageSlug="BEHORIGHET-IAM"
+        packageSlug="ETJANSTPLATT"
         pkg={pkg}
         responsibilityAreas={responsibilityAreas}
       />,
@@ -129,7 +129,7 @@ describe('PackageEditPanel', () => {
       string,
       RequestInit,
     ]
-    expect(url).toBe('/api/requirement-packages/BEHORIGHET-IAM')
+    expect(url).toBe('/api/requirement-packages/ETJANSTPLATT')
     expect(requestInit?.method).toBe('PUT')
     expect(requestInit?.headers).toEqual({ 'Content-Type': 'application/json' })
     expect(JSON.parse((requestInit?.body as string) ?? '{}')).toMatchObject({
@@ -138,7 +138,7 @@ describe('PackageEditPanel', () => {
       packageImplementationTypeId: 2,
       packageLifecycleStatusId: 3,
       packageResponsibilityAreaId: 1,
-      uniqueId: 'BEHORIGHET-IAM',
+      uniqueId: 'ETJANSTPLATT',
     })
   })
 })

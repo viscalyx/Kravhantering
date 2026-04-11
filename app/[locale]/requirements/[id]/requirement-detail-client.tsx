@@ -258,11 +258,9 @@ export default function RequirementDetailClient({
   const deviationDecisionFailed = td('decisionFailed')
 
   const fetchDeviations = useCallback(async () => {
-    if (!packageItemId || !packageSlug) return
+    if (!packageItemId) return
     try {
-      const res = await fetch(
-        `/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
-      )
+      const res = await fetch(`/api/package-item-deviations/${packageItemId}`)
       if (res.ok) {
         setDeviationError(null)
         const data = (await res.json()) as { deviations: DeviationData[] }
@@ -273,7 +271,7 @@ export default function RequirementDetailClient({
     } catch {
       setDeviationError(deviationFetchFailed)
     }
-  }, [packageItemId, packageSlug, deviationFetchFailed])
+  }, [packageItemId, deviationFetchFailed])
 
   useEffect(() => {
     if (isPackageItemContext) {
@@ -283,11 +281,11 @@ export default function RequirementDetailClient({
 
   const handleCreateDeviation = useCallback(
     async (motivation: string, createdBy: string) => {
-      if (!packageItemId || !packageSlug || !motivation) return
+      if (!packageItemId || !motivation) return
       setDeviationSaving(true)
       try {
         const res = await fetch(
-          `/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
+          `/api/package-item-deviations/${packageItemId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -307,7 +305,7 @@ export default function RequirementDetailClient({
         setDeviationSaving(false)
       }
     },
-    [packageItemId, packageSlug, fetchDeviations, deviationSaveFailed],
+    [packageItemId, fetchDeviations, deviationSaveFailed],
   )
 
   const handleEditDeviation = useCallback(
@@ -464,9 +462,7 @@ export default function RequirementDetailClient({
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/requirements/${requirementId}/improvement-suggestions`,
-      )
+      const res = await fetch(`/api/requirement-suggestions/${requirementId}`)
       if (res.ok) {
         setSuggestionError(null)
         const data = (await res.json()) as { suggestions: SuggestionData[] }
@@ -511,7 +507,7 @@ export default function RequirementDetailClient({
           req?.versions.find(v => v.versionNumber === selectedVersionNumber)
             ?.id ?? null
         const ok = await performSuggestionMutation(
-          `/api/requirements/${requirementId}/improvement-suggestions`,
+          `/api/requirement-suggestions/${requirementId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1226,7 +1222,7 @@ export default function RequirementDetailClient({
       return
     setIsTransitioning(true)
     try {
-      await fetch(`/api/requirements/${requirementId}/transition`, {
+      await fetch(`/api/requirement-transitions/${requirementId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statusId: STATUS_ARCHIVED }),
@@ -1252,7 +1248,7 @@ export default function RequirementDetailClient({
       return
     setIsTransitioning(true)
     try {
-      await fetch(`/api/requirements/${requirementId}/transition`, {
+      await fetch(`/api/requirement-transitions/${requirementId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statusId: STATUS_PUBLISHED }),
@@ -1319,7 +1315,7 @@ export default function RequirementDetailClient({
     }
     setIsTransitioning(true)
     try {
-      await fetch(`/api/requirements/${requirementId}/transition`, {
+      await fetch(`/api/requirement-transitions/${requirementId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statusId: targetStatusId }),
@@ -2922,7 +2918,8 @@ export default function RequirementDetailClient({
             />
 
             {/* Improvement suggestions section */}
-            <div
+            <section
+              aria-label="improvement-suggestions"
               className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-4"
               {...devMarker({
                 context: detailContext,
@@ -3048,7 +3045,7 @@ export default function RequirementDetailClient({
                   })}
                 </div>
               )}
-            </div>
+            </section>
 
             {/* Suggestion modals */}
             <SuggestionFormModal

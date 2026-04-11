@@ -38,7 +38,7 @@ export default function PdfDeviationReviewReportPage() {
       return
     }
     try {
-      const data = await fetchDeviationForReport(params.id, pkg, item, locale)
+      const data = await fetchDeviationForReport(params.id, item, locale)
       const label =
         locale === 'sv'
           ? 'Granskningsrapport avvikelse'

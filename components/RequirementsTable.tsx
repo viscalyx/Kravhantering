@@ -632,8 +632,17 @@ function SearchFilterPopover({
         setOpen(false)
       }
     }
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+      }
+    }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [])
 
   useEffect(() => {
@@ -709,6 +718,7 @@ function SearchFilterPopover({
                     e.preventDefault()
                     clearPendingCommit()
                     onChange(local || undefined)
+                    setOpen(false)
                   }
                 }}
                 placeholder={`${label}...`}
@@ -781,8 +791,17 @@ function MultiSelectFilterPopover({
         setOpen(false)
       }
     }
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+      }
+    }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [])
 
   const openDropdown = (e: React.MouseEvent) => {
@@ -916,8 +935,17 @@ function GroupedMultiSelectFilterPopover({
         setOpen(false)
       }
     }
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false)
+      }
+    }
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [])
 
   const openDropdown = (e: React.MouseEvent) => {
@@ -1065,8 +1093,18 @@ function ColumnsPopover({
       }
     }
 
+    const keyHandler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
     document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', handler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [])
 
   const trigger = (
@@ -3407,6 +3445,7 @@ export default function RequirementsTable({
                     >
                       {isSortable ? (
                         <button
+                          aria-label={tc('sortBy', { label })}
                           className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
                           {...devMarker({
                             name: 'sort button',

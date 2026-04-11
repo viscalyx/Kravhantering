@@ -421,7 +421,7 @@ function setupFetch({
       }
 
       if (
-        url === `/api/requirements/${currentRequirement.id}/transition` &&
+        url === `/api/requirement-transitions/${currentRequirement.id}` &&
         method === 'POST'
       ) {
         if (transitionNextRequirement) {
@@ -481,8 +481,7 @@ function setupFetch({
       }
 
       if (
-        url ===
-          `/api/requirements/${currentRequirement.id}/improvement-suggestions` &&
+        url === `/api/requirement-suggestions/${currentRequirement.id}` &&
         method === 'GET'
       ) {
         return response({ suggestions: [] })
@@ -982,7 +981,7 @@ describe('RequirementDetailClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements/123/transition',
+        '/api/requirement-transitions/123',
         expect.objectContaining({
           body: JSON.stringify({ statusId: 2 }),
           method: 'POST',
@@ -1186,7 +1185,7 @@ describe('RequirementDetailClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements/123/transition',
+        '/api/requirement-transitions/123',
         expect.objectContaining({
           body: JSON.stringify({ statusId: 2 }),
           method: 'POST',
@@ -1237,7 +1236,7 @@ describe('RequirementDetailClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements/123/transition',
+        '/api/requirement-transitions/123',
         expect.objectContaining({
           body: JSON.stringify({ statusId: 1 }),
           method: 'POST',
@@ -1251,7 +1250,7 @@ describe('RequirementDetailClient', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/requirements/123/transition',
+        '/api/requirement-transitions/123',
         expect.objectContaining({
           body: JSON.stringify({ statusId: 3 }),
           method: 'POST',

@@ -30,7 +30,6 @@ export interface DeviationReportData {
 
 export async function fetchDeviationForReport(
   requirementId: number | string,
-  packageSlug: string,
   packageItemId: number | string,
   locale: string,
 ): Promise<DeviationReportData> {
@@ -38,9 +37,7 @@ export async function fetchDeviationForReport(
 
   const [reqRes, devRes] = await Promise.all([
     fetch(`${baseUrl}/api/requirements/${requirementId}?locale=${locale}`),
-    fetch(
-      `${baseUrl}/api/requirement-packages/${packageSlug}/items/${packageItemId}/deviations`,
-    ),
+    fetch(`${baseUrl}/api/package-item-deviations/${packageItemId}`),
   ])
 
   if (!reqRes.ok) {

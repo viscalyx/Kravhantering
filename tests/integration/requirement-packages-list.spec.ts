@@ -43,10 +43,10 @@ for (const viewport of viewports) {
         )
       }
 
-      await nameFilter.fill('Behörighet')
+      await nameFilter.fill('e-tjänst')
 
       await expect(
-        page.getByRole('link', { name: 'Behörighet och IAM' }),
+        page.getByRole('link', { name: 'Införande av e-tjänstplattform' }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Säkerhetslyft Q2' }),
@@ -56,7 +56,7 @@ for (const viewport of viewports) {
 
       await expect(nameFilter).toHaveValue('')
       await expect(
-        page.getByRole('link', { name: 'Behörighet och IAM' }),
+        page.getByRole('link', { name: 'Införande av e-tjänstplattform' }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Säkerhetslyft Q2' }),

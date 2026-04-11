@@ -60,19 +60,15 @@ import {
   GET as getDeviationRoute,
   PUT as updateDeviationRoute,
 } from '@/app/api/deviations/[id]/route'
-import { GET as getPackageDeviations } from '@/app/api/requirement-packages/[id]/deviations/route'
 import {
   POST as createItemDeviation,
   GET as getItemDeviations,
-} from '@/app/api/requirement-packages/[id]/items/[itemId]/deviations/route'
+} from '@/app/api/package-item-deviations/[itemId]/route'
+import { GET as getPackageDeviations } from '@/app/api/requirement-packages/[id]/deviations/route'
 import { RequirementsServiceError } from '@/lib/requirements/errors'
 
 function makePackageParams(id: string) {
   return { params: Promise.resolve({ id }) }
-}
-
-function makeItemParams(id: string, itemId: string) {
-  return { params: Promise.resolve({ id, itemId }) }
 }
 
 function makeDeviationParams(id: string) {
@@ -128,40 +124,38 @@ describe('deviation routes', () => {
     })
   })
 
-  describe('GET /requirement-packages/[id]/items/[itemId]/deviations', () => {
+  describe('GET /package-item-deviations/[itemId]', () => {
     it('returns deviations for a package item', async () => {
       const deviations = [{ id: 1, motivation: 'Test' }]
       mocks.listDeviationsForPackageItem.mockResolvedValue(deviations)
 
       const request = new NextRequest(
-        'http://localhost/api/requirement-packages/5/items/1/deviations',
+        'http://localhost/api/package-item-deviations/1',
       )
-      const response = await getItemDeviations(
-        request,
-        makeItemParams('5', '1'),
-      )
+      const response = await getItemDeviations(request, {
+        params: Promise.resolve({ itemId: '1' }),
+      })
       expect(response.status).toBe(200)
       await expect(response.json()).resolves.toEqual({ deviations })
     })
 
     it('returns 400 for invalid itemId', async () => {
       const request = new NextRequest(
-        'http://localhost/api/requirement-packages/5/items/abc/deviations',
+        'http://localhost/api/package-item-deviations/abc',
       )
-      const response = await getItemDeviations(
-        request,
-        makeItemParams('5', 'abc'),
-      )
+      const response = await getItemDeviations(request, {
+        params: Promise.resolve({ itemId: 'abc' }),
+      })
       expect(response.status).toBe(400)
     })
   })
 
-  describe('POST /requirement-packages/[id]/items/[itemId]/deviations', () => {
+  describe('POST /package-item-deviations/[itemId]', () => {
     it('creates a deviation and returns 201', async () => {
       mocks.createDeviation.mockResolvedValue({ id: 42 })
 
       const request = new NextRequest(
-        'http://localhost/api/requirement-packages/5/items/1/deviations',
+        'http://localhost/api/package-item-deviations/1',
         {
           body: JSON.stringify({
             motivation: 'Cannot meet standard',
@@ -171,10 +165,9 @@ describe('deviation routes', () => {
           method: 'POST',
         },
       )
-      const response = await createItemDeviation(
-        request,
-        makeItemParams('5', '1'),
-      )
+      const response = await createItemDeviation(request, {
+        params: Promise.resolve({ itemId: '1' }),
+      })
       expect(response.status).toBe(201)
       await expect(response.json()).resolves.toEqual({ id: 42, ok: true })
       expect(mocks.createDeviation).toHaveBeenCalledWith(mockDb, {
@@ -186,17 +179,16 @@ describe('deviation routes', () => {
 
     it('returns 400 when motivation is missing', async () => {
       const request = new NextRequest(
-        'http://localhost/api/requirement-packages/5/items/1/deviations',
+        'http://localhost/api/package-item-deviations/1',
         {
           body: JSON.stringify({}),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
         },
       )
-      const response = await createItemDeviation(
-        request,
-        makeItemParams('5', '1'),
-      )
+      const response = await createItemDeviation(request, {
+        params: Promise.resolve({ itemId: '1' }),
+      })
       expect(response.status).toBe(400)
     })
   })

@@ -135,8 +135,8 @@ describe('RequirementPackagesClient', () => {
               {
                 ...samplePackages[0],
                 id: 1,
-                name: 'Behörighet och IAM',
-                uniqueId: 'BEHORIGHET-IAM',
+                name: 'Införande av e-tjänstplattform',
+                uniqueId: 'ETJANSTPLATT',
               },
               {
                 ...samplePackages[0],
@@ -162,13 +162,17 @@ describe('RequirementPackagesClient', () => {
       name: 'package.filterByName',
     })
 
-    expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
+    expect(
+      screen.getByText('Införande av e-tjänstplattform'),
+    ).toBeInTheDocument()
     expect(screen.getByText('Säkerhetslyft Q2')).toBeInTheDocument()
 
-    fireEvent.change(filterInput, { target: { value: 'behörighet' } })
+    fireEvent.change(filterInput, { target: { value: 'e-tjänst' } })
 
     await waitFor(() => {
-      expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
+      expect(
+        screen.getByText('Införande av e-tjänstplattform'),
+      ).toBeInTheDocument()
       expect(screen.queryByText('Säkerhetslyft Q2')).not.toBeInTheDocument()
     })
 
@@ -177,7 +181,9 @@ describe('RequirementPackagesClient', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Behörighet och IAM')).toBeInTheDocument()
+      expect(
+        screen.getByText('Införande av e-tjänstplattform'),
+      ).toBeInTheDocument()
       expect(screen.getByText('Säkerhetslyft Q2')).toBeInTheDocument()
     })
   })
@@ -191,8 +197,8 @@ describe('RequirementPackagesClient', () => {
               {
                 ...samplePackages[0],
                 id: 1,
-                name: 'Behörighet och IAM',
-                uniqueId: 'BEHORIGHET-IAM',
+                name: 'Införande av e-tjänstplattform',
+                uniqueId: 'ETJANSTPLATT',
               },
             ],
           }),

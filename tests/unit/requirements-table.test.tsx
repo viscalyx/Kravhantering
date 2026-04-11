@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsTable from '@/components/RequirementsTable'
@@ -632,7 +639,7 @@ describe('RequirementsTable', () => {
   it('toggles sorting from the header button and updates aria-sort', () => {
     const onSortChange = vi.fn()
 
-    render(
+    const { container } = render(
       <RequirementsTable
         locale="sv"
         onSortChange={onSortChange}
@@ -641,7 +648,10 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    const headerButton = screen.getByRole('button', { name: 'uniqueId' })
+    const headerControl = container.querySelector(
+      '[data-requirement-header-control="uniqueId"]',
+    ) as HTMLElement
+    const headerButton = within(headerControl).getByRole('button')
     const header = headerButton.closest('th')
 
     expect(header).toHaveAttribute('aria-sort', 'ascending')
@@ -653,9 +663,14 @@ describe('RequirementsTable', () => {
   })
 
   it('keeps the sort icon fixed while the header label remains truncation-friendly', () => {
-    render(<RequirementsTable locale="sv" rows={[makeRow()]} />)
+    const { container } = render(
+      <RequirementsTable locale="sv" rows={[makeRow()]} />,
+    )
 
-    const headerButton = screen.getByRole('button', { name: 'uniqueId' })
+    const headerControl = container.querySelector(
+      '[data-requirement-header-control="uniqueId"]',
+    ) as HTMLElement
+    const headerButton = within(headerControl).getByRole('button')
     const label = screen.getByText('uniqueId')
     const icon = headerButton.querySelector('svg')
 
@@ -760,7 +775,7 @@ describe('RequirementsTable', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'uniqueId' })).toBeInTheDocument()
+    expect(screen.getByText('uniqueId')).toBeInTheDocument()
     expect(screen.getByText('description')).toBeInTheDocument()
     expect(screen.getByText('INT0001')).toBeInTheDocument()
     expect(screen.getByText('Testkrav')).toBeInTheDocument()

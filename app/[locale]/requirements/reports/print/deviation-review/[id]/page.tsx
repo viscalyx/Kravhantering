@@ -23,7 +23,7 @@ export default function PrintDeviationReviewReportPage() {
       return
     }
     try {
-      const data = await fetchDeviationForReport(params.id, pkg, item, locale)
+      const data = await fetchDeviationForReport(params.id, item, locale)
       setModel(buildDeviationReviewReport(data, locale))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load report')

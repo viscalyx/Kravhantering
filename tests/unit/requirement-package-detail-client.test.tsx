@@ -101,7 +101,7 @@ describe('RequirementPackageDetailClient', () => {
         const method =
           init?.method ?? (typeof input === 'string' ? 'GET' : input.method)
 
-        if (url === '/api/requirement-packages/BEHORIGHET-IAM') {
+        if (url === '/api/requirement-packages/ETJANSTPLATT') {
           return Promise.resolve(
             okJson({
               businessNeedsReference: 'Shared IAM business case',
@@ -113,13 +113,13 @@ describe('RequirementPackageDetailClient', () => {
               packageLifecycleStatusId: 3,
               packageResponsibilityAreaId: 1,
               responsibilityArea: { nameEn: 'Platform', nameSv: 'Plattform' },
-              uniqueId: 'BEHORIGHET-IAM',
+              uniqueId: 'ETJANSTPLATT',
             }),
           )
         }
 
         if (
-          url === '/api/requirement-packages/BEHORIGHET-IAM/items' &&
+          url === '/api/requirement-packages/ETJANSTPLATT/items' &&
           method === 'POST'
         ) {
           return Promise.resolve({
@@ -129,7 +129,7 @@ describe('RequirementPackageDetailClient', () => {
         }
 
         if (
-          url === '/api/requirement-packages/BEHORIGHET-IAM/items' &&
+          url === '/api/requirement-packages/ETJANSTPLATT/items' &&
           method === 'GET'
         ) {
           if (failNextPackageItemsFetch) {
@@ -216,9 +216,7 @@ describe('RequirementPackageDetailClient', () => {
           return Promise.resolve(okJson({ scenarios: [] }))
         }
 
-        if (
-          url === '/api/requirement-packages/BEHORIGHET-IAM/needs-references'
-        ) {
+        if (url === '/api/requirement-packages/ETJANSTPLATT/needs-references') {
           return Promise.resolve(okJson({ needsReferences: [] }))
         }
 
@@ -263,7 +261,7 @@ describe('RequirementPackageDetailClient', () => {
 
   it('opens and closes the package edit view from the title action', async () => {
     const { container } = render(
-      <RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />,
+      <RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />,
     )
 
     await waitFor(() => {
@@ -357,7 +355,7 @@ describe('RequirementPackageDetailClient', () => {
 
   it('uses inline top rails and sticky table titles for the split tables', async () => {
     const { container } = render(
-      <RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />,
+      <RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />,
     )
 
     await waitFor(() => {
@@ -397,7 +395,7 @@ describe('RequirementPackageDetailClient', () => {
       ok: false,
     }
 
-    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
 
     await waitFor(() => {
       expect(
@@ -424,7 +422,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('closes the add dialog when Escape is pressed inside the panel', async () => {
-    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
 
     await waitFor(() => {
       expect(
@@ -455,7 +453,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('disables needs-reference inputs and help toggles while add is submitting', async () => {
-    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
 
     await waitFor(() => {
       expect(
@@ -513,7 +511,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('keeps the add dialog open when a post-add refresh fails', async () => {
-    render(<RequirementPackageDetailClient packageSlug="BEHORIGHET-IAM" />)
+    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
 
     await waitFor(() => {
       expect(
