@@ -621,6 +621,7 @@ function SearchFilterPopover({
   }, [activeValue])
 
   useEffect(() => {
+    if (!open) return
     const handler = (e: MouseEvent) => {
       const target = e.target as Node
       if (
@@ -645,7 +646,7 @@ function SearchFilterPopover({
       document.removeEventListener('mousedown', handler)
       document.removeEventListener('keydown', keyHandler)
     }
-  }, [])
+  }, [open])
 
   useEffect(() => {
     if (open) inputRef.current?.focus()
@@ -721,6 +722,7 @@ function SearchFilterPopover({
                     clearPendingCommit()
                     onChange(local || undefined)
                     setOpen(false)
+                    btnRef.current?.focus()
                   }
                 }}
                 placeholder={`${label}...`}
@@ -782,6 +784,7 @@ function MultiSelectFilterPopover({
   })
 
   useEffect(() => {
+    if (!open) return
     const handler = (e: MouseEvent) => {
       const target = e.target as Node
       if (
@@ -806,7 +809,7 @@ function MultiSelectFilterPopover({
       document.removeEventListener('mousedown', handler)
       document.removeEventListener('keydown', keyHandler)
     }
-  }, [])
+  }, [open])
 
   const openDropdown = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -928,6 +931,7 @@ function GroupedMultiSelectFilterPopover({
   })
 
   useEffect(() => {
+    if (!open) return
     const handler = (e: MouseEvent) => {
       const target = e.target as Node
       if (
@@ -952,7 +956,7 @@ function GroupedMultiSelectFilterPopover({
       document.removeEventListener('mousedown', handler)
       document.removeEventListener('keydown', keyHandler)
     }
-  }, [])
+  }, [open])
 
   const openDropdown = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -1087,6 +1091,7 @@ function ColumnsPopover({
   })
 
   useEffect(() => {
+    if (!open) return
     const handler = (event: MouseEvent) => {
       const target = event.target as Node
       if (
@@ -1113,7 +1118,7 @@ function ColumnsPopover({
       document.removeEventListener('mousedown', handler)
       document.removeEventListener('keydown', keyHandler)
     }
-  }, [])
+  }, [open])
 
   const trigger = (
     <button
