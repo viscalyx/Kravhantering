@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@opennextjs/cloudflare": "^1.19.0",
+    "@opennextjs/cloudflare": "^1.19.1",
     "@react-pdf/renderer": "^4.4.1",
     "@tailwindcss/typography": "^0.5.19",
     "drizzle-orm": "^0.45.2",
