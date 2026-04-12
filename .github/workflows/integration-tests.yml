@@ -86,7 +86,7 @@ jobs:
 
     steps:
       - name: Comment on PR
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const body = '❌ **Integration tests failed!** Please check the test results and fix any issues.\n\n' +
