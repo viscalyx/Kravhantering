@@ -402,18 +402,18 @@ describe('deviations DAL', () => {
     })
   })
 
-  describe('listDeviationsForPackage (mixed sources)', () => {
-    async function seedWithLocalRequirement(testDb: TestDb) {
-      await seedRequiredData(testDb)
-      await testDb.insert(schema.packageLocalRequirements).values({
-        id: 1,
-        packageId: 1,
-        uniqueId: 'PKG-L-001',
-        sequenceNumber: 1,
-        description: 'Local requirement',
-      })
-    }
+  async function seedWithLocalRequirement(testDb: TestDb) {
+    await seedRequiredData(testDb)
+    await testDb.insert(schema.packageLocalRequirements).values({
+      id: 1,
+      packageId: 1,
+      uniqueId: 'PKG-L-001',
+      sequenceNumber: 1,
+      description: 'Local requirement',
+    })
+  }
 
+  describe('listDeviationsForPackage (mixed sources)', () => {
     it('returns library and local deviations sorted by uniqueId', async () => {
       await seedWithLocalRequirement(db)
       await createDeviation(db as unknown as AppDatabase, {
@@ -470,17 +470,6 @@ describe('deviations DAL', () => {
   })
 
   describe('countDeviationsPerItemRef', () => {
-    async function seedWithLocalRequirement(testDb: TestDb) {
-      await seedRequiredData(testDb)
-      await testDb.insert(schema.packageLocalRequirements).values({
-        id: 1,
-        packageId: 1,
-        uniqueId: 'PKG-L-001',
-        sequenceNumber: 1,
-        description: 'Local requirement',
-      })
-    }
-
     it('returns counts for both library and local deviations', async () => {
       await seedWithLocalRequirement(db)
       await createDeviation(db as unknown as AppDatabase, {

@@ -591,16 +591,7 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
-  await db
-    .delete(packageLocalRequirements)
-    .where(eq(packageLocalRequirements.packageId, id))
-  await db
-    .delete(requirementPackageItems)
-    .where(eq(requirementPackageItems.packageId, id))
-  await db
-    .delete(packageNeedsReferences)
-    .where(eq(packageNeedsReferences.packageId, id))
-  await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
+  throw new Error('Unsupported database driver')
 }
 
 export async function getPublishedVersionIdForRequirement(
@@ -778,41 +769,6 @@ async function insertPackageLocalRequirementJoins(
       })),
     )
   }
-}
-
-async function replacePackageLocalRequirementJoins(
-  db: Pick<Database, 'delete' | 'insert'>,
-  packageLocalRequirementId: number,
-  {
-    normReferenceIds,
-    scenarioIds,
-  }: {
-    normReferenceIds: number[]
-    scenarioIds: number[]
-  },
-) {
-  await db
-    .delete(packageLocalRequirementUsageScenarios)
-    .where(
-      eq(
-        packageLocalRequirementUsageScenarios.packageLocalRequirementId,
-        packageLocalRequirementId,
-      ),
-    )
-
-  await db
-    .delete(packageLocalRequirementNormReferences)
-    .where(
-      eq(
-        packageLocalRequirementNormReferences.packageLocalRequirementId,
-        packageLocalRequirementId,
-      ),
-    )
-
-  await insertPackageLocalRequirementJoins(db, packageLocalRequirementId, {
-    normReferenceIds,
-    scenarioIds,
-  })
 }
 
 function mapPackageLocalRequirementDetail(
@@ -1245,18 +1201,7 @@ export async function updatePackageLocalRequirement(
 
       await d1BatchClient.batch(statements)
     } else {
-      await db
-        .update(packageLocalRequirements)
-        .set({
-          ...normalized,
-          updatedAt,
-        })
-        .where(eq(packageLocalRequirements.id, packageLocalRequirementId))
-      await replacePackageLocalRequirementJoins(
-        db,
-        packageLocalRequirementId,
-        normalized,
-      )
+      throw new Error('Unsupported database driver')
     }
   }
 
@@ -2200,30 +2145,5 @@ export async function deletePackageItemsByRefs(
     }
   }
 
-  // Fallback: sequential deletes (non-atomic)
-  const deletedLibraryCount = (
-    await db
-      .delete(requirementPackageItems)
-      .where(
-        and(
-          eq(requirementPackageItems.packageId, packageId),
-          inArray(requirementPackageItems.id, libraryIds),
-        ),
-      )
-      .returning({ id: requirementPackageItems.id })
-  ).length
-
-  const deletedPackageLocalCount = (
-    await db
-      .delete(packageLocalRequirements)
-      .where(
-        and(
-          eq(packageLocalRequirements.packageId, packageId),
-          inArray(packageLocalRequirements.id, packageLocalRequirementIds),
-        ),
-      )
-      .returning({ id: packageLocalRequirements.id })
-  ).length
-
-  return { deletedLibraryCount, deletedPackageLocalCount }
+  throw new Error('Unsupported database driver')
 }

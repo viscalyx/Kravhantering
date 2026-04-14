@@ -171,7 +171,7 @@ export default function PackageLocalRequirementForm({
         </p>
       )}
       <select
-        className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+        className="w-full rounded-xl border dark:border-secondary-600 bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
         disabled={isSubmitting}
         id="plr-needs-reference"
         onChange={e => setNeedsReferenceId(e.target.value)}
@@ -209,7 +209,7 @@ export default function PackageLocalRequirementForm({
           {isSubmitting ? tc('saving') : submitLabel}
         </button>
         <button
-          className="min-h-11 rounded-xl border px-4 py-2.5 text-sm transition-colors hover:bg-secondary-50 dark:hover:bg-secondary-800"
+          className="min-h-11 rounded-xl border px-4 py-2.5 text-sm text-secondary-700 dark:text-secondary-300 transition-colors hover:bg-secondary-50 dark:hover:bg-secondary-800"
           disabled={isSubmitting}
           onClick={onCancel}
           type="button"

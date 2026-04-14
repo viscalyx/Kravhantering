@@ -115,7 +115,7 @@ export async function listDeviationsForPackage(
       decidedBy: deviations.decidedBy,
       decision: deviations.decision,
       decisionMotivation: deviations.decisionMotivation,
-      id: deviations.id,
+      id: sql<number>`${deviations.id}`.as('deviation_id'),
       isLocal: sql<number>`0`.as('is_local'),
       isReviewRequested: deviations.isReviewRequested,
       motivation: deviations.motivation,
@@ -165,7 +165,9 @@ export async function listDeviationsForPackage(
       decidedBy: packageLocalRequirementDeviations.decidedBy,
       decision: packageLocalRequirementDeviations.decision,
       decisionMotivation: packageLocalRequirementDeviations.decisionMotivation,
-      id: packageLocalRequirementDeviations.id,
+      id: sql<number>`${packageLocalRequirementDeviations.id}`.as(
+        'deviation_id',
+      ),
       isLocal: sql<number>`1`.as('is_local'),
       isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
       motivation: packageLocalRequirementDeviations.motivation,
@@ -201,6 +203,7 @@ export async function listDeviationsForPackage(
   const rows = await unionAll(libraryQuery, localQuery).orderBy(
     sql`requirement_unique_id`,
     sql`created_at`,
+    sql`deviation_id`,
   )
 
   return rows.map(row => ({
