@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@opennextjs/cloudflare": "^1.19.0",
+    "@opennextjs/cloudflare": "^1.19.1",
     "@react-pdf/renderer": "^4.4.1",
     "@tailwindcss/typography": "^0.5.19",
     "drizzle-orm": "^0.45.2",
@@ -91,8 +91,8 @@
     "@viscalyx/developer-mode-react": "file:packages/developer-mode-react",
     "@vitest/coverage-v8": "^4.1.4",
     "@vitest/ui": "^4.1.4",
-    "autoprefixer": "^10.4.27",
-    "better-sqlite3": "^12.8.0",
+    "autoprefixer": "^10.5.0",
+    "better-sqlite3": "^12.9.0",
     "cross-env": "^10.1.0",
     "cspell": "^10.0.0",
     "drizzle-kit": "^0.31.10",
@@ -103,7 +103,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
     "vitest": "^4.1.4",
-    "wrangler": "^4.81.1"
+    "wrangler": "^4.82.2"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
@@ -116,7 +116,7 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "0.25.12"
     },
-    "fast-xml-parser": "5.5.9",
+    "fast-xml-parser": "5.5.12",
     "minimatch@^8.0.0": {
       "brace-expansion": "2.0.3"
     },
@@ -124,9 +124,9 @@
       "brace-expansion": "5.0.5"
     },
     "hono": "4.12.12",
-    "@hono/node-server": "1.19.13",
+    "@hono/node-server": "1.19.14",
     "router@^2.2.0": {
-      "path-to-regexp": "8.4.0"
+      "path-to-regexp": "8.4.2"
     },
     "smol-toml": "1.6.1"
   },
@@ -135,12 +135,12 @@
     "Remove each override when the parent dependency updates to include the fix natively.",
     "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict.",
     "@esbuild-kit/core-utils > esbuild: drizzle-kit@0.31.10 resolves @esbuild-kit/esm-loader@2.6.5 -> @esbuild-kit/core-utils@3.3.2 -> esbuild@0.18.20, which is vulnerable to GHSA-67mh-4wv8-2f99. Override to 0.25.12 resolves it without downgrading drizzle-kit.",
-    "fast-xml-parser: @aws-sdk/xml-builder@3.972.11 (via @opennextjs/cloudflare > @opennextjs/aws) pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.9 resolves both.",
+    "fast-xml-parser: @aws-sdk/xml-builder@3.972.17 (via @opennextjs/cloudflare > @opennextjs/aws) pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.12 resolves both.",
     "minimatch@^8.0.0 > brace-expansion: @opennextjs/cloudflare > @opennextjs/aws > @node-minify/core > glob@9.3.5 resolves brace-expansion@2.0.2, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 2.0.3.",
     "minimatch@^10.0.0 > brace-expansion: @opennextjs/cloudflare > glob@12.0.0 resolves brace-expansion@5.0.4, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 5.0.5.",
-    "router@^2.2.0 > path-to-regexp: express@5.2.1 (used by @modelcontextprotocol/sdk@1.28.0 and @opennextjs/aws@3.9.16 via @opennextjs/cloudflare@1.18.0) resolves path-to-regexp@8.3.0, which is vulnerable to GHSA-27v5-c462-wpq7 / CVE-2026-4923. Override to 8.4.0.",
+    "router@^2.2.0 > path-to-regexp: express@5.2.1 (used by @modelcontextprotocol/sdk@1.29.0 and @opennextjs/aws@3.10.1 via @opennextjs/cloudflare@1.19.1) resolves path-to-regexp@8.3.0, which is vulnerable to GHSA-27v5-c462-wpq7 / CVE-2026-4923. Override to 8.4.2.",
     "smol-toml: markdownlint-cli2@0.22.0 pins 1.6.0, and cspell-config-lib@10.0.0 still ranges ^1.6.1; 1.6.0 is vulnerable to DoS GHSA-v3rj-xjv7-4jmq. Override to 1.6.1 resolves it.",
     "hono: @modelcontextprotocol/sdk@1.29.0 resolves hono@4.12.8 (via hono@^4.11.4), which is vulnerable to GHSA-26pp-8wgv-hjvm, GHSA-r5rp-j6wh-rvv4, GHSA-xpcf-pg52-r92g, GHSA-xf4j-xp2r-rqqx, and GHSA-wmmm-f939-6g9c. Override to 4.12.12 resolves all five.",
-    "@hono/node-server: @modelcontextprotocol/sdk@1.29.0 resolves @hono/node-server@1.19.11 (via @hono/node-server@^1.19.9), which is vulnerable to GHSA-92pp-h63x-v22m. Override to 1.19.13 resolves it."
+    "@hono/node-server: @modelcontextprotocol/sdk@1.29.0 resolves @hono/node-server@1.19.11 (via @hono/node-server@^1.19.9), which is vulnerable to GHSA-92pp-h63x-v22m. Override to 1.19.14 resolves it."
   ]
 }
