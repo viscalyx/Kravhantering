@@ -69,6 +69,9 @@ export interface RequirementRow {
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
+  isPackageLocal?: boolean
+  itemRef?: string
+  kind?: 'library' | 'packageLocal'
   needsReference?: string | null
   needsReferenceId?: number | null
   normReferenceIds?: string[]
@@ -79,6 +82,7 @@ export interface RequirementRow {
   packageItemStatusId?: number | null
   packageItemStatusNameEn?: string | null
   packageItemStatusNameSv?: string | null
+  packageLocalRequirementId?: number
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
   suggestionCount?: number

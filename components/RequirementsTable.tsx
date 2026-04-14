@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Columns3,
+  DiamondPlus,
   Filter,
   Search,
   SearchCheck,
@@ -83,10 +84,7 @@ export interface RequirementsTableProps {
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
-  onPackageItemStatusChange?: (
-    packageItemId: number,
-    statusId: number | null,
-  ) => void
+  onPackageItemStatusChange?: (itemRef: string, statusId: number | null) => void
   onRowClick?: (id: number) => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
@@ -2947,7 +2945,17 @@ export default function RequirementsTable({
                   />
                 )
               ) : null}
-              {row.uniqueId}
+              <span>{row.uniqueId}</span>
+              {row.isPackageLocal ? (
+                <span
+                  className="inline-flex items-center text-amber-700 dark:text-amber-300"
+                  data-package-local-marker="true"
+                  title={t('packageLocalTooltip')}
+                >
+                  <DiamondPlus aria-hidden="true" className="h-3.5 w-3.5" />
+                  <span className="sr-only">{t('packageLocalBadge')}</span>
+                </span>
+              ) : null}
             </button>
           </td>
         )
@@ -3105,7 +3113,7 @@ export default function RequirementsTable({
             ? row.packageItemStatusDescriptionSv
             : row.packageItemStatusDescriptionEn) ?? undefined
 
-        if (onPackageItemStatusChange && row.packageItemId != null) {
+        if (onPackageItemStatusChange && row.itemRef) {
           const selectTooltip = statusId
             ? packageItemStatusDescription(statusId)
             : undefined
@@ -3119,9 +3127,9 @@ export default function RequirementsTable({
                 className="w-auto max-w-full rounded-lg border bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 transition-all duration-200"
                 onChange={e => {
                   const value = e.target.value
-                  if (row.packageItemId != null) {
+                  if (row.itemRef) {
                     onPackageItemStatusChange(
-                      row.packageItemId,
+                      row.itemRef,
                       value === '' ? null : Number(value),
                     )
                   }

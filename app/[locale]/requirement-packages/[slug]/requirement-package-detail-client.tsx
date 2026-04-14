@@ -18,14 +18,19 @@ import PackageEditPanel, {
   PACKAGE_EDIT_FORM_ID,
 } from '@/app/[locale]/requirement-packages/[slug]/package-edit-panel'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
+import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import PackageLocalRequirementDetailClient from '@/components/PackageLocalRequirementDetailClient'
+import PackageLocalRequirementForm, {
+  type PackageLocalRequirementSubmitPayload,
+} from '@/components/PackageLocalRequirementForm'
 import RequirementsTable from '@/components/RequirementsTable'
 import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { exportToCsv } from '@/lib/export-csv'
-import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
+import { fetchPackageItemsForReport } from '@/lib/reports/data/fetch-package-items'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
 import {
@@ -122,6 +127,14 @@ function readStoredCols(
   return fallback
 }
 
+function buildItemRefsQuery(rows: RequirementRow[]) {
+  const refs = rows
+    .map(row => row.itemRef)
+    .filter((value): value is string => typeof value === 'string')
+
+  return refs.map(ref => encodeURIComponent(ref)).join(',')
+}
+
 export default function KravpaketDetailClient({
   packageSlug,
 }: {
@@ -134,6 +147,7 @@ export default function KravpaketDetailClient({
   const tr = useTranslations('reports')
   const locale = useLocale()
   const router = useRouter()
+  const { confirm } = useConfirmModal()
   const searchParams = useSearchParams()
   const preFilterAreaId = searchParams.get('areaId')
     ? Number(searchParams.get('areaId'))
@@ -199,6 +213,8 @@ export default function KravpaketDetailClient({
 
   // Add modal state
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showCreateLocalRequirementModal, setShowCreateLocalRequirementModal] =
+    useState(false)
   const [pendingAddIds, setPendingAddIds] = useState<number[]>([])
   const [addNeedsRefMode, setAddNeedsRefMode] = useState<
     'none' | 'existing' | 'new'
@@ -235,6 +251,17 @@ export default function KravpaketDetailClient({
     setAddModalError(null)
     setShowAddModal(false)
   }, [addModalLoading])
+
+  const closeCreateLocalRequirementModal = useCallback(async () => {
+    const confirmed = await confirm({
+      message: tc('unsavedChangesConfirm'),
+      variant: 'danger',
+      icon: 'warning',
+    })
+    if (confirmed) {
+      setShowCreateLocalRequirementModal(false)
+    }
+  }, [confirm, tc])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -284,6 +311,11 @@ export default function KravpaketDetailClient({
   const packageItemIds = useMemo(
     () => new Set(packageItems.map(r => r.id)),
     [packageItems],
+  )
+
+  const selectedPackageItems = useMemo(
+    () => packageItems.filter(item => leftSelectedIds.has(item.id)),
+    [leftSelectedIds, packageItems],
   )
 
   const fetchPackageMeta = useCallback(async () => {
@@ -546,6 +578,24 @@ export default function KravpaketDetailClient({
     }
   }, [packageSlug, rightSelectedIds])
 
+  const handleOpenCreateLocalRequirementModal = useCallback(async () => {
+    setShowCreateLocalRequirementModal(true)
+
+    if (availableNeedsRefs.length > 0) {
+      return
+    }
+
+    const response = await fetch(
+      `/api/requirement-packages/${packageSlug}/needs-references`,
+    )
+    if (response.ok) {
+      const data = (await response.json()) as {
+        needsReferences: { id: number; text: string }[]
+      }
+      setAvailableNeedsRefs(data.needsReferences)
+    }
+  }, [availableNeedsRefs.length, packageSlug])
+
   const handleConfirmAdd = useCallback(async () => {
     if (pendingAddIds.length === 0) return
     setAddModalLoading(true)
@@ -598,14 +648,38 @@ export default function KravpaketDetailClient({
     tc,
   ])
 
+  const handleCreateLocalRequirement = useCallback(
+    async (payload: PackageLocalRequirementSubmitPayload) => {
+      const response = await fetch(
+        `/api/requirement-packages/${packageSlug}/local-requirements`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      )
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as {
+          error?: string
+        } | null
+        throw new Error(body?.error ?? tc('error'))
+      }
+
+      setShowCreateLocalRequirementModal(false)
+      await fetchPackageItems({ throwOnError: true })
+    },
+    [fetchPackageItems, packageSlug, tc],
+  )
+
   const handlePackageItemStatusChange = useCallback(
-    async (packageItemId: number, statusId: number | null) => {
+    async (itemRef: string, statusId: number | null) => {
       if (!pkg) return
       const prev = packageItems
       // Optimistic update
       setPackageItems(prev =>
         prev.map(item => {
-          if (item.packageItemId !== packageItemId) return item
+          if (item.itemRef !== itemRef) return item
           const status = statusId
             ? packageItemStatuses.find(s => s.id === statusId)
             : null
@@ -620,7 +694,7 @@ export default function KravpaketDetailClient({
       )
       try {
         const res = await fetch(
-          `/api/requirement-packages/${pkg.id}/items/${packageItemId}`,
+          `/api/requirement-packages/${pkg.id}/items/${encodeURIComponent(itemRef)}`,
           {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -637,40 +711,93 @@ export default function KravpaketDetailClient({
     [pkg, packageItemStatuses, packageItems],
   )
 
-  const handleRemoveSelected = useCallback(async () => {
-    if (leftSelectedIds.size === 0) return
-    await fetch(`/api/requirement-packages/${packageSlug}/items`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requirementIds: Array.from(leftSelectedIds) }),
-    })
-    setLeftSelectedIds(new Set())
-    // Clear any usage-scenario filters that only had items in the removed set
-    setLeftFilters(prev => {
-      if (!prev.usageScenarioIds || prev.usageScenarioIds.length === 0)
-        return prev
-      const remainingScenarioIds = new Set(
-        packageItems
-          .filter(r => !leftSelectedIds.has(r.id))
-          .flatMap(r => r.usageScenarioIds ?? []),
+  const handleRemoveSelected = useCallback(
+    async (anchorEl?: HTMLElement) => {
+      if (selectedPackageItems.length === 0) return
+
+      const libraryCount = selectedPackageItems.filter(
+        item => !item.isPackageLocal,
+      ).length
+      const packageLocalCount = selectedPackageItems.length - libraryCount
+
+      const confirmed = await confirm({
+        anchorEl,
+        confirmText: tc('delete'),
+        icon: 'caution',
+        message:
+          packageLocalCount === 0
+            ? t('removeConfirm', { count: libraryCount })
+            : libraryCount === 0
+              ? t('removePackageLocalConfirm', { count: packageLocalCount })
+              : t('removeMixedConfirm', {
+                  libraryCount,
+                  packageLocalCount,
+                }),
+        title:
+          packageLocalCount === 0
+            ? t('removeSelected', { count: libraryCount })
+            : libraryCount === 0
+              ? t('removePackageLocalConfirmTitle')
+              : t('removeMixedConfirmTitle'),
+        variant: 'danger',
+      })
+
+      if (!confirmed) return
+
+      const itemRefs = selectedPackageItems
+        .map(item => item.itemRef)
+        .filter((value): value is string => typeof value === 'string')
+
+      if (itemRefs.length === 0) return
+
+      await fetch(`/api/requirement-packages/${packageSlug}/items`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemRefs }),
+      })
+
+      const removedIds = new Set(selectedPackageItems.map(item => item.id))
+      setLeftSelectedIds(new Set())
+      setLeftExpandedId(current =>
+        current != null && removedIds.has(current) ? null : current,
       )
-      const stillValid = prev.usageScenarioIds.filter(id =>
-        remainingScenarioIds.has(id),
-      )
-      if (stillValid.length === prev.usageScenarioIds.length) return prev
-      return {
-        ...prev,
-        usageScenarioIds: stillValid.length > 0 ? stillValid : undefined,
-      }
-    })
-    await Promise.all([fetchPackageItems(), fetchAvailableRequirements()])
-  }, [
-    fetchAvailableRequirements,
-    fetchPackageItems,
-    packageSlug,
-    leftSelectedIds,
-    packageItems,
-  ])
+      setLeftFilters(prev => {
+        if (!prev.usageScenarioIds || prev.usageScenarioIds.length === 0) {
+          return prev
+        }
+
+        const remainingScenarioIds = new Set(
+          packageItems
+            .filter(item => !removedIds.has(item.id))
+            .flatMap(item => item.usageScenarioIds ?? []),
+        )
+        const stillValid = prev.usageScenarioIds.filter(id =>
+          remainingScenarioIds.has(id),
+        )
+
+        if (stillValid.length === prev.usageScenarioIds.length) {
+          return prev
+        }
+
+        return {
+          ...prev,
+          usageScenarioIds: stillValid.length > 0 ? stillValid : undefined,
+        }
+      })
+
+      await Promise.all([fetchPackageItems(), fetchAvailableRequirements()])
+    },
+    [
+      confirm,
+      fetchAvailableRequirements,
+      fetchPackageItems,
+      packageItems,
+      packageSlug,
+      selectedPackageItems,
+      t,
+      tc,
+    ],
+  )
 
   const handleBulkDeviation = useCallback(
     async (motivation: string, createdBy: string) => {
@@ -678,18 +805,22 @@ export default function KravpaketDetailClient({
       setBulkDeviationSaving(true)
       setBulkDeviationError(null)
       try {
-        const items = packageItems.filter(r => leftSelectedIds.has(r.id))
+        const items = packageItems.filter(item => leftSelectedIds.has(item.id))
         const results = await Promise.allSettled(
           items
-            .filter(item => item.packageItemId != null)
+            .filter(item => item.itemRef)
             .map(item =>
-              fetch(`/api/package-item-deviations/${item.packageItemId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ motivation, createdBy }),
-              }).then(async res => {
-                if (!res.ok)
-                  throw new Error(`Failed for item ${item.packageItemId}`)
+              fetch(
+                `/api/package-item-deviations/${encodeURIComponent(item.itemRef ?? '')}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ motivation, createdBy }),
+                },
+              ).then(async res => {
+                if (!res.ok) {
+                  throw new Error(`Failed for item ${item.itemRef}`)
+                }
                 return item.id
               }),
             ),
@@ -850,9 +981,15 @@ export default function KravpaketDetailClient({
 
   const handleDownloadPdf = useCallback(async () => {
     if (!pkg) return
-    const ids = filteredPackageItems.map(r => String(r.id))
-    if (ids.length === 0) return
-    const requirements = await fetchMultipleRequirements(ids, locale)
+    const itemRefs = filteredPackageItems
+      .map(row => row.itemRef)
+      .filter((value): value is string => typeof value === 'string')
+    if (itemRefs.length === 0) return
+    const requirements = await fetchPackageItemsForReport(
+      packageSlug,
+      itemRefs,
+      locale,
+    )
     const label = tr('listPdfFilenameLabel')
     const raw = `${label} ${pkg.name} ${pkg.uniqueId}.pdf`
     setPdfFilename(
@@ -873,7 +1010,7 @@ export default function KravpaketDetailClient({
         businessNeedsReference: pkg.businessNeedsReference,
       }),
     )
-  }, [filteredPackageItems, locale, pkg, tr])
+  }, [filteredPackageItems, locale, packageSlug, pkg, tr])
 
   const pkgName = pkg ? pkg.name : '…'
 
@@ -1028,6 +1165,49 @@ export default function KravpaketDetailClient({
         )
       : null
 
+  const createLocalRequirementModal =
+    showCreateLocalRequirementModal && typeof window !== 'undefined'
+      ? createPortal(
+          <div
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            role="dialog"
+          >
+            <div
+              className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
+              role="document"
+            >
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                    {t('itemsInPackage')}
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                    {t('newLocalRequirement')}
+                  </h2>
+                </div>
+                <button
+                  aria-label={tc('close')}
+                  className="rounded-lg p-1.5 transition-colors hover:bg-secondary-100 dark:hover:bg-secondary-800"
+                  onClick={() => void closeCreateLocalRequirementModal()}
+                  type="button"
+                >
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
+              </div>
+
+              <PackageLocalRequirementForm
+                needsReferences={availableNeedsRefs}
+                onCancel={() => void closeCreateLocalRequirementModal()}
+                onSubmit={handleCreateLocalRequirement}
+                submitLabel={tc('save')}
+              />
+            </div>
+          </div>,
+          document.body,
+        )
+      : null
+
   if (loading) {
     return (
       <div className="flex min-h-80 flex-col items-center justify-center gap-3">
@@ -1159,10 +1339,15 @@ export default function KravpaketDetailClient({
                   implementationTypes={packageImplementationTypes}
                   lifecycleStatuses={packageLifecycleStatuses}
                   onCancel={() => setShowEditPackageForm(false)}
-                  onSaved={async savedUniqueId => {
+                  onSaved={async result => {
                     setShowEditPackageForm(false)
-                    if (savedUniqueId && savedUniqueId !== packageSlug) {
-                      router.replace(`/requirement-packages/${savedUniqueId}`)
+                    if (
+                      result.newUniqueId &&
+                      result.newUniqueId !== packageSlug
+                    ) {
+                      router.replace(
+                        `/requirement-packages/${result.newUniqueId}`,
+                      )
                     } else {
                       await fetchPackageMeta()
                     }
@@ -1192,10 +1377,25 @@ export default function KravpaketDetailClient({
                       </span>
                     </h2>
                     <div className="flex items-center gap-2">
+                      <button
+                        aria-label={t('newLocalRequirement')}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-primary-600/80 bg-primary-700 text-white shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:border-primary-700 hover:bg-primary-800 hover:shadow-[0_14px_36px_-20px_rgba(67,56,202,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-primary-500/80 dark:bg-primary-600 dark:hover:border-primary-400 dark:hover:bg-primary-700 dark:focus-visible:ring-offset-secondary-950"
+                        onClick={() =>
+                          void handleOpenCreateLocalRequirementModal()
+                        }
+                        title={t('newLocalRequirement')}
+                        type="button"
+                      >
+                        <Plus aria-hidden="true" className="h-4 w-4" />
+                      </button>
                       {leftSelectedIds.size > 0 && (
                         <button
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                          onClick={() => void handleRemoveSelected()}
+                          onClick={event =>
+                            void handleRemoveSelected(
+                              event.currentTarget as HTMLElement,
+                            )
+                          }
                           type="button"
                         >
                           <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
@@ -1220,6 +1420,17 @@ export default function KravpaketDetailClient({
                     floatingActionRailPlacement="inline-top"
                     floatingActions={[
                       {
+                        ariaLabel: t('newLocalRequirement'),
+                        developerModeContext: 'requirement package detail',
+                        developerModeValue: 'create local requirement',
+                        icon: <Plus aria-hidden="true" className="h-4 w-4" />,
+                        id: 'create-local',
+                        onClick: () =>
+                          void handleOpenCreateLocalRequirementModal(),
+                        position: 'beforeColumns',
+                        variant: 'primary' as const,
+                      },
+                      {
                         ariaLabel: tc('print'),
                         icon: (
                           <Printer aria-hidden="true" className="h-4 w-4" />
@@ -1227,7 +1438,9 @@ export default function KravpaketDetailClient({
                         id: 'print',
                         menuItems: [
                           {
-                            href: `/requirement-packages/${packageSlug}/reports/print/list?ids=${filteredPackageItems.map(r => r.id).join(',')}`,
+                            href: `/requirement-packages/${packageSlug}/reports/print/list?refs=${buildItemRefsQuery(
+                              filteredPackageItems,
+                            )}`,
                             id: 'print-list',
                             label: t('printListReport'),
                           },
@@ -1262,7 +1475,17 @@ export default function KravpaketDetailClient({
                     packageItemStatuses={packageItemStatuses}
                     renderExpanded={id => {
                       const item = packageItems.find(r => r.id === id)
-                      return item?.packageItemId != null ? (
+                      return item?.isPackageLocal &&
+                        item.packageLocalRequirementId != null ? (
+                        <PackageLocalRequirementDetailClient
+                          localRequirementId={item.packageLocalRequirementId}
+                          needsReferences={availableNeedsRefs}
+                          onChange={async () => {
+                            await fetchPackageItems()
+                          }}
+                          packageSlug={packageSlug}
+                        />
+                      ) : item?.packageItemId != null ? (
                         <RequirementDetailClient
                           inline
                           onChange={async () => {
@@ -1312,7 +1535,11 @@ export default function KravpaketDetailClient({
                           </button>
                           <button
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                            onClick={() => void handleRemoveSelected()}
+                            onClick={event =>
+                              void handleRemoveSelected(
+                                event.currentTarget as HTMLElement,
+                              )
+                            }
                             type="button"
                           >
                             <Trash2
@@ -1422,6 +1649,7 @@ export default function KravpaketDetailClient({
         </div>
       </div>
       {addModal}
+      {createLocalRequirementModal}
     </>
   )
 }

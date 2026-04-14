@@ -600,6 +600,27 @@ describe('RequirementsTable', () => {
     expect(screen.queryByText('v2')).toBeNull()
   })
 
+  it('renders a package-local marker icon for package-local rows', () => {
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={[
+          makeRow({
+            isPackageLocal: true,
+            itemRef: 'local:1',
+            kind: 'packageLocal',
+            packageLocalRequirementId: 1,
+            uniqueId: 'KRAV0001',
+          }),
+        ]}
+      />,
+    )
+
+    expect(
+      document.querySelector('[data-package-local-marker="true"]'),
+    ).toBeInTheDocument()
+  })
+
   it('renders version when the column is made visible', () => {
     render(
       <RequirementsTable

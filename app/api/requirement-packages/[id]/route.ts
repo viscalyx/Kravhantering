@@ -40,7 +40,14 @@ export async function PUT(
   const pkg = await resolvePackage(db, id)
   if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = (await request.json()) as Parameters<typeof updatePackage>[2]
+  const body = (await request.json()) as {
+    businessNeedsReference?: string | null
+    name?: string
+    packageImplementationTypeId?: number | null
+    packageLifecycleStatusId?: number | null
+    packageResponsibilityAreaId?: number | null
+    uniqueId?: string
+  }
 
   if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, pkg.id))) {
     return NextResponse.json({ error: 'slug_taken' }, { status: 409 })

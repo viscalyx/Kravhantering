@@ -2,8 +2,11 @@ import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   createDeviation,
+  createDeviationForItemRef,
   listDeviationsForPackageItem,
+  listDeviationsForPackageLocalRequirement,
 } from '@/lib/dal/deviations'
+import { parsePackageItemRef } from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
@@ -14,8 +17,13 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { itemId } = await params
-  const numericItemId = Number(itemId)
-  if (!Number.isInteger(numericItemId) || numericItemId < 1) {
+  const decodedItemId = decodeURIComponent(itemId)
+  const parsedItemRef = parsePackageItemRef(decodedItemId)
+  const numericItemId =
+    parsedItemRef == null && /^\d+$/.test(decodedItemId)
+      ? Number(decodedItemId)
+      : null
+  if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
 
@@ -23,7 +31,10 @@ export async function GET(
   const db = getDb(env.DB)
 
   try {
-    const deviations = await listDeviationsForPackageItem(db, numericItemId)
+    const deviations =
+      parsedItemRef?.kind === 'packageLocal'
+        ? await listDeviationsForPackageLocalRequirement(db, parsedItemRef.id)
+        : await listDeviationsForPackageItem(db, numericItemId ?? 0)
     return NextResponse.json({ deviations })
   } catch (error) {
     console.error('Failed to list deviations for package item', error)
@@ -39,8 +50,13 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { itemId } = await params
-  const numericItemId = Number(itemId)
-  if (!Number.isInteger(numericItemId) || numericItemId < 1) {
+  const decodedItemId = decodeURIComponent(itemId)
+  const parsedItemRef = parsePackageItemRef(decodedItemId)
+  const numericItemId =
+    parsedItemRef == null && /^\d+$/.test(decodedItemId)
+      ? Number(decodedItemId)
+      : null
+  if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
 
@@ -71,11 +87,18 @@ export async function POST(
   const db = getDb(env.DB)
 
   try {
-    const result = await createDeviation(db, {
-      packageItemId: numericItemId,
-      motivation,
-      createdBy: typeof createdBy === 'string' ? createdBy : null,
-    })
+    const result =
+      parsedItemRef == null
+        ? await createDeviation(db, {
+            packageItemId: numericItemId ?? 0,
+            motivation,
+            createdBy: typeof createdBy === 'string' ? createdBy : null,
+          })
+        : await createDeviationForItemRef(db, {
+            createdBy: typeof createdBy === 'string' ? createdBy : null,
+            itemRef: decodedItemId,
+            motivation,
+          })
     return NextResponse.json({ id: result.id, ok: true }, { status: 201 })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

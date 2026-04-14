@@ -1,26 +1,81 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  getPackageItemById,
-  updatePackageItemFields,
+  getPackageById,
+  getPackageBySlug,
+  getPackageItemByRef,
+  listPackageItems,
+  updatePackageItemFieldsByItemRef,
 } from '@/lib/dal/requirement-packages'
 import { getDb } from '@/lib/db'
 
 type Params = Promise<{ id: string; itemId: string }>
+
+async function resolvePackageId(
+  idOrSlug: string,
+  db: ReturnType<typeof getDb>,
+) {
+  const bySlug = await getPackageBySlug(db, idOrSlug)
+  if (bySlug) {
+    return bySlug.id
+  }
+
+  if (/^\d+$/.test(idOrSlug)) {
+    const byId = await getPackageById(db, Number(idOrSlug))
+    return byId?.id ?? null
+  }
+
+  return null
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id, itemId } = await params
+  const numericItemId = Number(itemId)
+
+  if (!Number.isInteger(numericItemId) || numericItemId < 1) {
+    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+  }
+
+  const { env } = await getCloudflareContext({ async: true })
+  const db = getDb(env.DB)
+  const packageId = await resolvePackageId(id, db)
+
+  if (packageId === null) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const items = await listPackageItems(db, packageId)
+  const item = items.find(
+    candidate =>
+      candidate.packageItemId === numericItemId && candidate.kind === 'library',
+  )
+
+  if (!item) {
+    return NextResponse.json(
+      { error: 'Item not found in package' },
+      { status: 404 },
+    )
+  }
+
+  return NextResponse.json({
+    needsReference: item.needsReference ?? null,
+    needsReferenceId: item.needsReferenceId ?? null,
+    packageItemId: item.packageItemId,
+    packageItemStatusColor: item.packageItemStatusColor ?? null,
+    packageItemStatusId: item.packageItemStatusId ?? null,
+    packageItemStatusNameEn: item.packageItemStatusNameEn ?? null,
+    packageItemStatusNameSv: item.packageItemStatusNameSv ?? null,
+  })
+}
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Params },
 ) {
   const { id, itemId } = await params
-  const numericItemId = Number(itemId)
-  if (!Number.isInteger(numericItemId) || numericItemId < 1) {
-    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
-  }
-  const numericPackageId = Number(id)
-  if (!Number.isInteger(numericPackageId) || numericPackageId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
   let body: { packageItemStatusId?: number | null; note?: string | null }
   try {
     const raw: unknown = await request.json()
@@ -50,13 +105,18 @@ export async function PATCH(
   }
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
-  const item = await getPackageItemById(db, numericItemId)
-  if (!item || item.packageId !== numericPackageId) {
+  const packageId = await resolvePackageId(id, db)
+  if (packageId === null) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  const decodedItemRef = decodeURIComponent(itemId)
+  const item = await getPackageItemByRef(db, packageId, decodedItemRef)
+  if (!item) {
     return NextResponse.json(
       { error: 'Item not found in package' },
       { status: 404 },
     )
   }
-  await updatePackageItemFields(db, numericItemId, body)
+  await updatePackageItemFieldsByItemRef(db, packageId, decodedItemRef, body)
   return NextResponse.json({ ok: true })
 }

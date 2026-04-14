@@ -241,9 +241,10 @@ hör till ett specifikt projekt eller leverans.
 ### Kravpaketdetalj — delad vy
 
 Kravpaketdetaljsidan har en delad layout: **vänster panel** listar krav som
-ingår i paketet med deras implementationsstatus, och **höger panel** visar
-tillgängliga krav att lägga till. Klicka på en rad för att se kravets
-fullständiga detaljer.
+ingår i paketet, inklusive eventuella pakets unika krav, med deras
+implementationsstatus. **Höger panel** visar tillgängliga bibliotekskrav att
+lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i det
+aktuella paketet. Klicka på en rad för att se kravets fullständiga detaljer.
 
 ![Kravpaketdetalj — delad vy](images/024-kravpaketdetalj.png)
 
@@ -539,8 +540,8 @@ genomförandeform, behovsreferens) som rubrik.
 
 **Åtkomst:** Utskriftsknappen i kravpaketdetaljvyns verktygsfält.
 
-**Rutt:** `/requirement-packages/[slug]/reports/print/list?ids=...` (utskrift) ·
-PDF genereras direkt i vyn.
+**Rutt:** `/requirement-packages/[slug]/reports/print/list?refs=...`
+(utskrift) · PDF genereras direkt i vyn.
 
 ### Ändringsförslagshistorik
 

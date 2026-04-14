@@ -2,12 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PrintListReportPage from '@/app/[locale]/requirement-packages/[slug]/reports/print/list/page'
 
-let currentIds: string | null = null
+let currentRefs: string | null = null
 let currentLocale = 'en'
-let currentSlug: string | null = null
+let currentSlug: string | null = 'ETJANSTPLATT'
 
-const fetchMultipleRequirementsMock = vi.fn()
+const fetchPackageItemsForReportMock = vi.fn()
 const buildListReportMock = vi.fn()
+const packageFetchMock = vi.fn()
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -21,7 +22,7 @@ function createDeferred<T>() {
 vi.mock('next/navigation', () => ({
   useParams: () => ({ slug: currentSlug }),
   useSearchParams: () => ({
-    get: (key: string) => (key === 'ids' ? currentIds : null),
+    get: (key: string) => (key === 'refs' ? currentRefs : null),
   }),
 }))
 
@@ -46,9 +47,9 @@ vi.mock('@/components/reports/print/PrintReportRenderer', () => ({
   ),
 }))
 
-vi.mock('@/lib/reports/data/fetch-requirement', () => ({
-  fetchMultipleRequirements: (...args: unknown[]) =>
-    fetchMultipleRequirementsMock(...args),
+vi.mock('@/lib/reports/data/fetch-package-items', () => ({
+  fetchPackageItemsForReport: (...args: unknown[]) =>
+    fetchPackageItemsForReportMock(...args),
 }))
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
@@ -59,10 +60,24 @@ describe('requirement package report pages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('print', vi.fn())
-    currentIds = null
+    vi.stubGlobal('fetch', packageFetchMock)
+    currentRefs = null
     currentLocale = 'en'
-    currentSlug = null
+    currentSlug = 'ETJANSTPLATT'
     buildListReportMock.mockReturnValue({ title: 'Report' })
+    packageFetchMock.mockResolvedValue({
+      json: async () => ({
+        businessNeedsReference: 'Shared IAM business case',
+        implementationType: { nameEn: 'Program', nameSv: 'Program' },
+        lifecycleStatus: { nameEn: 'Development', nameSv: 'Utveckling' },
+        name: 'Authorization and IAM',
+        responsibilityArea: { nameEn: 'Platform', nameSv: 'Plattform' },
+        uniqueId: 'ETJANSTPLATT',
+      }),
+      ok: true,
+      status: 200,
+      text: async () => '',
+    })
   })
 
   afterEach(() => {
@@ -70,8 +85,8 @@ describe('requirement package report pages', () => {
   })
 
   it('marks the print loading state while the report is being fetched', () => {
-    currentIds = '1'
-    fetchMultipleRequirementsMock.mockReturnValue(new Promise(() => {}))
+    currentRefs = 'lib:1'
+    fetchPackageItemsForReportMock.mockReturnValue(new Promise(() => {}))
 
     const { container } = render(<PrintListReportPage />)
 
@@ -83,7 +98,7 @@ describe('requirement package report pages', () => {
   })
 
   it('clears previous print errors, trims ids, and marks the renderer state', async () => {
-    fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
+    fetchPackageItemsForReportMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
 
     const { container, rerender } = render(<PrintListReportPage />)
 
@@ -94,12 +109,13 @@ describe('requirement package report pages', () => {
       ),
     ).toBeInTheDocument()
 
-    currentIds = ' 1, 2 '
+    currentRefs = ' lib:1 , local:2 '
     rerender(<PrintListReportPage />)
 
     await waitFor(() => {
-      expect(fetchMultipleRequirementsMock).toHaveBeenCalledWith(
-        ['1', '2'],
+      expect(fetchPackageItemsForReportMock).toHaveBeenCalledWith(
+        'ETJANSTPLATT',
+        ['lib:1', 'local:2'],
         'en',
       )
     })
@@ -121,7 +137,7 @@ describe('requirement package report pages', () => {
     const firstRequest = createDeferred<{ id: number }[]>()
     const secondRequest = createDeferred<{ id: number }[]>()
 
-    fetchMultipleRequirementsMock
+    fetchPackageItemsForReportMock
       .mockImplementationOnce(() => firstRequest.promise)
       .mockImplementationOnce(() => secondRequest.promise)
     buildListReportMock.mockImplementation(
@@ -130,10 +146,10 @@ describe('requirement package report pages', () => {
       }),
     )
 
-    currentIds = '1'
+    currentRefs = 'lib:1'
     const { rerender } = render(<PrintListReportPage />)
 
-    currentIds = '2'
+    currentRefs = 'local:2'
     rerender(<PrintListReportPage />)
 
     secondRequest.resolve([{ id: 2 }])
@@ -155,20 +171,20 @@ describe('requirement package report pages', () => {
   })
 
   it('extracts readable package error details from JSON responses', async () => {
-    currentIds = '1'
+    currentRefs = 'lib:1'
     currentSlug = 'pkg/with slash'
-    fetchMultipleRequirementsMock.mockResolvedValue([{ id: 1 }])
-    const fetchMock = vi.fn().mockResolvedValue({
+    fetchPackageItemsForReportMock.mockResolvedValue([{ id: 1 }])
+    const failingFetchMock = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
       text: async () => JSON.stringify({ error: 'Package missing' }),
     })
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('fetch', failingFetchMock)
 
     render(<PrintListReportPage />)
 
     expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledWith(
+    expect(failingFetchMock).toHaveBeenCalledWith(
       '/api/requirement-packages/pkg%2F' + 'with%20slash',
     )
     expect(

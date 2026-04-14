@@ -56,6 +56,7 @@ export const requirementAreasRelations = relations(
       fields: [requirementAreas.ownerId],
       references: [owners.id],
     }),
+    packageLocalRequirements: many(packageLocalRequirements),
     requirements: many(requirements),
   }),
 )
@@ -536,6 +537,9 @@ export const requirementPackages = sqliteTable(
     id: integer('id').primaryKey({ autoIncrement: true }),
     uniqueId: text('unique_id').notNull(),
     name: text('name').notNull(),
+    localRequirementNextSequence: integer('local_requirement_next_sequence')
+      .notNull()
+      .default(1),
     packageResponsibilityAreaId: integer(
       'package_responsibility_area_id',
     ).references(() => packageResponsibilityAreas.id),
@@ -574,6 +578,7 @@ export const requirementPackagesRelations = relations(
       references: [packageLifecycleStatuses.id],
     }),
     items: many(requirementPackageItems),
+    localRequirements: many(packageLocalRequirements),
     needsReferences: many(packageNeedsReferences),
   }),
 )
@@ -612,6 +617,7 @@ export const packageNeedsReferencesRelations = relations(
       references: [requirementPackages.id],
     }),
     items: many(requirementPackageItems),
+    localRequirements: many(packageLocalRequirements),
   }),
 )
 
@@ -692,6 +698,7 @@ export const packageItemStatusesRelations = relations(
   packageItemStatuses,
   ({ many }) => ({
     packageItems: many(requirementPackageItems),
+    packageLocalRequirements: many(packageLocalRequirements),
   }),
 )
 
@@ -721,6 +728,229 @@ export const requirementPackageItemsRelations = relations(
     packageItemStatus: one(packageItemStatuses, {
       fields: [requirementPackageItems.packageItemStatusId],
       references: [packageItemStatuses.id],
+    }),
+  }),
+)
+
+// ─── Package Local Requirements ─────────────────────────────────────────────
+
+export const packageLocalRequirements = sqliteTable(
+  'package_local_requirements',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    packageId: integer('package_id').notNull(),
+    uniqueId: text('unique_id').notNull(),
+    sequenceNumber: integer('sequence_number').notNull(),
+    requirementAreaId: integer('requirement_area_id'),
+    description: text('description').notNull(),
+    acceptanceCriteria: text('acceptance_criteria'),
+    requirementCategoryId: integer('requirement_category_id'),
+    requirementTypeId: integer('requirement_type_id'),
+    qualityCharacteristicId: integer('quality_characteristic_id'),
+    riskLevelId: integer('risk_level_id'),
+    requiresTesting: integer('is_testing_required', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    verificationMethod: text('verification_method'),
+    needsReferenceId: integer('needs_reference_id'),
+    packageItemStatusId: integer('package_item_status_id'),
+    note: text('note'),
+    statusUpdatedAt: text('status_updated_at'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+  },
+  table => [
+    uniqueIndex('uq_package_local_requirements_package_id_unique_id').on(
+      table.packageId,
+      table.uniqueId,
+    ),
+    uniqueIndex('uq_package_local_requirements_package_id_sequence_number').on(
+      table.packageId,
+      table.sequenceNumber,
+    ),
+    index('idx_package_local_requirements_package_id').on(table.packageId),
+    index('idx_package_local_requirements_requirement_area_id').on(
+      table.requirementAreaId,
+    ),
+    index('idx_package_local_requirements_package_item_status_id').on(
+      table.packageItemStatusId,
+    ),
+    foreignKey({
+      columns: [table.packageId],
+      foreignColumns: [requirementPackages.id],
+      name: 'fk_package_local_requirements_package_id',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.requirementAreaId],
+      foreignColumns: [requirementAreas.id],
+      name: 'fk_package_local_requirements_requirement_area_id',
+    }),
+    foreignKey({
+      columns: [table.requirementCategoryId],
+      foreignColumns: [requirementCategories.id],
+      name: 'fk_package_local_requirements_requirement_category_id',
+    }),
+    foreignKey({
+      columns: [table.requirementTypeId],
+      foreignColumns: [requirementTypes.id],
+      name: 'fk_package_local_requirements_requirement_type_id',
+    }),
+    foreignKey({
+      columns: [table.qualityCharacteristicId],
+      foreignColumns: [qualityCharacteristics.id],
+      name: 'fk_package_local_requirements_quality_characteristic_id',
+    }),
+    foreignKey({
+      columns: [table.riskLevelId],
+      foreignColumns: [riskLevels.id],
+      name: 'fk_package_local_requirements_risk_level_id',
+    }),
+    foreignKey({
+      columns: [table.packageId, table.needsReferenceId],
+      foreignColumns: [
+        packageNeedsReferences.packageId,
+        packageNeedsReferences.id,
+      ],
+      name: 'fk_package_local_requirements_package_id_needs_reference_id',
+    }),
+    foreignKey({
+      columns: [table.packageItemStatusId],
+      foreignColumns: [packageItemStatuses.id],
+      name: 'fk_package_local_requirements_package_item_status_id',
+    }).onDelete('set null'),
+  ],
+)
+
+export const packageLocalRequirementsRelations = relations(
+  packageLocalRequirements,
+  ({ one, many }) => ({
+    deviations: many(packageLocalRequirementDeviations),
+    normReferences: many(packageLocalRequirementNormReferences),
+    package: one(requirementPackages, {
+      fields: [packageLocalRequirements.packageId],
+      references: [requirementPackages.id],
+    }),
+    needsReference: one(packageNeedsReferences, {
+      fields: [
+        packageLocalRequirements.packageId,
+        packageLocalRequirements.needsReferenceId,
+      ],
+      references: [packageNeedsReferences.packageId, packageNeedsReferences.id],
+    }),
+    packageItemStatus: one(packageItemStatuses, {
+      fields: [packageLocalRequirements.packageItemStatusId],
+      references: [packageItemStatuses.id],
+    }),
+    requirementArea: one(requirementAreas, {
+      fields: [packageLocalRequirements.requirementAreaId],
+      references: [requirementAreas.id],
+    }),
+    requirementCategory: one(requirementCategories, {
+      fields: [packageLocalRequirements.requirementCategoryId],
+      references: [requirementCategories.id],
+    }),
+    requirementType: one(requirementTypes, {
+      fields: [packageLocalRequirements.requirementTypeId],
+      references: [requirementTypes.id],
+    }),
+    qualityCharacteristic: one(qualityCharacteristics, {
+      fields: [packageLocalRequirements.qualityCharacteristicId],
+      references: [qualityCharacteristics.id],
+    }),
+    riskLevel: one(riskLevels, {
+      fields: [packageLocalRequirements.riskLevelId],
+      references: [riskLevels.id],
+    }),
+    usageScenarios: many(packageLocalRequirementUsageScenarios),
+  }),
+)
+
+export const packageLocalRequirementUsageScenarios = sqliteTable(
+  'package_local_requirement_usage_scenarios',
+  {
+    packageLocalRequirementId: integer(
+      'package_local_requirement_id',
+    ).notNull(),
+    usageScenarioId: integer('usage_scenario_id').notNull(),
+  },
+  table => [
+    primaryKey({
+      name: 'pk_package_local_requirement_usage_scenarios',
+      columns: [table.packageLocalRequirementId, table.usageScenarioId],
+    }),
+    index('idx_package_local_requirement_usage_scenarios_usage_scenario_id').on(
+      table.usageScenarioId,
+    ),
+    foreignKey({
+      columns: [table.packageLocalRequirementId],
+      foreignColumns: [packageLocalRequirements.id],
+      name: 'fk_package_local_requirement_usage_scenarios_package_local_requirement_id',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.usageScenarioId],
+      foreignColumns: [usageScenarios.id],
+      name: 'fk_package_local_requirement_usage_scenarios_usage_scenario_id',
+    }),
+  ],
+)
+
+export const packageLocalRequirementUsageScenariosRelations = relations(
+  packageLocalRequirementUsageScenarios,
+  ({ one }) => ({
+    packageLocalRequirement: one(packageLocalRequirements, {
+      fields: [packageLocalRequirementUsageScenarios.packageLocalRequirementId],
+      references: [packageLocalRequirements.id],
+    }),
+    scenario: one(usageScenarios, {
+      fields: [packageLocalRequirementUsageScenarios.usageScenarioId],
+      references: [usageScenarios.id],
+    }),
+  }),
+)
+
+export const packageLocalRequirementNormReferences = sqliteTable(
+  'package_local_requirement_norm_references',
+  {
+    packageLocalRequirementId: integer(
+      'package_local_requirement_id',
+    ).notNull(),
+    normReferenceId: integer('norm_reference_id').notNull(),
+  },
+  table => [
+    primaryKey({
+      name: 'pk_package_local_requirement_norm_references',
+      columns: [table.packageLocalRequirementId, table.normReferenceId],
+    }),
+    index('idx_package_local_requirement_norm_references_norm_reference_id').on(
+      table.normReferenceId,
+    ),
+    foreignKey({
+      columns: [table.packageLocalRequirementId],
+      foreignColumns: [packageLocalRequirements.id],
+      name: 'fk_package_local_requirement_norm_references_package_local_requirement_id',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [table.normReferenceId],
+      foreignColumns: [normReferences.id],
+      name: 'fk_package_local_requirement_norm_references_norm_reference_id',
+    }),
+  ],
+)
+
+export const packageLocalRequirementNormReferencesRelations = relations(
+  packageLocalRequirementNormReferences,
+  ({ one }) => ({
+    normReference: one(normReferences, {
+      fields: [packageLocalRequirementNormReferences.normReferenceId],
+      references: [normReferences.id],
+    }),
+    packageLocalRequirement: one(packageLocalRequirements, {
+      fields: [packageLocalRequirementNormReferences.packageLocalRequirementId],
+      references: [packageLocalRequirements.id],
     }),
   }),
 )
@@ -763,6 +993,47 @@ export const deviationsRelations = relations(deviations, ({ one }) => ({
     references: [requirementPackageItems.id],
   }),
 }))
+
+export const packageLocalRequirementDeviations = sqliteTable(
+  'package_local_requirement_deviations',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    packageLocalRequirementId: integer(
+      'package_local_requirement_id',
+    ).notNull(),
+    motivation: text('motivation').notNull(),
+    isReviewRequested: integer('is_review_requested').notNull().default(0),
+    decision: integer('decision'),
+    decisionMotivation: text('decision_motivation'),
+    decidedBy: text('decided_by'),
+    decidedAt: text('decided_at'),
+    createdBy: text('created_by'),
+    createdAt: text('created_at')
+      .notNull()
+      .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at'),
+  },
+  table => [
+    index(
+      'idx_package_local_requirement_deviations_package_local_requirement_id',
+    ).on(table.packageLocalRequirementId),
+    foreignKey({
+      columns: [table.packageLocalRequirementId],
+      foreignColumns: [packageLocalRequirements.id],
+      name: 'fk_package_local_requirement_deviations_package_local_requirement_id',
+    }).onDelete('cascade'),
+  ],
+)
+
+export const packageLocalRequirementDeviationsRelations = relations(
+  packageLocalRequirementDeviations,
+  ({ one }) => ({
+    packageLocalRequirement: one(packageLocalRequirements, {
+      fields: [packageLocalRequirementDeviations.packageLocalRequirementId],
+      references: [packageLocalRequirements.id],
+    }),
+  }),
+)
 
 // ─── Improvement Suggestions ─────────────────────────────────────────────────
 

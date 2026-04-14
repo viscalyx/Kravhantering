@@ -103,7 +103,7 @@ describe('PackageEditPanel', () => {
   })
 
   it('submits the updated package information', async () => {
-    const onSaved = vi.fn((_uid: string) => {})
+    const onSaved = vi.fn((_result: { newUniqueId: string }) => {})
 
     render(
       <PackageEditPanel

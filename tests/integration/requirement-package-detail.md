@@ -7,6 +7,8 @@ This suite verifies the requirement package detail page: that the edit form
 opens from the title action and that the two side-by-side requirement lists
 ("Krav i paketet" and "Tillgängliga krav") scroll independently without moving
 the page, while keeping the sticky title bar fixed at the top of each panel.
+The page also exposes a left-panel action for creating package-local
+requirements that exist only inside the current package.
 
 ## Data Model
 

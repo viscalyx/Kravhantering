@@ -26,6 +26,7 @@ import DeviationPill from '@/components/DeviationPill'
 import type { DeviationStep } from '@/components/DeviationStepper'
 import DeviationStepper from '@/components/DeviationStepper'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import RequirementDetailSections from '@/components/RequirementDetailSections'
 import StatusBadge from '@/components/StatusBadge'
 import StatusStepper from '@/components/StatusStepper'
 import SuggestionFormModal from '@/components/SuggestionFormModal'
@@ -70,6 +71,16 @@ interface TransitionTarget {
   id: number
   nameEn: string
   nameSv: string
+}
+
+interface PackageItemDetailContext {
+  needsReference: string | null
+  needsReferenceId: number | null
+  packageItemId: number
+  packageItemStatusColor: string | null
+  packageItemStatusId: number | null
+  packageItemStatusNameEn: string | null
+  packageItemStatusNameSv: string | null
 }
 
 interface RequirementDetailClientPropsBase {
@@ -179,6 +190,8 @@ export default function RequirementDetailClient({
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
     number | null
   >(null)
+  const [packageItemDetail, setPackageItemDetail] =
+    useState<PackageItemDetailContext | null>(null)
   const [showAddToPackage, setShowAddToPackage] = useState(false)
   const [packages, setPackages] = useState<{ id: number; name: string }[]>([])
   const [packagesError, setPackagesError] = useState<string | null>(null)
@@ -212,6 +225,29 @@ export default function RequirementDetailClient({
   > | null>(null)
   const addToPackageNeedsRefsRequestIdRef = useRef(0)
   const addToPackageNeedsRefsAbortRef = useRef<AbortController | null>(null)
+
+  const fetchPackageItemDetail = useCallback(async () => {
+    if (!isPackageItemContext || !packageItemId || !packageSlug) {
+      setPackageItemDetail(null)
+      return
+    }
+
+    try {
+      const res = await fetch(
+        `/api/requirement-packages/${encodeURIComponent(
+          packageSlug,
+        )}/items/${packageItemId}`,
+      )
+
+      if (res.ok) {
+        setPackageItemDetail((await res.json()) as PackageItemDetailContext)
+      } else {
+        setPackageItemDetail(null)
+      }
+    } catch {
+      setPackageItemDetail(null)
+    }
+  }, [isPackageItemContext, packageItemId, packageSlug])
 
   // ─── Deviation workflow state ──────────────────────────────────────────────
   interface DeviationData {
@@ -791,6 +827,10 @@ export default function RequirementDetailClient({
     fetchRequirement()
   }, [fetchRequirement])
 
+  useEffect(() => {
+    void fetchPackageItemDetail()
+  }, [fetchPackageItemDetail])
+
   // Fetch transitions whenever the current status changes
   const latestStatusId = req?.versions[0]?.status ?? null
   useEffect(() => {
@@ -1173,6 +1213,145 @@ export default function RequirementDetailClient({
     detailContext
       ? `${detailContext} > detail section: ${sectionName}`
       : undefined
+
+  const detailMetadata = [
+    ...(req?.area
+      ? [
+          {
+            id: 'area',
+            label: t('area'),
+            markerValue: 'area',
+            value: (
+              <>
+                {req.area.name}
+                {req.area.ownerName ? (
+                  <p className="mt-0.5 text-xs text-secondary-500 dark:text-secondary-400">
+                    {t('areaOwner')}: {req.area.ownerName}
+                  </p>
+                ) : null}
+              </>
+            ),
+          },
+        ]
+      : []),
+    {
+      id: 'category',
+      label: t('category'),
+      markerValue: 'category',
+      value: localName(selectedVersion?.category) ?? '—',
+    },
+    ...(selectedVersion?.type
+      ? [
+          {
+            id: 'type',
+            label: t('type'),
+            markerValue: 'type',
+            value: localName(selectedVersion.type),
+          },
+        ]
+      : []),
+    {
+      id: 'quality-characteristic',
+      label: t('qualityCharacteristic'),
+      markerValue: 'quality characteristic',
+      value: selectedVersion?.qualityCharacteristic
+        ? localName(selectedVersion.qualityCharacteristic)
+        : '—',
+    },
+    {
+      id: 'risk-level',
+      label: t('riskLevel'),
+      markerValue: 'risk level',
+      value: selectedVersion?.riskLevel ? (
+        <span className="inline-flex items-center gap-1.5">
+          {selectedVersion.riskLevel.color && (
+            <span
+              className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{
+                backgroundColor: selectedVersion.riskLevel.color,
+              }}
+            />
+          )}
+          {localName(selectedVersion.riskLevel)}
+        </span>
+      ) : (
+        '—'
+      ),
+    },
+    {
+      id: 'requires-testing',
+      label: t('requiresTesting'),
+      markerValue: 'requires testing',
+      value: selectedVersion?.requiresTesting ? tc('yes') : tc('no'),
+    },
+    {
+      id: 'verification-method',
+      label: t('verificationMethod'),
+      markerValue: 'verification method',
+      value: selectedVersion?.verificationMethod || '—',
+    },
+    ...(isPackageItemContext
+      ? [
+          {
+            id: 'needs-reference',
+            label: tp('needsReference'),
+            markerValue: 'needs reference',
+            value: packageItemDetail?.needsReference ?? '—',
+          },
+          {
+            id: 'package-item-status',
+            label: t('packageItemStatus'),
+            markerValue: 'package item status',
+            value:
+              packageItemDetail?.packageItemStatusNameEn ||
+              packageItemDetail?.packageItemStatusNameSv ? (
+                <span className="inline-flex items-center gap-1.5">
+                  {packageItemDetail.packageItemStatusColor ? (
+                    <span
+                      className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{
+                        backgroundColor:
+                          packageItemDetail.packageItemStatusColor,
+                      }}
+                    />
+                  ) : null}
+                  {locale === 'sv'
+                    ? (packageItemDetail.packageItemStatusNameSv ??
+                      packageItemDetail.packageItemStatusNameEn)
+                    : (packageItemDetail.packageItemStatusNameEn ??
+                      packageItemDetail.packageItemStatusNameSv)}
+                </span>
+              ) : (
+                '—'
+              ),
+          },
+        ]
+      : []),
+    {
+      id: 'package-count',
+      label: t('packageCount'),
+      markerValue: 'package count',
+      value: req?.packageCount ?? 0,
+    },
+  ]
+
+  const detailReferences =
+    selectedVersion?.versionNormReferences?.map(vnr => ({
+      href: vnr.normReference.uri,
+      id: `normref-chip-${vnr.normReference.id}`,
+      label: vnr.normReference.normReferenceId,
+      markerValue: vnr.normReference.normReferenceId,
+      title: `${vnr.normReference.name} (${vnr.normReference.reference})`,
+    })) ?? []
+
+  const detailScenarios =
+    selectedVersion?.versionScenarios?.map(vs => ({
+      id: `scenario-chip-${vs.scenario.id}`,
+      label: localName(vs.scenario),
+      markerContext: buildDetailSectionContext('scenarios'),
+      markerValue:
+        vs.scenario.nameEn ?? vs.scenario.nameSv ?? String(vs.scenario.id),
+    })) ?? []
 
   const getTransitionActionDeveloperModeValue = (
     transition: TransitionTarget,
@@ -1947,270 +2126,21 @@ export default function RequirementDetailClient({
                 className="relative flex-1 min-w-0 bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6 space-y-5"
                 ref={cardRef}
               >
-                <div
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'detail section',
-                    priority: 350,
-                    value: 'requirement text',
-                  })}
-                >
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                    {t('description')}
-                  </h3>
-                  <p className="text-secondary-900 dark:text-secondary-100 whitespace-pre-wrap">
-                    {selectedVersion?.description ?? '—'}
-                  </p>
-                </div>
-
-                <div
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'detail section',
-                    priority: 350,
-                    value: 'acceptance criteria',
-                  })}
-                >
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                    {t('acceptanceCriteria')}
-                  </h3>
-                  <p className="text-secondary-900 dark:text-secondary-100 whitespace-pre-wrap">
-                    {selectedVersion?.acceptanceCriteria ?? '—'}
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-3 gap-y-4">
-                  {req.area && (
-                    <div
-                      {...devMarker({
-                        context: detailContext,
-                        name: 'detail section',
-                        priority: 350,
-                        value: 'area',
-                      })}
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('area')}
-                      </h3>
-                      <p className="text-secondary-900 dark:text-secondary-100">
-                        {req.area.name}
-                      </p>
-                      {req.area.ownerName && (
-                        <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-0.5">
-                          {t('areaOwner')}: {req.area.ownerName}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail section',
-                      priority: 350,
-                      value: 'category',
-                    })}
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('category')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {localName(selectedVersion?.category) ?? '—'}
-                    </p>
-                  </div>
-                  {selectedVersion?.type && (
-                    <div
-                      {...devMarker({
-                        context: detailContext,
-                        name: 'detail section',
-                        priority: 350,
-                        value: 'type',
-                      })}
-                    >
-                      <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                        {t('type')}
-                      </h3>
-                      <p className="text-secondary-900 dark:text-secondary-100">
-                        {localName(selectedVersion.type)}
-                      </p>
-                    </div>
-                  )}
-                  <div
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail section',
-                      priority: 350,
-                      value: 'quality characteristic',
-                    })}
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('qualityCharacteristic')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {selectedVersion?.qualityCharacteristic
-                        ? localName(selectedVersion.qualityCharacteristic)
-                        : '—'}
-                    </p>
-                  </div>
-                  <div
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail section',
-                      priority: 350,
-                      value: 'risk level',
-                    })}
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('riskLevel')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100 inline-flex items-center gap-1.5">
-                      {selectedVersion?.riskLevel ? (
-                        <>
-                          {selectedVersion.riskLevel.color && (
-                            <span
-                              className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{
-                                backgroundColor:
-                                  selectedVersion.riskLevel.color,
-                              }}
-                            />
-                          )}
-                          {localName(selectedVersion.riskLevel)}
-                        </>
-                      ) : (
-                        '—'
-                      )}
-                    </p>
-                  </div>
-                  <div
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail section',
-                      priority: 350,
-                      value: 'requires testing',
-                    })}
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('requiresTesting')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {selectedVersion?.requiresTesting ? tc('yes') : tc('no')}
-                    </p>
-                  </div>
-                  <div
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail section',
-                      priority: 350,
-                      value: 'verification method',
-                    })}
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('verificationMethod')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {selectedVersion?.verificationMethod || '—'}
-                    </p>
-                  </div>
-                  <div
-                    {...devMarker({
-                      context: detailContext,
-                      name: 'detail section',
-                      priority: 350,
-                      value: 'package count',
-                    })}
-                  >
-                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                      {t('packageCount')}
-                    </h3>
-                    <p className="text-secondary-900 dark:text-secondary-100">
-                      {req.packageCount ?? 0}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'detail section',
-                    priority: 355,
-                    value: 'normReferences',
-                  })}
-                >
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                    {t('normReferences')}
-                  </h3>
-                  {selectedVersion?.versionNormReferences &&
-                  selectedVersion.versionNormReferences.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2">
-                      {selectedVersion.versionNormReferences.map(vnr => (
-                        <li
-                          className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
-                          key={`normref-chip-${vnr.normReference.id}`}
-                          title={`${vnr.normReference.name} (${vnr.normReference.reference})`}
-                          {...devMarker({
-                            context: detailContext,
-                            name: 'normref-chip',
-                            priority: 354,
-                            value: vnr.normReference.normReferenceId,
-                          })}
-                        >
-                          {vnr.normReference.uri ? (
-                            <a
-                              className="underline hover:text-primary-600 dark:hover:text-primary-400"
-                              href={vnr.normReference.uri}
-                              rel="noopener noreferrer"
-                              target="_blank"
-                            >
-                              {vnr.normReference.normReferenceId}
-                            </a>
-                          ) : (
-                            vnr.normReference.normReferenceId
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
-                    </p>
-                  )}
-                </div>
-
-                <div
-                  {...devMarker({
-                    context: detailContext,
-                    name: 'detail section',
-                    priority: 350,
-                    value: 'scenarios',
-                  })}
-                >
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-1">
-                    {t('scenario')}
-                  </h3>
-                  {selectedVersion?.versionScenarios &&
-                  selectedVersion.versionScenarios.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2">
-                      {selectedVersion.versionScenarios.map(vs => (
-                        <li
-                          className="text-xs bg-secondary-100 dark:bg-secondary-800 px-2.5 py-1 rounded-full font-medium"
-                          key={`scenario-chip-${vs.scenario.id}`}
-                          {...devMarker({
-                            context: buildDetailSectionContext('scenarios'),
-                            name: 'scenario chip',
-                            priority: 360,
-                            value: vs.scenario.nameEn,
-                          })}
-                        >
-                          {localName(vs.scenario)}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
-                    </p>
-                  )}
-                </div>
+                <RequirementDetailSections
+                  acceptanceCriteria={
+                    selectedVersion?.acceptanceCriteria ?? '—'
+                  }
+                  acceptanceCriteriaLabel={t('acceptanceCriteria')}
+                  description={selectedVersion?.description ?? '—'}
+                  descriptionLabel={t('description')}
+                  developerModeContext={detailContext}
+                  emptyLabel={tc('noneAvailable')}
+                  metadata={detailMetadata}
+                  references={detailReferences}
+                  referencesLabel={t('normReferences')}
+                  scenarios={detailScenarios}
+                  scenariosLabel={t('scenario')}
+                />
 
                 {/* Downward triangle indicator pointing to selected version pill */}
                 {triangleLeft !== null && (

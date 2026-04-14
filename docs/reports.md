@@ -57,6 +57,8 @@ Prints the requirements contained in a specific requirement package as a
 formatted table.
 
 - Available from the print dropdown in the package detail view
+- Includes both library requirements linked into the package and
+  package-local requirements created only for that package
 - Includes package metadata in the header: package name, unique ID,
   responsibility area, implementation type, and business needs reference
 - Shows Krav-ID, description (truncated), area, and status columns
@@ -140,8 +142,12 @@ All routes above are prefixed with `/[locale]/requirements/reports`.
 Package list reports use a separate prefix
 `/[locale]/requirement-packages/[slug]/reports`:
 
-- **Package List**: `.../print/list?ids=…`
+- **Package List**: `.../print/list?refs=…`
   (PDF is generated inline — no separate PDF route)
+
+For package list reports, `refs` contains package-context item references such
+as `lib:<packageItemId>` for library requirements and
+`local:<packageLocalRequirementId>` for package-local requirements.
 
 ## Engines
 

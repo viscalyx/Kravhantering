@@ -1,7 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
-import { countDeviationsPerItem } from '@/lib/dal/deviations'
+import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
+  deletePackageItemsByRefs,
   getPackageById,
   getPackageBySlug,
   getPublishedVersionIdForRequirement,
@@ -22,6 +23,7 @@ type ParseResult<T> =
   | { ok: false; response: NextResponse<{ error: string }> }
 
 interface ParsedDeleteBody {
+  itemRefs?: string[]
   requirementIds: number[]
 }
 
@@ -69,6 +71,27 @@ function parseRequirementIds(
 function parseDeleteBody(body: unknown): ParseResult<ParsedDeleteBody> {
   if (!isRecord(body)) {
     return invalidBody('Invalid request body')
+  }
+
+  if (Array.isArray(body.itemRefs)) {
+    const itemRefs = body.itemRefs
+    if (
+      itemRefs.length === 0 ||
+      itemRefs.some(
+        itemRef => typeof itemRef !== 'string' || itemRef.trim().length === 0,
+      ) ||
+      new Set(itemRefs).size !== itemRefs.length
+    ) {
+      return invalidBody('itemRefs must be a non-empty array of unique strings')
+    }
+
+    return {
+      ok: true,
+      value: {
+        itemRefs,
+        requirementIds: [],
+      },
+    }
   }
 
   const requirementIds = parseRequirementIds(body.requirementIds)
@@ -170,11 +193,9 @@ export async function GET(
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const items = await listPackageItems(db, packageId)
-  const deviationCounts = await countDeviationsPerItem(db, packageId)
+  const deviationCounts = await countDeviationsPerItemRef(db, packageId)
   const enrichedItems = items.map(item => {
-    const dc = item.packageItemId
-      ? deviationCounts.get(item.packageItemId)
-      : undefined
+    const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
     return {
       ...item,
       deviationCount: dc?.total ?? 0,
@@ -279,10 +300,21 @@ export async function DELETE(
     return parsedBody.response
   }
 
-  await unlinkRequirementsFromPackage(
+  if (parsedBody.value.itemRefs?.length) {
+    const { deletedLibraryCount, deletedPackageLocalCount } =
+      await deletePackageItemsByRefs(db, packageId, parsedBody.value.itemRefs)
+    return NextResponse.json({
+      deletedLibraryCount,
+      deletedPackageLocalCount,
+      ok: true,
+      removedCount: deletedLibraryCount + deletedPackageLocalCount,
+    })
+  }
+
+  const removedCount = await unlinkRequirementsFromPackage(
     db,
     packageId,
     parsedBody.value.requirementIds,
   )
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, removedCount })
 }

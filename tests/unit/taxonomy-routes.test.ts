@@ -337,7 +337,7 @@ describe('requirement-packages routes', () => {
   it('PUT updates', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
     const r = await putPkg(jsonReq('PUT', { nameEn: 'X' }), makeParams('1'))
-    expect(((await r.json()) as { id: number }).id).toBe(1)
+    await expect(r.json()).resolves.toEqual({ id: 1 })
   })
   it('DELETE deletes', async () => {
     mockDeletePkg.mockResolvedValue(undefined)

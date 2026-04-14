@@ -25,7 +25,7 @@ interface PackageEditPanelProps {
   implementationTypes: TaxonomyItem[]
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
-  onSaved: (newUniqueId: string) => Promise<void> | void
+  onSaved: (result: { newUniqueId: string }) => Promise<void> | void
   packageSlug: string
   pkg: PackageMeta
   responsibilityAreas: TaxonomyItem[]
@@ -149,7 +149,13 @@ export default function PackageEditPanel({
         return
       }
 
-      await onSaved(form.uniqueId)
+      const data = (await response.json()) as {
+        uniqueId?: string
+      }
+
+      await onSaved({
+        newUniqueId: data.uniqueId ?? form.uniqueId,
+      })
     } catch {
       setSubmitError(tc('error'))
     } finally {
