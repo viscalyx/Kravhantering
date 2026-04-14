@@ -1,4 +1,5 @@
 import { eq, sql } from 'drizzle-orm'
+import { unionAll } from 'drizzle-orm/sqlite-core'
 import {
   DEVIATION_APPROVED,
   DEVIATION_REJECTED,
@@ -106,113 +107,112 @@ export async function listDeviationsForPackage(
   db: Database,
   packageId: number,
 ): Promise<DeviationRow[]> {
-  const [libraryRows, packageLocalRows] = await Promise.all([
-    db
-      .select({
-        id: deviations.id,
-        packageItemId: deviations.packageItemId,
-        motivation: deviations.motivation,
-        isReviewRequested: deviations.isReviewRequested,
-        decision: deviations.decision,
-        decisionMotivation: deviations.decisionMotivation,
-        decidedBy: deviations.decidedBy,
-        decidedAt: deviations.decidedAt,
-        createdBy: deviations.createdBy,
-        createdAt: deviations.createdAt,
-        updatedAt: deviations.updatedAt,
-        requirementUniqueId: requirements.uniqueId,
-        requirementDescription: requirementVersions.description,
-        requirementVersionId: requirementPackageItems.requirementVersionId,
-        packageName: requirementPackages.name,
-        packageUniqueId: requirementPackages.uniqueId,
-      })
-      .from(deviations)
-      .innerJoin(
-        requirementPackageItems,
-        eq(deviations.packageItemId, requirementPackageItems.id),
-      )
-      .innerJoin(
-        requirements,
-        eq(requirementPackageItems.requirementId, requirements.id),
-      )
-      .innerJoin(
-        requirementVersions,
-        eq(
-          requirementPackageItems.requirementVersionId,
-          requirementVersions.id,
-        ),
-      )
-      .innerJoin(
-        requirementPackages,
-        eq(requirementPackageItems.packageId, requirementPackages.id),
-      )
-      .where(eq(requirementPackageItems.packageId, packageId))
-      .orderBy(requirements.uniqueId, deviations.createdAt),
-    db
-      .select({
-        createdAt: packageLocalRequirementDeviations.createdAt,
-        createdBy: packageLocalRequirementDeviations.createdBy,
-        decidedAt: packageLocalRequirementDeviations.decidedAt,
-        decidedBy: packageLocalRequirementDeviations.decidedBy,
-        decision: packageLocalRequirementDeviations.decision,
-        decisionMotivation:
-          packageLocalRequirementDeviations.decisionMotivation,
-        id: packageLocalRequirementDeviations.id,
-        isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
-        motivation: packageLocalRequirementDeviations.motivation,
-        packageItemId: sql<number | null>`NULL`.as('package_item_id'),
-        packageLocalRequirementId: packageLocalRequirements.id,
-        packageName: requirementPackages.name,
-        packageUniqueId: requirementPackages.uniqueId,
-        requirementDescription: packageLocalRequirements.description,
-        requirementUniqueId: packageLocalRequirements.uniqueId,
-        requirementVersionId: sql<number | null>`NULL`.as(
-          'requirement_version_id',
-        ),
-        updatedAt: packageLocalRequirementDeviations.updatedAt,
-      })
-      .from(packageLocalRequirementDeviations)
-      .innerJoin(
-        packageLocalRequirements,
-        eq(
-          packageLocalRequirementDeviations.packageLocalRequirementId,
-          packageLocalRequirements.id,
-        ),
-      )
-      .innerJoin(
-        requirementPackages,
-        eq(packageLocalRequirements.packageId, requirementPackages.id),
-      )
-      .where(eq(packageLocalRequirements.packageId, packageId))
-      .orderBy(
-        packageLocalRequirements.uniqueId,
-        packageLocalRequirementDeviations.createdAt,
+  const libraryQuery = db
+    .select({
+      createdAt: sql<string>`${deviations.createdAt}`.as('created_at'),
+      createdBy: deviations.createdBy,
+      decidedAt: deviations.decidedAt,
+      decidedBy: deviations.decidedBy,
+      decision: deviations.decision,
+      decisionMotivation: deviations.decisionMotivation,
+      id: deviations.id,
+      isLocal: sql<number>`0`.as('is_local'),
+      isReviewRequested: deviations.isReviewRequested,
+      motivation: deviations.motivation,
+      packageItemId: sql<number | null>`${deviations.packageItemId}`.as(
+        'package_item_id',
       ),
-  ])
-
-  return [
-    ...libraryRows.map(row => ({
-      ...row,
-      isPackageLocal: false,
-      itemRef: createLibraryItemRef(row.packageItemId),
-      packageLocalRequirementId: null,
-    })),
-    ...packageLocalRows.map(row => ({
-      ...row,
-      isPackageLocal: true,
-      itemRef: createPackageLocalItemRef(row.packageLocalRequirementId),
-    })),
-  ].sort((left, right) => {
-    const idCompare = (left.requirementUniqueId ?? '').localeCompare(
-      right.requirementUniqueId ?? '',
-      'sv',
+      packageLocalRequirementId: sql<number | null>`NULL`.as('plr_id'),
+      packageName: requirementPackages.name,
+      packageUniqueId: requirementPackages.uniqueId,
+      requirementDescription: requirementVersions.description,
+      requirementUniqueId: sql<string | null>`${requirements.uniqueId}`.as(
+        'requirement_unique_id',
+      ),
+      requirementVersionId: sql<
+        number | null
+      >`${requirementPackageItems.requirementVersionId}`.as(
+        'requirement_version_id',
+      ),
+      updatedAt: deviations.updatedAt,
+    })
+    .from(deviations)
+    .innerJoin(
+      requirementPackageItems,
+      eq(deviations.packageItemId, requirementPackageItems.id),
     )
-    if (idCompare !== 0) {
-      return idCompare
-    }
+    .innerJoin(
+      requirements,
+      eq(requirementPackageItems.requirementId, requirements.id),
+    )
+    .innerJoin(
+      requirementVersions,
+      eq(requirementPackageItems.requirementVersionId, requirementVersions.id),
+    )
+    .innerJoin(
+      requirementPackages,
+      eq(requirementPackageItems.packageId, requirementPackages.id),
+    )
+    .where(eq(requirementPackageItems.packageId, packageId))
 
-    return left.createdAt.localeCompare(right.createdAt, 'sv')
-  })
+  const localQuery = db
+    .select({
+      createdAt: sql<string>`${packageLocalRequirementDeviations.createdAt}`.as(
+        'created_at',
+      ),
+      createdBy: packageLocalRequirementDeviations.createdBy,
+      decidedAt: packageLocalRequirementDeviations.decidedAt,
+      decidedBy: packageLocalRequirementDeviations.decidedBy,
+      decision: packageLocalRequirementDeviations.decision,
+      decisionMotivation: packageLocalRequirementDeviations.decisionMotivation,
+      id: packageLocalRequirementDeviations.id,
+      isLocal: sql<number>`1`.as('is_local'),
+      isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
+      motivation: packageLocalRequirementDeviations.motivation,
+      packageItemId: sql<number | null>`NULL`.as('package_item_id'),
+      packageLocalRequirementId: sql<
+        number | null
+      >`${packageLocalRequirements.id}`.as('plr_id'),
+      packageName: requirementPackages.name,
+      packageUniqueId: requirementPackages.uniqueId,
+      requirementDescription: packageLocalRequirements.description,
+      requirementUniqueId: sql<
+        string | null
+      >`${packageLocalRequirements.uniqueId}`.as('requirement_unique_id'),
+      requirementVersionId: sql<number | null>`NULL`.as(
+        'requirement_version_id',
+      ),
+      updatedAt: packageLocalRequirementDeviations.updatedAt,
+    })
+    .from(packageLocalRequirementDeviations)
+    .innerJoin(
+      packageLocalRequirements,
+      eq(
+        packageLocalRequirementDeviations.packageLocalRequirementId,
+        packageLocalRequirements.id,
+      ),
+    )
+    .innerJoin(
+      requirementPackages,
+      eq(packageLocalRequirements.packageId, requirementPackages.id),
+    )
+    .where(eq(packageLocalRequirements.packageId, packageId))
+
+  const rows = await unionAll(libraryQuery, localQuery).orderBy(
+    sql`requirement_unique_id`,
+    sql`created_at`,
+  )
+
+  return rows.map(row => ({
+    ...row,
+    isPackageLocal: row.isLocal === 1,
+    itemRef:
+      row.isLocal === 1
+        ? createPackageLocalItemRef(row.packageLocalRequirementId as number)
+        : createLibraryItemRef(row.packageItemId as number),
+    packageLocalRequirementId:
+      row.isLocal === 1 ? row.packageLocalRequirementId : null,
+  }))
 }
 
 export async function getDeviation(
@@ -728,57 +728,57 @@ export async function countDeviationsByPackage(
   db: Database,
   packageId: number,
 ): Promise<DeviationCounts> {
-  const [libraryRows, packageLocalRows] = await Promise.all([
-    db
-      .select({
-        total: sql<number>`COUNT(*)`.as('total'),
-        pending:
-          sql<number>`SUM(CASE WHEN ${deviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
-            'pending',
-          ),
-        approved:
-          sql<number>`SUM(CASE WHEN ${deviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
-            'approved',
-          ),
-        rejected:
-          sql<number>`SUM(CASE WHEN ${deviations.decision} = ${DEVIATION_REJECTED} THEN 1 ELSE 0 END)`.as(
-            'rejected',
-          ),
-      })
-      .from(deviations)
-      .innerJoin(
-        requirementPackageItems,
-        eq(deviations.packageItemId, requirementPackageItems.id),
-      )
-      .where(eq(requirementPackageItems.packageId, packageId)),
-    db
-      .select({
-        total: sql<number>`COUNT(*)`.as('total'),
-        pending:
-          sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
-            'pending',
-          ),
-        approved:
-          sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
-            'approved',
-          ),
-        rejected:
-          sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} = ${DEVIATION_REJECTED} THEN 1 ELSE 0 END)`.as(
-            'rejected',
-          ),
-      })
-      .from(packageLocalRequirementDeviations)
-      .innerJoin(
-        packageLocalRequirements,
-        eq(
-          packageLocalRequirementDeviations.packageLocalRequirementId,
-          packageLocalRequirements.id,
+  const libraryQuery = db
+    .select({
+      total: sql<number>`COUNT(*)`.as('total'),
+      pending:
+        sql<number>`SUM(CASE WHEN ${deviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
+          'pending',
         ),
-      )
-      .where(eq(packageLocalRequirements.packageId, packageId)),
-  ])
+      approved:
+        sql<number>`SUM(CASE WHEN ${deviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
+          'approved',
+        ),
+      rejected:
+        sql<number>`SUM(CASE WHEN ${deviations.decision} = ${DEVIATION_REJECTED} THEN 1 ELSE 0 END)`.as(
+          'rejected',
+        ),
+    })
+    .from(deviations)
+    .innerJoin(
+      requirementPackageItems,
+      eq(deviations.packageItemId, requirementPackageItems.id),
+    )
+    .where(eq(requirementPackageItems.packageId, packageId))
 
-  const rows = [libraryRows[0], packageLocalRows[0]].filter(Boolean)
+  const localQuery = db
+    .select({
+      total: sql<number>`COUNT(*)`.as('total'),
+      pending:
+        sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
+          'pending',
+        ),
+      approved:
+        sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
+          'approved',
+        ),
+      rejected:
+        sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} = ${DEVIATION_REJECTED} THEN 1 ELSE 0 END)`.as(
+          'rejected',
+        ),
+    })
+    .from(packageLocalRequirementDeviations)
+    .innerJoin(
+      packageLocalRequirements,
+      eq(
+        packageLocalRequirementDeviations.packageLocalRequirementId,
+        packageLocalRequirements.id,
+      ),
+    )
+    .where(eq(packageLocalRequirements.packageId, packageId))
+
+  const rows = await unionAll(libraryQuery, localQuery)
+
   if (rows.length === 0) {
     return { total: 0, pending: 0, approved: 0, rejected: 0 }
   }
@@ -834,68 +834,66 @@ export async function countDeviationsPerItemRef(
   db: Database,
   packageId: number,
 ): Promise<Map<string, { total: number; pending: number; approved: number }>> {
-  const [libraryRows, packageLocalRows] = await Promise.all([
-    db
-      .select({
-        approved:
-          sql<number>`SUM(CASE WHEN ${deviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
-            'approved',
-          ),
-        packageItemId: deviations.packageItemId,
-        pending:
-          sql<number>`SUM(CASE WHEN ${deviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
-            'pending',
-          ),
-        total: sql<number>`COUNT(*)`.as('total'),
-      })
-      .from(deviations)
-      .innerJoin(
-        requirementPackageItems,
-        eq(deviations.packageItemId, requirementPackageItems.id),
-      )
-      .where(eq(requirementPackageItems.packageId, packageId))
-      .groupBy(deviations.packageItemId),
-    db
-      .select({
-        approved:
-          sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
-            'approved',
-          ),
-        packageLocalRequirementId:
-          packageLocalRequirementDeviations.packageLocalRequirementId,
-        pending:
-          sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
-            'pending',
-          ),
-        total: sql<number>`COUNT(*)`.as('total'),
-      })
-      .from(packageLocalRequirementDeviations)
-      .innerJoin(
-        packageLocalRequirements,
-        eq(
-          packageLocalRequirementDeviations.packageLocalRequirementId,
-          packageLocalRequirements.id,
+  const libraryQuery = db
+    .select({
+      approved:
+        sql<number>`SUM(CASE WHEN ${deviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
+          'approved',
         ),
-      )
-      .where(eq(packageLocalRequirements.packageId, packageId))
-      .groupBy(packageLocalRequirementDeviations.packageLocalRequirementId),
-  ])
+      itemId: deviations.packageItemId,
+      isLocal: sql<number>`0`.as('is_local'),
+      pending:
+        sql<number>`SUM(CASE WHEN ${deviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
+          'pending',
+        ),
+      total: sql<number>`COUNT(*)`.as('total'),
+    })
+    .from(deviations)
+    .innerJoin(
+      requirementPackageItems,
+      eq(deviations.packageItemId, requirementPackageItems.id),
+    )
+    .where(eq(requirementPackageItems.packageId, packageId))
+    .groupBy(deviations.packageItemId)
+
+  const localQuery = db
+    .select({
+      approved:
+        sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} = ${DEVIATION_APPROVED} THEN 1 ELSE 0 END)`.as(
+          'approved',
+        ),
+      itemId: packageLocalRequirementDeviations.packageLocalRequirementId,
+      isLocal: sql<number>`1`.as('is_local'),
+      pending:
+        sql<number>`SUM(CASE WHEN ${packageLocalRequirementDeviations.decision} IS NULL THEN 1 ELSE 0 END)`.as(
+          'pending',
+        ),
+      total: sql<number>`COUNT(*)`.as('total'),
+    })
+    .from(packageLocalRequirementDeviations)
+    .innerJoin(
+      packageLocalRequirements,
+      eq(
+        packageLocalRequirementDeviations.packageLocalRequirementId,
+        packageLocalRequirements.id,
+      ),
+    )
+    .where(eq(packageLocalRequirements.packageId, packageId))
+    .groupBy(packageLocalRequirementDeviations.packageLocalRequirementId)
+
+  const rows = await unionAll(libraryQuery, localQuery)
 
   const map = new Map<
     string,
     { total: number; pending: number; approved: number }
   >()
 
-  for (const row of libraryRows) {
-    map.set(createLibraryItemRef(row.packageItemId), {
-      approved: Number(row.approved) || 0,
-      pending: Number(row.pending) || 0,
-      total: Number(row.total) || 0,
-    })
-  }
-
-  for (const row of packageLocalRows) {
-    map.set(createPackageLocalItemRef(row.packageLocalRequirementId), {
+  for (const row of rows) {
+    const key =
+      row.isLocal === 1
+        ? createPackageLocalItemRef(row.itemId)
+        : createLibraryItemRef(row.itemId)
+    map.set(key, {
       approved: Number(row.approved) || 0,
       pending: Number(row.pending) || 0,
       total: Number(row.total) || 0,

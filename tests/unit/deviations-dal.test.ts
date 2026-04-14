@@ -7,7 +7,9 @@ import * as schema from '@/drizzle/schema'
 import {
   countDeviationsByPackage,
   countDeviationsPerItem,
+  countDeviationsPerItemRef,
   createDeviation,
+  createPackageLocalDeviation,
   deleteDeviation,
   getDeviation,
   listDeviationsForPackage,
@@ -396,6 +398,123 @@ describe('deviations DAL', () => {
     it('returns empty map when no deviations', async () => {
       await seedRequiredData(db)
       const map = await countDeviationsPerItem(db as unknown as AppDatabase, 1)
+      expect(map.size).toBe(0)
+    })
+  })
+
+  describe('listDeviationsForPackage (mixed sources)', () => {
+    async function seedWithLocalRequirement(testDb: TestDb) {
+      await seedRequiredData(testDb)
+      await testDb.insert(schema.packageLocalRequirements).values({
+        id: 1,
+        packageId: 1,
+        uniqueId: 'PKG-L-001',
+        sequenceNumber: 1,
+        description: 'Local requirement',
+      })
+    }
+
+    it('returns library and local deviations sorted by uniqueId', async () => {
+      await seedWithLocalRequirement(db)
+      await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Library deviation',
+      })
+      await createPackageLocalDeviation(db as unknown as AppDatabase, {
+        packageLocalRequirementId: 1,
+        motivation: 'Local deviation',
+      })
+
+      const result = await listDeviationsForPackage(
+        db as unknown as AppDatabase,
+        1,
+      )
+      expect(result).toHaveLength(2)
+      expect(result[0].isPackageLocal).toBe(true)
+      expect(result[0].motivation).toBe('Local deviation')
+      expect(result[0].itemRef).toBe('local:1')
+      expect(result[1].isPackageLocal).toBe(false)
+      expect(result[1].motivation).toBe('Library deviation')
+      expect(result[1].itemRef).toBe('lib:1')
+      expect(result[1].packageLocalRequirementId).toBeNull()
+    })
+
+    it('sorts by requirementUniqueId then createdAt', async () => {
+      await seedWithLocalRequirement(db)
+      await createPackageLocalDeviation(db as unknown as AppDatabase, {
+        packageLocalRequirementId: 1,
+        motivation: 'Local first',
+      })
+      await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Library first',
+      })
+      await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Library second',
+      })
+
+      const result = await listDeviationsForPackage(
+        db as unknown as AppDatabase,
+        1,
+      )
+      expect(result).toHaveLength(3)
+      expect(result.map(r => r.requirementUniqueId)).toEqual([
+        'PKG-L-001',
+        'TST-001',
+        'TST-001',
+      ])
+      expect(result[1].motivation).toBe('Library first')
+      expect(result[2].motivation).toBe('Library second')
+    })
+  })
+
+  describe('countDeviationsPerItemRef', () => {
+    async function seedWithLocalRequirement(testDb: TestDb) {
+      await seedRequiredData(testDb)
+      await testDb.insert(schema.packageLocalRequirements).values({
+        id: 1,
+        packageId: 1,
+        uniqueId: 'PKG-L-001',
+        sequenceNumber: 1,
+        description: 'Local requirement',
+      })
+    }
+
+    it('returns counts for both library and local deviations', async () => {
+      await seedWithLocalRequirement(db)
+      await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Library deviation',
+      })
+      await createPackageLocalDeviation(db as unknown as AppDatabase, {
+        packageLocalRequirementId: 1,
+        motivation: 'Local deviation',
+      })
+
+      const map = await countDeviationsPerItemRef(
+        db as unknown as AppDatabase,
+        1,
+      )
+      expect(map.size).toBe(2)
+      expect(map.get('lib:1')).toEqual({
+        total: 1,
+        pending: 1,
+        approved: 0,
+      })
+      expect(map.get('local:1')).toEqual({
+        total: 1,
+        pending: 1,
+        approved: 0,
+      })
+    })
+
+    it('returns empty map when no deviations', async () => {
+      await seedWithLocalRequirement(db)
+      const map = await countDeviationsPerItemRef(
+        db as unknown as AppDatabase,
+        1,
+      )
       expect(map.size).toBe(0)
     })
   })
