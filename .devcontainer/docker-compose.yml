@@ -1,3 +1,5 @@
+name: kravhantering-devcontainer
+
 services:
   app:
     build:
