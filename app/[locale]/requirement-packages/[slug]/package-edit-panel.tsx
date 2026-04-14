@@ -149,8 +149,14 @@ export default function PackageEditPanel({
         return
       }
 
-      const data = (await response.json()) as {
-        uniqueId?: string
+      let data: { uniqueId?: string } = {}
+      const text = await response.text()
+      if (text) {
+        try {
+          data = JSON.parse(text) as { uniqueId?: string }
+        } catch {
+          // Server returned non-JSON success; use form value as fallback
+        }
       }
 
       await onSaved({

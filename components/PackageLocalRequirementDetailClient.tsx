@@ -120,6 +120,7 @@ export default function PackageLocalRequirementDetailClient({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditForm, setShowEditForm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [deviations, setDeviations] = useState<DeviationData[]>([])
   const [deviationError, setDeviationError] = useState<string | null>(null)
   const [deviationSaving, setDeviationSaving] = useState(false)
@@ -181,36 +182,54 @@ export default function PackageLocalRequirementDetailClient({
     }
   }, [localRequirementId, packageSlug, tc, tp])
 
-  const fetchDeviations = useCallback(async () => {
-    if (!requirement?.itemRef) {
-      setDeviations([])
-      return
-    }
-
-    try {
-      const response = await fetch(
-        `/api/package-item-deviations/${encodeURIComponent(requirement.itemRef)}`,
-      )
-
-      if (!response.ok) {
-        setDeviationError(td('fetchFailed'))
+  const fetchDeviations = useCallback(
+    async (signal?: AbortSignal) => {
+      if (!requirement?.itemRef) {
+        setDeviations([])
         return
       }
 
-      const data = (await response.json()) as { deviations: DeviationData[] }
-      setDeviationError(null)
-      setDeviations(data.deviations)
-    } catch {
-      setDeviationError(td('fetchFailed'))
-    }
-  }, [requirement?.itemRef, td])
+      try {
+        const response = await fetch(
+          `/api/package-item-deviations/${encodeURIComponent(requirement.itemRef)}`,
+          signal ? { signal } : undefined,
+        )
+
+        if (signal?.aborted) return
+
+        if (!response.ok) {
+          setDeviationError(td('fetchFailed'))
+          return
+        }
+
+        const data = (await response.json()) as {
+          deviations: DeviationData[]
+        }
+        if (signal?.aborted) return
+        setDeviationError(null)
+        setDeviations(data.deviations)
+      } catch (fetchError) {
+        if (
+          fetchError instanceof DOMException &&
+          fetchError.name === 'AbortError'
+        )
+          return
+        setDeviationError(td('fetchFailed'))
+      }
+    },
+    [requirement?.itemRef, td],
+  )
 
   useEffect(() => {
     void fetchRequirement()
   }, [fetchRequirement])
 
   useEffect(() => {
-    void fetchDeviations()
+    setDeviations([])
+    setDeviationError(null)
+    const controller = new AbortController()
+    void fetchDeviations(controller.signal)
+    return () => controller.abort()
   }, [fetchDeviations])
 
   const refreshAll = useCallback(async () => {
@@ -263,6 +282,7 @@ export default function PackageLocalRequirementDetailClient({
 
   const handleDelete = useCallback(
     async (event?: React.MouseEvent<HTMLButtonElement>) => {
+      if (isDeleting) return
       const anchorEl = event?.currentTarget
       const confirmed = await confirm({
         anchorEl,
@@ -277,22 +297,31 @@ export default function PackageLocalRequirementDetailClient({
         return
       }
 
-      const response = await fetch(
-        `/api/requirement-packages/${packageSlug}/local-requirements/${localRequirementId}`,
-        {
-          method: 'DELETE',
-        },
-      )
+      setIsDeleting(true)
+      try {
+        const response = await fetch(
+          `/api/requirement-packages/${packageSlug}/local-requirements/${localRequirementId}`,
+          {
+            method: 'DELETE',
+          },
+        )
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as unknown
-        setError(readResponseError(body) ?? tc('error'))
-        return
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as unknown
+          setError(readResponseError(body) ?? tc('error'))
+          return
+        }
+
+        await onChange?.()
+      } catch (deleteError) {
+        setError(
+          deleteError instanceof Error ? deleteError.message : tc('error'),
+        )
+      } finally {
+        setIsDeleting(false)
       }
-
-      await onChange?.()
     },
-    [confirm, localRequirementId, onChange, packageSlug, tc, tp],
+    [confirm, isDeleting, localRequirementId, onChange, packageSlug, tc, tp],
   )
 
   const performDeviationMutation = useCallback(
@@ -318,6 +347,13 @@ export default function PackageLocalRequirementDetailClient({
         afterSuccess?.()
         await Promise.all([fetchDeviations(), onChange?.()])
         return true
+      } catch (mutationError) {
+        setDeviationError(
+          mutationError instanceof Error
+            ? mutationError.message
+            : (fallbackError ?? tc('error')),
+        )
+        return false
       } finally {
         setDeviationSaving(false)
       }
@@ -810,7 +846,7 @@ export default function PackageLocalRequirementDetailClient({
                       >
                         <button
                           className={railSecondaryButtonClass}
-                          disabled={!canMutateLocalRequirement}
+                          disabled={!canMutateLocalRequirement || isDeleting}
                           {...devMarker({
                             context: detailContext,
                             name: 'detail action',
@@ -830,7 +866,7 @@ export default function PackageLocalRequirementDetailClient({
                       >
                         <button
                           className={railDangerButtonClass}
-                          disabled={!canMutateLocalRequirement}
+                          disabled={!canMutateLocalRequirement || isDeleting}
                           {...devMarker({
                             context: detailContext,
                             name: 'detail action',

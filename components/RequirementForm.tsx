@@ -106,53 +106,15 @@ export default function RequirementForm({
     prevNormReferenceIds.current = initialNormReferenceIds
     prevScenarioIds.current = initialScenarioIds
 
-    const dirty = dirtyFields.current
+    if (dataChanged) {
+      dirtyFields.current = new Set()
+    }
 
-    setForm(prev => ({
-      ...prev,
-      ...(dataChanged && initialData
-        ? {
-            ...(!dirty.has('areaId') && initialData.areaId != null
-              ? { areaId: initialData.areaId }
-              : {}),
-            ...(!dirty.has('categoryId') && initialData.categoryId != null
-              ? { categoryId: initialData.categoryId }
-              : {}),
-            ...(!dirty.has('typeId') && initialData.typeId != null
-              ? { typeId: initialData.typeId }
-              : {}),
-            ...(!dirty.has('qualityCharacteristicId') &&
-            initialData.qualityCharacteristicId != null
-              ? {
-                  qualityCharacteristicId: initialData.qualityCharacteristicId,
-                }
-              : {}),
-            ...(!dirty.has('riskLevelId') && initialData.riskLevelId != null
-              ? { riskLevelId: initialData.riskLevelId }
-              : {}),
-            ...(!dirty.has('description') && initialData.description != null
-              ? { description: initialData.description }
-              : {}),
-            ...(!dirty.has('acceptanceCriteria') &&
-            initialData.acceptanceCriteria != null
-              ? { acceptanceCriteria: initialData.acceptanceCriteria }
-              : {}),
-            ...(!dirty.has('requiresTesting') &&
-            initialData.requiresTesting != null
-              ? { requiresTesting: initialData.requiresTesting }
-              : {}),
-            ...(!dirty.has('verificationMethod') &&
-            initialData.verificationMethod != null
-              ? { verificationMethod: initialData.verificationMethod }
-              : {}),
-          }
-        : {}),
-      ...(normRefsChanged && !dirty.has('normReferenceIds')
-        ? { normReferenceIds: initialNormReferenceIds ?? prev.normReferenceIds }
-        : {}),
-      ...(scenariosChanged && !dirty.has('scenarioIds')
-        ? { scenarioIds: initialScenarioIds ?? prev.scenarioIds }
-        : {}),
+    setForm(() => ({
+      ...EMPTY_FORM,
+      ...(initialData ?? {}),
+      normReferenceIds: initialNormReferenceIds ?? [],
+      scenarioIds: initialScenarioIds ?? [],
     }))
   }, [initialData, initialNormReferenceIds, initialScenarioIds])
 

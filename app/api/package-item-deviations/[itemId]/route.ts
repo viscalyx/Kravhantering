@@ -12,17 +12,30 @@ import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ itemId: string }>
 
+function safeDecodeURIComponent(value: string): string | null {
+  try {
+    return decodeURIComponent(value)
+  } catch {
+    return null
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
   const { itemId } = await params
-  const decodedItemId = decodeURIComponent(itemId)
+  const decodedItemId = safeDecodeURIComponent(itemId)
+  if (decodedItemId == null) {
+    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+  }
   const parsedItemRef = parsePackageItemRef(decodedItemId)
   const numericItemId =
     parsedItemRef == null && /^\d+$/.test(decodedItemId)
       ? Number(decodedItemId)
-      : null
+      : parsedItemRef?.kind === 'library'
+        ? parsedItemRef.id
+        : null
   if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
@@ -50,12 +63,17 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { itemId } = await params
-  const decodedItemId = decodeURIComponent(itemId)
+  const decodedItemId = safeDecodeURIComponent(itemId)
+  if (decodedItemId == null) {
+    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+  }
   const parsedItemRef = parsePackageItemRef(decodedItemId)
   const numericItemId =
     parsedItemRef == null && /^\d+$/.test(decodedItemId)
       ? Number(decodedItemId)
-      : null
+      : parsedItemRef?.kind === 'library'
+        ? parsedItemRef.id
+        : null
   if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }

@@ -301,14 +301,26 @@ export async function DELETE(
   }
 
   if (parsedBody.value.itemRefs?.length) {
-    const { deletedLibraryCount, deletedPackageLocalCount } =
-      await deletePackageItemsByRefs(db, packageId, parsedBody.value.itemRefs)
-    return NextResponse.json({
-      deletedLibraryCount,
-      deletedPackageLocalCount,
-      ok: true,
-      removedCount: deletedLibraryCount + deletedPackageLocalCount,
-    })
+    try {
+      const { deletedLibraryCount, deletedPackageLocalCount } =
+        await deletePackageItemsByRefs(db, packageId, parsedBody.value.itemRefs)
+      return NextResponse.json({
+        deletedLibraryCount,
+        deletedPackageLocalCount,
+        ok: true,
+        removedCount: deletedLibraryCount + deletedPackageLocalCount,
+      })
+    } catch (error) {
+      if (isRequirementsServiceError(error) && error.code === 'validation') {
+        return NextResponse.json({ error: error.message }, { status: 400 })
+      }
+
+      console.error('Failed to delete package items by refs', error)
+      return NextResponse.json(
+        { error: 'Failed to remove items' },
+        { status: 500 },
+      )
+    }
   }
 
   const removedCount = await unlinkRequirementsFromPackage(

@@ -172,6 +172,7 @@ export default function PackageLocalRequirementForm({
       )}
       <select
         className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+        disabled={isSubmitting}
         id="plr-needs-reference"
         onChange={e => setNeedsReferenceId(e.target.value)}
         value={needsReferenceId}

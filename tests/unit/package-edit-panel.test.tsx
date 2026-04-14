@@ -9,7 +9,8 @@ vi.mock('next-intl', () => ({
 }))
 
 function okJson(body: unknown) {
-  return { ok: true, json: async () => body }
+  const text = JSON.stringify(body)
+  return { ok: true, json: async () => body, text: async () => text }
 }
 
 let fetchMock: ReturnType<typeof vi.fn>
@@ -124,6 +125,9 @@ describe('PackageEditPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
+    expect(onSaved).toHaveBeenCalledWith(
+      expect.objectContaining({ newUniqueId: expect.any(String) }),
+    )
 
     const [url, requestInit] = fetchMock.mock.calls.at(-1) as [
       string,

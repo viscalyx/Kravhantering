@@ -572,6 +572,25 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
+  const d1BatchClient = getD1BatchClient(db)
+  if (d1BatchClient) {
+    await d1BatchClient.batch([
+      d1BatchClient
+        .prepare('DELETE FROM package_local_requirements WHERE package_id = ?')
+        .bind(id),
+      d1BatchClient
+        .prepare('DELETE FROM requirement_package_items WHERE package_id = ?')
+        .bind(id),
+      d1BatchClient
+        .prepare('DELETE FROM package_needs_references WHERE package_id = ?')
+        .bind(id),
+      d1BatchClient
+        .prepare('DELETE FROM requirement_packages WHERE id = ?')
+        .bind(id),
+    ])
+    return
+  }
+
   await db
     .delete(packageLocalRequirements)
     .where(eq(packageLocalRequirements.packageId, id))
@@ -2079,41 +2098,132 @@ export async function deletePackageItemsByRefs(
     }
   }
 
-  const deletedLibraryCount =
-    libraryIds.length === 0
-      ? 0
-      : (
-          await db
-            .delete(requirementPackageItems)
-            .where(
-              and(
-                eq(requirementPackageItems.packageId, packageId),
-                inArray(requirementPackageItems.id, libraryIds),
-              ),
-            )
-            .returning({ id: requirementPackageItems.id })
-        ).length
-
-  const deletedPackageLocalCount =
-    packageLocalRequirementIds.length === 0
-      ? 0
-      : (
-          await db
-            .delete(packageLocalRequirements)
-            .where(
-              and(
-                eq(packageLocalRequirements.packageId, packageId),
-                inArray(
-                  packageLocalRequirements.id,
-                  packageLocalRequirementIds,
+  // Single-table cases are already atomic
+  if (libraryIds.length === 0 || packageLocalRequirementIds.length === 0) {
+    const deletedLibraryCount =
+      libraryIds.length === 0
+        ? 0
+        : (
+            await db
+              .delete(requirementPackageItems)
+              .where(
+                and(
+                  eq(requirementPackageItems.packageId, packageId),
+                  inArray(requirementPackageItems.id, libraryIds),
                 ),
-              ),
-            )
-            .returning({ id: packageLocalRequirements.id })
-        ).length
+              )
+              .returning({ id: requirementPackageItems.id })
+          ).length
 
-  return {
-    deletedLibraryCount,
-    deletedPackageLocalCount,
+    const deletedPackageLocalCount =
+      packageLocalRequirementIds.length === 0
+        ? 0
+        : (
+            await db
+              .delete(packageLocalRequirements)
+              .where(
+                and(
+                  eq(packageLocalRequirements.packageId, packageId),
+                  inArray(
+                    packageLocalRequirements.id,
+                    packageLocalRequirementIds,
+                  ),
+                ),
+              )
+              .returning({ id: packageLocalRequirements.id })
+          ).length
+
+    return { deletedLibraryCount, deletedPackageLocalCount }
   }
+
+  // Both tables affected — use atomic operation
+  if (isBetterSqliteSession(db)) {
+    let deletedLibraryCount = 0
+    let deletedPackageLocalCount = 0
+    ;(
+      db as unknown as {
+        transaction: (callback: (tx: Pick<Database, 'delete'>) => void) => void
+      }
+    ).transaction(tx => {
+      deletedLibraryCount = (
+        tx
+          .delete(requirementPackageItems)
+          .where(
+            and(
+              eq(requirementPackageItems.packageId, packageId),
+              inArray(requirementPackageItems.id, libraryIds),
+            ),
+          )
+          .returning({ id: requirementPackageItems.id }) as unknown as {
+          length: number
+        }
+      ).length
+      deletedPackageLocalCount = (
+        tx
+          .delete(packageLocalRequirements)
+          .where(
+            and(
+              eq(packageLocalRequirements.packageId, packageId),
+              inArray(packageLocalRequirements.id, packageLocalRequirementIds),
+            ),
+          )
+          .returning({ id: packageLocalRequirements.id }) as unknown as {
+          length: number
+        }
+      ).length
+    })
+    return { deletedLibraryCount, deletedPackageLocalCount }
+  }
+
+  const d1BatchClient = getD1BatchClient(db)
+  if (d1BatchClient) {
+    const libraryPlaceholders = libraryIds.map(() => '?').join(',')
+    const localPlaceholders = packageLocalRequirementIds
+      .map(() => '?')
+      .join(',')
+    await d1BatchClient.batch([
+      d1BatchClient
+        .prepare(
+          `DELETE FROM requirement_package_items WHERE package_id = ? AND id IN (${libraryPlaceholders})`,
+        )
+        .bind(packageId, ...libraryIds),
+      d1BatchClient
+        .prepare(
+          `DELETE FROM package_local_requirements WHERE package_id = ? AND id IN (${localPlaceholders})`,
+        )
+        .bind(packageId, ...packageLocalRequirementIds),
+    ])
+    // D1 batch does not return deleted row counts; re-derive from input
+    return {
+      deletedLibraryCount: libraryIds.length,
+      deletedPackageLocalCount: packageLocalRequirementIds.length,
+    }
+  }
+
+  // Fallback: sequential deletes (non-atomic)
+  const deletedLibraryCount = (
+    await db
+      .delete(requirementPackageItems)
+      .where(
+        and(
+          eq(requirementPackageItems.packageId, packageId),
+          inArray(requirementPackageItems.id, libraryIds),
+        ),
+      )
+      .returning({ id: requirementPackageItems.id })
+  ).length
+
+  const deletedPackageLocalCount = (
+    await db
+      .delete(packageLocalRequirements)
+      .where(
+        and(
+          eq(packageLocalRequirements.packageId, packageId),
+          inArray(packageLocalRequirements.id, packageLocalRequirementIds),
+        ),
+      )
+      .returning({ id: packageLocalRequirements.id })
+  ).length
+
+  return { deletedLibraryCount, deletedPackageLocalCount }
 }

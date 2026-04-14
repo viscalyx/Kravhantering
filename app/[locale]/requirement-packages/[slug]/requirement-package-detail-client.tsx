@@ -750,11 +750,30 @@ export default function KravpaketDetailClient({
 
       if (itemRefs.length === 0) return
 
-      await fetch(`/api/requirement-packages/${packageSlug}/items`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ itemRefs }),
-      })
+      try {
+        const response = await fetch(
+          `/api/requirement-packages/${packageSlug}/items`,
+          {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemRefs }),
+          },
+        )
+
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as {
+            error?: string
+          } | null
+          console.error(
+            'Failed to remove items from package',
+            body?.error ?? response.statusText,
+          )
+          return
+        }
+      } catch (error) {
+        console.error('Failed to remove items from package', error)
+        return
+      }
 
       const removedIds = new Set(selectedPackageItems.map(item => item.id))
       setLeftSelectedIds(new Set())
