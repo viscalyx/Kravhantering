@@ -18,6 +18,7 @@ import PackageEditPanel, {
   PACKAGE_EDIT_FORM_ID,
 } from '@/app/[locale]/requirement-packages/[slug]/package-edit-panel'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
@@ -293,20 +294,11 @@ export default function KravpaketDetailClient({
     </button>
   )
 
-  const helpPanel = (
-    helpKey: string,
-    field: string,
-    { disabled = false }: { disabled?: boolean } = {},
-  ) =>
-    openHelp.has(field) && (
-      <p
-        aria-disabled={disabled}
-        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
-        id={`help-${field}`}
-      >
-        {t(helpKey)}
-      </p>
-    )
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t(helpKey)}
+    </AnimatedHelpPanel>
+  )
 
   const packageItemIds = useMemo(
     () => new Set(packageItems.map(r => r.id)),
@@ -1088,9 +1080,7 @@ export default function KravpaketDetailClient({
                     disabled: addModalLoading,
                   })}
                 </div>
-                {helpPanel('addNeedsRefHelp', 'add-needs-ref', {
-                  disabled: addModalLoading,
-                })}
+                {helpPanel('addNeedsRefHelp', 'add-needs-ref')}
                 <select
                   className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={addModalLoading}
@@ -1137,9 +1127,7 @@ export default function KravpaketDetailClient({
                         { disabled: addModalLoading },
                       )}
                     </div>
-                    {helpPanel('addNeedsRefTextHelp', 'add-needs-ref-text', {
-                      disabled: addModalLoading,
-                    })}
+                    {helpPanel('addNeedsRefTextHelp', 'add-needs-ref-text')}
                     <textarea
                       className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 resize-none disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={addModalLoading}

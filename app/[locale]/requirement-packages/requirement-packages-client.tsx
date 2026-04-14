@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { HelpCircle, Plus, Search, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
@@ -9,6 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link } from '@/i18n/routing'
@@ -184,15 +186,11 @@ export default function RequirementPackagesClient() {
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
-    openHelp.has(field) && (
-      <p
-        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
-        id={`help-${field}`}
-      >
-        {t(helpKey)}
-      </p>
-    )
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t(helpKey)}
+    </AnimatedHelpPanel>
+  )
 
   const fetchPackages = useCallback(async () => {
     const localFetchId = ++fetchIdRef.current
@@ -418,238 +416,252 @@ export default function RequirementPackagesClient() {
           </h1>
         </div>
 
-        {showForm && (
-          <form
-            className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
-            {...devMarker({
-              context: 'packages',
-              name: 'crud form',
-              priority: 340,
-              value: editPkg ? 'edit' : 'create',
-            })}
-            onSubmit={handleSubmit}
-          >
-            <h2 className="text-lg font-semibold">
-              {editPkg ? t('editPackage') : t('newPackage')}
-            </h2>
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <label className="block text-sm font-medium" htmlFor="pkg-name">
-                  {t('name')} *
-                </label>
-                {helpButton('pkg-name', t('name'))}
+        <AnimatePresence>
+          {showForm && (
+            <motion.form
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+              {...devMarker({
+                context: 'packages',
+                name: 'crud form',
+                priority: 340,
+                value: editPkg ? 'edit' : 'create',
+              })}
+              onSubmit={handleSubmit}
+            >
+              <h2 className="text-lg font-semibold">
+                {editPkg ? t('editPackage') : t('newPackage')}
+              </h2>
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="pkg-name"
+                  >
+                    {t('name')} *
+                  </label>
+                  {helpButton('pkg-name', t('name'))}
+                </div>
+                {helpPanel('nameHelp', 'pkg-name')}
+                <input
+                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  id="pkg-name"
+                  onBlur={() => {
+                    if (!slugEdited && form.name) {
+                      const nextUniqueId = generatePackageSlug(form.name)
+                      if (!nextUniqueId) {
+                        setSlugError(t('uniqueIdGenerationFailed'))
+                        return
+                      }
+                      if (form.uniqueId !== nextUniqueId) {
+                        setSlugError(null)
+                        setForm(f => ({
+                          ...f,
+                          uniqueId: nextUniqueId,
+                        }))
+                      }
+                    }
+                  }}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  required
+                  value={form.name}
+                />
               </div>
-              {helpPanel('nameHelp', 'pkg-name')}
-              <input
-                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                id="pkg-name"
-                onBlur={() => {
-                  if (!slugEdited && form.name) {
-                    const nextUniqueId = generatePackageSlug(form.name)
-                    if (!nextUniqueId) {
-                      setSlugError(t('uniqueIdGenerationFailed'))
-                      return
-                    }
-                    if (form.uniqueId !== nextUniqueId) {
-                      setSlugError(null)
-                      setForm(f => ({
-                        ...f,
-                        uniqueId: nextUniqueId,
-                      }))
-                    }
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="pkg-unique-id"
+                  >
+                    {t('uniqueId')} *
+                  </label>
+                  {helpButton('pkg-unique-id', t('uniqueId'))}
+                </div>
+                {helpPanel('uniqueIdHelp', 'pkg-unique-id')}
+                <input
+                  aria-describedby={
+                    slugError ? 'pkg-unique-id-error' : undefined
                   }
-                }}
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                required
-                value={form.name}
-              />
-            </div>
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <label
-                  className="block text-sm font-medium"
-                  htmlFor="pkg-unique-id"
-                >
-                  {t('uniqueId')} *
-                </label>
-                {helpButton('pkg-unique-id', t('uniqueId'))}
+                  aria-invalid={!!slugError}
+                  className={`min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
+                  id="pkg-unique-id"
+                  onChange={e => {
+                    setSlugEdited(true)
+                    setSlugError(null)
+                    setForm(f => ({
+                      ...f,
+                      uniqueId: normalizeSlugInput(e.target.value),
+                    }))
+                  }}
+                  onInvalid={() => setSlugError(t('uniqueIdRequired'))}
+                  placeholder={t('uniqueIdPlaceholder')}
+                  required
+                  value={form.uniqueId}
+                />
+                {slugError ? (
+                  <p
+                    className="mt-1 text-xs text-red-600 dark:text-red-400"
+                    id="pkg-unique-id-error"
+                    role="alert"
+                  >
+                    {slugError}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                    {t('uniqueIdHelp')}
+                  </p>
+                )}
               </div>
-              {helpPanel('uniqueIdHelp', 'pkg-unique-id')}
-              <input
-                aria-describedby={slugError ? 'pkg-unique-id-error' : undefined}
-                aria-invalid={!!slugError}
-                className={`min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
-                id="pkg-unique-id"
-                onChange={e => {
-                  setSlugEdited(true)
-                  setSlugError(null)
-                  setForm(f => ({
-                    ...f,
-                    uniqueId: normalizeSlugInput(e.target.value),
-                  }))
-                }}
-                onInvalid={() => setSlugError(t('uniqueIdRequired'))}
-                placeholder={t('uniqueIdPlaceholder')}
-                required
-                value={form.uniqueId}
-              />
-              {slugError ? (
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="pkg-area"
+                  >
+                    {t('responsibilityArea')}
+                  </label>
+                  {helpButton('pkg-area', t('responsibilityArea'))}
+                </div>
+                {helpPanel('responsibilityAreaHelp', 'pkg-area')}
+                <select
+                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  id="pkg-area"
+                  onChange={e =>
+                    setForm(f => ({
+                      ...f,
+                      packageResponsibilityAreaId: e.target.value,
+                    }))
+                  }
+                  value={form.packageResponsibilityAreaId}
+                >
+                  <option value="">—</option>
+                  {responsibilityAreas.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {locale === 'sv' ? a.nameSv : a.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="pkg-impl-type"
+                  >
+                    {t('implementationType')}
+                  </label>
+                  {helpButton('pkg-impl-type', t('implementationType'))}
+                </div>
+                {helpPanel('implementationTypeHelp', 'pkg-impl-type')}
+                <select
+                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  id="pkg-impl-type"
+                  onChange={e =>
+                    setForm(f => ({
+                      ...f,
+                      packageImplementationTypeId: e.target.value,
+                    }))
+                  }
+                  value={form.packageImplementationTypeId}
+                >
+                  <option value="">—</option>
+                  {implementationTypes.map(it => (
+                    <option key={it.id} value={it.id}>
+                      {locale === 'sv' ? it.nameSv : it.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="pkg-lifecycle-status"
+                  >
+                    {t('lifecycleStatus')}
+                  </label>
+                  {helpButton('pkg-lifecycle-status', t('lifecycleStatus'))}
+                </div>
+                {helpPanel('lifecycleStatusHelp', 'pkg-lifecycle-status')}
+                <select
+                  className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  id="pkg-lifecycle-status"
+                  onChange={e =>
+                    setForm(f => ({
+                      ...f,
+                      packageLifecycleStatusId: e.target.value,
+                    }))
+                  }
+                  value={form.packageLifecycleStatusId}
+                >
+                  <option value="">—</option>
+                  {lifecycleStatuses.map(ls => (
+                    <option key={ls.id} value={ls.id}>
+                      {locale === 'sv' ? ls.nameSv : ls.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="mb-1 flex items-center gap-1.5">
+                  <label
+                    className="block text-sm font-medium"
+                    htmlFor="pkg-business-ref"
+                  >
+                    {t('businessNeedsReference')}
+                  </label>
+                  {helpButton('pkg-business-ref', t('businessNeedsReference'))}
+                </div>
+                {helpPanel('businessNeedsReferenceHelp', 'pkg-business-ref')}
+                <textarea
+                  className="min-h-[44px] w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
+                  id="pkg-business-ref"
+                  onChange={e =>
+                    setForm(f => ({
+                      ...f,
+                      businessNeedsReference: e.target.value,
+                    }))
+                  }
+                  placeholder={t('businessNeedsReferencePlaceholder')}
+                  rows={2}
+                  value={form.businessNeedsReference}
+                />
+              </div>
+              {saveError && (
                 <p
-                  className="mt-1 text-xs text-red-600 dark:text-red-400"
-                  id="pkg-unique-id-error"
+                  className="text-sm text-red-600 dark:text-red-400"
                   role="alert"
                 >
-                  {slugError}
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                  {t('uniqueIdHelp')}
+                  {saveError}
                 </p>
               )}
-            </div>
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <label className="block text-sm font-medium" htmlFor="pkg-area">
-                  {t('responsibilityArea')}
-                </label>
-                {helpButton('pkg-area', t('responsibilityArea'))}
-              </div>
-              {helpPanel('responsibilityAreaHelp', 'pkg-area')}
-              <select
-                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                id="pkg-area"
-                onChange={e =>
-                  setForm(f => ({
-                    ...f,
-                    packageResponsibilityAreaId: e.target.value,
-                  }))
-                }
-                value={form.packageResponsibilityAreaId}
-              >
-                <option value="">—</option>
-                {responsibilityAreas.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {locale === 'sv' ? a.nameSv : a.nameEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <label
-                  className="block text-sm font-medium"
-                  htmlFor="pkg-impl-type"
+              <div className="flex gap-3">
+                <button
+                  className="btn-primary"
+                  disabled={isSubmitting}
+                  type="submit"
                 >
-                  {t('implementationType')}
-                </label>
-                {helpButton('pkg-impl-type', t('implementationType'))}
-              </div>
-              {helpPanel('implementationTypeHelp', 'pkg-impl-type')}
-              <select
-                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                id="pkg-impl-type"
-                onChange={e =>
-                  setForm(f => ({
-                    ...f,
-                    packageImplementationTypeId: e.target.value,
-                  }))
-                }
-                value={form.packageImplementationTypeId}
-              >
-                <option value="">—</option>
-                {implementationTypes.map(it => (
-                  <option key={it.id} value={it.id}>
-                    {locale === 'sv' ? it.nameSv : it.nameEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <label
-                  className="block text-sm font-medium"
-                  htmlFor="pkg-lifecycle-status"
+                  {isSubmitting ? tc('saving') : tc('save')}
+                </button>
+                <button
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (isSubmitting) return
+                    setOpenHelp(new Set())
+                    setShowForm(false)
+                  }}
+                  type="button"
                 >
-                  {t('lifecycleStatus')}
-                </label>
-                {helpButton('pkg-lifecycle-status', t('lifecycleStatus'))}
+                  {tc('cancel')}
+                </button>
               </div>
-              {helpPanel('lifecycleStatusHelp', 'pkg-lifecycle-status')}
-              <select
-                className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                id="pkg-lifecycle-status"
-                onChange={e =>
-                  setForm(f => ({
-                    ...f,
-                    packageLifecycleStatusId: e.target.value,
-                  }))
-                }
-                value={form.packageLifecycleStatusId}
-              >
-                <option value="">—</option>
-                {lifecycleStatuses.map(ls => (
-                  <option key={ls.id} value={ls.id}>
-                    {locale === 'sv' ? ls.nameSv : ls.nameEn}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center gap-1.5">
-                <label
-                  className="block text-sm font-medium"
-                  htmlFor="pkg-business-ref"
-                >
-                  {t('businessNeedsReference')}
-                </label>
-                {helpButton('pkg-business-ref', t('businessNeedsReference'))}
-              </div>
-              {helpPanel('businessNeedsReferenceHelp', 'pkg-business-ref')}
-              <textarea
-                className="min-h-[44px] w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                id="pkg-business-ref"
-                onChange={e =>
-                  setForm(f => ({
-                    ...f,
-                    businessNeedsReference: e.target.value,
-                  }))
-                }
-                placeholder={t('businessNeedsReferencePlaceholder')}
-                rows={2}
-                value={form.businessNeedsReference}
-              />
-            </div>
-            {saveError && (
-              <p
-                className="text-sm text-red-600 dark:text-red-400"
-                role="alert"
-              >
-                {saveError}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <button
-                className="btn-primary"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                {isSubmitting ? tc('saving') : tc('save')}
-              </button>
-              <button
-                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                disabled={isSubmitting}
-                onClick={() => {
-                  if (isSubmitting) return
-                  setOpenHelp(new Set())
-                  setShowForm(false)
-                }}
-                type="button"
-              >
-                {tc('cancel')}
-              </button>
-            </div>
-          </form>
-        )}
+            </motion.form>
+          )}
+        </AnimatePresence>
 
         <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           {!loading && packages.length > 0 && (

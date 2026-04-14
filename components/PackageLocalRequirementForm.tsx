@@ -3,6 +3,7 @@
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
@@ -162,14 +163,12 @@ export default function PackageLocalRequirementForm({
           <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
       </div>
-      {needsRefHelpOpen && (
-        <p
-          className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700"
-          id="help-plr-needs-reference"
-        >
-          {tp('needsReferenceHelp')}
-        </p>
-      )}
+      <AnimatedHelpPanel
+        id="help-plr-needs-reference"
+        isOpen={needsRefHelpOpen}
+      >
+        {tp('needsReferenceHelp')}
+      </AnimatedHelpPanel>
       <select
         className="w-full rounded-xl border dark:border-secondary-600 bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
         disabled={isSubmitting}

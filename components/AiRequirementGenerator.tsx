@@ -21,6 +21,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import {
   type GeneratedRequirement,
@@ -516,15 +517,11 @@ export default function AiRequirementGenerator({
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
-    openHelp.has(field) && (
-      <p
-        className="mb-2 mt-1 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
-        id={`help-${field}`}
-      >
-        {t.rich(helpKey, richTags)}
-      </p>
-    )
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t.rich(helpKey, richTags)}
+    </AnimatedHelpPanel>
+  )
 
   const visionEnabled = activeFilters.includes('vision')
 

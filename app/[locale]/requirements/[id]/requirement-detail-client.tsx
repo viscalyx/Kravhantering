@@ -19,6 +19,7 @@ import {
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import DeviationDecisionModal from '@/components/DeviationDecisionModal'
 import DeviationFormModal from '@/components/DeviationFormModal'
@@ -788,15 +789,11 @@ export default function RequirementDetailClient({
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
-    openHelp.has(field) && (
-      <p
-        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
-        id={`help-${field}`}
-      >
-        {tp(helpKey)}
-      </p>
-    )
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {tp(helpKey)}
+    </AnimatedHelpPanel>
+  )
 
   const fetchRequirement = useCallback(async () => {
     if (!hasDataRef.current) setLoading(true)

@@ -5,6 +5,7 @@ import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface SuggestionResolutionModalProps {
@@ -172,14 +173,12 @@ export default function SuggestionResolutionModal({
                     <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                {openHelp.has('motivation') && (
-                  <p
-                    className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700"
-                    id="help-resolution-motivation"
-                  >
-                    {tf('resolutionMotivationHelp')}
-                  </p>
-                )}
+                <AnimatedHelpPanel
+                  id="help-resolution-motivation"
+                  isOpen={openHelp.has('motivation')}
+                >
+                  {tf('resolutionMotivationHelp')}
+                </AnimatedHelpPanel>
                 <textarea
                   className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   id="resolution-motivation"
@@ -210,14 +209,12 @@ export default function SuggestionResolutionModal({
                     <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                {openHelp.has('resolvedBy') && (
-                  <p
-                    className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700"
-                    id="help-resolution-resolvedBy"
-                  >
-                    {tf('resolvedByHelp')}
-                  </p>
-                )}
+                <AnimatedHelpPanel
+                  id="help-resolution-resolvedBy"
+                  isOpen={openHelp.has('resolvedBy')}
+                >
+                  {tf('resolvedByHelp')}
+                </AnimatedHelpPanel>
                 <input
                   className="w-full rounded-lg border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   id="resolution-resolvedBy"

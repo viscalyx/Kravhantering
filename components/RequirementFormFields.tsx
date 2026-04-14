@@ -3,6 +3,7 @@
 import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 
 interface TaxonomyOption {
   id: number
@@ -227,15 +228,11 @@ export default function RequirementFormFields({
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
-    openHelp.has(field) && (
-      <p
-        className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700"
-        id={`help-${field}`}
-      >
-        {t.rich(helpKey, richTags)}
-      </p>
-    )
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t.rich(helpKey, richTags)}
+    </AnimatedHelpPanel>
+  )
 
   const topLevelCategories = qualityCharacteristics.filter(c => !c.parentId)
   const childCategories = qualityCharacteristics.filter(c => c.parentId)

@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -256,246 +257,254 @@ export default function PackageItemStatusesClient() {
           </button>
         </div>
 
-        {showForm && (
-          <div className="glass rounded-2xl p-6 mb-6 animate-fade-in-up">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
-              <form
-                className="space-y-5"
-                {...devMarker({
-                  context: 'package-item-statuses',
-                  name: 'crud form',
-                  priority: 340,
-                  value: editId ? 'edit' : 'create',
-                })}
-                onSubmit={handleSubmit}
-              >
-                <h2 className="text-lg font-semibold">
-                  {editId ? t('editItem') : t('newItem')}
-                </h2>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="pis-name-sv"
-                  >
-                    {t('name')} (SV) *
-                  </label>
-                  <input
-                    className={inputClass}
-                    id="pis-name-sv"
-                    onChange={e =>
-                      setForm(f => ({ ...f, nameSv: e.target.value }))
-                    }
-                    required
-                    value={form.nameSv}
-                  />
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('nameSvHelp')}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="pis-name-en"
-                  >
-                    {t('name')} (EN) *
-                  </label>
-                  <input
-                    className={inputClass}
-                    id="pis-name-en"
-                    onChange={e =>
-                      setForm(f => ({ ...f, nameEn: e.target.value }))
-                    }
-                    required
-                    value={form.nameEn}
-                  />
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('nameEnHelp')}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="pis-definition-sv"
-                  >
-                    {t('definition')} (SV)
-                  </label>
-                  <textarea
-                    className={inputClass}
-                    id="pis-definition-sv"
-                    onChange={e =>
-                      setForm(f => ({ ...f, descriptionSv: e.target.value }))
-                    }
-                    rows={2}
-                    value={form.descriptionSv}
-                  />
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('definitionSvHelp')}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="pis-definition-en"
-                  >
-                    {t('definition')} (EN)
-                  </label>
-                  <textarea
-                    className={inputClass}
-                    id="pis-definition-en"
-                    onChange={e =>
-                      setForm(f => ({ ...f, descriptionEn: e.target.value }))
-                    }
-                    rows={2}
-                    value={form.descriptionEn}
-                  />
-                  <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('definitionEnHelp')}
-                  </p>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="pis-color"
-                  >
-                    {t('color')} *
-                  </label>
-                  <div className="flex items-center gap-3">
+        <AnimatePresence>
+          {showForm && (
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
+                <form
+                  className="space-y-5"
+                  {...devMarker({
+                    context: 'package-item-statuses',
+                    name: 'crud form',
+                    priority: 340,
+                    value: editId ? 'edit' : 'create',
+                  })}
+                  onSubmit={handleSubmit}
+                >
+                  <h2 className="text-lg font-semibold">
+                    {editId ? t('editItem') : t('newItem')}
+                  </h2>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="pis-name-sv"
+                    >
+                      {t('name')} (SV) *
+                    </label>
                     <input
-                      className="h-10 w-14 rounded-lg border cursor-pointer"
-                      id="pis-color"
+                      className={inputClass}
+                      id="pis-name-sv"
                       onChange={e =>
-                        setForm(f => ({ ...f, color: e.target.value }))
+                        setForm(f => ({ ...f, nameSv: e.target.value }))
                       }
                       required
-                      type="color"
-                      value={form.color}
+                      value={form.nameSv}
                     />
-                    <input
-                      aria-label={t('colorHex')}
-                      className={inputClass}
-                      onChange={e =>
-                        setForm(f => ({ ...f, color: e.target.value }))
-                      }
-                      pattern="^#[0-9a-fA-F]{6}$"
-                      placeholder="#3b82f6"
-                      value={form.color}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="inline-block w-6 h-6 rounded-full shrink-0 border"
-                      style={{ backgroundColor: form.color }}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="pis-sort-order"
-                  >
-                    {t('sortOrder')}
-                  </label>
-                  <input
-                    className={`${inputClass}${editId === DEFAULT_PACKAGE_ITEM_STATUS_ID || editId === DEVIATED_PACKAGE_ITEM_STATUS_ID ? ' opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={
-                      editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
-                      editId === DEVIATED_PACKAGE_ITEM_STATUS_ID
-                    }
-                    id="pis-sort-order"
-                    min="0"
-                    onChange={e =>
-                      setForm(f => ({ ...f, sortOrder: e.target.value }))
-                    }
-                    type="number"
-                    value={form.sortOrder}
-                  />
-                  {(editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
-                    editId === DEVIATED_PACKAGE_ITEM_STATUS_ID) && (
                     <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                      {t('sortOrderLocked')}
+                      {t('nameSvHelp')}
                     </p>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    className="btn-primary"
-                    disabled={submitting}
-                    type="submit"
-                  >
-                    {submitting ? tc('saving') : tc('save')}
-                  </button>
-                  <button
-                    className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                    disabled={submitting}
-                    onClick={() => {
-                      setShowForm(false)
-                      setLinkedItems([])
-                    }}
-                    type="button"
-                  >
-                    {tc('cancel')}
-                  </button>
-                </div>
-                {submitError && (
-                  <p
-                    className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                    role="alert"
-                  >
-                    {submitError}
-                  </p>
-                )}
-              </form>
-
-              {editId && (
-                <div>
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
-                    {t('linkedPackages')}
-                  </h3>
-                  {linkedItemsLoading ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('loading')}
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="pis-name-en"
+                    >
+                      {t('name')} (EN) *
+                    </label>
+                    <input
+                      className={inputClass}
+                      id="pis-name-en"
+                      onChange={e =>
+                        setForm(f => ({ ...f, nameEn: e.target.value }))
+                      }
+                      required
+                      value={form.nameEn}
+                    />
+                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                      {t('nameEnHelp')}
                     </p>
-                  ) : linkedItems.length === 0 ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="pis-definition-sv"
+                    >
+                      {t('definition')} (SV)
+                    </label>
+                    <textarea
+                      className={inputClass}
+                      id="pis-definition-sv"
+                      onChange={e =>
+                        setForm(f => ({ ...f, descriptionSv: e.target.value }))
+                      }
+                      rows={2}
+                      value={form.descriptionSv}
+                    />
+                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                      {t('definitionSvHelp')}
                     </p>
-                  ) : (
-                    <div className="rounded-xl border overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                            <th className="py-2 px-3 font-medium">
-                              {t('package')}
-                            </th>
-                            <th className="py-2 px-3 font-medium text-right">
-                              {t('requirement')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {linkedItems.map(item => (
-                            <tr
-                              className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                              key={item.packageId}
-                            >
-                              <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
-                                {item.packageName}
-                              </td>
-                              <td className="py-2 px-3 text-right text-secondary-600 dark:text-secondary-400">
-                                {t('requirementCount', {
-                                  count: item.requirementCount,
-                                })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="pis-definition-en"
+                    >
+                      {t('definition')} (EN)
+                    </label>
+                    <textarea
+                      className={inputClass}
+                      id="pis-definition-en"
+                      onChange={e =>
+                        setForm(f => ({ ...f, descriptionEn: e.target.value }))
+                      }
+                      rows={2}
+                      value={form.descriptionEn}
+                    />
+                    <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                      {t('definitionEnHelp')}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="pis-color"
+                    >
+                      {t('color')} *
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        className="h-10 w-14 rounded-lg border cursor-pointer"
+                        id="pis-color"
+                        onChange={e =>
+                          setForm(f => ({ ...f, color: e.target.value }))
+                        }
+                        required
+                        type="color"
+                        value={form.color}
+                      />
+                      <input
+                        aria-label={t('colorHex')}
+                        className={inputClass}
+                        onChange={e =>
+                          setForm(f => ({ ...f, color: e.target.value }))
+                        }
+                        pattern="^#[0-9a-fA-F]{6}$"
+                        placeholder="#3b82f6"
+                        value={form.color}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className="inline-block w-6 h-6 rounded-full shrink-0 border"
+                        style={{ backgroundColor: form.color }}
+                      />
                     </div>
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="pis-sort-order"
+                    >
+                      {t('sortOrder')}
+                    </label>
+                    <input
+                      className={`${inputClass}${editId === DEFAULT_PACKAGE_ITEM_STATUS_ID || editId === DEVIATED_PACKAGE_ITEM_STATUS_ID ? ' opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={
+                        editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
+                        editId === DEVIATED_PACKAGE_ITEM_STATUS_ID
+                      }
+                      id="pis-sort-order"
+                      min="0"
+                      onChange={e =>
+                        setForm(f => ({ ...f, sortOrder: e.target.value }))
+                      }
+                      type="number"
+                      value={form.sortOrder}
+                    />
+                    {(editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
+                      editId === DEVIATED_PACKAGE_ITEM_STATUS_ID) && (
+                      <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
+                        {t('sortOrderLocked')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      className="btn-primary"
+                      disabled={submitting}
+                      type="submit"
+                    >
+                      {submitting ? tc('saving') : tc('save')}
+                    </button>
+                    <button
+                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                      disabled={submitting}
+                      onClick={() => {
+                        setShowForm(false)
+                        setLinkedItems([])
+                      }}
+                      type="button"
+                    >
+                      {tc('cancel')}
+                    </button>
+                  </div>
+                  {submitError && (
+                    <p
+                      className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                      role="alert"
+                    >
+                      {submitError}
+                    </p>
                   )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                </form>
+
+                {editId && (
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
+                      {t('linkedPackages')}
+                    </h3>
+                    {linkedItemsLoading ? (
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                        {tc('loading')}
+                      </p>
+                    ) : linkedItems.length === 0 ? (
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                        {tc('noneAvailable')}
+                      </p>
+                    ) : (
+                      <div className="rounded-xl border overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
+                              <th className="py-2 px-3 font-medium">
+                                {t('package')}
+                              </th>
+                              <th className="py-2 px-3 font-medium text-right">
+                                {t('requirement')}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {linkedItems.map(item => (
+                              <tr
+                                className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                                key={item.packageId}
+                              >
+                                <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
+                                  {item.packageName}
+                                </td>
+                                <td className="py-2 px-3 text-right text-secondary-600 dark:text-secondary-400">
+                                  {t('requirementCount', {
+                                    count: item.requirementCount,
+                                  })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {deleteError && (
           <p

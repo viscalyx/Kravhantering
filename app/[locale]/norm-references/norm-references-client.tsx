@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -329,159 +330,169 @@ export default function NormReferencesClient() {
           </button>
         </div>
 
-        {showForm && (
-          <div className="glass rounded-2xl p-6 mb-6 animate-fade-in-up">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
-              <form
-                className="space-y-4"
-                {...devMarker({
-                  context: 'normReferences',
-                  name: 'crud form',
-                  priority: 340,
-                  value: editId ? 'edit' : 'create',
-                })}
-                onSubmit={handleSubmit}
-              >
-                <h2 className="text-lg font-semibold">
-                  {editId ? t('editNormReference') : t('newNormReference')}
-                </h2>
-                <NormReferenceFormFields
-                  form={form}
-                  idPrefix="nr"
-                  onSetField={(field, value) =>
-                    setForm(f => ({ ...f, [field]: value }))
-                  }
-                />
-                {formError && (
-                  <p
-                    className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-                    role="alert"
-                  >
-                    {formError}
-                  </p>
-                )}
-                <div className="flex gap-3">
-                  <button
-                    className="btn-primary"
-                    disabled={submitting}
-                    type="submit"
-                  >
-                    {submitting ? tc('saving') : tc('save')}
-                  </button>
-                  <button
-                    className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                    disabled={submitting}
-                    onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-                      const anchorEl = e.currentTarget
-                      if (!(await guardUnsavedChanges(anchorEl))) return
-                      setShowForm(false)
-                      setEditId(null)
-                      setLinkedRequirements([])
-                      setFormError(null)
-                      resetForm()
-                    }}
-                    type="button"
-                  >
-                    {tc('cancel')}
-                  </button>
-                </div>
-              </form>
-
-              {editId && (
-                <div>
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
-                    {t('linkedRequirements')}
-                  </h3>
-                  {linkedRequirementsLoading ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('loading')}
-                    </p>
-                  ) : linkedRequirementsError ? (
+        <AnimatePresence>
+          {showForm && (
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
+                <form
+                  className="space-y-4"
+                  {...devMarker({
+                    context: 'normReferences',
+                    name: 'crud form',
+                    priority: 340,
+                    value: editId ? 'edit' : 'create',
+                  })}
+                  onSubmit={handleSubmit}
+                >
+                  <h2 className="text-lg font-semibold">
+                    {editId ? t('editNormReference') : t('newNormReference')}
+                  </h2>
+                  <NormReferenceFormFields
+                    form={form}
+                    idPrefix="nr"
+                    onSetField={(field, value) =>
+                      setForm(f => ({ ...f, [field]: value }))
+                    }
+                  />
+                  {formError && (
                     <p
                       className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
                       role="alert"
                     >
-                      {tc('error')}
+                      {formError}
                     </p>
-                  ) : linkedRequirements.length === 0 ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
-                    </p>
-                  ) : (
-                    <div className="rounded-xl border overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                            <th className="py-2 px-3 font-medium">
-                              {tr('uniqueId')}
-                            </th>
-                            <th className="py-2 px-3 font-medium">
-                              {tr('description')}
-                            </th>
-                            <th className="py-2 px-3 font-medium">
-                              {tc('version')}
-                            </th>
-                            <th className="py-2 px-3 font-medium">
-                              {tr('status')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {linkedRequirements.map(req => {
-                            const truncated = truncateDescription(
-                              req.description,
-                            )
-                            const isTruncated =
-                              truncated !== req.description &&
-                              req.description != null
-                            return (
-                              <tr
-                                className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                                key={req.id}
-                              >
-                                <td className="py-2 px-3 font-medium">
-                                  <Link
-                                    className="inline-flex items-center min-h-[44px] min-w-[44px] rounded text-primary-700 dark:text-primary-300 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus:outline-none"
-                                    href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
-                                  >
-                                    {req.uniqueId}
-                                  </Link>
-                                </td>
-                                <td
-                                  className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
-                                  title={
-                                    isTruncated
-                                      ? (req.description ?? undefined)
-                                      : undefined
-                                  }
-                                >
-                                  {truncated ?? '—'}
-                                </td>
-                                <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
-                                  v{req.versionNumber}
-                                </td>
-                                <td className="py-2 px-3">
-                                  <StatusBadge
-                                    color={req.statusColor}
-                                    label={
-                                      (locale === 'sv'
-                                        ? req.statusNameSv
-                                        : req.statusNameEn) ?? ''
-                                    }
-                                  />
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
                   )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                  <div className="flex gap-3">
+                    <button
+                      className="btn-primary"
+                      disabled={submitting}
+                      type="submit"
+                    >
+                      {submitting ? tc('saving') : tc('save')}
+                    </button>
+                    <button
+                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                      disabled={submitting}
+                      onClick={async (
+                        e: React.MouseEvent<HTMLButtonElement>,
+                      ) => {
+                        const anchorEl = e.currentTarget
+                        if (!(await guardUnsavedChanges(anchorEl))) return
+                        setShowForm(false)
+                        setEditId(null)
+                        setLinkedRequirements([])
+                        setFormError(null)
+                        resetForm()
+                      }}
+                      type="button"
+                    >
+                      {tc('cancel')}
+                    </button>
+                  </div>
+                </form>
+
+                {editId && (
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
+                      {t('linkedRequirements')}
+                    </h3>
+                    {linkedRequirementsLoading ? (
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                        {tc('loading')}
+                      </p>
+                    ) : linkedRequirementsError ? (
+                      <p
+                        className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        role="alert"
+                      >
+                        {tc('error')}
+                      </p>
+                    ) : linkedRequirements.length === 0 ? (
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                        {tc('noneAvailable')}
+                      </p>
+                    ) : (
+                      <div className="rounded-xl border overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
+                              <th className="py-2 px-3 font-medium">
+                                {tr('uniqueId')}
+                              </th>
+                              <th className="py-2 px-3 font-medium">
+                                {tr('description')}
+                              </th>
+                              <th className="py-2 px-3 font-medium">
+                                {tc('version')}
+                              </th>
+                              <th className="py-2 px-3 font-medium">
+                                {tr('status')}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {linkedRequirements.map(req => {
+                              const truncated = truncateDescription(
+                                req.description,
+                              )
+                              const isTruncated =
+                                truncated !== req.description &&
+                                req.description != null
+                              return (
+                                <tr
+                                  className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                                  key={req.id}
+                                >
+                                  <td className="py-2 px-3 font-medium">
+                                    <Link
+                                      className="inline-flex items-center min-h-[44px] min-w-[44px] rounded text-primary-700 dark:text-primary-300 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus:outline-none"
+                                      href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
+                                    >
+                                      {req.uniqueId}
+                                    </Link>
+                                  </td>
+                                  <td
+                                    className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
+                                    title={
+                                      isTruncated
+                                        ? (req.description ?? undefined)
+                                        : undefined
+                                    }
+                                  >
+                                    {truncated ?? '—'}
+                                  </td>
+                                  <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
+                                    v{req.versionNumber}
+                                  </td>
+                                  <td className="py-2 px-3">
+                                    <StatusBadge
+                                      color={req.statusColor}
+                                      label={
+                                        (locale === 'sv'
+                                          ? req.statusNameSv
+                                          : req.statusNameEn) ?? ''
+                                      }
+                                    />
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {deleteError && (
           <p

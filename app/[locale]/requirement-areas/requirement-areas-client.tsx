@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
@@ -150,106 +151,115 @@ export default function RequirementAreasClient() {
           </button>
         </div>
 
-        {showForm && (
-          <form
-            className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
-            {...devMarker({
-              context: 'areas',
-              name: 'crud form',
-              priority: 340,
-              value: editId ? 'edit' : 'create',
-            })}
-            onSubmit={handleSubmit}
-          >
-            <h2 className="text-lg font-semibold">
-              {editId ? tc('edit') : tc('create')}
-            </h2>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="area-prefix"
-              >
-                {t('prefix')} *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-prefix"
-                maxLength={10}
-                onChange={e =>
-                  setForm(f => ({ ...f, prefix: e.target.value.toUpperCase() }))
-                }
-                required
-                value={form.prefix}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="area-name"
-              >
-                {t('name')} *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-name"
-                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                required
-                value={form.name}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="area-desc"
-              >
-                {t('description')}
-              </label>
-              <textarea
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-desc"
-                onChange={e =>
-                  setForm(f => ({ ...f, description: e.target.value }))
-                }
-                value={form.description}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="area-owner"
-              >
-                {t('owner')}
-              </label>
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="area-owner"
-                onChange={e =>
-                  setForm(f => ({ ...f, ownerId: e.target.value }))
-                }
-                value={form.ownerId}
-              >
-                <option value="">{t('owner')}...</option>
-                {owners.map(o => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-3">
-              <button className="btn-primary" type="submit">
-                {tc('save')}
-              </button>
-              <button
-                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                onClick={() => setShowForm(false)}
-                type="button"
-              >
-                {tc('cancel')}
-              </button>
-            </div>
-          </form>
-        )}
+        <AnimatePresence>
+          {showForm && (
+            <motion.form
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+              {...devMarker({
+                context: 'areas',
+                name: 'crud form',
+                priority: 340,
+                value: editId ? 'edit' : 'create',
+              })}
+              onSubmit={handleSubmit}
+            >
+              <h2 className="text-lg font-semibold">
+                {editId ? tc('edit') : tc('create')}
+              </h2>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="area-prefix"
+                >
+                  {t('prefix')} *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="area-prefix"
+                  maxLength={10}
+                  onChange={e =>
+                    setForm(f => ({
+                      ...f,
+                      prefix: e.target.value.toUpperCase(),
+                    }))
+                  }
+                  required
+                  value={form.prefix}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="area-name"
+                >
+                  {t('name')} *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="area-name"
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  required
+                  value={form.name}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="area-desc"
+                >
+                  {t('description')}
+                </label>
+                <textarea
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="area-desc"
+                  onChange={e =>
+                    setForm(f => ({ ...f, description: e.target.value }))
+                  }
+                  value={form.description}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="area-owner"
+                >
+                  {t('owner')}
+                </label>
+                <select
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="area-owner"
+                  onChange={e =>
+                    setForm(f => ({ ...f, ownerId: e.target.value }))
+                  }
+                  value={form.ownerId}
+                >
+                  <option value="">{t('owner')}...</option>
+                  {owners.map(o => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button className="btn-primary" type="submit">
+                  {tc('save')}
+                </button>
+                <button
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  onClick={() => setShowForm(false)}
+                  type="button"
+                >
+                  {tc('cancel')}
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
 
         {loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">

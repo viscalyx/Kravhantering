@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { Plus, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
@@ -217,7 +218,12 @@ export default function RequirementForm({
   )
 
   return (
-    <form className="animate-fade-in-up" onSubmit={handleSubmit}>
+    <motion.form
+      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 8 }}
+      onSubmit={handleSubmit}
+      transition={{ duration: 0.15 }}
+    >
       <RequirementFormFields
         layout="sidebar"
         normReferenceActions={normReferenceCreateButton}
@@ -347,7 +353,7 @@ export default function RequirementForm({
           </div>
         </div>
       </div>
-    </form>
+    </motion.form>
   )
 }
 
@@ -447,13 +453,16 @@ function NormReferenceModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={normRefSubmitting ? undefined : onCancel}
       />
-      <div
+      <motion.div
+        animate={{ opacity: 1, scale: 1 }}
         aria-describedby="modal-desc-norm-ref"
         aria-labelledby="modal-title-norm-ref"
         aria-modal="true"
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl animate-fade-in-up p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        initial={{ opacity: 0, scale: 0.95 }}
         ref={dialogRef}
         role="dialog"
+        transition={{ duration: 0.15 }}
       >
         <div className="flex items-center justify-between">
           <h2
@@ -515,7 +524,7 @@ function NormReferenceModal({
             {tc('cancel')}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }
