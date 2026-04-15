@@ -263,4 +263,44 @@ describe('RequirementAreasClient', () => {
     const dashes = screen.getAllByText('—')
     expect(dashes.length).toBeGreaterThanOrEqual(1)
   })
+
+  it('keeps form open and shows error when save fails', async () => {
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(screen.getByLabelText(/area\.prefix/), {
+      target: { value: 'FAIL' },
+    })
+    fireEvent.change(screen.getByLabelText(/area\.name/), {
+      target: { value: 'Failing Area' },
+    })
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas' && !url.includes('/'))
+        return okJson({ areas: sampleAreas })
+      if (url === '/api/owners') return okJson({ owners: sampleOwners })
+      return {
+        ok: false,
+        statusText: 'Bad Request',
+        json: async () => ({ error: 'Prefix already exists' }),
+      }
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Prefix already exists',
+      )
+    })
+
+    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
+    expect(
+      (screen.getByLabelText(/area\.prefix/) as HTMLInputElement).value,
+    ).toBe('FAIL')
+  })
 })

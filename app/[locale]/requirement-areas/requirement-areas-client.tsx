@@ -50,6 +50,7 @@ export default function RequirementAreasClient() {
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const [form, setForm] = useState({
     prefix: '',
     name: '',
@@ -83,12 +84,13 @@ export default function RequirementAreasClient() {
     e.preventDefault()
     if (submitting) return
     setSubmitting(true)
+    setFormError(null)
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId
         ? `/api/requirement-areas/${editId}`
         : '/api/requirement-areas'
-      await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -96,10 +98,20 @@ export default function RequirementAreasClient() {
           ownerId: form.ownerId ? Number(form.ownerId) : undefined,
         }),
       })
-      setShowForm(false)
-      setEditId(null)
-      setForm({ prefix: '', name: '', description: '', ownerId: '' })
-      fetchAreas()
+      if (res.ok) {
+        setShowForm(false)
+        setEditId(null)
+        setFormError(null)
+        setForm({ prefix: '', name: '', description: '', ownerId: '' })
+        fetchAreas()
+      } else {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        setFormError(data?.error ?? res.statusText)
+      }
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : tc('error'))
     } finally {
       setSubmitting(false)
     }
@@ -113,6 +125,7 @@ export default function RequirementAreasClient() {
       description: area.description ?? '',
       ownerId: area.ownerId != null ? String(area.ownerId) : '',
     })
+    setFormError(null)
     setShowForm(true)
   }
 
@@ -149,6 +162,7 @@ export default function RequirementAreasClient() {
             onClick={() => {
               setShowForm(true)
               setEditId(null)
+              setFormError(null)
               setForm({ prefix: '', name: '', description: '', ownerId: '' })
             }}
             type="button"
@@ -252,6 +266,14 @@ export default function RequirementAreasClient() {
                   ))}
                 </select>
               </div>
+              {formError && (
+                <p
+                  className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                  role="alert"
+                >
+                  {formError}
+                </p>
+              )}
               <div className="flex gap-3">
                 <button
                   className="btn-primary"
