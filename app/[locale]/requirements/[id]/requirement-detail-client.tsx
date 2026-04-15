@@ -226,27 +226,40 @@ export default function RequirementDetailClient({
   > | null>(null)
   const addToPackageNeedsRefsRequestIdRef = useRef(0)
   const addToPackageNeedsRefsAbortRef = useRef<AbortController | null>(null)
+  const packageItemDetailAbortRef = useRef<AbortController | null>(null)
 
   const fetchPackageItemDetail = useCallback(async () => {
+    packageItemDetailAbortRef.current?.abort()
+
     if (!isPackageItemContext || !packageItemId || !packageSlug) {
       setPackageItemDetail(null)
       return
     }
+
+    const controller = new AbortController()
+    packageItemDetailAbortRef.current = controller
+    setPackageItemDetail(null)
 
     try {
       const res = await fetch(
         `/api/requirement-packages/${encodeURIComponent(
           packageSlug,
         )}/items/${packageItemId}`,
+        { signal: controller.signal },
       )
 
-      if (res.ok) {
-        setPackageItemDetail((await res.json()) as PackageItemDetailContext)
-      } else {
+      if (!controller.signal.aborted) {
+        if (res.ok) {
+          setPackageItemDetail((await res.json()) as PackageItemDetailContext)
+        } else {
+          setPackageItemDetail(null)
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (!controller.signal.aborted) {
         setPackageItemDetail(null)
       }
-    } catch {
-      setPackageItemDetail(null)
     }
   }, [isPackageItemContext, packageItemId, packageSlug])
 
@@ -826,6 +839,9 @@ export default function RequirementDetailClient({
 
   useEffect(() => {
     void fetchPackageItemDetail()
+    return () => {
+      packageItemDetailAbortRef.current?.abort()
+    }
   }, [fetchPackageItemDetail])
 
   // Fetch transitions whenever the current status changes

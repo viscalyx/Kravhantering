@@ -2,7 +2,13 @@
 
 import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 
 interface TaxonomyOption {
@@ -51,6 +57,8 @@ export interface RequirementFormFieldValues {
 }
 
 export interface RequirementFormFieldsProps {
+  /** Norm references created after initial fetch, merged into the options list */
+  additionalNormReferences?: NormReferenceOption[]
   /** When true, area is required. Default: true */
   areaRequired?: boolean
   /** Extra fields rendered after risk level (e.g. needsReferenceId) */
@@ -76,6 +84,7 @@ const textareaClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]'
 
 export default function RequirementFormFields({
+  additionalNormReferences,
   areaRequired = true,
   extraFieldsAfterRiskLevel,
   idPrefix = '',
@@ -103,6 +112,15 @@ export default function RequirementFormFields({
     [],
   )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
+
+  const allNormReferences = useMemo(() => {
+    if (!additionalNormReferences?.length) return normReferences
+    const existingIds = new Set(normReferences.map(nr => nr.id))
+    return [
+      ...normReferences,
+      ...additionalNormReferences.filter(nr => !existingIds.has(nr.id)),
+    ]
+  }, [normReferences, additionalNormReferences])
 
   const fetchOptions = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -513,9 +531,9 @@ export default function RequirementFormFields({
         {normReferenceActions}
       </div>
       {helpPanel('normReferencesHelp', fid('normReferences'))}
-      {normReferences.length > 0 && (
+      {allNormReferences.length > 0 && (
         <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3 max-h-56 overflow-y-auto pr-1">
-          {normReferences.map(nr => (
+          {allNormReferences.map(nr => (
             <label
               className="flex items-center gap-2 text-sm cursor-pointer"
               key={nr.id}

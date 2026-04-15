@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { unionAll } from 'drizzle-orm/sqlite-core'
 import {
   DEVIATION_APPROVED,
@@ -486,26 +486,6 @@ export async function updateDeviation(
   deviationId: number,
   data: { motivation?: string },
 ): Promise<void> {
-  // Verify exists and has no decision yet
-  const existing = await db
-    .select({
-      id: deviations.id,
-      decision: deviations.decision,
-    })
-    .from(deviations)
-    .where(eq(deviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError(
-      'Cannot edit a deviation after a decision has been recorded',
-    )
-  }
-
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   }
@@ -517,7 +497,25 @@ export async function updateDeviation(
     updates.motivation = data.motivation.trim()
   }
 
-  await db.update(deviations).set(updates).where(eq(deviations.id, deviationId))
+  const [updated] = await db
+    .update(deviations)
+    .set(updates)
+    .where(and(eq(deviations.id, deviationId), isNull(deviations.decision)))
+    .returning({ id: deviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({ id: deviations.id })
+      .from(deviations)
+      .where(eq(deviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
+    throw conflictError(
+      'Cannot edit a deviation after a decision has been recorded',
+    )
+  }
 }
 
 export async function recordDecision(
@@ -544,27 +542,8 @@ export async function recordDecision(
     throw validationError('Decided by is required')
   }
 
-  const existing = await db
-    .select({
-      id: deviations.id,
-      decision: deviations.decision,
-    })
-    .from(deviations)
-    .where(eq(deviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError(
-      'A decision has already been recorded for this deviation',
-    )
-  }
-
   const now = new Date().toISOString()
-  await db
+  const [updated] = await db
     .update(deviations)
     .set({
       decision: data.decision,
@@ -573,33 +552,46 @@ export async function recordDecision(
       decidedAt: now,
       updatedAt: now,
     })
-    .where(eq(deviations.id, deviationId))
+    .where(and(eq(deviations.id, deviationId), isNull(deviations.decision)))
+    .returning({ id: deviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({ id: deviations.id })
+      .from(deviations)
+      .where(eq(deviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
+    throw conflictError(
+      'A decision has already been recorded for this deviation',
+    )
+  }
 }
 
 export async function deleteDeviation(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const existing = await db
-    .select({
-      id: deviations.id,
-      decision: deviations.decision,
-    })
-    .from(deviations)
-    .where(eq(deviations.id, deviationId))
-    .limit(1)
+  const [deleted] = await db
+    .delete(deviations)
+    .where(and(eq(deviations.id, deviationId), isNull(deviations.decision)))
+    .returning({ id: deviations.id })
 
-  if (existing.length === 0) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
+  if (!deleted) {
+    const [row] = await db
+      .select({ id: deviations.id })
+      .from(deviations)
+      .where(eq(deviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
     throw conflictError(
       'Cannot delete a deviation after a decision has been recorded',
     )
   }
-
-  await db.delete(deviations).where(eq(deviations.id, deviationId))
 }
 
 export async function updatePackageLocalDeviation(
@@ -607,25 +599,6 @@ export async function updatePackageLocalDeviation(
   deviationId: number,
   data: { motivation?: string },
 ): Promise<void> {
-  const existing = await db
-    .select({
-      decision: packageLocalRequirementDeviations.decision,
-      id: packageLocalRequirementDeviations.id,
-    })
-    .from(packageLocalRequirementDeviations)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError(
-      'Cannot edit a deviation after a decision has been recorded',
-    )
-  }
-
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   }
@@ -637,10 +610,30 @@ export async function updatePackageLocalDeviation(
     updates.motivation = data.motivation.trim()
   }
 
-  await db
+  const [updated] = await db
     .update(packageLocalRequirementDeviations)
     .set(updates)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .where(
+      and(
+        eq(packageLocalRequirementDeviations.id, deviationId),
+        isNull(packageLocalRequirementDeviations.decision),
+      ),
+    )
+    .returning({ id: packageLocalRequirementDeviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({ id: packageLocalRequirementDeviations.id })
+      .from(packageLocalRequirementDeviations)
+      .where(eq(packageLocalRequirementDeviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    }
+    throw conflictError(
+      'Cannot edit a deviation after a decision has been recorded',
+    )
+  }
 }
 
 export async function recordPackageLocalDecision(
@@ -667,27 +660,8 @@ export async function recordPackageLocalDecision(
     throw validationError('Decided by is required')
   }
 
-  const existing = await db
-    .select({
-      decision: packageLocalRequirementDeviations.decision,
-      id: packageLocalRequirementDeviations.id,
-    })
-    .from(packageLocalRequirementDeviations)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError(
-      'A decision has already been recorded for this deviation',
-    )
-  }
-
   const now = new Date().toISOString()
-  await db
+  const [updated] = await db
     .update(packageLocalRequirementDeviations)
     .set({
       decision: data.decision,
@@ -696,35 +670,56 @@ export async function recordPackageLocalDecision(
       decidedBy: data.decidedBy.trim(),
       updatedAt: now,
     })
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .where(
+      and(
+        eq(packageLocalRequirementDeviations.id, deviationId),
+        isNull(packageLocalRequirementDeviations.decision),
+      ),
+    )
+    .returning({ id: packageLocalRequirementDeviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({ id: packageLocalRequirementDeviations.id })
+      .from(packageLocalRequirementDeviations)
+      .where(eq(packageLocalRequirementDeviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    }
+    throw conflictError(
+      'A decision has already been recorded for this deviation',
+    )
+  }
 }
 
 export async function deletePackageLocalDeviation(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const existing = await db
-    .select({
-      decision: packageLocalRequirementDeviations.decision,
-      id: packageLocalRequirementDeviations.id,
-    })
-    .from(packageLocalRequirementDeviations)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
-    .limit(1)
+  const [deleted] = await db
+    .delete(packageLocalRequirementDeviations)
+    .where(
+      and(
+        eq(packageLocalRequirementDeviations.id, deviationId),
+        isNull(packageLocalRequirementDeviations.decision),
+      ),
+    )
+    .returning({ id: packageLocalRequirementDeviations.id })
 
-  if (existing.length === 0) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
+  if (!deleted) {
+    const [row] = await db
+      .select({ id: packageLocalRequirementDeviations.id })
+      .from(packageLocalRequirementDeviations)
+      .where(eq(packageLocalRequirementDeviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    }
     throw conflictError(
       'Cannot delete a deviation after a decision has been recorded',
     )
   }
-
-  await db
-    .delete(packageLocalRequirementDeviations)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
 }
 
 export async function countDeviationsByPackage(
@@ -910,142 +905,162 @@ export async function requestReview(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const existing = await db
-    .select({
-      id: deviations.id,
-      decision: deviations.decision,
-      isReviewRequested: deviations.isReviewRequested,
-    })
-    .from(deviations)
-    .where(eq(deviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError(
-      'Cannot request review for a deviation that already has a decision',
-    )
-  }
-
-  if (existing[0].isReviewRequested === 1) {
-    throw conflictError('Review has already been requested for this deviation')
-  }
-
-  await db
+  const [updated] = await db
     .update(deviations)
     .set({
       isReviewRequested: 1,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(deviations.id, deviationId))
+    .where(
+      and(
+        eq(deviations.id, deviationId),
+        isNull(deviations.decision),
+        eq(deviations.isReviewRequested, 0),
+      ),
+    )
+    .returning({ id: deviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({
+        id: deviations.id,
+        decision: deviations.decision,
+        isReviewRequested: deviations.isReviewRequested,
+      })
+      .from(deviations)
+      .where(eq(deviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot request review for a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Review has already been requested for this deviation')
+  }
 }
 
 export async function requestPackageLocalReview(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const existing = await db
-    .select({
-      decision: packageLocalRequirementDeviations.decision,
-      id: packageLocalRequirementDeviations.id,
-      isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
-    })
-    .from(packageLocalRequirementDeviations)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError(
-      'Cannot request review for a deviation that already has a decision',
-    )
-  }
-
-  if (existing[0].isReviewRequested === 1) {
-    throw conflictError('Review has already been requested for this deviation')
-  }
-
-  await db
+  const [updated] = await db
     .update(packageLocalRequirementDeviations)
     .set({
       isReviewRequested: 1,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .where(
+      and(
+        eq(packageLocalRequirementDeviations.id, deviationId),
+        isNull(packageLocalRequirementDeviations.decision),
+        eq(packageLocalRequirementDeviations.isReviewRequested, 0),
+      ),
+    )
+    .returning({ id: packageLocalRequirementDeviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({
+        id: packageLocalRequirementDeviations.id,
+        decision: packageLocalRequirementDeviations.decision,
+        isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
+      })
+      .from(packageLocalRequirementDeviations)
+      .where(eq(packageLocalRequirementDeviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot request review for a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Review has already been requested for this deviation')
+  }
 }
 
 export async function revertToDraft(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const existing = await db
-    .select({
-      id: deviations.id,
-      decision: deviations.decision,
-      isReviewRequested: deviations.isReviewRequested,
-    })
-    .from(deviations)
-    .where(eq(deviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError('Cannot revert a deviation that already has a decision')
-  }
-
-  if (existing[0].isReviewRequested === 0) {
-    throw conflictError('Deviation is already in draft state')
-  }
-
-  await db
+  const [updated] = await db
     .update(deviations)
     .set({
       isReviewRequested: 0,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(deviations.id, deviationId))
+    .where(
+      and(
+        eq(deviations.id, deviationId),
+        isNull(deviations.decision),
+        eq(deviations.isReviewRequested, 1),
+      ),
+    )
+    .returning({ id: deviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({
+        id: deviations.id,
+        decision: deviations.decision,
+        isReviewRequested: deviations.isReviewRequested,
+      })
+      .from(deviations)
+      .where(eq(deviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Deviation ${deviationId} not found`)
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot revert a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Deviation is already in draft state')
+  }
 }
 
 export async function revertPackageLocalToDraft(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const existing = await db
-    .select({
-      decision: packageLocalRequirementDeviations.decision,
-      id: packageLocalRequirementDeviations.id,
-      isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
-    })
-    .from(packageLocalRequirementDeviations)
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
-    .limit(1)
-
-  if (existing.length === 0) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
-  }
-
-  if (existing[0].decision !== null) {
-    throw conflictError('Cannot revert a deviation that already has a decision')
-  }
-
-  if (existing[0].isReviewRequested === 0) {
-    throw conflictError('Deviation is already in draft state')
-  }
-
-  await db
+  const [updated] = await db
     .update(packageLocalRequirementDeviations)
     .set({
       isReviewRequested: 0,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .where(
+      and(
+        eq(packageLocalRequirementDeviations.id, deviationId),
+        isNull(packageLocalRequirementDeviations.decision),
+        eq(packageLocalRequirementDeviations.isReviewRequested, 1),
+      ),
+    )
+    .returning({ id: packageLocalRequirementDeviations.id })
+
+  if (!updated) {
+    const [row] = await db
+      .select({
+        id: packageLocalRequirementDeviations.id,
+        decision: packageLocalRequirementDeviations.decision,
+        isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
+      })
+      .from(packageLocalRequirementDeviations)
+      .where(eq(packageLocalRequirementDeviations.id, deviationId))
+      .limit(1)
+    if (!row) {
+      throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    }
+    if (row.decision !== null) {
+      throw conflictError(
+        'Cannot revert a deviation that already has a decision',
+      )
+    }
+    throw conflictError('Deviation is already in draft state')
+  }
 }

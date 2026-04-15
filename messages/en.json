@@ -509,6 +509,7 @@
     "isSystem": "System status",
     "newStatus": "New status",
     "editStatus": "Edit status",
+    "preview": "Preview",
     "cannotDeleteSystem": "System statuses cannot be deleted",
     "cannotDeleteInUse": "Cannot delete — status is used by existing requirements"
   },

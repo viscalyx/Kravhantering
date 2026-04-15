@@ -1177,11 +1177,23 @@ export default function KravpaketDetailClient({
       ? createPortal(
           <div
             aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onKeyDown={e => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                void closeCreateLocalRequirementModal()
+              }
+            }}
             role="dialog"
           >
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
+            {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
             <div
-              className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={() => void closeCreateLocalRequirementModal()}
+            />
+            <div
+              className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
               role="document"
             >
               <div className="mb-5 flex items-center justify-between gap-3">

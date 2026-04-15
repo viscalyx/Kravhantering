@@ -67,6 +67,9 @@ export default function RequirementForm({
   })
   const [normRefSubmitting, setNormRefSubmitting] = useState(false)
   const [normRefError, setNormRefError] = useState<string | null>(null)
+  const [createdNormRefs, setCreatedNormRefs] = useState<
+    { id: number; name: string; normReferenceId: string }[]
+  >([])
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -225,6 +228,7 @@ export default function RequirementForm({
       transition={{ duration: 0.15 }}
     >
       <RequirementFormFields
+        additionalNormReferences={createdNormRefs}
         layout="sidebar"
         normReferenceActions={normReferenceCreateButton}
         onChange={handleFieldsChange}
@@ -265,6 +269,14 @@ export default function RequirementForm({
                   setNormRefError(data?.error ?? tc('error'))
                 } else {
                   const created = (await res.json()) as NormReferenceOption
+                  setCreatedNormRefs(prev => [
+                    ...prev,
+                    {
+                      id: created.id,
+                      name: created.name,
+                      normReferenceId: created.normReferenceId,
+                    },
+                  ])
                   setForm(prev => ({
                     ...prev,
                     normReferenceIds: [...prev.normReferenceIds, created.id],

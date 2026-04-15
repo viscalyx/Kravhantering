@@ -44,6 +44,7 @@ export default function ImplementationTypesClient() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({ nameSv: '', nameEn: '' })
 
   const fetchItems = useCallback(async () => {
@@ -62,19 +63,25 @@ export default function ImplementationTypesClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const method = editId ? 'PUT' : 'POST'
-    const url = editId
-      ? `/api/package-implementation-types/${editId}`
-      : '/api/package-implementation-types'
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    setShowForm(false)
-    setEditId(null)
-    setForm({ nameSv: '', nameEn: '' })
-    fetchItems()
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      const method = editId ? 'PUT' : 'POST'
+      const url = editId
+        ? `/api/package-implementation-types/${editId}`
+        : '/api/package-implementation-types'
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      setShowForm(false)
+      setEditId(null)
+      setForm({ nameSv: '', nameEn: '' })
+      fetchItems()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleEdit = (item: ImplementationType) => {
@@ -181,11 +188,16 @@ export default function ImplementationTypesClient() {
                 />
               </div>
               <div className="flex gap-3">
-                <button className="btn-primary" type="submit">
-                  {tc('save')}
+                <button
+                  className="btn-primary"
+                  disabled={submitting}
+                  type="submit"
+                >
+                  {submitting ? tc('saving') : tc('save')}
                 </button>
                 <button
-                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  disabled={submitting}
                   onClick={() => setShowForm(false)}
                   type="button"
                 >

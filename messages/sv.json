@@ -509,6 +509,7 @@
     "isSystem": "Systemstatus",
     "newStatus": "Ny status",
     "editStatus": "Redigera status",
+    "preview": "Förhandsvisning",
     "cannotDeleteSystem": "Systemstatusar kan inte tas bort",
     "cannotDeleteInUse": "Går inte att ta bort – statusen används av befintliga krav"
   },
