@@ -212,6 +212,9 @@ The behaviors below apply to the requirement list rendered by:
   an inline `<select>` dropdown for each item that has a `packageItemId`.
   Changing the dropdown value calls `PATCH /api/requirement-packages/{id}/items/{itemId}`
   and applies an optimistic update to the local row state.
+- The same inline status control is also available for package-local
+  requirements via package-context item refs (`lib:*` / `local:*`) even though
+  package-local rows do not have a library-backed `requirementPackageItemId`.
 - When a requirement is **added** to a package, its usage status is
   automatically set to **Included** (ID 1). The user can change it once
   work on the requirement begins.
@@ -273,6 +276,44 @@ down.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
 - Selection state is managed in `requirements-client.tsx` via `selectedIds`.
+- In the package-detail left panel, package-local rows are visually marked with
+  a dedicated icon marker so they can be distinguished from library
+  requirements pinned into the package.
+- The current marker uses a compact `DiamondPlus` icon without a pill/badge
+  container, while the label text remains hidden for accessibility and fallback
+  evaluation.
+- Hovering the icon shows a tooltip that explains the row is a package-local
+  requirement that exists only in the current package.
+- Package-local rows use short package-scoped Krav-ID values such as
+  `KRAV0001`; the package context itself disambiguates them.
+- The package-local inline detail pane now reuses the same core content-card
+  layout as the requirements catalog inline detail view: description first,
+  acceptance criteria second, then the shared metadata grid, references, and
+  scenarios.
+- When a library requirement is opened from the package list `Krav i kravpaket`,
+  its inline detail metadata also includes the package-specific fields
+  **Behovsreferens** and **Användningsstatus** in the same properties grid.
+- The package-local content card uses the same section spacing and card chrome
+  as the catalog requirement detail card in package context, so the properties
+  block reads with the same vertical rhythm and grouping.
+- The expanded package-local inline pane also uses the same outer inline inset
+  as the catalog requirement detail (`px-6 py-4`), so the properties card and
+  right-side rail do not sit flush against the expanded row edges.
+- The package-local inline detail pane does not repeat the row's package-local
+  Krav-ID or unique marker icon in its own header area; that identity stays in
+  the table row above the expanded pane.
+- Package-local inline detail now follows the package-item detail chrome more
+  closely: deviation pills sit above the card, the right-side action rail
+  starts with print and deviation controls, and local edit/delete actions are
+  appended in the same vertical rail.
+- That package-local action rail also uses the same full-width button sizing
+  rhythm as the catalog requirement package-item rail, including the shared
+  44px minimum touch target and stacked spacing.
+- Edit and Delete for package-local requirements are only enabled when
+  **Användningsstatus** is **Inkluderad** and there is no pending deviation
+  draft or review request. Otherwise the buttons stay disabled and expose a
+  tooltip explaining why the action is blocked, while the controls are also
+  visually muted so they no longer read as active actions.
 
 ## Print List Report Floating Pill
 
@@ -282,6 +323,16 @@ down.
   - "Download Requirements List (PDF)" — opens the PDF engine route
 - Passes the IDs of all currently visible rows as `?ids=` query params.
 - The report shows Krav-ID, description, area, and status columns.
+
+## Package Print List Report
+
+- The package-detail print dropdown uses `?refs=` query params instead of
+  `?ids=`.
+- Each value is a package-context item reference:
+  - `lib:<packageItemId>` for a library requirement in the package
+  - `local:<packageLocalRequirementId>` for a package-local requirement
+- This allows the report to include both library and package-local
+  requirements in one package list export.
 
 ## Combined Review Report Floating Pill
 

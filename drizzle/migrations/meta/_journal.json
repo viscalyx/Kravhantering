@@ -134,6 +134,27 @@
       "when": 1775653932445,
       "tag": "0018_sturdy_scarlet_spider",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1776160732015,
+      "tag": "0019_bored_energizer",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1776168001090,
+      "tag": "0020_volatile_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1776186135282,
+      "tag": "0021_wonderful_captain_flint",
+      "breakpoints": true
     }
   ]
 }

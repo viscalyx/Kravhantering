@@ -8,6 +8,7 @@ const mockDb = {
 const mockTx = {}
 
 const mocks = {
+  deletePackageItemsByRefs: vi.fn(),
   getPackageById: vi.fn(),
   getPackageBySlug: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
@@ -25,6 +26,8 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
+  deletePackageItemsByRefs: (...args: unknown[]) =>
+    mocks.deletePackageItemsByRefs(...args),
   getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
   getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
   getPublishedVersionIdForRequirement: (...args: unknown[]) =>
@@ -34,6 +37,10 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   listPackageItems: (...args: unknown[]) => mocks.listPackageItems(...args),
   unlinkRequirementsFromPackage: (...args: unknown[]) =>
     mocks.unlinkRequirementsFromPackage(...args),
+}))
+
+vi.mock('@/lib/dal/deviations', () => ({
+  countDeviationsPerItemRef: vi.fn(async () => new Map()),
 }))
 
 import { DELETE, POST } from '@/app/api/requirement-packages/[id]/items/route'
@@ -49,9 +56,14 @@ describe('requirement-packages/[id]/items route', () => {
     mockDb.transaction.mockImplementation(
       async (callback: (tx: typeof mockTx) => unknown) => callback(mockTx),
     )
+    mocks.deletePackageItemsByRefs.mockResolvedValue({
+      deletedLibraryCount: 1,
+      deletedPackageLocalCount: 1,
+    })
     mocks.getPackageBySlug.mockResolvedValue({ id: 5 })
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(42)
     mocks.linkRequirementsToPackageAtomically.mockResolvedValue(1)
+    mocks.unlinkRequirementsFromPackage.mockResolvedValue(2)
   })
 
   it('rejects needsReferenceId values that belong to another package', async () => {
@@ -317,12 +329,43 @@ describe('requirement-packages/[id]/items route', () => {
     const response = await DELETE(request, makeParams('pkg'))
 
     expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({ ok: true })
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      removedCount: 2,
+    })
     expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledTimes(1)
     expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledWith(
       mockDb,
       5,
       [1, 2],
     )
+  })
+
+  it('deletes mixed package items by itemRef when itemRefs are supplied', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          itemRefs: ['lib:31', 'local:2'],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'DELETE',
+      },
+    )
+
+    const response = await DELETE(request, makeParams('pkg'))
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      deletedLibraryCount: 1,
+      deletedPackageLocalCount: 1,
+      ok: true,
+      removedCount: 2,
+    })
+    expect(mocks.deletePackageItemsByRefs).toHaveBeenCalledWith(mockDb, 5, [
+      'lib:31',
+      'local:2',
+    ])
+    expect(mocks.unlinkRequirementsFromPackage).not.toHaveBeenCalled()
   })
 })

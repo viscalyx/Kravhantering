@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
@@ -46,6 +47,7 @@ export default function RequirementStatusesClient() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
     nameSv: '',
     nameEn: '',
@@ -69,19 +71,25 @@ export default function RequirementStatusesClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const method = editId ? 'PUT' : 'POST'
-    const url = editId
-      ? `/api/requirement-statuses/${editId}`
-      : '/api/requirement-statuses'
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    setShowForm(false)
-    setEditId(null)
-    setForm({ nameSv: '', nameEn: '', sortOrder: 0, color: '#3b82f6' })
-    fetchStatuses()
+    if (submitting) return
+    setSubmitting(true)
+    try {
+      const method = editId ? 'PUT' : 'POST'
+      const url = editId
+        ? `/api/requirement-statuses/${editId}`
+        : '/api/requirement-statuses'
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      setShowForm(false)
+      setEditId(null)
+      setForm({ nameSv: '', nameEn: '', sortOrder: 0, color: '#3b82f6' })
+      fetchStatuses()
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleEdit = (s: Status) => {
@@ -156,108 +164,123 @@ export default function RequirementStatusesClient() {
           </button>
         </div>
 
-        {showForm && (
-          <form
-            className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
-            {...devMarker({
-              context: 'statuses',
-              name: 'crud form',
-              priority: 340,
-              value: editId ? 'edit' : 'create',
-            })}
-            onSubmit={handleSubmit}
-          >
-            <h2 className="text-lg font-semibold">
-              {editId ? tc('edit') : tc('create')}
-            </h2>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="status-name-sv"
-              >
-                {t('name')} (SV) *
-              </label>
-              <input
-                className={inputClass}
-                id="status-name-sv"
-                onChange={e => setForm(f => ({ ...f, nameSv: e.target.value }))}
-                required
-                value={form.nameSv}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="status-name-en"
-              >
-                {t('name')} (EN) *
-              </label>
-              <input
-                className={inputClass}
-                id="status-name-en"
-                onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))}
-                required
-                value={form.nameEn}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="status-sort-order"
-              >
-                {t('sortOrder')}
-              </label>
-              <input
-                className={inputClass}
-                id="status-sort-order"
-                min={0}
-                onChange={e =>
-                  setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))
-                }
-                type="number"
-                value={form.sortOrder}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="status-color"
-              >
-                {t('color')}
-              </label>
-              <div className="flex items-center gap-3">
+        <AnimatePresence>
+          {showForm && (
+            <motion.form
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+              {...devMarker({
+                context: 'statuses',
+                name: 'crud form',
+                priority: 340,
+                value: editId ? 'edit' : 'create',
+              })}
+              onSubmit={handleSubmit}
+            >
+              <h2 className="text-lg font-semibold">
+                {editId ? tc('edit') : tc('create')}
+              </h2>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="status-name-sv"
+                >
+                  {t('name')} (SV) *
+                </label>
                 <input
-                  className="h-10 w-10 rounded-lg border-0 cursor-pointer"
-                  id="status-color"
+                  className={inputClass}
+                  id="status-name-sv"
                   onChange={e =>
-                    setForm(f => ({ ...f, color: e.target.value }))
+                    setForm(f => ({ ...f, nameSv: e.target.value }))
                   }
-                  type="color"
-                  value={form.color}
-                />
-                <span className="text-sm font-mono text-secondary-500">
-                  {form.color}
-                </span>
-                <StatusBadge
-                  color={form.color}
-                  label={form.nameSv || 'Preview'}
+                  required
+                  value={form.nameSv}
                 />
               </div>
-            </div>
-            <div className="flex gap-3">
-              <button className="btn-primary" type="submit">
-                {tc('save')}
-              </button>
-              <button
-                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                onClick={() => setShowForm(false)}
-                type="button"
-              >
-                {tc('cancel')}
-              </button>
-            </div>
-          </form>
-        )}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="status-name-en"
+                >
+                  {t('name')} (EN) *
+                </label>
+                <input
+                  className={inputClass}
+                  id="status-name-en"
+                  onChange={e =>
+                    setForm(f => ({ ...f, nameEn: e.target.value }))
+                  }
+                  required
+                  value={form.nameEn}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="status-sort-order"
+                >
+                  {t('sortOrder')}
+                </label>
+                <input
+                  className={inputClass}
+                  id="status-sort-order"
+                  min={0}
+                  onChange={e =>
+                    setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))
+                  }
+                  type="number"
+                  value={form.sortOrder}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="status-color"
+                >
+                  {t('color')}
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    className="h-10 w-10 rounded-lg border-0 cursor-pointer"
+                    id="status-color"
+                    onChange={e =>
+                      setForm(f => ({ ...f, color: e.target.value }))
+                    }
+                    type="color"
+                    value={form.color}
+                  />
+                  <span className="text-sm font-mono text-secondary-500">
+                    {form.color}
+                  </span>
+                  <StatusBadge
+                    color={form.color}
+                    label={form.nameSv || t('preview')}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  className="btn-primary"
+                  disabled={submitting}
+                  type="submit"
+                >
+                  {submitting ? tc('saving') : tc('save')}
+                </button>
+                <button
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  disabled={submitting}
+                  onClick={() => setShowForm(false)}
+                  type="button"
+                >
+                  {tc('cancel')}
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
 
         {loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">

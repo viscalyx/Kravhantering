@@ -66,6 +66,7 @@ vi.mock('next-intl', () => ({
       'requirement.displayedVersion': 'Displayed version',
       'requirement.pendingVersionBanner': values =>
         `Pending version v${values?.version} ${values?.status}`,
+      'requirement.packageItemStatus': 'Usage status',
       'requirement.publishedVersionAvailableBanner': values =>
         `Published version v${values?.version} is available`,
       'requirement.noPublishedVersion':
@@ -89,6 +90,7 @@ vi.mock('next-intl', () => ({
       'requirement.qualityCharacteristic': 'Quality characteristic',
       'requirement.viewingOlderVersion': values =>
         `Viewing older version v${values?.version}`,
+      'package.needsReference': 'Needs reference',
     }
 
     return (key: string, values?: Record<string, string>) => {
@@ -362,6 +364,7 @@ function setupFetch({
   deleteDraftResponse = { deleted: 'version' },
   initialRequirement,
   needsReferencesHandler,
+  packageItemDetail,
   packages = [],
   packagesHandler,
   reactivateNextRequirement,
@@ -379,6 +382,15 @@ function setupFetch({
     packageId: string,
     signal?: AbortSignal,
   ) => Promise<Response> | Response
+  packageItemDetail?: {
+    needsReference: string | null
+    needsReferenceId: number | null
+    packageItemId: number
+    packageItemStatusColor: string | null
+    packageItemStatusId: number | null
+    packageItemStatusNameEn: string | null
+    packageItemStatusNameSv: string | null
+  }
   packages?: { id: number; name: string }[]
   packagesHandler?: () => Promise<Response> | Response
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
@@ -468,6 +480,23 @@ function setupFetch({
           )
         }
         return response({ needsReferences: [] })
+      }
+
+      const packageItemDetailMatch = url.match(
+        /^\/api\/requirement-packages\/([^/]+)\/items\/(\d+)$/,
+      )
+      if (method === 'GET' && packageItemDetailMatch) {
+        return response(
+          packageItemDetail ?? {
+            needsReference: null,
+            needsReferenceId: null,
+            packageItemId: Number(packageItemDetailMatch[2] ?? 0),
+            packageItemStatusColor: null,
+            packageItemStatusId: null,
+            packageItemStatusNameEn: null,
+            packageItemStatusNameSv: null,
+          },
+        )
       }
 
       const addToPackageMatch = url.match(
@@ -704,6 +733,57 @@ describe('RequirementDetailClient', () => {
         .getByText('Used in packages')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'package count')
+  })
+
+  it('shows needs reference and usage status in package-context inline detail metadata', async () => {
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Package context requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      packageItemDetail: {
+        needsReference: 'Shared package need',
+        needsReferenceId: 81,
+        packageItemId: 31,
+        packageItemStatusColor: '#f59e0b',
+        packageItemStatusId: 2,
+        packageItemStatusNameEn: 'Ongoing',
+        packageItemStatusNameSv: 'Pågående',
+      },
+    })
+
+    renderSubject({
+      inline: true,
+      packageItemId: 31,
+      packageSlug: 'ETJANSTPLATT',
+      requirementId: 123,
+    })
+
+    expect(
+      await screen.findByText('Package context requirement'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Needs reference')).toBeInTheDocument()
+    expect(screen.getByText('Shared package need')).toBeInTheDocument()
+    expect(screen.getByText('Usage status')).toBeInTheDocument()
+    expect(screen.getByText('Pågående')).toBeInTheDocument()
+    expect(
+      screen
+        .getByText('Needs reference')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'needs reference')
+    expect(
+      screen
+        .getByText('Usage status')
+        .closest('[data-developer-mode-name="detail section"]'),
+    ).toHaveAttribute('data-developer-mode-value', 'package item status')
   })
 
   it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {

@@ -1,8 +1,10 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
+import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { normalizeSlugInput } from '@/lib/slug'
 
@@ -25,7 +27,7 @@ interface PackageEditPanelProps {
   implementationTypes: TaxonomyItem[]
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
-  onSaved: (newUniqueId: string) => Promise<void> | void
+  onSaved: (result: { newUniqueId: string }) => Promise<void> | void
   packageSlug: string
   pkg: PackageMeta
   responsibilityAreas: TaxonomyItem[]
@@ -103,15 +105,11 @@ export default function PackageEditPanel({
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
-    openHelp.has(field) && (
-      <p
-        className="mt-1 mb-2 whitespace-pre-line rounded-lg border border-secondary-200 bg-secondary-50 px-3 py-2 text-xs text-secondary-500 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-400"
-        id={`help-${field}`}
-      >
-        {t(helpKey)}
-      </p>
-    )
+  const helpPanel = (helpKey: string, field: string) => (
+    <AnimatedHelpPanel id={`help-${field}`} isOpen={openHelp.has(field)}>
+      {t(helpKey)}
+    </AnimatedHelpPanel>
+  )
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -149,7 +147,19 @@ export default function PackageEditPanel({
         return
       }
 
-      await onSaved(form.uniqueId)
+      let data: { uniqueId?: string } = {}
+      const text = await response.text()
+      if (text) {
+        try {
+          data = JSON.parse(text) as { uniqueId?: string }
+        } catch {
+          // Server returned non-JSON success; use form value as fallback
+        }
+      }
+
+      await onSaved({
+        newUniqueId: data.uniqueId ?? form.uniqueId,
+      })
     } catch {
       setSubmitError(tc('error'))
     } finally {
@@ -158,10 +168,13 @@ export default function PackageEditPanel({
   }
 
   return (
-    <form
+    <motion.form
+      animate={{ opacity: 1, y: 0 }}
       aria-busy={isSubmitting}
-      className="glass max-w-lg animate-fade-in-up space-y-5 rounded-2xl p-6"
+      className="glass max-w-lg space-y-5 rounded-2xl p-6"
       id={PACKAGE_EDIT_FORM_ID}
+      initial={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.15 }}
       {...devMarker({
         context: 'requirement package detail',
         name: 'crud form',
@@ -355,6 +368,6 @@ export default function PackageEditPanel({
           {tc('cancel')}
         </button>
       </div>
-    </form>
+    </motion.form>
   )
 }

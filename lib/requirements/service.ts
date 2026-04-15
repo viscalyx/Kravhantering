@@ -1649,8 +1649,9 @@ export function createRequirementsService(
           let items = await listPackageItems(db, packageId)
           if (input.descriptionSearch) {
             const q = input.descriptionSearch.toLowerCase()
-            items = items.filter(item =>
-              item.version.description?.toLowerCase().includes(q),
+            items = items.filter(
+              item =>
+                item.version?.description?.toLowerCase().includes(q) ?? false,
             )
           }
 
@@ -1665,25 +1666,25 @@ export function createRequirementsService(
               area: item.area?.name ?? null,
               category: localizeName(
                 {
-                  nameEn: item.version.categoryNameEn,
-                  nameSv: item.version.categoryNameSv,
+                  nameEn: item.version?.categoryNameEn ?? null,
+                  nameSv: item.version?.categoryNameSv ?? null,
                 },
                 locale,
               ),
-              description: item.version.description,
+              description: item.version?.description ?? null,
               id: item.id,
-              needsReference: item.needsReference,
+              needsReference: item.needsReference ?? null,
               status: localizeName(
                 {
-                  nameEn: item.version.statusNameEn,
-                  nameSv: item.version.statusNameSv,
+                  nameEn: item.version?.statusNameEn ?? null,
+                  nameSv: item.version?.statusNameSv ?? null,
                 },
                 locale,
               ),
               type: localizeName(
                 {
-                  nameEn: item.version.typeNameEn,
-                  nameSv: item.version.typeNameSv,
+                  nameEn: item.version?.typeNameEn ?? null,
+                  nameSv: item.version?.typeNameSv ?? null,
                 },
                 locale,
               ),
@@ -1873,7 +1874,11 @@ export function createRequirementsService(
               decisionMotivation: r.decisionMotivation,
               id: r.id,
               motivation: r.motivation,
-              packageItemId: r.packageItemId,
+              packageItemId:
+                r.packageItemId ??
+                (r.packageLocalRequirementId != null
+                  ? -r.packageLocalRequirementId
+                  : -r.id),
               requirementDescription: r.requirementDescription,
               requirementUniqueId: r.requirementUniqueId,
             })),

@@ -5,7 +5,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { fetchMultipleRequirements } from '@/lib/reports/data/fetch-requirement'
+import { fetchPackageItemsForReport } from '@/lib/reports/data/fetch-package-items'
 import { extractErrorDetails } from '@/lib/reports/extract-error-details'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
@@ -29,7 +29,7 @@ export default function PrintListReportPage() {
   const latestRequestRef = useRef(0)
   const isMountedRef = useRef(true)
 
-  const ids = searchParams.get('ids')
+  const refs = searchParams.get('refs')
   const slug = typeof params.slug === 'string' ? params.slug : null
   const reportContext = 'requirement package list report'
   const tRef = useRef(t)
@@ -43,22 +43,27 @@ export default function PrintListReportPage() {
     setError(null)
     setModel(null)
 
-    if (!ids) {
+    if (!refs) {
       if (isLatestRequest()) {
-        setError(tRef.current('noRequirementIds'))
+        setError(tRef.current('noRequirementsSelected'))
       }
       return
     }
     try {
-      const idList = ids.replace(/\s+/g, '').split(',').filter(Boolean)
-      if (idList.length === 0) {
+      const itemRefs = refs
+        .split(',')
+        .map(ref => decodeURIComponent(ref.trim()))
+        .filter(Boolean)
+      if (itemRefs.length === 0) {
         if (isLatestRequest()) {
-          setError(tRef.current('noRequirementIds'))
+          setError(tRef.current('noRequirementsSelected'))
         }
         return
       }
       const [requirements, pkgRes] = await Promise.all([
-        fetchMultipleRequirements(idList, locale),
+        slug
+          ? fetchPackageItemsForReport(slug, itemRefs, locale)
+          : Promise.resolve([]),
         slug
           ? fetch(`/api/requirement-packages/${encodeURIComponent(slug)}`)
           : Promise.resolve(null),
@@ -112,7 +117,7 @@ export default function PrintListReportPage() {
         err instanceof Error ? err.message : tRef.current('failedToLoadReport'),
       )
     }
-  }, [ids, locale, slug])
+  }, [locale, refs, slug])
 
   useEffect(() => {
     void loadReport()

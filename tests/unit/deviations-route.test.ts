@@ -7,6 +7,7 @@ const mocks = {
   countDeviationsByPackage: vi.fn(),
   countDeviationsPerItem: vi.fn(),
   createDeviation: vi.fn(),
+  createDeviationForItemRef: vi.fn(),
   deleteDeviation: vi.fn(),
   getDeviation: vi.fn(),
   getPackageById: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = {
   getPackageItemById: vi.fn(),
   listDeviationsForPackage: vi.fn(),
   listDeviationsForPackageItem: vi.fn(),
+  listDeviationsForPackageLocalRequirement: vi.fn(),
   recordDecision: vi.fn(),
   requestReview: vi.fn(),
   revertToDraft: vi.fn(),
@@ -34,12 +36,16 @@ vi.mock('@/lib/dal/deviations', () => ({
   countDeviationsPerItem: (...args: unknown[]) =>
     mocks.countDeviationsPerItem(...args),
   createDeviation: (...args: unknown[]) => mocks.createDeviation(...args),
+  createDeviationForItemRef: (...args: unknown[]) =>
+    mocks.createDeviationForItemRef(...args),
   deleteDeviation: (...args: unknown[]) => mocks.deleteDeviation(...args),
   getDeviation: (...args: unknown[]) => mocks.getDeviation(...args),
   listDeviationsForPackage: (...args: unknown[]) =>
     mocks.listDeviationsForPackage(...args),
   listDeviationsForPackageItem: (...args: unknown[]) =>
     mocks.listDeviationsForPackageItem(...args),
+  listDeviationsForPackageLocalRequirement: (...args: unknown[]) =>
+    mocks.listDeviationsForPackageLocalRequirement(...args),
   recordDecision: (...args: unknown[]) => mocks.recordDecision(...args),
   requestReview: (...args: unknown[]) => mocks.requestReview(...args),
   revertToDraft: (...args: unknown[]) => mocks.revertToDraft(...args),
@@ -50,6 +56,15 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
   getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
   getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
   getPackageItemById: (...args: unknown[]) => mocks.getPackageItemById(...args),
+  parsePackageItemRef: (value: string) => {
+    if (value.startsWith('local:')) {
+      return { id: Number(value.slice(6)), kind: 'packageLocal' as const }
+    }
+    if (value.startsWith('lib:')) {
+      return { id: Number(value.slice(4)), kind: 'library' as const }
+    }
+    return null
+  },
 }))
 
 import { POST as postDecision } from '@/app/api/deviations/[id]/decision/route'
@@ -148,6 +163,26 @@ describe('deviation routes', () => {
       })
       expect(response.status).toBe(400)
     })
+
+    it('returns deviations for a package-local requirement ref', async () => {
+      const deviations = [{ id: 9, motivation: 'Local only' }]
+      mocks.listDeviationsForPackageLocalRequirement.mockResolvedValue(
+        deviations,
+      )
+
+      const request = new NextRequest(
+        'http://localhost/api/package-item-deviations/local%3A2',
+      )
+      const response = await getItemDeviations(request, {
+        params: Promise.resolve({ itemId: 'local%3A2' }),
+      })
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ deviations })
+      expect(
+        mocks.listDeviationsForPackageLocalRequirement,
+      ).toHaveBeenCalledWith(mockDb, 2)
+    })
   })
 
   describe('POST /package-item-deviations/[itemId]', () => {
@@ -190,6 +225,34 @@ describe('deviation routes', () => {
         params: Promise.resolve({ itemId: '1' }),
       })
       expect(response.status).toBe(400)
+    })
+
+    it('creates a deviation for a package-local requirement ref', async () => {
+      mocks.createDeviationForItemRef.mockResolvedValue({ id: 77 })
+
+      const request = new NextRequest(
+        'http://localhost/api/package-item-deviations/local%3A2',
+        {
+          body: JSON.stringify({
+            motivation: 'Local requirement waiver',
+            createdBy: 'tester',
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'POST',
+        },
+      )
+      const response = await createItemDeviation(request, {
+        params: Promise.resolve({ itemId: 'local%3A2' }),
+      })
+
+      expect(response.status).toBe(201)
+      await expect(response.json()).resolves.toEqual({ id: 77, ok: true })
+      expect(mocks.createDeviationForItemRef).toHaveBeenCalledWith(mockDb, {
+        createdBy: 'tester',
+        itemRef: 'local:2',
+        motivation: 'Local requirement waiver',
+      })
+      expect(mocks.createDeviation).not.toHaveBeenCalled()
     })
   })
 

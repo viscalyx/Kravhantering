@@ -84,6 +84,8 @@ Apply these rules to all schema objects.
 | ---- | --------- | --------- |
 | 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. SQLite does not support adding a PK via `ALTER TABLE`. |
 | 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the usage-scenarios join table above. |
+| 4 | `package_local_requirement_usage_scenarios` uses composite PK `(package_local_requirement_id, usage_scenario_id)` instead of a single `id` | Same rationale as the version-based usage-scenarios join table above. |
+| 4 | `package_local_requirement_norm_references` uses composite PK `(package_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
 <!-- markdownlint-enable MD013 -->
@@ -92,6 +94,7 @@ Apply these rules to all schema objects.
 
 ## Entity-Relationship Diagram
 
+<!-- markdownlint-disable MD013 -->
 ```mermaid
 erDiagram
     owners {
@@ -271,6 +274,7 @@ erDiagram
         integer id PK
         text unique_id UK
         text name
+        integer local_requirement_next_sequence
         integer package_responsibility_area_id FK
         integer package_implementation_type_id FK
         integer package_lifecycle_status_id FK
@@ -284,6 +288,52 @@ erDiagram
         integer package_id FK
         text text
         text created_at
+    }
+
+    package_local_requirements {
+        integer id PK
+        integer package_id FK
+        text unique_id
+        integer sequence_number
+        integer requirement_area_id FK
+        text description
+        text acceptance_criteria
+        integer requirement_category_id FK
+        integer requirement_type_id FK
+        integer quality_characteristic_id FK
+        integer risk_level_id FK
+        integer is_testing_required
+        text verification_method
+        integer needs_reference_id FK
+        integer package_item_status_id FK
+        text note
+        text status_updated_at
+        text created_at
+        text updated_at
+    }
+
+    package_local_requirement_usage_scenarios {
+        integer package_local_requirement_id PK, FK
+        integer usage_scenario_id PK, FK
+    }
+
+    package_local_requirement_norm_references {
+        integer package_local_requirement_id PK, FK
+        integer norm_reference_id PK, FK
+    }
+
+    package_local_requirement_deviations {
+        integer id PK
+        integer package_local_requirement_id FK
+        text motivation
+        integer is_review_requested
+        integer decision
+        text decision_motivation
+        text decided_by
+        text decided_at
+        text created_by
+        text created_at
+        text updated_at
     }
 
     requirement_package_items {
@@ -333,14 +383,27 @@ erDiagram
     requirement_statuses ||--o{ requirement_status_transitions : "to"
     requirement_packages ||--o{ package_needs_references : "stores needs references"
     requirement_packages ||--o{ requirement_package_items : "contains"
+    requirement_packages ||--o{ package_local_requirements : "contains local"
     package_responsibility_areas ||--o{ requirement_packages : "responsibility area"
     package_implementation_types ||--o{ requirement_packages : "implementation type"
     package_lifecycle_statuses ||--o{ requirement_packages : "lifecycle status"
     package_item_statuses ||--o{ requirement_package_items : "usage status"
+    package_item_statuses ||--o{ package_local_requirements : "usage status"
     package_needs_references ||--o{ requirement_package_items : "scoped needs reference"
+    package_needs_references ||--o{ package_local_requirements : "scoped needs reference"
     requirements ||--o{ requirement_package_items : "included in"
     requirement_versions ||--o{ requirement_package_items : "pinned version"
     requirement_package_items ||--o{ deviations : "has deviations"
+    requirement_areas ||--o{ package_local_requirements : "classified in"
+    requirement_categories ||--o{ package_local_requirements : "categorized as"
+    requirement_types ||--o{ package_local_requirements : "typed as"
+    quality_characteristics ||--o{ package_local_requirements : "sub-typed as"
+    risk_levels ||--o{ package_local_requirements : "risk level"
+    package_local_requirements ||--o{ package_local_requirement_usage_scenarios : "linked via"
+    usage_scenarios ||--o{ package_local_requirement_usage_scenarios : "linked via"
+    package_local_requirements ||--o{ package_local_requirement_norm_references : "linked via"
+    norm_references ||--o{ package_local_requirement_norm_references : "linked via"
+    package_local_requirements ||--o{ package_local_requirement_deviations : "has deviations"
 
     improvement_suggestions {
         integer id PK
@@ -361,6 +424,7 @@ erDiagram
     requirements ||--o{ improvement_suggestions : "has suggestions"
     requirement_versions ||--o{ improvement_suggestions : "version suggestions"
 ```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -883,6 +947,7 @@ specific procurement or project.
 | `id` | integer PK | Auto-increment primary key |
 | `unique_id` | text, unique | Stable package identifier used in URLs and APIs |
 | `name` | text | Display name for the package |
+| `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for package-local requirement IDs such as `KRAV0001` |
 | `package_responsibility_area_id` | integer FK → `package_responsibility_areas.id` | Responsibility area classification (nullable) |
 | `package_implementation_type_id` | integer FK → `package_implementation_types.id` | Implementation type classification (nullable) |
 | `package_lifecycle_status_id` | integer FK → `package_lifecycle_statuses.id` | Lifecycle status classification (nullable) |
@@ -890,6 +955,10 @@ specific procurement or project.
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
+
+**Seed note:** Package `ETJANSTPLATT` has
+`local_requirement_next_sequence = 3` because the seed
+includes `KRAV0001` and `KRAV0002`.
 
 ---
 
@@ -909,6 +978,54 @@ Reusable needs-reference texts stored per package.
 **Unique indexes:**
 `uq_package_needs_references_package_text`,
 `uq_package_needs_references_package_id_id`.
+
+---
+
+### `package_local_requirements`
+
+Package-scoped requirements that are stored outside the
+global requirements library. They share the same
+classification fields as library requirements but are
+edited directly in package context without the normal
+version/review/publication lifecycle.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `package_id` | integer FK → `requirement_packages.id` (CASCADE DELETE) | Owning package |
+| `unique_id` | text | Package-scoped visible requirement ID in the format `KRAV####`; duplicates across packages are allowed |
+| `sequence_number` | integer | Monotonic package-local sequence number used to derive `unique_id` and never reused within the same package |
+| `requirement_area_id` | integer FK → `requirement_areas.id` | Required area classification |
+| `description` | text NOT NULL | Requirement text |
+| `acceptance_criteria` | text | Acceptance criteria |
+| `requirement_category_id` | integer FK → `requirement_categories.id` | Category classification (nullable) |
+| `requirement_type_id` | integer FK → `requirement_types.id` | Type classification (nullable) |
+| `quality_characteristic_id` | integer FK → `quality_characteristics.id` | Quality-characteristic classification (nullable) |
+| `risk_level_id` | integer FK → `risk_levels.id` | Risk level (nullable) |
+| `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
+| `verification_method` | text | Verification method |
+| `needs_reference_id` | integer FK → `package_needs_references.(package_id, id)` | Optional package-scoped needs reference |
+| `package_item_status_id` | integer FK → `package_item_statuses.id` | Usage/implementation status (nullable, SET NULL on status delete) |
+| `note` | text | Optional package-scoped note |
+| `status_updated_at` | text (ISO 8601) | When the usage status last changed |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Unique indexes:**
+`uq_package_local_requirements_package_id_unique_id`,
+`uq_package_local_requirements_package_id_sequence_number`.
+
+**Indexes:**
+`idx_package_local_requirements_package_id`,
+`idx_package_local_requirements_requirement_area_id`,
+`idx_package_local_requirements_package_item_status_id`.
+
+**Seed note:** `ETJANSTPLATT` contains two seeded
+package-local requirements and therefore demonstrates the
+ID format, join tables, and delete semantics for this
+feature.
 
 ---
 
@@ -966,6 +1083,56 @@ norm-reference-to-requirement queries.
 
 ---
 
+### `package_local_requirement_usage_scenarios`
+
+Many-to-many link between package-local requirements and
+usage scenarios.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `package_local_requirement_id` | integer FK → `package_local_requirements.id` | Composite PK part 1 (CASCADE DELETE) |
+| `usage_scenario_id` | integer FK → `usage_scenarios.id` | Composite PK part 2 |
+<!-- markdownlint-enable MD013 -->
+
+**Primary key:**
+`(package_local_requirement_id, usage_scenario_id)`.
+
+**Named foreign keys:**
+`fk_package_local_requirement_usage_scenarios_package_local_requirement_id`
+(on delete CASCADE),
+`fk_package_local_requirement_usage_scenarios_usage_scenario_id`.
+
+**Index:**
+`idx_package_local_requirement_usage_scenarios_usage_scenario_id`.
+
+---
+
+### `package_local_requirement_norm_references`
+
+Many-to-many link between package-local requirements and
+norm references.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `package_local_requirement_id` | integer FK → `package_local_requirements.id` | Composite PK part 1 (CASCADE DELETE) |
+| `norm_reference_id` | integer FK → `norm_references.id` | Composite PK part 2 |
+<!-- markdownlint-enable MD013 -->
+
+**Primary key:**
+`(package_local_requirement_id, norm_reference_id)`.
+
+**Named foreign keys:**
+`fk_package_local_requirement_norm_references_package_local_requirement_id`
+(on delete CASCADE),
+`fk_package_local_requirement_norm_references_norm_reference_id`.
+
+**Index:**
+`idx_package_local_requirement_norm_references_norm_reference_id`.
+
+---
+
 ### `requirement_package_items`
 
 Links individual requirements (pinned to a specific version) into a package.
@@ -991,6 +1158,34 @@ Links individual requirements (pinned to a specific version) into a package.
 `idx_requirement_package_items_requirement_package_id`,
 `idx_requirement_package_items_requirement_id`,
 `idx_requirement_package_items_package_item_status_id`.
+
+---
+
+### `package_local_requirement_deviations`
+
+Formal deviations recorded against package-local
+requirements. The workflow mirrors `deviations`, but the
+target is a package-local requirement rather than a
+library requirement pinned into a package.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `package_local_requirement_id` | integer FK → `package_local_requirements.id` (CASCADE DELETE) | The local requirement this deviation applies to |
+| `motivation` | text NOT NULL | Why the package-local requirement cannot be fulfilled |
+| `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
+| `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
+| `decision_motivation` | text | Rationale for the decision |
+| `decided_by` | text | Who recorded the decision |
+| `decided_at` | text (ISO 8601) | When the decision was recorded |
+| `created_by` | text | Who registered the deviation |
+| `created_at` | text (ISO 8601) | When registered |
+| `updated_at` | text (ISO 8601) | When last updated |
+<!-- markdownlint-enable MD013 -->
+
+**Index:**
+`idx_package_local_requirement_deviations_package_local_requirement_id`.
 
 ---
 
@@ -1092,6 +1287,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_packages_unique_id` | `requirement_packages` | `unique_id` | Ensures each package has a stable unique identifier |
 | `uq_package_needs_references_package_text` | `package_needs_references` | `(package_id, text)` | Prevents duplicate needs-reference texts inside the same package |
 | `uq_package_needs_references_package_id_id` | `package_needs_references` | `(package_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
+| `uq_package_local_requirements_package_id_unique_id` | `package_local_requirements` | `(package_id, unique_id)` | Ensures each package-local requirement display ID stays unique within its package while allowing duplicates across packages |
+| `uq_package_local_requirements_package_id_sequence_number` | `package_local_requirements` | `(package_id, sequence_number)` | Prevents sequence reuse inside a package |
 | `uq_requirement_package_items_package_requirement` | `requirement_package_items` | `(requirement_package_id, requirement_id)` | Prevents linking the same requirement into a package more than once |
 | `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
 <!-- markdownlint-enable MD013 -->
@@ -1106,12 +1303,18 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | Speed up listing requirements by area |
 | `idx_requirements_is_archived` | `requirements` | `is_archived` | Speed up filtering active vs archived requirements |
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
+| `idx_package_local_requirements_package_id` | `package_local_requirements` | `package_id` | Speed up listing package-local requirements per package |
+| `idx_package_local_requirements_requirement_area_id` | `package_local_requirements` | `requirement_area_id` | Speed up area-based summaries/filtering for package-local requirements |
+| `idx_package_local_requirements_package_item_status_id` | `package_local_requirements` | `package_item_status_id` | Speed up usage-status filtering for package-local requirements |
 | `idx_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | Speed up listing items in a package |
 | `idx_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | Speed up finding which packages contain a requirement |
 | `idx_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | Speed up filtering items by usage status |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
+| `idx_package_local_requirement_usage_scenarios_usage_scenario_id` | `package_local_requirement_usage_scenarios` | `usage_scenario_id` | Speed up lookups of package-local requirements by usage scenario |
+| `idx_package_local_requirement_norm_references_norm_reference_id` | `package_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of package-local requirements by norm reference |
 | `idx_deviations_package_item_id` | `deviations` | `package_item_id` | Speed up lookups of deviations by package item |
+| `idx_package_local_requirement_deviations_package_local_requirement_id` | `package_local_requirement_deviations` | `package_local_requirement_id` | Speed up lookups of deviations by package-local requirement |
 | `idx_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | Speed up lookups of suggestions by requirement |
 | `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
 <!-- markdownlint-enable MD013 -->
@@ -1140,16 +1343,29 @@ explicit `foreignKey({ name })`:
 | --------------- | ----- | --------- | ---------- | --------- |
 | `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE |
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
+| `fk_package_local_requirements_package_id` | `package_local_requirements` | `package_id` | `requirement_packages.id` | CASCADE |
+| `fk_package_local_requirements_requirement_area_id` | `package_local_requirements` | `requirement_area_id` | `requirement_areas.id` | NO ACTION |
+| `fk_package_local_requirements_requirement_category_id` | `package_local_requirements` | `requirement_category_id` | `requirement_categories.id` | NO ACTION |
+| `fk_package_local_requirements_requirement_type_id` | `package_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION |
+| `fk_package_local_requirements_quality_characteristic_id` | `package_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION |
+| `fk_package_local_requirements_risk_level_id` | `package_local_requirements` | `risk_level_id` | `risk_levels.id` | NO ACTION |
+| `fk_package_local_requirements_package_id_needs_reference_id` | `package_local_requirements` | `(package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
+| `fk_package_local_requirements_package_item_status_id` | `package_local_requirements` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
+| `fk_package_local_requirement_usage_scenarios_package_local_requirement_id` | `package_local_requirement_usage_scenarios` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE |
+| `fk_package_local_requirement_usage_scenarios_usage_scenario_id` | `package_local_requirement_usage_scenarios` | `usage_scenario_id` | `usage_scenarios.id` | NO ACTION |
+| `fk_package_local_requirement_norm_references_package_local_requirement_id` | `package_local_requirement_norm_references` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE |
+| `fk_package_local_requirement_norm_references_norm_reference_id` | `package_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
 | `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
 | `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
 | `fk_deviations_package_item_id` | `deviations` | `package_item_id` | `requirement_package_items.id` | CASCADE |
+| `fk_package_local_requirement_deviations_package_local_requirement_id` | `package_local_requirement_deviations` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE |
 | `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE |
 | `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
 
-<!-- cSpell:ignore RVNR -->
+<!-- cSpell:disable -->
 <!-- markdownlint-disable MD013 -->
 ```mermaid
 graph LR
@@ -1178,12 +1394,16 @@ graph LR
         PIS[package_item_statuses]
         RP[requirement_packages]
         PNR[package_needs_references]
+        PLR[package_local_requirements]
         RPI[requirement_package_items]
+        PLRD[package_local_requirement_deviations]
     end
 
     subgraph Join Tables
         RVS[requirement_version_usage_scenarios]
         RVNR[requirement_version_norm_references]
+        PLRUS[package_local_requirement_usage_scenarios]
+        PLRNR[package_local_requirement_norm_references]
     end
 
     OW -- "uq_owners_email\n(email)" --> OW
@@ -1196,6 +1416,7 @@ graph LR
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
 
+    RVS -- "idx_..._usage_scenario_id\n(usage_scenario_id)" --> RSC
     RVNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
 
     RTC -- "idx_..._requirement_type_id\n(requirement_type_id)" --> RT
@@ -1208,12 +1429,23 @@ graph LR
     RS -- "uq_..._name_sv / name_en" --> RS
     RL -- "uq_..._name_sv / name_en" --> RL
 
+    RP -- "uq_requirement_packages_unique_id\n(unique_id)" --> RP
+    PNR -- "uq_..._package_text\n(package_id, text)" --> RP
+    PNR -- "uq_..._package_id_id\n(package_id, id)" --> RP
+    PLR -- "uq_..._package_id_unique_id\n(package_id, unique_id)" --> RP
+    PLR -- "uq_..._package_id_sequence_number\n(package_id, sequence_number)" --> RP
+    PLR -- "idx_..._requirement_area_id\n(requirement_area_id)" --> RA
+    PLR -- "idx_..._package_item_status_id\n(package_item_status_id)" --> PIS
     RPI -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
     RPI -- "idx_..._package_item_status_id\n(package_item_status_id)" --> PIS
+    PLRUS -- "idx_..._usage_scenario_id\n(usage_scenario_id)" --> RSC
+    PLRNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
+    PLRD -- "idx_..._package_local_requirement_id\n(package_local_requirement_id)" --> PLR
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
+    PLS -- "uq_..._name_sv / name_en" --> PLS
     PIS -- "uq_..._name_sv / name_en" --> PIS
 
     RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
@@ -1221,10 +1453,14 @@ graph LR
 
     RVNR -. "composite PK\n(requirement_version_id,\nnorm_reference_id)" .-> RV
     RVNR -. "composite PK" .-> NR
+    PLRUS -. "composite PK\n(package_local_requirement_id,\nusage_scenario_id)" .-> PLR
+    PLRUS -. "composite PK" .-> RSC
+    PLRNR -. "composite PK\n(package_local_requirement_id,\nnorm_reference_id)" .-> PLR
+    PLRNR -. "composite PK" .-> NR
     NR -- "uq_..._norm_reference_id\n(norm_reference_id)" --> NR
 ```
 <!-- markdownlint-enable MD013 -->
-
+<!-- cSpell:enable -->
 ---
 
 ## Write-Ahead Logging (WAL)

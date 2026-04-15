@@ -1,8 +1,12 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import {
   DEVIATION_APPROVED,
   deviations,
   packageItemStatuses,
+  packageLocalRequirementDeviations,
+  packageLocalRequirementNormReferences,
+  packageLocalRequirements,
+  packageLocalRequirementUsageScenarios,
   packageNeedsReferences,
   qualityCharacteristics,
   requirementAreas,
@@ -17,7 +21,8 @@ import {
 } from '@/drizzle/schema'
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { Database } from '@/lib/db'
-import { validationError } from '@/lib/requirements/errors'
+import { notFoundError, validationError } from '@/lib/requirements/errors'
+import type { RequirementRow } from '@/lib/requirements/list-view'
 
 /**
  * Seed ID for the "Included" / "Inkluderad" package-item status.
@@ -37,6 +42,161 @@ interface RequirementPackageLinkItem {
   requirementId: number
   requirementVersionId: number
 }
+
+export type PackageItemKind = 'library' | 'packageLocal'
+export type PackageItemRef = `lib:${number}` | `local:${number}`
+
+interface PackageLocalRequirementMutationInput {
+  acceptanceCriteria?: string | null
+  description: string
+  needsReferenceId?: number | null
+  normReferenceIds?: number[]
+  qualityCharacteristicId?: number | null
+  requirementAreaId?: number | null
+  requirementCategoryId?: number | null
+  requirementTypeId?: number | null
+  requiresTesting?: boolean
+  riskLevelId?: number | null
+  scenarioIds?: number[]
+  verificationMethod?: string | null
+}
+
+export interface PackageLocalRequirementDetail {
+  acceptanceCriteria: string | null
+  createdAt: string
+  description: string
+  id: number
+  isPackageLocal: true
+  itemRef: PackageItemRef
+  kind: 'packageLocal'
+  needsReference: string | null
+  needsReferenceId: number | null
+  normReferences: {
+    id: number
+    name: string
+    normReferenceId: string
+    uri: string | null
+  }[]
+  packageId: number
+  packageItemStatusColor: string | null
+  packageItemStatusDescriptionEn: string | null
+  packageItemStatusDescriptionSv: string | null
+  packageItemStatusId: number | null
+  packageItemStatusNameEn: string | null
+  packageItemStatusNameSv: string | null
+  qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
+  requirementArea: { id: number; name: string } | null
+  requirementCategory: { id: number; nameEn: string; nameSv: string } | null
+  requirementType: { id: number; nameEn: string; nameSv: string } | null
+  requiresTesting: boolean
+  riskLevel: {
+    color: string
+    id: number
+    nameEn: string
+    nameSv: string
+    sortOrder: number
+  } | null
+  scenarios: {
+    id: number
+    nameEn: string | null
+    nameSv: string | null
+  }[]
+  uniqueId: string
+  updatedAt: string
+  verificationMethod: string | null
+}
+
+interface PackageLocalRequirementIdentity {
+  id: number
+  packageId: number
+  sequenceNumber: number
+  uniqueId: string
+}
+
+interface PackageLocalRequirementDetailRecord {
+  acceptanceCriteria: string | null
+  createdAt: string
+  description: string
+  id: number
+  needsReference: { text: string } | null
+  needsReferenceId: number | null
+  normReferences: {
+    normReference: {
+      id: number
+      name: string
+      normReferenceId: string
+      uri: string | null
+    }
+  }[]
+  packageId: number
+  packageItemStatus: {
+    color: string | null
+    descriptionEn: string | null
+    descriptionSv: string | null
+    nameEn: string
+    nameSv: string
+  } | null
+  packageItemStatusId: number | null
+  qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
+  requirementArea: { id: number; name: string } | null
+  requirementCategory: { id: number; nameEn: string; nameSv: string } | null
+  requirementType: { id: number; nameEn: string; nameSv: string } | null
+  requiresTesting: boolean
+  riskLevel: {
+    color: string
+    id: number
+    nameEn: string
+    nameSv: string
+    sortOrder: number
+  } | null
+  uniqueId: string
+  updatedAt: string
+  usageScenarios: {
+    scenario: {
+      id: number
+      nameEn: string | null
+      nameSv: string | null
+    }
+  }[]
+  verificationMethod: string | null
+}
+
+interface PackageLocalRequirementListRow {
+  description: string
+  id: number
+  needsReference: { text: string } | null
+  needsReferenceId: number | null
+  normReferences: {
+    normReference: {
+      normReferenceId: string
+    }
+  }[]
+  packageItemStatus: {
+    color: string | null
+    descriptionEn: string | null
+    descriptionSv: string | null
+    nameEn: string
+    nameSv: string
+  } | null
+  packageItemStatusId: number | null
+  qualityCharacteristic: { nameEn: string; nameSv: string } | null
+  requirementArea: { name: string } | null
+  requirementCategory: { nameEn: string; nameSv: string } | null
+  requirementType: { nameEn: string; nameSv: string } | null
+  requiresTesting: boolean
+  riskLevel: {
+    color: string
+    nameEn: string
+    nameSv: string
+    sortOrder: number
+  } | null
+  riskLevelId: number | null
+  uniqueId: string
+  usageScenarios: {
+    usageScenarioId: number
+  }[]
+}
+
 interface D1BatchResult {
   meta?: {
     changes?: number
@@ -54,34 +214,92 @@ interface D1BatchClient {
   }
 }
 
-function parseRequirementAreas(
-  value: string | null,
-): { id: number; name: string }[] {
+export function createLibraryItemRef(packageItemId: number): PackageItemRef {
+  return `lib:${packageItemId}`
+}
+
+export function createPackageLocalItemRef(
+  packageLocalRequirementId: number,
+): PackageItemRef {
+  return `local:${packageLocalRequirementId}`
+}
+
+export function parsePackageItemRef(
+  value: string,
+):
+  | { kind: 'library'; id: number }
+  | { kind: 'packageLocal'; id: number }
+  | null {
+  const match = /^(lib|local):(\d+)$/.exec(value.trim())
+  if (!match) {
+    return null
+  }
+
+  const id = Number(match[2])
+  if (!Number.isInteger(id) || id < 1) {
+    return null
+  }
+
+  return {
+    id,
+    kind: match[1] === 'local' ? 'packageLocal' : 'library',
+  }
+}
+
+function createPackageLocalRowId(packageLocalRequirementId: number): number {
+  return packageLocalRequirementId * -1
+}
+
+function formatPackageLocalRequirementUniqueId(sequenceNumber: number): string {
+  return `KRAV${String(sequenceNumber).padStart(4, '0')}`
+}
+
+function getSessionName(db: Database): string | undefined {
+  return (
+    db as {
+      session?: {
+        constructor?: {
+          name?: string
+        }
+      }
+    }
+  ).session?.constructor?.name
+}
+
+function isBetterSqliteSession(db: Database): boolean {
+  return getSessionName(db) === 'BetterSQLiteSession'
+}
+
+function dedupePositiveIntegerIds(values?: number[]): number[] {
+  if (!values?.length) {
+    return []
+  }
+
+  return [...new Set(values)].filter(
+    value => Number.isInteger(value) && value > 0,
+  )
+}
+
+function parseCsvNumberList(value: string | null): number[] {
   if (!value) {
     return []
   }
 
-  try {
-    const parsed = JSON.parse(value) as unknown
-    if (!Array.isArray(parsed)) {
-      return []
-    }
+  return value
+    .split(',')
+    .map(entry => Number(entry))
+    .filter(entry => Number.isInteger(entry) && entry > 0)
+}
 
-    return parsed.filter(
-      (
-        area,
-      ): area is {
-        id: number
-        name: string
-      } =>
-        typeof area === 'object' &&
-        area !== null &&
-        typeof (area as { id?: unknown }).id === 'number' &&
-        typeof (area as { name?: unknown }).name === 'string',
-    )
-  } catch {
+function parseCsvTextList(value: string | null): string[] {
+  if (!value) {
     return []
   }
+
+  return value
+    .split(',')
+    .map(entry => entry.trim())
+    .filter(Boolean)
 }
 
 export async function listPackages(db: Database) {
@@ -116,14 +334,6 @@ export async function listPackages(db: Database) {
       lifecycleStatusNameEn: sql<string | null>`ls.name_en`.as(
         'lifecycle_status_name_en',
       ),
-      itemCount: sql<number>`COUNT(DISTINCT rpi.requirement_id)`.as(
-        'item_count',
-      ),
-      areaPairs: sql<
-        string | null
-      >`json_group_array(DISTINCT CASE WHEN req_area.id IS NOT NULL THEN json_object('id', req_area.id, 'name', req_area.name) END)`.as(
-        'area_pairs',
-      ),
     })
     .from(requirementPackages)
     .leftJoin(
@@ -138,22 +348,91 @@ export async function listPackages(db: Database) {
       sql`package_lifecycle_statuses ls`,
       sql`ls.id = ${requirementPackages.packageLifecycleStatusId}`,
     )
-    .leftJoin(
-      sql`requirement_package_items rpi`,
-      sql`rpi.requirement_package_id = ${requirementPackages.id}`,
-    )
-    .leftJoin(sql`requirements req`, sql`req.id = rpi.requirement_id`)
-    .leftJoin(
-      sql`requirement_areas req_area`,
-      sql`req_area.id = req.requirement_area_id`,
-    )
-    .groupBy(requirementPackages.id)
     .orderBy(requirementPackages.name)
 
-  return rows.map(row => {
-    const requirementAreas = parseRequirementAreas(row.areaPairs).filter(
-      area => area.id > 0,
+  const [libraryCounts, localCounts, libraryAreas, localAreas] =
+    await Promise.all([
+      db
+        .select({
+          count: sql<number>`COUNT(*)`.as('count'),
+          packageId: requirementPackageItems.packageId,
+        })
+        .from(requirementPackageItems)
+        .groupBy(requirementPackageItems.packageId),
+      db
+        .select({
+          count: sql<number>`COUNT(*)`.as('count'),
+          packageId: packageLocalRequirements.packageId,
+        })
+        .from(packageLocalRequirements)
+        .groupBy(packageLocalRequirements.packageId),
+      db
+        .select({
+          areaId: requirementAreas.id,
+          areaName: requirementAreas.name,
+          packageId: requirementPackageItems.packageId,
+        })
+        .from(requirementPackageItems)
+        .innerJoin(
+          requirements,
+          eq(requirements.id, requirementPackageItems.requirementId),
+        )
+        .innerJoin(
+          requirementAreas,
+          eq(requirementAreas.id, requirements.requirementAreaId),
+        )
+        .groupBy(
+          requirementPackageItems.packageId,
+          requirementAreas.id,
+          requirementAreas.name,
+        ),
+      db
+        .select({
+          areaId: requirementAreas.id,
+          areaName: requirementAreas.name,
+          packageId: packageLocalRequirements.packageId,
+        })
+        .from(packageLocalRequirements)
+        .innerJoin(
+          requirementAreas,
+          eq(requirementAreas.id, packageLocalRequirements.requirementAreaId),
+        )
+        .groupBy(
+          packageLocalRequirements.packageId,
+          requirementAreas.id,
+          requirementAreas.name,
+        ),
+    ])
+
+  const itemCounts = new Map<number, number>()
+  for (const row of [...libraryCounts, ...localCounts]) {
+    itemCounts.set(
+      row.packageId,
+      (itemCounts.get(row.packageId) ?? 0) + row.count,
     )
+  }
+
+  const requirementAreasByPackage = new Map<number, Map<number, string>>()
+  const registerArea = (
+    packageId: number,
+    areaId: number,
+    areaName: string,
+  ) => {
+    const existing = requirementAreasByPackage.get(packageId) ?? new Map()
+    existing.set(areaId, areaName)
+    requirementAreasByPackage.set(packageId, existing)
+  }
+
+  for (const row of [...libraryAreas, ...localAreas]) {
+    registerArea(row.packageId, row.areaId, row.areaName)
+  }
+
+  return rows.map(row => {
+    const requirementAreas = [
+      ...(requirementAreasByPackage.get(row.id)?.entries() ?? []),
+    ]
+      .map(([id, name]) => ({ id, name }))
+      .sort((left, right) => left.name.localeCompare(right.name, 'sv'))
 
     return {
       id: row.id,
@@ -189,7 +468,7 @@ export async function listPackages(db: Database) {
               nameEn: row.lifecycleStatusNameEn ?? '',
             }
           : null,
-      itemCount: row.itemCount,
+      itemCount: itemCounts.get(row.id) ?? 0,
       requirementAreas,
     }
   })
@@ -273,22 +552,15 @@ export async function updatePackage(
 }
 
 export async function deletePackage(db: Database, id: number) {
-  const sessionName = (
-    db as {
-      session?: {
-        constructor?: {
-          name?: string
-        }
-      }
-    }
-  ).session?.constructor?.name
-
-  if (sessionName === 'BetterSQLiteSession') {
+  if (isBetterSqliteSession(db)) {
     ;(
       db as unknown as {
         transaction: (callback: (tx: Pick<Database, 'delete'>) => void) => void
       }
     ).transaction(tx => {
+      tx.delete(packageLocalRequirements)
+        .where(eq(packageLocalRequirements.packageId, id))
+        .run()
       tx.delete(requirementPackageItems)
         .where(eq(requirementPackageItems.packageId, id))
         .run()
@@ -300,13 +572,26 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
-  await db
-    .delete(requirementPackageItems)
-    .where(eq(requirementPackageItems.packageId, id))
-  await db
-    .delete(packageNeedsReferences)
-    .where(eq(packageNeedsReferences.packageId, id))
-  await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
+  const d1BatchClient = getD1BatchClient(db)
+  if (d1BatchClient) {
+    await d1BatchClient.batch([
+      d1BatchClient
+        .prepare('DELETE FROM package_local_requirements WHERE package_id = ?')
+        .bind(id),
+      d1BatchClient
+        .prepare('DELETE FROM requirement_package_items WHERE package_id = ?')
+        .bind(id),
+      d1BatchClient
+        .prepare('DELETE FROM package_needs_references WHERE package_id = ?')
+        .bind(id),
+      d1BatchClient
+        .prepare('DELETE FROM requirement_packages WHERE id = ?')
+        .bind(id),
+    ])
+    return
+  }
+
+  throw new Error('Unsupported database driver')
 }
 
 export async function getPublishedVersionIdForRequirement(
@@ -358,6 +643,595 @@ export async function getPackageNeedsReferenceById(
     .limit(1)
 
   return needsReference ?? null
+}
+
+function normalizeOptionalForeignKeyId(value: number | null | undefined) {
+  if (value == null) {
+    return null
+  }
+
+  if (!Number.isInteger(value) || value < 1) {
+    throw validationError('Expected a positive integer ID')
+  }
+
+  return value
+}
+
+async function normalizePackageLocalRequirementInput(
+  db: Database,
+  packageId: number,
+  data: PackageLocalRequirementMutationInput,
+) {
+  const description = data.description.trim()
+  if (!description) {
+    throw validationError('Description is required')
+  }
+
+  if (
+    data.requirementAreaId != null &&
+    (!Number.isInteger(data.requirementAreaId) ||
+      Number(data.requirementAreaId) < 1)
+  ) {
+    throw validationError('requirementAreaId must be a positive integer')
+  }
+
+  const requiresTesting = data.requiresTesting ?? false
+  const verificationMethod = requiresTesting
+    ? (data.verificationMethod?.trim() ?? '')
+    : null
+
+  if (requiresTesting && !verificationMethod) {
+    throw validationError(
+      'verificationMethod is required when requiresTesting is true',
+    )
+  }
+
+  const needsReferenceId = normalizeOptionalForeignKeyId(data.needsReferenceId)
+  if (needsReferenceId != null) {
+    const needsReference = await getPackageNeedsReferenceById(
+      db,
+      packageId,
+      needsReferenceId,
+    )
+    if (!needsReference) {
+      throw validationError(
+        'needsReferenceId does not belong to this requirement package',
+      )
+    }
+  }
+
+  return {
+    acceptanceCriteria: data.acceptanceCriteria?.trim() || null,
+    description,
+    needsReferenceId,
+    normReferenceIds: dedupePositiveIntegerIds(data.normReferenceIds),
+    qualityCharacteristicId: normalizeOptionalForeignKeyId(
+      data.qualityCharacteristicId,
+    ),
+    requirementAreaId: normalizeOptionalForeignKeyId(data.requirementAreaId),
+    requirementCategoryId: normalizeOptionalForeignKeyId(
+      data.requirementCategoryId,
+    ),
+    requirementTypeId: normalizeOptionalForeignKeyId(data.requirementTypeId),
+    requiresTesting,
+    riskLevelId: normalizeOptionalForeignKeyId(data.riskLevelId),
+    scenarioIds: dedupePositiveIntegerIds(data.scenarioIds),
+    verificationMethod,
+  }
+}
+
+async function getPackageLocalRequirementIdentity(
+  db: Database,
+  packageId: number,
+  packageLocalRequirementId: number,
+): Promise<PackageLocalRequirementIdentity | null> {
+  const requirement = await db.query.packageLocalRequirements.findFirst({
+    columns: {
+      id: true,
+      packageId: true,
+      sequenceNumber: true,
+      uniqueId: true,
+    },
+    where: and(
+      eq(packageLocalRequirements.id, packageLocalRequirementId),
+      eq(packageLocalRequirements.packageId, packageId),
+    ),
+  })
+
+  return requirement ?? null
+}
+
+async function insertPackageLocalRequirementJoins(
+  db: Pick<Database, 'insert'>,
+  packageLocalRequirementId: number,
+  {
+    normReferenceIds,
+    scenarioIds,
+  }: {
+    normReferenceIds: number[]
+    scenarioIds: number[]
+  },
+) {
+  if (scenarioIds.length > 0) {
+    await db.insert(packageLocalRequirementUsageScenarios).values(
+      scenarioIds.map(usageScenarioId => ({
+        packageLocalRequirementId,
+        usageScenarioId,
+      })),
+    )
+  }
+
+  if (normReferenceIds.length > 0) {
+    await db.insert(packageLocalRequirementNormReferences).values(
+      normReferenceIds.map(normReferenceId => ({
+        normReferenceId,
+        packageLocalRequirementId,
+      })),
+    )
+  }
+}
+
+function mapPackageLocalRequirementDetail(
+  requirement: PackageLocalRequirementDetailRecord | undefined,
+): PackageLocalRequirementDetail {
+  if (!requirement) {
+    throw notFoundError('Package-local requirement not found')
+  }
+
+  const sortedNormReferences = [...requirement.normReferences]
+    .map(reference => reference.normReference)
+    .sort((left, right) =>
+      left.normReferenceId.localeCompare(right.normReferenceId, 'sv'),
+    )
+  const sortedScenarios = [...requirement.usageScenarios]
+    .map(scenario => scenario.scenario)
+    .sort((left, right) =>
+      (left.nameSv ?? left.nameEn ?? '').localeCompare(
+        right.nameSv ?? right.nameEn ?? '',
+        'sv',
+      ),
+    )
+
+  return {
+    acceptanceCriteria: requirement.acceptanceCriteria,
+    createdAt: requirement.createdAt,
+    description: requirement.description,
+    id: requirement.id,
+    isPackageLocal: true,
+    itemRef: createPackageLocalItemRef(requirement.id),
+    kind: 'packageLocal',
+    needsReference: requirement.needsReference?.text ?? null,
+    needsReferenceId: requirement.needsReferenceId,
+    normReferences: sortedNormReferences.map(reference => ({
+      id: reference.id,
+      name: reference.name,
+      normReferenceId: reference.normReferenceId,
+      uri: reference.uri,
+    })),
+    packageId: requirement.packageId,
+    packageItemStatusColor: requirement.packageItemStatus?.color ?? null,
+    packageItemStatusDescriptionEn:
+      requirement.packageItemStatus?.descriptionEn ?? null,
+    packageItemStatusDescriptionSv:
+      requirement.packageItemStatus?.descriptionSv ?? null,
+    packageItemStatusId: requirement.packageItemStatusId,
+    packageItemStatusNameEn: requirement.packageItemStatus?.nameEn ?? null,
+    packageItemStatusNameSv: requirement.packageItemStatus?.nameSv ?? null,
+    qualityCharacteristic: requirement.qualityCharacteristic
+      ? {
+          id: requirement.qualityCharacteristic.id,
+          nameEn: requirement.qualityCharacteristic.nameEn,
+          nameSv: requirement.qualityCharacteristic.nameSv,
+        }
+      : null,
+    requirementArea: requirement.requirementArea
+      ? {
+          id: requirement.requirementArea.id,
+          name: requirement.requirementArea.name,
+        }
+      : null,
+    requirementCategory: requirement.requirementCategory
+      ? {
+          id: requirement.requirementCategory.id,
+          nameEn: requirement.requirementCategory.nameEn,
+          nameSv: requirement.requirementCategory.nameSv,
+        }
+      : null,
+    requirementType: requirement.requirementType
+      ? {
+          id: requirement.requirementType.id,
+          nameEn: requirement.requirementType.nameEn,
+          nameSv: requirement.requirementType.nameSv,
+        }
+      : null,
+    requiresTesting: requirement.requiresTesting,
+    riskLevel: requirement.riskLevel
+      ? {
+          color: requirement.riskLevel.color,
+          id: requirement.riskLevel.id,
+          nameEn: requirement.riskLevel.nameEn,
+          nameSv: requirement.riskLevel.nameSv,
+          sortOrder: requirement.riskLevel.sortOrder,
+        }
+      : null,
+    scenarios: sortedScenarios.map(scenario => ({
+      id: scenario.id,
+      nameEn: scenario.nameEn,
+      nameSv: scenario.nameSv,
+    })),
+    uniqueId: requirement.uniqueId,
+    updatedAt: requirement.updatedAt,
+    verificationMethod: requirement.verificationMethod,
+  }
+}
+
+export async function getPackageLocalRequirementDetail(
+  db: Database,
+  packageId: number,
+  packageLocalRequirementId: number,
+): Promise<PackageLocalRequirementDetail | null> {
+  const requirement = (await db.query.packageLocalRequirements.findFirst({
+    where: and(
+      eq(packageLocalRequirements.id, packageLocalRequirementId),
+      eq(packageLocalRequirements.packageId, packageId),
+    ),
+    with: {
+      needsReference: true,
+      normReferences: {
+        with: {
+          normReference: true,
+        },
+      },
+      packageItemStatus: true,
+      qualityCharacteristic: true,
+      requirementArea: true,
+      requirementCategory: true,
+      requirementType: true,
+      riskLevel: true,
+      usageScenarios: {
+        with: {
+          scenario: true,
+        },
+      },
+    },
+  })) as PackageLocalRequirementDetailRecord | undefined
+
+  return requirement ? mapPackageLocalRequirementDetail(requirement) : null
+}
+
+export async function createPackageLocalRequirement(
+  db: Database,
+  packageId: number,
+  data: PackageLocalRequirementMutationInput,
+) {
+  const normalized = await normalizePackageLocalRequirementInput(
+    db,
+    packageId,
+    data,
+  )
+
+  if (isBetterSqliteSession(db)) {
+    let createdId: number | null = null
+
+    ;(
+      db as unknown as {
+        // biome-ignore lint/suspicious/noExplicitAny: BetterSqlite3 synchronous transaction type not exposed by Drizzle
+        transaction: (callback: (tx: any) => void) => void
+      }
+    ).transaction(tx => {
+      const pkg = tx.query.requirementPackages.findFirst({
+        columns: {
+          localRequirementNextSequence: true,
+        },
+        where: eq(requirementPackages.id, packageId),
+      })
+
+      if (!pkg) {
+        throw notFoundError(`Requirement package ${packageId} not found`)
+      }
+
+      const sequenceNumber = pkg.localRequirementNextSequence
+      const uniqueId = formatPackageLocalRequirementUniqueId(sequenceNumber)
+      const now = new Date().toISOString()
+
+      tx.update(requirementPackages)
+        .set({
+          localRequirementNextSequence: sequenceNumber + 1,
+        })
+        .where(eq(requirementPackages.id, packageId))
+        .run()
+
+      const [inserted] = tx
+        .insert(packageLocalRequirements)
+        .values({
+          ...normalized,
+          createdAt: now,
+          packageId,
+          packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+          sequenceNumber,
+          uniqueId,
+          updatedAt: now,
+        })
+        .returning({ id: packageLocalRequirements.id })
+        .all() as unknown as { id: number }[]
+
+      createdId = inserted.id
+
+      if (normalized.scenarioIds.length > 0) {
+        tx.insert(packageLocalRequirementUsageScenarios)
+          .values(
+            normalized.scenarioIds.map(usageScenarioId => ({
+              packageLocalRequirementId: inserted.id,
+              usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (normalized.normReferenceIds.length > 0) {
+        tx.insert(packageLocalRequirementNormReferences)
+          .values(
+            normalized.normReferenceIds.map(normReferenceId => ({
+              normReferenceId,
+              packageLocalRequirementId: inserted.id,
+            })),
+          )
+          .run()
+      }
+    })
+
+    const created = createdId
+      ? await getPackageLocalRequirementDetail(db, packageId, createdId)
+      : null
+    if (!created) {
+      throw notFoundError('Package-local requirement was created but not found')
+    }
+    return created
+  }
+
+  const [packageState] = await db
+    .update(requirementPackages)
+    .set({
+      localRequirementNextSequence: sql`${requirementPackages.localRequirementNextSequence} + 1`,
+    })
+    .where(eq(requirementPackages.id, packageId))
+    .returning({
+      nextSequence: requirementPackages.localRequirementNextSequence,
+    })
+
+  if (!packageState) {
+    throw notFoundError(`Requirement package ${packageId} not found`)
+  }
+
+  const sequenceNumber = Math.max(1, packageState.nextSequence - 1)
+  const uniqueId = formatPackageLocalRequirementUniqueId(sequenceNumber)
+  const now = new Date().toISOString()
+
+  const [inserted] = await db
+    .insert(packageLocalRequirements)
+    .values({
+      ...normalized,
+      createdAt: now,
+      packageId,
+      packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+      sequenceNumber,
+      uniqueId,
+      updatedAt: now,
+    })
+    .returning({ id: packageLocalRequirements.id })
+
+  try {
+    await insertPackageLocalRequirementJoins(db, inserted.id, normalized)
+  } catch (error) {
+    await db
+      .delete(packageLocalRequirements)
+      .where(eq(packageLocalRequirements.id, inserted.id))
+    throw error
+  }
+
+  const created = await getPackageLocalRequirementDetail(
+    db,
+    packageId,
+    inserted.id,
+  )
+  if (!created) {
+    throw notFoundError('Package-local requirement was created but not found')
+  }
+  return created
+}
+
+export async function updatePackageLocalRequirement(
+  db: Database,
+  packageId: number,
+  packageLocalRequirementId: number,
+  data: PackageLocalRequirementMutationInput,
+) {
+  const existing = await getPackageLocalRequirementIdentity(
+    db,
+    packageId,
+    packageLocalRequirementId,
+  )
+  if (!existing) {
+    throw notFoundError('Package-local requirement not found')
+  }
+
+  const normalized = await normalizePackageLocalRequirementInput(
+    db,
+    packageId,
+    data,
+  )
+  const updatedAt = new Date().toISOString()
+
+  if (isBetterSqliteSession(db)) {
+    ;(
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'update'>,
+          ) => void,
+        ) => void
+      }
+    ).transaction(tx => {
+      tx.update(packageLocalRequirements)
+        .set({
+          ...normalized,
+          updatedAt,
+        })
+        .where(eq(packageLocalRequirements.id, packageLocalRequirementId))
+        .run()
+
+      tx.delete(packageLocalRequirementUsageScenarios)
+        .where(
+          eq(
+            packageLocalRequirementUsageScenarios.packageLocalRequirementId,
+            packageLocalRequirementId,
+          ),
+        )
+        .run()
+
+      tx.delete(packageLocalRequirementNormReferences)
+        .where(
+          eq(
+            packageLocalRequirementNormReferences.packageLocalRequirementId,
+            packageLocalRequirementId,
+          ),
+        )
+        .run()
+
+      if (normalized.scenarioIds.length > 0) {
+        tx.insert(packageLocalRequirementUsageScenarios)
+          .values(
+            normalized.scenarioIds.map(usageScenarioId => ({
+              packageLocalRequirementId,
+              usageScenarioId,
+            })),
+          )
+          .run()
+      }
+
+      if (normalized.normReferenceIds.length > 0) {
+        tx.insert(packageLocalRequirementNormReferences)
+          .values(
+            normalized.normReferenceIds.map(normReferenceId => ({
+              normReferenceId,
+              packageLocalRequirementId,
+            })),
+          )
+          .run()
+      }
+    })
+  } else {
+    const d1BatchClient = getD1BatchClient(db)
+    if (d1BatchClient) {
+      const statements: D1PreparedStatement[] = [
+        d1BatchClient
+          .prepare(
+            `
+              UPDATE package_local_requirements
+              SET requirement_area_id = ?, description = ?, acceptance_criteria = ?,
+                  requirement_category_id = ?, requirement_type_id = ?,
+                  quality_characteristic_id = ?, risk_level_id = ?,
+                  is_testing_required = ?, verification_method = ?,
+                  needs_reference_id = ?, updated_at = ?
+              WHERE id = ? AND package_id = ?
+            `,
+          )
+          .bind(
+            normalized.requirementAreaId,
+            normalized.description,
+            normalized.acceptanceCriteria,
+            normalized.requirementCategoryId,
+            normalized.requirementTypeId,
+            normalized.qualityCharacteristicId,
+            normalized.riskLevelId,
+            normalized.requiresTesting ? 1 : 0,
+            normalized.verificationMethod,
+            normalized.needsReferenceId,
+            updatedAt,
+            packageLocalRequirementId,
+            packageId,
+          ),
+        d1BatchClient
+          .prepare(
+            `
+              DELETE FROM package_local_requirement_usage_scenarios
+              WHERE package_local_requirement_id = ?
+            `,
+          )
+          .bind(packageLocalRequirementId),
+        d1BatchClient
+          .prepare(
+            `
+              DELETE FROM package_local_requirement_norm_references
+              WHERE package_local_requirement_id = ?
+            `,
+          )
+          .bind(packageLocalRequirementId),
+      ]
+
+      for (const usageScenarioId of normalized.scenarioIds) {
+        statements.push(
+          d1BatchClient
+            .prepare(
+              `
+                INSERT INTO package_local_requirement_usage_scenarios (
+                  package_local_requirement_id,
+                  usage_scenario_id
+                ) VALUES (?, ?)
+              `,
+            )
+            .bind(packageLocalRequirementId, usageScenarioId),
+        )
+      }
+
+      for (const normReferenceId of normalized.normReferenceIds) {
+        statements.push(
+          d1BatchClient
+            .prepare(
+              `
+                INSERT INTO package_local_requirement_norm_references (
+                  package_local_requirement_id,
+                  norm_reference_id
+                ) VALUES (?, ?)
+              `,
+            )
+            .bind(packageLocalRequirementId, normReferenceId),
+        )
+      }
+
+      await d1BatchClient.batch(statements)
+    } else {
+      throw new Error('Unsupported database driver')
+    }
+  }
+
+  const updated = await getPackageLocalRequirementDetail(
+    db,
+    packageId,
+    packageLocalRequirementId,
+  )
+  if (!updated) {
+    throw notFoundError('Package-local requirement not found after update')
+  }
+  return updated
+}
+
+export async function deletePackageLocalRequirement(
+  db: Database,
+  packageId: number,
+  packageLocalRequirementId: number,
+): Promise<boolean> {
+  const deleted = await db
+    .delete(packageLocalRequirements)
+    .where(
+      and(
+        eq(packageLocalRequirements.id, packageLocalRequirementId),
+        eq(packageLocalRequirements.packageId, packageId),
+      ),
+    )
+    .returning({ id: packageLocalRequirements.id })
+
+  return deleted.length > 0
 }
 
 async function getOrCreatePackageNeedsReferenceWithMetadata(
@@ -683,133 +1557,261 @@ export async function unlinkRequirementsFromPackage(
   return deleted.length
 }
 
-export async function listPackageItems(db: DatabaseReader, packageId: number) {
-  const rows = await db
-    .select({
-      id: requirements.id,
-      uniqueId: requirements.uniqueId,
-      isArchived: requirements.isArchived,
-      requirementAreaId: requirements.requirementAreaId,
-      areaName: requirementAreas.name,
-      versionId: requirementVersions.id,
-      versionNumber: requirementVersions.versionNumber,
-      description: requirementVersions.description,
-      requirementCategoryId: requirementVersions.requirementCategoryId,
-      requirementTypeId: requirementVersions.requirementTypeId,
-      qualityCharacteristicId: requirementVersions.qualityCharacteristicId,
-      statusId: requirementVersions.statusId,
-      requiresTesting: requirementVersions.requiresTesting,
-      statusNameSv: requirementStatuses.nameSv,
-      statusNameEn: requirementStatuses.nameEn,
-      statusColor: requirementStatuses.color,
-      categoryNameSv: requirementCategories.nameSv,
-      categoryNameEn: requirementCategories.nameEn,
-      typeNameSv: requirementTypes.nameSv,
-      typeNameEn: requirementTypes.nameEn,
-      qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
-      qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
-      riskLevelId: requirementVersions.riskLevelId,
-      riskLevelNameSv: riskLevels.nameSv,
-      riskLevelNameEn: riskLevels.nameEn,
-      riskLevelColor: riskLevels.color,
-      riskLevelSortOrder: riskLevels.sortOrder,
-      needsReferenceId: requirementPackageItems.needsReferenceId,
-      needsReferenceText: packageNeedsReferences.text,
-      packageItemId: requirementPackageItems.id,
-      packageItemStatusId: requirementPackageItems.packageItemStatusId,
-      packageItemStatusNameSv: packageItemStatuses.nameSv,
-      packageItemStatusNameEn: packageItemStatuses.nameEn,
-      packageItemStatusColor: packageItemStatuses.color,
-      packageItemStatusDescriptionSv: packageItemStatuses.descriptionSv,
-      packageItemStatusDescriptionEn: packageItemStatuses.descriptionEn,
-      usageScenarioIds: sql<string | null>`(
-        SELECT GROUP_CONCAT(rvus.usage_scenario_id)
-        FROM requirement_version_usage_scenarios rvus
-        WHERE rvus.requirement_version_id = ${requirementVersions.id}
-      )`.as('usage_scenario_ids'),
-    })
-    .from(requirementPackageItems)
-    .innerJoin(
-      requirements,
-      eq(requirements.id, requirementPackageItems.requirementId),
-    )
-    .innerJoin(
-      requirementVersions,
-      eq(requirementVersions.id, requirementPackageItems.requirementVersionId),
-    )
-    .leftJoin(
-      requirementAreas,
-      eq(requirementAreas.id, requirements.requirementAreaId),
-    )
-    .leftJoin(
-      requirementStatuses,
-      eq(requirementStatuses.id, requirementVersions.statusId),
-    )
-    .leftJoin(
-      requirementCategories,
-      eq(requirementCategories.id, requirementVersions.requirementCategoryId),
-    )
-    .leftJoin(
-      requirementTypes,
-      eq(requirementTypes.id, requirementVersions.requirementTypeId),
-    )
-    .leftJoin(
-      qualityCharacteristics,
-      eq(
-        qualityCharacteristics.id,
-        requirementVersions.qualityCharacteristicId,
-      ),
-    )
-    .leftJoin(riskLevels, eq(riskLevels.id, requirementVersions.riskLevelId))
-    .leftJoin(
-      packageNeedsReferences,
-      eq(packageNeedsReferences.id, requirementPackageItems.needsReferenceId),
-    )
-    .leftJoin(
-      packageItemStatuses,
-      eq(packageItemStatuses.id, requirementPackageItems.packageItemStatusId),
-    )
-    .where(eq(requirementPackageItems.packageId, packageId))
-    .orderBy(requirements.uniqueId)
-
-  return rows.map(row => ({
-    id: row.id,
-    uniqueId: row.uniqueId,
+function mapLibraryPackageItemRow(row: {
+  areaName: string | null
+  categoryNameEn: string | null
+  categoryNameSv: string | null
+  description: string | null
+  isArchived: boolean
+  needsReferenceId: number | null
+  needsReferenceText: string | null
+  normReferenceIds: string | null
+  packageItemId: number
+  packageItemStatusColor: string | null
+  packageItemStatusDescriptionEn: string | null
+  packageItemStatusDescriptionSv: string | null
+  packageItemStatusId: number | null
+  packageItemStatusNameEn: string | null
+  packageItemStatusNameSv: string | null
+  qualityCharacteristicNameEn: string | null
+  qualityCharacteristicNameSv: string | null
+  requirementId: number
+  requiresTesting: boolean
+  riskLevelColor: string | null
+  riskLevelId: number | null
+  riskLevelNameEn: string | null
+  riskLevelNameSv: string | null
+  riskLevelSortOrder: number | null
+  statusColor: string | null
+  statusId: number
+  statusNameEn: string | null
+  statusNameSv: string | null
+  typeNameEn: string | null
+  typeNameSv: string | null
+  uniqueId: string
+  usageScenarioIds: string | null
+  versionNumber: number
+}): RequirementRow {
+  return {
+    area: row.areaName ? { name: row.areaName } : null,
+    id: row.requirementId,
     isArchived: row.isArchived,
+    itemRef: createLibraryItemRef(row.packageItemId),
+    isPackageLocal: false,
+    kind: 'library',
     needsReference: row.needsReferenceText ?? null,
     needsReferenceId: row.needsReferenceId ?? null,
+    normReferenceIds: parseCsvTextList(row.normReferenceIds),
     packageItemId: row.packageItemId,
-    packageItemStatusId: row.packageItemStatusId ?? null,
-    packageItemStatusNameSv: row.packageItemStatusNameSv ?? null,
-    packageItemStatusNameEn: row.packageItemStatusNameEn ?? null,
     packageItemStatusColor: row.packageItemStatusColor ?? null,
-    packageItemStatusDescriptionSv: row.packageItemStatusDescriptionSv ?? null,
     packageItemStatusDescriptionEn: row.packageItemStatusDescriptionEn ?? null,
-    usageScenarioIds: row.usageScenarioIds
-      ? row.usageScenarioIds.split(',').map(Number)
-      : [],
-    area: row.areaName ? { name: row.areaName } : null,
+    packageItemStatusDescriptionSv: row.packageItemStatusDescriptionSv ?? null,
+    packageItemStatusId: row.packageItemStatusId ?? null,
+    packageItemStatusNameEn: row.packageItemStatusNameEn ?? null,
+    packageItemStatusNameSv: row.packageItemStatusNameSv ?? null,
+    uniqueId: row.uniqueId,
+    usageScenarioIds: parseCsvNumberList(row.usageScenarioIds),
     version: {
-      versionNumber: row.versionNumber,
+      categoryNameEn: row.categoryNameEn ?? null,
+      categoryNameSv: row.categoryNameSv ?? null,
       description: row.description,
+      qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
+      qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
       requiresTesting: row.requiresTesting,
+      riskLevelColor: row.riskLevelColor ?? null,
       riskLevelId: row.riskLevelId ?? null,
       riskLevelNameEn: row.riskLevelNameEn ?? null,
       riskLevelNameSv: row.riskLevelNameSv ?? null,
-      riskLevelColor: row.riskLevelColor ?? null,
       riskLevelSortOrder: row.riskLevelSortOrder ?? null,
       status: row.statusId,
-      statusNameSv: row.statusNameSv ?? null,
-      statusNameEn: row.statusNameEn ?? null,
       statusColor: row.statusColor ?? null,
-      categoryNameSv: row.categoryNameSv ?? null,
-      categoryNameEn: row.categoryNameEn ?? null,
-      typeNameSv: row.typeNameSv ?? null,
+      statusNameEn: row.statusNameEn ?? null,
+      statusNameSv: row.statusNameSv ?? null,
       typeNameEn: row.typeNameEn ?? null,
-      qualityCharacteristicNameSv: row.qualityCharacteristicNameSv ?? null,
-      qualityCharacteristicNameEn: row.qualityCharacteristicNameEn ?? null,
+      typeNameSv: row.typeNameSv ?? null,
+      versionNumber: row.versionNumber,
     },
-  }))
+  }
+}
+
+function mapPackageLocalRequirementRow(
+  requirement: PackageLocalRequirementListRow,
+): RequirementRow {
+  return {
+    area: requirement.requirementArea
+      ? { name: requirement.requirementArea.name }
+      : null,
+    id: createPackageLocalRowId(requirement.id),
+    isArchived: false,
+    itemRef: createPackageLocalItemRef(requirement.id),
+    isPackageLocal: true,
+    kind: 'packageLocal',
+    needsReference: requirement.needsReference?.text ?? null,
+    needsReferenceId: requirement.needsReferenceId ?? null,
+    normReferenceIds: requirement.normReferences.map(
+      reference => reference.normReference.normReferenceId,
+    ),
+    packageItemStatusColor: requirement.packageItemStatus?.color ?? null,
+    packageItemStatusDescriptionEn:
+      requirement.packageItemStatus?.descriptionEn ?? null,
+    packageItemStatusDescriptionSv:
+      requirement.packageItemStatus?.descriptionSv ?? null,
+    packageItemStatusId: requirement.packageItemStatusId ?? null,
+    packageItemStatusNameEn: requirement.packageItemStatus?.nameEn ?? null,
+    packageItemStatusNameSv: requirement.packageItemStatus?.nameSv ?? null,
+    packageLocalRequirementId: requirement.id,
+    uniqueId: requirement.uniqueId,
+    usageScenarioIds: requirement.usageScenarios.map(
+      scenario => scenario.usageScenarioId,
+    ),
+    version: {
+      categoryNameEn: requirement.requirementCategory?.nameEn ?? null,
+      categoryNameSv: requirement.requirementCategory?.nameSv ?? null,
+      description: requirement.description,
+      qualityCharacteristicNameEn:
+        requirement.qualityCharacteristic?.nameEn ?? null,
+      qualityCharacteristicNameSv:
+        requirement.qualityCharacteristic?.nameSv ?? null,
+      requiresTesting: requirement.requiresTesting,
+      riskLevelColor: requirement.riskLevel?.color ?? null,
+      riskLevelId: requirement.riskLevelId ?? null,
+      riskLevelNameEn: requirement.riskLevel?.nameEn ?? null,
+      riskLevelNameSv: requirement.riskLevel?.nameSv ?? null,
+      riskLevelSortOrder: requirement.riskLevel?.sortOrder ?? null,
+      status: STATUS_PUBLISHED,
+      statusColor: '#22c55e',
+      statusNameEn: 'Published',
+      statusNameSv: 'Publicerad',
+      typeNameEn: requirement.requirementType?.nameEn ?? null,
+      typeNameSv: requirement.requirementType?.nameSv ?? null,
+      versionNumber: 1,
+    },
+  }
+}
+
+export async function listPackageItems(
+  db: Database,
+  packageId: number,
+): Promise<RequirementRow[]> {
+  const [libraryRows, localRows] = await Promise.all([
+    db
+      .select({
+        areaName: requirementAreas.name,
+        categoryNameEn: requirementCategories.nameEn,
+        categoryNameSv: requirementCategories.nameSv,
+        description: requirementVersions.description,
+        isArchived: requirements.isArchived,
+        needsReferenceId: requirementPackageItems.needsReferenceId,
+        needsReferenceText: packageNeedsReferences.text,
+        normReferenceIds: sql<string | null>`(
+          SELECT GROUP_CONCAT(nr.norm_reference_id, ',')
+          FROM requirement_version_norm_references vnr
+          JOIN norm_references nr ON nr.id = vnr.norm_reference_id
+          WHERE vnr.requirement_version_id = ${requirementVersions.id}
+        )`.as('norm_reference_ids'),
+        packageItemId: requirementPackageItems.id,
+        packageItemStatusColor: packageItemStatuses.color,
+        packageItemStatusDescriptionEn: packageItemStatuses.descriptionEn,
+        packageItemStatusDescriptionSv: packageItemStatuses.descriptionSv,
+        packageItemStatusId: requirementPackageItems.packageItemStatusId,
+        packageItemStatusNameEn: packageItemStatuses.nameEn,
+        packageItemStatusNameSv: packageItemStatuses.nameSv,
+        qualityCharacteristicNameEn: qualityCharacteristics.nameEn,
+        qualityCharacteristicNameSv: qualityCharacteristics.nameSv,
+        requirementId: requirements.id,
+        requiresTesting: requirementVersions.requiresTesting,
+        riskLevelColor: riskLevels.color,
+        riskLevelId: requirementVersions.riskLevelId,
+        riskLevelNameEn: riskLevels.nameEn,
+        riskLevelNameSv: riskLevels.nameSv,
+        riskLevelSortOrder: riskLevels.sortOrder,
+        statusColor: requirementStatuses.color,
+        statusId: requirementVersions.statusId,
+        statusNameEn: requirementStatuses.nameEn,
+        statusNameSv: requirementStatuses.nameSv,
+        typeNameEn: requirementTypes.nameEn,
+        typeNameSv: requirementTypes.nameSv,
+        uniqueId: requirements.uniqueId,
+        usageScenarioIds: sql<string | null>`(
+          SELECT GROUP_CONCAT(rvus.usage_scenario_id, ',')
+          FROM requirement_version_usage_scenarios rvus
+          WHERE rvus.requirement_version_id = ${requirementVersions.id}
+        )`.as('usage_scenario_ids'),
+        versionNumber: requirementVersions.versionNumber,
+      })
+      .from(requirementPackageItems)
+      .innerJoin(
+        requirements,
+        eq(requirements.id, requirementPackageItems.requirementId),
+      )
+      .innerJoin(
+        requirementVersions,
+        eq(
+          requirementVersions.id,
+          requirementPackageItems.requirementVersionId,
+        ),
+      )
+      .leftJoin(
+        requirementAreas,
+        eq(requirementAreas.id, requirements.requirementAreaId),
+      )
+      .leftJoin(
+        requirementStatuses,
+        eq(requirementStatuses.id, requirementVersions.statusId),
+      )
+      .leftJoin(
+        requirementCategories,
+        eq(requirementCategories.id, requirementVersions.requirementCategoryId),
+      )
+      .leftJoin(
+        requirementTypes,
+        eq(requirementTypes.id, requirementVersions.requirementTypeId),
+      )
+      .leftJoin(
+        qualityCharacteristics,
+        eq(
+          qualityCharacteristics.id,
+          requirementVersions.qualityCharacteristicId,
+        ),
+      )
+      .leftJoin(riskLevels, eq(riskLevels.id, requirementVersions.riskLevelId))
+      .leftJoin(
+        packageNeedsReferences,
+        eq(packageNeedsReferences.id, requirementPackageItems.needsReferenceId),
+      )
+      .leftJoin(
+        packageItemStatuses,
+        eq(packageItemStatuses.id, requirementPackageItems.packageItemStatusId),
+      )
+      .where(eq(requirementPackageItems.packageId, packageId))
+      .orderBy(requirements.uniqueId),
+    db.query.packageLocalRequirements.findMany({
+      orderBy: [asc(packageLocalRequirements.uniqueId)],
+      where: eq(packageLocalRequirements.packageId, packageId),
+      with: {
+        needsReference: true,
+        normReferences: {
+          with: {
+            normReference: true,
+          },
+        },
+        packageItemStatus: true,
+        qualityCharacteristic: true,
+        requirementArea: true,
+        requirementCategory: true,
+        requirementType: true,
+        riskLevel: true,
+        usageScenarios: true,
+      },
+    }),
+  ])
+
+  return [
+    ...libraryRows.map(mapLibraryPackageItemRow),
+    ...(localRows as PackageLocalRequirementListRow[]).map(
+      mapPackageLocalRequirementRow,
+    ),
+  ].sort((left, right) => left.uniqueId.localeCompare(right.uniqueId, 'sv'))
 }
 
 export async function getPackageItemById(db: Database, itemId: number) {
@@ -817,6 +1819,45 @@ export async function getPackageItemById(db: Database, itemId: number) {
     where: eq(requirementPackageItems.id, itemId),
   })
   return result ?? null
+}
+
+export async function getPackageItemByRef(
+  db: Database,
+  packageId: number,
+  itemRef: string,
+) {
+  const parsed = parsePackageItemRef(itemRef)
+  if (!parsed) {
+    return null
+  }
+
+  if (parsed.kind === 'library') {
+    const packageItem = await getPackageItemById(db, parsed.id)
+    if (!packageItem || packageItem.packageId !== packageId) {
+      return null
+    }
+
+    return {
+      id: parsed.id,
+      itemRef: createLibraryItemRef(parsed.id),
+      kind: 'library' as const,
+    }
+  }
+
+  const localRequirement = await getPackageLocalRequirementIdentity(
+    db,
+    packageId,
+    parsed.id,
+  )
+  if (!localRequirement) {
+    return null
+  }
+
+  return {
+    id: parsed.id,
+    itemRef: createPackageLocalItemRef(parsed.id),
+    kind: 'packageLocal' as const,
+  }
 }
 
 export async function updatePackageItemFields(
@@ -848,17 +1889,7 @@ export async function updatePackageItemFields(
   const needsDeviationCheck =
     updates.packageItemStatusId === DEVIATED_PACKAGE_ITEM_STATUS_ID
 
-  const sessionName = (
-    db as {
-      session?: {
-        constructor?: {
-          name?: string
-        }
-      }
-    }
-  ).session?.constructor?.name
-
-  if (sessionName === 'BetterSQLiteSession') {
+  if (isBetterSqliteSession(db)) {
     ;(
       db as unknown as {
         transaction: (
@@ -916,4 +1947,203 @@ export async function updatePackageItemFields(
     .update(requirementPackageItems)
     .set(updates)
     .where(eq(requirementPackageItems.id, itemId))
+}
+
+export async function updatePackageLocalRequirementFields(
+  db: Database,
+  packageLocalRequirementId: number,
+  data: { packageItemStatusId?: number | null; note?: string | null },
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+  if ('packageItemStatusId' in data) {
+    const statusId = data.packageItemStatusId ?? null
+    if (statusId != null) {
+      const status = await db.query.packageItemStatuses.findFirst({
+        where: eq(packageItemStatuses.id, statusId),
+      })
+      if (!status) {
+        throw validationError('Invalid package item status ID', {
+          packageItemStatusId: statusId,
+        })
+      }
+    }
+    updates.packageItemStatusId = statusId
+    updates.statusUpdatedAt = new Date().toISOString()
+  }
+  if ('note' in data) {
+    updates.note = data.note ?? null
+  }
+  if (Object.keys(updates).length === 0) return
+
+  const needsDeviationCheck =
+    updates.packageItemStatusId === DEVIATED_PACKAGE_ITEM_STATUS_ID
+
+  if (needsDeviationCheck) {
+    const approvedDeviation =
+      await db.query.packageLocalRequirementDeviations.findFirst({
+        where: and(
+          eq(
+            packageLocalRequirementDeviations.packageLocalRequirementId,
+            packageLocalRequirementId,
+          ),
+          eq(packageLocalRequirementDeviations.decision, DEVIATION_APPROVED),
+        ),
+      })
+    if (!approvedDeviation) {
+      throw validationError('Deviated status requires an approved deviation', {
+        packageItemStatusId: updates.packageItemStatusId,
+        packageLocalRequirementId,
+      })
+    }
+  }
+
+  await db
+    .update(packageLocalRequirements)
+    .set(updates)
+    .where(eq(packageLocalRequirements.id, packageLocalRequirementId))
+}
+
+export async function updatePackageItemFieldsByItemRef(
+  db: Database,
+  packageId: number,
+  itemRef: string,
+  data: { packageItemStatusId?: number | null; note?: string | null },
+) {
+  const item = await getPackageItemByRef(db, packageId, itemRef)
+  if (!item) {
+    throw notFoundError('Item not found in package', { itemRef, packageId })
+  }
+
+  if (item.kind === 'library') {
+    await updatePackageItemFields(db, item.id, data)
+    return
+  }
+
+  await updatePackageLocalRequirementFields(db, item.id, data)
+}
+
+export async function deletePackageItemsByRefs(
+  db: Database,
+  packageId: number,
+  itemRefs: string[],
+) {
+  const libraryIds: number[] = []
+  const packageLocalRequirementIds: number[] = []
+
+  for (const itemRef of itemRefs) {
+    const parsed = parsePackageItemRef(itemRef)
+    if (!parsed) {
+      throw validationError('Invalid itemRef', { itemRef })
+    }
+
+    if (parsed.kind === 'library') {
+      libraryIds.push(parsed.id)
+    } else {
+      packageLocalRequirementIds.push(parsed.id)
+    }
+  }
+
+  // Single-table cases are already atomic
+  if (libraryIds.length === 0 || packageLocalRequirementIds.length === 0) {
+    const deletedLibraryCount =
+      libraryIds.length === 0
+        ? 0
+        : (
+            await db
+              .delete(requirementPackageItems)
+              .where(
+                and(
+                  eq(requirementPackageItems.packageId, packageId),
+                  inArray(requirementPackageItems.id, libraryIds),
+                ),
+              )
+              .returning({ id: requirementPackageItems.id })
+          ).length
+
+    const deletedPackageLocalCount =
+      packageLocalRequirementIds.length === 0
+        ? 0
+        : (
+            await db
+              .delete(packageLocalRequirements)
+              .where(
+                and(
+                  eq(packageLocalRequirements.packageId, packageId),
+                  inArray(
+                    packageLocalRequirements.id,
+                    packageLocalRequirementIds,
+                  ),
+                ),
+              )
+              .returning({ id: packageLocalRequirements.id })
+          ).length
+
+    return { deletedLibraryCount, deletedPackageLocalCount }
+  }
+
+  // Both tables affected — use atomic operation
+  if (isBetterSqliteSession(db)) {
+    let deletedLibraryCount = 0
+    let deletedPackageLocalCount = 0
+    ;(
+      db as unknown as {
+        transaction: (callback: (tx: Pick<Database, 'delete'>) => void) => void
+      }
+    ).transaction(tx => {
+      deletedLibraryCount = (
+        tx
+          .delete(requirementPackageItems)
+          .where(
+            and(
+              eq(requirementPackageItems.packageId, packageId),
+              inArray(requirementPackageItems.id, libraryIds),
+            ),
+          )
+          .returning({ id: requirementPackageItems.id }) as unknown as {
+          length: number
+        }
+      ).length
+      deletedPackageLocalCount = (
+        tx
+          .delete(packageLocalRequirements)
+          .where(
+            and(
+              eq(packageLocalRequirements.packageId, packageId),
+              inArray(packageLocalRequirements.id, packageLocalRequirementIds),
+            ),
+          )
+          .returning({ id: packageLocalRequirements.id }) as unknown as {
+          length: number
+        }
+      ).length
+    })
+    return { deletedLibraryCount, deletedPackageLocalCount }
+  }
+
+  const d1BatchClient = getD1BatchClient(db)
+  if (d1BatchClient) {
+    const libraryPlaceholders = libraryIds.map(() => '?').join(',')
+    const localPlaceholders = packageLocalRequirementIds
+      .map(() => '?')
+      .join(',')
+    await d1BatchClient.batch([
+      d1BatchClient
+        .prepare(
+          `DELETE FROM requirement_package_items WHERE package_id = ? AND id IN (${libraryPlaceholders})`,
+        )
+        .bind(packageId, ...libraryIds),
+      d1BatchClient
+        .prepare(
+          `DELETE FROM package_local_requirements WHERE package_id = ? AND id IN (${localPlaceholders})`,
+        )
+        .bind(packageId, ...packageLocalRequirementIds),
+    ])
+    // D1 batch does not return deleted row counts; re-derive from input
+    return {
+      deletedLibraryCount: libraryIds.length,
+      deletedPackageLocalCount: packageLocalRequirementIds.length,
+    }
+  }
+
+  throw new Error('Unsupported database driver')
 }

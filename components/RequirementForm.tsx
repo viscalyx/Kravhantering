@@ -1,38 +1,24 @@
 'use client'
 
-import { HelpCircle, Plus, X } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
+import { Plus, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
+import RequirementFormFields, {
+  type RequirementFormFieldValues,
+} from '@/components/RequirementFormFields'
 import { useRouter } from '@/i18n/routing'
 
-interface FormData {
-  acceptanceCriteria: string
-  areaId: string
-  categoryId: string
-  description: string
-  normReferenceIds: number[]
-  qualityCharacteristicId: string
-  requiresTesting: boolean
-  riskLevelId: string
-  scenarioIds: number[]
-  typeId: string
-  verificationMethod: string
-}
-
 interface RequirementFormProps {
-  initialData?: Partial<Omit<FormData, 'normReferenceIds' | 'scenarioIds'>>
+  initialData?: Partial<
+    Omit<RequirementFormFieldValues, 'normReferenceIds' | 'scenarioIds'>
+  >
   initialNormReferenceIds?: number[]
   initialScenarioIds?: number[]
   mode: 'create' | 'edit'
   requirementId?: number | string
-}
-
-interface ScenarioOption {
-  id: number
-  nameEn: string
-  nameSv: string
 }
 
 interface NormReferenceOption {
@@ -44,26 +30,19 @@ interface NormReferenceOption {
   type: string
 }
 
-interface Option {
-  id: number
-  nameEn: string
-  nameSv: string
+const EMPTY_FORM: RequirementFormFieldValues = {
+  acceptanceCriteria: '',
+  areaId: '',
+  categoryId: '',
+  description: '',
+  normReferenceIds: [],
+  qualityCharacteristicId: '',
+  requiresTesting: false,
+  riskLevelId: '',
+  scenarioIds: [],
+  typeId: '',
+  verificationMethod: '',
 }
-
-interface AreaOption {
-  id: number
-  name: string
-  ownerName: string | null
-}
-
-interface QualityCharacteristicOption {
-  id: number
-  nameEn: string
-  nameSv: string
-  parentId: number | null
-}
-
-const richTags = { strong: (chunks: ReactNode) => <strong>{chunks}</strong> }
 
 export default function RequirementForm({
   initialData,
@@ -72,20 +51,10 @@ export default function RequirementForm({
   requirementId,
   mode,
 }: RequirementFormProps) {
-  const t = useTranslations('requirement')
   const tc = useTranslations('common')
+  const t = useTranslations('requirement')
   const router = useRouter()
-  const locale = useLocale()
 
-  const getOptionName = (o: Option) => (locale === 'sv' ? o.nameSv : o.nameEn)
-
-  const [areas, setAreas] = useState<AreaOption[]>([])
-  const [categories, setCategories] = useState<Option[]>([])
-  const [types, setTypes] = useState<Option[]>([])
-  const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
-    [],
-  )
-  const [scenarios, setScenarios] = useState<ScenarioOption[]>([])
   const [showCreateNormRef, setShowCreateNormRef] = useState(false)
   const [normRefForm, setNormRefForm] = useState({
     normReferenceId: '',
@@ -98,13 +67,12 @@ export default function RequirementForm({
   })
   const [normRefSubmitting, setNormRefSubmitting] = useState(false)
   const [normRefError, setNormRefError] = useState<string | null>(null)
-  const [qualityCharacteristics, setQualityCharacteristics] = useState<
-    QualityCharacteristicOption[]
+  const [createdNormRefs, setCreatedNormRefs] = useState<
+    { id: number; name: string; normReferenceId: string }[]
   >([])
-  const [riskLevels, setRiskLevels] = useState<Option[]>([])
+
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
     () => {
       try {
@@ -119,18 +87,11 @@ export default function RequirementForm({
     },
   )
 
-  const [form, setForm] = useState<FormData>({
-    areaId: initialData?.areaId ?? '',
-    categoryId: initialData?.categoryId ?? '',
-    typeId: initialData?.typeId ?? '',
-    qualityCharacteristicId: initialData?.qualityCharacteristicId ?? '',
-    riskLevelId: initialData?.riskLevelId ?? '',
-    description: initialData?.description ?? '',
-    acceptanceCriteria: initialData?.acceptanceCriteria ?? '',
-    requiresTesting: initialData?.requiresTesting ?? false,
+  const [form, setForm] = useState<RequirementFormFieldValues>({
+    ...EMPTY_FORM,
+    ...initialData,
     normReferenceIds: initialNormReferenceIds ?? [],
     scenarioIds: initialScenarioIds ?? [],
-    verificationMethod: initialData?.verificationMethod ?? '',
   })
 
   const dirtyFields = useRef<Set<string>>(new Set())
@@ -149,163 +110,27 @@ export default function RequirementForm({
     prevNormReferenceIds.current = initialNormReferenceIds
     prevScenarioIds.current = initialScenarioIds
 
-    const dirty = dirtyFields.current
+    if (dataChanged) {
+      dirtyFields.current = new Set()
+    }
 
-    setForm(prev => ({
-      ...prev,
-      ...(dataChanged && initialData
-        ? {
-            ...(!dirty.has('areaId') && initialData.areaId != null
-              ? { areaId: initialData.areaId }
-              : {}),
-            ...(!dirty.has('categoryId') && initialData.categoryId != null
-              ? { categoryId: initialData.categoryId }
-              : {}),
-            ...(!dirty.has('typeId') && initialData.typeId != null
-              ? { typeId: initialData.typeId }
-              : {}),
-            ...(!dirty.has('qualityCharacteristicId') &&
-            initialData.qualityCharacteristicId != null
-              ? {
-                  qualityCharacteristicId: initialData.qualityCharacteristicId,
-                }
-              : {}),
-            ...(!dirty.has('riskLevelId') && initialData.riskLevelId != null
-              ? { riskLevelId: initialData.riskLevelId }
-              : {}),
-            ...(!dirty.has('description') && initialData.description != null
-              ? { description: initialData.description }
-              : {}),
-            ...(!dirty.has('acceptanceCriteria') &&
-            initialData.acceptanceCriteria != null
-              ? { acceptanceCriteria: initialData.acceptanceCriteria }
-              : {}),
-            ...(!dirty.has('requiresTesting') &&
-            initialData.requiresTesting != null
-              ? { requiresTesting: initialData.requiresTesting }
-              : {}),
-            ...(!dirty.has('verificationMethod') &&
-            initialData.verificationMethod != null
-              ? { verificationMethod: initialData.verificationMethod }
-              : {}),
-          }
-        : {}),
-      ...(normRefsChanged && !dirty.has('normReferenceIds')
-        ? { normReferenceIds: initialNormReferenceIds ?? prev.normReferenceIds }
-        : {}),
-      ...(scenariosChanged && !dirty.has('scenarioIds')
-        ? { scenarioIds: initialScenarioIds ?? prev.scenarioIds }
-        : {}),
+    setForm(() => ({
+      ...EMPTY_FORM,
+      ...(initialData ?? {}),
+      normReferenceIds: initialNormReferenceIds ?? [],
+      scenarioIds: initialScenarioIds ?? [],
     }))
   }, [initialData, initialNormReferenceIds, initialScenarioIds])
 
-  const toggleHelp = (field: string) => {
-    setOpenHelp(prev => {
-      const next = new Set(prev)
-      if (next.has(field)) {
-        next.delete(field)
-      } else {
-        next.add(field)
+  const handleFieldsChange = (values: RequirementFormFieldValues) => {
+    for (const key of Object.keys(
+      values,
+    ) as (keyof RequirementFormFieldValues)[]) {
+      if (values[key] !== form[key]) {
+        dirtyFields.current.add(key)
       }
-      return next
-    })
-  }
-
-  const fetchOptions = useCallback(async () => {
-    const results = await Promise.allSettled([
-      fetch('/api/requirement-areas'),
-      fetch('/api/requirement-categories'),
-      fetch('/api/requirement-types'),
-      fetch('/api/usage-scenarios'),
-      fetch('/api/norm-references'),
-      fetch('/api/risk-levels'),
-    ])
-    const [
-      areasResult,
-      catResult,
-      typesResult,
-      scenariosResult,
-      normRefsResult,
-      riskLevelsResult,
-    ] = results
-    if (areasResult.status === 'fulfilled' && areasResult.value.ok)
-      setAreas(
-        ((await areasResult.value.json()) as { areas?: AreaOption[] }).areas ??
-          [],
-      )
-    if (catResult.status === 'fulfilled' && catResult.value.ok)
-      setCategories(
-        ((await catResult.value.json()) as { categories?: Option[] })
-          .categories ?? [],
-      )
-    if (typesResult.status === 'fulfilled' && typesResult.value.ok)
-      setTypes(
-        ((await typesResult.value.json()) as { types?: Option[] }).types ?? [],
-      )
-    if (scenariosResult.status === 'fulfilled' && scenariosResult.value.ok)
-      setScenarios(
-        (
-          (await scenariosResult.value.json()) as {
-            scenarios?: ScenarioOption[]
-          }
-        ).scenarios ?? [],
-      )
-    if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok) {
-      const fetched =
-        (
-          (await normRefsResult.value.json()) as {
-            normReferences?: NormReferenceOption[]
-          }
-        ).normReferences ?? []
-      setNormReferences(prev => {
-        const ids = new Set(fetched.map(nr => nr.id))
-        const localOnly = prev.filter(nr => !ids.has(nr.id))
-        return [...localOnly, ...fetched]
-      })
     }
-    if (riskLevelsResult.status === 'fulfilled' && riskLevelsResult.value.ok)
-      setRiskLevels(
-        ((await riskLevelsResult.value.json()) as { riskLevels?: Option[] })
-          .riskLevels ?? [],
-      )
-  }, [])
-
-  const fetchQualityCharacteristics = useCallback(async (typeId: string) => {
-    if (!typeId) {
-      setQualityCharacteristics([])
-      return
-    }
-    const res = await fetch(`/api/quality-characteristics?typeId=${typeId}`)
-    if (res.ok)
-      setQualityCharacteristics(
-        (
-          (await res.json()) as {
-            qualityCharacteristics?: QualityCharacteristicOption[]
-          }
-        ).qualityCharacteristics ?? [],
-      )
-  }, [])
-
-  useEffect(() => {
-    fetchOptions()
-  }, [fetchOptions])
-
-  useEffect(() => {
-    fetchQualityCharacteristics(form.typeId)
-  }, [form.typeId, fetchQualityCharacteristics])
-
-  const handleChange = (key: keyof FormData, value: string | boolean) => {
-    dirtyFields.current.add(key)
-    setForm(prev => {
-      const next = { ...prev, [key]: value }
-      if (key === 'requiresTesting' && !value) {
-        next.verificationMethod = ''
-      }
-      if (key === 'typeId') {
-        next.qualityCharacteristicId = ''
-      }
-      return next
-    })
+    setForm(values)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -384,353 +209,31 @@ export default function RequirementForm({
     }
   }
 
-  const topLevelCategories = qualityCharacteristics.filter(tc => !tc.parentId)
-  const childCategories = qualityCharacteristics.filter(tc => tc.parentId)
-  const getQualityCharacteristicName = (c: QualityCharacteristicOption) =>
-    locale === 'sv' ? c.nameSv : c.nameEn
-
-  const helpButton = (field: string, label: string) => (
+  const normReferenceCreateButton = (
     <button
-      aria-controls={`help-${field}`}
-      aria-expanded={openHelp.has(field)}
-      aria-label={`${tc('help')}: ${label}`}
-      className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-      onClick={() => toggleHelp(field)}
+      className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+      onClick={() => setShowCreateNormRef(true)}
       type="button"
     >
-      <HelpCircle aria-hidden="true" className="h-3.5 w-3.5" />
+      <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+      {tc('create')}
     </button>
   )
 
-  const helpPanel = (helpKey: string, field: string) =>
-    openHelp.has(field) && (
-      <p
-        className="mt-1 mb-2 text-xs text-secondary-500 dark:text-secondary-400 whitespace-pre-line bg-secondary-50 dark:bg-secondary-800/50 rounded-lg px-3 py-2 border border-secondary-200 dark:border-secondary-700"
-        id={`help-${field}`}
-      >
-        {t.rich(helpKey, richTags)}
-      </p>
-    )
-
   return (
-    <form className="animate-fade-in-up" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
-        <div className="space-y-5">
-          <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <label className="text-sm font-medium" htmlFor="areaId">
-                {t('area')} *
-              </label>
-              {helpButton('areaId', t('area'))}
-            </div>
-            {helpPanel('areaHelp', 'areaId')}
-            <select
-              className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-              id="areaId"
-              onChange={e => handleChange('areaId', e.target.value)}
-              required
-              value={form.areaId}
-            >
-              <option value="">{t('area')}...</option>
-              {areas.map(a => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-            {form.areaId && (
-              <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-                {t('area')} — {t('areaOwner')}:{' '}
-                {areas.find(a => String(a.id) === form.areaId)?.ownerName ??
-                  '—'}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <label className="text-sm font-medium" htmlFor="description">
-                {t('description')} *
-              </label>
-              {helpButton('description', t('description'))}
-            </div>
-            {helpPanel('descriptionHelp', 'description')}
-            <textarea
-              className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]"
-              id="description"
-              onChange={e => handleChange('description', e.target.value)}
-              required
-              value={form.description}
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <label
-                className="text-sm font-medium"
-                htmlFor="acceptanceCriteria"
-              >
-                {t('acceptanceCriteria')}
-              </label>
-              {helpButton('acceptanceCriteria', t('acceptanceCriteria'))}
-            </div>
-            {helpPanel('acceptanceCriteriaHelp', 'acceptanceCriteria')}
-            <textarea
-              className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]"
-              id="acceptanceCriteria"
-              onChange={e => handleChange('acceptanceCriteria', e.target.value)}
-              value={form.acceptanceCriteria}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <label className="text-sm font-medium" htmlFor="categoryId">
-                  {t('category')}
-                </label>
-                {helpButton('categoryId', t('category'))}
-              </div>
-              {helpPanel('categoryHelp', 'categoryId')}
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="categoryId"
-                onChange={e => handleChange('categoryId', e.target.value)}
-                value={form.categoryId}
-              >
-                <option value="">{t('category')}...</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {getOptionName(c)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <label className="text-sm font-medium" htmlFor="typeId">
-                  {t('type')}
-                </label>
-                {helpButton('typeId', t('type'))}
-              </div>
-              {helpPanel('typeHelp', 'typeId')}
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="typeId"
-                onChange={e => handleChange('typeId', e.target.value)}
-                value={form.typeId}
-              >
-                <option value="">{t('type')}...</option>
-                {types.map(tp => (
-                  <option key={tp.id} value={tp.id}>
-                    {getOptionName(tp)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {qualityCharacteristics.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <label
-                  className="text-sm font-medium"
-                  htmlFor="qualityCharacteristicId"
-                >
-                  {t('qualityCharacteristic')}
-                </label>
-                {helpButton(
-                  'qualityCharacteristicId',
-                  t('qualityCharacteristic'),
-                )}
-              </div>
-              {helpPanel(
-                'qualityCharacteristicHelp',
-                'qualityCharacteristicId',
-              )}
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="qualityCharacteristicId"
-                onChange={e =>
-                  handleChange('qualityCharacteristicId', e.target.value)
-                }
-                value={form.qualityCharacteristicId}
-              >
-                <option value="">{t('qualityCharacteristic')}...</option>
-                {topLevelCategories.map(tc => (
-                  <optgroup
-                    key={tc.id}
-                    label={getQualityCharacteristicName(tc)}
-                  >
-                    {childCategories
-                      .filter(c => c.parentId === tc.id)
-                      .map(c => (
-                        <option key={c.id} value={c.id}>
-                          {getQualityCharacteristicName(c)}
-                        </option>
-                      ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <label className="text-sm font-medium" htmlFor="riskLevelId">
-                {t('riskLevel')}
-              </label>
-              {helpButton('riskLevelId', t('riskLevel'))}
-            </div>
-            {helpPanel('riskLevelHelp', 'riskLevelId')}
-            <select
-              className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-              id="riskLevelId"
-              onChange={e => handleChange('riskLevelId', e.target.value)}
-              value={form.riskLevelId}
-            >
-              <option value="">{t('riskLevel')}...</option>
-              {riskLevels.map(rl => (
-                <option key={rl.id} value={rl.id}>
-                  {getOptionName(rl)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2 text-sm">
-            <label className="flex items-center gap-2">
-              <input
-                checked={form.requiresTesting}
-                className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                onChange={e =>
-                  handleChange('requiresTesting', e.target.checked)
-                }
-                type="checkbox"
-              />
-              {t('requiresTesting')}
-            </label>
-            {helpButton('requiresTesting', t('requiresTesting'))}
-          </div>
-          {helpPanel('requiresTestingHelp', 'requiresTesting')}
-
-          {form.requiresTesting && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
-                <label
-                  className="text-sm font-medium"
-                  htmlFor="verificationMethod"
-                >
-                  {t('verificationMethod')} *
-                </label>
-                {helpButton('verificationMethod', t('verificationMethod'))}
-              </div>
-              {helpPanel('verificationMethodHelp', 'verificationMethod')}
-              <textarea
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200 min-h-[100px]"
-                id="verificationMethod"
-                onChange={e =>
-                  handleChange('verificationMethod', e.target.value)
-                }
-                required
-                value={form.verificationMethod}
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="self-start lg:w-64 space-y-6">
-          {scenarios.length > 0 && (
-            <fieldset className="border-0 m-0 p-0">
-              <div className="flex items-center gap-1.5 mb-1">
-                <legend className="text-sm font-medium contents">
-                  {t('scenario')}
-                </legend>
-                {helpButton('scenario', t('scenario'))}
-              </div>
-              {helpPanel('scenarioHelp', 'scenario')}
-              <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
-                {scenarios.map(s => (
-                  <label
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                    key={s.id}
-                  >
-                    <input
-                      checked={form.scenarioIds.includes(s.id)}
-                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                      onChange={e => {
-                        dirtyFields.current.add('scenarioIds')
-                        const checked = e.target.checked
-                        setForm(prev => ({
-                          ...prev,
-                          scenarioIds: checked
-                            ? [...prev.scenarioIds, s.id]
-                            : prev.scenarioIds.filter(id => id !== s.id),
-                        }))
-                      }}
-                      type="checkbox"
-                    />
-                    {getOptionName(s)}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
-
-          <fieldset className="border-0 m-0 p-0">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <legend className="text-sm font-medium contents">
-                  {t('normReferences')}
-                </legend>
-                {helpButton('normReferences', t('normReferences'))}
-              </div>
-              <button
-                className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-[44px] min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
-                onClick={() => setShowCreateNormRef(true)}
-                type="button"
-              >
-                <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-                {tc('create')}
-              </button>
-            </div>
-            {helpPanel('normReferencesHelp', 'normReferences')}
-            {normReferences.length > 0 && (
-              <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
-                {normReferences.map(nr => (
-                  <label
-                    className="flex items-center gap-2 text-sm cursor-pointer"
-                    key={nr.id}
-                  >
-                    <input
-                      checked={form.normReferenceIds.includes(nr.id)}
-                      className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
-                      onChange={e => {
-                        dirtyFields.current.add('normReferenceIds')
-                        const checked = e.target.checked
-                        setForm(prev => ({
-                          ...prev,
-                          normReferenceIds: checked
-                            ? [...prev.normReferenceIds, nr.id]
-                            : prev.normReferenceIds.filter(id => id !== nr.id),
-                        }))
-                      }}
-                      type="checkbox"
-                    />
-                    <span>
-                      <span className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
-                        {nr.normReferenceId}
-                      </span>{' '}
-                      {nr.name}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </fieldset>
-        </div>
-      </div>
+    <motion.form
+      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0, y: 8 }}
+      onSubmit={handleSubmit}
+      transition={{ duration: 0.15 }}
+    >
+      <RequirementFormFields
+        additionalNormReferences={createdNormRefs}
+        layout="sidebar"
+        normReferenceActions={normReferenceCreateButton}
+        onChange={handleFieldsChange}
+        values={form}
+      />
 
       {showCreateNormRef &&
         createPortal(
@@ -766,7 +269,14 @@ export default function RequirementForm({
                   setNormRefError(data?.error ?? tc('error'))
                 } else {
                   const created = (await res.json()) as NormReferenceOption
-                  setNormReferences(prev => [...prev, created])
+                  setCreatedNormRefs(prev => [
+                    ...prev,
+                    {
+                      id: created.id,
+                      name: created.name,
+                      normReferenceId: created.normReferenceId,
+                    },
+                  ])
                   setForm(prev => ({
                     ...prev,
                     normReferenceIds: [...prev.normReferenceIds, created.id],
@@ -821,7 +331,7 @@ export default function RequirementForm({
             <button
               aria-label={t('afterSaveInline')}
               aria-pressed={saveDestination === 'inline'}
-              className={`min-h-[44px] min-w-[44px] px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              className={`min-h-11 min-w-11 px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
               disabled={submitting}
               onClick={() => {
                 setSaveDestination('inline')
@@ -838,7 +348,7 @@ export default function RequirementForm({
             <button
               aria-label={t('afterSavePage')}
               aria-pressed={saveDestination === 'page'}
-              className={`min-h-[44px] min-w-[44px] px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
+              className={`min-h-11 min-w-11 px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
               disabled={submitting}
               onClick={() => {
                 setSaveDestination('page')
@@ -855,7 +365,7 @@ export default function RequirementForm({
           </div>
         </div>
       </div>
-    </form>
+    </motion.form>
   )
 }
 
@@ -893,11 +403,9 @@ function NormReferenceModal({
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement
-    // Focus the close button on open
     closeButtonRef.current?.focus()
 
     return () => {
-      // Restore focus on close
       if (previouslyFocused.current instanceof HTMLElement) {
         previouslyFocused.current.focus()
       }
@@ -957,13 +465,16 @@ function NormReferenceModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={normRefSubmitting ? undefined : onCancel}
       />
-      <div
+      <motion.div
+        animate={{ opacity: 1, scale: 1 }}
         aria-describedby="modal-desc-norm-ref"
         aria-labelledby="modal-title-norm-ref"
         aria-modal="true"
-        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl animate-fade-in-up p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+        initial={{ opacity: 0, scale: 0.95 }}
         ref={dialogRef}
         role="dialog"
+        transition={{ duration: 0.15 }}
       >
         <div className="flex items-center justify-between">
           <h2
@@ -1025,7 +536,7 @@ function NormReferenceModal({
             {tc('cancel')}
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   )
 }

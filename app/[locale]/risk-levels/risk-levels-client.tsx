@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -231,219 +232,227 @@ export default function RiskLevelsClient() {
           </button>
         </div>
 
-        {showForm && (
-          <div className="glass rounded-2xl p-6 mb-6 animate-fade-in-up">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
-              <form
-                className="space-y-5"
-                {...devMarker({
-                  context: 'risk-levels',
-                  name: 'crud form',
-                  priority: 340,
-                  value: editId ? 'edit' : 'create',
-                })}
-                onSubmit={handleSubmit}
-              >
-                <h2 className="text-lg font-semibold">
-                  {editId ? tc('edit') : tc('create')}
-                </h2>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="rl-name-sv"
-                  >
-                    {t('name')} (SV) *
-                  </label>
-                  <input
-                    className={inputClass}
-                    id="rl-name-sv"
-                    onChange={e =>
-                      setForm(f => ({ ...f, nameSv: e.target.value }))
-                    }
-                    required
-                    value={form.nameSv}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="rl-name-en"
-                  >
-                    {t('name')} (EN) *
-                  </label>
-                  <input
-                    className={inputClass}
-                    id="rl-name-en"
-                    onChange={e =>
-                      setForm(f => ({ ...f, nameEn: e.target.value }))
-                    }
-                    required
-                    value={form.nameEn}
-                  />
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="rl-color"
-                  >
-                    {t('color')} *
-                  </label>
-                  <div className="flex items-center gap-3">
+        <AnimatePresence>
+          {showForm && (
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
+                <form
+                  className="space-y-5"
+                  {...devMarker({
+                    context: 'risk-levels',
+                    name: 'crud form',
+                    priority: 340,
+                    value: editId ? 'edit' : 'create',
+                  })}
+                  onSubmit={handleSubmit}
+                >
+                  <h2 className="text-lg font-semibold">
+                    {editId ? tc('edit') : tc('create')}
+                  </h2>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="rl-name-sv"
+                    >
+                      {t('name')} (SV) *
+                    </label>
                     <input
-                      className="h-10 w-14 rounded-lg border cursor-pointer"
-                      id="rl-color"
+                      className={inputClass}
+                      id="rl-name-sv"
                       onChange={e =>
-                        setForm(f => ({ ...f, color: e.target.value }))
+                        setForm(f => ({ ...f, nameSv: e.target.value }))
                       }
                       required
-                      type="color"
-                      value={form.color}
-                    />
-                    <input
-                      aria-label={t('colorHex')}
-                      className={inputClass}
-                      onChange={e =>
-                        setForm(f => ({ ...f, color: e.target.value }))
-                      }
-                      pattern="^#[0-9a-fA-F]{6}$"
-                      placeholder="#3b82f6"
-                      value={form.color}
-                    />
-                    <span
-                      aria-hidden="true"
-                      className="inline-block w-6 h-6 rounded-full shrink-0 border"
-                      style={{ backgroundColor: form.color }}
+                      value={form.nameSv}
                     />
                   </div>
-                </div>
-                <div>
-                  <label
-                    className="block text-sm font-medium mb-1"
-                    htmlFor="rl-sort-order"
-                  >
-                    {t('sortOrder')}
-                  </label>
-                  <input
-                    className={inputClass}
-                    id="rl-sort-order"
-                    min="0"
-                    onChange={e =>
-                      setForm(f => ({ ...f, sortOrder: e.target.value }))
-                    }
-                    type="number"
-                    value={form.sortOrder}
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    className="btn-primary"
-                    disabled={submitting}
-                    type="submit"
-                  >
-                    {submitting ? tc('saving') : tc('save')}
-                  </button>
-                  <button
-                    className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                    disabled={submitting}
-                    onClick={() => {
-                      setShowForm(false)
-                      setLinkedRequirements([])
-                    }}
-                    type="button"
-                  >
-                    {tc('cancel')}
-                  </button>
-                </div>
-              </form>
-
-              {editId && (
-                <div>
-                  <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
-                    {t('linkedRequirements')}
-                  </h3>
-                  {linkedRequirementsLoading ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('loading')}
-                    </p>
-                  ) : linkedRequirements.length === 0 ? (
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                      {tc('noneAvailable')}
-                    </p>
-                  ) : (
-                    <div className="rounded-xl border overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                            <th className="py-2 px-3 font-medium">
-                              {tr('uniqueId')}
-                            </th>
-                            <th className="py-2 px-3 font-medium">
-                              {tr('description')}
-                            </th>
-                            <th className="py-2 px-3 font-medium">
-                              {tc('version')}
-                            </th>
-                            <th className="py-2 px-3 font-medium">
-                              {tr('status')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {linkedRequirements.map(req => {
-                            const truncated = truncateDescription(
-                              req.description,
-                            )
-                            const isTruncated =
-                              truncated !== req.description &&
-                              req.description != null
-                            return (
-                              <tr
-                                className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                                key={`${req.id}-v${req.versionNumber}`}
-                              >
-                                <td className="py-2 px-3 font-medium">
-                                  <Link
-                                    className="inline-flex items-center min-h-[44px] min-w-[44px] text-primary-700 dark:text-primary-300 hover:underline"
-                                    href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
-                                  >
-                                    {req.uniqueId}
-                                  </Link>
-                                </td>
-                                <td
-                                  className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
-                                  title={
-                                    isTruncated
-                                      ? (req.description ?? undefined)
-                                      : undefined
-                                  }
-                                >
-                                  {truncated ?? '—'}
-                                </td>
-                                <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
-                                  v{req.versionNumber}
-                                </td>
-                                <td className="py-2 px-3">
-                                  <StatusBadge
-                                    color={req.statusColor}
-                                    label={
-                                      (locale === 'sv'
-                                        ? req.statusNameSv
-                                        : req.statusNameEn) ?? ''
-                                    }
-                                  />
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="rl-name-en"
+                    >
+                      {t('name')} (EN) *
+                    </label>
+                    <input
+                      className={inputClass}
+                      id="rl-name-en"
+                      onChange={e =>
+                        setForm(f => ({ ...f, nameEn: e.target.value }))
+                      }
+                      required
+                      value={form.nameEn}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="rl-color"
+                    >
+                      {t('color')} *
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        className="h-10 w-14 rounded-lg border cursor-pointer"
+                        id="rl-color"
+                        onChange={e =>
+                          setForm(f => ({ ...f, color: e.target.value }))
+                        }
+                        required
+                        type="color"
+                        value={form.color}
+                      />
+                      <input
+                        aria-label={t('colorHex')}
+                        className={inputClass}
+                        onChange={e =>
+                          setForm(f => ({ ...f, color: e.target.value }))
+                        }
+                        pattern="^#[0-9a-fA-F]{6}$"
+                        placeholder="#3b82f6"
+                        value={form.color}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className="inline-block w-6 h-6 rounded-full shrink-0 border"
+                        style={{ backgroundColor: form.color }}
+                      />
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                  </div>
+                  <div>
+                    <label
+                      className="block text-sm font-medium mb-1"
+                      htmlFor="rl-sort-order"
+                    >
+                      {t('sortOrder')}
+                    </label>
+                    <input
+                      className={inputClass}
+                      id="rl-sort-order"
+                      min="0"
+                      onChange={e =>
+                        setForm(f => ({ ...f, sortOrder: e.target.value }))
+                      }
+                      type="number"
+                      value={form.sortOrder}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      className="btn-primary"
+                      disabled={submitting}
+                      type="submit"
+                    >
+                      {submitting ? tc('saving') : tc('save')}
+                    </button>
+                    <button
+                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                      disabled={submitting}
+                      onClick={() => {
+                        setShowForm(false)
+                        setLinkedRequirements([])
+                      }}
+                      type="button"
+                    >
+                      {tc('cancel')}
+                    </button>
+                  </div>
+                </form>
+
+                {editId && (
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
+                      {t('linkedRequirements')}
+                    </h3>
+                    {linkedRequirementsLoading ? (
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                        {tc('loading')}
+                      </p>
+                    ) : linkedRequirements.length === 0 ? (
+                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                        {tc('noneAvailable')}
+                      </p>
+                    ) : (
+                      <div className="rounded-xl border overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
+                              <th className="py-2 px-3 font-medium">
+                                {tr('uniqueId')}
+                              </th>
+                              <th className="py-2 px-3 font-medium">
+                                {tr('description')}
+                              </th>
+                              <th className="py-2 px-3 font-medium">
+                                {tc('version')}
+                              </th>
+                              <th className="py-2 px-3 font-medium">
+                                {tr('status')}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {linkedRequirements.map(req => {
+                              const truncated = truncateDescription(
+                                req.description,
+                              )
+                              const isTruncated =
+                                truncated !== req.description &&
+                                req.description != null
+                              return (
+                                <tr
+                                  className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                                  key={`${req.id}-v${req.versionNumber}`}
+                                >
+                                  <td className="py-2 px-3 font-medium">
+                                    <Link
+                                      className="inline-flex items-center min-h-[44px] min-w-[44px] text-primary-700 dark:text-primary-300 hover:underline"
+                                      href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
+                                    >
+                                      {req.uniqueId}
+                                    </Link>
+                                  </td>
+                                  <td
+                                    className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
+                                    title={
+                                      isTruncated
+                                        ? (req.description ?? undefined)
+                                        : undefined
+                                    }
+                                  >
+                                    {truncated ?? '—'}
+                                  </td>
+                                  <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
+                                    v{req.versionNumber}
+                                  </td>
+                                  <td className="py-2 px-3">
+                                    <StatusBadge
+                                      color={req.statusColor}
+                                      label={
+                                        (locale === 'sv'
+                                          ? req.statusNameSv
+                                          : req.statusNameEn) ?? ''
+                                      }
+                                    />
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {deleteError && (
           <p

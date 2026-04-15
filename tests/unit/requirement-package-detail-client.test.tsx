@@ -2,13 +2,17 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementPackageDetailClient from '@/app/[locale]/requirement-packages/[slug]/requirement-package-detail-client'
+import { ConfirmModalProvider } from '@/components/ConfirmModal'
 
 const requirementsTableMock = vi.fn()
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: (ns?: string) => (key: string) =>
-    ns ? `${ns}.${key}` : key,
+  useTranslations: (ns?: string) => {
+    const t = (key: string) => (ns ? `${ns}.${key}` : key)
+    t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
+    return t
+  },
 }))
 
 vi.mock('next/navigation', () => ({
@@ -26,8 +30,16 @@ vi.mock('@/app/[locale]/requirements/[id]/requirement-detail-client', () => ({
 vi.mock('@/components/RequirementsTable', () => ({
   default: (props: {
     floatingActionRailPlacement?: string
+    floatingActions?: {
+      ariaLabel: string
+      developerModeContext?: string
+      developerModeValue?: string
+      icon: ReactNode
+      id: string
+      onClick?: () => void
+    }[]
     onSelectionChange?: (ids: Set<number>) => void
-    rows: { id: number }[]
+    rows: { id: number; itemRef?: string }[]
     stickyTopOffsetClassName?: string
     stickyTitle?: ReactNode
     stickyTitleActions?: ReactNode
@@ -45,6 +57,19 @@ vi.mock('@/components/RequirementsTable', () => ({
         <div data-testid="requirements-table-sticky-title-actions">
           {props.stickyTitleActions}
         </div>
+        {props.floatingActions?.map(action => (
+          <button
+            aria-label={action.ariaLabel}
+            data-developer-mode-context={action.developerModeContext}
+            data-developer-mode-name="table action"
+            data-developer-mode-value={action.developerModeValue}
+            key={action.id}
+            onClick={action.onClick}
+            type="button"
+          >
+            {action.icon}
+          </button>
+        ))}
         {props.rows[0] ? (
           <button
             aria-label={`select-row-${props.rows[0].id}`}
@@ -87,6 +112,14 @@ vi.stubGlobal('fetch', fetchMock)
 let addRequirementsResponse: { body: unknown; ok: boolean }
 let failNextAvailableRequirementsFetch = false
 let failNextPackageItemsFetch = false
+
+function renderRequirementPackageDetailClient() {
+  return render(
+    <ConfirmModalProvider>
+      <RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />
+    </ConfirmModalProvider>,
+  )
+}
 
 describe('RequirementPackageDetailClient', () => {
   beforeEach(() => {
@@ -147,6 +180,9 @@ describe('RequirementPackageDetailClient', () => {
                   area: { name: 'Security' },
                   id: 101,
                   isArchived: false,
+                  itemRef: 'lib:31',
+                  kind: 'library',
+                  packageItemId: 31,
                   uniqueId: 'BEH0001',
                   version: {
                     categoryNameEn: 'Business requirement',
@@ -212,6 +248,18 @@ describe('RequirementPackageDetailClient', () => {
           return Promise.resolve(okJson({ areas: [] }))
         }
 
+        if (url === '/api/requirement-categories') {
+          return Promise.resolve(okJson({ categories: [] }))
+        }
+
+        if (url === '/api/requirement-types') {
+          return Promise.resolve(okJson({ types: [] }))
+        }
+
+        if (url === '/api/risk-levels') {
+          return Promise.resolve(okJson({ riskLevels: [] }))
+        }
+
         if (url === '/api/usage-scenarios') {
           return Promise.resolve(okJson({ scenarios: [] }))
         }
@@ -250,6 +298,10 @@ describe('RequirementPackageDetailClient', () => {
           return Promise.resolve(okJson({ normReferences: [] }))
         }
 
+        if (url.startsWith('/api/quality-characteristics')) {
+          return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+        }
+
         if (url === '/api/package-item-statuses') {
           return Promise.resolve(okJson({ statuses: [] }))
         }
@@ -260,9 +312,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('opens and closes the package edit view from the title action', async () => {
-    const { container } = render(
-      <RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />,
-    )
+    const { container } = renderRequirementPackageDetailClient()
 
     await waitFor(() => {
       expect(
@@ -354,9 +404,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('uses inline top rails and sticky table titles for the split tables', async () => {
-    const { container } = render(
-      <RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />,
-    )
+    const { container } = renderRequirementPackageDetailClient()
 
     await waitFor(() => {
       expect(requirementsTableMock.mock.calls.length).toBeGreaterThanOrEqual(2)
@@ -395,7 +443,7 @@ describe('RequirementPackageDetailClient', () => {
       ok: false,
     }
 
-    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
+    renderRequirementPackageDetailClient()
 
     await waitFor(() => {
       expect(
@@ -422,7 +470,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('closes the add dialog when Escape is pressed inside the panel', async () => {
-    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
+    renderRequirementPackageDetailClient()
 
     await waitFor(() => {
       expect(
@@ -453,7 +501,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('disables needs-reference inputs and help toggles while add is submitting', async () => {
-    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
+    renderRequirementPackageDetailClient()
 
     await waitFor(() => {
       expect(
@@ -511,7 +559,7 @@ describe('RequirementPackageDetailClient', () => {
   })
 
   it('keeps the add dialog open when a post-add refresh fails', async () => {
-    render(<RequirementPackageDetailClient packageSlug="ETJANSTPLATT" />)
+    renderRequirementPackageDetailClient()
 
     await waitFor(() => {
       expect(
@@ -534,5 +582,45 @@ describe('RequirementPackageDetailClient', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
     expect(dialog).toBeInTheDocument()
+  })
+
+  it('opens the package-local requirement dialog from the left-panel action', async () => {
+    renderRequirementPackageDetailClient()
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    const createButton = screen.getByRole('button', {
+      name: 'package.newLocalRequirement',
+    })
+    expect(createButton).toHaveAttribute(
+      'data-developer-mode-name',
+      'table action',
+    )
+    expect(createButton).toHaveAttribute(
+      'data-developer-mode-context',
+      'requirement package detail',
+    )
+    expect(createButton).toHaveAttribute(
+      'data-developer-mode-value',
+      'create local requirement',
+    )
+
+    fireEvent.click(createButton)
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 2,
+          name: 'package.newLocalRequirement',
+        }),
+      ).toBeInTheDocument()
+    })
   })
 })

@@ -20,6 +20,9 @@ for (const viewport of viewports) {
           name: 'Införande av e-tjänstplattform',
         }),
       ).toBeVisible()
+      await expect(
+        page.getByRole('button', { name: 'Nytt unikt krav' }),
+      ).toBeVisible()
 
       await page.getByRole('button', { name: 'Redigera kravpaket' }).click()
 

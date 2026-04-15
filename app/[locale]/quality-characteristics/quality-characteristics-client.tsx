@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
@@ -204,119 +205,129 @@ export default function QualityCharacteristicsClient() {
           {t('subtitle')}
         </p>
 
-        {showForm && (
-          <form
-            className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg animate-fade-in-up"
-            {...devMarker({
-              context: 'quality characteristics',
-              name: 'crud form',
-              priority: 340,
-              value: editId ? 'edit' : 'create',
-            })}
-            onSubmit={handleSubmit}
-          >
-            <h2 className="text-lg font-semibold">
-              {editId ? tc('edit') : tc('create')}
-            </h2>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="qc-name-sv"
-              >
-                {t('name')} (SV) *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="qc-name-sv"
-                onChange={e => setForm(f => ({ ...f, nameSv: e.target.value }))}
-                required
-                value={form.nameSv}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="qc-name-en"
-              >
-                {t('name')} (EN) *
-              </label>
-              <input
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="qc-name-en"
-                onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))}
-                required
-                value={form.nameEn}
-              />
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="qc-type"
-              >
-                {t('type')} *
-              </label>
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="qc-type"
-                onChange={e =>
-                  setForm(f => ({
-                    ...f,
-                    requirementTypeId: e.target.value,
-                    parentId: '',
-                  }))
-                }
-                required
-                value={form.requirementTypeId}
-              >
-                <option value="">—</option>
-                {types.map(tp => (
-                  <option key={tp.id} value={tp.id}>
-                    {getTypeName(tp)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                className="block text-sm font-medium mb-1"
-                htmlFor="qc-parent"
-              >
-                {t('parent')}
-              </label>
-              <select
-                className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
-                id="qc-parent"
-                onChange={e =>
-                  setForm(f => ({ ...f, parentId: e.target.value }))
-                }
-                value={form.parentId}
-              >
-                <option value="">{t('topLevel')}</option>
-                {parentOptions.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {getName(p)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex gap-3">
-              <button
-                className="btn-primary"
-                disabled={isSubmitting}
-                type="submit"
-              >
-                {tc('save')}
-              </button>
-              <button
-                className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                onClick={() => setShowForm(false)}
-                type="button"
-              >
-                {tc('cancel')}
-              </button>
-            </div>
-          </form>
-        )}
+        <AnimatePresence>
+          {showForm && (
+            <motion.form
+              animate={{ opacity: 1, y: 0 }}
+              className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
+              exit={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.15 }}
+              {...devMarker({
+                context: 'quality characteristics',
+                name: 'crud form',
+                priority: 340,
+                value: editId ? 'edit' : 'create',
+              })}
+              onSubmit={handleSubmit}
+            >
+              <h2 className="text-lg font-semibold">
+                {editId ? tc('edit') : tc('create')}
+              </h2>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="qc-name-sv"
+                >
+                  {t('name')} (SV) *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="qc-name-sv"
+                  onChange={e =>
+                    setForm(f => ({ ...f, nameSv: e.target.value }))
+                  }
+                  required
+                  value={form.nameSv}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="qc-name-en"
+                >
+                  {t('name')} (EN) *
+                </label>
+                <input
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="qc-name-en"
+                  onChange={e =>
+                    setForm(f => ({ ...f, nameEn: e.target.value }))
+                  }
+                  required
+                  value={form.nameEn}
+                />
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="qc-type"
+                >
+                  {t('type')} *
+                </label>
+                <select
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="qc-type"
+                  onChange={e =>
+                    setForm(f => ({
+                      ...f,
+                      requirementTypeId: e.target.value,
+                      parentId: '',
+                    }))
+                  }
+                  required
+                  value={form.requirementTypeId}
+                >
+                  <option value="">—</option>
+                  {types.map(tp => (
+                    <option key={tp.id} value={tp.id}>
+                      {getTypeName(tp)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label
+                  className="block text-sm font-medium mb-1"
+                  htmlFor="qc-parent"
+                >
+                  {t('parent')}
+                </label>
+                <select
+                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  id="qc-parent"
+                  onChange={e =>
+                    setForm(f => ({ ...f, parentId: e.target.value }))
+                  }
+                  value={form.parentId}
+                >
+                  <option value="">{t('topLevel')}</option>
+                  {parentOptions.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {getName(p)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  className="btn-primary"
+                  disabled={isSubmitting}
+                  type="submit"
+                >
+                  {tc('save')}
+                </button>
+                <button
+                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                  onClick={() => setShowForm(false)}
+                  type="button"
+                >
+                  {tc('cancel')}
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
 
         {loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">

@@ -15,7 +15,11 @@ const seedSQL = `
 -- ─── Clean stale seed data (dependency order) ───────────────────────────────
 DELETE FROM improvement_suggestions;
 DELETE FROM deviations;
+DELETE FROM package_local_requirement_deviations;
 DELETE FROM requirement_package_items;
+DELETE FROM package_local_requirement_usage_scenarios;
+DELETE FROM package_local_requirement_norm_references;
+DELETE FROM package_local_requirements;
 DELETE FROM package_needs_references;
 DELETE FROM requirement_packages;
 DELETE FROM package_responsibility_areas;
@@ -1623,6 +1627,8 @@ INSERT OR IGNORE INTO package_needs_references (id, package_id, text, created_at
   -- Package 7: GDPR-efterlevnad 2026
   (19, 7, 'GDPR Art. 44-46: dataöverföring och lagring inom EU',                                     datetime('now', '-9 days')),
   (20, 7, 'GDPR Art. 5(2) ansvarsskyldighet: logga privilegierade operationer',                      datetime('now', '-8 days')),
+  -- Package 8: Införande av e-tjänstplattform
+  (23, 8, 'Kommunen behöver unik styrning och isolerade adminflöden för e-tjänstplattformen',  datetime('now', '-7 days')),
   -- Package 9: API Gateway och Kommunikation
   (21, 9, 'Rate limiting är ett primärt krav för API-gateway-upphandlingen',                         datetime('now', '-3 days')),
   -- Package 10: Systemövervakning Bas
@@ -1690,6 +1696,177 @@ INSERT OR IGNORE INTO requirement_package_items (id, requirement_package_id, req
 UPDATE requirement_package_items
   SET package_item_status_id = 1
   WHERE package_item_status_id IS NULL;
+
+-- ─── Package-local requirements ──────────────────────────────────────────────
+INSERT OR IGNORE INTO package_local_requirements (
+  id,
+  package_id,
+  unique_id,
+  sequence_number,
+  requirement_area_id,
+  description,
+  acceptance_criteria,
+  requirement_category_id,
+  requirement_type_id,
+  quality_characteristic_id,
+  risk_level_id,
+  is_testing_required,
+  verification_method,
+  needs_reference_id,
+  package_item_status_id,
+  note,
+  status_updated_at,
+  created_at,
+  updated_at
+) VALUES
+  (
+    1,
+    8,
+    'KRAV0001',
+    1,
+    1,
+    'E-tjänstplattformen ska exponera en separat integrationsyta för kommunens e-tjänster utan att dela sessionskontext med övriga interna system.',
+    'Minst en extern integrationsyta ska kunna konfigureras per e-tjänst och isoleringen ska verifieras i testmiljö.',
+    2,
+    2,
+    11,
+    2,
+    1,
+    'Integrationstest med verifiering av isolerad sessionshantering per e-tjänst.',
+    23,
+    2,
+    NULL,
+    datetime('now', '-6 days'),
+    datetime('now', '-7 days'),
+    datetime('now', '-6 days')
+  ),
+  (
+    2,
+    8,
+    'KRAV0002',
+    2,
+    6,
+    'Kommunens e-tjänstplattform ska stödja delegerad administratörsbehörighet per ansluten e-tjänst.',
+    'Administratörer för en e-tjänst får inte kunna se eller ändra behörigheter för andra e-tjänster.',
+    1,
+    1,
+    3,
+    3,
+    1,
+    'Behörighetstest med separata administratörsroller för minst två e-tjänster.',
+    NULL,
+    1,
+    NULL,
+    datetime('now', '-5 days'),
+    datetime('now', '-6 days'),
+    datetime('now', '-5 days')
+  );
+
+UPDATE package_local_requirements
+SET
+  package_id = 8,
+  unique_id = 'KRAV0001',
+  sequence_number = 1,
+  requirement_area_id = 1,
+  description = 'E-tjänstplattformen ska exponera en separat integrationsyta för kommunens e-tjänster utan att dela sessionskontext med övriga interna system.',
+  acceptance_criteria = 'Minst en extern integrationsyta ska kunna konfigureras per e-tjänst och isoleringen ska verifieras i testmiljö.',
+  requirement_category_id = 2,
+  requirement_type_id = 2,
+  quality_characteristic_id = 11,
+  risk_level_id = 2,
+  is_testing_required = 1,
+  verification_method = 'Integrationstest med verifiering av isolerad sessionshantering per e-tjänst.',
+  needs_reference_id = 23,
+  package_item_status_id = 2,
+  note = NULL,
+  status_updated_at = datetime('now', '-6 days'),
+  created_at = datetime('now', '-7 days'),
+  updated_at = datetime('now', '-6 days')
+WHERE id = 1;
+
+UPDATE package_local_requirements
+SET
+  package_id = 8,
+  unique_id = 'KRAV0002',
+  sequence_number = 2,
+  requirement_area_id = 6,
+  description = 'Kommunens e-tjänstplattform ska stödja delegerad administratörsbehörighet per ansluten e-tjänst.',
+  acceptance_criteria = 'Administratörer för en e-tjänst får inte kunna se eller ändra behörigheter för andra e-tjänster.',
+  requirement_category_id = 1,
+  requirement_type_id = 1,
+  quality_characteristic_id = 3,
+  risk_level_id = 3,
+  is_testing_required = 1,
+  verification_method = 'Behörighetstest med separata administratörsroller för minst två e-tjänster.',
+  needs_reference_id = NULL,
+  package_item_status_id = 1,
+  note = NULL,
+  status_updated_at = datetime('now', '-5 days'),
+  created_at = datetime('now', '-6 days'),
+  updated_at = datetime('now', '-5 days')
+WHERE id = 2;
+
+INSERT OR IGNORE INTO package_local_requirement_usage_scenarios (
+  package_local_requirement_id,
+  usage_scenario_id
+) VALUES
+  (1, 1),
+  (1, 2),
+  (2, 1);
+
+INSERT OR IGNORE INTO package_local_requirement_norm_references (
+  package_local_requirement_id,
+  norm_reference_id
+) VALUES
+  (1, 4),
+  (1, 5),
+  (2, 2),
+  (2, 3);
+
+INSERT OR IGNORE INTO package_local_requirement_deviations (
+  id,
+  package_local_requirement_id,
+  motivation,
+  is_review_requested,
+  decision,
+  decision_motivation,
+  decided_by,
+  decided_at,
+  created_by,
+  created_at,
+  updated_at
+) VALUES
+  (
+    1,
+    2,
+    'Kommunen inväntar beslut om gemensam delegeringsmodell innan lösningen kan färdigställas.',
+    0,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    'Sara Holm',
+    datetime('now', '-2 days'),
+    datetime('now', '-2 days')
+  );
+
+UPDATE package_local_requirement_deviations
+SET
+  package_local_requirement_id = 2,
+  motivation = 'Kommunen inväntar beslut om gemensam delegeringsmodell innan lösningen kan färdigställas.',
+  is_review_requested = 0,
+  decision = NULL,
+  decision_motivation = NULL,
+  decided_by = NULL,
+  decided_at = NULL,
+  created_by = 'Sara Holm',
+  created_at = datetime('now', '-2 days'),
+  updated_at = datetime('now', '-2 days')
+WHERE id = 1;
+
+UPDATE requirement_packages
+SET local_requirement_next_sequence = 3
+WHERE id = 8;
 
 -- ─── Deviations (formal waivers from mandatory requirements) ─────────────────
 INSERT OR IGNORE INTO deviations (id, package_item_id, motivation, is_review_requested, decision, decision_motivation, decided_by, decided_at, created_by, created_at, updated_at) VALUES
