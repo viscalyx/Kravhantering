@@ -284,7 +284,9 @@
     "stegaren",
     "statusstegare",
     "statusstegaren",
-    "adminflöden"
+    "adminflöden",
+    "rewriteable",
+    "readback"
   ],
   "flagWords": [],
   "ignorePaths": [
