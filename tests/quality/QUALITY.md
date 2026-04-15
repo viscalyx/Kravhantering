@@ -1,4 +1,3 @@
-<!-- markdownlint-disable MD013 -->
 # Quality Constitution: Kravhantering
 
 ## Purpose
@@ -29,6 +28,7 @@ recorded production incident.
 
 ## Coverage Targets
 
+<!-- markdownlint-disable MD013 -->
 | Subsystem | Target | Why |
 | --- | --- | --- |
 | `lib/dal/requirements.ts` | 92-95% | Lifecycle transitions, effective status, delete/restore, and auto-archive rules are the core register invariants. A regression here can make the same requirement appear published, draft, or archived depending on the surface. |
@@ -37,6 +37,7 @@ recorded production incident.
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
 | `lib/mcp/http.ts`, `lib/mcp/server.ts`, and `lib/export-csv.ts` | 80-85% | These are outward-facing contracts. Wrong method handling, malformed MCP fields, or CSV escaping defects break integrations and downstream reporting even when the app UI still works. |
+<!-- markdownlint-enable MD013 -->
 
 ## Coverage Theater Prevention
 
@@ -75,6 +76,7 @@ version. Draft, review, and archived versions are visible only through
 explicit `history` or `version` reads.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: published detail never leaks draft content"`.
 
 ---
@@ -93,10 +95,12 @@ views to lose the active item and leaving the lifecycle story contradictory.
 newer draft or review version exists for the same requirement.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending replacement blocks archiving"`.
 
 ---
 
+<!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 3: Publishing A Successor Auto-Archives Its Predecessor At The Same Instant
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Review -> Published"]`
@@ -112,13 +116,16 @@ time, and publishing a successor must archive the predecessor atomically from
 the caller's perspective.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishing a successor auto-archives its predecessor at the same instant"`.
 
 ---
 
 ### Scenario 4: Review And Archived Versions Are Immutable Until The State Changes
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Published -> Draft : New version created"]`
+**Requirement tag:**
+<!-- markdownlint-disable-next-line MD013 -->
+`[Req: formal — docs/lifecycle-workflow.md "Published -> Draft : New version created"]`
 
 **What happened:** `editRequirement()` rejects edits against review and
 archived versions at `lib/dal/requirements.ts:795-805`. If those rows are
@@ -130,13 +137,15 @@ must create a new draft. Review content must return to draft before editing.
 Archived content must be restored or reactivated before editing.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review and archived versions are immutable until the state changes"`.
 
 ---
 
 ### Scenario 5: Archived Requirements Stay Visible While A Replacement Draft Exists
 
-**Requirement tag:** `[Req: formal — docs/version-lifecycle-dates.md "Effective Status"]`
+**Requirement tag:**
+`[Req: formal — docs/version-lifecycle-dates.md "Effective Status"]`
 
 **What happened:** The effective-status SQL in
 `lib/dal/requirements.ts:63-85` gives archived requirements higher priority
@@ -149,13 +158,17 @@ replacement.
 its effective status must remain archived until a new published version exists.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived requirements stay visible while a replacement draft exists"`.
 
 ---
 
+<!-- markdownlint-disable-next-line MD013 -->
 ### Scenario 6: Deviated Status Requires An Approved Deviation For Both Library And Package-Local Items
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Package Item Status"]`
+**Requirement tag:**
+<!-- markdownlint-disable-next-line MD013 -->
+`[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Package Item Status"]`
 
 **What happened:** Both `updatePackageItemFields()` and
 `updatePackageLocalRequirementFields()` block `packageItemStatusId = 5`
@@ -169,13 +182,15 @@ Deviated state only after an approved deviation decision exists for that exact
 item kind.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and package-local items"`.
 
 ---
 
 ### Scenario 7: Needs-Reference Linking Never Leaks Orphan Metadata
 
-**Requirement tag:** `[Req: inferred — from linkRequirementsToPackageAtomically() cleanup path]`
+**Requirement tag:**
+`[Req: inferred — from linkRequirementsToPackageAtomically() cleanup path]`
 
 **What happened:** `linkRequirementsToPackageAtomically()` trims
 `needsReferenceText`, creates or reuses the metadata row, and deletes a newly
@@ -188,13 +203,15 @@ not attached to any requirement.
 least one linked package item still points at them.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"`.
 
 ---
 
 ### Scenario 8: Suggestion Resolution Is Impossible Without Review
 
-**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Improvement Suggestion Lifecycle"]`
+**Requirement tag:**
+`[Req: formal — docs/lifecycle-workflow.md "Improvement Suggestion Lifecycle"]`
 
 **What happened:** `recordResolution()` requires
 `isReviewRequested === 1`, and `requestReview()` /
@@ -208,13 +225,16 @@ change.
 explicitly, and may be resolved or dismissed only from the submitted state.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggestion resolution is impossible without review"`.
 
 ---
 
 ### Scenario 9: Deviation Decisions Are Write-Once Audit Events
 
-**Requirement tag:** `[Req: inferred — from recordDecision() and recordPackageLocalDecision() conflict guards]`
+**Requirement tag:**
+<!-- markdownlint-disable-next-line MD013 -->
+`[Req: inferred — from recordDecision() and recordPackageLocalDecision() conflict guards]`
 
 **What happened:** Both library and package-local deviation decisions are
 guarded by `isNull(decision)` checks in `lib/dal/deviations.ts:521-693`. If a
@@ -226,12 +246,13 @@ loses evidentiary value.
 deletes, or second decisions must fail with a conflict.
 
 **How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviation decisions are write-once audit events"`.
 
 ## AI Session Quality Discipline
 
-1. Read `quality/QUALITY.md` before changing lifecycle, package, MCP, report,
-   or admin-default code.
+1. Read `tests/quality/QUALITY.md` before changing lifecycle, package, MCP,
+   report, or admin-default code.
 2. When editing lifecycle or package logic, run
    `npm exec -- vitest run tests/quality/functional.test.ts` before declaring done.
 3. Treat `docs/` as the current spec source. If code disagrees, document
@@ -252,4 +273,3 @@ deletes, or second decisions must fail with a conflict.
 - Confirm report-column expectations when exports or admin defaults change.
 - Validate whether an inferred requirement should be promoted to a formal one
   in `docs/`.
-<!-- markdownlint-enable MD013 -->
