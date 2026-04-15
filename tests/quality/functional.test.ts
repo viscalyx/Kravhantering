@@ -1108,6 +1108,40 @@ describe('Boundaries and Edge Cases', () => {
   )
 
   it(
+    '[Req: regression — createPackageLocalRequirement() allocator] ' +
+      'assigns sequential KRAV unique IDs across back-to-back creates',
+    async () => {
+      await seedPackageLookups(currentDb.db)
+      const pkg = await createPackageWithLocalSequence(currentDb.db, {
+        name: 'Sequence package',
+        uniqueId: 'SEQ-PKG',
+      })
+
+      const first = await createPackageLocalRequirement(appDb(), pkg.id, {
+        description: 'First local requirement',
+      })
+      const second = await createPackageLocalRequirement(appDb(), pkg.id, {
+        description: 'Second local requirement',
+      })
+
+      expect(first.uniqueId).toBe('KRAV0001')
+      expect(second.uniqueId).toBe('KRAV0002')
+
+      // A validation failure must not advance the sequence counter
+      await expect(
+        createPackageLocalRequirement(appDb(), pkg.id, {
+          description: '',
+        }),
+      ).rejects.toMatchObject({ code: 'validation' })
+
+      const third = await createPackageLocalRequirement(appDb(), pkg.id, {
+        description: 'Third local requirement',
+      })
+      expect(third.uniqueId).toBe('KRAV0003')
+    },
+  )
+
+  it(
     '[Req: inferred — from normalizeRequirementListColumnDefaults() fallback] ' +
       'reverts corrupted admin defaults to the safe baseline',
     () => {
