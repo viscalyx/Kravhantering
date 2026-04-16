@@ -25,6 +25,7 @@
     "!bundled/**",
     "!playwright-report/**",
     "!playwright-report-dev/**",
-    "!playwright-report-preview/**"
+    "!playwright-report-preview/**",
+    "!tests/quality/spec_audits/**"
   ]
 }
