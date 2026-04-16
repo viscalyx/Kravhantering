@@ -2,12 +2,11 @@ export function exportToCsv(
   headers: string[],
   rows: Record<string, string>[],
 ): string {
-  const BOM = '\uFEFF'
   const headerLine = headers.map(escapeCsvField).join(';')
   const dataLines = rows.map(row =>
     headers.map(h => escapeCsvField(row[h] ?? '')).join(';'),
   )
-  return BOM + [headerLine, ...dataLines].join('\r\n')
+  return [headerLine, ...dataLines].join('\r\n')
 }
 
 function escapeCsvField(field: string): string {

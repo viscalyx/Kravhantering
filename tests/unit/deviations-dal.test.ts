@@ -15,6 +15,7 @@ import {
   listDeviationsForPackage,
   listDeviationsForPackageItem,
   recordDecision,
+  requestReview,
   updateDeviation,
 } from '@/lib/dal/deviations'
 import type { Database as AppDatabase } from '@/lib/db'
@@ -210,6 +211,7 @@ describe('deviations DAL', () => {
         packageItemId: 1,
         motivation: 'Decided upon',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordDecision(db as unknown as AppDatabase, id, {
         decision: 1,
         decisionMotivation: 'Approved for reason',
@@ -223,6 +225,22 @@ describe('deviations DAL', () => {
         'Cannot edit a deviation after a decision has been recorded',
       )
     })
+
+    it('throws conflict when review has been requested', async () => {
+      await seedRequiredData(db)
+      const { id } = await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Submitted for review',
+      })
+      await requestReview(db as unknown as AppDatabase, id)
+      await expect(
+        updateDeviation(db as unknown as AppDatabase, id, {
+          motivation: 'Too late',
+        }),
+      ).rejects.toThrow(
+        'Cannot edit a deviation that has been submitted for review',
+      )
+    })
   })
 
   describe('recordDecision', () => {
@@ -232,6 +250,7 @@ describe('deviations DAL', () => {
         packageItemId: 1,
         motivation: 'Needs approval',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordDecision(db as unknown as AppDatabase, id, {
         decision: 1,
         decisionMotivation: 'Risk accepted',
@@ -250,6 +269,7 @@ describe('deviations DAL', () => {
         packageItemId: 1,
         motivation: 'Needs rejection',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordDecision(db as unknown as AppDatabase, id, {
         decision: 2,
         decisionMotivation: 'Risk not acceptable',
@@ -280,6 +300,7 @@ describe('deviations DAL', () => {
         packageItemId: 1,
         motivation: 'Double decision',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordDecision(db as unknown as AppDatabase, id, {
         decision: 1,
         decisionMotivation: 'First decision',
@@ -293,6 +314,23 @@ describe('deviations DAL', () => {
         }),
       ).rejects.toThrow(
         'A decision has already been recorded for this deviation',
+      )
+    })
+
+    it('throws conflict when review not requested', async () => {
+      await seedRequiredData(db)
+      const { id } = await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'No review requested',
+      })
+      await expect(
+        recordDecision(db as unknown as AppDatabase, id, {
+          decision: 1,
+          decisionMotivation: 'Attempt without review',
+          decidedBy: 'manager',
+        }),
+      ).rejects.toThrow(
+        'Can only approve or reject deviations that have been submitted for review',
       )
     })
   })
@@ -316,6 +354,7 @@ describe('deviations DAL', () => {
         packageItemId: 1,
         motivation: 'Has decision',
       })
+      await requestReview(db as unknown as AppDatabase, id)
       await recordDecision(db as unknown as AppDatabase, id, {
         decision: 1,
         decisionMotivation: 'Approved',
@@ -325,6 +364,20 @@ describe('deviations DAL', () => {
         deleteDeviation(db as unknown as AppDatabase, id),
       ).rejects.toThrow(
         'Cannot delete a deviation after a decision has been recorded',
+      )
+    })
+
+    it('throws conflict when review has been requested', async () => {
+      await seedRequiredData(db)
+      const { id } = await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Submitted for review',
+      })
+      await requestReview(db as unknown as AppDatabase, id)
+      await expect(
+        deleteDeviation(db as unknown as AppDatabase, id),
+      ).rejects.toThrow(
+        'Cannot delete a deviation that has been submitted for review',
       )
     })
   })
@@ -360,11 +413,13 @@ describe('deviations DAL', () => {
         motivation: 'Dev C',
       })
       // Approve first, reject second, leave third pending
+      await requestReview(db as unknown as AppDatabase, id1)
       await recordDecision(db as unknown as AppDatabase, id1, {
         decision: 1,
         decisionMotivation: 'OK',
         decidedBy: 'mgr',
       })
+      await requestReview(db as unknown as AppDatabase, id2)
       await recordDecision(db as unknown as AppDatabase, id2, {
         decision: 2,
         decisionMotivation: 'Not OK',

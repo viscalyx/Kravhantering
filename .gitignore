@@ -258,3 +258,5 @@ __pycache__/
 .ripgreprc
 .zprofile
 .zshrc
+
+tests/quality/spec_audits

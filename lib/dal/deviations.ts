@@ -484,8 +484,34 @@ export async function getPackageLocalDeviation(
 export async function updateDeviation(
   db: Database,
   deviationId: number,
-  data: { motivation?: string },
+  data: { motivation?: string; createdBy?: string | null },
 ): Promise<void> {
+  const existing = await db
+    .select({
+      id: deviations.id,
+      decision: deviations.decision,
+      isReviewRequested: deviations.isReviewRequested,
+    })
+    .from(deviations)
+    .where(eq(deviations.id, deviationId))
+    .limit(1)
+
+  if (existing.length === 0) {
+    throw notFoundError(`Deviation ${deviationId} not found`)
+  }
+
+  if (existing[0].decision !== null) {
+    throw conflictError(
+      'Cannot edit a deviation after a decision has been recorded',
+    )
+  }
+
+  if (existing[0].isReviewRequested === 1) {
+    throw conflictError(
+      'Cannot edit a deviation that has been submitted for review',
+    )
+  }
+
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   }
@@ -497,25 +523,11 @@ export async function updateDeviation(
     updates.motivation = data.motivation.trim()
   }
 
-  const [updated] = await db
-    .update(deviations)
-    .set(updates)
-    .where(and(eq(deviations.id, deviationId), isNull(deviations.decision)))
-    .returning({ id: deviations.id })
-
-  if (!updated) {
-    const [row] = await db
-      .select({ id: deviations.id })
-      .from(deviations)
-      .where(eq(deviations.id, deviationId))
-      .limit(1)
-    if (!row) {
-      throw notFoundError(`Deviation ${deviationId} not found`)
-    }
-    throw conflictError(
-      'Cannot edit a deviation after a decision has been recorded',
-    )
+  if (data.createdBy !== undefined) {
+    updates.createdBy = data.createdBy
   }
+
+  await db.update(deviations).set(updates).where(eq(deviations.id, deviationId))
 }
 
 export async function recordDecision(
@@ -542,8 +554,34 @@ export async function recordDecision(
     throw validationError('Decided by is required')
   }
 
+  const existing = await db
+    .select({
+      id: deviations.id,
+      decision: deviations.decision,
+      isReviewRequested: deviations.isReviewRequested,
+    })
+    .from(deviations)
+    .where(eq(deviations.id, deviationId))
+    .limit(1)
+
+  if (existing.length === 0) {
+    throw notFoundError(`Deviation ${deviationId} not found`)
+  }
+
+  if (existing[0].decision !== null) {
+    throw conflictError(
+      'A decision has already been recorded for this deviation',
+    )
+  }
+
+  if (existing[0].isReviewRequested !== 1) {
+    throw conflictError(
+      'Can only approve or reject deviations that have been submitted for review',
+    )
+  }
+
   const now = new Date().toISOString()
-  const [updated] = await db
+  await db
     .update(deviations)
     .set({
       decision: data.decision,
@@ -552,53 +590,73 @@ export async function recordDecision(
       decidedAt: now,
       updatedAt: now,
     })
-    .where(and(eq(deviations.id, deviationId), isNull(deviations.decision)))
-    .returning({ id: deviations.id })
-
-  if (!updated) {
-    const [row] = await db
-      .select({ id: deviations.id })
-      .from(deviations)
-      .where(eq(deviations.id, deviationId))
-      .limit(1)
-    if (!row) {
-      throw notFoundError(`Deviation ${deviationId} not found`)
-    }
-    throw conflictError(
-      'A decision has already been recorded for this deviation',
-    )
-  }
+    .where(eq(deviations.id, deviationId))
 }
 
 export async function deleteDeviation(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const [deleted] = await db
-    .delete(deviations)
-    .where(and(eq(deviations.id, deviationId), isNull(deviations.decision)))
-    .returning({ id: deviations.id })
+  const existing = await db
+    .select({
+      id: deviations.id,
+      decision: deviations.decision,
+      isReviewRequested: deviations.isReviewRequested,
+    })
+    .from(deviations)
+    .where(eq(deviations.id, deviationId))
+    .limit(1)
 
-  if (!deleted) {
-    const [row] = await db
-      .select({ id: deviations.id })
-      .from(deviations)
-      .where(eq(deviations.id, deviationId))
-      .limit(1)
-    if (!row) {
-      throw notFoundError(`Deviation ${deviationId} not found`)
-    }
+  if (existing.length === 0) {
+    throw notFoundError(`Deviation ${deviationId} not found`)
+  }
+
+  if (existing[0].decision !== null) {
     throw conflictError(
       'Cannot delete a deviation after a decision has been recorded',
     )
   }
+
+  if (existing[0].isReviewRequested === 1) {
+    throw conflictError(
+      'Cannot delete a deviation that has been submitted for review',
+    )
+  }
+
+  await db.delete(deviations).where(eq(deviations.id, deviationId))
 }
 
 export async function updatePackageLocalDeviation(
   db: Database,
   deviationId: number,
-  data: { motivation?: string },
+  data: { motivation?: string; createdBy?: string | null },
 ): Promise<void> {
+  const existing = await db
+    .select({
+      id: packageLocalRequirementDeviations.id,
+      decision: packageLocalRequirementDeviations.decision,
+      isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
+    })
+    .from(packageLocalRequirementDeviations)
+    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .limit(1)
+
+  if (existing.length === 0) {
+    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+  }
+
+  if (existing[0].decision !== null) {
+    throw conflictError(
+      'Cannot edit a deviation after a decision has been recorded',
+    )
+  }
+
+  if (existing[0].isReviewRequested === 1) {
+    throw conflictError(
+      'Cannot edit a deviation that has been submitted for review',
+    )
+  }
+
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
   }
@@ -610,30 +668,14 @@ export async function updatePackageLocalDeviation(
     updates.motivation = data.motivation.trim()
   }
 
-  const [updated] = await db
+  if (data.createdBy !== undefined) {
+    updates.createdBy = data.createdBy
+  }
+
+  await db
     .update(packageLocalRequirementDeviations)
     .set(updates)
-    .where(
-      and(
-        eq(packageLocalRequirementDeviations.id, deviationId),
-        isNull(packageLocalRequirementDeviations.decision),
-      ),
-    )
-    .returning({ id: packageLocalRequirementDeviations.id })
-
-  if (!updated) {
-    const [row] = await db
-      .select({ id: packageLocalRequirementDeviations.id })
-      .from(packageLocalRequirementDeviations)
-      .where(eq(packageLocalRequirementDeviations.id, deviationId))
-      .limit(1)
-    if (!row) {
-      throw notFoundError(`Package-local deviation ${deviationId} not found`)
-    }
-    throw conflictError(
-      'Cannot edit a deviation after a decision has been recorded',
-    )
-  }
+    .where(eq(packageLocalRequirementDeviations.id, deviationId))
 }
 
 export async function recordPackageLocalDecision(
@@ -660,8 +702,34 @@ export async function recordPackageLocalDecision(
     throw validationError('Decided by is required')
   }
 
+  const existing = await db
+    .select({
+      id: packageLocalRequirementDeviations.id,
+      decision: packageLocalRequirementDeviations.decision,
+      isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
+    })
+    .from(packageLocalRequirementDeviations)
+    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .limit(1)
+
+  if (existing.length === 0) {
+    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+  }
+
+  if (existing[0].decision !== null) {
+    throw conflictError(
+      'A decision has already been recorded for this deviation',
+    )
+  }
+
+  if (existing[0].isReviewRequested !== 1) {
+    throw conflictError(
+      'Can only approve or reject deviations that have been submitted for review',
+    )
+  }
+
   const now = new Date().toISOString()
-  const [updated] = await db
+  await db
     .update(packageLocalRequirementDeviations)
     .set({
       decision: data.decision,
@@ -670,56 +738,42 @@ export async function recordPackageLocalDecision(
       decidedBy: data.decidedBy.trim(),
       updatedAt: now,
     })
-    .where(
-      and(
-        eq(packageLocalRequirementDeviations.id, deviationId),
-        isNull(packageLocalRequirementDeviations.decision),
-      ),
-    )
-    .returning({ id: packageLocalRequirementDeviations.id })
-
-  if (!updated) {
-    const [row] = await db
-      .select({ id: packageLocalRequirementDeviations.id })
-      .from(packageLocalRequirementDeviations)
-      .where(eq(packageLocalRequirementDeviations.id, deviationId))
-      .limit(1)
-    if (!row) {
-      throw notFoundError(`Package-local deviation ${deviationId} not found`)
-    }
-    throw conflictError(
-      'A decision has already been recorded for this deviation',
-    )
-  }
+    .where(eq(packageLocalRequirementDeviations.id, deviationId))
 }
 
 export async function deletePackageLocalDeviation(
   db: Database,
   deviationId: number,
 ): Promise<void> {
-  const [deleted] = await db
-    .delete(packageLocalRequirementDeviations)
-    .where(
-      and(
-        eq(packageLocalRequirementDeviations.id, deviationId),
-        isNull(packageLocalRequirementDeviations.decision),
-      ),
-    )
-    .returning({ id: packageLocalRequirementDeviations.id })
+  const existing = await db
+    .select({
+      id: packageLocalRequirementDeviations.id,
+      decision: packageLocalRequirementDeviations.decision,
+      isReviewRequested: packageLocalRequirementDeviations.isReviewRequested,
+    })
+    .from(packageLocalRequirementDeviations)
+    .where(eq(packageLocalRequirementDeviations.id, deviationId))
+    .limit(1)
 
-  if (!deleted) {
-    const [row] = await db
-      .select({ id: packageLocalRequirementDeviations.id })
-      .from(packageLocalRequirementDeviations)
-      .where(eq(packageLocalRequirementDeviations.id, deviationId))
-      .limit(1)
-    if (!row) {
-      throw notFoundError(`Package-local deviation ${deviationId} not found`)
-    }
+  if (existing.length === 0) {
+    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+  }
+
+  if (existing[0].decision !== null) {
     throw conflictError(
       'Cannot delete a deviation after a decision has been recorded',
     )
   }
+
+  if (existing[0].isReviewRequested === 1) {
+    throw conflictError(
+      'Cannot delete a deviation that has been submitted for review',
+    )
+  }
+
+  await db
+    .delete(packageLocalRequirementDeviations)
+    .where(eq(packageLocalRequirementDeviations.id, deviationId))
 }
 
 export async function countDeviationsByPackage(

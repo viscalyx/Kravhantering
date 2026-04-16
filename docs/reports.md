@@ -79,6 +79,18 @@ version, sorted in descending version order.
 - Status colors: Draft (blue), Review Requested (yellow),
   Resolved (green), Dismissed (red)
 
+## CSV Export Format
+
+The `exportToCsv()` function in `lib/export-csv.ts` produces
+CSV with the following conventions:
+
+- **Separator:** semicolon (`;`) — European locale
+  compatibility.
+- **Line endings:** CRLF (`\r\n`).
+- **Escaping:** fields containing `;`, `"`, `\n`, or `\r`
+  are wrapped in double-quotes with internal `"` doubled.
+- **Encoding:** UTF-8, no BOM.
+
 ## Architecture
 
 ```text

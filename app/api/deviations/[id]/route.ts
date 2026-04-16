@@ -55,13 +55,34 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { motivation } = body as { motivation?: string }
+  const { motivation, createdBy } = body as Record<string, unknown>
+
+  if (motivation !== undefined && typeof motivation !== 'string') {
+    return NextResponse.json(
+      { error: 'motivation must be a string' },
+      { status: 400 },
+    )
+  }
+
+  if (
+    createdBy !== undefined &&
+    createdBy !== null &&
+    typeof createdBy !== 'string'
+  ) {
+    return NextResponse.json(
+      { error: 'createdBy must be a string or null' },
+      { status: 400 },
+    )
+  }
 
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
   try {
-    await updateDeviation(db, numericId, { motivation })
+    await updateDeviation(db, numericId, {
+      motivation: motivation as string | undefined,
+      createdBy: createdBy as string | null | undefined,
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

@@ -359,14 +359,14 @@ export default function RequirementDetailClient({
   )
 
   const handleEditDeviation = useCallback(
-    async (motivation: string, _createdBy: string) => {
+    async (motivation: string, createdBy: string) => {
       if (!latestDeviation || !motivation) return
       setDeviationSaving(true)
       try {
         const res = await fetch(`/api/deviations/${latestDeviation.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ motivation }),
+          body: JSON.stringify({ motivation, createdBy: createdBy || null }),
         })
         if (res.ok) {
           setShowEditDeviationForm(false)

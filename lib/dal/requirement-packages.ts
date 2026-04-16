@@ -919,27 +919,24 @@ export async function createPackageLocalRequirement(
         transaction: (callback: (tx: any) => void) => void
       }
     ).transaction(tx => {
-      const pkg = tx.query.requirementPackages.findFirst({
-        columns: {
-          localRequirementNextSequence: true,
-        },
-        where: eq(requirementPackages.id, packageId),
-      })
+      const [packageState] = tx
+        .update(requirementPackages)
+        .set({
+          localRequirementNextSequence: sql`${requirementPackages.localRequirementNextSequence} + 1`,
+        })
+        .where(eq(requirementPackages.id, packageId))
+        .returning({
+          nextSequence: requirementPackages.localRequirementNextSequence,
+        })
+        .all() as unknown as { nextSequence: number }[]
 
-      if (!pkg) {
+      if (!packageState) {
         throw notFoundError(`Requirement package ${packageId} not found`)
       }
 
-      const sequenceNumber = pkg.localRequirementNextSequence
+      const sequenceNumber = Math.max(1, packageState.nextSequence - 1)
       const uniqueId = formatPackageLocalRequirementUniqueId(sequenceNumber)
       const now = new Date().toISOString()
-
-      tx.update(requirementPackages)
-        .set({
-          localRequirementNextSequence: sequenceNumber + 1,
-        })
-        .where(eq(requirementPackages.id, packageId))
-        .run()
 
       const [inserted] = tx
         .insert(packageLocalRequirements)

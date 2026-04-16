@@ -64,6 +64,15 @@ agents can use it reliably.
   an improvement suggestion on a requirement. Operations: `create`, `edit`, `delete`,
   `request_review`, `revert_to_draft`, `resolve`, `dismiss`.
 
+#### AI Generation
+
+- `requirements_generate_requirements`
+  Generate system requirements using AI (OpenRouter) based on a
+  topic. Returns generated requirements with a thinking trace.
+  To create the generated requirements, call
+  `requirements_manage_requirement` with `operation: "create"`
+  for each requirement.
+
 ### Resources
 
 - `requirements://requirement/{uniqueId}`
@@ -245,15 +254,16 @@ Use a configuration like this:
         "requirements_add_to_package",
         "requirements_remove_from_package",
         "requirements_list_improvement_suggestions",
-        "requirements_manage_improvement_suggestion"
+        "requirements_manage_improvement_suggestion",
+        "requirements_generate_requirements"
       ]
     }
   }
 }
 ```
 
-This explicit allowlist is preferable to `"*"` because coding agent can use the
-tools autonomously.
+This explicit allowlist is preferable to `"*"` because coding agent
+can use the tools autonomously.
 
 ### Future Auth Example For Coding Agent
 
@@ -278,7 +288,8 @@ Example:
         "requirements_add_to_package",
         "requirements_remove_from_package",
         "requirements_list_improvement_suggestions",
-        "requirements_manage_improvement_suggestion"
+        "requirements_manage_improvement_suggestion",
+        "requirements_generate_requirements"
       ],
       "headers": {
         "Authorization":

@@ -9,6 +9,7 @@ RUN apt-get update && \
         build-essential \
         python3 \
         python3-yaml \
+        ripgrep \
         sqlite3 && \
     rm -rf /var/lib/apt/lists/*
 

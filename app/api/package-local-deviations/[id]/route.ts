@@ -67,10 +67,21 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { motivation } = body as { motivation?: unknown }
+  const { motivation, createdBy } = body as {
+    motivation?: unknown
+    createdBy?: unknown
+  }
 
   if (motivation !== undefined && typeof motivation !== 'string') {
     return NextResponse.json({ error: 'Invalid motivation' }, { status: 400 })
+  }
+
+  if (
+    createdBy !== undefined &&
+    createdBy !== null &&
+    typeof createdBy !== 'string'
+  ) {
+    return NextResponse.json({ error: 'Invalid createdBy' }, { status: 400 })
   }
 
   const { env } = await getCloudflareContext({ async: true })
@@ -79,6 +90,7 @@ export async function PUT(
   try {
     await updatePackageLocalDeviation(db, deviationId, {
       motivation: motivation as string | undefined,
+      createdBy: createdBy as string | null | undefined,
     })
     return NextResponse.json({ ok: true })
   } catch (error) {
