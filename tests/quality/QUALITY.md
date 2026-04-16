@@ -99,8 +99,7 @@ newer draft or review version exists for the same requirement.
 
 ---
 
-<!-- markdownlint-disable-next-line MD013 -->
-### Scenario 3: Publishing A Successor Auto-Archives Its Predecessor At The Same Instant
+### Scenario 3: Publishing A Successor Auto-Archives Its Predecessor
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Review -> Published"]`
 
@@ -162,8 +161,7 @@ its effective status must remain archived until a new published version exists.
 
 ---
 
-<!-- markdownlint-disable-next-line MD013 -->
-### Scenario 6: Deviated Status Requires An Approved Deviation For Both Library And Package-Local Items
+### Scenario 6: Deviated Status Requires An Approved Deviation
 
 **Requirement tag:**
 <!-- markdownlint-disable-next-line MD013 -->
