@@ -195,7 +195,6 @@ to approve.
 ## After The Audit
 
 Save raw output to `tests/quality/spec_audits/YYYY-MM-DD-[model].md`.
-Disable markdownlint MD041, MD013, MD060 in a markdown comment at the top of the file.
 
 ## Companion Protocols
 

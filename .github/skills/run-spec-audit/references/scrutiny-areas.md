@@ -185,5 +185,6 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   10 s models, 5 s key info)? Does taxonomy validation
   filter/repair correctly (invalid `typeId` → delete, invalid
   optional IDs → `undefined`)? Are locale-dependent prompts
-  consistent EN/SV? Does format negotiation follow
-  `structured_outputs` → `json_object` fallback?
+  consistent EN/SV? Does format negotiation attempt
+  `json_schema` (when `structured_outputs` is supported)
+  and fall back to `json_object`?
