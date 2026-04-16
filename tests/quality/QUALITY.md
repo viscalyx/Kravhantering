@@ -13,8 +13,7 @@ trail.
 
 Deming applies here as "quality is built into the workflow." The shared
 service in `lib/requirements/service.ts`, the lifecycle DAL in
-`lib/dal/requirements.ts`, and this quality playbook are the places where that
-bar becomes explicit for every AI session. Juran applies as
+`lib/dal/requirements.ts`. Juran applies as
 "fitness for use": a requirement register is fit only when lifecycle dates,
 effective status, package inclusion, and decision history stay trustworthy
 under editing, publishing, archiving, exporting, and lookup fallback paths.
@@ -51,7 +50,7 @@ The following do **not** count as meaningful coverage for this project:
   without proving hidden-column filters were cleared.
 - Mocking deviation or suggestion approval paths so the test never exercises
   the "must be approved" or "must be submitted for review" guards.
-- Verifying CSV export created a string without asserting the UTF-8 BOM and
+- Verifying CSV export created a string without asserting
   semicolon/quote escaping behavior.
 - Calling the MCP handler and only asserting "no exception" instead of the
   actual JSON-RPC error or payload fields.
@@ -234,20 +233,44 @@ explicitly, and may be resolved or dismissed only from the submitted state.
 
 **Requirement tag:**
 <!-- markdownlint-disable-next-line MD013 -->
-`[Req: inferred — from recordDecision() and recordPackageLocalDecision() conflict guards]`
+`[Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]`
 
-**What happened:** Both library and package-local deviation decisions are
-guarded by `isNull(decision)` checks in `lib/dal/deviations.ts:521-693`. If a
-second approval, rejection, edit, or delete can land after the first decision,
-the project's risk-acceptance history becomes rewriteable and package status
-loses evidentiary value.
+**What happened:** Both library and package-local deviation decisions
+are guarded by `isReviewRequested` checks in
+`lib/dal/deviations.ts:521-693`. Decisions can only be recorded
+when a deviation has been submitted for review
+(`isReviewRequested === 1`). After a decision is recorded, further
+edits, deletes, or second decisions are blocked by conflict guards.
+Deviations in review-requested state cannot be edited or deleted.
 
-**The requirement:** After a deviation decision is recorded, further edits,
-deletes, or second decisions must fail with a conflict.
+**The requirement:** After a deviation decision is recorded, further
+edits, deletes, or second decisions must fail with a conflict.
+Decisions require prior review submission.
 
 **How to verify:** Run
 <!-- markdownlint-disable-next-line MD013 -->
 `npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviation decisions are write-once audit events"`.
+
+---
+
+### Scenario 10: MCP Tool Inventory Matches Documentation
+
+**Requirement tag:**
+`[Req: formal — docs/mcp-server-contributor-guide.md "Server Contract"]`
+
+**What happened:** The 2026-04-16 spec audit discovered that
+`lib/mcp/server.ts` registered 11 tools while both MCP guides still
+documented 10. The `requirements_generate_requirements` tool was added to
+code without updating the contributor guide tool count, the user guide tool
+inventory, or the Copilot coding-agent allowlist examples.
+
+**The requirement:** The number of `server.registerTool()` calls in
+`lib/mcp/server.ts` must equal the `Exposed MCP tools` count in the
+contributor guide and the number of tool entries listed in the user guide.
+
+**How to verify:** Run
+<!-- markdownlint-disable-next-line MD013 -->
+`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP tool inventory matches documentation"`.
 
 ## AI Session Quality Discipline
 

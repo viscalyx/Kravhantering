@@ -11,6 +11,8 @@ import {
   deleteDeviation,
   recordDecision,
   recordPackageLocalDecision,
+  requestReview as requestDeviationReview,
+  requestPackageLocalReview,
   updateDeviation,
 } from '@/lib/dal/deviations'
 import {
@@ -530,6 +532,7 @@ describe('Spec Requirements', () => {
         motivation: 'Approved exception',
         packageItemId: item.id,
       })
+      await requestDeviationReview(appDb(), deviation.id)
       await recordDecision(appDb(), deviation.id, {
         decidedBy: 'reviewer',
         decision: schema.DEVIATION_APPROVED,
@@ -625,7 +628,7 @@ describe('Spec Requirements', () => {
   )
 
   it(
-    '[Req: formal — README "Export" + docs/reports.md] emits UTF-8 BOM ' +
+    '[Req: formal — README "Export" + docs/reports.md] emits ' +
       'semicolon CSV that preserves embedded delimiters',
     () => {
       const csv = exportToCsv(
@@ -638,7 +641,8 @@ describe('Spec Requirements', () => {
         ],
       )
 
-      expect(csv.startsWith('\uFEFFName;Description\r\n')).toBe(true)
+      expect(csv.startsWith('Name;Description\r\n')).toBe(true)
+      expect(csv).not.toContain('\uFEFF')
       expect(csv).toContain('"Needs; ""quotes"""')
       expect(csv).toContain('"Line 1\nLine 2"')
     },
@@ -842,6 +846,7 @@ describe('Fitness Scenarios', () => {
       itemRef: `lib:${libraryItem.id}`,
       motivation: 'Approved library deviation',
     })
+    await requestDeviationReview(appDb(), libraryDeviation.id)
     await recordDecision(appDb(), libraryDeviation.id, {
       decidedBy: 'reviewer',
       decision: schema.DEVIATION_APPROVED,
@@ -852,6 +857,7 @@ describe('Fitness Scenarios', () => {
       itemRef: `local:${localItem.id}`,
       motivation: 'Approved local deviation',
     })
+    await requestPackageLocalReview(appDb(), localDeviation.id)
     await recordPackageLocalDecision(appDb(), localDeviation.id, {
       decidedBy: 'reviewer',
       decision: schema.DEVIATION_APPROVED,
@@ -1004,6 +1010,7 @@ describe('Fitness Scenarios', () => {
       motivation: 'One final decision only',
       packageItemId: item.id,
     })
+    await requestDeviationReview(appDb(), deviation.id)
     await recordDecision(appDb(), deviation.id, {
       decidedBy: 'reviewer',
       decision: schema.DEVIATION_APPROVED,
@@ -1031,6 +1038,36 @@ describe('Fitness Scenarios', () => {
     await expect(deleteDeviation(appDb(), deviation.id)).rejects.toMatchObject({
       code: 'conflict',
     })
+  })
+
+  it('Scenario 10: MCP tool inventory matches documentation', () => {
+    const serverSrc = readFileSync(
+      join(__dirname, '../../lib/mcp/server.ts'),
+      'utf-8',
+    )
+    const registrations = serverSrc.match(/server\.registerTool\(/g)
+    const codeCount = registrations ? registrations.length : 0
+
+    const contributorGuide = readFileSync(
+      join(__dirname, '../../docs/mcp-server-contributor-guide.md'),
+      'utf-8',
+    )
+    const countMatch = contributorGuide.match(/Exposed MCP tools:\s*(\d+)/)
+    expect(countMatch).not.toBeNull()
+    const docCount = Number(countMatch?.[1])
+
+    const userGuide = readFileSync(
+      join(__dirname, '../../docs/mcp-server-user-guide.md'),
+      'utf-8',
+    )
+    const toolsSection =
+      userGuide.split('### Tools')[1]?.split('### Resources')[0] ?? ''
+    const toolEntries = toolsSection.match(/^- `requirements_\w+`/gm)
+    const userGuideCount = toolEntries ? toolEntries.length : 0
+
+    expect(codeCount).toBeGreaterThan(0)
+    expect(docCount).toBe(codeCount)
+    expect(userGuideCount).toBe(codeCount)
   })
 })
 
