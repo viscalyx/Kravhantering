@@ -74,9 +74,13 @@ current truth.
 version. Draft, review, and archived versions are visible only through
 explicit `history` or `version` reads.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: published detail never leaks draft content"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: published detail never leaks draft content"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -93,9 +97,13 @@ views to lose the active item and leaving the lifecycle story contradictory.
 **The requirement:** Published versions can enter archiving review only when no
 newer draft or review version exists for the same requirement.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending replacement blocks archiving"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending replacement blocks archiving"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -113,17 +121,25 @@ all, which breaks package linking and external reads.
 time, and publishing a successor must archive the predecessor atomically from
 the caller's perspective.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishing a successor auto-archives its predecessor at the same instant"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishing a successor auto-archives its predecessor at the same instant"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
 ### Scenario 4: Review And Archived Versions Are Immutable Until The State Changes
 
 **Requirement tag:**
-<!-- markdownlint-disable-next-line MD013 -->
-`[Req: formal — docs/lifecycle-workflow.md "Published -> Draft : New version created"]`
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/lifecycle-workflow.md "Published -> Draft : New version created"]
+```
+<!-- markdownlint-enable MD013 -->
 
 **What happened:** `editRequirement()` rejects edits against review and
 archived versions at `lib/dal/requirements.ts:795-805`. If those rows are
@@ -134,9 +150,13 @@ archival timestamps because the historical record itself mutates.
 must create a new draft. Review content must return to draft before editing.
 Archived content must be restored or reactivated before editing.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review and archived versions are immutable until the state changes"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review and archived versions are immutable until the state changes"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -155,17 +175,25 @@ replacement.
 **The requirement:** While a previously archived requirement is being replaced,
 its effective status must remain archived until a new published version exists.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived requirements stay visible while a replacement draft exists"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived requirements stay visible while a replacement draft exists"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
 ### Scenario 6: Deviated Status Requires An Approved Deviation
 
 **Requirement tag:**
-<!-- markdownlint-disable-next-line MD013 -->
-`[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Package Item Status"]`
+
+<!-- markdownlint-disable MD013 -->
+```text
+[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Package Item Status"]
+```
+<!-- markdownlint-enable MD013 -->
 
 **What happened:** Both `updatePackageItemFields()` and
 `updatePackageLocalRequirementFields()` block `packageItemStatusId = 5`
@@ -178,9 +206,13 @@ exception that never happened.
 Deviated state only after an approved deviation decision exists for that exact
 item kind.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and package-local items"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and package-local items"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -199,9 +231,13 @@ not attached to any requirement.
 **The requirement:** `package_needs_references` rows must exist only when at
 least one linked package item still points at them.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -221,17 +257,23 @@ change.
 **The requirement:** Suggestions are editable only in draft, may enter review
 explicitly, and may be resolved or dismissed only from the submitted state.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggestion resolution is impossible without review"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggestion resolution is impossible without review"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
 ### Scenario 9: Deviation Decisions Are Write-Once Audit Events
 
 **Requirement tag:**
-<!-- markdownlint-disable-next-line MD013 -->
-`[Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]`
+
+```text
+[Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]
+```
 
 **What happened:** Both library and package-local deviation decisions
 are guarded by `isReviewRequested` checks in
@@ -245,9 +287,13 @@ Deviations in review-requested state cannot be edited or deleted.
 edits, deletes, or second decisions must fail with a conflict.
 Decisions require prior review submission.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviation decisions are write-once audit events"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviation decisions are write-once audit events"
+```
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -266,9 +312,13 @@ inventory, or the Copilot coding-agent allowlist examples.
 `lib/mcp/server.ts` must equal the `Exposed MCP tools` count in the
 contributor guide and the number of tool entries listed in the user guide.
 
-**How to verify:** Run
-<!-- markdownlint-disable-next-line MD013 -->
-`npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP tool inventory matches documentation"`.
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP tool inventory matches documentation"
+```
+<!-- markdownlint-enable MD013 -->
 
 ## AI Session Quality Discipline
 
