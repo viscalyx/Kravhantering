@@ -225,6 +225,22 @@ describe('deviations DAL', () => {
         'Cannot edit a deviation after a decision has been recorded',
       )
     })
+
+    it('throws conflict when review has been requested', async () => {
+      await seedRequiredData(db)
+      const { id } = await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Submitted for review',
+      })
+      await requestReview(db as unknown as AppDatabase, id)
+      await expect(
+        updateDeviation(db as unknown as AppDatabase, id, {
+          motivation: 'Too late',
+        }),
+      ).rejects.toThrow(
+        'Cannot edit a deviation that has been submitted for review',
+      )
+    })
   })
 
   describe('recordDecision', () => {
@@ -300,6 +316,23 @@ describe('deviations DAL', () => {
         'A decision has already been recorded for this deviation',
       )
     })
+
+    it('throws conflict when review not requested', async () => {
+      await seedRequiredData(db)
+      const { id } = await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'No review requested',
+      })
+      await expect(
+        recordDecision(db as unknown as AppDatabase, id, {
+          decision: 1,
+          decisionMotivation: 'Attempt without review',
+          decidedBy: 'manager',
+        }),
+      ).rejects.toThrow(
+        'Can only approve or reject deviations that have been submitted for review',
+      )
+    })
   })
 
   describe('deleteDeviation', () => {
@@ -331,6 +364,20 @@ describe('deviations DAL', () => {
         deleteDeviation(db as unknown as AppDatabase, id),
       ).rejects.toThrow(
         'Cannot delete a deviation after a decision has been recorded',
+      )
+    })
+
+    it('throws conflict when review has been requested', async () => {
+      await seedRequiredData(db)
+      const { id } = await createDeviation(db as unknown as AppDatabase, {
+        packageItemId: 1,
+        motivation: 'Submitted for review',
+      })
+      await requestReview(db as unknown as AppDatabase, id)
+      await expect(
+        deleteDeviation(db as unknown as AppDatabase, id),
+      ).rejects.toThrow(
+        'Cannot delete a deviation that has been submitted for review',
       )
     })
   })
