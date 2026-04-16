@@ -78,13 +78,9 @@ No business validation beyond database schema constraints.
 
 ## 3 — Package Taxonomy Lookups
 
-<!-- markdownlint-disable MD013 -->
-
 Sources: `lib/dal/package-implementation-types.ts`,
 `lib/dal/package-lifecycle-statuses.ts`,
 `lib/dal/package-responsibility-areas.ts`
-
-<!-- markdownlint-enable MD013 -->
 
 ### Shared Pattern
 
