@@ -4,11 +4,11 @@ import { exportToCsv } from '@/lib/export-csv'
 describe('exportToCsv', () => {
   const headers = ['Namn', 'Beskrivning', 'Antal']
 
-  it('produces UTF-8 BOM + header row + data rows with semicolons', () => {
+  it('produces header row + data rows with semicolons', () => {
     const data = [{ Namn: 'Test', Beskrivning: 'En beskrivning', Antal: '5' }]
     const csv = exportToCsv(headers, data)
 
-    expect(csv).toContain('\uFEFF')
+    expect(csv).not.toContain('\uFEFF')
     expect(csv).toContain('Namn;Beskrivning;Antal')
     expect(csv).toContain('Test;En beskrivning;5')
   })
@@ -34,9 +34,9 @@ describe('exportToCsv', () => {
     expect(csv).toContain('"Rad1\nRad2"')
   })
 
-  it('returns only BOM + header when data is empty', () => {
+  it('returns only header when data is empty', () => {
     const csv = exportToCsv(headers, [])
-    const lines = csv.replace('\uFEFF', '').trim().split('\n')
+    const lines = csv.trim().split('\n')
 
     expect(lines).toHaveLength(1)
     expect(lines[0]).toBe('Namn;Beskrivning;Antal')

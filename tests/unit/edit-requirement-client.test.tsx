@@ -5,13 +5,24 @@ import type {
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
 
-vi.mock('next-intl', () => ({
-  useTranslations: (ns?: string) => {
-    const t = (key: string) => (ns ? `${ns}.${key}` : key)
-    t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
-    return t
-  },
-}))
+vi.mock('next-intl', () => {
+  const cache = new Map<
+    string | undefined,
+    ((key: string) => string) & { rich: (key: string) => string }
+  >()
+  return {
+    useTranslations: (ns?: string) => {
+      const cached = cache.get(ns)
+      if (cached) return cached
+      const t = ((key: string) => (ns ? `${ns}.${key}` : key)) as ((
+        key: string,
+      ) => string) & { rich: (key: string) => string }
+      t.rich = (key: string) => (ns ? `${ns}.${key}` : key)
+      cache.set(ns, t)
+      return t
+    },
+  }
+})
 
 vi.mock('@/components/HelpPanel', () => ({
   useHelpContent: vi.fn(),
