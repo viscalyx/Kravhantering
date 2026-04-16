@@ -281,6 +281,21 @@ For more on Codespaces billing, quotas, and machine types see
 
 <!-- markdownlint-enable MD013 -->
 
+## Behavioral Contracts
+
+These contracts are testable invariants for Codespace-based
+workflows:
+
+- **`npm run db:setup` is idempotent** — safe to re-run at any
+  time. It resets, migrates, and seeds the local D1 database.
+- **Port 3000 must be public** for external MCP clients
+  (ChatGPT, Copilot) to reach the endpoint. Private ports
+  return authentication errors.
+- **MCP endpoint at `/api/mcp`** — available after the dev
+  server starts (`npm run dev`).
+- **`npm run purge:install`** resets `node_modules` for a
+  clean dependency state.
+
 ## Further reading
 
 <!-- markdownlint-disable MD013 -->
