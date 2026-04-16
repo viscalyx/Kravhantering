@@ -55,13 +55,16 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const { motivation } = body as { motivation?: string }
+  const { motivation, createdBy } = body as {
+    motivation?: string
+    createdBy?: string | null
+  }
 
   const { env } = await getCloudflareContext({ async: true })
   const db = getDb(env.DB)
 
   try {
-    await updateDeviation(db, numericId, { motivation })
+    await updateDeviation(db, numericId, { motivation, createdBy })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

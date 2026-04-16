@@ -484,7 +484,7 @@ export async function getPackageLocalDeviation(
 export async function updateDeviation(
   db: Database,
   deviationId: number,
-  data: { motivation?: string },
+  data: { motivation?: string; createdBy?: string | null },
 ): Promise<void> {
   const existing = await db
     .select({
@@ -521,6 +521,10 @@ export async function updateDeviation(
       throw validationError('Motivation is required')
     }
     updates.motivation = data.motivation.trim()
+  }
+
+  if (data.createdBy !== undefined) {
+    updates.createdBy = data.createdBy
   }
 
   await db.update(deviations).set(updates).where(eq(deviations.id, deviationId))
@@ -625,7 +629,7 @@ export async function deleteDeviation(
 export async function updatePackageLocalDeviation(
   db: Database,
   deviationId: number,
-  data: { motivation?: string },
+  data: { motivation?: string; createdBy?: string | null },
 ): Promise<void> {
   const existing = await db
     .select({
@@ -662,6 +666,10 @@ export async function updatePackageLocalDeviation(
       throw validationError('Motivation is required')
     }
     updates.motivation = data.motivation.trim()
+  }
+
+  if (data.createdBy !== undefined) {
+    updates.createdBy = data.createdBy
   }
 
   await db

@@ -60,7 +60,7 @@ export default function DeviationFormModal({
   }
 
   const handleSubmit = useCallback(() => {
-    if (!motivation.trim()) return
+    if (!motivation.trim() || !createdBy.trim()) return
     onSubmit(motivation.trim(), createdBy.trim())
   }, [motivation, createdBy, onSubmit])
 
@@ -178,7 +178,7 @@ export default function DeviationFormModal({
                     className="text-sm font-medium text-secondary-900 dark:text-secondary-100"
                     htmlFor="deviation-createdBy"
                   >
-                    {td('createdByLabel')}
+                    {td('createdByLabel')} *
                   </label>
                   <button
                     aria-controls="help-createdBy"
@@ -218,7 +218,7 @@ export default function DeviationFormModal({
                 </button>
                 <button
                   className="btn-primary text-sm px-4 py-2"
-                  disabled={!motivation.trim() || loading}
+                  disabled={!motivation.trim() || !createdBy.trim() || loading}
                   onClick={handleSubmit}
                   type="button"
                 >

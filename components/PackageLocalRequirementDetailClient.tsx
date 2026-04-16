@@ -385,7 +385,7 @@ export default function PackageLocalRequirementDetailClient({
   )
 
   const handleEditDeviation = useCallback(
-    async (motivation: string) => {
+    async (motivation: string, createdBy: string) => {
       if (!latestDeviation || !motivation) {
         return
       }
@@ -395,7 +395,7 @@ export default function PackageLocalRequirementDetailClient({
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ motivation }),
+          body: JSON.stringify({ motivation, createdBy: createdBy || null }),
         },
         td('saveFailed'),
         () => setShowEditDeviationForm(false),
@@ -896,10 +896,11 @@ export default function PackageLocalRequirementDetailClient({
         open={showDeviationForm}
       />
       <DeviationFormModal
+        initialCreatedBy={latestDeviation?.createdBy ?? ''}
         initialMotivation={latestDeviation?.motivation ?? ''}
         loading={deviationSaving}
         onClose={() => setShowEditDeviationForm(false)}
-        onSubmit={motivation => handleEditDeviation(motivation)}
+        onSubmit={handleEditDeviation}
         open={showEditDeviationForm}
         title={td('editDeviation')}
       />
