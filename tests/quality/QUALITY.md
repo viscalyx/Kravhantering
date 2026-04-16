@@ -274,15 +274,15 @@ contributor guide and the number of tool entries listed in the user guide.
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, package, MCP,
    report, or admin-default code.
-2. When editing lifecycle or package logic, run
+1. When editing lifecycle or package logic, run
    `npm exec -- vitest run tests/quality/functional.test.ts` before declaring done.
-3. Treat `docs/` as the current spec source. If code disagrees, document
+1. Treat `docs/` as the current spec source. If code disagrees, document
    whether the defect is in code, documentation, or an inferred requirement.
-4. Add or update tests for every new lifecycle branch, package-status rule, or
+1. Add or update tests for every new lifecycle branch, package-status rule, or
    outward-facing contract change.
-5. Preserve audit immutability: decisions, resolutions, and archived history
+1. Preserve audit immutability: decisions, resolutions, and archived history
    should become more traceable over time, never less.
-6. Update this file whenever a new silent-failure mode is discovered.
+1. Update this file whenever a new silent-failure mode is discovered.
 
 ## The Human Gate
 
