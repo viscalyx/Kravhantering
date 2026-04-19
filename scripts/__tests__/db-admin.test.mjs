@@ -39,12 +39,14 @@ function createTempDir(prefix) {
 
 describe('db-admin.mjs', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
     vi.useRealTimers()
   })
 

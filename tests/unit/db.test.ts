@@ -30,6 +30,7 @@ function clearDbCache(): void {
 describe('lib/db', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.clearAllMocks()
     vi.restoreAllMocks()
     vi.useRealTimers()
     clearDbCache()
