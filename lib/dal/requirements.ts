@@ -10,6 +10,7 @@ import {
   type SQLWrapper,
   sql,
 } from 'drizzle-orm'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   qualityCharacteristics,
   requirementAreas,
@@ -26,6 +27,7 @@ import {
 } from '@/drizzle/schema'
 import {
   type Database,
+  getSessionName,
   isBetterSqliteSession,
   isRemoteSqliteSession,
 } from '@/lib/db'
@@ -43,6 +45,22 @@ export const STATUS_DRAFT = 1
 export const STATUS_REVIEW = 2
 export const STATUS_PUBLISHED = 3
 export const STATUS_ARCHIVED = 4
+
+type BetterSqliteDatabase = BetterSQLite3Database<
+  typeof import('@/drizzle/schema')
+>
+type BetterSqliteReadDatabase = Pick<BetterSqliteDatabase, 'select'>
+type BetterSqliteMutationDatabase = Pick<
+  BetterSqliteDatabase,
+  'delete' | 'insert' | 'query' | 'select' | 'update'
+>
+
+function unsupportedTransactionalSessionError(operation: string, db: Database) {
+  const sessionName = getSessionName(db) ?? 'unknown session'
+  return new Error(
+    `${operation} requires a transactional database session; received ${sessionName}.`,
+  )
+}
 
 type ListRequirementsOptions = {
   areaIds?: number[]
@@ -585,7 +603,7 @@ function formatRequirementUniqueId(prefix: string, sequenceNumber: number) {
 }
 
 function reserveRequirementSequenceSync(
-  db: Pick<Database, 'select' | 'update'>,
+  db: Pick<BetterSqliteDatabase, 'select' | 'update'>,
   requirementAreaId: number,
 ) {
   const [area] = db
@@ -596,7 +614,7 @@ function reserveRequirementSequenceSync(
     .from(requirementAreas)
     .where(eq(requirementAreas.id, requirementAreaId))
     .limit(1)
-    .all() as unknown as { nextSequence: number; prefix: string }[]
+    .all()
 
   if (!area) {
     throw notFoundError('Requirement area not found')
@@ -646,7 +664,7 @@ async function reserveRequirementSequence(
 }
 
 function getNextRequirementVersionNumberSync(
-  db: Pick<Database, 'select'>,
+  db: BetterSqliteReadDatabase,
   requirementId: number,
 ) {
   const [row] = db
@@ -655,7 +673,7 @@ function getNextRequirementVersionNumberSync(
     })
     .from(requirementVersions)
     .where(eq(requirementVersions.requirementId, requirementId))
-    .all() as unknown as { maxVersion: number | null }[]
+    .all()
 
   return (row?.maxVersion ?? 0) + 1
 }
@@ -724,12 +742,7 @@ export async function createRequirement(
     ;(
       db as unknown as {
         transaction: (
-          callback: (
-            tx: Pick<
-              Database,
-              'delete' | 'insert' | 'query' | 'select' | 'update'
-            >,
-          ) => void,
+          callback: (tx: BetterSqliteMutationDatabase) => void,
         ) => void
       }
     ).transaction(tx => {
@@ -842,47 +855,7 @@ export async function createRequirement(
     })
   }
 
-  const { sequenceNumber, uniqueId } = await reserveRequirementSequence(
-    db,
-    data.requirementAreaId,
-  )
-
-  const [req] = await db
-    .insert(requirements)
-    .values({
-      uniqueId,
-      requirementAreaId: data.requirementAreaId,
-      sequenceNumber,
-    })
-    .returning()
-
-  const [version] = await db
-    .insert(requirementVersions)
-    .values({ ...versionValues, requirementId: req.id })
-    .returning()
-
-  if (uniqueScenarioIds.length) {
-    await db.insert(requirementVersionUsageScenarios).values(
-      uniqueScenarioIds.map(usageScenarioId => ({
-        requirementVersionId: version.id,
-        usageScenarioId,
-      })),
-    )
-  }
-
-  if (uniqueNormRefIds.length) {
-    await db.insert(requirementVersionNormReferences).values(
-      uniqueNormRefIds.map(normReferenceId => ({
-        requirementVersionId: version.id,
-        normReferenceId,
-      })),
-    )
-  }
-  if (!req || !version) {
-    throw notFoundError('Failed to retrieve created requirement')
-  }
-
-  return { requirement: req, version }
+  throw unsupportedTransactionalSessionError('createRequirement', db)
 }
 
 export async function editRequirement(
@@ -1174,12 +1147,7 @@ export async function editRequirement(
     ;(
       db as unknown as {
         transaction: (
-          callback: (
-            tx: Pick<
-              Database,
-              'delete' | 'insert' | 'query' | 'select' | 'update'
-            >,
-          ) => void,
+          callback: (tx: BetterSqliteMutationDatabase) => void,
         ) => void
       }
     ).transaction(tx => {
@@ -1285,43 +1253,7 @@ export async function editRequirement(
     })
   }
 
-  if (areaUpdateNeeded) {
-    await db
-      .update(requirements)
-      .set({ requirementAreaId: data.requirementAreaId as number })
-      .where(eq(requirements.id, requirementId))
-  }
-
-  const nextVersion = currentMax + 1
-  const [version] = await db
-    .insert(requirementVersions)
-    .values({
-      ...versionValues,
-      versionNumber: nextVersion,
-    })
-    .returning()
-
-  if (uniqueScenarioIdsForNew.length) {
-    await db.insert(requirementVersionUsageScenarios).values(
-      uniqueScenarioIdsForNew.map(usageScenarioId => ({
-        requirementVersionId: version.id,
-        usageScenarioId,
-      })),
-    )
-  }
-
-  if (uniqueNormRefIdsForNew.length) {
-    await db.insert(requirementVersionNormReferences).values(
-      uniqueNormRefIdsForNew.map(normReferenceId => ({
-        requirementVersionId: version.id,
-        normReferenceId,
-      })),
-    )
-  }
-
-  if (!version) throw notFoundError('Failed to retrieve new version')
-
-  return version
+  throw unsupportedTransactionalSessionError('editRequirement', db)
 }
 
 export async function initiateArchiving(
@@ -1474,7 +1406,7 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
       db as unknown as {
         transaction: (
           callback: (
-            tx: Pick<Database, 'delete' | 'insert' | 'select'>,
+            tx: Pick<BetterSqliteDatabase, 'delete' | 'select'>,
           ) => void,
         ) => void
       }
@@ -1502,7 +1434,7 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
         .select({ count: sql<number>`COUNT(*)` })
         .from(requirementVersions)
         .where(eq(requirementVersions.requirementId, requirementId))
-        .all() as unknown as { count: number }[]
+        .all()
       if (remaining[0]?.count === 0) {
         tx.delete(requirements).where(eq(requirements.id, requirementId)).run()
         result = { deleted: 'requirement' }
@@ -1555,37 +1487,7 @@ export async function deleteDraftVersion(db: Database, requirementId: number) {
     })
   }
 
-  await db
-    .delete(requirementVersionUsageScenarios)
-    .where(
-      eq(
-        requirementVersionUsageScenarios.requirementVersionId,
-        latestVersion.id,
-      ),
-    )
-  await db
-    .delete(requirementVersionNormReferences)
-    .where(
-      eq(
-        requirementVersionNormReferences.requirementVersionId,
-        latestVersion.id,
-      ),
-    )
-  await db
-    .delete(requirementVersions)
-    .where(eq(requirementVersions.id, latestVersion.id))
-
-  const remaining = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(requirementVersions)
-    .where(eq(requirementVersions.requirementId, requirementId))
-
-  if (remaining[0]?.count === 0) {
-    await db.delete(requirements).where(eq(requirements.id, requirementId))
-    return { deleted: 'requirement' as const }
-  }
-
-  return { deleted: 'version' as const }
+  throw unsupportedTransactionalSessionError('deleteDraftVersion', db)
 }
 
 export async function reactivateRequirement(
@@ -1831,7 +1733,7 @@ export async function restoreVersion(
       db as unknown as {
         transaction: (
           callback: (
-            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+            tx: Pick<BetterSqliteDatabase, 'insert' | 'query'>,
           ) => void,
         ) => void
       }
@@ -1904,31 +1806,7 @@ export async function restoreVersion(
       return inserted
     })
   } else {
-    const [inserted] = await db
-      .insert(requirementVersions)
-      .values(versionData)
-      .returning()
-
-    newVersion = inserted
-
-    if (oldVersion.versionScenarios.length > 0) {
-      await db.insert(requirementVersionUsageScenarios).values(
-        oldVersion.versionScenarios.map(versionScenario => ({
-          requirementVersionId: inserted.id,
-          usageScenarioId: versionScenario.usageScenarioId,
-        })),
-      )
-    }
-
-    // Copy norm references
-    if (oldVersion.versionNormReferences.length > 0) {
-      await db.insert(requirementVersionNormReferences).values(
-        oldVersion.versionNormReferences.map(vnr => ({
-          requirementVersionId: inserted.id,
-          normReferenceId: vnr.normReferenceId,
-        })),
-      )
-    }
+    throw unsupportedTransactionalSessionError('restoreVersion', db)
   }
 
   return newVersion

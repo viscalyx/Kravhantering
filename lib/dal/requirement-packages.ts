@@ -22,6 +22,7 @@ import {
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import {
   type Database,
+  getSessionName,
   isBetterSqliteSession,
   isRemoteSqliteSession,
 } from '@/lib/db'
@@ -34,6 +35,14 @@ import type { RequirementRow } from '@/lib/requirements/list-view'
 
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
+
+function unsupportedTransactionalSessionError(operation: string, db: Database) {
+  const sessionName = getSessionName(db) ?? 'unknown session'
+  return new Error(
+    `${operation} requires a transactional database session; received ${sessionName}.`,
+  )
+}
+
 interface RequirementPackageLinkItem {
   requirementId: number
   requirementVersionId: number
@@ -557,16 +566,7 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
-  await db
-    .delete(packageLocalRequirements)
-    .where(eq(packageLocalRequirements.packageId, id))
-  await db
-    .delete(requirementPackageItems)
-    .where(eq(requirementPackageItems.packageId, id))
-  await db
-    .delete(packageNeedsReferences)
-    .where(eq(packageNeedsReferences.packageId, id))
-  await db.delete(requirementPackages).where(eq(requirementPackages.id, id))
+  throw unsupportedTransactionalSessionError('deletePackage', db)
 }
 
 export async function getPublishedVersionIdForRequirement(

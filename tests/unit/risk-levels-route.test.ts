@@ -39,4 +39,33 @@ describe('risk-levels route', () => {
     expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
     expect(routeState.createRiskLevel).not.toHaveBeenCalled()
   })
+
+  it('returns the created risk level on success', async () => {
+    const mockDb = { session: 'db' }
+    const payload = {
+      color: '#dc2626',
+      descriptionEn: 'High risk',
+      descriptionSv: 'Hog risk',
+      nameEn: 'High',
+      nameSv: 'Hog',
+      severity: 4,
+    }
+    const createdRiskLevel = { id: 7, ...payload }
+
+    routeState.getRequestDatabase.mockResolvedValueOnce(mockDb)
+    routeState.createRiskLevel.mockResolvedValueOnce(createdRiskLevel)
+
+    const response = await POST(
+      new NextRequest('https://example.test/api/risk-levels', {
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }),
+    )
+
+    expect(response.status).toBe(201)
+    await expect(response.json()).resolves.toEqual(createdRiskLevel)
+    expect(routeState.getRequestDatabase).toHaveBeenCalledTimes(1)
+    expect(routeState.createRiskLevel).toHaveBeenCalledWith(mockDb, payload)
+  })
 })
