@@ -27,9 +27,9 @@ jobs:
             testCommand: npm run test:integration
             timeoutMinutes: 15
             retentionDays: 7
-          - server: preview
-            displayName: Preview
-            testCommand: npm run test:integration:preview
+          - server: prodlike
+            displayName: Prod-like
+            testCommand: npm run test:integration:prodlike
             timeoutMinutes: 25
             retentionDays: 7
 
@@ -49,8 +49,15 @@ jobs:
       - name: Clean server and database state
         run: npm run clean:all
 
-      - name: Setup local D1 database
+      - name: Start local database service
+        run: npm run db:up
+        env:
+          DATABASE_URL: http://127.0.0.1:9000
+
+      - name: Setup local SQLite database
         run: npm run db:setup
+        env:
+          DATABASE_URL: http://127.0.0.1:9000
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -59,6 +66,7 @@ jobs:
         run: ${{ matrix.testCommand }}
         env:
           CI: true
+          DATABASE_URL: http://127.0.0.1:9000
 
       - name: Upload test results (${{ matrix.server }})
         if: always()
@@ -76,6 +84,12 @@ jobs:
           path: test-results/${{ matrix.server }}/playwright-junit.xml
           retention-days: ${{ matrix.retentionDays }}
 
+      - name: Stop local database service
+        if: always()
+        run: npm run db:down
+        env:
+          DATABASE_URL: http://127.0.0.1:9000
+
   comment-on-failure:
     name: Comment on PR if tests failed
     if: failure() && github.event_name == 'pull_request'
@@ -92,7 +106,7 @@ jobs:
             const body = '❌ **Integration tests failed!** Please check the test results and fix any issues.\n\n' +
                         'You can run integration tests locally with:\n' +
                         '- `npm run test:integration` - Test against dev server\n' +
-                        '- `npm run test:integration:preview` - Test against preview server\n' +
+                        '- `npm run test:integration:prodlike` - Test against the built app\n' +
                         '- `npm run test:integration:ui` - Run with Playwright UI for debugging\n\n' +
                         'Check the artifacts for detailed test reports.';
 
