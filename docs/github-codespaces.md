@@ -72,8 +72,7 @@ The dev container already starts a sibling `db` service for you. The app uses
 `DATABASE_URL=http://db:9000` inside the container, so you do not need to start
 the database manually in Codespaces.
 
-If you want to inspect table data, run `npm run db:browse`, start
-Drizzle Studio with `npm run db:studio`, open
+If you want to inspect table data, run `npm run db:browse`, open
 `/var/lib/kravhantering/devcontainer.sqlite` with the included
 `qwtel.sqlite-viewer` VS Code extension, or query it directly with
 `sqlite3 /var/lib/kravhantering/devcontainer.sqlite` in the terminal.

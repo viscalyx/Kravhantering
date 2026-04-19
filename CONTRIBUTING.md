@@ -224,7 +224,6 @@ lifecycle dates in
 | `npm run db:reset`    | Reset the configured SQLite DB               |
 | `npm run db:setup`    | Wait, reset, migrate, and seed in one step   |
 | `npm run db:browse`   | Open the inspectable SQLite file in VS Code  |
-| `npm run db:studio`   | Start Drizzle Studio for a local SQLite file |
 
 ### Browsing the Local Database
 
@@ -240,7 +239,6 @@ without opening a shell in the `db` service.
    /var/lib/kravhantering/devcontainer.sqlite
    ```
 
-1. If you want Drizzle Studio instead, run `npm run db:studio`.
 1. For direct CLI inspection, run:
 
    ```bash
@@ -252,9 +250,9 @@ still lives inside the `db` service volume at
 `/var/lib/kravhantering/dev.sqlite`. In that workflow, either inspect the
 volume through Docker tooling or point `DATABASE_URL` at a local file such
 as `file:./tmp/dev.sqlite` and rerun `npm run db:setup`. The `db:browse`
-and `db:studio` scripts work automatically in the devcontainer and in
-file-backed `DATABASE_URL` mode. With the host-based Docker proxy workflow,
-they will explain that the live SQLite file is not mounted locally.
+script works automatically in the devcontainer and in file-backed
+`DATABASE_URL` mode. With the host-based Docker proxy workflow, it will
+explain that the live SQLite file is not mounted locally.
 
 > [!Tip]
 > The default contributor path is:

@@ -1,15 +1,8 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process'
-import {
-  existsSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
-import { tmpdir } from 'node:os'
-import { isAbsolute, join, resolve } from 'node:path'
+import { existsSync, readFileSync } from 'node:fs'
+import { isAbsolute, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const DEVCONTAINER_DB_DIR = '/var/lib/kravhantering'
@@ -143,23 +136,10 @@ export function resolveInspectableDatabase(options = {}) {
   }
 }
 
-export function createStudioConfig(filePath) {
-  return `export default {
-  schema: './drizzle/schema.ts',
-  out: './drizzle/migrations',
-  dialect: 'sqlite',
-  dbCredentials: { url: ${JSON.stringify(filePath)} },
-}
-`
-}
-
-export function getNpxCommand(platform = process.platform) {
-  return platform === 'win32' ? 'npx.cmd' : 'npx'
-}
-
-function runChild(command, args, spawnSyncImpl = spawnSync) {
+function runChild(command, args, spawnSyncImpl = spawnSync, options = {}) {
   const result = spawnSyncImpl(command, args, {
     stdio: 'inherit',
+    ...options,
   })
 
   if (result.error) {
@@ -174,20 +154,17 @@ export function main(args, dependencies = {}) {
   const env = dependencies.env ?? process.env
   const fileExists = dependencies.fileExists ?? existsSync
   const spawnSyncImpl = dependencies.spawnSyncImpl ?? spawnSync
-  const mkdtempSyncImpl = dependencies.mkdtempSyncImpl ?? mkdtempSync
-  const writeFileSyncImpl = dependencies.writeFileSyncImpl ?? writeFileSync
-  const rmSyncImpl = dependencies.rmSyncImpl ?? rmSync
 
   loadEnvironmentFiles(env)
 
-  const [command, ...extraArgs] = args
+  const [command] = args
   if (!command) {
-    consoleObj.error('Usage: node scripts/db-tools.mjs <browse|studio>')
+    consoleObj.error('Usage: node scripts/db-tools.mjs <browse>')
     return 1
   }
 
-  if (command !== 'browse' && command !== 'studio') {
-    consoleObj.error('Usage: node scripts/db-tools.mjs <browse|studio>')
+  if (command !== 'browse') {
+    consoleObj.error('Usage: node scripts/db-tools.mjs <browse>')
     return 1
   }
 
@@ -214,31 +191,6 @@ export function main(args, dependencies = {}) {
         error instanceof Error ? error.message : 'Failed to launch VS Code.',
       )
       return 1
-    }
-  }
-
-  if (command === 'studio') {
-    const tempDir = mkdtempSyncImpl(join(tmpdir(), 'kravhantering-db-studio-'))
-    const configPath = join(tempDir, 'drizzle-studio.config.mjs')
-
-    try {
-      writeFileSyncImpl(configPath, createStudioConfig(target.path))
-      consoleObj.log(`Starting Drizzle Studio for ${target.path}...`)
-
-      return runChild(
-        getNpxCommand(),
-        ['drizzle-kit', 'studio', '--config', configPath, ...extraArgs],
-        spawnSyncImpl,
-      )
-    } catch (error) {
-      consoleObj.error(
-        error instanceof Error
-          ? error.message
-          : 'Failed to start Drizzle Studio.',
-      )
-      return 1
-    } finally {
-      rmSyncImpl(tempDir, { force: true, recursive: true })
     }
   }
 }

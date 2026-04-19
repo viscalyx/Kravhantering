@@ -182,7 +182,7 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [3000, 3001, 4443, 9000, 9323, 4983, 51204],
+  "forwardPorts": [3000, 3001, 4443, 9000, 9323, 51204],
   "portsAttributes": {
     "3000": {
       "label": "Next.js Dev Server 1",
@@ -199,10 +199,6 @@
     },
     "9000": {
       "label": "SQLite Proxy DB",
-      "onAutoForward": "notify"
-    },
-    "4983": {
-      "label": "DB Studio",
       "onAutoForward": "notify"
     },
     "9323": {
