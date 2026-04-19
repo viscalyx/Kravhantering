@@ -3,6 +3,7 @@
 # Includes: git, curl, wget, sudo, zsh, and the vscode user
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
+# cSPell:ignore mkcert
 # Install system dependencies needed for npm native modules (node-gyp)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -10,7 +11,8 @@ RUN apt-get update && \
         python3 \
         python3-yaml \
         ripgrep \
-        sqlite3 && \
+        sqlite3 \
+        mkcert && \
     rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
@@ -19,8 +21,8 @@ WORKDIR /workspace
 # Configure git for the workspace (security requirement)
 RUN git config --system --add safe.directory /workspace
 
-# Expose the ports that Next.js, Wrangler, Playwright, and Vitest typically use
-EXPOSE 3000 3001 4443 8787 9323 51204
+# Expose the ports that Next.js, Playwright, and Vitest use
+EXPOSE 3000 3001 4443 9323 51204
 
 # Keep container running (remoteUser in devcontainer.json handles user switching)
 CMD ["sleep", "infinity"]

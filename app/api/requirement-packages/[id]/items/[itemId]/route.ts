@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   getPackageById,
@@ -7,7 +6,7 @@ import {
   listPackageItems,
   updatePackageItemFieldsByItemRef,
 } from '@/lib/dal/requirement-packages'
-import { getDb } from '@/lib/db'
+import { type getDb, getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string; itemId: string }>
 
@@ -38,9 +37,7 @@ export async function GET(
   if (!Number.isInteger(numericItemId) || numericItemId < 1) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const packageId = await resolvePackageId(id, db)
 
   if (packageId === null) {
@@ -103,8 +100,7 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const packageId = await resolvePackageId(id, db)
   if (packageId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

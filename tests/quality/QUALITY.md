@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Kravhantering is a Next.js, React, TypeScript, and Cloudflare D1 application
+Kravhantering is a Next.js, React, TypeScript, and SQLite application
 for managing requirements, requirement packages, deviations, improvement
 suggestions, reports, and MCP access. Quality in this project means every
 surface tells the same lifecycle truth: REST, MCP, package views, exports,

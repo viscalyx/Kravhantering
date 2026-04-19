@@ -1,10 +1,9 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deletePackageLifecycleStatus,
   updatePackageLifecycleStatus,
 } from '@/lib/dal/package-lifecycle-statuses'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -22,8 +21,7 @@ export async function PUT(
   if (id === null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<
     typeof updatePackageLifecycleStatus
   >[2]
@@ -51,8 +49,7 @@ export async function DELETE(
   if (id === null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   try {
     const deletedCount = await deletePackageLifecycleStatus(db, id)
     if (deletedCount === 0) {

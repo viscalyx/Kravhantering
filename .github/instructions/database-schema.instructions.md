@@ -1,5 +1,5 @@
 ---
-applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
+applyTo: "{drizzle/schema.ts,drizzle/seed.sql,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
 ---
 
 # Database Schema Changes
@@ -38,7 +38,7 @@ applyTo: "{drizzle/schema.ts,drizzle/seed.ts,drizzle/migrations/*.sql,drizzle/mi
 
 ## Sync
 
-- Update `drizzle/schema.ts`, migrations, `drizzle/seed.ts`, affected
+- Update `drizzle/schema.ts`, migrations, `drizzle/seed.sql`, affected
   DAL/tests, and `docs/database-schema.md` in the same change.
 - If a deviation is required, add it to `Accepted Exceptions` in
   `docs/database-schema.md` in the same change.

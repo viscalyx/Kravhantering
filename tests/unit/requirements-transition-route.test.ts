@@ -3,12 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockTransitionRequirement = vi.fn()
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({

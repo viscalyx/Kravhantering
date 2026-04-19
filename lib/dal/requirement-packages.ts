@@ -20,24 +20,29 @@ import {
   riskLevels,
 } from '@/drizzle/schema'
 import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
-import type { Database } from '@/lib/db'
+import {
+  type Database,
+  getSessionName,
+  isBetterSqliteSession,
+  isRemoteSqliteSession,
+} from '@/lib/db'
+import {
+  DEFAULT_PACKAGE_ITEM_STATUS_ID,
+  DEVIATED_PACKAGE_ITEM_STATUS_ID,
+} from '@/lib/package-item-status-constants'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type { RequirementRow } from '@/lib/requirements/list-view'
 
-/**
- * Seed ID for the "Included" / "Inkluderad" package-item status.
- * Every newly added package item starts here.
- */
-export const DEFAULT_PACKAGE_ITEM_STATUS_ID = 1
-
-/**
- * Seed ID for the "Deviated" / "Avviken" package-item status.
- * Only selectable when the package item has an approved deviation.
- */
-export const DEVIATED_PACKAGE_ITEM_STATUS_ID = 5
-
 type DatabaseReader = Pick<Database, 'select'>
 type DatabaseWriter = DatabaseReader & Pick<Database, 'delete' | 'insert'>
+
+function unsupportedTransactionalSessionError(operation: string, db: Database) {
+  const sessionName = getSessionName(db) ?? 'unknown session'
+  return new Error(
+    `${operation} requires a transactional database session; received ${sessionName}.`,
+  )
+}
+
 interface RequirementPackageLinkItem {
   requirementId: number
   requirementVersionId: number
@@ -197,23 +202,6 @@ interface PackageLocalRequirementListRow {
   }[]
 }
 
-interface D1BatchResult {
-  meta?: {
-    changes?: number
-  }
-  results?: Record<string, unknown>[]
-}
-interface D1PreparedStatement {
-  bind(...params: unknown[]): D1PreparedStatement
-  run(): Promise<D1BatchResult>
-}
-interface D1BatchClient {
-  batch(statements: D1PreparedStatement[]): Promise<D1BatchResult[]>
-  prepare(query: string): {
-    bind(...params: unknown[]): D1PreparedStatement
-  }
-}
-
 export function createLibraryItemRef(packageItemId: number): PackageItemRef {
   return `lib:${packageItemId}`
 }
@@ -252,22 +240,6 @@ function createPackageLocalRowId(packageLocalRequirementId: number): number {
 
 function formatPackageLocalRequirementUniqueId(sequenceNumber: number): string {
   return `KRAV${String(sequenceNumber).padStart(4, '0')}`
-}
-
-function getSessionName(db: Database): string | undefined {
-  return (
-    db as {
-      session?: {
-        constructor?: {
-          name?: string
-        }
-      }
-    }
-  ).session?.constructor?.name
-}
-
-function isBetterSqliteSession(db: Database): boolean {
-  return getSessionName(db) === 'BetterSQLiteSession'
 }
 
 function dedupePositiveIntegerIds(values?: number[]): number[] {
@@ -572,26 +544,29 @@ export async function deletePackage(db: Database, id: number) {
     return
   }
 
-  const d1BatchClient = getD1BatchClient(db)
-  if (d1BatchClient) {
-    await d1BatchClient.batch([
-      d1BatchClient
-        .prepare('DELETE FROM package_local_requirements WHERE package_id = ?')
-        .bind(id),
-      d1BatchClient
-        .prepare('DELETE FROM requirement_package_items WHERE package_id = ?')
-        .bind(id),
-      d1BatchClient
-        .prepare('DELETE FROM package_needs_references WHERE package_id = ?')
-        .bind(id),
-      d1BatchClient
-        .prepare('DELETE FROM requirement_packages WHERE id = ?')
-        .bind(id),
-    ])
+  if (isRemoteSqliteSession(db)) {
+    await (
+      db as unknown as {
+        transaction: (
+          callback: (tx: Pick<Database, 'delete'>) => Promise<void>,
+        ) => Promise<void>
+      }
+    ).transaction(async tx => {
+      await tx
+        .delete(packageLocalRequirements)
+        .where(eq(packageLocalRequirements.packageId, id))
+      await tx
+        .delete(requirementPackageItems)
+        .where(eq(requirementPackageItems.packageId, id))
+      await tx
+        .delete(packageNeedsReferences)
+        .where(eq(packageNeedsReferences.packageId, id))
+      await tx.delete(requirementPackages).where(eq(requirementPackages.id, id))
+    })
     return
   }
 
-  throw new Error('Unsupported database driver')
+  throw unsupportedTransactionalSessionError('deletePackage', db)
 }
 
 export async function getPublishedVersionIdForRequirement(
@@ -610,6 +585,78 @@ export async function getPublishedVersionIdForRequirement(
     .orderBy(sql`${requirementVersions.versionNumber} DESC`)
     .limit(1)
   return rows[0]?.id ?? null
+}
+
+function getPublishedVersionIdForRequirementSync(
+  db: DatabaseReader,
+  requirementId: number,
+): number | null {
+  const [row] = db
+    .select({ id: requirementVersions.id })
+    .from(requirementVersions)
+    .where(
+      and(
+        eq(requirementVersions.requirementId, requirementId),
+        eq(requirementVersions.statusId, STATUS_PUBLISHED),
+      ),
+    )
+    .orderBy(sql`${requirementVersions.versionNumber} DESC`)
+    .limit(1)
+    .all() as unknown as { id: number }[]
+
+  return row?.id ?? null
+}
+
+async function resolveRequirementPackageLinkItems(
+  db: DatabaseReader,
+  requirementIds: number[],
+): Promise<RequirementPackageLinkItem[]> {
+  const items: RequirementPackageLinkItem[] = []
+
+  for (const requirementId of requirementIds) {
+    const requirementVersionId = await getPublishedVersionIdForRequirement(
+      db as Database,
+      requirementId,
+    )
+    if (requirementVersionId == null) {
+      throw validationError(
+        `Requirement ${requirementId} has no published version and cannot be added to a package`,
+        {
+          httpStatus: 422,
+          requirementId,
+          reason: 'missing_published_version',
+        },
+      )
+    }
+    items.push({ requirementId, requirementVersionId })
+  }
+
+  return items
+}
+
+function resolveRequirementPackageLinkItemsSync(
+  db: DatabaseReader,
+  requirementIds: number[],
+): RequirementPackageLinkItem[] {
+  return requirementIds.map(requirementId => {
+    const requirementVersionId = getPublishedVersionIdForRequirementSync(
+      db,
+      requirementId,
+    )
+
+    if (requirementVersionId == null) {
+      throw validationError(
+        `Requirement ${requirementId} has no published version and cannot be added to a package`,
+        {
+          httpStatus: 422,
+          requirementId,
+          reason: 'missing_published_version',
+        },
+      )
+    }
+
+    return { requirementId, requirementVersionId }
+  })
 }
 
 export async function listPackageNeedsReferences(
@@ -986,6 +1033,61 @@ export async function createPackageLocalRequirement(
     return created
   }
 
+  if (isRemoteSqliteSession(db)) {
+    const createdId = await (
+      db as unknown as {
+        transaction: <T>(
+          callback: (tx: Pick<Database, 'insert' | 'update'>) => Promise<T>,
+        ) => Promise<T>
+      }
+    ).transaction(async tx => {
+      const [packageState] = await tx
+        .update(requirementPackages)
+        .set({
+          localRequirementNextSequence: sql`${requirementPackages.localRequirementNextSequence} + 1`,
+        })
+        .where(eq(requirementPackages.id, packageId))
+        .returning({
+          nextSequence: requirementPackages.localRequirementNextSequence,
+        })
+
+      if (!packageState) {
+        throw notFoundError(`Requirement package ${packageId} not found`)
+      }
+
+      const sequenceNumber = Math.max(1, packageState.nextSequence - 1)
+      const uniqueId = formatPackageLocalRequirementUniqueId(sequenceNumber)
+      const now = new Date().toISOString()
+
+      const [inserted] = await tx
+        .insert(packageLocalRequirements)
+        .values({
+          ...normalized,
+          createdAt: now,
+          packageId,
+          packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+          sequenceNumber,
+          uniqueId,
+          updatedAt: now,
+        })
+        .returning({ id: packageLocalRequirements.id })
+
+      await insertPackageLocalRequirementJoins(tx, inserted.id, normalized)
+
+      return inserted.id
+    })
+
+    const created = await getPackageLocalRequirementDetail(
+      db,
+      packageId,
+      createdId,
+    )
+    if (!created) {
+      throw notFoundError('Package-local requirement was created but not found')
+    }
+    return created
+  }
+
   const [packageState] = await db
     .update(requirementPackages)
     .set({
@@ -1037,6 +1139,25 @@ export async function createPackageLocalRequirement(
   return created
 }
 
+function buildPackageLocalRequirementUpdateSet(
+  normalized: Awaited<ReturnType<typeof normalizePackageLocalRequirementInput>>,
+  updatedAt: string,
+) {
+  return {
+    acceptanceCriteria: normalized.acceptanceCriteria,
+    description: normalized.description,
+    needsReferenceId: normalized.needsReferenceId,
+    qualityCharacteristicId: normalized.qualityCharacteristicId,
+    requirementAreaId: normalized.requirementAreaId,
+    requirementCategoryId: normalized.requirementCategoryId,
+    requirementTypeId: normalized.requirementTypeId,
+    requiresTesting: normalized.requiresTesting,
+    riskLevelId: normalized.riskLevelId,
+    updatedAt,
+    verificationMethod: normalized.verificationMethod,
+  }
+}
+
 export async function updatePackageLocalRequirement(
   db: Database,
   packageId: number,
@@ -1070,11 +1191,13 @@ export async function updatePackageLocalRequirement(
       }
     ).transaction(tx => {
       tx.update(packageLocalRequirements)
-        .set({
-          ...normalized,
-          updatedAt,
-        })
-        .where(eq(packageLocalRequirements.id, packageLocalRequirementId))
+        .set(buildPackageLocalRequirementUpdateSet(normalized, updatedAt))
+        .where(
+          and(
+            eq(packageLocalRequirements.id, packageLocalRequirementId),
+            eq(packageLocalRequirements.packageId, packageId),
+          ),
+        )
         .run()
 
       tx.delete(packageLocalRequirementUsageScenarios)
@@ -1117,88 +1240,107 @@ export async function updatePackageLocalRequirement(
           .run()
       }
     })
-  } else {
-    const d1BatchClient = getD1BatchClient(db)
-    if (d1BatchClient) {
-      const statements: D1PreparedStatement[] = [
-        d1BatchClient
-          .prepare(
-            `
-              UPDATE package_local_requirements
-              SET requirement_area_id = ?, description = ?, acceptance_criteria = ?,
-                  requirement_category_id = ?, requirement_type_id = ?,
-                  quality_characteristic_id = ?, risk_level_id = ?,
-                  is_testing_required = ?, verification_method = ?,
-                  needs_reference_id = ?, updated_at = ?
-              WHERE id = ? AND package_id = ?
-            `,
-          )
-          .bind(
-            normalized.requirementAreaId,
-            normalized.description,
-            normalized.acceptanceCriteria,
-            normalized.requirementCategoryId,
-            normalized.requirementTypeId,
-            normalized.qualityCharacteristicId,
-            normalized.riskLevelId,
-            normalized.requiresTesting ? 1 : 0,
-            normalized.verificationMethod,
-            normalized.needsReferenceId,
-            updatedAt,
-            packageLocalRequirementId,
-            packageId,
+  } else if (isRemoteSqliteSession(db)) {
+    await (
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'update'>,
+          ) => Promise<void>,
+        ) => Promise<void>
+      }
+    ).transaction(async tx => {
+      await tx
+        .update(packageLocalRequirements)
+        .set(buildPackageLocalRequirementUpdateSet(normalized, updatedAt))
+        .where(
+          and(
+            eq(packageLocalRequirements.id, packageLocalRequirementId),
+            eq(packageLocalRequirements.packageId, packageId),
           ),
-        d1BatchClient
-          .prepare(
-            `
-              DELETE FROM package_local_requirement_usage_scenarios
-              WHERE package_local_requirement_id = ?
-            `,
-          )
-          .bind(packageLocalRequirementId),
-        d1BatchClient
-          .prepare(
-            `
-              DELETE FROM package_local_requirement_norm_references
-              WHERE package_local_requirement_id = ?
-            `,
-          )
-          .bind(packageLocalRequirementId),
-      ]
+        )
 
-      for (const usageScenarioId of normalized.scenarioIds) {
-        statements.push(
-          d1BatchClient
-            .prepare(
-              `
-                INSERT INTO package_local_requirement_usage_scenarios (
-                  package_local_requirement_id,
-                  usage_scenario_id
-                ) VALUES (?, ?)
-              `,
-            )
-            .bind(packageLocalRequirementId, usageScenarioId),
+      await tx
+        .delete(packageLocalRequirementUsageScenarios)
+        .where(
+          eq(
+            packageLocalRequirementUsageScenarios.packageLocalRequirementId,
+            packageLocalRequirementId,
+          ),
+        )
+
+      await tx
+        .delete(packageLocalRequirementNormReferences)
+        .where(
+          eq(
+            packageLocalRequirementNormReferences.packageLocalRequirementId,
+            packageLocalRequirementId,
+          ),
+        )
+
+      if (normalized.scenarioIds.length > 0) {
+        await tx.insert(packageLocalRequirementUsageScenarios).values(
+          normalized.scenarioIds.map(usageScenarioId => ({
+            packageLocalRequirementId,
+            usageScenarioId,
+          })),
         )
       }
 
-      for (const normReferenceId of normalized.normReferenceIds) {
-        statements.push(
-          d1BatchClient
-            .prepare(
-              `
-                INSERT INTO package_local_requirement_norm_references (
-                  package_local_requirement_id,
-                  norm_reference_id
-                ) VALUES (?, ?)
-              `,
-            )
-            .bind(packageLocalRequirementId, normReferenceId),
+      if (normalized.normReferenceIds.length > 0) {
+        await tx.insert(packageLocalRequirementNormReferences).values(
+          normalized.normReferenceIds.map(normReferenceId => ({
+            normReferenceId,
+            packageLocalRequirementId,
+          })),
         )
       }
+    })
+  } else {
+    await db
+      .update(packageLocalRequirements)
+      .set(buildPackageLocalRequirementUpdateSet(normalized, updatedAt))
+      .where(
+        and(
+          eq(packageLocalRequirements.id, packageLocalRequirementId),
+          eq(packageLocalRequirements.packageId, packageId),
+        ),
+      )
 
-      await d1BatchClient.batch(statements)
-    } else {
-      throw new Error('Unsupported database driver')
+    await db
+      .delete(packageLocalRequirementUsageScenarios)
+      .where(
+        eq(
+          packageLocalRequirementUsageScenarios.packageLocalRequirementId,
+          packageLocalRequirementId,
+        ),
+      )
+
+    await db
+      .delete(packageLocalRequirementNormReferences)
+      .where(
+        eq(
+          packageLocalRequirementNormReferences.packageLocalRequirementId,
+          packageLocalRequirementId,
+        ),
+      )
+
+    if (normalized.scenarioIds.length > 0) {
+      await db.insert(packageLocalRequirementUsageScenarios).values(
+        normalized.scenarioIds.map(usageScenarioId => ({
+          packageLocalRequirementId,
+          usageScenarioId,
+        })),
+      )
+    }
+
+    if (normalized.normReferenceIds.length > 0) {
+      await db.insert(packageLocalRequirementNormReferences).values(
+        normalized.normReferenceIds.map(normReferenceId => ({
+          normReferenceId,
+          packageLocalRequirementId,
+        })),
+      )
     }
   }
 
@@ -1267,6 +1409,44 @@ async function getOrCreatePackageNeedsReferenceWithMetadata(
   return { created: false, id: existing[0].id }
 }
 
+function getOrCreatePackageNeedsReferenceWithMetadataSync(
+  db: DatabaseWriter,
+  packageId: number,
+  text: string,
+): { created: boolean; id: number } {
+  const normalizedText = text.trim()
+  const [created] = db
+    .insert(packageNeedsReferences)
+    .values({ packageId, text: normalizedText })
+    .onConflictDoNothing({
+      target: [packageNeedsReferences.packageId, packageNeedsReferences.text],
+    })
+    .returning({ id: packageNeedsReferences.id })
+    .all() as unknown as { id: number }[]
+
+  if (created) {
+    return { created: true, id: created.id }
+  }
+
+  const [existing] = db
+    .select({ id: packageNeedsReferences.id })
+    .from(packageNeedsReferences)
+    .where(
+      and(
+        eq(packageNeedsReferences.packageId, packageId),
+        eq(packageNeedsReferences.text, normalizedText),
+      ),
+    )
+    .limit(1)
+    .all() as unknown as { id: number }[]
+
+  if (!existing) {
+    throw new Error('Failed to resolve package needs reference')
+  }
+
+  return { created: false, id: existing.id }
+}
+
 export async function getOrCreatePackageNeedsReference(
   db: DatabaseWriter,
   packageId: number,
@@ -1299,148 +1479,73 @@ async function resolveExistingPackageNeedsReferenceForLinking(
   return existingNeedsReference.id
 }
 
-function getD1BatchClient(db: Database): D1BatchClient | null {
-  const client = (db as { $client?: D1BatchClient }).$client
+function resolveExistingPackageNeedsReferenceForLinkingSync(
+  db: DatabaseReader,
+  packageId: number,
+  needsReferenceId: number,
+): number {
+  const [existingNeedsReference] = db
+    .select({ id: packageNeedsReferences.id })
+    .from(packageNeedsReferences)
+    .where(
+      and(
+        eq(packageNeedsReferences.id, needsReferenceId),
+        eq(packageNeedsReferences.packageId, packageId),
+      ),
+    )
+    .limit(1)
+    .all() as unknown as { id: number }[]
 
-  if (
-    typeof client?.batch === 'function' &&
-    typeof client?.prepare === 'function'
-  ) {
-    return client
+  if (!existingNeedsReference) {
+    throw validationError(
+      'needsReferenceId does not belong to this requirement package',
+    )
   }
 
-  return null
+  return existingNeedsReference.id
 }
 
-async function linkRequirementsToPackageWithD1Batch(
-  client: D1BatchClient,
+function linkRequirementsToPackageSync(
+  db: Pick<Database, 'insert'>,
   packageId: number,
-  items: RequirementPackageLinkItem[],
-  needsReferenceText: string,
-): Promise<number> {
-  const normalizedNeedsReferenceText = needsReferenceText.trim()
-  const createdAt = new Date().toISOString()
-  const insertNeedsReference = client
-    .prepare(
-      `
-        INSERT INTO package_needs_references (package_id, text, created_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(package_id, text) DO NOTHING
-      `,
+  items: {
+    requirementId: number
+    requirementVersionId: number
+    needsReferenceId?: number | null
+  }[],
+): number {
+  if (items.length === 0) return 0
+
+  const inserted = db
+    .insert(requirementPackageItems)
+    .values(
+      items.map(item => ({
+        packageId,
+        ...item,
+        packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+      })),
     )
-    .bind(packageId, normalizedNeedsReferenceText, createdAt)
+    .onConflictDoNothing()
+    .returning({ id: requirementPackageItems.id })
+    .all() as unknown as { id: number }[]
 
-  const insertItems = items.map(item =>
-    client
-      .prepare(
-        `
-          INSERT INTO requirement_package_items (
-            requirement_package_id,
-            requirement_id,
-            requirement_version_id,
-            needs_reference_id,
-            package_item_status_id,
-            created_at
-          )
-          VALUES (
-            ?,
-            ?,
-            ?,
-            (
-              SELECT id
-              FROM package_needs_references
-              WHERE package_id = ?
-                AND text = ?
-              LIMIT 1
-            ),
-            ?,
-            ?
-          )
-          ON CONFLICT(requirement_package_id, requirement_id) DO NOTHING
-        `,
-      )
-      .bind(
-        packageId,
-        item.requirementId,
-        item.requirementVersionId,
-        packageId,
-        normalizedNeedsReferenceText,
-        DEFAULT_PACKAGE_ITEM_STATUS_ID,
-        createdAt,
-      ),
-  )
-  const selectNeedsReference = client
-    .prepare(
-      `
-        SELECT id
-        FROM package_needs_references
-        WHERE package_id = ?
-          AND text = ?
-        LIMIT 1
-      `,
-    )
-    .bind(packageId, normalizedNeedsReferenceText)
-
-  const batchResults = await client.batch([
-    insertNeedsReference,
-    ...insertItems,
-    selectNeedsReference,
-  ])
-
-  const createdNeedsReference = Number(batchResults[0]?.meta?.changes ?? 0) > 0
-  const addedCount = batchResults
-    .slice(1, 1 + insertItems.length)
-    .reduce((sum, result) => sum + Number(result.meta?.changes ?? 0), 0)
-  const resolvedNeedsReference = batchResults.at(-1)?.results?.[0] as
-    | { id?: unknown }
-    | undefined
-  const resolvedNeedsReferenceId = resolvedNeedsReference?.id
-
-  if (typeof resolvedNeedsReferenceId !== 'number') {
-    throw new Error('Failed to resolve package needs reference')
-  }
-
-  if (addedCount === 0 && createdNeedsReference) {
-    await client
-      .prepare(
-        `
-          DELETE FROM package_needs_references
-          WHERE id = ?
-            AND package_id = ?
-            AND NOT EXISTS (
-              SELECT 1
-              FROM requirement_package_items
-              WHERE requirement_package_id = ?
-                AND needs_reference_id = ?
-            )
-        `,
-      )
-      .bind(
-        resolvedNeedsReferenceId,
-        packageId,
-        packageId,
-        resolvedNeedsReferenceId,
-      )
-      .run()
-  }
-
-  return addedCount
+  return inserted.length
 }
 
 export async function linkRequirementsToPackageAtomically(
   db: Database,
   packageId: number,
   {
-    items,
+    requirementIds,
     needsReferenceId,
     needsReferenceText,
   }: {
-    items: RequirementPackageLinkItem[]
+    requirementIds: number[]
     needsReferenceId?: number | null
     needsReferenceText?: string | null
   },
 ): Promise<number> {
-  if (items.length === 0) {
+  if (requirementIds.length === 0) {
     return 0
   }
 
@@ -1451,29 +1556,54 @@ export async function linkRequirementsToPackageAtomically(
     )
   }
 
-  if (normalizedNeedsReferenceText) {
-    const d1BatchClient = getD1BatchClient(db)
+  const runLink = async (targetDb: Database): Promise<number> => {
+    const items = await resolveRequirementPackageLinkItems(
+      targetDb,
+      requirementIds,
+    )
 
-    if (d1BatchClient) {
-      return linkRequirementsToPackageWithD1Batch(
-        d1BatchClient,
+    if (normalizedNeedsReferenceText) {
+      const resolvedNeedsReference =
+        await getOrCreatePackageNeedsReferenceWithMetadata(
+          targetDb as DatabaseWriter,
+          packageId,
+          normalizedNeedsReferenceText,
+        )
+
+      const addedCount = await linkRequirementsToPackage(
+        targetDb,
         packageId,
-        items,
-        normalizedNeedsReferenceText,
+        items.map(item => ({
+          ...item,
+          needsReferenceId: resolvedNeedsReference.id,
+        })),
       )
+
+      if (addedCount === 0 && resolvedNeedsReference.created) {
+        await targetDb
+          .delete(packageNeedsReferences)
+          .where(
+            and(
+              eq(packageNeedsReferences.id, resolvedNeedsReference.id),
+              eq(packageNeedsReferences.packageId, packageId),
+            ),
+          )
+      }
+
+      return addedCount
     }
-  } else {
+
     const resolvedNeedsReferenceId =
       needsReferenceId == null
         ? null
         : await resolveExistingPackageNeedsReferenceForLinking(
-            db,
+            targetDb,
             packageId,
             needsReferenceId,
           )
 
     return linkRequirementsToPackage(
-      db,
+      targetDb,
       packageId,
       items.map(item => ({
         ...item,
@@ -1482,34 +1612,90 @@ export async function linkRequirementsToPackageAtomically(
     )
   }
 
-  const resolvedNeedsReference =
-    await getOrCreatePackageNeedsReferenceWithMetadata(
-      db,
-      packageId,
-      normalizedNeedsReferenceText,
+  const runLinkSync = (
+    targetDb: Pick<Database, 'delete' | 'insert' | 'select'>,
+  ): number => {
+    const items = resolveRequirementPackageLinkItemsSync(
+      targetDb,
+      requirementIds,
     )
 
-  const addedCount = await linkRequirementsToPackage(
-    db,
-    packageId,
-    items.map(item => ({
-      ...item,
-      needsReferenceId: resolvedNeedsReference.id,
-    })),
-  )
+    if (normalizedNeedsReferenceText) {
+      const resolvedNeedsReference =
+        getOrCreatePackageNeedsReferenceWithMetadataSync(
+          targetDb,
+          packageId,
+          normalizedNeedsReferenceText,
+        )
 
-  if (addedCount === 0 && resolvedNeedsReference.created) {
-    await db
-      .delete(packageNeedsReferences)
-      .where(
-        and(
-          eq(packageNeedsReferences.id, resolvedNeedsReference.id),
-          eq(packageNeedsReferences.packageId, packageId),
-        ),
+      const addedCount = linkRequirementsToPackageSync(
+        targetDb,
+        packageId,
+        items.map(item => ({
+          ...item,
+          needsReferenceId: resolvedNeedsReference.id,
+        })),
       )
+
+      if (addedCount === 0 && resolvedNeedsReference.created) {
+        targetDb
+          .delete(packageNeedsReferences)
+          .where(
+            and(
+              eq(packageNeedsReferences.id, resolvedNeedsReference.id),
+              eq(packageNeedsReferences.packageId, packageId),
+            ),
+          )
+          .run()
+      }
+
+      return addedCount
+    }
+
+    const resolvedNeedsReferenceId =
+      needsReferenceId == null
+        ? null
+        : resolveExistingPackageNeedsReferenceForLinkingSync(
+            targetDb,
+            packageId,
+            needsReferenceId,
+          )
+
+    return linkRequirementsToPackageSync(
+      targetDb,
+      packageId,
+      items.map(item => ({
+        ...item,
+        needsReferenceId: resolvedNeedsReferenceId,
+      })),
+    )
   }
 
-  return addedCount
+  if (isBetterSqliteSession(db)) {
+    return (
+      db as unknown as {
+        transaction: (
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'select'>,
+          ) => number,
+        ) => number
+      }
+    ).transaction(tx => runLinkSync(tx))
+  }
+
+  if (isRemoteSqliteSession(db)) {
+    return (
+      db as unknown as {
+        transaction: <T>(
+          callback: (
+            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'select'>,
+          ) => Promise<T>,
+        ) => Promise<T>
+      }
+    ).transaction(async tx => runLink(tx as unknown as Database))
+  }
+
+  return runLink(db)
 }
 
 export async function linkRequirementsToPackage(
@@ -2096,9 +2282,8 @@ export async function deletePackageItemsByRefs(
               inArray(requirementPackageItems.id, libraryIds),
             ),
           )
-          .returning({ id: requirementPackageItems.id }) as unknown as {
-          length: number
-        }
+          .returning({ id: requirementPackageItems.id })
+          .all() as unknown as { id: number }[]
       ).length
       deletedPackageLocalCount = (
         tx
@@ -2109,38 +2294,70 @@ export async function deletePackageItemsByRefs(
               inArray(packageLocalRequirements.id, packageLocalRequirementIds),
             ),
           )
-          .returning({ id: packageLocalRequirements.id }) as unknown as {
-          length: number
-        }
+          .returning({ id: packageLocalRequirements.id })
+          .all() as unknown as { id: number }[]
       ).length
     })
     return { deletedLibraryCount, deletedPackageLocalCount }
   }
 
-  const d1BatchClient = getD1BatchClient(db)
-  if (d1BatchClient) {
-    const libraryPlaceholders = libraryIds.map(() => '?').join(',')
-    const localPlaceholders = packageLocalRequirementIds
-      .map(() => '?')
-      .join(',')
-    await d1BatchClient.batch([
-      d1BatchClient
-        .prepare(
-          `DELETE FROM requirement_package_items WHERE package_id = ? AND id IN (${libraryPlaceholders})`,
-        )
-        .bind(packageId, ...libraryIds),
-      d1BatchClient
-        .prepare(
-          `DELETE FROM package_local_requirements WHERE package_id = ? AND id IN (${localPlaceholders})`,
-        )
-        .bind(packageId, ...packageLocalRequirementIds),
-    ])
-    // D1 batch does not return deleted row counts; re-derive from input
-    return {
-      deletedLibraryCount: libraryIds.length,
-      deletedPackageLocalCount: packageLocalRequirementIds.length,
-    }
+  if (isRemoteSqliteSession(db)) {
+    return (
+      db as unknown as {
+        transaction: <T>(
+          callback: (tx: Pick<Database, 'delete'>) => Promise<T>,
+        ) => Promise<T>
+      }
+    ).transaction(async tx => {
+      const deletedLibraryCount = (
+        await tx
+          .delete(requirementPackageItems)
+          .where(
+            and(
+              eq(requirementPackageItems.packageId, packageId),
+              inArray(requirementPackageItems.id, libraryIds),
+            ),
+          )
+          .returning({ id: requirementPackageItems.id })
+      ).length
+      const deletedPackageLocalCount = (
+        await tx
+          .delete(packageLocalRequirements)
+          .where(
+            and(
+              eq(packageLocalRequirements.packageId, packageId),
+              inArray(packageLocalRequirements.id, packageLocalRequirementIds),
+            ),
+          )
+          .returning({ id: packageLocalRequirements.id })
+      ).length
+
+      return { deletedLibraryCount, deletedPackageLocalCount }
+    })
   }
 
-  throw new Error('Unsupported database driver')
+  const deletedLibraryCount = (
+    await db
+      .delete(requirementPackageItems)
+      .where(
+        and(
+          eq(requirementPackageItems.packageId, packageId),
+          inArray(requirementPackageItems.id, libraryIds),
+        ),
+      )
+      .returning({ id: requirementPackageItems.id })
+  ).length
+  const deletedPackageLocalCount = (
+    await db
+      .delete(packageLocalRequirements)
+      .where(
+        and(
+          eq(packageLocalRequirements.packageId, packageId),
+          inArray(packageLocalRequirements.id, packageLocalRequirementIds),
+        ),
+      )
+      .returning({ id: packageLocalRequirements.id })
+  ).length
+
+  return { deletedLibraryCount, deletedPackageLocalCount }
 }

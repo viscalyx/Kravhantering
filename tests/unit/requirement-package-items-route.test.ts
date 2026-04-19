@@ -11,18 +11,13 @@ const mocks = {
   deletePackageItemsByRefs: vi.fn(),
   getPackageById: vi.fn(),
   getPackageBySlug: vi.fn(),
-  getPublishedVersionIdForRequirement: vi.fn(),
   linkRequirementsToPackageAtomically: vi.fn(),
   listPackageItems: vi.fn(),
   unlinkRequirementsFromPackage: vi.fn(),
 }
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => mockDb,
+  getRequestDatabase: () => mockDb,
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
@@ -30,8 +25,6 @@ vi.mock('@/lib/dal/requirement-packages', () => ({
     mocks.deletePackageItemsByRefs(...args),
   getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
   getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
-  getPublishedVersionIdForRequirement: (...args: unknown[]) =>
-    mocks.getPublishedVersionIdForRequirement(...args),
   linkRequirementsToPackageAtomically: (...args: unknown[]) =>
     mocks.linkRequirementsToPackageAtomically(...args),
   listPackageItems: (...args: unknown[]) => mocks.listPackageItems(...args),
@@ -61,7 +54,6 @@ describe('requirement-packages/[id]/items route', () => {
       deletedPackageLocalCount: 1,
     })
     mocks.getPackageBySlug.mockResolvedValue({ id: 5 })
-    mocks.getPublishedVersionIdForRequirement.mockResolvedValue(42)
     mocks.linkRequirementsToPackageAtomically.mockResolvedValue(1)
     mocks.unlinkRequirementsFromPackage.mockResolvedValue(2)
   })
@@ -95,12 +87,7 @@ describe('requirement-packages/[id]/items route', () => {
       mockDb,
       5,
       {
-        items: [
-          {
-            requirementId: 1,
-            requirementVersionId: 42,
-          },
-        ],
+        requirementIds: [1],
         needsReferenceId: 99,
         needsReferenceText: undefined,
       },
@@ -127,12 +114,7 @@ describe('requirement-packages/[id]/items route', () => {
       mockDb,
       5,
       {
-        items: [
-          {
-            requirementId: 1,
-            requirementVersionId: 42,
-          },
-        ],
+        requirementIds: [1],
         needsReferenceId: undefined,
         needsReferenceText: 'Shared need',
       },
@@ -162,12 +144,7 @@ describe('requirement-packages/[id]/items route', () => {
       mockDb,
       5,
       {
-        items: [
-          {
-            requirementId: 1,
-            requirementVersionId: 42,
-          },
-        ],
+        requirementIds: [1],
         needsReferenceId: undefined,
         needsReferenceText: 'Shared need',
       },
@@ -192,8 +169,7 @@ describe('requirement-packages/[id]/items route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'requirementIds must be a non-empty array of positive integers',
     })
-    expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
-    expect(mockDb.transaction).not.toHaveBeenCalled()
+    expect(mocks.linkRequirementsToPackageAtomically).not.toHaveBeenCalled()
   })
 
   it('rejects duplicate requirementIds before any database work runs', async () => {
@@ -215,8 +191,7 @@ describe('requirement-packages/[id]/items route', () => {
       error:
         'requirementIds must be a non-empty array of unique positive integers',
     })
-    expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
-    expect(mockDb.transaction).not.toHaveBeenCalled()
+    expect(mocks.linkRequirementsToPackageAtomically).not.toHaveBeenCalled()
   })
 
   it('rejects ambiguous needs-reference payloads', async () => {
@@ -239,8 +214,39 @@ describe('requirement-packages/[id]/items route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Provide either needsReferenceId or needsReferenceText, not both',
     })
-    expect(mocks.getPublishedVersionIdForRequirement).not.toHaveBeenCalled()
     expect(mocks.linkRequirementsToPackageAtomically).not.toHaveBeenCalled()
+  })
+
+  it('returns 422 when a requirement has no published version', async () => {
+    mocks.linkRequirementsToPackageAtomically.mockRejectedValueOnce(
+      validationError(
+        'Requirement 1 has no published version and cannot be added to a package',
+        {
+          httpStatus: 422,
+          reason: 'missing_published_version',
+          requirementId: 1,
+        },
+      ),
+    )
+
+    const request = new NextRequest(
+      'http://localhost/api/requirement-packages/pkg/items',
+      {
+        body: JSON.stringify({
+          requirementIds: [1],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      },
+    )
+
+    const response = await POST(request, makeParams('pkg'))
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toEqual({
+      error:
+        'Requirement 1 has no published version and cannot be added to a package',
+    })
   })
 
   it('rejects malformed delete payloads before unlinking items', async () => {
@@ -269,7 +275,7 @@ describe('requirement-packages/[id]/items route', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
     mocks.linkRequirementsToPackageAtomically.mockRejectedValue(
-      new Error('D1 transaction failed'),
+      new Error('SQLite transaction failed'),
     )
 
     try {
@@ -295,12 +301,7 @@ describe('requirement-packages/[id]/items route', () => {
         mockDb,
         5,
         {
-          items: [
-            {
-              requirementId: 1,
-              requirementVersionId: 42,
-            },
-          ],
+          requirementIds: [1],
           needsReferenceId: undefined,
           needsReferenceText: 'Shared need',
         },

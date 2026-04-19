@@ -1,9 +1,11 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
-import { getRequirementListColumnDefaults } from '@/lib/dal/ui-settings'
-import { getDb } from '@/lib/db'
-import { normalizeRequirementListColumnDefaults } from '@/lib/requirements/list-view'
+import {
+  formatUiSettingsLoadError,
+  getRequirementListColumnDefaults,
+} from '@/lib/dal/ui-settings'
+import { getRequestDatabase } from '@/lib/db'
+import { DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS } from '@/lib/requirements/list-view'
 import RequirementsClient from './requirements-client'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -12,15 +14,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RequirementsPage() {
-  let initialColumnDefaults = normalizeRequirementListColumnDefaults(null)
+  let initialColumnDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS
 
   try {
-    const { env } = await getCloudflareContext({ async: true })
     initialColumnDefaults = await getRequirementListColumnDefaults(
-      getDb(env.DB),
+      await getRequestDatabase(),
     )
-  } catch {
-    // Fallback to the in-code defaults when DB-backed UI settings are unavailable.
+  } catch (error) {
+    console.error(
+      'Failed to load requirement column defaults for requirements page',
+      formatUiSettingsLoadError(error),
+    )
   }
 
   return <RequirementsClient initialColumnDefaults={initialColumnDefaults} />

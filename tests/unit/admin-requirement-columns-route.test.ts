@@ -2,21 +2,19 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
-  getCloudflareContext: vi.fn(async () => ({ env: { DB: {} } })),
-  getDb: vi.fn(() => ({ db: true })),
+  getRequestDatabase: vi.fn(() => ({ db: true })),
   getRequirementListColumnDefaults: vi.fn(),
   updateRequirementListColumnDefaults: vi.fn(),
 }))
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: routeState.getCloudflareContext,
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: routeState.getDb,
+  getRequestDatabase: routeState.getRequestDatabase,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
+  formatUiSettingsLoadError: (error: unknown) => ({
+    message: error instanceof Error ? error.message : String(error),
+  }),
   getRequirementListColumnDefaults: routeState.getRequirementListColumnDefaults,
   updateRequirementListColumnDefaults:
     routeState.updateRequirementListColumnDefaults,
@@ -71,6 +69,31 @@ describe('admin requirement columns route', () => {
       'normReferences',
       'suggestionCount',
     ])
+  })
+
+  it('returns 500 when loading stored requirement column defaults fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    routeState.getRequirementListColumnDefaults.mockRejectedValueOnce(
+      new Error('column defaults unavailable'),
+    )
+
+    try {
+      const response = await GET()
+      const body = (await response.json()) as { error?: string }
+
+      expect(response.status).toBe(500)
+      expect(body.error).toBe('Failed to load requirement column defaults.')
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load stored requirement column defaults',
+        expect.objectContaining({
+          message: 'column defaults unavailable',
+        }),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('rejects unknown requirement column ids', async () => {

@@ -67,6 +67,9 @@ describe('UsageScenariosClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays scenarios', async () => {
@@ -131,6 +134,9 @@ describe('UsageScenariosClient', () => {
     expect(
       (screen.getByLabelText(/scenario\.name.+EN/) as HTMLInputElement).value,
     ).toBe('Scenario A')
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 
   it('closes form on cancel', async () => {

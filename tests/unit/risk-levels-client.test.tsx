@@ -75,6 +75,9 @@ describe('RiskLevelsClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Low')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays risk levels', async () => {
@@ -144,6 +147,9 @@ describe('RiskLevelsClient', () => {
       (screen.getByLabelText(/riskLevelAdmin\.name.+EN/) as HTMLInputElement)
         .value,
     ).toBe('Low')
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 
   it('closes form on cancel', async () => {

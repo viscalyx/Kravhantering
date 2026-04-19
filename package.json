@@ -6,7 +6,7 @@
   "license": "MIT",
   "author": "Viscalyx",
   "engines": {
-    "node": ">=24"
+    "node": "24"
   },
   "scripts": {
     "dev": "next dev",
@@ -14,13 +14,14 @@
     "prebuild": "node ./scripts/prebuild.js",
     "build": "cross-env NODE_ENV=production next build",
     "start": "next start",
+    "start:prodlike": "dotenv -e .env.prodlike -- npm run build && dotenv -e .env.prodlike -- cross-env NODE_ENV=production next start --hostname 0.0.0.0 --port 3001",
     "check": "npm run type-check && npm run lint:py && npm run format:check && npm run spell:check && npm run lint && npm run lint:md && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui --api.host=0.0.0.0 --api.port=51204",
     "test:integration": "playwright test",
-    "test:integration:preview": "playwright test --config=playwright.preview.config.ts",
+    "test:integration:prodlike": "playwright test --config=playwright.prodlike.config.ts",
     "lint": "biome check --error-on-warnings --assist-enabled=false --formatter-enabled=false .",
     "lint:fix": "biome check --write --assist-enabled=false --formatter-enabled=false .",
     "lint:strict": "node scripts/biome-lint-strict.js .",
@@ -35,40 +36,37 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\"",
     "test:integration:report:dev": "playwright show-report --host 0.0.0.0 playwright-report-dev",
-    "test:integration:report:preview": "playwright show-report --host 0.0.0.0 playwright-report-preview",
+    "test:integration:report:prodlike": "playwright show-report --host 0.0.0.0 playwright-report-prodlike",
     "type-check": "rimraf .next/dev/types && next typegen && tsc --noEmit",
     "fix": "npm run format && npm run lint:fix && npm run lint:md:fix && npm run spell:fix",
-    "clean": "rimraf .next out .open-next",
-    "test:integration:all": "npm run test:integration && npm run test:integration:preview",
+    "clean": "rimraf .next out",
+    "test:integration:all": "npm run test:integration && npm run test:integration:prodlike",
     "generate:guide": "npm run kill:port && npm run db:setup && playwright test --config playwright.guide.config.ts",
     "generate:guide:report": "playwright show-report --host 0.0.0.0 playwright-report-guide",
-    "clean:all": "rimraf .next out .open-next .wrangler && echo 'Run npm run db:setup to restore the local database'",
-    "prepreview": "rimraf .open-next && npm run cf-typegen",
-    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+    "clean:all": "rimraf .next out && echo 'Run npm run db:setup to restore the local database'",
     "purge:install": "rimraf node_modules && npm cache clean --force && npm install && rimraf package-lock.json && npm install",
-    "bundle:analyze": "node scripts/analyze-bundle.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "yes | wrangler d1 migrations apply kravhantering-db --local",
-    "db:seed": "node drizzle/seed.ts > /tmp/seed.sql && wrangler d1 execute kravhantering-db --local --file=/tmp/seed.sql",
-    "db:reset": "find .wrangler -name '*.sqlite' -delete -o -name '*.sqlite-wal' -delete -o -name '*.sqlite-shm' -delete 2>/dev/null; echo 'Local D1 database removed'",
-    "db:setup": "npm run db:reset && npm run db:migrate && npm run db:seed",
-    "db:browse": "if [ ! -d .wrangler/state/v3/d1/miniflare-D1DatabaseObject ]; then echo 'No local D1 database found — run `npm run db:setup` after schema/seed changes'; exit 0; fi; find .wrangler/state/v3/d1/miniflare-D1DatabaseObject -type f -name '*.sqlite' ! -name 'metadata.sqlite' -print -quit | xargs -r code",
-    "db:studio": "drizzle-kit studio",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d db",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:wait": "node scripts/db-admin.mjs wait",
+    "db:health": "node scripts/db-admin.mjs health",
+    "db:migrate": "node scripts/db-admin.mjs migrate",
+    "db:seed": "node scripts/db-admin.mjs seed",
+    "db:reset": "node scripts/db-admin.mjs reset",
+    "db:setup": "npm run db:wait && npm run db:reset && npm run db:migrate && npm run db:seed",
+    "db:browse": "node scripts/db-tools.mjs browse",
     "check:port": "node ./scripts/check-port.js",
     "kill:port": "bash ./scripts/kill-dev-server.sh",
     "lint:py": "pyright --project pyrightconfig.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@opennextjs/cloudflare": "^1.19.1",
-    "@react-pdf/renderer": "^4.4.1",
+    "@react-pdf/renderer": "^4.5.1",
     "@tailwindcss/typography": "^0.5.19",
     "drizzle-orm": "^0.45.2",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
-    "next": "^16.2.3",
+    "next": "^16.2.4",
     "next-intl": "^4.9.1",
     "next-themes": "^0.4.6",
     "react": "^19.2.5",
@@ -76,7 +74,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.11",
+    "@biomejs/biome": "^2.4.12",
     "@cspell/dict-sv": "^2.3.2",
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.2",
@@ -95,15 +93,15 @@
     "better-sqlite3": "^12.9.0",
     "cross-env": "^10.1.0",
     "cspell": "^10.0.0",
+    "dotenv-cli": "^11.0.0",
     "drizzle-kit": "^0.31.10",
     "jsdom": "^29.0.2",
     "markdownlint-cli2": "^0.22.0",
-    "pyright": "^1.1.408",
+    "pyright": "^1.1.409",
     "rimraf": "^6.1.3",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.4",
-    "wrangler": "^4.82.2"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.4"
   },
   "//purge:install": [
     "Two-phase install: first install rebuilds node_modules with a (possibly corrupt) lockfile,",
@@ -116,14 +114,13 @@
     "@esbuild-kit/core-utils": {
       "esbuild": "0.25.12"
     },
-    "fast-xml-parser": "5.5.12",
     "minimatch@^8.0.0": {
       "brace-expansion": "2.0.3"
     },
     "minimatch@^10.0.0": {
       "brace-expansion": "5.0.5"
     },
-    "hono": "4.12.12",
+    "hono": "4.12.14",
     "@hono/node-server": "1.19.14",
     "router@^2.2.0": {
       "path-to-regexp": "8.4.2"
@@ -135,12 +132,11 @@
     "Remove each override when the parent dependency updates to include the fix natively.",
     "Document below this. Example: @swc/helpers: next@16.1.6 pins 0.5.15, but next-intl's @swc/core@^1.15.2 peer-requires >=0.5.17. Override to 0.5.19 resolves the conflict.",
     "@esbuild-kit/core-utils > esbuild: drizzle-kit@0.31.10 resolves @esbuild-kit/esm-loader@2.6.5 -> @esbuild-kit/core-utils@3.3.2 -> esbuild@0.18.20, which is vulnerable to GHSA-67mh-4wv8-2f99. Override to 0.25.12 resolves it without downgrading drizzle-kit.",
-    "fast-xml-parser: @aws-sdk/xml-builder@3.972.17 (via @opennextjs/cloudflare > @opennextjs/aws) pins 5.4.1, which is vulnerable to GHSA-8gc5-j5rx-235r and GHSA-jp2q-39xq-3w4g. Override to 5.5.12 resolves both.",
-    "minimatch@^8.0.0 > brace-expansion: @opennextjs/cloudflare > @opennextjs/aws > @node-minify/core > glob@9.3.5 resolves brace-expansion@2.0.2, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 2.0.3.",
-    "minimatch@^10.0.0 > brace-expansion: @opennextjs/cloudflare > glob@12.0.0 resolves brace-expansion@5.0.4, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 5.0.5.",
-    "router@^2.2.0 > path-to-regexp: express@5.2.1 (used by @modelcontextprotocol/sdk@1.29.0 and @opennextjs/aws@3.10.1 via @opennextjs/cloudflare@1.19.1) resolves path-to-regexp@8.3.0, which is vulnerable to GHSA-27v5-c462-wpq7 / CVE-2026-4923. Override to 8.4.2.",
+    "minimatch@^8.0.0 > brace-expansion: Some transitive dependency chains still resolve brace-expansion@2.0.2, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 2.0.3.",
+    "minimatch@^10.0.0 > brace-expansion: Some transitive dependency chains still resolve brace-expansion@5.0.4, which is vulnerable to GHSA-f886-m6hf-6m8v / CVE-2026-33750. Override to 5.0.5.",
+    "router@^2.2.0 > path-to-regexp: express@5.2.1 (used by @modelcontextprotocol/sdk@1.29.0) resolves path-to-regexp@8.3.0, which is vulnerable to GHSA-27v5-c462-wpq7 / CVE-2026-4923. Override to 8.4.2.",
     "smol-toml: markdownlint-cli2@0.22.0 pins 1.6.0, and cspell-config-lib@10.0.0 still ranges ^1.6.1; 1.6.0 is vulnerable to DoS GHSA-v3rj-xjv7-4jmq. Override to 1.6.1 resolves it.",
-    "hono: @modelcontextprotocol/sdk@1.29.0 resolves hono@4.12.8 (via hono@^4.11.4), which is vulnerable to GHSA-26pp-8wgv-hjvm, GHSA-r5rp-j6wh-rvv4, GHSA-xpcf-pg52-r92g, GHSA-xf4j-xp2r-rqqx, and GHSA-wmmm-f939-6g9c. Override to 4.12.12 resolves all five.",
+    "hono: @modelcontextprotocol/sdk@1.29.0 resolves hono@4.12.8 (via hono@^4.11.4), which is vulnerable to GHSA-26pp-8wgv-hjvm, GHSA-r5rp-j6wh-rvv4, GHSA-xpcf-pg52-r92g, GHSA-xf4j-xp2r-rqqx, GHSA-wmmm-f939-6g9c, and GHSA-458j-xx4x-4375. Override to 4.12.14 resolves all six.",
     "@hono/node-server: @modelcontextprotocol/sdk@1.29.0 resolves @hono/node-server@1.19.11 (via @hono/node-server@^1.19.9), which is vulnerable to GHSA-92pp-h63x-v22m. Override to 1.19.14 resolves it."
   ]
 }

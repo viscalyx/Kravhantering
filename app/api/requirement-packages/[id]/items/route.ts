@@ -1,17 +1,15 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   deletePackageItemsByRefs,
   getPackageById,
   getPackageBySlug,
-  getPublishedVersionIdForRequirement,
   linkRequirementsToPackageAtomically,
   listPackageItems,
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
 import type { Database } from '@/lib/db'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -187,8 +185,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -211,8 +208,7 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
@@ -231,34 +227,12 @@ export async function POST(
   const { requirementIds, needsReferenceId, needsReferenceText } =
     parsedBody.value
 
-  // Resolve published version for each requirement; reject if any has none
-  const resolvedVersionIds: { requirementId: number; versionId: number }[] = []
-
-  for (const requirementId of requirementIds) {
-    const versionId = await getPublishedVersionIdForRequirement(
-      db,
-      requirementId,
-    )
-    if (versionId === null) {
-      return NextResponse.json(
-        {
-          error: `Requirement ${requirementId} has no published version and cannot be added to a package`,
-        },
-        { status: 422 },
-      )
-    }
-    resolvedVersionIds.push({ requirementId, versionId })
-  }
-
   try {
     const addedCount = await linkRequirementsToPackageAtomically(
       db,
       packageId,
       {
-        items: resolvedVersionIds.map(({ requirementId, versionId }) => ({
-          requirementId,
-          requirementVersionId: versionId,
-        })),
+        requirementIds,
         needsReferenceId,
         needsReferenceText,
       },
@@ -269,7 +243,9 @@ export async function POST(
     )
   } catch (error) {
     if (isRequirementsServiceError(error) && error.code === 'validation') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      const status =
+        error.details?.httpStatus === 422 ? 422 : (error.status ?? 400)
+      return NextResponse.json({ error: error.message }, { status })
     }
 
     console.error('Failed to add requirements to requirement package', error)
@@ -282,8 +258,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)

@@ -4,12 +4,8 @@ const mockListStatuses = vi.fn()
 const mockListTransitions = vi.fn()
 const mockCreateStatus = vi.fn()
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: () => ({}),
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({

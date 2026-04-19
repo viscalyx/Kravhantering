@@ -1,5 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const desktopChromium = {
+  ...devices['Desktop Chrome'],
+  browserName: 'chromium' as const,
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  isMobile: false,
+  viewport: { width: 1440, height: 1200 },
+}
+
 /**
  * Playwright configuration for integration tests against the dev server.
  * See https://playwright.dev/docs/test-configuration.
@@ -33,7 +42,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: desktopChromium,
     },
   ],
 

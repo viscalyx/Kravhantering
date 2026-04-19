@@ -1,11 +1,10 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deleteQualityCharacteristic,
   listQualityCharacteristics,
   updateQualityCharacteristic,
 } from '@/lib/dal/requirement-types'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -18,8 +17,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Record<string, unknown>
   if (
     (body.nameSv != null && typeof body.nameSv !== 'string') ||
@@ -47,8 +45,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const allCategories = await listQualityCharacteristics(db)
   const hasChildren = allCategories.some(c => c.parentId === numericId)

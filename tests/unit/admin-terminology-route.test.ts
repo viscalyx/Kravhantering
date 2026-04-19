@@ -6,21 +6,19 @@ import {
 } from '@/lib/ui-terminology'
 
 const routeState = vi.hoisted(() => ({
-  getCloudflareContext: vi.fn(async () => ({ env: { DB: {} } })),
-  getDb: vi.fn(() => ({ db: true })),
+  getRequestDatabase: vi.fn(() => ({ db: true })),
   getUiTerminology: vi.fn(),
   updateUiTerminology: vi.fn(),
 }))
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: routeState.getCloudflareContext,
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: routeState.getDb,
+  getRequestDatabase: routeState.getRequestDatabase,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
+  formatUiSettingsLoadError: (error: unknown) => ({
+    message: error instanceof Error ? error.message : String(error),
+  }),
   getUiTerminology: routeState.getUiTerminology,
   updateUiTerminology: routeState.updateUiTerminology,
 }))
@@ -74,6 +72,31 @@ describe('admin terminology route', () => {
         ]),
       ),
     )
+  })
+
+  it('returns 500 when loading stored terminology fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    routeState.getUiTerminology.mockRejectedValueOnce(
+      new Error('terminology unavailable'),
+    )
+
+    try {
+      const response = await GET()
+      const body = (await response.json()) as { error?: string }
+
+      expect(response.status).toBe(500)
+      expect(body.error).toBe('Failed to load terminology.')
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load stored terminology',
+        expect.objectContaining({
+          message: 'terminology unavailable',
+        }),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('rejects unknown terminology keys', async () => {

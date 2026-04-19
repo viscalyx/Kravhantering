@@ -53,6 +53,9 @@ describe('OwnersClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Anna S')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays owners in the table', async () => {
@@ -236,7 +239,7 @@ describe('OwnersClient', () => {
   })
 
   it('disables form fields while submitting', async () => {
-    let resolveFetch: ((v: unknown) => void) | undefined
+    let resolveFetch: (() => void) | undefined
     render(<OwnersClient />)
     await waitFor(() => {
       expect(screen.getByText('Anna S')).toBeInTheDocument()
@@ -251,12 +254,13 @@ describe('OwnersClient', () => {
     fireEvent.change(lastNameInput, { target: { value: 'User' } })
     fireEvent.change(emailInput, { target: { value: 'test@test.com' } })
 
-    fetchMock.mockImplementation(
+    fetchMock.mockImplementationOnce(
       () =>
         new Promise(resolve => {
-          resolveFetch = resolve
+          resolveFetch = () => resolve(okJson({ id: 99 }))
         }),
     )
+    fetchMock.mockResolvedValueOnce(okJson({ owners: [] }))
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
@@ -265,7 +269,11 @@ describe('OwnersClient', () => {
       expect(fieldset).toBeDisabled()
     })
 
-    resolveFetch?.(okJson({ id: 99 }))
+    resolveFetch?.()
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/ownerMgmt\.firstName/)).toBeNull()
+    })
   })
 
   it('shows sr-only actions header in table', async () => {

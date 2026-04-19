@@ -1,11 +1,10 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deletePackageLocalDeviation,
   getPackageLocalDeviation,
   updatePackageLocalDeviation,
 } from '@/lib/dal/deviations'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -24,9 +23,7 @@ export async function GET(
   if (deviationId == null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     return NextResponse.json(await getPackageLocalDeviation(db, deviationId))
@@ -83,9 +80,7 @@ export async function PUT(
   ) {
     return NextResponse.json({ error: 'Invalid createdBy' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     await updatePackageLocalDeviation(db, deviationId, {
@@ -118,9 +113,7 @@ export async function DELETE(
   if (deviationId == null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     await deletePackageLocalDeviation(db, deviationId)

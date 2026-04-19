@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deletePackageItemStatus,
@@ -6,7 +5,7 @@ import {
   getPackageItemStatusById,
   updatePackageItemStatus,
 } from '@/lib/dal/package-item-statuses'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -19,8 +18,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const [status, linkedItems] = await Promise.all([
     getPackageItemStatusById(db, numericId),
     getLinkedPackageItems(db, numericId),
@@ -40,8 +38,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<
     typeof updatePackageItemStatus
   >[2]
@@ -61,8 +58,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   await deletePackageItemStatus(db, numericId)
   return NextResponse.json({ ok: true })
 }

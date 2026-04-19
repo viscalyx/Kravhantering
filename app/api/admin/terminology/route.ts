@@ -1,8 +1,11 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getUiTerminology, updateUiTerminology } from '@/lib/dal/ui-settings'
-import { getDb } from '@/lib/db'
+import {
+  formatUiSettingsLoadError,
+  getUiTerminology,
+  updateUiTerminology,
+} from '@/lib/dal/ui-settings'
+import { getRequestDatabase } from '@/lib/db'
 import { buildUiTerminologyPayload, UI_TERM_KEYS } from '@/lib/ui-terminology'
 
 const termFormsSchema = z
@@ -42,13 +45,23 @@ function toValidationError(error: unknown) {
 }
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
-  const terminology = await getUiTerminology(db)
+  try {
+    const db = await getRequestDatabase()
+    const terminology = await getUiTerminology(db)
 
-  return NextResponse.json({
-    terminology: buildUiTerminologyPayload(terminology),
-  })
+    return NextResponse.json({
+      terminology: buildUiTerminologyPayload(terminology),
+    })
+  } catch (error) {
+    console.error(
+      'Failed to load stored terminology',
+      formatUiSettingsLoadError(error),
+    )
+    return NextResponse.json(
+      { error: 'Failed to load terminology.' },
+      { status: 500 },
+    )
+  }
 }
 
 export async function PUT(request: Request) {
@@ -77,9 +90,7 @@ export async function PUT(request: Request) {
         { status: 400 },
       )
     }
-
-    const { env } = await getCloudflareContext({ async: true })
-    const db = getDb(env.DB)
+    const db = await getRequestDatabase()
     const terminology = await updateUiTerminology(db, body.terminology)
 
     return NextResponse.json({

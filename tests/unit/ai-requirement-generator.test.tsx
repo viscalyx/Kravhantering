@@ -1,22 +1,25 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const translate = Object.assign(
+  (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return Object.entries(params).reduce(
+        (s, [k, v]) => s.replace(`{${k}}`, String(v)),
+        key,
+      )
+    }
+    return key
+  },
+  {
+    rich: (key: string) => key,
+  },
+)
+
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: () => {
-    const t = (key: string, params?: Record<string, unknown>) => {
-      if (params) {
-        return Object.entries(params).reduce(
-          (s, [k, v]) => s.replace(`{${k}}`, String(v)),
-          key,
-        )
-      }
-      return key
-    }
-    t.rich = (key: string) => key
-    return t
-  },
+  useTranslations: () => translate,
 }))
 
 vi.mock('@/components/ConfirmModal', () => ({
@@ -35,6 +38,29 @@ const testAreas = [
   { id: 1, name: 'Security' },
   { id: 2, name: 'Performance' },
 ]
+
+async function renderOpenGenerator(overrides?: {
+  onClose?: () => void
+  onCreated?: () => void
+}) {
+  render(
+    <AiRequirementGenerator
+      areas={testAreas}
+      onClose={overrides?.onClose ?? vi.fn()}
+      onCreated={overrides?.onCreated ?? vi.fn()}
+      open
+    />,
+  )
+
+  await waitFor(() => {
+    const modelButton = document.getElementById('ai-model')
+    expect(modelButton).not.toBeNull()
+    expect(modelButton).toHaveTextContent('Claude Sonnet 4')
+  })
+  await waitFor(() => {
+    expect(screen.getByText('creditsBadgeWithOrg')).toBeInTheDocument()
+  })
+}
 
 describe('AiRequirementGenerator', () => {
   beforeEach(() => {
@@ -84,15 +110,8 @@ describe('AiRequirementGenerator', () => {
     cleanup()
   })
 
-  it('renders when open', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders when open', async () => {
+    await renderOpenGenerator()
 
     expect(screen.getByText('generateTitle')).toBeInTheDocument()
     expect(screen.getByLabelText('topicLabel')).toBeInTheDocument()
@@ -113,15 +132,8 @@ describe('AiRequirementGenerator', () => {
     expect(screen.queryByText('generateTitle')).not.toBeInTheDocument()
   })
 
-  it('renders area options', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders area options', async () => {
+    await renderOpenGenerator()
 
     const areaSelect = screen.getByLabelText('areaLabel')
     expect(areaSelect).toBeInTheDocument()
@@ -129,15 +141,8 @@ describe('AiRequirementGenerator', () => {
     expect(screen.getByText('Performance')).toBeInTheDocument()
   })
 
-  it('disables generate button when topic or area is empty', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('disables generate button when topic or area is empty', async () => {
+    await renderOpenGenerator()
 
     const generateButton = screen.getByRole('button', {
       name: /generateButton/i,
@@ -147,14 +152,7 @@ describe('AiRequirementGenerator', () => {
 
   it('has a close button that calls onClose', async () => {
     const onClose = vi.fn()
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={onClose}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+    await renderOpenGenerator({ onClose })
 
     const closeButton = screen.getByLabelText('close')
     expect(closeButton).toBeInTheDocument()
@@ -162,15 +160,8 @@ describe('AiRequirementGenerator', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
-  it('renders help buttons for form fields', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders help buttons for form fields', async () => {
+    await renderOpenGenerator()
 
     expect(screen.getByLabelText('help: topicLabel')).toBeInTheDocument()
     expect(screen.getByLabelText('help: areaLabel')).toBeInTheDocument()
@@ -178,14 +169,7 @@ describe('AiRequirementGenerator', () => {
   })
 
   it('toggles help panel on help button click', async () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+    await renderOpenGenerator()
 
     const helpBtn = screen.getByLabelText('help: topicLabel')
     expect(helpBtn).toHaveAttribute('aria-expanded', 'false')

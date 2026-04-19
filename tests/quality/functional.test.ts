@@ -24,8 +24,6 @@ import {
 import {
   createPackage,
   createPackageLocalRequirement,
-  DEFAULT_PACKAGE_ITEM_STATUS_ID,
-  DEVIATED_PACKAGE_ITEM_STATUS_ID,
   linkRequirementsToPackageAtomically,
   parsePackageItemRef,
   updatePackageItemFields,
@@ -49,6 +47,10 @@ import {
 import type { Database as AppDatabase } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
+import {
+  DEFAULT_PACKAGE_ITEM_STATUS_ID,
+  DEVIATED_PACKAGE_ITEM_STATUS_ID,
+} from '@/lib/package-item-status-constants'
 import {
   createRequestContext,
   type RequestContext,
@@ -463,12 +465,7 @@ describe('Spec Requirements', () => {
       })
 
       const added = await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-        items: [
-          {
-            requirementId: published.requirementId,
-            requirementVersionId: published.publishedVersionId,
-          },
-        ],
+        requirementIds: [published.requirementId],
         needsReferenceText: '  Shared need  ',
       })
 
@@ -506,12 +503,7 @@ describe('Spec Requirements', () => {
       })
 
       await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-        items: [
-          {
-            requirementId: published.requirementId,
-            requirementVersionId: published.publishedVersionId,
-          },
-        ],
+        requirementIds: [published.requirementId],
       })
 
       const item = await getSinglePackageItem(pkg.id)
@@ -810,12 +802,7 @@ describe('Fitness Scenarios', () => {
     })
 
     await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-      items: [
-        {
-          requirementId: published.requirementId,
-          requirementVersionId: published.publishedVersionId,
-        },
-      ],
+      requirementIds: [published.requirementId],
     })
 
     const libraryItem = await getSinglePackageItem(pkg.id)
@@ -901,24 +888,14 @@ describe('Fitness Scenarios', () => {
     })
 
     await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-      items: [
-        {
-          requirementId: published.requirementId,
-          requirementVersionId: published.publishedVersionId,
-        },
-      ],
+      requirementIds: [published.requirementId],
     })
 
     const addedAgain = await linkRequirementsToPackageAtomically(
       appDb(),
       pkg.id,
       {
-        items: [
-          {
-            requirementId: published.requirementId,
-            requirementVersionId: published.publishedVersionId,
-          },
-        ],
+        requirementIds: [published.requirementId],
         needsReferenceText: '  Duplicate-only need  ',
       },
     )
@@ -993,12 +970,7 @@ describe('Fitness Scenarios', () => {
     })
 
     await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-      items: [
-        {
-          requirementId: published.requirementId,
-          requirementVersionId: published.publishedVersionId,
-        },
-      ],
+      requirementIds: [published.requirementId],
     })
 
     const item = await getSinglePackageItem(pkg.id)

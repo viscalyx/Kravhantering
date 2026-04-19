@@ -1,11 +1,11 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
+  formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -39,12 +39,22 @@ function toValidationError(error: unknown) {
 }
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  try {
+    const db = await getRequestDatabase()
 
-  return NextResponse.json({
-    columns: await getRequirementListColumnDefaults(db),
-  })
+    return NextResponse.json({
+      columns: await getRequirementListColumnDefaults(db),
+    })
+  } catch (error) {
+    console.error(
+      'Failed to load stored requirement column defaults',
+      formatUiSettingsLoadError(error),
+    )
+    return NextResponse.json(
+      { error: 'Failed to load requirement column defaults.' },
+      { status: 500 },
+    )
+  }
 }
 
 export async function PUT(request: Request) {
@@ -86,9 +96,7 @@ export async function PUT(request: Request) {
         { status: 400 },
       )
     }
-
-    const { env } = await getCloudflareContext({ async: true })
-    const db = getDb(env.DB)
+    const db = await getRequestDatabase()
 
     return NextResponse.json({
       columns: await updateRequirementListColumnDefaults(db, body.columns),

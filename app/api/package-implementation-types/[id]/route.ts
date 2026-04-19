@@ -1,10 +1,9 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deletePackageImplementationType,
   updatePackageImplementationType,
 } from '@/lib/dal/package-implementation-types'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -13,8 +12,7 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<
     typeof updatePackageImplementationType
   >[2]
@@ -27,8 +25,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   await deletePackageImplementationType(db, Number(id))
   return NextResponse.json({ ok: true })
 }

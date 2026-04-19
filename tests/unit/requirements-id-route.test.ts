@@ -5,12 +5,8 @@ const mockGetRequirement = vi.fn()
 const mockManageRequirement = vi.fn()
 const mockGetOwnerById = vi.fn()
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({

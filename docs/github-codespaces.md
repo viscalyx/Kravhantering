@@ -59,14 +59,23 @@ browser binaries. It can take a few minutes on first creation.
 ### Post-start (runs on every container start/restart)
 
 ```text
-npm run cf-typegen && npm run db:setup
+git config --global --unset gpg.ssh.program || true && npm run db:setup
 ```
 
-This generates Cloudflare type bindings and sets up the local
-D1 (SQLite) database — reset, migrate, and seed.
+This configures Git for agent forwarding and prepares the local
+SQLite database service — wait, reset, migrate, and seed.
 
 > **Tip:** Wait until both scripts finish before running any
 > commands. The terminal prompt reappears when they are done.
+
+The dev container already starts a sibling `db` service for you. The app uses
+`DATABASE_URL=http://db:9000` inside the container, so you do not need to start
+the database manually in Codespaces.
+
+If you want to inspect table data, run `npm run db:browse`, open
+`/var/lib/kravhantering/devcontainer.sqlite` with the included
+`qwtel.sqlite-viewer` VS Code extension, or query it directly with
+`sqlite3 /var/lib/kravhantering/devcontainer.sqlite` in the terminal.
 
 ## 3 — Start the dev server
 
@@ -287,7 +296,8 @@ These contracts are testable invariants for Codespace-based
 workflows:
 
 - **`npm run db:setup` is idempotent** — safe to re-run at any
-  time. It resets, migrates, and seeds the local D1 database.
+  time. It waits for, resets, migrates, and seeds the local SQLite database
+  service.
 - **Port 3000 must be public** for external MCP clients
   (ChatGPT, Copilot) to reach the endpoint. Private ports
   return authentication errors.

@@ -1,10 +1,9 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   createSuggestion,
   listSuggestionsForRequirement,
 } from '@/lib/dal/improvement-suggestions'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -18,9 +17,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const items = await listSuggestionsForRequirement(db, numericId)
   return NextResponse.json({ suggestions: items })
@@ -59,9 +56,7 @@ export async function POST(
     createdBy?: string
     requirementVersionId?: number
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     const result = await createSuggestion(db, {

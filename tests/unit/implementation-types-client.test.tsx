@@ -46,6 +46,9 @@ describe('ImplementationTypesClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Type en')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays items', async () => {

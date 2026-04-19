@@ -57,13 +57,11 @@ certificates
 out
 build/
 
-# Cloudflare Workers build output
-.open-next
+# Local database service data
+.local/sqlite/
 bundled
-.wrangler/
 
 # Generated types
-cloudflare-env.d.ts
 next-env.d.ts
 
 # Nuxt.js build / generate output

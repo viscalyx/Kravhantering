@@ -3,13 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUpdateStatus = vi.fn()
 const mockDeleteStatus = vi.fn()
-
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
+const getRequestDatabaseMock = vi.hoisted(() => vi.fn(() => ({})))
 
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: getRequestDatabaseMock,
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({
@@ -81,5 +78,29 @@ describe('requirement-statuses/[id] route', () => {
     expect(json.error).toBe('Failed to delete status')
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+  })
+
+  it('PUT returns 400 for invalid ids before opening the DB', async () => {
+    const req = new NextRequest('http://localhost', {
+      method: 'PUT',
+      body: JSON.stringify({ nameSv: 'X', nameEn: 'X' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const res = await PUT(req, makeParams('abc'))
+
+    expect(res.status).toBe(400)
+    expect(getRequestDatabaseMock).not.toHaveBeenCalled()
+    expect(mockUpdateStatus).not.toHaveBeenCalled()
+  })
+
+  it('DELETE returns 400 for invalid ids before opening the DB', async () => {
+    const req = new NextRequest('http://localhost', { method: 'DELETE' })
+
+    const res = await DELETE(req, makeParams('abc'))
+
+    expect(res.status).toBe(400)
+    expect(getRequestDatabaseMock).not.toHaveBeenCalled()
+    expect(mockDeleteStatus).not.toHaveBeenCalled()
   })
 })

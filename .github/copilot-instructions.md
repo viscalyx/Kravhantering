@@ -30,7 +30,7 @@ When making any changes to the database schema (`drizzle/schema.ts`) or migratio
 
 1. **Support versioning** — Any new table or column that is linked to a requirement must also be represented in the `requirement_versions` table (and related version tables). Extend the schema with the necessary columns and relations so that every requirement-linked property is captured in the version snapshot.
 2. **Localized taxonomy columns** — Taxonomy/lookup tables (e.g. categories, types, scenarios) must have separate English and Swedish columns for every user-facing text field, using the naming convention `{name}_en` and `{name}_sv` (e.g. `name_en`, `name_sv`, `description_en`, `description_sv`). The UI selects the correct column based on the active locale.
-3. **Update seed data** — Ensure `drizzle/seed.ts` includes appropriate test data for any new or modified tables and columns. Every table in the schema must have representative seed rows.
+3. **Update seed data** — Ensure `drizzle/seed.sql` includes appropriate test data for any new or modified tables and columns. Every table in the schema must have representative seed rows.
 4. **Use `UPDATE, DELETE, INSERT OR IGNORE`** — Seed statements must be idempotent so they can be re-run safely.
 5. **Run `npm run db:setup`** — After schema and seed changes, verify the full migrate + seed flow works from a clean state.
 6. **Use `ALTER TABLE` in migrations** — Prefer SQLite-native `ALTER TABLE … RENAME COLUMN` and `ALTER TABLE … ADD COLUMN` operations when possible. Avoid drop-and-recreate patterns for routine renames/additions because they complicate foreign-key safety across local file-backed SQLite, the proxy-backed DB service, and future container deployments.

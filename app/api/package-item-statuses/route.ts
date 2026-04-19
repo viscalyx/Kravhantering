@@ -1,16 +1,14 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import {
   countLinkedPackageItems,
   createPackageItemStatus,
   listPackageItemStatuses,
 } from '@/lib/dal/package-item-statuses'
-import { DEVIATED_PACKAGE_ITEM_STATUS_ID } from '@/lib/dal/requirement-packages'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
+import { DEVIATED_PACKAGE_ITEM_STATUS_ID } from '@/lib/package-item-status-constants'
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const [statuses, counts] = await Promise.all([
     listPackageItemStatuses(db),
     countLinkedPackageItems(db),
@@ -26,8 +24,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { env } = await getCloudflareContext({ async: true })
-    const db = getDb(env.DB)
+    const db = await getRequestDatabase()
     const body = (await request.json()) as Parameters<
       typeof createPackageItemStatus
     >[1]
