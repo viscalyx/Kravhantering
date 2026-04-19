@@ -215,11 +215,10 @@ function createRemoteSqliteDatabase(
         sql,
       }
 
-      return await postProxy<ExecuteBatchResult>(
-        '/query',
-        queryOptions,
-        { baseUrl, transactionId },
-      )
+      return await postProxy<ExecuteBatchResult>('/query', queryOptions, {
+        baseUrl,
+        transactionId,
+      })
     } catch (error) {
       if (opensTransaction) {
         transactionId = null

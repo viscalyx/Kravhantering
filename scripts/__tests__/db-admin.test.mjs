@@ -1,7 +1,7 @@
 import {
   existsSync,
-  mkdtempSync,
   mkdirSync,
+  mkdtempSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -109,7 +109,9 @@ describe('db-admin.mjs', () => {
   })
 
   it('resolves SQLite connection strings for memory, absolute, relative, and file URLs', () => {
-    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue('/workspace/project')
+    const cwdSpy = vi
+      .spyOn(process, 'cwd')
+      .mockReturnValue('/workspace/project')
 
     try {
       expect(resolveSqliteFilePath(':memory:')).toBe(':memory:')
@@ -135,7 +137,10 @@ describe('db-admin.mjs', () => {
       splitSqlStatements(
         'CREATE TABLE test(id integer);--> statement-breakpoint INSERT INTO test VALUES (1);',
       ),
-    ).toEqual(['CREATE TABLE test(id integer);', 'INSERT INTO test VALUES (1);'])
+    ).toEqual([
+      'CREATE TABLE test(id integer);',
+      'INSERT INTO test VALUES (1);',
+    ])
 
     expect(
       splitSqlStatements(
@@ -181,7 +186,9 @@ describe('db-admin.mjs', () => {
     expect(admin.runStatements).toHaveBeenCalledWith([
       expect.objectContaining({
         params: [],
-        sql: expect.stringContaining('CREATE TABLE IF NOT EXISTS __app_migrations'),
+        sql: expect.stringContaining(
+          'CREATE TABLE IF NOT EXISTS __app_migrations',
+        ),
       }),
     ])
   })
@@ -210,11 +217,16 @@ describe('db-admin.mjs', () => {
       const admin = createLocalAdmin(dbFile)
 
       await admin.runStatements([
-        { params: [], sql: 'CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)' },
+        {
+          params: [],
+          sql: 'CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)',
+        },
         { params: ['Ada'], sql: 'INSERT INTO test (name) VALUES (?)' },
       ])
 
-      expect(await admin.all('SELECT name FROM test')).toEqual([{ name: 'Ada' }])
+      expect(await admin.all('SELECT name FROM test')).toEqual([
+        { name: 'Ada' },
+      ])
       expect(await admin.health()).toEqual({ dbFile, ok: true })
       expect(existsSync(dbFile)).toBe(true)
 
@@ -290,7 +302,7 @@ describe('db-admin.mjs', () => {
 
     const timeoutSpy = vi
       .spyOn(AbortSignal, 'timeout')
-      .mockImplementation(timeoutMs => {
+      .mockImplementation(_timeoutMs => {
         const controller = new AbortController()
         setTimeout(() => controller.abort(), 5)
         return controller.signal
@@ -316,9 +328,8 @@ describe('db-admin.mjs', () => {
 
     const admin = createRemoteAdmin('http://db:9000')
     const healthPromise = admin.health()
-    const healthExpectation = expect(healthPromise).rejects.toThrow(
-      'request aborted',
-    )
+    const healthExpectation =
+      expect(healthPromise).rejects.toThrow('request aborted')
     await vi.advanceTimersByTimeAsync(5)
 
     await healthExpectation
@@ -406,7 +417,8 @@ describe('db-admin.mjs', () => {
     }
     const log = vi.fn()
     const readSeedSqlMock = vi.fn(
-      () => "INSERT INTO test VALUES (1, 'alpha'); INSERT INTO test VALUES (2, 'beta');",
+      () =>
+        "INSERT INTO test VALUES (1, 'alpha'); INSERT INTO test VALUES (2, 'beta');",
     )
 
     await seedDatabase(admin, {
@@ -426,7 +438,9 @@ describe('db-admin.mjs', () => {
 
   it('waits for the database until a health check succeeds', async () => {
     vi.useFakeTimers()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const consoleSpy = vi
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined)
     const health = vi
       .fn()
       .mockRejectedValueOnce(new Error('not ready'))
@@ -447,7 +461,9 @@ describe('db-admin.mjs', () => {
   it('applies pending migrations from the provided cwd', async () => {
     const tempDir = createTempDir('db-admin-migrate-happy-')
     const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue('/different-cwd')
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const consoleSpy = vi
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined)
 
     try {
       const migrationsDir = join(tempDir, 'drizzle', 'migrations')
@@ -464,7 +480,9 @@ describe('db-admin.mjs', () => {
       const admin = createLocalAdmin(':memory:')
       await migrate(admin, { cwd: tempDir })
 
-      expect(await admin.all('SELECT name FROM sample')).toEqual([{ name: 'Ada' }])
+      expect(await admin.all('SELECT name FROM sample')).toEqual([
+        { name: 'Ada' },
+      ])
       expect(Array.from((await readAppliedMigrations(admin)).keys())).toEqual([
         '0002_create_test.sql',
       ])
@@ -478,7 +496,9 @@ describe('db-admin.mjs', () => {
 
   it('prints a no-op message when all migrations are already applied', async () => {
     const tempDir = createTempDir('db-admin-migrate-noop-')
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const consoleSpy = vi
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined)
 
     try {
       const migrationsDir = join(tempDir, 'drizzle', 'migrations')
@@ -504,13 +524,18 @@ describe('db-admin.mjs', () => {
 
   it('throws when an applied migration hash changes', async () => {
     const tempDir = createTempDir('db-admin-migrate-mismatch-')
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const consoleSpy = vi
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined)
 
     try {
       const migrationsDir = join(tempDir, 'drizzle', 'migrations')
       const migrationPath = join(migrationsDir, '0001_init.sql')
       mkdirSync(migrationsDir, { recursive: true })
-      writeFileSync(migrationPath, 'CREATE TABLE mismatch_test (id INTEGER PRIMARY KEY);')
+      writeFileSync(
+        migrationPath,
+        'CREATE TABLE mismatch_test (id INTEGER PRIMARY KEY);',
+      )
 
       const admin = createLocalAdmin(':memory:')
       await migrate(admin, { cwd: tempDir })
@@ -561,7 +586,9 @@ describe('db-admin.mjs', () => {
 
   it('runs wait, health, reset, migrate, and exec-file commands', async () => {
     const tempDir = createTempDir('db-admin-main-commands-')
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const consoleSpy = vi
+      .spyOn(console, 'log')
+      .mockImplementation(() => undefined)
 
     try {
       const migrationsDir = join(tempDir, 'drizzle', 'migrations')

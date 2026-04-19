@@ -255,12 +255,7 @@ export function splitSqlStatements(sqlText) {
       continue
     }
 
-    if (
-      char === ';' &&
-      !inSingleQuote &&
-      !inDoubleQuote &&
-      !inBacktickQuote
-    ) {
+    if (char === ';' && !inSingleQuote && !inDoubleQuote && !inBacktickQuote) {
       const statement = current.trim()
       if (statement) {
         statements.push(statement)

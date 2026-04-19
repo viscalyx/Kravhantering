@@ -86,7 +86,7 @@ describe('lib/db', () => {
 
     const timeoutSpy = vi
       .spyOn(AbortSignal, 'timeout')
-      .mockImplementation(timeoutMs => {
+      .mockImplementation(_timeoutMs => {
         const controller = new AbortController()
         setTimeout(() => controller.abort(), 5)
         return controller.signal
@@ -120,9 +120,8 @@ describe('lib/db', () => {
     }
 
     const queryPromise = db.executeQuery('select 1', [], 'all')
-    const queryExpectation = expect(queryPromise).rejects.toThrow(
-      'request aborted',
-    )
+    const queryExpectation =
+      expect(queryPromise).rejects.toThrow('request aborted')
     await vi.advanceTimersByTimeAsync(5)
 
     await queryExpectation
