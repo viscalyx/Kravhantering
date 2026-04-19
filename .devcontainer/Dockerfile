@@ -21,8 +21,8 @@ WORKDIR /workspace
 # Configure git for the workspace (security requirement)
 RUN git config --system --add safe.directory /workspace
 
-# Expose the ports that Next.js, Wrangler, Playwright, and Vitest use
-EXPOSE 3000 3001 4443 8787 9323 51204
+# Expose the ports that Next.js, Playwright, and Vitest use
+EXPOSE 3000 3001 4443 9323 51204
 
 # Keep container running (remoteUser in devcontainer.json handles user switching)
 CMD ["sleep", "infinity"]
