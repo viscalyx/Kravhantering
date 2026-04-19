@@ -9,7 +9,7 @@
 - next-intl (`en`/`sv`)
 - Framer Motion
 - Vitest
-- Cloudflare Workers
+- Self-hosted Next.js runtime with SQLite
 
 ## Commands
 
@@ -33,7 +33,7 @@ When making any changes to the database schema (`drizzle/schema.ts`) or migratio
 3. **Update seed data** — Ensure `drizzle/seed.ts` includes appropriate test data for any new or modified tables and columns. Every table in the schema must have representative seed rows.
 4. **Use `UPDATE, DELETE, INSERT OR IGNORE`** — Seed statements must be idempotent so they can be re-run safely.
 5. **Run `npm run db:setup`** — After schema and seed changes, verify the full migrate + seed flow works from a clean state.
-6. **Use `ALTER TABLE` in migrations** — Cloudflare D1 does not reliably honor `PRAGMA foreign_keys=OFF` across statements, so the DROP-and-recreate pattern for renaming/adding columns will fail with foreign-key constraint errors. Always use `ALTER TABLE … RENAME COLUMN` and `ALTER TABLE … ADD COLUMN` instead.
+6. **Use `ALTER TABLE` in migrations** — Prefer SQLite-native `ALTER TABLE … RENAME COLUMN` and `ALTER TABLE … ADD COLUMN` operations when possible. Avoid drop-and-recreate patterns for routine renames/additions because they complicate foreign-key safety across local file-backed SQLite, the proxy-backed DB service, and future container deployments.
 7. **Prefer lookup tables over repeated text** — Do not store the same text value (e.g. status name, category label) inline across many rows. Instead, create a lookup/reference table with an integer primary key and reference it via a foreign key. This reduces database size and improves index performance, since integer keys are smaller and faster to compare than duplicated text strings.
 8. **Update schema documentation** — After any change to the database schema, migrations, or seed data, update `docs/database-schema.md` to reflect the new or modified tables, columns, relationships, and seed values. The documentation must stay in sync with the actual schema at all times.
 8b. **Update architecture data model** — When adding, removing, or renaming tables or relationships, also update the Mermaid `erDiagram` in the "Datamodell — kärnrelationer" section of `docs/arkitekturbeskrivning-kravhantering.md` so the architecture description stays consistent with the actual schema.
