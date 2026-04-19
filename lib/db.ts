@@ -16,11 +16,40 @@ type BetterSqliteDatabase = BetterSQLite3Database<AppSchema> & {
   $client: BetterSqlite3.Database
 }
 type RemoteSqliteDatabase = SqliteRemoteDatabase<AppSchema>
+type ProxyQueryMethod = 'run' | 'all' | 'values' | 'get'
+
+interface ExecuteBatchOptions {
+  method: ProxyQueryMethod
+  params: unknown[]
+  sql: string
+}
+
+interface ExecuteBatchResult {
+  rows: unknown[]
+}
+
+interface ExecuteQueryOptions {
+  method: ProxyQueryMethod
+  params: unknown[]
+  sql: string
+}
+
+interface PostProxyOptions {
+  baseUrl: string
+  timeoutMs?: number
+  transactionId?: string | null
+}
+
+interface TimeoutSignal {
+  clear(): void
+  signal: AbortSignal
+}
 
 export type Database = BaseSQLiteDatabase<'sync' | 'async', unknown, AppSchema>
 
 const DATABASE_URL_ERROR =
   'DATABASE_URL is required. Point it to the SQLite proxy service (for example http://127.0.0.1:9000) or to a local SQLite file.'
+const DEFAULT_PROXY_TIMEOUT_MS = 10_000
 const nodeRequire = createRequire(import.meta.url)
 
 declare global {
@@ -54,6 +83,14 @@ function resolveSqliteFilePath(connectionString: string): string {
   }
 
   if (connectionString.startsWith('file:')) {
+    const pathPart = connectionString.slice(5)
+    if (!pathPart.startsWith('/') && !pathPart.startsWith('//')) {
+      return resolve(
+        /* turbopackIgnore: true */ process.cwd(),
+        decodeURIComponent(pathPart),
+      )
+    }
+
     const url = new URL(connectionString)
     const filePath = decodeURIComponent(url.pathname)
     return isAbsolute(filePath)
@@ -93,25 +130,54 @@ function normalizeProxyBaseUrl(baseUrl: string): string {
   return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
 }
 
+function createTimeoutSignal(timeoutMs: number): TimeoutSignal {
+  if (typeof AbortSignal.timeout === 'function') {
+    return {
+      clear() {},
+      signal: AbortSignal.timeout(timeoutMs),
+    }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  return {
+    clear() {
+      clearTimeout(timeoutId)
+    },
+    signal: controller.signal,
+  }
+}
+
 async function postProxy<T>(
   endpoint: string,
   payload: unknown,
-  options?: { baseUrl: string; transactionId?: string | null },
+  options: PostProxyOptions,
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   }
 
-  if (options?.transactionId) {
+  if (options.transactionId) {
     headers['x-sqlite-transaction-id'] = options.transactionId
   }
 
-  const response = await fetch(`${options?.baseUrl ?? ''}${endpoint}`, {
-    body: JSON.stringify(payload),
-    cache: 'no-store',
-    headers,
-    method: 'POST',
-  })
+  const timeoutSignal = createTimeoutSignal(
+    options.timeoutMs ?? DEFAULT_PROXY_TIMEOUT_MS,
+  )
+
+  let response: Response
+  try {
+    response = await fetch(`${options.baseUrl}${endpoint}`, {
+      body: JSON.stringify(payload),
+      cache: 'no-store',
+      headers,
+      method: 'POST',
+      signal: timeoutSignal.signal,
+    })
+  } finally {
+    timeoutSignal.clear()
+  }
 
   if (!response.ok) {
     const body = await response.text()
@@ -132,8 +198,8 @@ function createRemoteSqliteDatabase(
   const executeQuery = async (
     sql: string,
     params: unknown[],
-    method: 'run' | 'all' | 'values' | 'get',
-  ) => {
+    method: ProxyQueryMethod,
+  ): Promise<ExecuteBatchResult> => {
     const statement = sql.trim().toLowerCase()
     const opensTransaction =
       transactionId == null && statement.startsWith('begin')
@@ -143,9 +209,15 @@ function createRemoteSqliteDatabase(
     }
 
     try {
-      return await postProxy<{ rows: unknown[] }>(
+      const queryOptions: ExecuteQueryOptions = {
+        method,
+        params,
+        sql,
+      }
+
+      return await postProxy<ExecuteBatchResult>(
         '/query',
-        { method, params, sql },
+        queryOptions,
         { baseUrl, transactionId },
       )
     } catch (error) {
@@ -161,13 +233,9 @@ function createRemoteSqliteDatabase(
   }
 
   const executeBatch = async (
-    queries: {
-      method: 'run' | 'all' | 'values' | 'get'
-      params: unknown[]
-      sql: string
-    }[],
-  ) =>
-    postProxy<{ rows: unknown[] }[]>(
+    queries: ExecuteBatchOptions[],
+  ): Promise<ExecuteBatchResult[]> =>
+    postProxy<ExecuteBatchResult[]>(
       '/batch',
       { queries },
       { baseUrl, transactionId },
@@ -176,14 +244,13 @@ function createRemoteSqliteDatabase(
   return drizzleSqliteProxy(executeQuery, executeBatch, { schema })
 }
 
-function createDatabase(connectionString: string): Database {
-  return isHttpDatabaseUrl(connectionString)
-    ? createRemoteSqliteDatabase(connectionString)
-    : createBetterSqliteDatabase(connectionString)
-}
-
 export function getDb(connectionString = process.env.DATABASE_URL): Database {
   const normalizedUrl = normalizeDatabaseUrl(connectionString)
+
+  if (isHttpDatabaseUrl(normalizedUrl)) {
+    return createRemoteSqliteDatabase(normalizedUrl)
+  }
+
   const cache = getDbCache()
   const cached = cache.get(normalizedUrl)
 
@@ -191,7 +258,7 @@ export function getDb(connectionString = process.env.DATABASE_URL): Database {
     return cached
   }
 
-  const db = createDatabase(normalizedUrl)
+  const db = createBetterSqliteDatabase(normalizedUrl)
   cache.set(normalizedUrl, db)
   return db
 }

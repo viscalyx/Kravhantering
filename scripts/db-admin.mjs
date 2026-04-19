@@ -8,11 +8,12 @@ import {
   readFileSync,
   rmSync,
 } from 'node:fs'
-import { dirname, isAbsolute, resolve } from 'node:path'
+import { dirname, isAbsolute, join as pathJoin, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import BetterSqlite3 from 'better-sqlite3'
 
-const MIGRATIONS_DIR = resolve(process.cwd(), 'drizzle/migrations')
+const DEFAULT_HTTP_TIMEOUT_MS = 10_000
+const MIGRATIONS_DIR = 'drizzle/migrations'
 const MIGRATIONS_TABLE = '__app_migrations'
 const DEFAULT_TIMEOUT_MS = 60_000
 export const SEED_SQL_FILE = 'drizzle/seed.sql'
@@ -103,6 +104,11 @@ export function resolveSqliteFilePath(connectionString) {
   }
 
   if (connectionString.startsWith('file:')) {
+    const pathPart = connectionString.slice(5)
+    if (!pathPart.startsWith('/') && !pathPart.startsWith('//')) {
+      return resolve(process.cwd(), decodeURIComponent(pathPart))
+    }
+
     const url = new URL(connectionString)
     const filePath = decodeURIComponent(url.pathname)
     return isAbsolute(filePath) ? filePath : resolve(process.cwd(), filePath)
@@ -113,16 +119,44 @@ export function resolveSqliteFilePath(connectionString) {
     : resolve(process.cwd(), connectionString)
 }
 
-async function fetchJson(baseUrl, endpoint, body, options = {}) {
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    body: body == null ? undefined : JSON.stringify(body),
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers ?? {}),
+function createTimeoutSignal(timeoutMs) {
+  if (typeof AbortSignal.timeout === 'function') {
+    return {
+      clear() {},
+      signal: AbortSignal.timeout(timeoutMs),
+    }
+  }
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  return {
+    clear() {
+      clearTimeout(timeoutId)
     },
-    method: options.method ?? 'POST',
-  })
+    signal: controller.signal,
+  }
+}
+
+async function fetchJson(baseUrl, endpoint, body, options = {}) {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_HTTP_TIMEOUT_MS
+  const timeoutSignal = createTimeoutSignal(timeoutMs)
+
+  let response
+  try {
+    response = await fetch(`${baseUrl}${endpoint}`, {
+      body: body == null ? undefined : JSON.stringify(body),
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers ?? {}),
+      },
+      method: options.method ?? 'POST',
+      signal: timeoutSignal.signal,
+    })
+  } finally {
+    timeoutSignal.clear()
+  }
 
   if (!response.ok) {
     const text = await response.text()
@@ -135,18 +169,123 @@ async function fetchJson(baseUrl, endpoint, body, options = {}) {
 }
 
 export function splitSqlStatements(sqlText) {
-  return sqlText
-    .split(/-->\s*statement-breakpoint/g)
-    .map(statement => statement.trim())
-    .filter(Boolean)
+  if (sqlText.includes('--> statement-breakpoint')) {
+    return sqlText
+      .split(/-->\s*statement-breakpoint/g)
+      .map(statement => statement.trim())
+      .filter(Boolean)
+  }
+
+  const statements = []
+  let current = ''
+  let inSingleQuote = false
+  let inDoubleQuote = false
+  let inBacktickQuote = false
+  let inLineComment = false
+  let inBlockComment = false
+
+  for (let index = 0; index < sqlText.length; index += 1) {
+    const char = sqlText[index]
+    const nextChar = sqlText[index + 1]
+
+    if (inLineComment) {
+      current += char
+      if (char === '\n') {
+        inLineComment = false
+      }
+      continue
+    }
+
+    if (inBlockComment) {
+      current += char
+      if (char === '*' && nextChar === '/') {
+        current += nextChar
+        index += 1
+        inBlockComment = false
+      }
+      continue
+    }
+
+    if (!inSingleQuote && !inDoubleQuote && !inBacktickQuote) {
+      if (char === '-' && nextChar === '-') {
+        current += `${char}${nextChar}`
+        index += 1
+        inLineComment = true
+        continue
+      }
+
+      if (char === '/' && nextChar === '*') {
+        current += `${char}${nextChar}`
+        index += 1
+        inBlockComment = true
+        continue
+      }
+    }
+
+    if (!inDoubleQuote && !inBacktickQuote && char === "'") {
+      current += char
+      if (inSingleQuote && nextChar === "'") {
+        current += nextChar
+        index += 1
+        continue
+      }
+      inSingleQuote = !inSingleQuote
+      continue
+    }
+
+    if (!inSingleQuote && !inBacktickQuote && char === '"') {
+      current += char
+      if (inDoubleQuote && nextChar === '"') {
+        current += nextChar
+        index += 1
+        continue
+      }
+      inDoubleQuote = !inDoubleQuote
+      continue
+    }
+
+    if (!inSingleQuote && !inDoubleQuote && char === '`') {
+      current += char
+      if (inBacktickQuote && nextChar === '`') {
+        current += nextChar
+        index += 1
+        continue
+      }
+      inBacktickQuote = !inBacktickQuote
+      continue
+    }
+
+    if (
+      char === ';' &&
+      !inSingleQuote &&
+      !inDoubleQuote &&
+      !inBacktickQuote
+    ) {
+      const statement = current.trim()
+      if (statement) {
+        statements.push(statement)
+      }
+      current = ''
+      continue
+    }
+
+    current += char
+  }
+
+  const trailingStatement = current.trim()
+  if (trailingStatement) {
+    statements.push(trailingStatement)
+  }
+
+  return statements
 }
 
 export function hashSql(sqlText) {
   return createHash('sha256').update(sqlText).digest('hex')
 }
 
-export function getSortedMigrationFiles() {
-  return readdirSync(MIGRATIONS_DIR)
+export function getSortedMigrationFiles(cwd = process.cwd()) {
+  return readdirSync(pathJoin(cwd, MIGRATIONS_DIR))
     .filter(entry => entry.endsWith('.sql'))
     .sort((left, right) => left.localeCompare(right))
 }
@@ -287,14 +426,16 @@ export async function readAppliedMigrations(admin) {
   return map
 }
 
-export async function migrate(admin) {
+export async function migrate(admin, options = {}) {
+  const cwd = options.cwd ?? process.cwd()
+  const migrationsDir = resolve(cwd, MIGRATIONS_DIR)
   await ensureMigrationsTable(admin)
   const appliedMigrations = await readAppliedMigrations(admin)
-  const migrationFiles = getSortedMigrationFiles()
+  const migrationFiles = getSortedMigrationFiles(cwd)
   let appliedCount = 0
 
   for (const filename of migrationFiles) {
-    const fullPath = resolve(MIGRATIONS_DIR, filename)
+    const fullPath = resolve(migrationsDir, filename)
     const sqlText = readFileSync(fullPath, 'utf8')
     const hash = hashSql(sqlText)
     const existingHash = appliedMigrations.get(filename)
@@ -381,7 +522,12 @@ export async function seedDatabase(admin, options = {}) {
   const cwd = options.cwd ?? process.cwd()
   const readSeedSqlImpl = options.readSeedSql ?? readSeedSql
   const sqlText = readSeedSqlImpl(cwd)
-  await admin.execScript(sqlText)
+  await admin.runStatements(
+    splitSqlStatements(sqlText).map(sql => ({
+      params: [],
+      sql,
+    })),
+  )
   consoleObj.log('Database seed completed.')
 }
 
@@ -439,7 +585,7 @@ export async function main(args = process.argv.slice(2), dependencies = {}) {
         break
       }
       case 'migrate':
-        await migrate(admin)
+        await migrate(admin, { cwd })
         break
       case 'reset':
         await admin.reset()
