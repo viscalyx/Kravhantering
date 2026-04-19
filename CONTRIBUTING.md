@@ -19,28 +19,28 @@ workflow is `npm run db:up`, `npm run db:setup`, then `npm run dev`.
 
 ## Available Scripts
 
-<!-- markdownlint-disable MD013 MD060 -->
-| Command                    | Description                                      |
-| -------------------------- | ------------------------------------------------ |
-| `npm run dev`              | Start Next.js development server                 |
-| `npm run start:prodlike`   | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
-| `npm run build`            | Production build                                 |
-| `npm run start`            | Start the production server                      |
-| `npm run check`            | Run all checks (TS, Python, format, lint, tests) |
-| `npm run test`             | Run unit tests with Vitest                       |
-| `npm run test:watch`       | Run unit tests in watch mode                     |
-| `npm run test:coverage`    | Run unit tests with coverage                     |
-| `npm run test:integration` | Run Playwright integration tests                 |
-| `npm run test:integration:prodlike` | Run Playwright against the built app      |
-| `npm run lint`             | Lint with Biome                                  |
-| `npm run lint:fix`         | Lint and auto-fix with Biome                     |
-| `npm run lint:py`          | Type-check Python scripts with Pyright           |
-| `npm run format`           | Format code with Biome                           |
-| `npm run spell`            | Spell check with cspell                          |
-| `npm run lint:md`          | Lint Markdown files                              |
-| `npm run fix`              | Auto-fix formatting, linting & Markdown          |
-| `npm run type-check`       | TypeScript type checking                         |
-<!-- markdownlint-enable MD013 MD060 -->
+<!-- markdownlint-disable MD013 -->
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start Next.js development server |
+| `npm run start:prodlike` | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
+| `npm run build` | Production build |
+| `npm run start` | Start the production server |
+| `npm run check` | Run all checks (TS, Python, format, lint, tests) |
+| `npm run test` | Run unit tests with Vitest |
+| `npm run test:watch` | Run unit tests in watch mode |
+| `npm run test:coverage` | Run unit tests with coverage |
+| `npm run test:integration` | Run Playwright integration tests |
+| `npm run test:integration:prodlike` | Run Playwright against the built app |
+| `npm run lint` | Lint with Biome |
+| `npm run lint:fix` | Lint and auto-fix with Biome |
+| `npm run lint:py` | Type-check Python scripts with Pyright |
+| `npm run format` | Format code with Biome |
+| `npm run spell` | Spell check with cspell |
+| `npm run lint:md` | Lint Markdown files |
+| `npm run fix` | Auto-fix formatting, linting & Markdown |
+| `npm run type-check` | TypeScript type checking |
+<!-- markdownlint-enable MD013 -->
 
 `npm run build` and `npm run start:prodlike` require the configured
 `DATABASE_URL` to be available and initialized.
@@ -213,17 +213,19 @@ lifecycle dates in
 
 ### Useful Commands
 
-| Command               | Description                                  |
-| --------------------- | -------------------------------------------- |
-| `npm run db:generate` | Generate migrations from schema              |
-| `npm run db:up`       | Start the local SQLite proxy DB container    |
-| `npm run db:down`     | Stop the local SQLite proxy DB container     |
-| `npm run db:health`   | Check the configured database endpoint       |
-| `npm run db:migrate`  | Apply migrations to the configured SQLite DB |
-| `npm run db:seed`     | Seed the configured SQLite DB with test data |
-| `npm run db:reset`    | Reset the configured SQLite DB               |
-| `npm run db:setup`    | Wait, reset, migrate, and seed in one step   |
-| `npm run db:browse`   | Open the inspectable SQLite file in VS Code  |
+<!-- markdownlint-disable MD013 -->
+| Command | Description |
+| --- | --- |
+| `npm run db:generate` | Generate migrations from schema |
+| `npm run db:up` | Start the local SQLite proxy DB container |
+| `npm run db:down` | Stop the local SQLite proxy DB container |
+| `npm run db:health` | Check the configured database endpoint |
+| `npm run db:migrate` | Apply migrations to the configured SQLite DB |
+| `npm run db:seed` | Seed the configured SQLite DB with test data |
+| `npm run db:reset` | Reset the configured SQLite DB |
+| `npm run db:setup` | Wait, reset, migrate, and seed in one step |
+| `npm run db:browse` | Open the inspectable SQLite file in VS Code |
+<!-- markdownlint-enable MD013 -->
 
 ### Browsing the Local Database
 
