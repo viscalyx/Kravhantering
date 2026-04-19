@@ -11,7 +11,7 @@ vi.mock('@/i18n/routing', () => ({
   routing: {},
 }))
 
-describe('middleware', () => {
+describe('proxy', () => {
   beforeEach(() => {
     vi.resetModules()
     intlMiddlewareMock.mockReset()
@@ -19,10 +19,10 @@ describe('middleware', () => {
   })
 
   it('propagates the nonce and CSP through request override headers', async () => {
-    const { default: middleware } = await import('@/middleware')
+    const { default: proxy } = await import('@/proxy')
     const request = new NextRequest('http://localhost:3000/sv/requirements')
 
-    const response = middleware(request)
+    const response = proxy(request)
     const csp = response.headers.get('Content-Security-Policy')
     const overrideHeaders = response.headers.get(
       'x-middleware-override-headers',
