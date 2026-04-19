@@ -215,7 +215,7 @@ to `./noop` in production or other non-debug builds.
 In this repository:
 
 - local development uses the real package
-- production `build`, `preview`, and `deploy` alias the package to
+- non-development builds alias the package to
   `packages/developer-mode-core/src/noop.ts` unless
   `ENABLE_DEVELOPER_MODE=true`
 

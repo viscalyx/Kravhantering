@@ -2,7 +2,7 @@
 
 This document describes the complete database schema for
 **Kravkatalog** — a requirements management system built
-on SQLite (Cloudflare D1) using Drizzle ORM.
+on SQLite using Drizzle ORM.
 
 The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
 
@@ -1466,26 +1466,24 @@ graph LR
 ## Write-Ahead Logging (WAL)
 
 WAL is already active at every level of the stack —
-no configuration is needed or possible.
+the app enables it for file-backed SQLite databases and the proxy service keeps
+the backing database in WAL mode.
 
 <!-- markdownlint-disable MD013 -->
 | Surface | WAL status | Configurable? |
 | --- | --- | --- |
-| Cloudflare D1 (production) | Enabled internally by Cloudflare | No |
-| Miniflare / Wrangler (local dev) | Enabled by default | No |
+| SQLite proxy service (local dev / CI) | Enabled by the proxy on startup | Yes, in service code |
+| Local file-backed `better-sqlite3` DB | Enabled by the app on startup | Yes, in app code |
 | `better-sqlite3 :memory:` (unit tests) | Not applicable (in-memory) | No |
 <!-- markdownlint-enable MD013 -->
 
-**Production:** D1 uses a WAL-based architecture for its distributed
-SQLite. This is managed by Cloudflare; PRAGMA statements are not
-reliably honored (see also `copilot-instructions.md`).
+**Proxy-backed dev/CI:** `scripts/sqlite_http_server.py` opens the shared
+SQLite file with `PRAGMA journal_mode = WAL`, so the separate DB service uses
+WAL for normal local development and prod-like test runs.
 
-**Local dev:** Miniflare's SQLite emulation uses WAL by default.
-Confirmation: `metadata.sqlite-wal` exists under
-`.wrangler/state/v3/d1/miniflare-D1DatabaseObject/` after a local
-run. The main app database file has no active `.sqlite-wal` at rest,
-which is normal — SQLite removes the WAL file after a clean
-checkpoint/shutdown.
+**Direct file mode:** `lib/db.ts` also enables WAL when `DATABASE_URL` points
+to a local SQLite file. This is mainly useful for focused debugging or tests;
+the default contributor workflow uses the separate DB service.
 
 **Unit tests:** All test databases use `new BetterSqlite3(':memory:')`.
 WAL mode requires a file-based database and cannot be applied to

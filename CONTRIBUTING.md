@@ -13,12 +13,17 @@ for VS Code agent sandboxing features, choose
 **Kravhantering Development (Elevated)** from
 [`.devcontainer/elevated/devcontainer.json`](.devcontainer/elevated/devcontainer.json).
 
+If you prefer host-based development outside the dev container, install Node.js
+24+, npm, and a Docker-compatible `docker compose` runtime. The default local
+workflow is `npm run db:up`, `npm run db:setup`, then `npm run dev`.
+
 ## Available Scripts
 
-<!-- markdownlint-disable MD013 -->
+<!-- markdownlint-disable MD013 MD060 -->
 | Command                    | Description                                      |
 | -------------------------- | ------------------------------------------------ |
 | `npm run dev`              | Start Next.js development server                 |
+| `npm run start:prodlike`   | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
 | `npm run build`            | Production build                                 |
 | `npm run start`            | Start the production server                      |
 | `npm run check`            | Run all checks (TS, Python, format, lint, tests) |
@@ -26,6 +31,7 @@ for VS Code agent sandboxing features, choose
 | `npm run test:watch`       | Run unit tests in watch mode                     |
 | `npm run test:coverage`    | Run unit tests with coverage                     |
 | `npm run test:integration` | Run Playwright integration tests                 |
+| `npm run test:integration:prodlike` | Run Playwright against the built app      |
 | `npm run lint`             | Lint with Biome                                  |
 | `npm run lint:fix`         | Lint and auto-fix with Biome                     |
 | `npm run lint:py`          | Type-check Python scripts with Pyright           |
@@ -34,9 +40,44 @@ for VS Code agent sandboxing features, choose
 | `npm run lint:md`          | Lint Markdown files                              |
 | `npm run fix`              | Auto-fix formatting, linting & Markdown          |
 | `npm run type-check`       | TypeScript type checking                         |
-| `npm run preview`          | Build and preview with Wrangler                  |
-| `npm run deploy`           | Build and deploy to Cloudflare                   |
+<!-- markdownlint-enable MD013 MD060 -->
+
+`npm run build` and `npm run start:prodlike` require the configured
+`DATABASE_URL` to be available and initialized.
+
+## Local HTTPS development (devcontainer-only mkcert)
+
+This project is developed inside the VS Code Dev Container. The devcontainer
+includes `mkcert`; use it inside the container to create the HTTPS certs the
+app expects at `./certificates/localhost-key.pem` and
+`./certificates/localhost.pem`.
+
+1. `Reopen in Container` and open a shell inside the devcontainer.
+2. Generate certificates in the repository (writes to `./certificates`):
+
+<!-- markdownlint-disable MD013 -->
+```bash
+mkdir -p certificates
+mkcert -key-file ./certificates/localhost-key.pem -cert-file ./certificates/localhost.pem localhost 127.0.0.1 ::1
+```
 <!-- markdownlint-enable MD013 -->
+
+>[!NOTE]
+> The repository's `.gitignore` already excludes `certificates` and `*.pem`.
+
+1. Start the HTTPS dev server inside the container:
+
+```bash
+npm run dev:https
+```
+
+> [!IMPORTANT]
+> This workflow is container-local and requires no host-side steps for the
+>common devcontainer setups used by contributors. If your browser still
+>warns about the certificate, you can export and import the container's CA
+>root (`certificates/rootCA.pem`) into the host or browser trust store.
+>If you prefer not to add certificates to any trust store, use `npm run dev`
+>(HTTP) instead.
 
 ## Project Structure
 
@@ -77,9 +118,9 @@ App code should use `devMarker(...)` from
 [`lib/developer-mode-markers.ts`](lib/developer-mode-markers.ts) instead of
 hardcoding `data-developer-mode-*` attributes directly. Local development
 enables the real Developer Mode runtime automatically. Production
-`build`/`preview`/`deploy` flows alias the Developer Mode packages to no-op
-entrypoints by default, so the overlay runtime and curated marker output are
-excluded unless `ENABLE_DEVELOPER_MODE=true` is set explicitly.
+builds alias the Developer Mode packages to no-op entrypoints by default, so
+the overlay runtime and curated marker output are excluded unless
+`ENABLE_DEVELOPER_MODE=true` is set explicitly.
 
 To enable Developer Mode in a browser, focus a non-editable part of the page and
 press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
@@ -158,9 +199,10 @@ Translation strings are stored in [messages/](messages/).
 
 ## Database
 
-The application uses **Cloudflare D1** (SQLite) for its database.
-Locally, Wrangler stores the D1 database as a SQLite file under the
-`.wrangler/` directory.
+The application uses **SQLite** via Drizzle ORM. The default local and CI
+workflow runs the database behind a small HTTP proxy service in a separate
+container, which keeps the development shape close to the later container-based
+production deployment.
 
 For the full schema reference, see
 [docs/database-schema.md](docs/database-schema.md). Status
@@ -171,33 +213,52 @@ lifecycle dates in
 
 ### Useful Commands
 
-| Command              | Description                            |
-| -------------------- | -------------------------------------- |
-| `npm run db:generate`| Generate migrations from schema        |
-| `npm run db:migrate` | Apply migrations to the local D1 DB    |
-| `npm run db:seed`    | Seed the local database with test data |
-| `npm run db:reset`   | Delete the local D1 database files     |
-| `npm run db:setup`   | Reset, migrate & seed in one step      |
-| `npm run db:browse`  | Open the local SQLite DB in VS Code    |
-| `npm run db:studio`  | Open Drizzle Studio                    |
+| Command               | Description                                  |
+| --------------------- | -------------------------------------------- |
+| `npm run db:generate` | Generate migrations from schema              |
+| `npm run db:up`       | Start the local SQLite proxy DB container    |
+| `npm run db:down`     | Stop the local SQLite proxy DB container     |
+| `npm run db:health`   | Check the configured database endpoint       |
+| `npm run db:migrate`  | Apply migrations to the configured SQLite DB |
+| `npm run db:seed`     | Seed the configured SQLite DB with test data |
+| `npm run db:reset`    | Reset the configured SQLite DB               |
+| `npm run db:setup`    | Wait, reset, migrate, and seed in one step   |
+| `npm run db:browse`   | Open the inspectable SQLite file in VS Code  |
+| `npm run db:studio`   | Start Drizzle Studio for a local SQLite file |
 
 ### Browsing the Local Database
 
 The recommended VS Code extension **SQLite Viewer**
-(`qwtel.sqlite-viewer`) is included in the dev container. To inspect
-the database:
+(`qwtel.sqlite-viewer`) is included in the dev container. In both
+devcontainer variants, the shared SQLite Docker volume is mounted
+read-only into the app container, so you can inspect the live database
+without opening a shell in the `db` service.
 
-1. Open the **Explorer** sidebar.
-2. Navigate to the `.wrangler/` folder. The SQLite file is located at
-   a path like:
+1. Run `npm run db:browse`, or open the database file in VS Code:
 
    ```text
-   .wrangler/state/v3/d1/miniflare-D1DatabaseObject/<hash>.sqlite
+   /var/lib/kravhantering/devcontainer.sqlite
    ```
 
-3. Click the `.sqlite` file. SQLite Viewer opens it in a visual table
-   browser where you can inspect schema and data.
+1. If you want Drizzle Studio instead, run `npm run db:studio`.
+1. For direct CLI inspection, run:
+
+   ```bash
+   sqlite3 /var/lib/kravhantering/devcontainer.sqlite
+   ```
+
+For host-based development outside the dev container, the database file
+still lives inside the `db` service volume at
+`/var/lib/kravhantering/dev.sqlite`. In that workflow, either inspect the
+volume through Docker tooling or point `DATABASE_URL` at a local file such
+as `file:./tmp/dev.sqlite` and rerun `npm run db:setup`. The `db:browse`
+and `db:studio` scripts work automatically in the devcontainer and in
+file-backed `DATABASE_URL` mode. With the host-based Docker proxy workflow,
+they will explain that the live SQLite file is not mounted locally.
 
 > [!Tip]
-> Run `npm run db:browse` to open the database file directly
-> in VS Code with SQLite Viewer.
+> The default contributor path is:
+>
+> 1. `npm run db:up`
+> 2. `npm run db:setup`
+> 3. `npm run dev`

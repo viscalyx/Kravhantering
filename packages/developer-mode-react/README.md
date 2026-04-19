@@ -183,7 +183,7 @@ aliasing over direct component-level imports of the no-op entrypoint.
 In this repository:
 
 - local development uses the real provider
-- production `build`, `preview`, and `deploy` alias the package to
+- non-development builds alias the package to
   `packages/developer-mode-react/src/noop.tsx` unless
   `ENABLE_DEVELOPER_MODE=true`
 

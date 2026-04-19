@@ -94,9 +94,10 @@ protect it at the platform edge. The planned auth rollout is documented in
 ## Run It Locally
 
 1. Install dependencies with `npm install`.
-2. Prepare the local D1 database with `npm run db:setup`.
-3. Start the app with `npm run dev`.
-4. Connect your MCP client to `http://localhost:3000/api/mcp`.
+2. Start the local DB service with `npm run db:up`.
+3. Prepare the local SQLite database with `npm run db:setup`.
+4. Start the app with `npm run dev`.
+5. Connect your MCP client to `http://localhost:3000/api/mcp`.
 
 The server is implemented inside the Next.js app, so there is no separate MCP
 process to start.

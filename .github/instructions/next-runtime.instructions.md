@@ -2,13 +2,14 @@
 applyTo: "{app/api/**/*.ts,package.json}"
 ---
 
-# OpenNext Cloudflare
+# Next.js Runtime
 
 ## API Routes
 
 - Do not add `export const runtime = 'edge'` to `app/api/**/route.ts`.
-- When a route handler needs Cloudflare bindings, use
-  `await getCloudflareContext({ async: true })`.
+- When a route handler needs database access, use
+  `await getRequestDatabase()` from `@/lib/db`.
+- Do not couple route handlers to platform-specific runtime bindings.
 
 ### Turbopack routing conflict — never nest API routes under `[locale]`
 
@@ -25,8 +26,8 @@ applyTo: "{app/api/**/*.ts,package.json}"
   - `app/api/requirement-packages/[id]/items/[itemId]/deviations/route.ts`
 - When moving or creating a route, verify its URL cannot be matched by any `app/[locale]/**` page. Use a conflict-free top-level noun if there is overlap.
 
-## Preview Scripts
+## Local And Prod-Like Scripts
 
-- Preserve `.wrangler` in preview startup scripts.
-- Local D1 preview state lives under `.wrangler/state/v3/d1`.
-- `prepreview` may remove `.open-next`; do not remove `.wrangler`.
+- Keep `DATABASE_URL` as the runtime contract in scripts and route-related setup.
+- Local development uses `npm run dev` with the separate SQLite proxy service.
+- Prod-like validation uses `npm run build` and `npm run start:prodlike`.

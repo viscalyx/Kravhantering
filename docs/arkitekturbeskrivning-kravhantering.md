@@ -19,7 +19,7 @@ respektive avsnitt.
 
 **Konventioner:**
 
-- Tekniska produktnamn (Next.js, Cloudflare, Drizzle
+- Tekniska produktnamn (Next.js, SQLite, Drizzle
   ORM etc.) skrivs på engelska enligt branschstandard.
 - Mermaid-diagram renderas i GitHub-markdown.
 - ArchiMate-modeller presenteras i ASCII-notation och
@@ -83,16 +83,14 @@ graph TB
 | --- | --- | --- |
 | Användargränssnitt | Next.js 16, React 19, Tailwind CSS 4 | Tvåspråkig webbapplikation med App Router |
 | API-lager | REST-ändpunkter, MCP-server | CRUD, livscykelövergångar, AI-integration |
-| Databas | SQLite via Cloudflare D1, Drizzle ORM | Kravdata, versionshistorik, taxonomi |
-| Infrastruktur | Cloudflare Workers, OpenNext-adapter | Serverlös drift, global distribution |
+| Databas | SQLite via Drizzle ORM | Kravdata, versionshistorik, taxonomi |
+| Infrastruktur | Node.js-container och separat databastjänst | Lokal utveckling, CI och framtida OpenShift-drift |
 <!-- markdownlint-enable MD013 -->
 
-> **Notera:** Cloudflare Workers och Cloudflare D1 är
-> nuvarande plattformsval men inte ett arkitekturkrav.
-> Lösningen bygger på standardtekniker (Next.js,
-> SQLite, Drizzle ORM) och kan driftas på alternativa
-> plattformar (t.ex. Vercel, AWS, Azure) med
-> anpassning av adapter och databindning.
+> **Notera:** Lösningen använder nu en plattformsneutral Next.js- och
+> SQLite-arkitektur. Lokal utveckling och CI kör appen mot en separat
+> databastjänst, och samma runtime-kontrakt kan senare översättas till
+> OpenShift med separata containrar för applikation och databas.
 
 ### ArchiMate — Översikt (ASCII)
 
@@ -140,10 +138,10 @@ graph TB
 │             << Technology Layer >>                      │
 │                                                         │
 │  [Technology Service]    [Technology Service]           │
-│   Cloudflare Workers      Cloudflare D1 (SQLite)        │
+│   Node.js-container       SQLite DB-tjänst              │
 │                                                         │
 │  [Technology Service]    [Technology Service]           │
-│   Cloudflare Assets       OpenNext-adapter              │
+│   Ingress / statiska      OpenShift-kompatibel drift    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -569,9 +567,9 @@ interna applikationssambanden:
 │                    └───────────┬────────────┘                 │
 │                                │                              │
 │                    ┌───────────▼────────────┐                 │
-│                    │   Cloudflare D1        │                 │
-│                    │   (SQLite)             │                 │
-│                    └───────────────────────-┘                 │
+│                    │   SQLite DB-tjänst     │                 │
+│                    │   (proxy + SQLite)     │                 │
+│                    └────────────────────────┘                 │
 │                                                               │
 │  << Application Interfaces >>                                 │
 │  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐    │
@@ -722,36 +720,28 @@ Publicerad > Arkiverad > Granskning > Utkast.
 
 ### Driftplattform
 
-Kravhantering driftas i nuläget på **Cloudflare
-Workers** — en serverlös plattform som kör
-applikationskod vid Cloudflare:s kantservrar globalt.
-Plattformsvalet eliminerar behovet av egen
-serverinfrastruktur.
+Kravhantering använder nu en **självhostad Next.js-runtime** med ett tydligt
+miljövariabelkontrakt för databasåtkomst. Lokal utveckling och CI kör appen
+mot en separat SQLite-proxytjänst, och målbilden för produktion är en
+containerbaserad deployment på **OpenShift**.
 
-> **Plattformsoberoende:** Cloudflare Workers och
-> Cloudflare D1 är utbytbara. Applikationen bygger
-> på Next.js och SQLite via Drizzle ORM — tekniker
-> som stöds av flertalet molnplattformar. Ett byte
-> till exempelvis Vercel, AWS Lambda eller Azure App
-> Service kräver anpassning av deploy-adapter och
-> databasbindning, men påverkar inte affärslogik
-> eller användargränssnitt.
+> **Plattformsoberoende:** Applikationen bygger på Next.js, SQLite och Drizzle
+> ORM. Det gör att samma affärslogik kan köras lokalt, i CI och senare i
+> OpenShift så länge runtime-miljön levererar en Node.js-process och ett
+> `DATABASE_URL` till en kompatibel databastjänst.
 
 <!-- markdownlint-disable MD013 -->
 | Tjänst | Användning |
 | --- | --- |
-| Cloudflare Workers | Kör Next.js-applikationen via OpenNext-adaptern |
-| Cloudflare D1 | SQLite-databas (serverlös, replikerad) |
-| Cloudflare Assets | Statiska tillgångar (JS, CSS, bilder) |
+| Next.js app-container | Kör webbapplikationen via `next dev` eller `next start` |
+| SQLite DB-tjänst | Exponerar SQLite via en enkel HTTP-proxy i dev/CI |
+| Ingress / statiska filer | Exponerar appen och serverar byggda tillgångar |
 <!-- markdownlint-enable MD013 -->
 
 ### Byggkedja
 
-Next.js-applikationen paketeras för Cloudflare via
-OpenNext-adaptern (`@opennextjs/cloudflare`) som
-kompilerar serverfunktionerna till en enda
-Worker-fil (`.open-next/worker.js`) och separerar
-statiska tillgångar (`.open-next/assets`).
+Next.js-applikationen byggs och körs nu med den inbyggda Node-runtimekedjan.
+Det finns ingen plattformsspecifik adapter i byggflödet.
 
 ```text
 Källkod
@@ -760,31 +750,33 @@ Källkod
 Next.js build (NODE_ENV=production)
   │
   ▼
-OpenNext build (opennextjs/cloudflare)
+Node.js runtime (`next start`)
   │
-  ├── .open-next/worker.js    ← Serverfunktioner
-  └── .open-next/assets/      ← Statiska filer
+  ├── Next.js serverfunktioner
+  └── Statiska filer från `.next/`
   │
   ▼
-Wrangler deploy → Cloudflare Workers + Assets
+Container deployment / ingress
 ```
 
 ### Konfiguration
 
-- **Kompatibilitetsdatum:** 2026-02-13
-- **Kompatibilitetsflaggor:** `nodejs_compat`,
-  `global_fetch_strictly_public`
+- **Databaskontrakt:** `DATABASE_URL`
+- **Node-runtime:** 24+
+- **Lokal databastjänst:** `http://db:9000` i devcontainer eller
+  `http://127.0.0.1:9000` lokalt
 - **Anpassad domän:** `kravhantering.{foretag}.se`
-- **Observerbarhet:** Aktiverad med 1 % stickprov
-  (ett av hundra inkommande förfrågningar loggas).
+- **Observerbarhet:** Plattformens loggning och containertelemetri
 
 ### Miljöbindningar
 
+<!-- markdownlint-disable MD013 -->
 | Bindning | Typ | Beskrivning |
 | --- | --- | --- |
-| `DB` | D1Database | Databasanslutning |
-| `IMAGES` | Cloudflare Images | Bildoptimering |
-| `ASSETS` | Fetcher | Statiska tillgångar |
+| `DATABASE_URL` | URL / anslutningssträng | Databasanslutning till SQLite-tjänst eller fil |
+| `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Sträng | Nyckel för server actions i flerinstansmiljöer |
+| `OPENROUTER_API_KEY` | Sträng | AI-integration för kravgenerering |
+<!-- markdownlint-enable MD013 -->
 
 ---
 
@@ -822,7 +814,7 @@ i `lib/requirements/auth.ts`:
   genererar ett unikt nonce (16 slumpmässiga bytes,
   base64-kodat) för inline-skript. Produktions-CSP
   kräver nonce för alla skript.
-- **Middleware** — `middleware.ts` hanterar CSP och
+- **Proxy** — `proxy.ts` hanterar CSP och
   i18n-routing för varje inkommande förfrågan.
 
 ### Önskat läge — Rollbaserad åtkomstkontroll (RBAC)
@@ -875,7 +867,7 @@ Ubuntu 24.04 med följande förinstallerade verktyg:
 | Biome | 2.4 | Linting och formatering |
 | cSpell | 9.7 | Stavningskontroll (sv + en) |
 | markdownlint | — | Markdown-kvalitet |
-| Wrangler | 4.75 | Cloudflare CLI, lokal D1 |
+| SQLite proxy service | Python 3.12-baserad container | Lokal databastjänst |
 
 ### Testramverk
 
@@ -906,18 +898,21 @@ Integrationstester körs separat:
 
 ```text
 npm run test:integration          Mot utvecklingsserver
-npm run test:integration:preview  Mot byggd version
+npm run test:integration:prodlike Mot byggd version
 ```
 
 ### Lokal databashantering
 
-Utvecklare arbetar mot en lokal SQLite-databas via
-Wrangler:
+Utvecklare arbetar mot en separat lokal SQLite-tjänst:
 
 ```text
+npm run db:up
+  └── Starta SQLite proxy service-container
+
 npm run db:setup
+  ├── Vänta på databastjänsten
   ├── Rensa befintlig databas
-  ├── Applicera migreringar (Wrangler D1)
+  ├── Applicera migreringar
   └── Tilldela testdata (drizzle/seed.ts)
 ```
 
@@ -972,8 +967,8 @@ informationssäkerhetsåtgärder i nuvarande version:
 
 #### Transportskydd
 
-- HTTPS genomgående via Cloudflare:s
-  kantterminering.
+- HTTPS genomgående via plattformens ingress,
+  reverse proxy eller lastbalanserare.
 - Utvecklingsmiljön tillåter `unsafe-eval` för HMR
   och WebSocket-anslutningar — denna lättnad gäller
   **inte** i produktion.
@@ -1007,10 +1002,9 @@ utökade säkerhetsåtgärder:
 
 ### Plattformskrav
 
-Eftersom Cloudflare Workers och Cloudflare D1 är
-utbytbara (se perspektiv 1 och 6) beskriver detta
-perspektiv de **generella infrastrukturkrav** som
-gäller oavsett vilken driftplattform som väljs.
+Eftersom lösningen nu bygger på ett generellt Next.js- och SQLite-kontrakt
+beskriver detta perspektiv de **generella infrastrukturkrav** som gäller
+oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 
 #### Beräkningskapacitet (compute)
 
@@ -1028,10 +1022,10 @@ gäller oavsett vilken driftplattform som väljs.
 - **SQLite-kompatibel databas** — applikationen
   använder Drizzle ORM med SQLite-dialekt.
   Alternativ inkluderar:
-  - Cloudflare D1 (nuvarande)
+  - separat SQLite-proxytjänst (nuvarande utvecklings- och CI-flöde)
   - Turso (libSQL)
-  - LiteFS (Fly.io)
-  - Lokal SQLite-fil (vid traditionell hosting)
+  - lokal SQLite-fil för riktad felsökning
+  - framtida byte till annan databasmotor i ett separat projekt
 - Databasen lagrar all kravdata, versionshistorik,
   taxonomi och UI-konfiguration.
 - Storleken är begränsad — 367 krav med full
@@ -1042,9 +1036,9 @@ gäller oavsett vilken driftplattform som väljs.
 
 - En **CDN eller statisk filhanterare** för att
   servera JavaScript-buntar, CSS och bilder.
-- Vid Cloudflare: Assets-bindning. Vid alternativa
-  plattformar: S3 + CloudFront, Vercel Edge
-  Network, Azure Blob Storage etc.
+- Vid OpenShift eller annan självhostad drift kan detta
+  hanteras av Next.js-appen bakom ingress eller av en
+  separat fil-/CDN-lösning.
 
 #### Nätverkskrav
 
@@ -1073,17 +1067,18 @@ gäller oavsett vilken driftplattform som väljs.
 <!-- markdownlint-disable MD013 -->
 | Plattform | Compute | Databas | Statiska filer | Adapter |
 | --- | --- | --- | --- | --- |
-| Cloudflare (nuvarande) | Workers | D1 (SQLite) | Assets | `@opennextjs/cloudflare` |
+| Utveckling / CI (nuvarande) | Node.js-process / container | SQLite proxy service | Inbyggd Next.js-hantering | `next dev` / `next start` |
+| OpenShift (målbild) | Container / Deployment | separat DB-container eller framtida managed DB | Ingress / plattformslagring | `next start` |
 | Vercel | Serverless Functions | Turso / Neon | Edge Network | Inbyggd Next.js |
-| AWS | Lambda@Edge / ECS | RDS SQLite / Turso | S3 + CloudFront | `@opennextjs/aws` |
+| AWS | ECS / App Runner / Lambda | RDS / Turso | S3 + CloudFront | Node.js-adapter |
 | Azure | App Service / Functions | Azure SQL / Turso | Blob Storage | Node.js-adapter |
 | Självhostad | Node.js-process | Lokal SQLite-fil | Nginx / Caddy | `next start` |
 <!-- markdownlint-enable MD013 -->
 
 > **Byte av plattform** kräver anpassning av
-> deploy-adapter och databasbindning
-> (`lib/db.ts`, `wrangler.jsonc` respektive
-> motsvarande konfiguration). Affärslogik,
+> container-/ingresskonfiguration och databastjänst
+> (`lib/db.ts`, `docker-compose.dev.yml` och
+> motsvarande miljövariabler). Affärslogik,
 > användargränssnitt och databasschema förblir
 > oförändrade.
 

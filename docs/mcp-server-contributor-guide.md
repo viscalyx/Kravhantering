@@ -373,6 +373,8 @@ Manual verification should still include:
 
 ## Local Development Notes
 
+- Start the DB service with `npm run db:up` and prepare it with
+  `npm run db:setup`.
 - Start the app with `npm run dev`.
 - The MCP endpoint will be available at `http://localhost:3000/api/mcp`.
 - Because the server is inside the app, local debugging usually means watching:
@@ -382,12 +384,14 @@ Manual verification should still include:
 
 ## Deployment Notes
 
-- The server is meant to be deployed with the web app on Cloudflare through the
-  existing Next.js setup.
+- The server is meant to be deployed with the web app in the same Next.js
+  container runtime.
+- The current repository targets a dev-first workflow now and an
+  OpenShift-compatible container deployment later.
 - The current implementation is stateless and creates a fresh transport per
   request.
 - If you expose the route publicly before the auth phase lands, protect the
-  route at the platform edge.
+  route at the ingress, reverse proxy, or platform edge.
 
 ## Related Docs
 

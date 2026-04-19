@@ -190,10 +190,11 @@ This project also includes an in-app MCP server for requirements management.
 - **Framework:** [Next.js](https://nextjs.org/) 16 (React 19)
 - **Language:** TypeScript 5
 - **Styling:** Tailwind CSS 4
-- **Database (optional):** Cloudflare D1 (SQLite) via Drizzle ORM
+- **Database:** SQLite via Drizzle ORM
+- **Local/CI database runtime:** Separate SQLite proxy service container
 - **Internationalization:** next-intl (Swedish & English)
-- **Hosting (optional):** Cloudflare Workers
-  (via [OpenNext](https://opennext.js.org/cloudflare))
+- **App runtime:** Native Next.js self-hosting (`next dev`, `next start`)
+- **Production target:** OpenShift-compatible Node container deployment
 - **Testing:** Vitest (unit) · Playwright (integration)
 - **Linting:** Biome · Pyright · markdownlint · cspell
 
@@ -201,6 +202,7 @@ This project also includes an in-app MCP server for requirements management.
 
 - Node.js >= 24
 - npm
+- Docker Desktop or another Docker-compatible `docker compose` runtime
 
 ## Getting Started
 
@@ -208,7 +210,10 @@ This project also includes an in-app MCP server for requirements management.
 # Install dependencies
 npm install
 
-# Set up the local database (reset, migrate & seed)
+# Start the local SQLite proxy database service
+npm run db:up
+
+# Set up the local database (wait, reset, migrate & seed)
 npm run db:setup
 
 # Start the development server
@@ -216,6 +221,19 @@ npm run dev
 ```
 
 The app will be available at `http://localhost:3000`.
+
+For a production-like local run, use:
+
+```bash
+npm run start:prodlike
+```
+
+`npm run start:prodlike` rebuilds with `NODE_ENV=production` and then starts
+the built app on port `3001`.
+The production build now requires database-backed UI terminology and
+requirement column defaults to load successfully. If `DATABASE_URL` points to
+an unavailable or uninitialized database, `npm run build` and
+`npm run start:prodlike` will fail instead of falling back to shipped defaults.
 
 ## Contributing
 

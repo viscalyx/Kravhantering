@@ -45,8 +45,8 @@ UI elements so AI prompts can refer to them consistently.
 - App code should import the marker helper from `@/lib/developer-mode-markers`
   and the app adapter from `components/DeveloperModeProvider`.
 - Local development enables Developer Mode automatically.
-- Production `build`, `preview`, and `deploy` flows disable Developer Mode by
-  default by aliasing the packages to no-op entrypoints.
+- Non-development builds disable Developer Mode by default by aliasing the
+  packages to no-op entrypoints.
 - Set `ENABLE_DEVELOPER_MODE=true` only when you explicitly want a non-dev build
   to include the real Developer Mode runtime and marker output.
 
