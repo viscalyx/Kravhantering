@@ -1,11 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const desktopChromium = {
+  ...devices['Desktop Chrome'],
   browserName: 'chromium' as const,
   deviceScaleFactor: 1,
   hasTouch: false,
   isMobile: false,
-  viewport: devices['Desktop Chrome'].viewport,
 }
 
 /**
