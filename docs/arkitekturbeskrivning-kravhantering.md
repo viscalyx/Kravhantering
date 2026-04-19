@@ -762,7 +762,7 @@ Container deployment / ingress
 ### Konfiguration
 
 - **Databaskontrakt:** `DATABASE_URL`
-- **Node-runtime:** 24+
+- **Node-runtime:** 24.x
 - **Lokal databastjänst:** `http://db:9000` i devcontainer eller
   `http://127.0.0.1:9000` lokalt
 - **Anpassad domän:** `kravhantering.{foretag}.se`
@@ -862,7 +862,7 @@ Ubuntu 24.04 med följande förinstallerade verktyg:
 
 | Verktyg | Version | Användning |
 | --- | --- | --- |
-| Node.js | 24+ | Runtime |
+| Node.js | 24.x | Runtime |
 | TypeScript | 5.9 (strict) | Typkontroll |
 | Biome | 2.4 | Linting och formatering |
 | cSpell | 9.7 | Stavningskontroll (sv + en) |

@@ -14,7 +14,7 @@ for VS Code agent sandboxing features, choose
 [`.devcontainer/elevated/devcontainer.json`](.devcontainer/elevated/devcontainer.json).
 
 If you prefer host-based development outside the dev container, install Node.js
-24+, npm, and a Docker-compatible `docker compose` runtime. The default local
+24.x, npm, and a Docker-compatible `docker compose` runtime. The default local
 workflow is `npm run db:up`, `npm run db:setup`, then `npm run dev`.
 
 ## Available Scripts
