@@ -1069,9 +1069,9 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 | --- | --- | --- | --- | --- |
 | Utveckling / CI (nuvarande) | Node.js-process / container | SQLite proxy service | Inbyggd Next.js-hantering | `next dev` / `next start` |
 | OpenShift (målbild) | Container / Deployment | separat DB-container eller framtida managed DB | Ingress / plattformslagring | `next start` |
-| Vercel | Serverless Functions | Turso / Neon | Edge Network | Inbyggd Next.js |
-| AWS | ECS / App Runner / Lambda | RDS / Turso | S3 + CloudFront | Node.js-adapter |
-| Azure | App Service / Functions | Azure SQL / Turso | Blob Storage | Node.js-adapter |
+| Vercel | Serverless Functions | Turso / libSQL | Edge Network | Inbyggd Next.js |
+| AWS | ECS / App Runner / Lambda | Turso / libSQL eller RDS via separat dialekt- och schemamigrering | S3 + CloudFront | Node.js-adapter |
+| Azure | App Service / Functions | Turso / libSQL eller Azure SQL via separat dialekt- och schemamigrering | Blob Storage | Node.js-adapter |
 | Självhostad | Node.js-process | Lokal SQLite-fil | Nginx / Caddy | `next start` |
 <!-- markdownlint-enable MD013 -->
 
@@ -1081,6 +1081,11 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 > motsvarande miljövariabler). Affärslogik,
 > användargränssnitt och databasschema förblir
 > oförändrade.
+>
+> **ER-diagrammet i detta dokument beskriver den nuvarande
+> SQLite/libSQL-modellen.** Om AWS RDS eller Azure SQL väljs
+> krävs ett separat migrationsprojekt för dialekt, schema och
+> driftsansvar innan plattformen kan betraktas som kompatibel.
 
 ---
 
