@@ -1,7 +1,6 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import { recordPackageLocalDecision } from '@/lib/dal/deviations'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -46,9 +45,7 @@ export async function POST(
       { status: 400 },
     )
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     await recordPackageLocalDecision(db, deviationId, {

@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   createDeviation,
@@ -7,7 +6,7 @@ import {
   listDeviationsForPackageLocalRequirement,
 } from '@/lib/dal/deviations'
 import { parsePackageItemRef } from '@/lib/dal/requirement-packages'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ itemId: string }>
@@ -39,9 +38,7 @@ export async function GET(
   if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     const deviations =
@@ -100,9 +97,7 @@ export async function POST(
     createdBy?: string
     motivation: string
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     const result =

@@ -1,11 +1,10 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deleteSuggestion,
   getSuggestion,
   updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -19,9 +18,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     const item = await getSuggestion(db, numericId)
@@ -60,9 +57,7 @@ export async function PUT(
   if (typeof content !== 'string') {
     return NextResponse.json({ error: 'Invalid content' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     await updateSuggestion(db, numericId, { content })
@@ -91,9 +86,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     await deleteSuggestion(db, numericId)

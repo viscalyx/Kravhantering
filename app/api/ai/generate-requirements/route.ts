@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import {
   type ContentPart,
   generateChatStream,
@@ -12,7 +11,7 @@ import {
   validateGeneratedRequirements,
 } from '@/lib/ai/requirement-prompt'
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 export async function POST(request: Request) {
   let body: {
@@ -173,9 +172,7 @@ export async function POST(request: Request) {
       )
     }
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const taxonomy = await loadTaxonomy(db, locale)
   const systemPrompt = buildSystemPrompt(taxonomy, locale)

@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deleteRiskLevel,
@@ -6,7 +5,7 @@ import {
   getRiskLevelById,
   updateRiskLevel,
 } from '@/lib/dal/risk-levels'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -19,8 +18,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const [riskLevel, linkedRequirements] = await Promise.all([
     getRiskLevelById(db, numericId),
     getLinkedRequirements(db, numericId),
@@ -40,8 +38,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<typeof updateRiskLevel>[2]
   const riskLevel = await updateRiskLevel(db, numericId, body)
   if (!riskLevel) {
@@ -59,8 +56,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   await deleteRiskLevel(db, numericId)
   return NextResponse.json({ ok: true })
 }

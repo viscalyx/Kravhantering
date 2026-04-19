@@ -6,7 +6,6 @@ import {
   type RequirementColumnId,
   type RequirementListColumnDefault,
 } from '@/lib/requirements/list-view'
-import { createRequirementsLogger } from '@/lib/requirements/logging'
 import {
   buildUiTerminologyPayload,
   normalizeUiTerminology,
@@ -18,8 +17,6 @@ export interface UiSettingsLoader {
   getColumnDefaults: () => Promise<RequirementListColumnDefault[]>
   getTerminology: () => Promise<Record<UiTermKey, UiTermTranslation>>
 }
-
-const logger = createRequirementsLogger()
 
 function mapUiTerminologyRow(
   row: typeof uiTerminology.$inferSelect,
@@ -44,13 +41,9 @@ async function loadTerminology(db: Database) {
     const rows = await db.select().from(uiTerminology)
     return normalizeUiTerminology(rows.map(mapUiTerminologyRow))
   } catch (error) {
-    logger.error('ui_settings.load_terminology_failed', {
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Unknown terminology storage error',
+    throw new Error('Failed to load UI terminology from the database.', {
+      cause: error,
     })
-    throw error
   }
 }
 
@@ -69,13 +62,12 @@ async function loadColumnDefaults(db: Database) {
       })),
     )
   } catch (error) {
-    logger.error('ui_settings.load_column_defaults_failed', {
-      error:
-        error instanceof Error
-          ? error.message
-          : 'Unknown column defaults storage error',
-    })
-    throw error
+    throw new Error(
+      'Failed to load requirement column defaults from the database.',
+      {
+        cause: error,
+      },
+    )
   }
 }
 

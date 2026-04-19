@@ -1,15 +1,13 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import {
   countLinkedRequirements,
   createNormReference,
   listNormReferences,
 } from '@/lib/dal/norm-references'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 export async function GET(request: Request) {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const searchParams = new URL(request.url).searchParams
   const linkedOnly = searchParams.get('linked') === 'true'
   const statuses = searchParams
@@ -34,8 +32,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Record<string, unknown>
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const type = typeof body.type === 'string' ? body.type.trim() : ''

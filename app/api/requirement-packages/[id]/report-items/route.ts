@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   getPackageById,
@@ -8,7 +7,7 @@ import {
   parsePackageItemRef,
 } from '@/lib/dal/requirement-packages'
 import { getRequirementById, STATUS_PUBLISHED } from '@/lib/dal/requirements'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 
 type Params = Promise<{ id: string }>
@@ -119,9 +118,7 @@ export async function GET(
   if (itemRefs.length === 0) {
     return NextResponse.json({ error: 'Missing refs' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const pkg = /^\d+$/.test(id)
     ? await getPackageById(db, Number(id))
     : await getPackageBySlug(db, id)

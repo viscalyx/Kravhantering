@@ -1,7 +1,6 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import { revertPackageLocalToDraft } from '@/lib/dal/deviations'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -12,9 +11,7 @@ export async function POST(_request: Request, { params }: { params: Params }) {
   if (!Number.isInteger(deviationId) || deviationId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   try {
     await revertPackageLocalToDraft(db, deviationId)

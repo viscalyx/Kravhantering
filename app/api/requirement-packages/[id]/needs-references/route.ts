@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   getPackageById,
@@ -6,7 +5,7 @@ import {
   listPackageNeedsReferences,
 } from '@/lib/dal/requirement-packages'
 import type { Database } from '@/lib/db'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -24,8 +23,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

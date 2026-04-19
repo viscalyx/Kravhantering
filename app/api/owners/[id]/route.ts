@@ -1,7 +1,6 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import { deleteOwner, updateOwner } from '@/lib/dal/owners'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -14,8 +13,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const raw: unknown = await request.json()
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -52,8 +50,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const deleted = await deleteOwner(db, numericId)
   if (!deleted) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

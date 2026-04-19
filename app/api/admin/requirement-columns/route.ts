@@ -1,11 +1,10 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   getRequirementListColumnDefaults,
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -39,8 +38,7 @@ function toValidationError(error: unknown) {
 }
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   return NextResponse.json({
     columns: await getRequirementListColumnDefaults(db),
@@ -86,9 +84,7 @@ export async function PUT(request: Request) {
         { status: 400 },
       )
     }
-
-    const { env } = await getCloudflareContext({ async: true })
-    const db = getDb(env.DB)
+    const db = await getRequestDatabase()
 
     return NextResponse.json({
       columns: await updateRequirementListColumnDefaults(db, body.columns),

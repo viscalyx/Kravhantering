@@ -7,11 +7,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
+import { devMarker } from '@/lib/developer-mode-markers'
 import {
   DEFAULT_PACKAGE_ITEM_STATUS_ID,
   DEVIATED_PACKAGE_ITEM_STATUS_ID,
-} from '@/lib/dal/requirement-packages'
-import { devMarker } from '@/lib/developer-mode-markers'
+} from '@/lib/package-item-status-constants'
 
 const PACKAGE_ITEM_STATUSES_HELP: HelpContent = {
   sections: [

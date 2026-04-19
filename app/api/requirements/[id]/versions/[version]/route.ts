@@ -1,6 +1,5 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { internalError } from '@/lib/requirements/errors'
 import {
@@ -17,8 +16,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id, version } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const service = createRequirementsService(db)
   const context = createRequestContext(_request, 'rest')
 

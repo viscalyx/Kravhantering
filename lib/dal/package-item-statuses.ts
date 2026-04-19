@@ -4,11 +4,11 @@ import {
   requirementPackageItems,
   requirementPackages,
 } from '@/drizzle/schema'
+import type { Database } from '@/lib/db'
 import {
   DEFAULT_PACKAGE_ITEM_STATUS_ID,
   DEVIATED_PACKAGE_ITEM_STATUS_ID,
-} from '@/lib/dal/requirement-packages'
-import type { Database } from '@/lib/db'
+} from '@/lib/package-item-status-constants'
 
 export interface PackageItemStatusRow {
   color: string

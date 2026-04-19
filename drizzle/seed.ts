@@ -1,12 +1,9 @@
 /**
  * Seed script for development database.
  *
- * Usage (inside devcontainer):
+ * Usage:
  *   npm run db:migrate   # apply migrations first
  *   npm run db:seed      # then seed
- *
- * This script uses wrangler's D1 local emulation via the REST API.
- * For simplicity, it outputs SQL statements to be piped into wrangler d1 execute.
  */
 
 /* eslint-disable no-console */
@@ -1934,8 +1931,8 @@ UPDATE requirement_versions SET risk_level_id = 1 WHERE id IN (
 
 console.log(seedSQL)
 console.log(
-  '-- Seed data generated. Pipe to: wrangler d1 execute kravhantering-db --local --command "..."',
+  '-- Seed data generated. Use `node scripts/db-admin.mjs exec-file <path>` to apply it.',
 )
 console.log(
-  '-- Or use: node drizzle/seed.ts | wrangler d1 execute kravhantering-db --local --file=-',
+  '-- The default npm script does this automatically after writing /tmp/seed.sql.',
 )

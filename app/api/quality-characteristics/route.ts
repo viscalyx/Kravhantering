@@ -1,14 +1,12 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   createQualityCharacteristic,
   listQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const url = new URL(request.url)
   const typeId = url.searchParams.get('typeId')
@@ -27,8 +25,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Record<string, unknown>
   if (
     typeof body.nameSv !== 'string' ||

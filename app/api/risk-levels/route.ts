@@ -1,15 +1,13 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import {
   countLinkedRequirements,
   createRiskLevel,
   listRiskLevels,
 } from '@/lib/dal/risk-levels'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const [riskLevels, counts] = await Promise.all([
     listRiskLevels(db),
     countLinkedRequirements(db),
@@ -24,8 +22,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { env } = await getCloudflareContext({ async: true })
-    const db = getDb(env.DB)
+    const db = await getRequestDatabase()
     const body = (await request.json()) as Parameters<typeof createRiskLevel>[1]
     const riskLevel = await createRiskLevel(db, body)
     return NextResponse.json(riskLevel, { status: 201 })

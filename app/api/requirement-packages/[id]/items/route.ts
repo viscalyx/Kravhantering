@@ -1,4 +1,3 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { type NextRequest, NextResponse } from 'next/server'
 import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
@@ -11,7 +10,7 @@ import {
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
 import type { Database } from '@/lib/db'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -187,8 +186,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -211,8 +209,7 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
@@ -282,8 +279,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
 
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)

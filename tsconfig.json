@@ -27,7 +27,7 @@
         "./packages/developer-mode-react/src/index.tsx"
       ]
     },
-    "types": ["./cloudflare-env.d.ts", "node", "vitest/globals"]
+    "types": ["node", "vitest/globals"]
   },
   "include": [
     "next-env.d.ts",

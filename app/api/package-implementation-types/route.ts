@@ -1,21 +1,18 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import {
   createPackageImplementationType,
   listPackageImplementationTypes,
 } from '@/lib/dal/package-implementation-types'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const types = await listPackageImplementationTypes(db)
   return NextResponse.json({ types })
 }
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<
     typeof createPackageImplementationType
   >[1]

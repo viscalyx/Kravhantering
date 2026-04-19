@@ -1,21 +1,18 @@
-import { getCloudflareContext } from '@opennextjs/cloudflare'
 import { NextResponse } from 'next/server'
 import {
   createPackageResponsibilityArea,
   listPackageResponsibilityAreas,
 } from '@/lib/dal/package-responsibility-areas'
-import { getDb } from '@/lib/db'
+import { getRequestDatabase } from '@/lib/db'
 
 export async function GET() {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const areas = await listPackageResponsibilityAreas(db)
   return NextResponse.json({ areas })
 }
 
 export async function POST(request: Request) {
-  const { env } = await getCloudflareContext({ async: true })
-  const db = getDb(env.DB)
+  const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<
     typeof createPackageResponsibilityArea
   >[1]
