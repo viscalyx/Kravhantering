@@ -16,8 +16,6 @@ DEFAULT_SOURCE_DIRS = ("app", "components", "lib", "scripts", "tests")
 EXCLUDED_DIRS = {
     ".git",
     ".next",
-    ".open-next",
-    ".wrangler",
     "coverage",
     "dist",
     "build",
@@ -39,6 +37,8 @@ ROOT_ENTRY_FILES = {
     "instrumentation.ts",
     "middleware.js",
     "middleware.ts",
+    "proxy.js",
+    "proxy.ts",
 }
 TEST_FILE_RE = re.compile(r"\.(test|spec)\.[cm]?[jt]sx?$")
 IMPORT_RE = re.compile(
