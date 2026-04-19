@@ -72,6 +72,9 @@ describe('RequirementAreasClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays areas in the table', async () => {

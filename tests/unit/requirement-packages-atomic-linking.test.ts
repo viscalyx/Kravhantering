@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { beforeEach, describe, expect, it } from 'vitest'
 import * as schema from '@/drizzle/schema'
 import {
@@ -11,86 +11,6 @@ import {
   linkRequirementsToPackageAtomically,
 } from '@/lib/dal/requirement-packages'
 import type { Database as AppDatabase } from '@/lib/db'
-
-class FakeD1PreparedStatement {
-  constructor(
-    private readonly sqlite: BetterSqlite3.Database,
-    private readonly query: string,
-    private readonly params: unknown[] = [],
-  ) {}
-
-  bind(...params: unknown[]) {
-    return new FakeD1PreparedStatement(this.sqlite, this.query, params)
-  }
-
-  allSync() {
-    const results = this.sqlite
-      .prepare(this.query)
-      .all(...this.params) as Record<string, unknown>[]
-
-    return {
-      meta: { changes: 0, duration: 0, last_row_id: 0 },
-      results,
-      success: true,
-    }
-  }
-
-  executeForBatch() {
-    const normalizedQuery = this.query.trim().toUpperCase()
-
-    if (normalizedQuery.startsWith('SELECT')) {
-      return this.allSync()
-    }
-
-    return this.runSync()
-  }
-
-  async all() {
-    return this.allSync()
-  }
-
-  async raw() {
-    return this.sqlite
-      .prepare(this.query)
-      .raw(true)
-      .all(...this.params) as unknown[][]
-  }
-
-  async run() {
-    return this.runSync()
-  }
-
-  runSync() {
-    const result = this.sqlite.prepare(this.query).run(...this.params)
-
-    return {
-      meta: {
-        changes: result.changes,
-        duration: 0,
-        last_row_id: Number(result.lastInsertRowid ?? 0),
-      },
-      results: [],
-      success: true,
-    }
-  }
-}
-
-class FakeD1Database {
-  constructor(private readonly sqlite: BetterSqlite3.Database) {}
-
-  batch(statements: FakeD1PreparedStatement[]) {
-    const executeBatch = this.sqlite.transaction(
-      (preparedStatements: FakeD1PreparedStatement[]) =>
-        preparedStatements.map(statement => statement.executeForBatch()),
-    )
-
-    return Promise.resolve(executeBatch(statements))
-  }
-
-  prepare(query: string) {
-    return new FakeD1PreparedStatement(this.sqlite, query)
-  }
-}
 
 function applyMigrations(sqlite: BetterSqlite3.Database) {
   const migrationsDir = join(process.cwd(), 'drizzle/migrations')
@@ -113,9 +33,7 @@ function createAsyncTestDb() {
   const sqlite = new BetterSqlite3(':memory:')
   applyMigrations(sqlite)
 
-  const db = drizzle(new FakeD1Database(sqlite) as never, {
-    schema,
-  })
+  const db = drizzle(sqlite, { schema })
 
   return {
     db: db as unknown as AppDatabase,

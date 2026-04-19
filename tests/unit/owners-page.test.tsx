@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/server', () => ({
@@ -31,8 +31,11 @@ describe('owners page', () => {
     expect(meta.title).toBe('areaOwners')
   })
 
-  it('renders the client component', () => {
+  it('renders the client component', async () => {
     render(<OwnersPage />)
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('table')).toBeInTheDocument()
+    })
   })
 })

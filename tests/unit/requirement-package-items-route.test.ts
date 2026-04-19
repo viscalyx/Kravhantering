@@ -17,12 +17,8 @@ const mocks = {
   unlinkRequirementsFromPackage: vi.fn(),
 }
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => mockDb,
+  getRequestDatabase: () => mockDb,
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({
@@ -269,7 +265,7 @@ describe('requirement-packages/[id]/items route', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
     mocks.linkRequirementsToPackageAtomically.mockRejectedValue(
-      new Error('D1 transaction failed'),
+      new Error('SQLite transaction failed'),
     )
 
     try {

@@ -12,12 +12,8 @@ const mocks = {
   updatePackageItemFieldsByItemRef: vi.fn(),
 }
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => mockDb,
+  getRequestDatabase: () => mockDb,
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({

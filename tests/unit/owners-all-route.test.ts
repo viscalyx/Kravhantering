@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  getCloudflareContext: vi.fn(async () => ({ env: { DB: {} } })),
-  getDb: vi.fn(() => 'mock-db'),
+  getRequestDatabase: vi.fn(() => 'mock-db'),
   listOwners: vi.fn(),
 }))
-
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: mocks.getCloudflareContext,
-}))
-vi.mock('@/lib/db', () => ({ getDb: mocks.getDb }))
+vi.mock('@/lib/db', () => ({ getRequestDatabase: mocks.getRequestDatabase }))
 vi.mock('@/lib/dal/owners', () => ({
   listOwners: mocks.listOwners,
 }))

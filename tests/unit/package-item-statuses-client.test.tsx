@@ -83,6 +83,9 @@ describe('PackageItemStatusesClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
+    })
   })
 
   it('fetches and displays package item statuses', async () => {
@@ -170,6 +173,9 @@ describe('PackageItemStatusesClient', () => {
         ) as HTMLInputElement
       ).value,
     ).toBe('Included')
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 
   it('closes form on cancel', async () => {
@@ -230,6 +236,9 @@ describe('PackageItemStatusesClient', () => {
     expect(
       screen.getByText('packageItemStatusAdmin.sortOrderLocked'),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 
   it('disables sort order field when editing the deviated status (ID 5)', async () => {
@@ -252,6 +261,9 @@ describe('PackageItemStatusesClient', () => {
     expect(
       screen.getByText('packageItemStatusAdmin.sortOrderLocked'),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 
   it('enables sort order field when editing a non-default status', async () => {
@@ -274,5 +286,8 @@ describe('PackageItemStatusesClient', () => {
     expect(
       screen.queryByText('packageItemStatusAdmin.sortOrderLocked'),
     ).toBeNull()
+    await waitFor(() => {
+      expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
+    })
   })
 })

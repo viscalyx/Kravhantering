@@ -5,12 +5,8 @@ const mockUpdateQualityCharacteristic = vi.fn()
 const mockDeleteQualityCharacteristic = vi.fn()
 const mockListQualityCharacteristics = vi.fn()
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: () => ({}),
 }))
 
 vi.mock('@/lib/dal/requirement-types', () => ({

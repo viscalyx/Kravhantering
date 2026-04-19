@@ -1,21 +1,24 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const translate = Object.assign(
+  (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return Object.entries(params).reduce(
+        (s, [k, v]) => s.replace(`{${k}}`, String(v)),
+        key,
+      )
+    }
+    return key
+  },
+  {
+    rich: (key: string) => key,
+  },
+)
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: () => {
-    const t = (key: string, params?: Record<string, unknown>) => {
-      if (params) {
-        return Object.entries(params).reduce(
-          (s, [k, v]) => s.replace(`{${k}}`, String(v)),
-          key,
-        )
-      }
-      return key
-    }
-    t.rich = (key: string) => key
-    return t
-  },
+  useTranslations: () => translate,
 }))
 
 vi.mock('@/components/ConfirmModal', () => ({
@@ -33,6 +36,26 @@ const testAreas = [
   { id: 1, name: 'Security' },
   { id: 2, name: 'Performance' },
 ]
+
+async function renderOpenGenerator() {
+  render(
+    <AiRequirementGenerator
+      areas={testAreas}
+      onClose={vi.fn()}
+      onCreated={vi.fn()}
+      open
+    />,
+  )
+
+  await waitFor(() => {
+    const modelButton = document.getElementById('ai-model')
+    expect(modelButton).not.toBeNull()
+    expect(modelButton).toHaveTextContent('Claude Sonnet 4')
+  })
+  await waitFor(() => {
+    expect(screen.getByText('creditsBadgeWithOrg')).toBeInTheDocument()
+  })
+}
 
 describe('AiRequirementGenerator devMarker coverage', () => {
   beforeEach(() => {
@@ -77,15 +100,8 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     })
   })
 
-  it('renders dialog with devMarker attributes', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders dialog with devMarker attributes', async () => {
+    await renderOpenGenerator()
 
     const dialog = screen.getByRole('dialog')
     expect(dialog).toHaveAttribute('data-developer-mode-name', 'dialog')
@@ -95,15 +111,8 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     )
   })
 
-  it('renders dialog title with devMarker attributes', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders dialog title with devMarker attributes', async () => {
+    await renderOpenGenerator()
 
     const title = screen.getByText('generateTitle')
     expect(title).toHaveAttribute(
@@ -113,15 +122,8 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     expect(title).toHaveAttribute('data-developer-mode-name', 'dialog title')
   })
 
-  it('renders model selector button with devMarker attributes', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders model selector button with devMarker attributes', async () => {
+    await renderOpenGenerator()
 
     const modelButton = document.getElementById('ai-model')
     expect(modelButton).not.toBeNull()
@@ -136,15 +138,8 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     )
   })
 
-  it('renders close button with devMarker attributes', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders close button with devMarker attributes', async () => {
+    await renderOpenGenerator()
 
     const closeButton = screen.getByLabelText('close')
     expect(closeButton).toHaveAttribute(
@@ -155,15 +150,8 @@ describe('AiRequirementGenerator devMarker coverage', () => {
     expect(closeButton).toHaveAttribute('data-developer-mode-value', 'close')
   })
 
-  it('renders generate button with devMarker attributes', () => {
-    render(
-      <AiRequirementGenerator
-        areas={testAreas}
-        onClose={vi.fn()}
-        onCreated={vi.fn()}
-        open
-      />,
-    )
+  it('renders generate button with devMarker attributes', async () => {
+    await renderOpenGenerator()
 
     const generateButton = screen.getByRole('button', {
       name: /generateButton/,

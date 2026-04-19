@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import BetterSqlite3 from 'better-sqlite3'
 import { asc } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import * as schema from '@/drizzle/schema'
 import {
   getRequirementListColumnDefaults,
@@ -161,8 +161,7 @@ describe('ui settings DAL', () => {
     }
   })
 
-  it('rethrows terminology storage failures instead of silently substituting defaults', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('throws a clear terminology storage error instead of silently substituting defaults', async () => {
     const failingDb = {
       select: () => ({
         from: () => {
@@ -171,17 +170,12 @@ describe('ui settings DAL', () => {
       }),
     } as unknown as AppDatabase
 
-    try {
-      await expect(getUiTerminology(failingDb)).rejects.toThrow(
-        'terminology unavailable',
-      )
-    } finally {
-      consoleError.mockRestore()
-    }
+    await expect(getUiTerminology(failingDb)).rejects.toThrow(
+      'Failed to load UI terminology from the database.',
+    )
   })
 
-  it('rethrows column-default storage failures instead of silently substituting defaults', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('throws a clear column-default storage error instead of silently substituting defaults', async () => {
     const failingDb = {
       select: () => ({
         from: () => ({
@@ -192,12 +186,8 @@ describe('ui settings DAL', () => {
       }),
     } as unknown as AppDatabase
 
-    try {
-      await expect(getRequirementListColumnDefaults(failingDb)).rejects.toThrow(
-        'column defaults unavailable',
-      )
-    } finally {
-      consoleError.mockRestore()
-    }
+    await expect(getRequirementListColumnDefaults(failingDb)).rejects.toThrow(
+      'Failed to load requirement column defaults from the database.',
+    )
   })
 })

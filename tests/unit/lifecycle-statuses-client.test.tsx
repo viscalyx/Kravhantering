@@ -46,6 +46,9 @@ describe('LifecycleStatusesClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Development')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays items', async () => {

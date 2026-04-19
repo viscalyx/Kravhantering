@@ -4,12 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockUpdateStatus = vi.fn()
 const mockDeleteStatus = vi.fn()
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: () => ({}),
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({

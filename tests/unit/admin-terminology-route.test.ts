@@ -6,18 +6,13 @@ import {
 } from '@/lib/ui-terminology'
 
 const routeState = vi.hoisted(() => ({
-  getCloudflareContext: vi.fn(async () => ({ env: { DB: {} } })),
-  getDb: vi.fn(() => ({ db: true })),
+  getRequestDatabase: vi.fn(() => ({ db: true })),
   getUiTerminology: vi.fn(),
   updateUiTerminology: vi.fn(),
 }))
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: routeState.getCloudflareContext,
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: routeState.getDb,
+  getRequestDatabase: routeState.getRequestDatabase,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({

@@ -1,17 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mockGetCloudflareContext = vi.fn().mockResolvedValue({
-  env: { DB: {} },
-  ctx: {},
-})
 const mockGetDb = vi.fn().mockReturnValue({})
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: (...a: unknown[]) => mockGetCloudflareContext(...a),
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: (...a: unknown[]) => mockGetDb(...a),
+  getRequestDatabase: (...a: unknown[]) => mockGetDb(...a),
 }))
 
 const mockManageRequirement = vi.fn()

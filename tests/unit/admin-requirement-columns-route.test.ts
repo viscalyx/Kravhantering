@@ -2,18 +2,13 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
-  getCloudflareContext: vi.fn(async () => ({ env: { DB: {} } })),
-  getDb: vi.fn(() => ({ db: true })),
+  getRequestDatabase: vi.fn(() => ({ db: true })),
   getRequirementListColumnDefaults: vi.fn(),
   updateRequirementListColumnDefaults: vi.fn(),
 }))
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: routeState.getCloudflareContext,
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: routeState.getDb,
+  getRequestDatabase: routeState.getRequestDatabase,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({

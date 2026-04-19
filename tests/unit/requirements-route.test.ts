@@ -13,17 +13,12 @@ const routeState = vi.hoisted(() => ({
     void data
     return 'csv-data'
   }),
-  getCloudflareContext: vi.fn(async () => ({ env: { DB: {} } })),
-  getDb: vi.fn(() => ({ db: true })),
+  getRequestDatabase: vi.fn(() => ({ db: true })),
   queryCatalog: vi.fn(),
 }))
 
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: routeState.getCloudflareContext,
-}))
-
 vi.mock('@/lib/db', () => ({
-  getDb: routeState.getDb,
+  getRequestDatabase: routeState.getRequestDatabase,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({

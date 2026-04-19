@@ -72,6 +72,9 @@ describe('RequirementStatusesClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument()
+    })
   })
 
   it('fetches and displays statuses', async () => {

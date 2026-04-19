@@ -1,14 +1,10 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-/* ── shared Cloudflare / DB mocks ────────────────────────────────── */
-
-vi.mock('@opennextjs/cloudflare', () => ({
-  getCloudflareContext: async () => ({ env: { DB: {} } }),
-}))
+/* ── shared request DB mocks ─────────────────────────────────────── */
 
 vi.mock('@/lib/db', () => ({
-  getDb: () => ({}),
+  getRequestDatabase: () => ({}),
 }))
 
 /* ── DAL mocks ───────────────────────────────────────────────────── */
