@@ -5,6 +5,7 @@
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   "containerEnv": {
+    "DATABASE_URL": "http://db:9000",
     "NODE_ENV": "development",
     "NEXT_TELEMETRY_DISABLED": "1"
   },
@@ -182,7 +183,7 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [3000, 3001, 4443, 8787, 9323, 51204],
+  "forwardPorts": [3000, 3001, 4443, 9000, 9323, 4983, 51204],
   "portsAttributes": {
     "3000": {
       "label": "Next.js Dev Server 1",
@@ -197,8 +198,12 @@
       "protocol": "https",
       "onAutoForward": "notify"
     },
-    "8787": {
-      "label": "Cloudflare / OpenNext Preview",
+    "9000": {
+      "label": "SQLite Proxy DB",
+      "onAutoForward": "notify"
+    },
+    "4983": {
+      "label": "DB Studio",
       "onAutoForward": "notify"
     },
     "9323": {
@@ -217,7 +222,7 @@
 
   // Use 'postStartCommand' to run commands after the container starts and every time it starts
   // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly
-  "postStartCommand": "git config --global --unset gpg.ssh.program || true && npm run cf-typegen && npm run db:setup",
+  "postStartCommand": "git config --global --unset gpg.ssh.program || true && npm run db:setup",
 
   // Configure remote user
   "remoteUser": "vscode"
