@@ -60,6 +60,29 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 - Clear mocks in `beforeEach`
 - Use `@/lib/` path alias in mocks (not `../../lib/`)
 
+## React `act()` Guidance
+
+- Do **not** add `act()` by default around every render, assertion, or
+  `userEvent` call. Prefer normal Testing Library flows first.
+- Prefer `await userEvent.*`, `findBy*`, and `waitFor(...)` when the component
+  updates after user interaction, mount-time fetches, or other async effects.
+- Use `act()` when the test itself triggers React updates outside Testing
+  Library's wrapped helpers, for example:
+  - manually advancing timers
+  - resolving deferred promises that drive state updates
+  - invoking imperative callbacks or hook-returned handlers directly
+  - manually firing observer callbacks (`ResizeObserver`, `MutationObserver`,
+    etc.)
+  - dispatching custom events from raw DOM or browser mocks that bypass
+    Testing Library helpers
+- If a component starts async work on mount and the test only checks the
+  initial shell, either:
+  - keep the async work intentionally pending and assert the loading state, or
+  - wait for the first settled post-effect UI state before ending the test
+- Treat any React warning containing `not wrapped in act(...)` as a real test
+  bug. Fix the test by awaiting the missing update or wrapping the direct
+  external state trigger in `act()`.
+
 ## Responsive Awareness
 
 - When testing components with layout-dependent behavior, consider viewport edge cases (e.g., mobile menu vs desktop nav, collapsed vs expanded layouts)
