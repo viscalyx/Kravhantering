@@ -24,8 +24,6 @@ import {
 import {
   createPackage,
   createPackageLocalRequirement,
-  DEFAULT_PACKAGE_ITEM_STATUS_ID,
-  DEVIATED_PACKAGE_ITEM_STATUS_ID,
   linkRequirementsToPackageAtomically,
   parsePackageItemRef,
   updatePackageItemFields,
@@ -49,6 +47,10 @@ import {
 import type { Database as AppDatabase } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
+import {
+  DEFAULT_PACKAGE_ITEM_STATUS_ID,
+  DEVIATED_PACKAGE_ITEM_STATUS_ID,
+} from '@/lib/package-item-status-constants'
 import {
   createRequestContext,
   type RequestContext,
