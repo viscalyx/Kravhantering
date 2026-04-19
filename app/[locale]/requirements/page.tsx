@@ -1,7 +1,11 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
-import { getRequirementListColumnDefaults } from '@/lib/dal/ui-settings'
+import {
+  formatUiSettingsLoadError,
+  getRequirementListColumnDefaults,
+} from '@/lib/dal/ui-settings'
 import { getRequestDatabase } from '@/lib/db'
+import { DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS } from '@/lib/requirements/list-view'
 import RequirementsClient from './requirements-client'
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -10,9 +14,18 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RequirementsPage() {
-  const initialColumnDefaults = await getRequirementListColumnDefaults(
-    await getRequestDatabase(),
-  )
+  let initialColumnDefaults = DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS
+
+  try {
+    initialColumnDefaults = await getRequirementListColumnDefaults(
+      await getRequestDatabase(),
+    )
+  } catch (error) {
+    console.error(
+      'Failed to load requirement column defaults for requirements page',
+      formatUiSettingsLoadError(error),
+    )
+  }
 
   return <RequirementsClient initialColumnDefaults={initialColumnDefaults} />
 }

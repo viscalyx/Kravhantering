@@ -1745,10 +1745,7 @@ export function createRequirementsService(
               db,
               packageId,
               {
-                items: succeeded.map(r => ({
-                  requirementId: r.id,
-                  requirementVersionId: r.versionId,
-                })),
+                requirementIds: succeeded.map(r => r.id),
                 needsReferenceText: input.needsReferenceText,
               },
             )

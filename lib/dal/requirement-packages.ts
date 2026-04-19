@@ -587,6 +587,78 @@ export async function getPublishedVersionIdForRequirement(
   return rows[0]?.id ?? null
 }
 
+function getPublishedVersionIdForRequirementSync(
+  db: DatabaseReader,
+  requirementId: number,
+): number | null {
+  const [row] = db
+    .select({ id: requirementVersions.id })
+    .from(requirementVersions)
+    .where(
+      and(
+        eq(requirementVersions.requirementId, requirementId),
+        eq(requirementVersions.statusId, STATUS_PUBLISHED),
+      ),
+    )
+    .orderBy(sql`${requirementVersions.versionNumber} DESC`)
+    .limit(1)
+    .all() as unknown as { id: number }[]
+
+  return row?.id ?? null
+}
+
+async function resolveRequirementPackageLinkItems(
+  db: DatabaseReader,
+  requirementIds: number[],
+): Promise<RequirementPackageLinkItem[]> {
+  const items: RequirementPackageLinkItem[] = []
+
+  for (const requirementId of requirementIds) {
+    const requirementVersionId = await getPublishedVersionIdForRequirement(
+      db as Database,
+      requirementId,
+    )
+    if (requirementVersionId == null) {
+      throw validationError(
+        `Requirement ${requirementId} has no published version and cannot be added to a package`,
+        {
+          httpStatus: 422,
+          requirementId,
+          reason: 'missing_published_version',
+        },
+      )
+    }
+    items.push({ requirementId, requirementVersionId })
+  }
+
+  return items
+}
+
+function resolveRequirementPackageLinkItemsSync(
+  db: DatabaseReader,
+  requirementIds: number[],
+): RequirementPackageLinkItem[] {
+  return requirementIds.map(requirementId => {
+    const requirementVersionId = getPublishedVersionIdForRequirementSync(
+      db,
+      requirementId,
+    )
+
+    if (requirementVersionId == null) {
+      throw validationError(
+        `Requirement ${requirementId} has no published version and cannot be added to a package`,
+        {
+          httpStatus: 422,
+          requirementId,
+          reason: 'missing_published_version',
+        },
+      )
+    }
+
+    return { requirementId, requirementVersionId }
+  })
+}
+
 export async function listPackageNeedsReferences(
   db: DatabaseReader,
   packageId: number,
@@ -961,6 +1033,61 @@ export async function createPackageLocalRequirement(
     return created
   }
 
+  if (isRemoteSqliteSession(db)) {
+    const createdId = await (
+      db as unknown as {
+        transaction: <T>(
+          callback: (tx: Pick<Database, 'insert' | 'update'>) => Promise<T>,
+        ) => Promise<T>
+      }
+    ).transaction(async tx => {
+      const [packageState] = await tx
+        .update(requirementPackages)
+        .set({
+          localRequirementNextSequence: sql`${requirementPackages.localRequirementNextSequence} + 1`,
+        })
+        .where(eq(requirementPackages.id, packageId))
+        .returning({
+          nextSequence: requirementPackages.localRequirementNextSequence,
+        })
+
+      if (!packageState) {
+        throw notFoundError(`Requirement package ${packageId} not found`)
+      }
+
+      const sequenceNumber = Math.max(1, packageState.nextSequence - 1)
+      const uniqueId = formatPackageLocalRequirementUniqueId(sequenceNumber)
+      const now = new Date().toISOString()
+
+      const [inserted] = await tx
+        .insert(packageLocalRequirements)
+        .values({
+          ...normalized,
+          createdAt: now,
+          packageId,
+          packageItemStatusId: DEFAULT_PACKAGE_ITEM_STATUS_ID,
+          sequenceNumber,
+          uniqueId,
+          updatedAt: now,
+        })
+        .returning({ id: packageLocalRequirements.id })
+
+      await insertPackageLocalRequirementJoins(tx, inserted.id, normalized)
+
+      return inserted.id
+    })
+
+    const created = await getPackageLocalRequirementDetail(
+      db,
+      packageId,
+      createdId,
+    )
+    if (!created) {
+      throw notFoundError('Package-local requirement was created but not found')
+    }
+    return created
+  }
+
   const [packageState] = await db
     .update(requirementPackages)
     .set({
@@ -1012,6 +1139,25 @@ export async function createPackageLocalRequirement(
   return created
 }
 
+function buildPackageLocalRequirementUpdateSet(
+  normalized: Awaited<ReturnType<typeof normalizePackageLocalRequirementInput>>,
+  updatedAt: string,
+) {
+  return {
+    acceptanceCriteria: normalized.acceptanceCriteria,
+    description: normalized.description,
+    needsReferenceId: normalized.needsReferenceId,
+    qualityCharacteristicId: normalized.qualityCharacteristicId,
+    requirementAreaId: normalized.requirementAreaId,
+    requirementCategoryId: normalized.requirementCategoryId,
+    requirementTypeId: normalized.requirementTypeId,
+    requiresTesting: normalized.requiresTesting,
+    riskLevelId: normalized.riskLevelId,
+    updatedAt,
+    verificationMethod: normalized.verificationMethod,
+  }
+}
+
 export async function updatePackageLocalRequirement(
   db: Database,
   packageId: number,
@@ -1045,11 +1191,13 @@ export async function updatePackageLocalRequirement(
       }
     ).transaction(tx => {
       tx.update(packageLocalRequirements)
-        .set({
-          ...normalized,
-          updatedAt,
-        })
-        .where(eq(packageLocalRequirements.id, packageLocalRequirementId))
+        .set(buildPackageLocalRequirementUpdateSet(normalized, updatedAt))
+        .where(
+          and(
+            eq(packageLocalRequirements.id, packageLocalRequirementId),
+            eq(packageLocalRequirements.packageId, packageId),
+          ),
+        )
         .run()
 
       tx.delete(packageLocalRequirementUsageScenarios)
@@ -1104,19 +1252,7 @@ export async function updatePackageLocalRequirement(
     ).transaction(async tx => {
       await tx
         .update(packageLocalRequirements)
-        .set({
-          acceptanceCriteria: normalized.acceptanceCriteria,
-          description: normalized.description,
-          needsReferenceId: normalized.needsReferenceId,
-          qualityCharacteristicId: normalized.qualityCharacteristicId,
-          requirementAreaId: normalized.requirementAreaId,
-          requirementCategoryId: normalized.requirementCategoryId,
-          requirementTypeId: normalized.requirementTypeId,
-          requiresTesting: normalized.requiresTesting,
-          riskLevelId: normalized.riskLevelId,
-          updatedAt,
-          verificationMethod: normalized.verificationMethod,
-        })
+        .set(buildPackageLocalRequirementUpdateSet(normalized, updatedAt))
         .where(
           and(
             eq(packageLocalRequirements.id, packageLocalRequirementId),
@@ -1163,19 +1299,7 @@ export async function updatePackageLocalRequirement(
   } else {
     await db
       .update(packageLocalRequirements)
-      .set({
-        acceptanceCriteria: normalized.acceptanceCriteria,
-        description: normalized.description,
-        needsReferenceId: normalized.needsReferenceId,
-        qualityCharacteristicId: normalized.qualityCharacteristicId,
-        requirementAreaId: normalized.requirementAreaId,
-        requirementCategoryId: normalized.requirementCategoryId,
-        requirementTypeId: normalized.requirementTypeId,
-        requiresTesting: normalized.requiresTesting,
-        riskLevelId: normalized.riskLevelId,
-        updatedAt,
-        verificationMethod: normalized.verificationMethod,
-      })
+      .set(buildPackageLocalRequirementUpdateSet(normalized, updatedAt))
       .where(
         and(
           eq(packageLocalRequirements.id, packageLocalRequirementId),
@@ -1412,16 +1536,16 @@ export async function linkRequirementsToPackageAtomically(
   db: Database,
   packageId: number,
   {
-    items,
+    requirementIds,
     needsReferenceId,
     needsReferenceText,
   }: {
-    items: RequirementPackageLinkItem[]
+    requirementIds: number[]
     needsReferenceId?: number | null
     needsReferenceText?: string | null
   },
 ): Promise<number> {
-  if (items.length === 0) {
+  if (requirementIds.length === 0) {
     return 0
   }
 
@@ -1433,6 +1557,11 @@ export async function linkRequirementsToPackageAtomically(
   }
 
   const runLink = async (targetDb: Database): Promise<number> => {
+    const items = await resolveRequirementPackageLinkItems(
+      targetDb,
+      requirementIds,
+    )
+
     if (normalizedNeedsReferenceText) {
       const resolvedNeedsReference =
         await getOrCreatePackageNeedsReferenceWithMetadata(
@@ -1486,6 +1615,11 @@ export async function linkRequirementsToPackageAtomically(
   const runLinkSync = (
     targetDb: Pick<Database, 'delete' | 'insert' | 'select'>,
   ): number => {
+    const items = resolveRequirementPackageLinkItemsSync(
+      targetDb,
+      requirementIds,
+    )
+
     if (normalizedNeedsReferenceText) {
       const resolvedNeedsReference =
         getOrCreatePackageNeedsReferenceWithMetadataSync(
@@ -2148,9 +2282,8 @@ export async function deletePackageItemsByRefs(
               inArray(requirementPackageItems.id, libraryIds),
             ),
           )
-          .returning({ id: requirementPackageItems.id }) as unknown as {
-          length: number
-        }
+          .returning({ id: requirementPackageItems.id })
+          .all() as unknown as { id: number }[]
       ).length
       deletedPackageLocalCount = (
         tx
@@ -2161,9 +2294,8 @@ export async function deletePackageItemsByRefs(
               inArray(packageLocalRequirements.id, packageLocalRequirementIds),
             ),
           )
-          .returning({ id: packageLocalRequirements.id }) as unknown as {
-          length: number
-        }
+          .returning({ id: packageLocalRequirements.id })
+          .all() as unknown as { id: number }[]
       ).length
     })
     return { deletedLibraryCount, deletedPackageLocalCount }

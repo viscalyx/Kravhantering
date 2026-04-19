@@ -1,6 +1,9 @@
 import { getRequestConfig } from 'next-intl/server'
 import { routing } from '@/i18n/routing'
-import { getUiTerminology } from '@/lib/dal/ui-settings'
+import {
+  formatUiSettingsLoadError,
+  getUiTerminology,
+} from '@/lib/dal/ui-settings'
 import { getRequestDatabase } from '@/lib/db'
 import { applyUiTerminologyMessages, type UiLocale } from '@/lib/ui-terminology'
 
@@ -25,14 +28,26 @@ export default getRequestConfig(async ({ requestLocale }) => {
     )
   }
 
-  const terminology = await getUiTerminology(await getRequestDatabase())
+  try {
+    const terminology = await getUiTerminology(await getRequestDatabase())
 
-  return {
-    locale,
-    messages: applyUiTerminologyMessages(
-      baseMessages,
-      locale as UiLocale,
-      terminology,
-    ),
+    return {
+      locale,
+      messages: applyUiTerminologyMessages(
+        baseMessages,
+        locale as UiLocale,
+        terminology,
+      ),
+    }
+  } catch (error) {
+    console.error(
+      'Failed to load UI terminology for request config',
+      formatUiSettingsLoadError(error),
+    )
+
+    return {
+      locale,
+      messages: baseMessages,
+    }
   }
 })

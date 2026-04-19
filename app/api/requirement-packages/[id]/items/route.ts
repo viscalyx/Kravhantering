@@ -4,7 +4,6 @@ import {
   deletePackageItemsByRefs,
   getPackageById,
   getPackageBySlug,
-  getPublishedVersionIdForRequirement,
   linkRequirementsToPackageAtomically,
   listPackageItems,
   unlinkRequirementsFromPackage,
@@ -228,34 +227,12 @@ export async function POST(
   const { requirementIds, needsReferenceId, needsReferenceText } =
     parsedBody.value
 
-  // Resolve published version for each requirement; reject if any has none
-  const resolvedVersionIds: { requirementId: number; versionId: number }[] = []
-
-  for (const requirementId of requirementIds) {
-    const versionId = await getPublishedVersionIdForRequirement(
-      db,
-      requirementId,
-    )
-    if (versionId === null) {
-      return NextResponse.json(
-        {
-          error: `Requirement ${requirementId} has no published version and cannot be added to a package`,
-        },
-        { status: 422 },
-      )
-    }
-    resolvedVersionIds.push({ requirementId, versionId })
-  }
-
   try {
     const addedCount = await linkRequirementsToPackageAtomically(
       db,
       packageId,
       {
-        items: resolvedVersionIds.map(({ requirementId, versionId }) => ({
-          requirementId,
-          requirementVersionId: versionId,
-        })),
+        requirementIds,
         needsReferenceId,
         needsReferenceText,
       },
@@ -266,7 +243,9 @@ export async function POST(
     )
   } catch (error) {
     if (isRequirementsServiceError(error) && error.code === 'validation') {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      const status =
+        error.details?.httpStatus === 422 ? 422 : (error.status ?? 400)
+      return NextResponse.json({ error: error.message }, { status })
     }
 
     console.error('Failed to add requirements to requirement package', error)

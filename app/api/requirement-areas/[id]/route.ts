@@ -9,9 +9,13 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const db = await getRequestDatabase()
   const body = (await request.json()) as Parameters<typeof updateArea>[2]
-  const area = await updateArea(db, Number(id), body)
+  const area = await updateArea(db, numericId, body)
   return NextResponse.json(area)
 }
 
@@ -20,7 +24,11 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const db = await getRequestDatabase()
-  await deleteArea(db, Number(id))
+  await deleteArea(db, numericId)
   return NextResponse.json({ ok: true })
 }

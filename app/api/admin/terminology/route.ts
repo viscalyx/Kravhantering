@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getUiTerminology, updateUiTerminology } from '@/lib/dal/ui-settings'
+import {
+  formatUiSettingsLoadError,
+  getUiTerminology,
+  updateUiTerminology,
+} from '@/lib/dal/ui-settings'
 import { getRequestDatabase } from '@/lib/db'
 import { buildUiTerminologyPayload, UI_TERM_KEYS } from '@/lib/ui-terminology'
 
@@ -41,12 +45,23 @@ function toValidationError(error: unknown) {
 }
 
 export async function GET() {
-  const db = await getRequestDatabase()
-  const terminology = await getUiTerminology(db)
+  try {
+    const db = await getRequestDatabase()
+    const terminology = await getUiTerminology(db)
 
-  return NextResponse.json({
-    terminology: buildUiTerminologyPayload(terminology),
-  })
+    return NextResponse.json({
+      terminology: buildUiTerminologyPayload(terminology),
+    })
+  } catch (error) {
+    console.error(
+      'Failed to load stored terminology',
+      formatUiSettingsLoadError(error),
+    )
+    return NextResponse.json(
+      { error: 'Failed to load terminology.' },
+      { status: 500 },
+    )
+  }
 }
 
 export async function PUT(request: Request) {

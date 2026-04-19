@@ -45,9 +45,9 @@ export async function POST(
       { status: 400 },
     )
   }
-  const db = await getRequestDatabase()
 
   try {
+    const db = await getRequestDatabase()
     await recordPackageLocalDecision(db, deviationId, {
       decision,
       decisionMotivation,

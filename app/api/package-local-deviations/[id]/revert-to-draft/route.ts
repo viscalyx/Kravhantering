@@ -11,9 +11,9 @@ export async function POST(_request: Request, { params }: { params: Params }) {
   if (!Number.isInteger(deviationId) || deviationId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
 
   try {
+    const db = await getRequestDatabase()
     await revertPackageLocalToDraft(db, deviationId)
     return NextResponse.json({ ok: true })
   } catch (error) {

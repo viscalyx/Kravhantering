@@ -18,6 +18,20 @@ export interface UiSettingsLoader {
   getTerminology: () => Promise<Record<UiTermKey, UiTermTranslation>>
 }
 
+export function formatUiSettingsLoadError(
+  error: unknown,
+): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      cause: error.cause,
+      message: error.message,
+      stack: error.stack,
+    }
+  }
+
+  return { error }
+}
+
 function mapUiTerminologyRow(
   row: typeof uiTerminology.$inferSelect,
 ): UiTermTranslation {

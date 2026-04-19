@@ -580,6 +580,100 @@ export async function getRequirementByUniqueId(db: Database, uniqueId: string) {
   return getRequirementById(db, req.id)
 }
 
+function formatRequirementUniqueId(prefix: string, sequenceNumber: number) {
+  return `${prefix}${String(sequenceNumber).padStart(4, '0')}`
+}
+
+function reserveRequirementSequenceSync(
+  db: Pick<Database, 'select' | 'update'>,
+  requirementAreaId: number,
+) {
+  const [area] = db
+    .select({
+      nextSequence: requirementAreas.nextSequence,
+      prefix: requirementAreas.prefix,
+    })
+    .from(requirementAreas)
+    .where(eq(requirementAreas.id, requirementAreaId))
+    .limit(1)
+    .all() as unknown as { nextSequence: number; prefix: string }[]
+
+  if (!area) {
+    throw notFoundError('Requirement area not found')
+  }
+
+  const sequenceNumber = area.nextSequence
+
+  db.update(requirementAreas)
+    .set({ nextSequence: sequenceNumber + 1 })
+    .where(eq(requirementAreas.id, requirementAreaId))
+    .run()
+
+  return {
+    sequenceNumber,
+    uniqueId: formatRequirementUniqueId(area.prefix, sequenceNumber),
+  }
+}
+
+async function reserveRequirementSequence(
+  db: Pick<Database, 'select' | 'update'>,
+  requirementAreaId: number,
+) {
+  const [area] = await db
+    .select({
+      nextSequence: requirementAreas.nextSequence,
+      prefix: requirementAreas.prefix,
+    })
+    .from(requirementAreas)
+    .where(eq(requirementAreas.id, requirementAreaId))
+    .limit(1)
+
+  if (!area) {
+    throw notFoundError('Requirement area not found')
+  }
+
+  const sequenceNumber = area.nextSequence
+
+  await db
+    .update(requirementAreas)
+    .set({ nextSequence: sequenceNumber + 1 })
+    .where(eq(requirementAreas.id, requirementAreaId))
+
+  return {
+    sequenceNumber,
+    uniqueId: formatRequirementUniqueId(area.prefix, sequenceNumber),
+  }
+}
+
+function getNextRequirementVersionNumberSync(
+  db: Pick<Database, 'select'>,
+  requirementId: number,
+) {
+  const [row] = db
+    .select({
+      maxVersion: sql<number>`MAX(${requirementVersions.versionNumber})`,
+    })
+    .from(requirementVersions)
+    .where(eq(requirementVersions.requirementId, requirementId))
+    .all() as unknown as { maxVersion: number | null }[]
+
+  return (row?.maxVersion ?? 0) + 1
+}
+
+async function getNextRequirementVersionNumber(
+  db: Pick<Database, 'select'>,
+  requirementId: number,
+) {
+  const [row] = await db
+    .select({
+      maxVersion: sql<number>`MAX(${requirementVersions.versionNumber})`,
+    })
+    .from(requirementVersions)
+    .where(eq(requirementVersions.requirementId, requirementId))
+
+  return (row?.maxVersion ?? 0) + 1
+}
+
 export async function createRequirement(
   db: Database,
   data: {
@@ -598,13 +692,6 @@ export async function createRequirement(
     scenarioIds?: number[]
   },
 ) {
-  const area = await db.query.requirementAreas.findFirst({
-    where: eq(requirementAreas.id, data.requirementAreaId),
-  })
-  if (!area) throw notFoundError('Requirement area not found')
-
-  const seq = area.nextSequence
-  const uniqueId = `${area.prefix}${String(seq).padStart(4, '0')}`
   const now = new Date().toISOString()
 
   const uniqueScenarioIds = data.scenarioIds?.length
@@ -638,15 +725,18 @@ export async function createRequirement(
       db as unknown as {
         transaction: (
           callback: (
-            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+            tx: Pick<
+              Database,
+              'delete' | 'insert' | 'query' | 'select' | 'update'
+            >,
           ) => void,
         ) => void
       }
     ).transaction(tx => {
-      tx.update(requirementAreas)
-        .set({ nextSequence: seq + 1 })
-        .where(eq(requirementAreas.id, data.requirementAreaId))
-        .run()
+      const { sequenceNumber, uniqueId } = reserveRequirementSequenceSync(
+        tx,
+        data.requirementAreaId,
+      )
 
       // BetterSQLite3 .returning().get() is synchronous at runtime;
       // the Promise wrapper only exists in the TypeScript types.
@@ -654,7 +744,7 @@ export async function createRequirement(
         tx.insert(requirements).values({
           uniqueId,
           requirementAreaId: data.requirementAreaId,
-          sequenceNumber: seq,
+          sequenceNumber,
         }) as unknown as {
           returning: () => { get: () => typeof requirements.$inferSelect }
         }
@@ -706,22 +796,22 @@ export async function createRequirement(
       db as unknown as {
         transaction: <T>(
           callback: (
-            tx: Pick<Database, 'insert' | 'query' | 'update'>,
+            tx: Pick<Database, 'insert' | 'query' | 'select' | 'update'>,
           ) => Promise<T>,
         ) => Promise<T>
       }
     ).transaction(async tx => {
-      await tx
-        .update(requirementAreas)
-        .set({ nextSequence: seq + 1 })
-        .where(eq(requirementAreas.id, data.requirementAreaId))
+      const { sequenceNumber, uniqueId } = await reserveRequirementSequence(
+        tx,
+        data.requirementAreaId,
+      )
 
       const [req] = await tx
         .insert(requirements)
         .values({
           uniqueId,
           requirementAreaId: data.requirementAreaId,
-          sequenceNumber: seq,
+          sequenceNumber,
         })
         .returning()
 
@@ -752,17 +842,17 @@ export async function createRequirement(
     })
   }
 
-  await db
-    .update(requirementAreas)
-    .set({ nextSequence: seq + 1 })
-    .where(eq(requirementAreas.id, data.requirementAreaId))
+  const { sequenceNumber, uniqueId } = await reserveRequirementSequence(
+    db,
+    data.requirementAreaId,
+  )
 
   const [req] = await db
     .insert(requirements)
     .values({
       uniqueId,
       requirementAreaId: data.requirementAreaId,
-      sequenceNumber: seq,
+      sequenceNumber,
     })
     .returning()
 
@@ -1055,7 +1145,6 @@ export async function editRequirement(
   }
 
   // Published status: create a new Draft version
-  const nextVersion = currentMax + 1
   const uniqueScenarioIdsForNew = data.scenarioIds?.length
     ? [...new Set(data.scenarioIds)]
     : []
@@ -1065,7 +1154,6 @@ export async function editRequirement(
 
   const versionValues = {
     requirementId,
-    versionNumber: nextVersion,
     description: data.description,
     acceptanceCriteria: data.acceptanceCriteria,
     requirementCategoryId: data.requirementCategoryId,
@@ -1087,7 +1175,10 @@ export async function editRequirement(
       db as unknown as {
         transaction: (
           callback: (
-            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+            tx: Pick<
+              Database,
+              'delete' | 'insert' | 'query' | 'select' | 'update'
+            >,
           ) => void,
         ) => void
       }
@@ -1099,8 +1190,15 @@ export async function editRequirement(
           .run()
       }
 
+      const versionValuesInsideTx = {
+        ...versionValues,
+        versionNumber: getNextRequirementVersionNumberSync(tx, requirementId),
+      }
+
       version = (
-        tx.insert(requirementVersions).values(versionValues) as unknown as {
+        tx
+          .insert(requirementVersions)
+          .values(versionValuesInsideTx) as unknown as {
           returning: () => {
             get: () => typeof requirementVersions.$inferSelect
           }
@@ -1140,7 +1238,10 @@ export async function editRequirement(
       db as unknown as {
         transaction: <T>(
           callback: (
-            tx: Pick<Database, 'delete' | 'insert' | 'query' | 'update'>,
+            tx: Pick<
+              Database,
+              'delete' | 'insert' | 'query' | 'select' | 'update'
+            >,
           ) => Promise<T>,
         ) => Promise<T>
       }
@@ -1152,9 +1253,14 @@ export async function editRequirement(
           .where(eq(requirements.id, requirementId))
       }
 
+      const versionValuesInsideTx = {
+        ...versionValues,
+        versionNumber: await getNextRequirementVersionNumber(tx, requirementId),
+      }
+
       const [version] = await tx
         .insert(requirementVersions)
-        .values(versionValues)
+        .values(versionValuesInsideTx)
         .returning()
 
       if (uniqueScenarioIdsForNew.length) {
@@ -1186,9 +1292,13 @@ export async function editRequirement(
       .where(eq(requirements.id, requirementId))
   }
 
+  const nextVersion = currentMax + 1
   const [version] = await db
     .insert(requirementVersions)
-    .values(versionValues)
+    .values({
+      ...versionValues,
+      versionNumber: nextVersion,
+    })
     .returning()
 
   if (uniqueScenarioIdsForNew.length) {

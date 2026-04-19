@@ -21,11 +21,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  let body: Parameters<typeof createRiskLevel>[1]
+
   try {
-    const db = await getRequestDatabase()
-    const body = (await request.json()) as Parameters<typeof createRiskLevel>[1]
-    const riskLevel = await createRiskLevel(db, body)
-    return NextResponse.json(riskLevel, { status: 201 })
+    body = (await request.json()) as Parameters<typeof createRiskLevel>[1]
   } catch (error) {
     if (
       error instanceof SyntaxError ||
@@ -33,6 +32,15 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
     }
+
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+
+  try {
+    const db = await getRequestDatabase()
+    const riskLevel = await createRiskLevel(db, body)
+    return NextResponse.json(riskLevel, { status: 201 })
+  } catch (error) {
     const message =
       error instanceof Error ? error.message : 'Internal server error'
     const isDuplicate =
