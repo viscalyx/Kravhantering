@@ -862,7 +862,7 @@ Ubuntu 24.04 med följande förinstallerade verktyg:
 
 | Verktyg | Version | Användning |
 | --- | --- | --- |
-| Node.js | 24.x | Runtime |
+| Node.js | 24 | Runtime |
 | TypeScript | 5.9 (strict) | Typkontroll |
 | Biome | 2.4 | Linting och formatering |
 | cSpell | 9.7 | Stavningskontroll (sv + en) |
