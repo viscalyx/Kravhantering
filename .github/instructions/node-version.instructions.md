@@ -38,5 +38,5 @@ If any location cannot be updated, note it explicitly in the PR description.
 
 ## Context
 
-- Node version affects local development, CI, prod-like validation, and future self-hosted/OpenShift container runs.
-- Aligned `.nvmrc` + `engines.node` + devcontainers + CI workflows prevent environment drift.
+- Node version affects build-time only; Cloudflare Workers run in a V8 isolate, not Node.
+- Aligned `.nvmrc` + `engines.node` + CI workflows prevent environment drift.
