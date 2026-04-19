@@ -38,7 +38,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000',
     trace: 'retain-on-failure',
     screenshot: 'on',
-    viewport: { width: 1440, height: 900 },
+    viewport: { width: 1440, height: 1200 },
   },
   projects: [
     {

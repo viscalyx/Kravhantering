@@ -149,6 +149,7 @@
     "workerd",
     "Streamable",
     "prodlike",
+    "dotenv",
     "användarimpersonering",
     "användarnavigationer",
     "användarsynk",

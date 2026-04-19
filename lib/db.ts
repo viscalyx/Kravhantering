@@ -213,9 +213,9 @@ export function getSessionName(db: Database): string | undefined {
 }
 
 export function isBetterSqliteSession(db: Database): boolean {
-  return getSessionName(db) === 'BetterSQLiteSession'
+  return '$client' in db
 }
 
 export function isRemoteSqliteSession(db: Database): boolean {
-  return getSessionName(db) === 'SQLiteRemoteSession'
+  return !('$client' in db)
 }

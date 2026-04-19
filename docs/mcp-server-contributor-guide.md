@@ -16,7 +16,7 @@ For admin-managed UI terminology and default column settings, see
 
 - Server name: `requirement-management-mcp-server`
 - Endpoint: `/api/mcp`
-- Runtime: Next.js edge route in this application
+- Runtime: Next.js server route in this self-hosted application
 - Transport: stateless Streamable HTTP
 - Primary public identifier: `uniqueId`
 - Read response formats: `markdown`, `json`
@@ -29,8 +29,8 @@ For admin-managed UI terminology and default column settings, see
 ## File Map
 
 - `app/api/mcp/route.ts`
-  Edge entrypoint that builds the DB handle and forwards the request into the
-  MCP transport handler.
+  Server entrypoint that builds the DB handle via `getRequestDatabase()` and
+  forwards the request into the MCP transport handler.
 - `lib/mcp/http.ts`
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.

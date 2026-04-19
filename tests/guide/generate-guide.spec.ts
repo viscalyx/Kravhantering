@@ -849,7 +849,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
         })
       })
       await page.waitForTimeout(150)
-      await page.setViewportSize({ width: 1440, height: 1200 })
       // Remove any stale annotations and blur focus so neither shows in screenshot
       await removeAnnotation(page)
       await page.evaluate(() => (document.activeElement as HTMLElement)?.blur())
@@ -861,15 +860,12 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Efter att formuläret sparats återgår applikationen till kravkatalogen med det nyss skapade kravet öppet i inline-detaljvyn. Kravet startar i status **Utkast**.',
         { fullPage: false },
       )
-
-      await page.setViewportSize({ width: 1440, height: 900 })
     })
 
     // ── Sektion 4: Kravdetaljer och statusövergångar ───────────────────────
     currentSection = 'Kravdetaljer och statusövergångar'
 
     await test.step('Statusstegare — närbild', async () => {
-      await page.setViewportSize({ width: 1440, height: 1200 })
       await snap(
         page,
         'statusstegare',
@@ -877,14 +873,12 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Statusstegaren visar kravets position i livscykeln: **Utkast** → **Granskning** → **Publicerad** → **Arkiverad**. Den aktuella statusen är markerad. Knappar för statusövergångar visas intill stegaren.',
         { fullPage: false },
       )
-      await page.setViewportSize({ width: 1440, height: 900 })
     })
 
     await test.step('Övergång till Granskning', async () => {
       const granskning = page.getByRole('button', { name: 'Granskning ↗' })
       await expect(granskning).toBeVisible({ timeout: 10_000 })
 
-      await page.setViewportSize({ width: 1440, height: 1200 })
       await snap(
         page,
         'overgang-utkast',
@@ -892,7 +886,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Ett krav i **Utkast**-status har knappen "Granskning ↗" tillgänglig. Klicka på den för att skicka kravet till granskning. Det innebär att kravet är klart för kollegial granskning och godkännande.',
         { fullPage: false },
       )
-      await page.setViewportSize({ width: 1440, height: 900 })
 
       if (createdRequirementUniqueId) {
         const transitionRes = await page.request.post(
@@ -956,7 +949,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
       })
       await page.waitForTimeout(150)
 
-      await page.setViewportSize({ width: 1440, height: 1200 })
       await snap(
         page,
         'overgang-granskning',
@@ -964,7 +956,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Kravet är nu i **Granskning**-status. Stegaren uppdateras för att reflektera detta. Knappen "Publicera ↗" visas för att godkänna och publicera kravet, och "← Utkast" för att återföra det till utkastläge om ändringar behövs.',
         { fullPage: false },
       )
-      await page.setViewportSize({ width: 1440, height: 900 })
     })
 
     await test.step('Övergång till Publicerad', async () => {
@@ -973,7 +964,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       // The dialog overlays everything — no need for a filtered table behind it.
       // Apply filter + scroll only later, for the "Status: Publicerad" snap.
-      await page.setViewportSize({ width: 1440, height: 1200 })
       await publicera.click()
       const confirmBtn = page.getByRole('button', { name: 'Bekräfta' })
       await expect(confirmBtn).toBeVisible({ timeout: 5_000 })
@@ -1064,7 +1054,6 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Kravet är nu **Publicerat** och utgör den aktiva, godkända versionen. Vid redigering av ett Publicerat krav skapas en ny Utkast-version medan den publicerade versionen förblir aktiv tills det nya utkastet genomgått granskningsprocessen.',
         { fullPage: false },
       )
-      await page.setViewportSize({ width: 1440, height: 900 })
     })
 
     // ── Sektion 5: Kravpaket ──────────────────────────────────────────────
