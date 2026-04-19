@@ -16,8 +16,6 @@ DEFAULT_SOURCE_DIRS = ("app", "components", "lib", "scripts", "tests")
 EXCLUDED_DIRS = {
     ".git",
     ".next",
-    ".open-next",
-    ".wrangler",
     "coverage",
     "dist",
     "build",
