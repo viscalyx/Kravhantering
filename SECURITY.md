@@ -92,8 +92,7 @@ We aim to respond to security reports according to the following timeline:
 
 ### Infrastructure Security
 
-- **Ingress Protection**: Uses the platform ingress, reverse proxy, or WAF
-  controls provided by the target environment
+- **Cloudflare Protection**: DDoS protection and Web Application Firewall (WAF)
 - **Regular Updates**: Infrastructure and dependencies are regularly updated
 - **Access Control**: Principle of least privilege for all system access
 - **Monitoring**: Security monitoring and alerting in place
