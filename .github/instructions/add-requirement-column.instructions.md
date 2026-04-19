@@ -1,5 +1,5 @@
 ---
-applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.ts},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
+applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.sql},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
 ---
 
 # Add Requirement Column Or Property
@@ -20,7 +20,7 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 - Treat list order and default visibility as org-managed defaults, not hardcoded UI state.
 - Ensure the new column flows through `DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS` via the list-view registry.
-- Seed `requirement_list_column_defaults` in `drizzle/seed.ts` with the new column id, `sort_order`, and `is_default_visible`.
+- Seed `requirement_list_column_defaults` in `drizzle/seed.sql` with the new column id, `sort_order`, and `is_default_visible`.
 - If the column is persisted in the admin API payload, ensure `app/api/admin/requirement-columns/route.ts` still validates the full column set.
 - Reset actions must return to admin-managed defaults, not stale local defaults.
 
@@ -50,7 +50,7 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 ## Persistence
 
-- If the new column requires new schema fields or tables, update `drizzle/schema.ts`, generate a migration, and update `drizzle/seed.ts`.
+- If the new column requires new schema fields or tables, update `drizzle/schema.ts`, generate a migration, and update `drizzle/seed.sql`.
 - Run `npm run db:generate` after schema changes.
 - Run `npm run db:setup` after schema or seed changes.
 

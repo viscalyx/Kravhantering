@@ -1,14 +1,3 @@
-/**
- * Seed script for development database.
- *
- * Usage:
- *   npm run db:migrate   # apply migrations first
- *   npm run db:seed      # then seed
- */
-
-/* eslint-disable no-console */
-
-const seedSQL = `
 -- ─── Clean stale seed data (dependency order) ───────────────────────────────
 DELETE FROM improvement_suggestions;
 DELETE FROM deviations;
@@ -1927,12 +1916,3 @@ UPDATE requirement_versions SET risk_level_id = 1 WHERE id IN (
   362, 364, 377, 380, 381, 384, 394, 400, 410, 418, 422, 428, 433, 434, 447,
   457, 465, 473, 478, 482, 486, 499, 500, 501
 );
-`
-
-console.log(seedSQL)
-console.log(
-  '-- Seed data generated. Use `node scripts/db-admin.mjs exec-file <path>` to apply it.',
-)
-console.log(
-  '-- The default npm script does this automatically after writing /tmp/seed.sql.',
-)

@@ -616,7 +616,7 @@ lib/
   reports/               Rapportmallar och datahämtning
 drizzle/
   schema.ts              Databasschema (Drizzle ORM)
-  seed.ts                Testdata
+  seed.sql               Testdata
   migrations/            SQL-migreringar
 messages/
   en.json                Engelska översättningar
@@ -913,7 +913,7 @@ npm run db:setup
   ├── Vänta på databastjänsten
   ├── Rensa befintlig databas
   ├── Applicera migreringar
-  └── Tilldela testdata (drizzle/seed.ts)
+  └── Tilldela testdata (drizzle/seed.sql)
 ```
 
 Testdata innehåller 367 krav fördelade på tio

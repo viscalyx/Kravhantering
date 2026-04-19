@@ -9,13 +9,15 @@ import {
   rmSync,
 } from 'node:fs'
 import { dirname, isAbsolute, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import BetterSqlite3 from 'better-sqlite3'
 
 const MIGRATIONS_DIR = resolve(process.cwd(), 'drizzle/migrations')
 const MIGRATIONS_TABLE = '__app_migrations'
 const DEFAULT_TIMEOUT_MS = 60_000
+export const SEED_SQL_FILE = 'drizzle/seed.sql'
 
-function stripWrappingQuotes(value) {
+export function stripWrappingQuotes(value) {
   if (
     (value.startsWith('"') && value.endsWith('"')) ||
     (value.startsWith("'") && value.endsWith("'"))
@@ -26,8 +28,8 @@ function stripWrappingQuotes(value) {
   return value
 }
 
-function loadEnvironmentFiles() {
-  const initialEnv = new Set(Object.keys(process.env))
+export function loadEnvironmentFiles(env = process.env) {
+  const initialEnv = new Set(Object.keys(env))
   const loadedEnv = new Set()
   const envFiles = [
     '.env',
@@ -64,14 +66,14 @@ function loadEnvironmentFiles() {
         continue
       }
 
-      process.env[key] = stripWrappingQuotes(rawValue)
+      env[key] = stripWrappingQuotes(rawValue)
       loadedEnv.add(key)
     }
   }
 }
 
-function getDatabaseUrl() {
-  const value = process.env.DATABASE_URL?.trim()
+export function getDatabaseUrl(env = process.env) {
+  const value = env.DATABASE_URL?.trim()
 
   if (!value) {
     throw new Error(
@@ -82,20 +84,20 @@ function getDatabaseUrl() {
   return value
 }
 
-function isHttpDatabaseUrl(connectionString) {
+export function isHttpDatabaseUrl(connectionString) {
   return (
     connectionString.startsWith('http://') ||
     connectionString.startsWith('https://')
   )
 }
 
-function normalizeBaseUrl(connectionString) {
+export function normalizeBaseUrl(connectionString) {
   return connectionString.endsWith('/')
     ? connectionString.slice(0, -1)
     : connectionString
 }
 
-function resolveSqliteFilePath(connectionString) {
+export function resolveSqliteFilePath(connectionString) {
   if (connectionString === ':memory:') {
     return connectionString
   }
@@ -132,24 +134,24 @@ async function fetchJson(baseUrl, endpoint, body, options = {}) {
   return response.json()
 }
 
-function splitSqlStatements(sqlText) {
+export function splitSqlStatements(sqlText) {
   return sqlText
     .split(/-->\s*statement-breakpoint/g)
     .map(statement => statement.trim())
     .filter(Boolean)
 }
 
-function hashSql(sqlText) {
+export function hashSql(sqlText) {
   return createHash('sha256').update(sqlText).digest('hex')
 }
 
-function getSortedMigrationFiles() {
+export function getSortedMigrationFiles() {
   return readdirSync(MIGRATIONS_DIR)
     .filter(entry => entry.endsWith('.sql'))
     .sort((left, right) => left.localeCompare(right))
 }
 
-function createLocalAdmin(connectionString) {
+export function createLocalAdmin(connectionString) {
   const filePath = resolveSqliteFilePath(connectionString)
   let closed = false
 
@@ -204,7 +206,7 @@ function createLocalAdmin(connectionString) {
   }
 }
 
-function createRemoteAdmin(connectionString) {
+export function createRemoteAdmin(connectionString) {
   const baseUrl = normalizeBaseUrl(connectionString)
 
   return {
@@ -238,13 +240,13 @@ function createRemoteAdmin(connectionString) {
   }
 }
 
-function createAdminClient(connectionString) {
+export function createAdminClient(connectionString) {
   return isHttpDatabaseUrl(connectionString)
     ? createRemoteAdmin(connectionString)
     : createLocalAdmin(connectionString)
 }
 
-async function ensureMigrationsTable(admin) {
+export async function ensureMigrationsTable(admin) {
   await admin.runStatements([
     {
       params: [],
@@ -260,7 +262,7 @@ async function ensureMigrationsTable(admin) {
   ])
 }
 
-async function readAppliedMigrations(admin) {
+export async function readAppliedMigrations(admin) {
   const rows = await admin.all(
     `SELECT name, hash FROM ${MIGRATIONS_TABLE} ORDER BY name ASC`,
   )
@@ -285,7 +287,7 @@ async function readAppliedMigrations(admin) {
   return map
 }
 
-async function migrate(admin) {
+export async function migrate(admin) {
   await ensureMigrationsTable(admin)
   const appliedMigrations = await readAppliedMigrations(admin)
   const migrationFiles = getSortedMigrationFiles()
@@ -332,7 +334,7 @@ async function migrate(admin) {
   console.log(`Applied ${appliedCount} migration(s).`)
 }
 
-async function waitForDatabase(admin, timeoutMs) {
+export async function waitForDatabase(admin, timeoutMs) {
   const startedAt = Date.now()
 
   while (Date.now() - startedAt < timeoutMs) {
@@ -348,31 +350,92 @@ async function waitForDatabase(admin, timeoutMs) {
   throw new Error(`Database was not ready within ${timeoutMs} ms.`)
 }
 
-async function execFile(admin, filePath) {
-  const sqlText = readFileSync(resolve(process.cwd(), filePath), 'utf8')
+export async function execFile(admin, filePath, options = {}) {
+  const consoleObj = options.consoleObj ?? console
+  const cwd = options.cwd ?? process.cwd()
+  const sqlText = readFileSync(resolve(cwd, filePath), 'utf8')
   await admin.execScript(sqlText)
-  console.log(`Executed SQL from ${filePath}`)
+  consoleObj.log(`Executed SQL from ${filePath}`)
 }
 
-async function main() {
-  loadEnvironmentFiles()
-  const command = process.argv[2]
-  const connectionString = getDatabaseUrl()
-  const admin = createAdminClient(connectionString)
+export function resolveSeedSqlPath(cwd = process.cwd()) {
+  return resolve(cwd, SEED_SQL_FILE)
+}
+
+export function readSeedSql(
+  cwd = process.cwd(),
+  readFileSyncImpl = readFileSync,
+) {
+  const filePath = resolveSeedSqlPath(cwd)
 
   try {
+    return readFileSyncImpl(filePath, 'utf8')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`Failed to read ${SEED_SQL_FILE}: ${message}`)
+  }
+}
+
+export async function seedDatabase(admin, options = {}) {
+  const consoleObj = options.consoleObj ?? console
+  const cwd = options.cwd ?? process.cwd()
+  const readSeedSqlImpl = options.readSeedSql ?? readSeedSql
+  const sqlText = readSeedSqlImpl(cwd)
+  await admin.execScript(sqlText)
+  consoleObj.log('Database seed completed.')
+}
+
+function getUsageText() {
+  return 'Usage: node scripts/db-admin.mjs <wait|health|reset|migrate|seed|exec-file>'
+}
+
+export async function main(args = process.argv.slice(2), dependencies = {}) {
+  const adminFactory = dependencies.adminFactory ?? createAdminClient
+  const consoleObj = dependencies.consoleObj ?? console
+  const cwd = dependencies.cwd ?? process.cwd()
+  const env = dependencies.env ?? process.env
+  const readSeedSqlImpl = dependencies.readSeedSql ?? readSeedSql
+  const loadEnvironmentFilesImpl =
+    dependencies.loadEnvironmentFilesImpl ?? loadEnvironmentFiles
+  let admin
+
+  try {
+    loadEnvironmentFilesImpl(env)
+    const [command, ...rest] = args
+
+    if (!command) {
+      consoleObj.error(getUsageText())
+      return 1
+    }
+
+    switch (command) {
+      case 'exec-file':
+      case 'health':
+      case 'migrate':
+      case 'reset':
+      case 'seed':
+      case 'wait':
+        break
+      default:
+        consoleObj.error(getUsageText())
+        return 1
+    }
+
+    const connectionString = getDatabaseUrl(env)
+    admin = adminFactory(connectionString)
+
     switch (command) {
       case 'exec-file': {
-        const filePath = process.argv[3]
+        const filePath = rest[0]
         if (!filePath) {
           throw new Error('Usage: node scripts/db-admin.mjs exec-file <path>')
         }
-        await execFile(admin, filePath)
+        await execFile(admin, filePath, { consoleObj, cwd })
         break
       }
       case 'health': {
         const health = await admin.health()
-        console.log(JSON.stringify(health, null, 2))
+        consoleObj.log(JSON.stringify(health, null, 2))
         break
       }
       case 'migrate':
@@ -380,27 +443,38 @@ async function main() {
         break
       case 'reset':
         await admin.reset()
-        console.log('Database reset completed.')
+        consoleObj.log('Database reset completed.')
+        break
+      case 'seed':
+        await seedDatabase(admin, {
+          consoleObj,
+          cwd,
+          readSeedSql: readSeedSqlImpl,
+        })
         break
       case 'wait': {
-        const timeoutMs = Number(process.argv[3] ?? DEFAULT_TIMEOUT_MS)
+        const timeoutMs = Number(rest[0] ?? DEFAULT_TIMEOUT_MS)
         await waitForDatabase(
           admin,
           Number.isFinite(timeoutMs) ? timeoutMs : DEFAULT_TIMEOUT_MS,
         )
         break
       }
-      default:
-        throw new Error(
-          'Usage: node scripts/db-admin.mjs <wait|health|reset|migrate|exec-file>',
-        )
     }
+    return 0
+  } catch (error) {
+    consoleObj.error(error instanceof Error ? error.message : error)
+    return 1
   } finally {
-    await admin.close()
+    await admin?.close()
   }
 }
 
-main().catch(error => {
-  console.error(error instanceof Error ? error.message : error)
-  process.exit(1)
-})
+const isMainEntry =
+  process.argv[1] != null &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isMainEntry) {
+  const exitCode = await main(process.argv.slice(2))
+  process.exit(exitCode)
+}
