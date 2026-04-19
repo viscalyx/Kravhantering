@@ -31,6 +31,7 @@ function applyMigrations(sqlite: BetterSqlite3.Database) {
 
 function createAsyncTestDb() {
   const sqlite = new BetterSqlite3(':memory:')
+  sqlite.pragma('foreign_keys = ON')
   applyMigrations(sqlite)
 
   const db = drizzle(sqlite, { schema })
@@ -104,7 +105,7 @@ describe('linkRequirementsToPackageAtomically', () => {
     })
 
     const addedCount = await linkRequirementsToPackageAtomically(db, pkg.id, {
-      items: [{ requirementId: 1, requirementVersionId: 101 }],
+      requirementIds: [1],
       needsReferenceText: '  Shared need  ',
     })
 
@@ -173,7 +174,7 @@ describe('linkRequirementsToPackageAtomically', () => {
 
     await expect(
       linkRequirementsToPackageAtomically(db, packageA.id, {
-        items: [{ requirementId: 1, requirementVersionId: 101 }],
+        requirementIds: [1],
         needsReferenceId: foreignNeedsReferenceId,
       }),
     ).rejects.toMatchObject({
@@ -233,7 +234,7 @@ describe('linkRequirementsToPackageAtomically', () => {
 
     await expect(
       linkRequirementsToPackageAtomically(db, pkg.id, {
-        items: [{ requirementId: 1, requirementVersionId: 101 }],
+        requirementIds: [1],
         needsReferenceId,
         needsReferenceText: '  Conflicting need  ',
       }),
@@ -281,7 +282,7 @@ describe('linkRequirementsToPackageAtomically', () => {
     })
 
     const addedCount = await linkRequirementsToPackageAtomically(db, pkg.id, {
-      items: [{ requirementId: 1, requirementVersionId: 101 }],
+      requirementIds: [1],
       needsReferenceText: 'Ephemeral need',
     })
 
@@ -302,10 +303,19 @@ describe('linkRequirementsToPackageAtomically', () => {
 
     await expect(
       linkRequirementsToPackageAtomically(db, pkg.id, {
-        items: [{ requirementId: 999, requirementVersionId: 999 }],
+        requirementIds: [999],
         needsReferenceText: 'Rollback need',
       }),
-    ).rejects.toBeInstanceOf(Error)
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: expect.objectContaining({
+        httpStatus: 422,
+        reason: 'missing_published_version',
+        requirementId: 999,
+      }),
+      message:
+        'Requirement 999 has no published version and cannot be added to a package',
+    })
 
     const needsReferences = await db
       .select({

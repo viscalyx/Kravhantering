@@ -30,6 +30,9 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
+  formatUiSettingsLoadError: (error: unknown) => ({
+    message: error instanceof Error ? error.message : String(error),
+  }),
   getUiTerminology: getUiTerminologyMock,
   getRequirementListColumnDefaults: getRequirementListColumnDefaultsMock,
 }))
@@ -115,18 +118,36 @@ describe('DB-backed UI settings pages', () => {
     expect(result.props.initialColumnDefaults).toEqual(columnDefaults)
   })
 
-  it('fails the requirements page when database-backed column defaults cannot be loaded', async () => {
+  it('falls back to shipped column defaults when database-backed values cannot be loaded', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
     getRequirementListColumnDefaultsMock.mockRejectedValueOnce(
       new Error('column defaults unavailable'),
     )
 
-    const { default: RequirementsPage } = await import(
-      '@/app/[locale]/requirements/page'
-    )
+    try {
+      const { default: RequirementsPage } = await import(
+        '@/app/[locale]/requirements/page'
+      )
+      const result = (await RequirementsPage()) as {
+        props: {
+          initialColumnDefaults: RequirementListColumnDefault[]
+        }
+      }
 
-    await expect(RequirementsPage()).rejects.toThrow(
-      'column defaults unavailable',
-    )
+      expect(result.props.initialColumnDefaults).toEqual(
+        DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
+      )
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load requirement column defaults for requirements page',
+        expect.objectContaining({
+          message: 'column defaults unavailable',
+        }),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('uses database terminology for requirement version metadata', async () => {

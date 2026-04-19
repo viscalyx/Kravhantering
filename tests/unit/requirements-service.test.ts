@@ -1026,10 +1026,7 @@ describe('createRequirementsService', () => {
       expect.anything(),
       7,
       {
-        items: [
-          { requirementId: 10, requirementVersionId: 201 },
-          { requirementId: 11, requirementVersionId: 202 },
-        ],
+        requirementIds: [10, 11],
         needsReferenceText: undefined,
       },
     )

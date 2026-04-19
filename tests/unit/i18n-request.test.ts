@@ -30,6 +30,9 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
+  formatUiSettingsLoadError: (error: unknown) => ({
+    message: error instanceof Error ? error.message : String(error),
+  }),
   getUiTerminology: getUiTerminologyMock,
 }))
 
@@ -81,17 +84,33 @@ describe('i18n request config', () => {
     expect(result.messages.__dbTerminologyApplied).toBe(true)
   })
 
-  it('fails when database-backed terminology cannot be loaded', async () => {
+  it('falls back to shipped messages when database-backed terminology cannot be loaded', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
     getRequestDatabaseMock.mockRejectedValueOnce(new Error('db unavailable'))
 
-    const getRequestConfig = (await import('@/i18n/request')).default as ({
-      requestLocale,
-    }: {
-      requestLocale: Promise<string>
-    }) => Promise<{ locale: string; messages: Record<string, unknown> }>
+    try {
+      const getRequestConfig = (await import('@/i18n/request')).default as ({
+        requestLocale,
+      }: {
+        requestLocale: Promise<string>
+      }) => Promise<{ locale: string; messages: Record<string, unknown> }>
 
-    await expect(
-      getRequestConfig({ requestLocale: Promise.resolve('en') }),
-    ).rejects.toThrow('db unavailable')
+      const result = await getRequestConfig({
+        requestLocale: Promise.resolve('en'),
+      })
+
+      expect(result.locale).toBe('en')
+      expect(result.messages.__dbTerminologyApplied).toBeUndefined()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to load UI terminology for request config',
+        expect.objectContaining({
+          message: 'db unavailable',
+        }),
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 })

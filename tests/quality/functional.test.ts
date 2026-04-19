@@ -465,12 +465,7 @@ describe('Spec Requirements', () => {
       })
 
       const added = await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-        items: [
-          {
-            requirementId: published.requirementId,
-            requirementVersionId: published.publishedVersionId,
-          },
-        ],
+        requirementIds: [published.requirementId],
         needsReferenceText: '  Shared need  ',
       })
 
@@ -508,12 +503,7 @@ describe('Spec Requirements', () => {
       })
 
       await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-        items: [
-          {
-            requirementId: published.requirementId,
-            requirementVersionId: published.publishedVersionId,
-          },
-        ],
+        requirementIds: [published.requirementId],
       })
 
       const item = await getSinglePackageItem(pkg.id)
@@ -812,12 +802,7 @@ describe('Fitness Scenarios', () => {
     })
 
     await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-      items: [
-        {
-          requirementId: published.requirementId,
-          requirementVersionId: published.publishedVersionId,
-        },
-      ],
+      requirementIds: [published.requirementId],
     })
 
     const libraryItem = await getSinglePackageItem(pkg.id)
@@ -903,24 +888,14 @@ describe('Fitness Scenarios', () => {
     })
 
     await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-      items: [
-        {
-          requirementId: published.requirementId,
-          requirementVersionId: published.publishedVersionId,
-        },
-      ],
+      requirementIds: [published.requirementId],
     })
 
     const addedAgain = await linkRequirementsToPackageAtomically(
       appDb(),
       pkg.id,
       {
-        items: [
-          {
-            requirementId: published.requirementId,
-            requirementVersionId: published.publishedVersionId,
-          },
-        ],
+        requirementIds: [published.requirementId],
         needsReferenceText: '  Duplicate-only need  ',
       },
     )
@@ -995,12 +970,7 @@ describe('Fitness Scenarios', () => {
     })
 
     await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
-      items: [
-        {
-          requirementId: published.requirementId,
-          requirementVersionId: published.publishedVersionId,
-        },
-      ],
+      requirementIds: [published.requirementId],
     })
 
     const item = await getSinglePackageItem(pkg.id)
