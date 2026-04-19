@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const desktopChromium = {
+  browserName: 'chromium' as const,
+  deviceScaleFactor: 1,
+  hasTouch: false,
+  isMobile: false,
+  viewport: devices['Desktop Chrome'].viewport,
+}
+
 /**
  * Playwright configuration for generating the user guide.
  *
@@ -35,7 +43,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: desktopChromium,
     },
   ],
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
