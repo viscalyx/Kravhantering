@@ -1,9 +1,3 @@
-// NOTE: This file is intentionally named middleware.ts instead of proxy.ts
-// OpenNext for Cloudflare does not yet support the new Next.js 16 "proxy" convention.
-// The proxy.ts file runs on Node.js runtime, but Cloudflare Workers only supports
-// edge middleware. Keep this as middleware.ts until OpenNext adds proxy support.
-// See: https://github.com/opennextjs/opennextjs-cloudflare/issues/1093
-
 import { type NextRequest, NextResponse } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
@@ -68,7 +62,7 @@ function applyRequestHeaderOverrides(response: NextResponse, headers: Headers) {
   }
 }
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const response = intlMiddleware(request)
 
   const nonceBytes = new Uint8Array(16)
