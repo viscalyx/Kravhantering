@@ -552,59 +552,54 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
             `SET IDENTITY_INSERT ${qualifiedTableName} ON`
           const identityInsertOffSql =
             `SET IDENTITY_INSERT ${qualifiedTableName} OFF`
-          if (hasIdentity) {
-            await requestFactory().query(identityInsertOnSql)
-          }
 
-          try {
-            for (const row of rows) {
-              const columns = tableMetadata.columns.filter(column =>
-                Object.hasOwn(row, column.name),
+          for (const row of rows) {
+            const columns = tableMetadata.columns.filter(column =>
+              Object.hasOwn(row, column.name),
+            )
+            const request = requestFactory()
+            const parameterValues = {}
+            const parameterTokens = columns.map((column, index) => {
+              const parameterName = `p${index}`
+              const normalizedValue = normalizeSeedValue(row[column.name])
+              request.input(parameterName, normalizedValue)
+              parameterValues[parameterName] = formatSeedDebugValue(normalizedValue)
+              return `@${parameterName}`
+            })
+            const insertSql =
+              `INSERT INTO ${qualifiedTableName} (${columns
+                .map(column => quoteSqlServerIdentifier(column.name))
+                .join(', ')}) VALUES (${parameterTokens.join(', ')})`
+            const batchSql = hasIdentity
+              ? `${identityInsertOnSql}; ${insertSql}; ${identityInsertOffSql};`
+              : insertSql
+
+            try {
+              await request.query(batchSql)
+            } catch (error) {
+              const details =
+                error instanceof Error ? error.message : String(error)
+              throw new Error(
+                [
+                  `SQL Server seed failed for table ${tableMetadata.name}: ${details}`,
+                  `identityInsertEnabled: ${String(hasIdentity)}`,
+                  `identityInsertOnSql: ${identityInsertOnSql}`,
+                  `insertSql: ${insertSql}`,
+                  `batchSql: ${batchSql}`,
+                  `parameters: ${JSON.stringify(parameterValues)}`,
+                  `row: ${JSON.stringify(
+                    columns.reduce((accumulator, column) => {
+                      accumulator[column.name] = formatSeedDebugValue(
+                        row[column.name],
+                      )
+                      return accumulator
+                    }, {}),
+                  )}`,
+                ].join('\n'),
               )
-              const request = requestFactory()
-              const parameterValues = {}
-              const parameterTokens = columns.map((column, index) => {
-                const parameterName = `p${index}`
-                const normalizedValue = normalizeSeedValue(row[column.name])
-                request.input(parameterName, normalizedValue)
-                parameterValues[parameterName] = formatSeedDebugValue(normalizedValue)
-                return `@${parameterName}`
-              })
-              const insertSql =
-                `INSERT INTO ${qualifiedTableName} (${columns
-                  .map(column => quoteSqlServerIdentifier(column.name))
-                  .join(', ')}) VALUES (${parameterTokens.join(', ')})`
-
-              try {
-                await request.query(insertSql)
-              } catch (error) {
-                const details =
-                  error instanceof Error ? error.message : String(error)
-                throw new Error(
-                  [
-                    `SQL Server seed failed for table ${tableMetadata.name}: ${details}`,
-                    `identityInsertEnabled: ${String(hasIdentity)}`,
-                    `identityInsertOnSql: ${identityInsertOnSql}`,
-                    `insertSql: ${insertSql}`,
-                    `parameters: ${JSON.stringify(parameterValues)}`,
-                    `row: ${JSON.stringify(
-                      columns.reduce((accumulator, column) => {
-                        accumulator[column.name] = formatSeedDebugValue(
-                          row[column.name],
-                        )
-                        return accumulator
-                      }, {}),
-                    )}`,
-                  ].join('\n'),
-                )
-              }
-
-              insertedRows += 1
             }
-          } finally {
-            if (hasIdentity) {
-              await requestFactory().query(identityInsertOffSql)
-            }
+
+            insertedRows += 1
           }
         }
 

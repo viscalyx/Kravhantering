@@ -380,10 +380,9 @@ describe('db-sqlserver-admin.mjs', () => {
     )
 
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('IDENTITY_INSERT [dbo].[requirement_categories] ON'),
-    )
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO [dbo].[requirement_categories]'),
+      expect.stringContaining(
+        'SET IDENTITY_INSERT [dbo].[requirement_categories] ON; INSERT INTO [dbo].[requirement_categories]',
+      ),
     )
     expect(result).toEqual({
       insertedRows: 2,
@@ -450,6 +449,33 @@ describe('db-sqlserver-admin.mjs', () => {
       ),
     ).rejects.toThrow(
       /identityInsertOnSql: SET IDENTITY_INSERT \[dbo\]\.\[deviations\] ON/,
+    )
+    await expect(
+      seedSqlServerDatabase(
+        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+        {
+          connectImpl,
+          createLegacySqliteSnapshotImpl: vi.fn(() => sqlite),
+          getLegacyTableMetadataImpl: vi.fn(() => [
+            {
+              columns: [
+                { name: 'id', type: 'INTEGER' },
+                { name: 'package_item_id', type: 'INTEGER' },
+                { name: 'motivation', type: 'TEXT' },
+              ],
+              foreignKeys: [],
+              indexes: [],
+              name: 'deviations',
+              primaryKey: ['id'],
+            },
+          ]),
+          readLegacySeedRowsImpl: vi.fn(() => [
+            { id: 1, motivation: 'Need deviation', package_item_id: 42 },
+          ]),
+        },
+      ),
+    ).rejects.toThrow(
+      /batchSql: SET IDENTITY_INSERT \[dbo\]\.\[deviations\] ON; INSERT INTO \[dbo\]\.\[deviations\]/,
     )
   })
 
