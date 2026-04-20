@@ -333,10 +333,19 @@ describe('db-sqlserver-admin.mjs', () => {
       input: vi.fn().mockReturnThis(),
       query,
     }))
+    const begin = vi.fn(async () => undefined)
+    const commit = vi.fn(async () => undefined)
+    const rollback = vi.fn(async () => undefined)
     const close = vi.fn(async () => {})
     const connectImpl = vi.fn(async () => ({
       close,
       request: requestFactory,
+      transaction: vi.fn(() => ({
+        begin,
+        commit,
+        request: requestFactory,
+        rollback,
+      })),
     }))
     const sqlite = {
       close: vi.fn(),
@@ -380,6 +389,9 @@ describe('db-sqlserver-admin.mjs', () => {
       insertedRows: 2,
       readonlyAccessConfigured: true,
     })
+    expect(begin).toHaveBeenCalled()
+    expect(commit).toHaveBeenCalled()
+    expect(rollback).not.toHaveBeenCalled()
     expect(sqlite.close).toHaveBeenCalled()
   })
 

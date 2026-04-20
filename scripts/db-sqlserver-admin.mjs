@@ -488,68 +488,91 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
     const metadata = metadataFactory(sqlite)
 
     return await withPool(connectionString, connectImpl, async pool => {
-      for (const tableMetadata of metadata) {
-        await pool
-          .request()
-          .query(
-            `ALTER TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} NOCHECK CONSTRAINT ALL`,
-          )
+      const transaction =
+        typeof pool.transaction === 'function' ? pool.transaction() : null
+      const requestFactory =
+        transaction && typeof transaction.request === 'function'
+          ? () => transaction.request()
+          : () => pool.request()
+
+      if (transaction && typeof transaction.begin === 'function') {
+        await transaction.begin()
       }
 
       let insertedRows = 0
 
-      for (const tableMetadata of metadata) {
-        const rows = seedRowReader(sqlite, tableMetadata)
-
-        if (rows.length === 0) {
-          continue
+      try {
+        for (const tableMetadata of metadata) {
+          await requestFactory().query(
+            `ALTER TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} NOCHECK CONSTRAINT ALL`,
+          )
         }
 
-        const hasIdentity = hasIdentityPrimaryKey(tableMetadata)
-        if (hasIdentity) {
-          await pool
-            .request()
-            .query(
+        for (const tableMetadata of metadata) {
+          const rows = seedRowReader(sqlite, tableMetadata)
+
+          if (rows.length === 0) {
+            continue
+          }
+
+          const hasIdentity = hasIdentityPrimaryKey(tableMetadata)
+          if (hasIdentity) {
+            await requestFactory().query(
               `SET IDENTITY_INSERT ${quoteSqlServerIdentifier(tableMetadata.name)} ON`,
             )
-        }
-
-        try {
-          for (const row of rows) {
-            const columns = tableMetadata.columns.filter(column =>
-              Object.hasOwn(row, column.name),
-            )
-            const request = pool.request()
-            const parameterTokens = columns.map((column, index) => {
-              const parameterName = `p${index}`
-              request.input(parameterName, normalizeSeedValue(row[column.name]))
-              return `@${parameterName}`
-            })
-
-            await request.query(
-              `INSERT INTO ${quoteSqlServerIdentifier(tableMetadata.name)} (${columns
-                .map(column => quoteSqlServerIdentifier(column.name))
-                .join(', ')}) VALUES (${parameterTokens.join(', ')})`,
-            )
-            insertedRows += 1
           }
-        } finally {
-          if (hasIdentity) {
-            await pool
-              .request()
-              .query(
+
+          try {
+            for (const row of rows) {
+              const columns = tableMetadata.columns.filter(column =>
+                Object.hasOwn(row, column.name),
+              )
+              const request = requestFactory()
+              const parameterTokens = columns.map((column, index) => {
+                const parameterName = `p${index}`
+                request.input(parameterName, normalizeSeedValue(row[column.name]))
+                return `@${parameterName}`
+              })
+
+              try {
+                await request.query(
+                  `INSERT INTO ${quoteSqlServerIdentifier(tableMetadata.name)} (${columns
+                    .map(column => quoteSqlServerIdentifier(column.name))
+                    .join(', ')}) VALUES (${parameterTokens.join(', ')})`,
+                )
+              } catch (error) {
+                const details =
+                  error instanceof Error ? error.message : String(error)
+                throw new Error(
+                  `SQL Server seed failed for table ${tableMetadata.name}: ${details}`,
+                )
+              }
+
+              insertedRows += 1
+            }
+          } finally {
+            if (hasIdentity) {
+              await requestFactory().query(
                 `SET IDENTITY_INSERT ${quoteSqlServerIdentifier(tableMetadata.name)} OFF`,
               )
+            }
           }
         }
-      }
 
-      for (const tableMetadata of metadata) {
-        await pool
-          .request()
-          .query(
+        for (const tableMetadata of metadata) {
+          await requestFactory().query(
             `ALTER TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} WITH CHECK CHECK CONSTRAINT ALL`,
           )
+        }
+
+        if (transaction && typeof transaction.commit === 'function') {
+          await transaction.commit()
+        }
+      } catch (error) {
+        if (transaction && typeof transaction.rollback === 'function') {
+          await transaction.rollback()
+        }
+        throw error
       }
 
       const readonlyAccess = await ensureReadonlySqlServerAccess(
