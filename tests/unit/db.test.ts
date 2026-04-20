@@ -176,6 +176,18 @@ describe('lib/db', () => {
     )
   })
 
+  it('classifies derived DB_* SQL Server config as the TypeORM provider kind', async () => {
+    vi.stubEnv('DB_HOST', 'db')
+    vi.stubEnv('DB_NAME', 'kravhantering')
+    vi.stubEnv('DB_PORT', '1433')
+    vi.stubEnv('DB_TRUST_SERVER_CERTIFICATE', 'true')
+    vi.stubEnv('MSSQL_SA_PASSWORD', 'Password123!')
+
+    const { getDatabaseProviderKind } = await import('@/lib/db')
+
+    expect(getDatabaseProviderKind()).toBe('sqlserver-typeorm')
+  })
+
   it('rejects legacy getRequestDatabase calls when DATABASE_URL points at SQL Server', async () => {
     vi.stubEnv(
       'DATABASE_URL',
@@ -189,11 +201,51 @@ describe('lib/db', () => {
     )
   })
 
+  it('rejects legacy getRequestDatabase calls when DB_* config resolves to SQL Server', async () => {
+    vi.stubEnv('DB_HOST', 'db')
+    vi.stubEnv('DB_NAME', 'kravhantering')
+    vi.stubEnv('DB_PORT', '1433')
+    vi.stubEnv('DB_TRUST_SERVER_CERTIFICATE', 'true')
+    vi.stubEnv('MSSQL_SA_PASSWORD', 'Password123!')
+
+    const { getRequestDatabase } = await import('@/lib/db')
+
+    await expect(getRequestDatabase()).rejects.toThrow(
+      'legacy SQLite/Drizzle path only',
+    )
+  })
+
   it('returns the SQL Server data source from getRequestDatabaseConnection when DATABASE_URL uses mssql', async () => {
     vi.stubEnv(
       'DATABASE_URL',
       'mssql://sa:Password123!@127.0.0.1:1433/kravhantering',
     )
+
+    const initialize = vi.fn(async () => undefined)
+    const dataSource = {
+      initialize,
+      isInitialized: false,
+    }
+    const createAppDataSource = vi.fn(() => dataSource)
+
+    vi.doMock('@/lib/typeorm/data-source', () => ({
+      createAppDataSource,
+      createReadonlyBrowseDataSource: vi.fn(),
+    }))
+
+    const { getRequestDatabaseConnection } = await import('@/lib/db')
+
+    await expect(getRequestDatabaseConnection()).resolves.toBe(dataSource)
+    expect(createAppDataSource).toHaveBeenCalledTimes(1)
+    expect(initialize).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns the SQL Server data source from getRequestDatabaseConnection when only DB_* SQL Server vars are set', async () => {
+    vi.stubEnv('DB_HOST', 'db')
+    vi.stubEnv('DB_NAME', 'kravhantering')
+    vi.stubEnv('DB_PORT', '1433')
+    vi.stubEnv('DB_TRUST_SERVER_CERTIFICATE', 'true')
+    vi.stubEnv('MSSQL_SA_PASSWORD', 'Password123!')
 
     const initialize = vi.fn(async () => undefined)
     const dataSource = {

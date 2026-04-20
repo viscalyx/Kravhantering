@@ -69,6 +69,26 @@ The SQL Server admin scaffold uses the `master` database for readiness checks
 and reset/setup bootstrap steps, so `db:setup` can create `kravhantering`
 even when that database does not exist yet.
 
+Local/dev SQL Server connection strings are normally **derived in code** from:
+
+```env
+DB_HOST=...
+DB_PORT=...
+DB_NAME=...
+DB_READONLY_USER=...
+DB_READONLY_PASSWORD=...
+DB_ENCRYPT=...
+DB_TRUST_SERVER_CERTIFICATE=...
+```
+
+The write connection defaults to the `sa` login using `MSSQL_SA_PASSWORD`
+unless you explicitly set `DB_USER` / `DB_PASSWORD`.
+
+`DATABASE_URL`, `DATABASE_READONLY_URL`, `SQLSERVER_DATABASE_URL`, and
+`SQLSERVER_DATABASE_READONLY_URL` remain supported as **optional overrides**
+when you need to point at an explicit external connection string instead of the
+derived local/dev settings.
+
 After the full cutover, these temporary `SQLSERVER_*` variables should collapse
 back to the canonical runtime contract:
 
@@ -113,8 +133,8 @@ The blessed VS Code-friendly path is:
    settings.
 
 The scaffold intentionally avoids printing a real password. By default it emits
-`${env:DATABASE_READONLY_PASSWORD}` so the UI connection can remain read-only
-without committing secrets into the repo.
+`${env:DB_READONLY_PASSWORD}` so the UI connection can remain read-only without
+committing secrets into the repo.
 
 ## Seed Data Preservation
 

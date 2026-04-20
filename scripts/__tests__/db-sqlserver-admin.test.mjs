@@ -45,6 +45,40 @@ describe('db-sqlserver-admin.mjs', () => {
     )
   })
 
+  it('derives the main SQL Server URL from DB_* parts when no explicit URL is set', () => {
+    expect(
+      getSqlServerDatabaseUrl({
+        DB_ENCRYPT: 'true',
+        DB_HOST: 'db',
+        DB_NAME: 'kravhantering',
+        DB_PORT: '1433',
+        DB_TRUST_SERVER_CERTIFICATE: 'true',
+        MSSQL_SA_PASSWORD: 'Password123!',
+      }),
+    ).toBe(
+      'mssql://sa:Password123!@db:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+    )
+  })
+
+  it('derives the readonly SQL Server URL from DB_* parts when no explicit URL is set', () => {
+    expect(
+      getSqlServerDatabaseUrl(
+        {
+          DB_ENCRYPT: 'true',
+          DB_HOST: 'db',
+          DB_NAME: 'kravhantering',
+          DB_PORT: '1433',
+          DB_READONLY_PASSWORD: 'Readonly123!',
+          DB_READONLY_USER: 'readonly',
+          DB_TRUST_SERVER_CERTIFICATE: 'true',
+        },
+        { readonly: true },
+      ),
+    ).toBe(
+      'mssql://readonly:Readonly123!@db:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+    )
+  })
+
   it('parses SQL Server connection strings into stable config fields', () => {
     expect(
       parseSqlServerConnectionString(
@@ -142,6 +176,33 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(formatReadonlyBrowseConfig(config)).toContain(
       `"password": "${passwordToken}"`,
     )
+  })
+
+  it('builds a read-only browse config from derived DB_* values', () => {
+    const config = buildReadonlyBrowseConfig({
+      DB_ENCRYPT: 'true',
+      DB_HOST: 'db',
+      DB_NAME: 'kravhantering',
+      DB_PORT: '1433',
+      DB_READONLY_PASSWORD: 'Readonly123!',
+      DB_READONLY_USER: 'readonly',
+      DB_TRUST_SERVER_CERTIFICATE: 'true',
+    })
+
+    expect(config).toEqual({
+      database: 'kravhantering',
+      driver: 'MSSQL',
+      name: 'Kravhantering SQL Server (read-only)',
+      options: {
+        encrypt: true,
+        trustServerCertificate: true,
+      },
+      password: '${env:DB_READONLY_PASSWORD}',
+      port: 1433,
+      previewLimit: 100,
+      server: 'db',
+      username: 'readonly',
+    })
   })
 
   it('runs a SQL Server health check through an injected pool', async () => {

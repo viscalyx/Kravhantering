@@ -15,7 +15,10 @@ import {
   createAppDataSource,
   createReadonlyBrowseDataSource,
 } from '@/lib/typeorm/data-source'
-import { getSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
+import {
+  getSqlServerDatabaseUrl,
+  tryGetSqlServerDatabaseUrl,
+} from '@/lib/typeorm/sqlserver-config'
 
 type AppSchema = typeof schema
 type BetterSqliteDatabase = BetterSQLite3Database<AppSchema> & {
@@ -57,7 +60,7 @@ export type AppDatabaseConnection = Database | SqlServerDatabase
 export type SqlServerDatabase = DataSource
 
 const DATABASE_URL_ERROR =
-  'DATABASE_URL is required. Point it to the SQLite proxy service (for example http://127.0.0.1:9000) or to a local SQLite file.'
+  'No database connection is configured. Set DATABASE_URL for the legacy SQLite path, or configure SQL Server using DATABASE_URL/SQLSERVER_DATABASE_URL or DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD.'
 const DEFAULT_PROXY_TIMEOUT_MS = 10_000
 const LEGACY_SQLITE_ONLY_ERROR =
   'getDb() and getRequestDatabase() still serve the legacy SQLite/Drizzle path only. Use getSqlServerDataSource() or getRequestSqlServerDataSource() for the SQL Server + TypeORM path.'
@@ -92,6 +95,22 @@ function normalizeDatabaseUrl(connectionString?: string): string {
   return value
 }
 
+function resolveDefaultDatabaseUrl(
+  connectionString = process.env.DATABASE_URL,
+): string {
+  const trimmed = connectionString?.trim()
+  if (trimmed) {
+    return normalizeDatabaseUrl(trimmed)
+  }
+
+  const sqlServerConnectionString = tryGetSqlServerDatabaseUrl(process.env, false)
+  if (sqlServerConnectionString) {
+    return sqlServerConnectionString
+  }
+
+  throw new Error(DATABASE_URL_ERROR)
+}
+
 function isHttpDatabaseUrl(connectionString: string): boolean {
   return (
     connectionString.startsWith('http://') ||
@@ -109,7 +128,7 @@ export function isSqlServerDatabaseUrl(connectionString: string): boolean {
 export function getDatabaseProviderKind(
   connectionString = process.env.DATABASE_URL,
 ): DatabaseProviderKind {
-  const normalizedUrl = normalizeDatabaseUrl(connectionString)
+  const normalizedUrl = resolveDefaultDatabaseUrl(connectionString)
   return isSqlServerDatabaseUrl(normalizedUrl)
     ? 'sqlserver-typeorm'
     : 'legacy-sqlite'
@@ -282,7 +301,7 @@ function createRemoteSqliteDatabase(
 }
 
 export function getDb(connectionString = process.env.DATABASE_URL): Database {
-  const normalizedUrl = normalizeDatabaseUrl(connectionString)
+  const normalizedUrl = resolveDefaultDatabaseUrl(connectionString)
 
   if (isSqlServerDatabaseUrl(normalizedUrl)) {
     throw new Error(LEGACY_SQLITE_ONLY_ERROR)
@@ -368,13 +387,13 @@ export async function getReadonlySqlServerDataSource(
 }
 
 export async function getRequestDatabase(): Promise<Database> {
-  const connectionString = process.env.DATABASE_URL
+  const sqlServerConnectionString = tryGetSqlServerDatabaseUrl(process.env, false)
 
-  if (connectionString && isSqlServerDatabaseUrl(connectionString.trim())) {
+  if (sqlServerConnectionString) {
     throw new Error(LEGACY_SQLITE_ONLY_ERROR)
   }
 
-  return getDb(connectionString)
+  return getDb(process.env.DATABASE_URL)
 }
 
 export async function getRequestSqlServerDataSource(): Promise<SqlServerDatabase> {
