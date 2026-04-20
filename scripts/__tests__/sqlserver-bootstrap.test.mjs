@@ -2,6 +2,7 @@ import BetterSqlite3 from 'better-sqlite3'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  buildSqlServerAddForeignKeyStatements,
   buildSqlServerCreateTableStatement,
   buildSqlServerDropStatements,
   buildSqlServerSchemaStatements,
@@ -96,6 +97,9 @@ describe('sqlserver-bootstrap.mjs', () => {
     expect(schemaStatements[3]).toContain(
       'CREATE INDEX [idx_children_parent_id] ON [children] ([parent_id]);',
     )
+    expect(schemaStatements[4]).toContain(
+      'ALTER TABLE [children] ADD CONSTRAINT [fk_children_parent_id] FOREIGN KEY ([parent_id]) REFERENCES [parents] ([id]);',
+    )
 
     expect(buildSqlServerDropStatements(metadata)).toEqual([
       "IF OBJECT_ID(N'children', N'U') IS NOT NULL DROP TABLE [children];",
@@ -105,5 +109,61 @@ describe('sqlserver-bootstrap.mjs', () => {
     expect(readLegacySeedRows(sqlite, parentTable)).toEqual([
       { id: 1, name_sv: 'Sakerhet' },
     ])
+  })
+
+  it('creates unique indexes before foreign keys that depend on non-primary candidate keys', () => {
+    const sqlite = new BetterSqlite3(':memory:')
+    sqliteHandles.push(sqlite)
+
+    sqlite.exec(`
+      CREATE TABLE packages (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL
+      );
+
+      CREATE TABLE package_needs_references (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        package_id integer NOT NULL,
+        text text NOT NULL,
+        CONSTRAINT fk_package_needs_references_package_id
+          FOREIGN KEY (package_id) REFERENCES packages(id)
+      );
+
+      CREATE UNIQUE INDEX uq_package_needs_references_package_id_id
+        ON package_needs_references(package_id, id);
+
+      CREATE TABLE package_items (
+        id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+        package_id integer NOT NULL,
+        needs_reference_id integer,
+        CONSTRAINT fk_package_items_package_id_needs_reference_id
+          FOREIGN KEY (package_id, needs_reference_id)
+          REFERENCES package_needs_references(package_id, id)
+      );
+    `)
+
+    const metadata = getLegacyTableMetadata(sqlite)
+    const schemaStatements = buildSqlServerSchemaStatements(metadata)
+    const uniqueIndexStatementIndex = schemaStatements.findIndex(statement =>
+      statement.includes(
+        'CREATE UNIQUE INDEX [uq_package_needs_references_package_id_id]',
+      ),
+    )
+    const compositeForeignKeyStatementIndex = schemaStatements.findIndex(
+      statement =>
+        statement.includes('ALTER TABLE [package_items] ADD') &&
+        statement.includes(
+          'FOREIGN KEY ([package_id], [needs_reference_id]) REFERENCES [package_needs_references] ([package_id], [id])',
+        ),
+    )
+
+    expect(uniqueIndexStatementIndex).toBeGreaterThan(-1)
+    expect(compositeForeignKeyStatementIndex).toBeGreaterThan(-1)
+    expect(uniqueIndexStatementIndex).toBeLessThan(
+      compositeForeignKeyStatementIndex,
+    )
+
+    expect(buildSqlServerAddForeignKeyStatements(metadata)).toContain(
+      'ALTER TABLE [package_items] ADD CONSTRAINT [fk_package_items_package_id_needs_reference_id] FOREIGN KEY ([package_id], [needs_reference_id]) REFERENCES [package_needs_references] ([package_id], [id]);',
+    )
   })
 })

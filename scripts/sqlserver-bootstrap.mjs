@@ -336,7 +336,11 @@ function createForeignKeyConstraint(tableName, foreignKey) {
   return clauses.join(' ')
 }
 
-export function buildSqlServerCreateTableStatement(tableMetadata) {
+export function buildSqlServerCreateTableStatement(
+  tableMetadata,
+  options = {},
+) {
+  const includeForeignKeys = options.includeForeignKeys ?? true
   const primaryKeyColumns = tableMetadata.primaryKey
   const hasIdentityPrimaryKey =
     primaryKeyColumns.length === 1 &&
@@ -361,20 +365,42 @@ export function buildSqlServerCreateTableStatement(tableMetadata) {
     constraints.push(
       `  CONSTRAINT ${quoteSqlServerIdentifier(`pk_${tableMetadata.name}`)} PRIMARY KEY (${primaryKeyColumns
         .map(quoteSqlServerIdentifier)
-        .join(', ')})`,
+      .join(', ')})`,
     )
   }
 
-  for (const foreignKey of tableMetadata.foreignKeys) {
-    constraints.push(`  ${createForeignKeyConstraint(tableMetadata.name, foreignKey)}`)
+  if (includeForeignKeys) {
+    for (const foreignKey of tableMetadata.foreignKeys) {
+      constraints.push(
+        `  ${createForeignKeyConstraint(tableMetadata.name, foreignKey)}`,
+      )
+    }
   }
 
   return `CREATE TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} (\n${[...columnDefinitions, ...constraints].join(',\n')}\n);`
 }
 
+export function buildSqlServerAddForeignKeyStatements(metadataList) {
+  const orderedMetadata = sortLegacyTableMetadataForCreate(metadataList)
+
+  return orderedMetadata.flatMap(tableMetadata =>
+    tableMetadata.foreignKeys.map(
+      foreignKey =>
+        `ALTER TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} ADD ${createForeignKeyConstraint(
+          tableMetadata.name,
+          foreignKey,
+        )};`,
+    ),
+  )
+}
+
 export function buildSqlServerSchemaStatements(metadataList) {
   const orderedMetadata = sortLegacyTableMetadataForCreate(metadataList)
-  const createTableStatements = orderedMetadata.map(buildSqlServerCreateTableStatement)
+  const createTableStatements = orderedMetadata.map(tableMetadata =>
+    buildSqlServerCreateTableStatement(tableMetadata, {
+      includeForeignKeys: false,
+    }),
+  )
   const indexStatements = orderedMetadata.flatMap(tableMetadata =>
     tableMetadata.indexes.map(index => {
       const uniquePrefix = index.unique ? 'UNIQUE ' : ''
@@ -384,8 +410,9 @@ export function buildSqlServerSchemaStatements(metadataList) {
         .join(', ')});`
     }),
   )
+  const foreignKeyStatements = buildSqlServerAddForeignKeyStatements(metadataList)
 
-  return [...createTableStatements, ...indexStatements]
+  return [...createTableStatements, ...indexStatements, ...foreignKeyStatements]
 }
 
 export function buildSqlServerDropStatements(metadataList) {

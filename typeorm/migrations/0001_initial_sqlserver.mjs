@@ -15,7 +15,15 @@ export class InitialSqlServerSchema1713720000000 {
       const metadata = getLegacyTableMetadata(sqlite)
 
       for (const statement of buildSqlServerSchemaStatements(metadata)) {
-        await queryRunner.query(statement)
+        try {
+          await queryRunner.query(statement)
+        } catch (error) {
+          const details =
+            error instanceof Error ? error.message : String(error)
+          throw new Error(
+            `InitialSqlServerSchema1713720000000 failed while executing SQL:\n${statement}\n\n${details}`,
+          )
+        }
       }
     } finally {
       sqlite.close()
@@ -29,7 +37,15 @@ export class InitialSqlServerSchema1713720000000 {
       const metadata = getLegacyTableMetadata(sqlite)
 
       for (const statement of buildSqlServerDropStatements(metadata)) {
-        await queryRunner.query(statement)
+        try {
+          await queryRunner.query(statement)
+        } catch (error) {
+          const details =
+            error instanceof Error ? error.message : String(error)
+          throw new Error(
+            `InitialSqlServerSchema1713720000000 failed while rolling back SQL:\n${statement}\n\n${details}`,
+          )
+        }
       }
     } finally {
       sqlite.close()
