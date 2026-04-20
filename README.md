@@ -187,11 +187,22 @@ This project also includes an in-app MCP server for requirements management.
 
 ## Tech Stack
 
+The repository is in the middle of an approved database migration.
+
+- Target architecture: **Microsoft SQL Server + TypeORM**
+- Current checked-in runtime: large **SQLite + Drizzle** implementation still
+  being migrated
+- Canonical migration reference:
+  [docs/sql-server-typeorm-migration-plan.md](docs/sql-server-typeorm-migration-plan.md)
+- SQL Server scaffold workflow:
+  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+
 - **Framework:** [Next.js](https://nextjs.org/) 16 (React 19)
 - **Language:** TypeScript 5
 - **Styling:** Tailwind CSS 4
-- **Database:** SQLite via Drizzle ORM
-- **Local/CI database runtime:** Separate SQLite proxy service container
+- **Approved database target:** Microsoft SQL Server via TypeORM
+- **Current migration-state database runtime:** SQLite via Drizzle ORM
+- **Current local/CI database runtime:** Separate SQLite proxy service container
 - **Internationalization:** next-intl (Swedish & English)
 - **App runtime:** Native Next.js self-hosting (`next dev`, `next start`)
 - **Production target:** OpenShift-compatible Node container deployment
@@ -205,6 +216,10 @@ This project also includes an in-app MCP server for requirements management.
 - Docker Desktop or another Docker-compatible `docker compose` runtime
 
 ## Getting Started
+
+The steps below still describe the current checked-in runtime. For the SQL
+Server scaffold that is being introduced for the migration, see
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
 
 ```bash
 # Install dependencies

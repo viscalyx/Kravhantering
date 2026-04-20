@@ -3,7 +3,7 @@ import {
   deletePackageResponsibilityArea,
   updatePackageResponsibilityArea,
 } from '@/lib/dal/package-responsibility-areas'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -16,7 +16,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const body = (await request.json()) as Parameters<
     typeof updatePackageResponsibilityArea
   >[2]
@@ -33,7 +33,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   await deletePackageResponsibilityArea(db, numericId)
   return NextResponse.json({ ok: true })
 }

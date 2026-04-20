@@ -11,7 +11,7 @@ import {
   validateGeneratedRequirements,
 } from '@/lib/ai/requirement-prompt'
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 export async function POST(request: Request) {
   let body: {
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       )
     }
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
 
   const taxonomy = await loadTaxonomy(db, locale)
   const systemPrompt = buildSystemPrompt(taxonomy, locale)

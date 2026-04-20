@@ -10,6 +10,7 @@ applyTo: 'scripts/**/*.js,scripts/**/*.mjs'
 - Add or update Vitest tests when editing scripts that parse, transform, or generate data.
 - Prefer extracting pure functions from CLI wrappers so behavior is easy to test.
 - For mixed scripts, extract pure logic into helper functions/modules and cover that code to `>= 85%`.
+- For database scripts, follow `docs/sql-server-typeorm-migration-plan.md`. New migration scaffolding should target SQL Server + TypeORM and preserve seed-data meaning unless a documented exception is necessary.
 
 ## What to Exclude from Coverage
 

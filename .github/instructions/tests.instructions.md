@@ -93,3 +93,9 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 - For all newly added production code, target `>= 85%` coverage for `lines`, `statements`, `functions`, and `branches` in changed files.
 - When modifying existing production code, keep or improve coverage; do not let changed files regress; add or update tests in the same change.
 - If the target cannot be met immediately, document the gap and add the most direct missing tests next.
+
+## Database Migration Testing
+
+- The approved target architecture is SQL Server + TypeORM. New migration scaffolding should prefer focused tests that validate SQL Server connection parsing, container/admin workflows, seed-parity rules, and read-only browse behavior.
+- While the SQLite + Drizzle runtime still exists, keep its tests passing unless the migration explicitly replaces them in the same change.
+- When moving a DAL path from SQLite to SQL Server, add or update tests that prove transactional rollback behavior and any preserved seed-data assumptions.

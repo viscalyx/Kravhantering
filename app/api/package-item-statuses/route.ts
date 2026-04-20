@@ -4,11 +4,11 @@ import {
   createPackageItemStatus,
   listPackageItemStatuses,
 } from '@/lib/dal/package-item-statuses'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 import { DEVIATED_PACKAGE_ITEM_STATUS_ID } from '@/lib/package-item-status-constants'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const [statuses, counts] = await Promise.all([
     listPackageItemStatuses(db),
     countLinkedPackageItems(db),
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const db = await getRequestDatabase()
+    const db = await getRequestDatabaseConnection()
     const body = (await request.json()) as Parameters<
       typeof createPackageItemStatus
     >[1]

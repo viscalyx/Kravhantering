@@ -373,6 +373,13 @@ Manual verification should still include:
 
 ## Local Development Notes
 
+The repository is migrating toward SQL Server + TypeORM, but the current
+checked-in MCP runtime still uses the existing local DB workflow below. See
+[sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
+and
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md)
+for the approved target architecture and SQL Server scaffold commands.
+
 - Start the DB service with `npm run db:up` and prepare it with
   `npm run db:setup`.
 - Start the app with `npm run dev`.

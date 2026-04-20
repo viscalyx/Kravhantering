@@ -3,16 +3,16 @@ import {
   createPackageLifecycleStatus,
   listPackageLifecycleStatuses,
 } from '@/lib/dal/package-lifecycle-statuses'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const statuses = await listPackageLifecycleStatuses(db)
   return NextResponse.json({ statuses })
 }
 
 export async function POST(request: Request) {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const body = (await request.json()) as Parameters<
     typeof createPackageLifecycleStatus
   >[1]

@@ -4,6 +4,9 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 # Add Requirement Column Or Property
 
+- The approved target architecture is SQL Server + TypeORM. Until the full cutover is complete, requirement-column changes may still need to update the current Drizzle/SQLite assets, but they should not assume those assets are the long-term platform.
+- If a change affects persistence, keep the SQL Server migration plan and seed-parity expectations in sync.
+
 ## Scope
 
 - Apply this when adding, removing, renaming, or exposing a requirement property in any requirements surface.
@@ -52,7 +55,7 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 - If the new column requires new schema fields or tables, update `drizzle/schema.ts`, generate a migration, and update `drizzle/seed.sql`.
 - Run `npm run db:generate` after schema changes.
-- Run `npm run db:setup` after schema or seed changes.
+- Run the relevant clean setup flow after schema or seed changes. During the legacy SQLite phase this is still `npm run db:setup`.
 
 ## Verification
 

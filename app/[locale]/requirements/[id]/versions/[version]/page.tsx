@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { getUiTerminology } from '@/lib/dal/ui-settings'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 import { getLocalizedUiTerm, type UiLocale } from '@/lib/ui-terminology'
 import VersionDetailClient from './version-detail-client'
 
@@ -12,7 +12,9 @@ export async function generateMetadata({
   params: Params
 }): Promise<Metadata> {
   const { locale } = await params
-  const terminology = await getUiTerminology(await getRequestDatabase())
+  const terminology = await getUiTerminology(
+    await getRequestDatabaseConnection(),
+  )
   return {
     title: getLocalizedUiTerm(terminology, 'version', locale, 'singular'),
   }

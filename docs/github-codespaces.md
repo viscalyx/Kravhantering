@@ -44,6 +44,13 @@ open a VS Code editor in your browser. This typically takes
 
 ## 2 — Wait for automatic setup
 
+This Codespaces guide still documents the current checked-in SQLite-based
+runtime. The approved target architecture is SQL Server + TypeORM; see
+[sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
+and
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md)
+for the migration direction and new SQL Server scaffold.
+
 The dev container runs two lifecycle scripts automatically.
 You can follow their progress in the integrated terminal.
 

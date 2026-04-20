@@ -17,6 +17,13 @@ If you prefer host-based development outside the dev container, install Node.js
 24.x, npm, and a Docker-compatible `docker compose` runtime. The default local
 workflow is `npm run db:up`, `npm run db:setup`, then `npm run dev`.
 
+The repository is also migrating toward **SQL Server + TypeORM** as the
+approved database architecture. Use
+[docs/sql-server-typeorm-migration-plan.md](docs/sql-server-typeorm-migration-plan.md)
+as the canonical migration reference and
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+for the new SQL Server scaffold commands.
+
 ## Available Scripts
 
 <!-- markdownlint-disable MD013 -->
@@ -199,10 +206,17 @@ Translation strings are stored in [messages/](messages/).
 
 ## Database
 
-The application uses **SQLite** via Drizzle ORM. The default local and CI
-workflow runs the database behind a small HTTP proxy service in a separate
-container, which keeps the development shape close to the later container-based
-production deployment.
+The approved target architecture is **Microsoft SQL Server + TypeORM**.
+
+The checked-in application is still carrying a large **SQLite + Drizzle** data
+layer while the migration is in progress. That means:
+
+- current default app runtime commands still use the SQLite workflow
+- new SQL Server scaffolding lives alongside the current runtime
+- the migration reference is
+  [docs/sql-server-typeorm-migration-plan.md](docs/sql-server-typeorm-migration-plan.md)
+- the scaffold workflow is
+  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
 
 For the full schema reference, see
 [docs/database-schema.md](docs/database-schema.md). Status
@@ -213,21 +227,43 @@ lifecycle dates in
 
 ### Useful Commands
 
+Before using the host-side SQL Server scaffold, copy:
+
+```bash
+cp .env.sqlserver.example .env.sqlserver
+```
+
+Before rebuilding either devcontainer profile, copy:
+
+```bash
+cp .devcontainer/.env.example .devcontainer/.env
+```
+
 <!-- markdownlint-disable MD013 -->
 | Command | Description |
 | --- | --- |
 | `npm run db:generate` | Generate migrations from schema |
-| `npm run db:up` | Start the local SQLite proxy DB container |
-| `npm run db:down` | Stop the local SQLite proxy DB container |
+| `npm run db:up` | Start the local SQL Server Developer container |
+| `npm run db:down` | Stop the local SQL Server Developer container |
 | `npm run db:health` | Check the configured database endpoint |
-| `npm run db:migrate` | Apply migrations to the configured SQLite DB |
-| `npm run db:seed` | Seed the configured SQLite DB with test data |
-| `npm run db:reset` | Reset the configured SQLite DB |
+| `npm run db:migrate` | Apply migrations to the configured SQL Server DB |
+| `npm run db:seed` | Seed the configured SQL Server DB with test data |
+| `npm run db:reset` | Reset the configured SQL Server DB |
 | `npm run db:setup` | Wait, reset, migrate, and seed in one step |
-| `npm run db:browse` | Open the inspectable SQLite file in VS Code |
+| `npm run db:browse` | Print a read-only SQLTools MSSQL connection block |
+| `npm run db:sqlserver:up` | Start the local SQL Server Developer container scaffold |
+| `npm run db:sqlserver:down` | Stop the local SQL Server Developer container scaffold |
+| `npm run db:sqlserver:wait` | Poll the configured SQL Server endpoint until it responds |
+| `npm run db:sqlserver:health` | Run a SQL Server `SELECT 1` health probe |
+| `npm run db:sqlserver:browse` | Print a read-only SQLTools MSSQL connection block |
 <!-- markdownlint-enable MD013 -->
 
 ### Browsing the Local Database
+
+For the approved future SQL Server browse workflow, use
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
+The remainder of this section documents the current SQLite browse behavior
+while the migration is still in progress.
 
 The recommended VS Code extension **SQLite Viewer**
 (`qwtel.sqlite-viewer`) is included in the dev container. In both

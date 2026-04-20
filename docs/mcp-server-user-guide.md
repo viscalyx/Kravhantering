@@ -93,6 +93,13 @@ protect it at the platform edge. The planned auth rollout is documented in
 
 ## Run It Locally
 
+The repository is migrating toward SQL Server + TypeORM, but the current
+checked-in MCP runtime still uses the existing local DB workflow below. For the
+approved migration direction and SQL Server scaffold, see
+[sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
+and
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
+
 1. Install dependencies with `npm install`.
 2. Start the local DB service with `npm run db:up`.
 3. Prepare the local SQLite database with `npm run db:setup`.

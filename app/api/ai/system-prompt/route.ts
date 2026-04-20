@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { buildSystemPrompt } from '@/lib/ai/requirement-prompt'
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   const locale =
     request.nextUrl.searchParams.get('locale') === 'sv' ? 'sv' : 'en'
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
 
   const taxonomy = await loadTaxonomy(db, locale)
   const prompt = buildSystemPrompt(taxonomy, locale)

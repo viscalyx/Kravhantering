@@ -5,7 +5,7 @@ import {
   getPackageItemStatusById,
   updatePackageItemStatus,
 } from '@/lib/dal/package-item-statuses'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -18,7 +18,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const [status, linkedItems] = await Promise.all([
     getPackageItemStatusById(db, numericId),
     getLinkedPackageItems(db, numericId),
@@ -38,7 +38,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const body = (await request.json()) as Parameters<
     typeof updatePackageItemStatus
   >[2]
@@ -58,7 +58,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   await deletePackageItemStatus(db, numericId)
   return NextResponse.json({ ok: true })
 }

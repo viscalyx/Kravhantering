@@ -5,7 +5,7 @@ import {
   getNormReferenceById,
   updateNormReference,
 } from '@/lib/dal/norm-references'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -18,7 +18,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const [normReference, linkedRequirements] = await Promise.all([
     getNormReferenceById(db, numericId),
     getLinkedRequirements(db, numericId),
@@ -38,7 +38,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const body = (await request.json()) as Parameters<
     typeof updateNormReference
   >[2]
@@ -58,7 +58,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const linked = await getLinkedRequirements(db, numericId)
   if (linked.length > 0) {
     return NextResponse.json(

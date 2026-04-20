@@ -117,6 +117,9 @@ describe('requirement-types DAL', () => {
         nameEn: 'Orig',
       })
       const updated = await updateType(db, t.id, { nameSv: 'Ny' })
+      if (!updated) {
+        throw new Error('Expected updated type to be returned')
+      }
       expect(updated.nameSv).toBe('Ny')
       expect(updated.nameEn).toBe('Orig')
     })

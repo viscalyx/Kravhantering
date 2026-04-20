@@ -22,8 +22,15 @@ import {
   revertToDraft,
   updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
-import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
-import { listCategories } from '@/lib/dal/requirement-categories'
+import {
+  getAreaById,
+  listAreas,
+  type RequirementAreaRow,
+} from '@/lib/dal/requirement-areas'
+import {
+  listCategories,
+  type RequirementCategoryRow,
+} from '@/lib/dal/requirement-categories'
 import {
   getPackageBySlug,
   getPublishedVersionIdForRequirement,
@@ -32,10 +39,17 @@ import {
   listPackages,
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
-import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
+import {
+  listStatuses,
+  listTransitions,
+  type RequirementStatusRecord,
+  type RequirementStatusTransitionDetail,
+} from '@/lib/dal/requirement-statuses'
 import {
   listQualityCharacteristics,
   listTypes,
+  type QualityCharacteristicRow,
+  type RequirementTypeWithQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
 import {
   approveArchiving,
@@ -920,7 +934,9 @@ export function createRequirementsService(
               items: areas,
               message: createServiceMessage(
                 getCatalogTitle('areas', locale, terminology),
-                areas.map(area => `${area.prefix}: ${area.name}`),
+                areas.map(
+                  (area: RequirementAreaRow) => `${area.prefix}: ${area.name}`,
+                ),
                 responseFormat,
               ),
               pagination: null,
@@ -934,7 +950,7 @@ export function createRequirementsService(
               items: categories,
               message: createServiceMessage(
                 getCatalogTitle('categories', locale, terminology),
-                categories.map(category =>
+                categories.map((category: RequirementCategoryRow) =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
                 responseFormat,
@@ -950,7 +966,7 @@ export function createRequirementsService(
               items: types,
               message: createServiceMessage(
                 getCatalogTitle('types', locale, terminology),
-                types.map(type =>
+                types.map((type: RequirementTypeWithQualityCharacteristics) =>
                   locale === 'sv' ? type.nameSv : type.nameEn,
                 ),
                 responseFormat,
@@ -969,8 +985,9 @@ export function createRequirementsService(
               items: qualityCharacteristics,
               message: createServiceMessage(
                 getCatalogTitle('quality_characteristics', locale, terminology),
-                qualityCharacteristics.map(category =>
-                  locale === 'sv' ? category.nameSv : category.nameEn,
+                qualityCharacteristics.map(
+                  (category: QualityCharacteristicRow) =>
+                    locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
                 responseFormat,
               ),
@@ -1001,7 +1018,7 @@ export function createRequirementsService(
               items: statuses,
               message: createServiceMessage(
                 getCatalogTitle('statuses', locale, terminology),
-                statuses.map(status =>
+                statuses.map((status: RequirementStatusRecord) =>
                   locale === 'sv' ? status.nameSv : status.nameEn,
                 ),
                 responseFormat,
@@ -1032,7 +1049,7 @@ export function createRequirementsService(
             items: transitions,
             message: createServiceMessage(
               getCatalogTitle('transitions', locale, terminology),
-              transitions.map(transition => {
+              transitions.map((transition: RequirementStatusTransitionDetail) => {
                 const fromName =
                   locale === 'sv'
                     ? transition.fromStatus.nameSv

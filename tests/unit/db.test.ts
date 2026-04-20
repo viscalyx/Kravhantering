@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type TestGlobal = typeof globalThis & {
   __kravhanteringDbCache?: Map<string, unknown>
+  __kravhanteringSqlServerDataSourceCache?: Map<string, unknown>
 }
 
 function clearDbCache(): void {
@@ -25,6 +26,7 @@ function clearDbCache(): void {
   }
 
   delete testGlobal.__kravhanteringDbCache
+  delete testGlobal.__kravhanteringSqlServerDataSourceCache
 }
 
 describe('lib/db', () => {
@@ -40,6 +42,7 @@ describe('lib/db', () => {
     vi.resetModules()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
     vi.useRealTimers()
     clearDbCache()
   })
@@ -133,5 +136,91 @@ describe('lib/db', () => {
         signal: expect.any(AbortSignal),
       }),
     )
+  })
+
+  it('caches initialized SQL Server data sources per connection string', async () => {
+    const initialize = vi.fn(async () => undefined)
+    const dataSource = {
+      initialize,
+      isInitialized: false,
+    }
+    const createAppDataSource = vi.fn(() => dataSource)
+
+    vi.doMock('@/lib/typeorm/data-source', () => ({
+      createAppDataSource,
+      createReadonlyBrowseDataSource: vi.fn(),
+    }))
+
+    const { getSqlServerDataSource } = await import('@/lib/db')
+
+    const first = await getSqlServerDataSource(
+      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering',
+    )
+    const second = await getSqlServerDataSource(
+      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering',
+    )
+
+    expect(first).toBe(second)
+    expect(createAppDataSource).toHaveBeenCalledTimes(1)
+    expect(initialize).toHaveBeenCalledTimes(1)
+  })
+
+  it('classifies SQL Server URLs as the TypeORM provider kind', async () => {
+    const { getDatabaseProviderKind } = await import('@/lib/db')
+
+    expect(
+      getDatabaseProviderKind('mssql://sa:Password123!@127.0.0.1:1433/app'),
+    ).toBe('sqlserver-typeorm')
+    expect(getDatabaseProviderKind('file:./tmp/dev.sqlite')).toBe(
+      'legacy-sqlite',
+    )
+  })
+
+  it('rejects legacy getRequestDatabase calls when DATABASE_URL points at SQL Server', async () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering',
+    )
+
+    const { getRequestDatabase } = await import('@/lib/db')
+
+    await expect(getRequestDatabase()).rejects.toThrow(
+      'legacy SQLite/Drizzle path only',
+    )
+  })
+
+  it('returns the SQL Server data source from getRequestDatabaseConnection when DATABASE_URL uses mssql', async () => {
+    vi.stubEnv(
+      'DATABASE_URL',
+      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering',
+    )
+
+    const initialize = vi.fn(async () => undefined)
+    const dataSource = {
+      initialize,
+      isInitialized: false,
+    }
+    const createAppDataSource = vi.fn(() => dataSource)
+
+    vi.doMock('@/lib/typeorm/data-source', () => ({
+      createAppDataSource,
+      createReadonlyBrowseDataSource: vi.fn(),
+    }))
+
+    const { getRequestDatabaseConnection } = await import('@/lib/db')
+
+    await expect(getRequestDatabaseConnection()).resolves.toBe(dataSource)
+    expect(createAppDataSource).toHaveBeenCalledTimes(1)
+    expect(initialize).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns the legacy SQLite connection from getRequestDatabaseConnection when DATABASE_URL uses sqlite', async () => {
+    const { getDb, getRequestDatabaseConnection } = await import('@/lib/db')
+
+    const expected = getDb(':memory:')
+
+    vi.stubEnv('DATABASE_URL', ':memory:')
+
+    await expect(getRequestDatabaseConnection()).resolves.toBe(expected)
   })
 })

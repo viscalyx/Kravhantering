@@ -3,16 +3,16 @@ import {
   createPackageResponsibilityArea,
   listPackageResponsibilityAreas,
 } from '@/lib/dal/package-responsibility-areas'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const areas = await listPackageResponsibilityAreas(db)
   return NextResponse.json({ areas })
 }
 
 export async function POST(request: Request) {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const body = (await request.json()) as Parameters<
     typeof createPackageResponsibilityArea
   >[1]

@@ -11,7 +11,7 @@ export async function loadTaxonomy(
   db: Parameters<typeof listCategories>[0],
   locale: 'en' | 'sv',
 ): Promise<TaxonomyData> {
-  const nameKey = locale === 'sv' ? 'nameSv' : 'nameEn'
+  const nameKey: 'nameSv' | 'nameEn' = locale === 'sv' ? 'nameSv' : 'nameEn'
 
   const [categories, types, qcs, riskLevels, scenarios] = await Promise.all([
     listCategories(db),
@@ -24,7 +24,10 @@ export async function loadTaxonomy(
   const qcMap = new Map(qcs.map(qc => [qc.id, qc]))
 
   return {
-    categories: categories.map(c => ({ id: c.id, name: c[nameKey] })),
+    categories: categories.map(category => ({
+      id: category.id,
+      name: category[nameKey],
+    })),
     qualityCharacteristics: qcs.map(qc => ({
       id: qc.id,
       name: qc[nameKey],

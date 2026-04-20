@@ -29,5 +29,7 @@ applyTo: "{app/api/**/*.ts,package.json}"
 ## Local And Prod-Like Scripts
 
 - Keep `DATABASE_URL` as the runtime contract in scripts and route-related setup.
-- Local development uses `npm run dev` with the separate SQLite proxy service.
+- Approved target architecture is SQL Server + TypeORM. Do not add new runtime surfaces that assume the SQLite proxy is the future platform.
+- While the migration is in progress, the checked-in app runtime still uses `npm run dev` with the separate SQLite proxy service. Treat that as migration debt, not as the intended end-state.
+- SQL Server coexistence scaffolding may use `SQLSERVER_DATABASE_URL` / `SQLSERVER_DATABASE_READONLY_URL` before the final cutover collapses back to `DATABASE_URL` / `DATABASE_READONLY_URL`.
 - Prod-like validation uses `npm run build` and `npm run start:prodlike`.

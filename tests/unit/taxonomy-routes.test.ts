@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
 const routeState = vi.hoisted(() => ({
-  getRequestDatabase: vi.fn(() => ({})),
+  getRequestDatabaseConnection: vi.fn(() => ({})),
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: routeState.getRequestDatabase,
+  getRequestDatabase: routeState.getRequestDatabaseConnection,
+  getRequestDatabaseConnection: routeState.getRequestDatabaseConnection,
 }))
 
 /* ── DAL mocks ───────────────────────────────────────────────────── */
@@ -278,7 +279,7 @@ describe('package-responsibility-areas routes', () => {
     )
 
     expect(r.status).toBe(400)
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestDatabaseConnection).not.toHaveBeenCalled()
     expect(mockUpdateArea).not.toHaveBeenCalled()
   })
 })
@@ -331,7 +332,7 @@ describe('requirement-areas/[id] routes', () => {
     )
 
     expect(r.status).toBe(400)
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestDatabaseConnection).not.toHaveBeenCalled()
     expect(mockDeleteReqArea).not.toHaveBeenCalled()
   })
 })
@@ -439,7 +440,7 @@ describe('read-only taxonomy routes', () => {
     expect(r.status).toBe(400)
     const j = (await r.json()) as { error: string }
     expect(j.error).toBe('Invalid typeId')
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestDatabaseConnection).not.toHaveBeenCalled()
   })
 
   it('quality-characteristics POST creates with 201', async () => {
@@ -468,7 +469,7 @@ describe('read-only taxonomy routes', () => {
     expect(r.status).toBe(400)
     const j = (await r.json()) as { error: string }
     expect(j.error).toBe('Invalid payload')
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestDatabaseConnection).not.toHaveBeenCalled()
   })
 
   it('quality-characteristics POST returns 400 for invalid parentId', async () => {
@@ -487,7 +488,7 @@ describe('read-only taxonomy routes', () => {
     expect(r.status).toBe(400)
     const j = (await r.json()) as { error: string }
     expect(j.error).toBe('Invalid payload')
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestDatabaseConnection).not.toHaveBeenCalled()
   })
 
   it('requirement-categories GET returns categories', async () => {

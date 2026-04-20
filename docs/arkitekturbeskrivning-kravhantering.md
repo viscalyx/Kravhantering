@@ -17,6 +17,13 @@ relevanta för lösningens nuvarande utformning. Varje
 perspektiv riktar sig till de intressenter som anges i
 respektive avsnitt.
 
+> Migreringsstatus: den godkända målarkitekturen är nu
+> **Microsoft SQL Server + TypeORM**. Detaljerade avsnitt nedan beskriver
+> fortfarande till stor del den nuvarande SQLite + Drizzle-implementationen
+> medan migreringen pågår. Se
+> [sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
+> för den styrande planen.
+
 **Konventioner:**
 
 - Tekniska produktnamn (Next.js, SQLite, Drizzle

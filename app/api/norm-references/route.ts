@@ -4,10 +4,10 @@ import {
   createNormReference,
   listNormReferences,
 } from '@/lib/dal/norm-references'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 
 export async function GET(request: Request) {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const searchParams = new URL(request.url).searchParams
   const linkedOnly = searchParams.get('linked') === 'true'
   const statuses = searchParams
@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const body = (await request.json()) as Record<string, unknown>
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const type = typeof body.type === 'string' ? body.type.trim() : ''

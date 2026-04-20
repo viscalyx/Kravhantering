@@ -1,8 +1,15 @@
 ---
-applyTo: "{drizzle/schema.ts,drizzle/seed.sql,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
+applyTo: "{drizzle/schema.ts,drizzle/seed.sql,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,lib/typeorm/**/*.ts,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md,docs/sql-server-typeorm-migration-plan.md}"
 ---
 
 # Database Schema Changes
+
+## Migration Direction
+
+- The approved target architecture is SQL Server + TypeORM.
+- Do not expand the legacy SQLite + Drizzle implementation unless you are keeping the current app stable during migration.
+- Preserve current seed-data meaning and identifiers wherever possible. Document unavoidable drift explicitly.
+- Keep `docs/sql-server-typeorm-migration-plan.md` and the affected docs in sync with any migration-direction changes.
 
 ## Standard
 
@@ -90,9 +97,10 @@ remove **all** references to it from `docs/database-schema.md`:
 - Nodes and edges in the Index Relationship Diagram.
 - Any prose references in the Status Workflow or other narrative sections.
 
-## Migration Generation
+## Legacy Drizzle Migration Generation
 
-Every migration must produce three artifacts inside `drizzle/migrations/`:
+While the repository still depends on the legacy Drizzle path, every legacy
+migration must produce three artifacts inside `drizzle/migrations/`:
 
 1. `NNNN_<name>.sql` — the migration SQL.
 2. `meta/_journal.json` — an entry for the new migration.
@@ -100,7 +108,7 @@ Every migration must produce three artifacts inside `drizzle/migrations/`:
 
 Missing snapshots break `npx drizzle-kit generate` for all future runs.
 
-### Workflow
+### Legacy Workflow
 
 1. Update `drizzle/schema.ts` to reflect the desired end state.
 2. Run `npx drizzle-kit generate`. This creates all three artifacts.
@@ -108,7 +116,7 @@ Missing snapshots break `npx drizzle-kit generate` for all future runs.
 4. If the SQL is wrong (e.g. DROP-and-recreate instead of `ALTER TABLE`),
    **edit only the `.sql` file**. Keep the generated journal entry and
    snapshot file unchanged.
-5. Run `npm run db:setup` to verify the migration applies cleanly.
+5. Run `npm run db:setup` to verify the legacy migration applies cleanly.
 
 ### Prohibited
 

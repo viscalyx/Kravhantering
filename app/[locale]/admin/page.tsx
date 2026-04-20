@@ -5,7 +5,7 @@ import {
   getRequirementListColumnDefaults,
   getUiTerminology,
 } from '@/lib/dal/ui-settings'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestDatabaseConnection } from '@/lib/db'
 import { buildUiTerminologyPayload } from '@/lib/ui-terminology'
 import AdminClient from './admin-client'
 
@@ -23,7 +23,7 @@ export async function generateMetadata({
 }
 
 export default async function AdminPage() {
-  const db = await getRequestDatabase()
+  const db = await getRequestDatabaseConnection()
   const [terminology, initialColumnDefaults] = await Promise.all([
     getUiTerminology(db),
     getRequirementListColumnDefaults(db),

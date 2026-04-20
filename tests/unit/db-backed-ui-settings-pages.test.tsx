@@ -10,7 +10,7 @@ import {
 } from '@/lib/ui-terminology'
 
 const getTranslationsMock = vi.fn(async () => (key: string) => key)
-const getRequestDatabaseMock = vi.fn()
+const getRequestDatabaseConnectionMock = vi.fn()
 const getUiTerminologyMock = vi.fn()
 const getRequirementListColumnDefaultsMock = vi.fn()
 
@@ -26,7 +26,7 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: getRequestDatabaseMock,
+  getRequestDatabaseConnection: getRequestDatabaseConnectionMock,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
@@ -62,11 +62,11 @@ describe('DB-backed UI settings pages', () => {
   beforeEach(() => {
     vi.resetModules()
     getTranslationsMock.mockReset()
-    getRequestDatabaseMock.mockReset()
+    getRequestDatabaseConnectionMock.mockReset()
     getUiTerminologyMock.mockReset()
     getRequirementListColumnDefaultsMock.mockReset()
     getTranslationsMock.mockResolvedValue((key: string) => key)
-    getRequestDatabaseMock.mockResolvedValue({})
+    getRequestDatabaseConnectionMock.mockResolvedValue({})
     getUiTerminologyMock.mockResolvedValue(getDefaultUiTerminology())
     getRequirementListColumnDefaultsMock.mockResolvedValue(
       DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
@@ -95,7 +95,9 @@ describe('DB-backed UI settings pages', () => {
   })
 
   it('fails the admin page when database-backed UI settings cannot be loaded', async () => {
-    getRequestDatabaseMock.mockRejectedValueOnce(new Error('db unavailable'))
+    getRequestDatabaseConnectionMock.mockRejectedValueOnce(
+      new Error('db unavailable'),
+    )
 
     const { default: AdminPage } = await import('@/app/[locale]/admin/page')
 

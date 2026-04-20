@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  getRequestDatabase: vi.fn(() => 'mock-db'),
+  getRequestDatabaseConnection: vi.fn(() => 'mock-db'),
   listOwners: vi.fn(),
 }))
-vi.mock('@/lib/db', () => ({ getRequestDatabase: mocks.getRequestDatabase }))
+vi.mock('@/lib/db', () => ({
+  getRequestDatabaseConnection: mocks.getRequestDatabaseConnection,
+}))
 vi.mock('@/lib/dal/owners', () => ({
   listOwners: mocks.listOwners,
 }))

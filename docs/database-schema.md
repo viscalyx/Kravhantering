@@ -6,6 +6,13 @@ on SQLite using Drizzle ORM.
 
 The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
 
+> Migration note: the approved target architecture is **Microsoft SQL Server +
+> TypeORM**. This document still describes the current checked-in legacy schema
+> while the migration is in progress. See
+> [sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
+> for the migration rules, especially seed-data preservation and the future
+> SQL Server-only support model.
+
 ---
 
 ## Table of Contents

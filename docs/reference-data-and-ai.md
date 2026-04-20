@@ -66,7 +66,10 @@ Source: `lib/dal/owners.ts`
 - `listOwners()` — orders by `lastName`, then `firstName`
   (both ascending).
 - `getOwnerById()` — returns `null` if not found.
-- `createOwner()` — returns the raw Drizzle row.
+- `createOwner()` — returns the raw persistence row from the current
+  implementation. During the migration window that is still a Drizzle
+  row; after the SQL Server + TypeORM cutover it should become the
+  equivalent TypeORM-backed result.
 - `updateOwner()` — always sets `updatedAt` to the current
   ISO timestamp. Returns `null` if the ID does not match.
 - `deleteOwner()` — returns `boolean` indicating whether a

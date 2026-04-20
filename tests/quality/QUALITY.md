@@ -2,14 +2,14 @@
 
 ## Purpose
 
-Kravhantering is a Next.js, React, TypeScript, and SQLite application
-for managing requirements, requirement packages, deviations, improvement
-suggestions, reports, and MCP access. Quality in this project means every
-surface tells the same lifecycle truth: REST, MCP, package views, exports,
-and admin defaults must agree on what is draft, under review, published,
-archived, deviated, or pending review. A route returning `200` is not enough
-if it exposes the wrong version or lets package status drift from the audit
-trail.
+Kravhantering is a Next.js and TypeScript application whose approved database
+target is SQL Server + TypeORM, while the current checked-in implementation
+still carries a large SQLite + Drizzle layer during migration. Quality in this
+project means every surface tells the same lifecycle truth: REST, MCP, package
+views, exports, and admin defaults must agree on what is draft, under review,
+published, archived, deviated, or pending review. A route returning `200` is
+not enough if it exposes the wrong version or lets package status drift from
+the audit trail.
 
 Deming applies here as "quality is built into the workflow." The shared
 service in `lib/requirements/service.ts`, the lifecycle DAL in
