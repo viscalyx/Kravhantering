@@ -366,6 +366,14 @@ function formatSeedDebugValue(value) {
   return value
 }
 
+function containsSqlServerLoginName(password, username) {
+  const normalizedPassword = String(password ?? '').toLowerCase()
+  const normalizedUsername = String(username ?? '').trim().toLowerCase()
+
+  return normalizedUsername.length >= 3 &&
+    normalizedPassword.includes(normalizedUsername)
+}
+
 export async function resetSqlServerDatabase(connectionString, options = {}) {
   const connectImpl = options.connectImpl ?? defaultConnect
   const env = options.env ?? process.env
@@ -445,49 +453,69 @@ export async function ensureReadonlySqlServerAccess(
     return { configured: false }
   }
 
+  if (containsSqlServerLoginName(readonly.password, readonly.username)) {
+    throw new Error(
+      `Read-only SQL Server login setup failed for ${readonly.username}: DB_READONLY_PASSWORD / DATABASE_READONLY_URL uses a password that contains the login name. SQL Server password policy commonly rejects that. Choose a more distinct password, for example one that does not include "${readonly.username}".`,
+    )
+  }
+
   const escapedLoginName = quoteSqlServerIdentifier(readonly.username)
   const escapedPassword = `'${escapeSqlServerStringLiteral(readonly.password)}'`
   const escapedUserName = quoteSqlServerIdentifier(readonly.username)
   const escapedUserNameLiteral = `N'${escapeSqlServerStringLiteral(readonly.username)}'`
   const masterConnectionString = createMasterConnectionString(connectionString)
 
-  await withPool(masterConnectionString, connectImpl, async pool => {
-    await pool.request().query(`
-      IF EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = ${escapedUserNameLiteral})
-      BEGIN
-        ALTER LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
-      END
-      ELSE
-      BEGIN
-        CREATE LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
-      END
-    `)
-  }, env)
+  try {
+    await withPool(masterConnectionString, connectImpl, async pool => {
+      await pool.request().query(`
+        IF EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = ${escapedUserNameLiteral})
+        BEGIN
+          ALTER LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
+        END
+        ELSE
+        BEGIN
+          CREATE LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
+        END
+      `)
+    }, env)
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error)
+    throw new Error(
+      `Read-only SQL Server login setup failed for ${readonly.username}: ${details}`,
+    )
+  }
 
-  await withPool(connectionString, connectImpl, async pool => {
-    await pool.request().query(`
-      IF DATABASE_PRINCIPAL_ID(${escapedUserNameLiteral}) IS NULL
-      BEGIN
-        CREATE USER ${escapedUserName} FOR LOGIN ${escapedLoginName}
-      END
+  try {
+    await withPool(connectionString, connectImpl, async pool => {
+      await pool.request().query(`
+        IF DATABASE_PRINCIPAL_ID(${escapedUserNameLiteral}) IS NULL
+        BEGIN
+          CREATE USER ${escapedUserName} FOR LOGIN ${escapedLoginName}
+        END
 
-      IF NOT EXISTS (
-        SELECT 1
-        FROM sys.database_role_members AS members
-        INNER JOIN sys.database_principals AS roles
-          ON members.role_principal_id = roles.principal_id
-        INNER JOIN sys.database_principals AS principals
-          ON members.member_principal_id = principals.principal_id
-        WHERE roles.name = N'db_datareader'
-          AND principals.name = ${escapedUserNameLiteral}
-      )
-      BEGIN
-        ALTER ROLE db_datareader ADD MEMBER ${escapedUserName}
-      END
+        IF NOT EXISTS (
+          SELECT 1
+          FROM sys.database_role_members AS members
+          INNER JOIN sys.database_principals AS roles
+            ON members.role_principal_id = roles.principal_id
+          INNER JOIN sys.database_principals AS principals
+            ON members.member_principal_id = principals.principal_id
+          WHERE roles.name = N'db_datareader'
+            AND principals.name = ${escapedUserNameLiteral}
+        )
+        BEGIN
+          ALTER ROLE db_datareader ADD MEMBER ${escapedUserName}
+        END
 
-      GRANT VIEW DEFINITION TO ${escapedUserName}
-    `)
-  }, env)
+        GRANT VIEW DEFINITION TO ${escapedUserName}
+      `)
+    }, env)
+  } catch (error) {
+    const details = error instanceof Error ? error.message : String(error)
+    throw new Error(
+      `Read-only SQL Server database-user setup failed for ${readonly.username}: ${details}`,
+    )
+  }
 
   return {
     configured: true,
@@ -839,9 +867,15 @@ export async function main(args, dependencies = {}) {
     const masterConnectionString = createMasterConnectionString(connectionString)
 
     try {
+      consoleObj.log('Step 1/4: waiting for SQL Server to accept connections...')
       await waitForSqlServer(masterConnectionString, dependencies)
+      consoleObj.log('Step 2/4: resetting SQL Server database...')
       await resetSqlServerDatabase(connectionString, dependencies)
+      consoleObj.log('Step 3/4: applying SQL Server migrations...')
       await runSqlServerMigrations(connectionString, dependencies)
+      consoleObj.log(
+        'Step 4/4: seeding SQL Server data and configuring read-only access...',
+      )
       const result = await seedSqlServerDatabase(connectionString, dependencies)
       consoleObj.log(
         `SQL Server setup completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
