@@ -101,5 +101,23 @@
 
   "markdown-mermaid.darkModeTheme": "default",
   "markdown-mermaid.lightModeTheme": "default",
-  "python.analysis.typeCheckingMode": "strict"
+  "python.analysis.typeCheckingMode": "strict",
+  "sqltools.connections": [
+    {
+      "connectionTimeout": 15,
+      "mssqlOptions": {
+        "appName": "SQLTools",
+        "useUTC": true,
+        "encrypt": true,
+        "trustServerCertificate": true
+      },
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "db",
+      "port": 1433,
+      "driver": "MSSQL",
+      "name": "db",
+      "username": "sa"
+    }
+  ]
 }
