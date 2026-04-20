@@ -264,6 +264,14 @@ function escapeSqlServerStringLiteral(value) {
   return String(value).replaceAll("'", "''")
 }
 
+function getSqlServerSchemaName(env = process.env) {
+  return env.DB_SCHEMA?.trim() || 'dbo'
+}
+
+function quoteQualifiedSqlServerTableName(tableName, env = process.env) {
+  return `${quoteSqlServerIdentifier(getSqlServerSchemaName(env))}.${quoteSqlServerIdentifier(tableName)}`
+}
+
 function createMasterConnectionString(connectionString) {
   const url = new URL(connectionString)
   url.pathname = '/master'
@@ -337,6 +345,22 @@ function normalizeSeedValue(value) {
 
   if (typeof value === 'boolean') {
     return value ? 1 : 0
+  }
+
+  return value
+}
+
+function formatSeedDebugValue(value) {
+  if (value == null) {
+    return value
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString()
+  }
+
+  if (typeof value === 'bigint') {
+    return value.toString()
   }
 
   return value
@@ -503,8 +527,12 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
 
       try {
         for (const tableMetadata of metadata) {
+          const qualifiedTableName = quoteQualifiedSqlServerTableName(
+            tableMetadata.name,
+            env,
+          )
           await requestFactory().query(
-            `ALTER TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} NOCHECK CONSTRAINT ALL`,
+            `ALTER TABLE ${qualifiedTableName} NOCHECK CONSTRAINT ALL`,
           )
         }
 
@@ -516,10 +544,16 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
           }
 
           const hasIdentity = hasIdentityPrimaryKey(tableMetadata)
+          const qualifiedTableName = quoteQualifiedSqlServerTableName(
+            tableMetadata.name,
+            env,
+          )
+          const identityInsertOnSql =
+            `SET IDENTITY_INSERT ${qualifiedTableName} ON`
+          const identityInsertOffSql =
+            `SET IDENTITY_INSERT ${qualifiedTableName} OFF`
           if (hasIdentity) {
-            await requestFactory().query(
-              `SET IDENTITY_INSERT ${quoteSqlServerIdentifier(tableMetadata.name)} ON`,
-            )
+            await requestFactory().query(identityInsertOnSql)
           }
 
           try {
@@ -528,23 +562,40 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
                 Object.hasOwn(row, column.name),
               )
               const request = requestFactory()
+              const parameterValues = {}
               const parameterTokens = columns.map((column, index) => {
                 const parameterName = `p${index}`
-                request.input(parameterName, normalizeSeedValue(row[column.name]))
+                const normalizedValue = normalizeSeedValue(row[column.name])
+                request.input(parameterName, normalizedValue)
+                parameterValues[parameterName] = formatSeedDebugValue(normalizedValue)
                 return `@${parameterName}`
               })
+              const insertSql =
+                `INSERT INTO ${qualifiedTableName} (${columns
+                  .map(column => quoteSqlServerIdentifier(column.name))
+                  .join(', ')}) VALUES (${parameterTokens.join(', ')})`
 
               try {
-                await request.query(
-                  `INSERT INTO ${quoteSqlServerIdentifier(tableMetadata.name)} (${columns
-                    .map(column => quoteSqlServerIdentifier(column.name))
-                    .join(', ')}) VALUES (${parameterTokens.join(', ')})`,
-                )
+                await request.query(insertSql)
               } catch (error) {
                 const details =
                   error instanceof Error ? error.message : String(error)
                 throw new Error(
-                  `SQL Server seed failed for table ${tableMetadata.name}: ${details}`,
+                  [
+                    `SQL Server seed failed for table ${tableMetadata.name}: ${details}`,
+                    `identityInsertEnabled: ${String(hasIdentity)}`,
+                    `identityInsertOnSql: ${identityInsertOnSql}`,
+                    `insertSql: ${insertSql}`,
+                    `parameters: ${JSON.stringify(parameterValues)}`,
+                    `row: ${JSON.stringify(
+                      columns.reduce((accumulator, column) => {
+                        accumulator[column.name] = formatSeedDebugValue(
+                          row[column.name],
+                        )
+                        return accumulator
+                      }, {}),
+                    )}`,
+                  ].join('\n'),
                 )
               }
 
@@ -552,16 +603,18 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
             }
           } finally {
             if (hasIdentity) {
-              await requestFactory().query(
-                `SET IDENTITY_INSERT ${quoteSqlServerIdentifier(tableMetadata.name)} OFF`,
-              )
+              await requestFactory().query(identityInsertOffSql)
             }
           }
         }
 
         for (const tableMetadata of metadata) {
+          const qualifiedTableName = quoteQualifiedSqlServerTableName(
+            tableMetadata.name,
+            env,
+          )
           await requestFactory().query(
-            `ALTER TABLE ${quoteSqlServerIdentifier(tableMetadata.name)} WITH CHECK CHECK CONSTRAINT ALL`,
+            `ALTER TABLE ${qualifiedTableName} WITH CHECK CHECK CONSTRAINT ALL`,
           )
         }
 

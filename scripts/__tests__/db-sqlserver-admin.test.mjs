@@ -380,10 +380,10 @@ describe('db-sqlserver-admin.mjs', () => {
     )
 
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('IDENTITY_INSERT [requirement_categories] ON'),
+      expect.stringContaining('IDENTITY_INSERT [dbo].[requirement_categories] ON'),
     )
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO [requirement_categories]'),
+      expect.stringContaining('INSERT INTO [dbo].[requirement_categories]'),
     )
     expect(result).toEqual({
       insertedRows: 2,
@@ -393,6 +393,64 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(commit).toHaveBeenCalled()
     expect(rollback).not.toHaveBeenCalled()
     expect(sqlite.close).toHaveBeenCalled()
+  })
+
+  it('includes the failing insert SQL and parameters when seed insertion fails', async () => {
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(
+        new Error(
+          "Cannot insert explicit value for identity column in table 'deviations' when IDENTITY_INSERT is set to OFF.",
+        ),
+      )
+      .mockResolvedValueOnce(undefined)
+    const requestFactory = vi.fn(() => ({
+      input: vi.fn().mockReturnThis(),
+      query,
+    }))
+    const connectImpl = vi.fn(async () => ({
+      close: vi.fn(async () => undefined),
+      request: requestFactory,
+      transaction: vi.fn(() => ({
+        begin: vi.fn(async () => undefined),
+        commit: vi.fn(async () => undefined),
+        request: requestFactory,
+        rollback: vi.fn(async () => undefined),
+      })),
+    }))
+    const sqlite = {
+      close: vi.fn(),
+    }
+
+    await expect(
+      seedSqlServerDatabase(
+        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+        {
+          connectImpl,
+          createLegacySqliteSnapshotImpl: vi.fn(() => sqlite),
+          getLegacyTableMetadataImpl: vi.fn(() => [
+            {
+              columns: [
+                { name: 'id', type: 'INTEGER' },
+                { name: 'package_item_id', type: 'INTEGER' },
+                { name: 'motivation', type: 'TEXT' },
+              ],
+              foreignKeys: [],
+              indexes: [],
+              name: 'deviations',
+              primaryKey: ['id'],
+            },
+          ]),
+          readLegacySeedRowsImpl: vi.fn(() => [
+            { id: 1, motivation: 'Need deviation', package_item_id: 42 },
+          ]),
+        },
+      ),
+    ).rejects.toThrow(
+      /identityInsertOnSql: SET IDENTITY_INSERT \[dbo\]\.\[deviations\] ON/,
+    )
   })
 
   it('creates readonly SQL Server access when readonly credentials differ', async () => {
