@@ -84,13 +84,14 @@ DB_TRUST_SERVER_CERTIFICATE=...
 The write connection defaults to the `sa` login using `MSSQL_SA_PASSWORD`
 unless you explicitly set `DB_USER` / `DB_PASSWORD`.
 
-`DATABASE_URL`, `DATABASE_READONLY_URL`, `SQLSERVER_DATABASE_URL`, and
-`SQLSERVER_DATABASE_READONLY_URL` remain supported as **optional overrides**
-when you need to point at an explicit external connection string instead of the
-derived local/dev settings.
+`DATABASE_URL` and `DATABASE_READONLY_URL` remain the preferred **optional
+overrides** when you need to point at an explicit connection string instead of
+the derived local/dev settings. The temporary `SQLSERVER_DATABASE_URL` and
+`SQLSERVER_DATABASE_READONLY_URL` aliases are still supported in code during
+the migration, but the local `.env*` files should normally stick to `DB_*`
+values plus optional commented `DATABASE_*` overrides.
 
-After the full cutover, these temporary `SQLSERVER_*` variables should collapse
-back to the canonical runtime contract:
+The canonical runtime contract remains:
 
 ```env
 DATABASE_URL=...
@@ -121,8 +122,9 @@ The blessed VS Code-friendly path is:
    - `mtxr.sqltools`
    - `mtxr.sqltools-driver-mssql`
 2. Configure a least-privilege SQL Server login for browsing.
-3. Set `SQLSERVER_DATABASE_READONLY_URL` during the coexistence window, or
-   `DATABASE_READONLY_URL` after cutover.
+3. Set `DATABASE_READONLY_URL` if you need an explicit browse connection
+   override. Otherwise the tool derives the read-only connection from the
+   `DB_*` values and `DB_READONLY_PASSWORD`.
 4. Run:
 
    ```bash
