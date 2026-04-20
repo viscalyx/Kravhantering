@@ -103,6 +103,18 @@ export function parseInteger(value, defaultValue) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue
 }
 
+function getSearchParamIgnoreCase(url, name) {
+  const normalizedName = name.toLowerCase()
+
+  for (const [key, value] of url.searchParams.entries()) {
+    if (key.toLowerCase() === normalizedName) {
+      return value
+    }
+  }
+
+  return null
+}
+
 export function isSqlServerUrl(connectionString) {
   return (
     connectionString.startsWith('mssql://') ||
@@ -133,7 +145,10 @@ export function getSqlServerDatabaseUrl(env = process.env, options = {}) {
   return resolved
 }
 
-export function parseSqlServerConnectionString(connectionString) {
+export function parseSqlServerConnectionString(
+  connectionString,
+  env = process.env,
+) {
   const url = new URL(connectionString)
   const protocol = url.protocol.replace(/:$/, '')
 
@@ -145,28 +160,34 @@ export function parseSqlServerConnectionString(connectionString) {
 
   return {
     connectionTimeout: parseInteger(
-      url.searchParams.get('connectionTimeout'),
+      getSearchParamIgnoreCase(url, 'connectionTimeout') ??
+        env.DB_CONNECTION_TIMEOUT_MS,
       DEFAULT_CONNECTION_TIMEOUT_MS,
     ),
     database: decodeURIComponent(url.pathname.replace(/^\/+/, '') || 'master'),
-    encrypt: parseBoolean(url.searchParams.get('encrypt'), true),
+    encrypt: parseBoolean(
+      getSearchParamIgnoreCase(url, 'encrypt') ?? env.DB_ENCRYPT,
+      true,
+    ),
     password: decodeURIComponent(url.password),
     port: url.port ? Number.parseInt(url.port, 10) : DEFAULT_PORT,
     requestTimeout: parseInteger(
-      url.searchParams.get('requestTimeout'),
+      getSearchParamIgnoreCase(url, 'requestTimeout') ??
+        env.DB_REQUEST_TIMEOUT_MS,
       DEFAULT_REQUEST_TIMEOUT_MS,
     ),
     server: url.hostname || '127.0.0.1',
     trustServerCertificate: parseBoolean(
-      url.searchParams.get('trustServerCertificate'),
+      getSearchParamIgnoreCase(url, 'trustServerCertificate') ??
+        env.DB_TRUST_SERVER_CERTIFICATE,
       false,
     ),
     username: decodeURIComponent(url.username),
   }
 }
 
-export function createMssqlConfig(connectionString) {
-  const parsed = parseSqlServerConnectionString(connectionString)
+export function createMssqlConfig(connectionString, env = process.env) {
+  const parsed = parseSqlServerConnectionString(connectionString, env)
 
   return {
     connectionTimeout: parsed.connectionTimeout,
@@ -203,8 +224,11 @@ function createMasterConnectionString(connectionString) {
   return url.toString()
 }
 
-function buildMigrationDataSourceOptions(connectionString) {
-  const parsed = parseSqlServerConnectionString(connectionString)
+function buildMigrationDataSourceOptions(
+  connectionString,
+  env = process.env,
+) {
+  const parsed = parseSqlServerConnectionString(connectionString, env)
 
   return {
     connectionTimeout: parsed.connectionTimeout,
@@ -236,8 +260,8 @@ async function defaultConnect(config) {
   return connect(config)
 }
 
-async function withPool(connectionString, connectImpl, callback) {
-  const pool = await connectImpl(createMssqlConfig(connectionString))
+async function withPool(connectionString, connectImpl, callback, env = process.env) {
+  const pool = await connectImpl(createMssqlConfig(connectionString, env))
 
   try {
     return await callback(pool)
@@ -274,7 +298,8 @@ function normalizeSeedValue(value) {
 
 export async function resetSqlServerDatabase(connectionString, options = {}) {
   const connectImpl = options.connectImpl ?? defaultConnect
-  const parsed = parseSqlServerConnectionString(connectionString)
+  const env = options.env ?? process.env
+  const parsed = parseSqlServerConnectionString(connectionString, env)
   const masterConnectionString = createMasterConnectionString(connectionString)
 
   return withPool(masterConnectionString, connectImpl, async pool => {
@@ -300,13 +325,14 @@ export async function resetSqlServerDatabase(connectionString, options = {}) {
       database: parsed.database,
       server: parsed.server,
     }
-  })
+  }, env)
 }
 
 export async function runSqlServerMigrations(connectionString, options = {}) {
   const DataSourceCtor = options.dataSourceCtor ?? DataSource
+  const env = options.env ?? process.env
   const dataSource = new DataSourceCtor(
-    buildMigrationDataSourceOptions(connectionString),
+    buildMigrationDataSourceOptions(connectionString, env),
   )
 
   await dataSource.initialize()
@@ -315,7 +341,7 @@ export async function runSqlServerMigrations(connectionString, options = {}) {
     const migrations = await dataSource.runMigrations()
 
     return {
-      database: parseSqlServerConnectionString(connectionString).database,
+      database: parseSqlServerConnectionString(connectionString, env).database,
       migrationsApplied: migrations.length,
     }
   } finally {
@@ -339,8 +365,8 @@ export async function ensureReadonlySqlServerAccess(
     return { configured: false }
   }
 
-  const main = parseSqlServerConnectionString(connectionString)
-  const readonly = parseSqlServerConnectionString(readonlyConnectionString)
+  const main = parseSqlServerConnectionString(connectionString, env)
+  const readonly = parseSqlServerConnectionString(readonlyConnectionString, env)
 
   if (
     readonly.username === main.username &&
@@ -366,7 +392,7 @@ export async function ensureReadonlySqlServerAccess(
         CREATE LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
       END
     `)
-  })
+  }, env)
 
   await withPool(connectionString, connectImpl, async pool => {
     await pool.request().query(`
@@ -391,7 +417,7 @@ export async function ensureReadonlySqlServerAccess(
 
       GRANT VIEW DEFINITION TO ${escapedUserName}
     `)
-  })
+  }, env)
 
   return {
     configured: true,
@@ -401,6 +427,7 @@ export async function ensureReadonlySqlServerAccess(
 
 export async function seedSqlServerDatabase(connectionString, options = {}) {
   const connectImpl = options.connectImpl ?? defaultConnect
+  const env = options.env ?? process.env
   const sqliteFactory =
     options.createLegacySqliteSnapshotImpl ?? createLegacySqliteSnapshot
   const metadataFactory =
@@ -488,7 +515,7 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
         insertedRows,
         readonlyAccessConfigured: readonlyAccess.configured,
       }
-    })
+    }, env)
   } finally {
     sqlite.close()
   }
@@ -496,16 +523,17 @@ export async function seedSqlServerDatabase(connectionString, options = {}) {
 
 export async function healthCheckSqlServer(connectionString, options = {}) {
   const connectImpl = options.connectImpl ?? defaultConnect
+  const env = options.env ?? process.env
 
   return withPool(connectionString, connectImpl, async pool => {
     const result = await pool.request().query('SELECT 1 AS ok')
 
     return {
-      database: createMssqlConfig(connectionString).database,
+      database: createMssqlConfig(connectionString, env).database,
       ok: Array.isArray(result.recordset) && result.recordset.length > 0,
-      server: createMssqlConfig(connectionString).server,
+      server: createMssqlConfig(connectionString, env).server,
     }
-  })
+  }, env)
 }
 
 export async function waitForSqlServer(connectionString, options = {}) {
@@ -542,7 +570,7 @@ export async function waitForSqlServer(connectionString, options = {}) {
 
 export function buildReadonlyBrowseConfig(env = process.env) {
   const connectionString = getSqlServerDatabaseUrl(env, { readonly: true })
-  const parsed = parseSqlServerConnectionString(connectionString)
+  const parsed = parseSqlServerConnectionString(connectionString, env)
   const passwordEnvVar =
     env.DATABASE_READONLY_PASSWORD_ENV?.trim() || 'DATABASE_READONLY_PASSWORD'
 
@@ -625,8 +653,13 @@ export async function main(args, dependencies = {}) {
   }
 
   if (command === 'wait') {
+    const masterConnectionString = createMasterConnectionString(connectionString)
+
     try {
-      const result = await waitForSqlServer(connectionString, dependencies)
+      const result = await waitForSqlServer(
+        masterConnectionString,
+        dependencies,
+      )
       consoleObj.log(`SQL Server is ready (${result.server}/${result.database}).`)
       return 0
     } catch (error) {
@@ -686,8 +719,10 @@ export async function main(args, dependencies = {}) {
   }
 
   if (command === 'setup') {
+    const masterConnectionString = createMasterConnectionString(connectionString)
+
     try {
-      await waitForSqlServer(connectionString, dependencies)
+      await waitForSqlServer(masterConnectionString, dependencies)
       await resetSqlServerDatabase(connectionString, dependencies)
       await runSqlServerMigrations(connectionString, dependencies)
       const result = await seedSqlServerDatabase(connectionString, dependencies)

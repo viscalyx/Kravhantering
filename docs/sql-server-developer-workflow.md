@@ -46,6 +46,11 @@ volume.
 If your machine already has a local SQL Server using `1433`, override
 `SQLSERVER_HOST_PORT` in `.env.sqlserver` or `.devcontainer/.env`.
 
+The local SQL Server workflow uses `encrypt=true` together with
+`trustServerCertificate=true` by default. That is intentional for local
+development because the SQL Server container presents a self-signed
+certificate unless you add your own trusted certificate chain.
+
 ## Migration-Window Environment Variables
 
 During the coexistence window, the SQL Server scaffold uses dedicated
@@ -59,6 +64,10 @@ The default devcontainer Compose stack now reads its SQL Server variables from
 
 The elevated devcontainer Compose stack reuses the same SQL Server variables
 from `.devcontainer/.env`.
+
+The SQL Server admin scaffold uses the `master` database for readiness checks
+and reset/setup bootstrap steps, so `db:setup` can create `kravhantering`
+even when that database does not exist yet.
 
 After the full cutover, these temporary `SQLSERVER_*` variables should collapse
 back to the canonical runtime contract:

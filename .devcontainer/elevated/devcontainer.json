@@ -215,7 +215,7 @@
   // Copy .devcontainer/.env.example to .devcontainer/.env before the first rebuild.
   // Use 'postStartCommand' to run commands after the container starts and every time it starts
   // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly
-  "postStartCommand": "bash -lc 'git config --global --unset gpg.ssh.program || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server login failures persist, remove the elevated devcontainer SQL Server volume and rerun npm run db:setup manually.\" >&2; }'",
+  "postStartCommand": "bash -lc 'git config --global --unset gpg.ssh.program || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server failures persist, look at the database container logs to see what failed.\" >&2; }'",
 
   // Configure remote user
   "remoteUser": "vscode"

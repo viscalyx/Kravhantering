@@ -63,6 +63,40 @@ describe('db-sqlserver-admin.mjs', () => {
     })
   })
 
+  it('falls back to env defaults for encrypt and trustServerCertificate', () => {
+    expect(
+      parseSqlServerConnectionString(
+        'mssql://reader:Secret123!@db.internal:1444/kravhantering',
+        {
+          DB_ENCRYPT: 'true',
+          DB_REQUEST_TIMEOUT_MS: '9000',
+          DB_TRUST_SERVER_CERTIFICATE: 'true',
+        },
+      ),
+    ).toEqual({
+      connectionTimeout: 15000,
+      database: 'kravhantering',
+      encrypt: true,
+      password: 'Secret123!',
+      port: 1444,
+      requestTimeout: 9000,
+      server: 'db.internal',
+      trustServerCertificate: true,
+      username: 'reader',
+    })
+  })
+
+  it('reads encrypt query params case-insensitively', () => {
+    expect(
+      parseSqlServerConnectionString(
+        'mssql://reader:Secret123!@db.internal:1444/kravhantering?Encrypted=false&TrustServerCertificate=true',
+      ),
+    ).toMatchObject({
+      encrypt: false,
+      trustServerCertificate: true,
+    })
+  })
+
   it('creates mssql driver config with SQL Server defaults', () => {
     expect(
       createMssqlConfig(
@@ -361,7 +395,41 @@ describe('db-sqlserver-admin.mjs', () => {
 
     expect(exitCode).toBe(0)
     expect(error).not.toHaveBeenCalled()
+    expect(healthCheckImpl).toHaveBeenCalledWith(
+      'mssql://sa:Password123!@127.0.0.1:1433/master?encrypt=true&trustServerCertificate=true',
+      expect.objectContaining({
+        healthCheckImpl,
+      }),
+    )
     expect(log).toHaveBeenCalledWith('SQL Server setup completed (0 inserted rows).')
+  })
+
+  it('waits against master for the CLI wait command', async () => {
+    const error = vi.fn()
+    const log = vi.fn()
+    const healthCheckImpl = vi.fn(async () => ({
+      database: 'master',
+      ok: true,
+      server: '127.0.0.1',
+    }))
+
+    const exitCode = await main(['wait'], {
+      consoleObj: { error, log },
+      env: {
+        SQLSERVER_DATABASE_URL:
+          'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
+      },
+      healthCheckImpl,
+    })
+
+    expect(exitCode).toBe(0)
+    expect(healthCheckImpl).toHaveBeenCalledWith(
+      'mssql://sa:Password123!@127.0.0.1:1433/master?encrypt=true&trustServerCertificate=true',
+      expect.objectContaining({
+        healthCheckImpl,
+      }),
+    )
+    expect(log).toHaveBeenCalledWith('SQL Server is ready (127.0.0.1/master).')
   })
 
   it('prints usage for unsupported commands', async () => {
