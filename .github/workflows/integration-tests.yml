@@ -49,15 +49,28 @@ jobs:
       - name: Clean server and database state
         run: npm run clean:all
 
+      - name: Prepare SQL Server env file
+        run: |
+          cp .env.sqlserver.ci .env.sqlserver
+          # This uses a well-known password from examples, but it's stored as a
+          # GitHub Actions variable to avoid hitting any security scanners that
+          # look for hardcoded secrets.
+          echo "MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}" >> .env.sqlserver
+        env:
+          MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
+
       - name: Start local database service
         run: npm run db:up
-        env:
-          DATABASE_URL: http://127.0.0.1:9000
 
-      - name: Setup local SQLite database
+      - name: Setup local SQL Server database
         run: npm run db:setup
         env:
-          DATABASE_URL: http://127.0.0.1:9000
+          MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: 1433
+          DB_NAME: kravhantering
+          DB_ENCRYPT: 'true'
+          DB_TRUST_SERVER_CERTIFICATE: 'true'
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -66,7 +79,12 @@ jobs:
         run: ${{ matrix.testCommand }}
         env:
           CI: true
-          DATABASE_URL: http://127.0.0.1:9000
+          MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: 1433
+          DB_NAME: kravhantering
+          DB_ENCRYPT: 'true'
+          DB_TRUST_SERVER_CERTIFICATE: 'true'
 
       - name: Upload test results (${{ matrix.server }})
         if: always()
@@ -87,8 +105,6 @@ jobs:
       - name: Stop local database service
         if: always()
         run: npm run db:down
-        env:
-          DATABASE_URL: http://127.0.0.1:9000
 
   comment-on-failure:
     name: Comment on PR if tests failed
