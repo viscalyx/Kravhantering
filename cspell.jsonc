@@ -313,7 +313,6 @@
     "rewriteable",
     "readback",
     "inspectable",
-    "pycache",
     "typeorm"
   ],
   "flagWords": [],
