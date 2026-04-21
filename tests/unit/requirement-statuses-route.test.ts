@@ -5,7 +5,7 @@ const mockListTransitions = vi.fn()
 const mockCreateStatus = vi.fn()
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabaseConnection: () => ({}),
+  getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({

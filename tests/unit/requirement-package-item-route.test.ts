@@ -13,7 +13,7 @@ const mocks = {
 }
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: () => mockDb,
+  getRequestSqlServerDataSource: () => mockDb,
 }))
 
 vi.mock('@/lib/dal/requirement-packages', () => ({

@@ -3,8 +3,11 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "CHECKIDENT",
     "cutover",
     "Cutover",
+    "DBCC",
+    "INFOMSGS",
     "Passw",
     "mtxr",
     "sqltools",

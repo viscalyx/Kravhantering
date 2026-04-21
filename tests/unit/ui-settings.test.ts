@@ -1,193 +1,165 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import BetterSqlite3 from 'better-sqlite3'
-import { asc } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { describe, expect, it } from 'vitest'
-import * as schema from '@/drizzle/schema'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  createUiSettingsLoader,
+  formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
   getUiTerminology,
   updateRequirementListColumnDefaults,
+  updateUiTerminology,
 } from '@/lib/dal/ui-settings'
-import type { Database as AppDatabase } from '@/lib/db'
-import {
-  DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
-  getRequirementColumnOrder,
-  normalizeRequirementListColumnDefaults,
-} from '@/lib/requirements/list-view'
+import type { SqlServerDatabase } from '@/lib/db'
 
-function createTestDb() {
-  const sqlite = new BetterSqlite3(':memory:')
-  const journal = JSON.parse(
-    readFileSync(
-      join(process.cwd(), 'drizzle/migrations/meta/_journal.json'),
-      'utf8',
-    ),
-  ) as {
-    entries: Array<{ tag: string }>
-  }
-  const migrationFiles = journal.entries.map(
-    entry => `drizzle/migrations/${entry.tag}.sql`,
+function createSqlServerDb() {
+  const query =
+    vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
+  const transaction = vi.fn(
+    async (fn: (manager: { query: typeof query }) => Promise<unknown>) =>
+      fn({ query }),
   )
-
-  for (const migrationFile of migrationFiles) {
-    const migrationSql = readFileSync(
-      join(process.cwd(), migrationFile),
-      'utf8',
-    )
-
-    for (const statement of migrationSql.split('--> statement-breakpoint')) {
-      const sql = statement.trim()
-      if (sql) {
-        sqlite.exec(sql)
-      }
-    }
-  }
-
-  const db = drizzle(sqlite, { schema })
-  return { db, sqlite }
+  const db = { query, transaction } as unknown as SqlServerDatabase
+  return { db, query, transaction }
 }
 
-describe('ui settings DAL', () => {
-  it('persists reordered requirement column defaults without violating the unique sort order index', async () => {
-    const { db, sqlite } = createTestDb()
+const mockTerminologyRow = {
+  key: 'description',
+  singularSv: 'krav',
+  pluralSv: 'krav',
+  definitePluralSv: 'kraven',
+  singularEn: 'requirement',
+  pluralEn: 'requirements',
+  definitePluralEn: 'the requirements',
+}
 
-    try {
-      const appDb = db as unknown as AppDatabase
-      await updateRequirementListColumnDefaults(
-        appDb,
-        DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
-      )
-
-      const reorderedDefaults = normalizeRequirementListColumnDefaults([
-        { columnId: 'uniqueId', defaultVisible: true, sortOrder: 0 },
-        { columnId: 'description', defaultVisible: true, sortOrder: 1 },
-        { columnId: 'category', defaultVisible: true, sortOrder: 2 },
-        { columnId: 'area', defaultVisible: true, sortOrder: 3 },
-        { columnId: 'type', defaultVisible: true, sortOrder: 4 },
-        {
-          columnId: 'qualityCharacteristic',
-          defaultVisible: false,
-          sortOrder: 5,
-        },
-        { columnId: 'status', defaultVisible: true, sortOrder: 6 },
-        { columnId: 'requiresTesting', defaultVisible: false, sortOrder: 7 },
-        { columnId: 'version', defaultVisible: false, sortOrder: 8 },
-      ])
-
-      const savedColumns = await updateRequirementListColumnDefaults(
-        appDb,
-        reorderedDefaults,
-      )
-      const loadedColumns = await getRequirementListColumnDefaults(appDb)
-      const persistedRows = await db
-        .select()
-        .from(schema.requirementListColumnDefaults)
-        .orderBy(asc(schema.requirementListColumnDefaults.sortOrder))
-
-      expect(getRequirementColumnOrder(savedColumns)).toEqual([
-        'uniqueId',
-        'description',
-        'category',
-        'area',
-        'type',
-        'qualityCharacteristic',
-        'riskLevel',
-        'status',
-        'requiresTesting',
-        'version',
-        'needsReference',
-        'packageItemStatus',
-        'normReferences',
-        'suggestionCount',
-      ])
-      expect(getRequirementColumnOrder(loadedColumns)).toEqual([
-        'uniqueId',
-        'description',
-        'category',
-        'area',
-        'type',
-        'qualityCharacteristic',
-        'riskLevel',
-        'status',
-        'requiresTesting',
-        'version',
-        'needsReference',
-        'packageItemStatus',
-        'normReferences',
-        'suggestionCount',
-      ])
-      expect(
-        persistedRows.map(row => ({
-          columnId: row.columnId,
-          isDefaultVisible: row.isDefaultVisible,
-          sortOrder: row.sortOrder,
-        })),
-      ).toEqual([
-        { columnId: 'uniqueId', isDefaultVisible: true, sortOrder: 0 },
-        { columnId: 'description', isDefaultVisible: true, sortOrder: 1 },
-        { columnId: 'category', isDefaultVisible: true, sortOrder: 2 },
-        { columnId: 'area', isDefaultVisible: true, sortOrder: 3 },
-        { columnId: 'type', isDefaultVisible: true, sortOrder: 4 },
-        {
-          columnId: 'qualityCharacteristic',
-          isDefaultVisible: false,
-          sortOrder: 5,
-        },
-        { columnId: 'riskLevel', isDefaultVisible: false, sortOrder: 6 },
-        { columnId: 'status', isDefaultVisible: true, sortOrder: 7 },
-        { columnId: 'requiresTesting', isDefaultVisible: false, sortOrder: 8 },
-        { columnId: 'version', isDefaultVisible: false, sortOrder: 9 },
-        { columnId: 'needsReference', isDefaultVisible: false, sortOrder: 10 },
-        {
-          columnId: 'packageItemStatus',
-          isDefaultVisible: false,
-          sortOrder: 11,
-        },
-        {
-          columnId: 'normReferences',
-          isDefaultVisible: false,
-          sortOrder: 12,
-        },
-        {
-          columnId: 'suggestionCount',
-          isDefaultVisible: false,
-          sortOrder: 13,
-        },
-      ])
-    } finally {
-      sqlite.close()
-    }
+describe('ui-settings DAL', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
-  it('throws a clear terminology storage error instead of silently substituting defaults', async () => {
-    const failingDb = {
-      select: () => ({
-        from: () => {
-          throw new Error('terminology unavailable')
-        },
-      }),
-    } as unknown as AppDatabase
+  it('formatUiSettingsLoadError serializes Error instances', () => {
+    const err = new Error('boom')
+    const formatted = formatUiSettingsLoadError(err)
+    expect(formatted).toMatchObject({
+      message: 'boom',
+      stack: expect.any(String),
+    })
+  })
 
-    await expect(getUiTerminology(failingDb)).rejects.toThrow(
-      'Failed to load UI terminology from the database.',
+  it('formatUiSettingsLoadError wraps non-Error values', () => {
+    expect(formatUiSettingsLoadError('plain string')).toEqual({
+      error: 'plain string',
+    })
+  })
+
+  it('getUiTerminology loads and normalizes terminology from ui_terminology', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([mockTerminologyRow])
+
+    const result = await getUiTerminology(db)
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM ui_terminology'),
+    )
+    expect(result).toBeTruthy()
+    expect(Object.keys(result).length).toBeGreaterThan(0)
+  })
+
+  it('getUiTerminology wraps a query error in a helpful message', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockRejectedValueOnce(new Error('db offline'))
+
+    await expect(getUiTerminology(db)).rejects.toThrow(
+      /Failed to load UI terminology/,
     )
   })
 
-  it('throws a clear column-default storage error instead of silently substituting defaults', async () => {
-    const failingDb = {
-      select: () => ({
-        from: () => ({
-          orderBy: () => {
-            throw new Error('column defaults unavailable')
-          },
-        }),
-      }),
-    } as unknown as AppDatabase
+  it('getRequirementListColumnDefaults loads the defaults table', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      { columnId: 'uniqueId', sortOrder: 0, isDefaultVisible: 1 },
+      { columnId: 'description', sortOrder: 1, isDefaultVisible: 1 },
+    ])
 
-    await expect(getRequirementListColumnDefaults(failingDb)).rejects.toThrow(
-      'Failed to load requirement column defaults from the database.',
+    const result = await getRequirementListColumnDefaults(db)
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM requirement_list_column_defaults'),
     )
+    expect(result.length).toBeGreaterThan(0)
+  })
+
+  it('getRequirementListColumnDefaults wraps query errors', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockRejectedValueOnce(new Error('db offline'))
+
+    await expect(getRequirementListColumnDefaults(db)).rejects.toThrow(
+      /Failed to load requirement column defaults/,
+    )
+  })
+
+  it('createUiSettingsLoader caches terminology between calls', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValue([mockTerminologyRow])
+
+    const loader = createUiSettingsLoader(db)
+    await loader.getTerminology()
+    await loader.getTerminology()
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('createUiSettingsLoader caches column defaults between calls', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValue([
+      { columnId: 'uniqueId', sortOrder: 0, isDefaultVisible: 1 },
+    ])
+
+    const loader = createUiSettingsLoader(db)
+    await loader.getColumnDefaults()
+    await loader.getColumnDefaults()
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('updateUiTerminology writes each entry via a parameterized upsert query', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValue([])
+
+    const result = await updateUiTerminology(db, [
+      {
+        key: 'description',
+        sv: { singular: 'krav', plural: 'krav', definitePlural: 'kraven' },
+        en: {
+          singular: 'requirement',
+          plural: 'requirements',
+          definitePlural: 'the requirements',
+        },
+      },
+    ])
+
+    expect(query).toHaveBeenCalled()
+    const firstCall = query.mock.calls[0]
+    expect(firstCall[0]).toMatch(/UPDATE ui_terminology/)
+    expect(firstCall[0]).toMatch(/INSERT INTO ui_terminology/)
+    expect(result).toBeTruthy()
+  })
+
+  it('updateRequirementListColumnDefaults clears and reinserts within a transaction', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query.mockResolvedValue([])
+
+    await updateRequirementListColumnDefaults(db, [
+      { columnId: 'uniqueId', sortOrder: 0, defaultVisible: true },
+      { columnId: 'description', sortOrder: 1, defaultVisible: false },
+    ])
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    const deleteCall = query.mock.calls.find(([sql]) =>
+      /DELETE FROM requirement_list_column_defaults/.test(sql),
+    )
+    expect(deleteCall).toBeTruthy()
+    const insertCalls = query.mock.calls.filter(([sql]) =>
+      /INSERT INTO requirement_list_column_defaults/.test(sql),
+    )
+    expect(insertCalls.length).toBeGreaterThanOrEqual(2)
   })
 })

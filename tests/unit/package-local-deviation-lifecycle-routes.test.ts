@@ -2,14 +2,14 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
-  getRequestDatabase: vi.fn(),
+  getRequestSqlServerDataSource: vi.fn(),
   recordPackageLocalDecision: vi.fn(),
   requestPackageLocalReview: vi.fn(),
   revertPackageLocalToDraft: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: routeState.getRequestDatabase,
+  getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
 vi.mock('@/lib/dal/deviations', () => ({
@@ -32,14 +32,16 @@ function makeParams(id: string) {
 describe('package-local deviation lifecycle routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    routeState.getRequestDatabase.mockResolvedValue(mockDb)
+    routeState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
   })
 
   it('request-review returns JSON 500 when DB acquisition fails', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    routeState.getRequestDatabase.mockRejectedValueOnce(new Error('db offline'))
+    routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('db offline'),
+    )
 
     try {
       const response = await postRequestReview(
@@ -75,7 +77,7 @@ describe('package-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(routeState.getRequestDatabase).toHaveBeenCalledTimes(1)
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
     expect(routeState.requestPackageLocalReview).toHaveBeenCalledWith(mockDb, 1)
   })
 
@@ -104,7 +106,9 @@ describe('package-local deviation lifecycle routes', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    routeState.getRequestDatabase.mockRejectedValueOnce(new Error('db offline'))
+    routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('db offline'),
+    )
 
     try {
       const response = await postDecision(
@@ -152,7 +156,7 @@ describe('package-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(routeState.getRequestDatabase).toHaveBeenCalledTimes(1)
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
     expect(routeState.recordPackageLocalDecision).toHaveBeenCalledWith(
       mockDb,
       1,
@@ -210,7 +214,7 @@ describe('package-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({ error: 'Invalid id' })
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordPackageLocalDecision).not.toHaveBeenCalled()
   })
 
@@ -231,7 +235,7 @@ describe('package-local deviation lifecycle routes', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Invalid JSON body',
     })
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordPackageLocalDecision).not.toHaveBeenCalled()
   })
 
@@ -253,7 +257,7 @@ describe('package-local deviation lifecycle routes', () => {
       error:
         'decision (number), decisionMotivation (string), and decidedBy (string) are required',
     })
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordPackageLocalDecision).not.toHaveBeenCalled()
   })
 
@@ -279,7 +283,7 @@ describe('package-local deviation lifecycle routes', () => {
       error:
         'decision (number), decisionMotivation (string), and decidedBy (string) are required',
     })
-    expect(routeState.getRequestDatabase).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordPackageLocalDecision).not.toHaveBeenCalled()
   })
 
@@ -287,7 +291,9 @@ describe('package-local deviation lifecycle routes', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    routeState.getRequestDatabase.mockRejectedValueOnce(new Error('db offline'))
+    routeState.getRequestSqlServerDataSource.mockRejectedValueOnce(
+      new Error('db offline'),
+    )
 
     try {
       const response = await postRevertToDraft(
@@ -323,7 +329,7 @@ describe('package-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(routeState.getRequestDatabase).toHaveBeenCalledTimes(1)
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
     expect(routeState.revertPackageLocalToDraft).toHaveBeenCalledWith(mockDb, 1)
   })
 

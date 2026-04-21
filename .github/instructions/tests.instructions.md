@@ -4,6 +4,10 @@ applyTo: '**/*.{test,spec}.{ts,tsx,js,mjs,cjs},**/__tests__/**/*'
 
 # Tests
 
+For tests under `tests/quality/`, also follow
+`.github/instructions/quality-spec.instructions.md` and the directory's
+own `AGENTS.md` (Fitness Scenario authoring checklist).
+
 ## Required Mocks
 
 - `framer-motion`, `next/image`, and `next/navigation` are globally mocked in `vitest.setup.ts`. Do not re-mock unless you need custom behavior (e.g., controllable pathname, spying on `router.push`).

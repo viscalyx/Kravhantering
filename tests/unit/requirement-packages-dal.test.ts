@@ -246,7 +246,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('INSERT INTO requirement_packages'),
-      ['PKG-011', 'Package Eleven', 2, null, 4, 'Need'],
+      ['PKG-011', 'Package Eleven', 2, null, 4, 'Need', expect.any(Date)],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
@@ -297,7 +297,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     expect(result).toBe(33)
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO package_needs_references'),
-      [5, 'Shared package need'],
+      [5, 'Shared package need', expect.any(Date)],
     )
   })
 
@@ -549,7 +549,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       4,
       expect.stringContaining('INSERT INTO requirement_package_items'),
-      [5, 7, 101, 33, 1],
+      [5, 7, 101, 33, 1, expect.any(Date)],
     )
   })
 

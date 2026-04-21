@@ -6,7 +6,7 @@ const mockManageRequirement = vi.fn()
 const mockGetOwnerById = vi.fn()
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: () => ({}),
+  getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({

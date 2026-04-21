@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
   createRiskLevel: vi.fn(),
-  getRequestDatabaseConnection: vi.fn(() => ({})),
+  getRequestSqlServerDataSource: vi.fn(() => ({})),
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabaseConnection: routeState.getRequestDatabaseConnection,
+  getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
 vi.mock('@/lib/dal/risk-levels', () => ({
@@ -36,7 +36,7 @@ describe('risk-levels route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Invalid JSON body',
     })
-    expect(routeState.getRequestDatabaseConnection).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.createRiskLevel).not.toHaveBeenCalled()
   })
 
@@ -52,7 +52,7 @@ describe('risk-levels route', () => {
     }
     const createdRiskLevel = { id: 7, ...payload }
 
-    routeState.getRequestDatabaseConnection.mockResolvedValueOnce(mockDb)
+    routeState.getRequestSqlServerDataSource.mockResolvedValueOnce(mockDb)
     routeState.createRiskLevel.mockResolvedValueOnce(createdRiskLevel)
 
     const response = await POST(
@@ -65,7 +65,7 @@ describe('risk-levels route', () => {
 
     expect(response.status).toBe(201)
     await expect(response.json()).resolves.toEqual(createdRiskLevel)
-    expect(routeState.getRequestDatabaseConnection).toHaveBeenCalledTimes(1)
+    expect(routeState.getRequestSqlServerDataSource).toHaveBeenCalledTimes(1)
     expect(routeState.createRiskLevel).toHaveBeenCalledWith(mockDb, payload)
   })
 })

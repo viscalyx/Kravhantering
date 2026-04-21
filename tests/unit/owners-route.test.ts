@@ -2,14 +2,14 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  getRequestDatabaseConnection: vi.fn(() => 'mock-db'),
+  getRequestSqlServerDataSource: vi.fn(() => 'mock-db'),
   listOwners: vi.fn(),
   createOwner: vi.fn(),
   updateOwner: vi.fn(),
   deleteOwner: vi.fn(),
 }))
 vi.mock('@/lib/db', () => ({
-  getRequestDatabaseConnection: mocks.getRequestDatabaseConnection,
+  getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
 }))
 vi.mock('@/lib/dal/owners', () => ({
   listOwners: mocks.listOwners,

@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-  getRequestDatabaseConnection: vi.fn(() => 'mock-db'),
+  getRequestSqlServerDataSource: vi.fn(() => 'mock-db'),
   listAreas: vi.fn(),
   createArea: vi.fn(),
   listOwners: vi.fn(),
 }))
 vi.mock('@/lib/db', () => ({
-  getRequestDatabaseConnection: mocks.getRequestDatabaseConnection,
+  getRequestSqlServerDataSource: mocks.getRequestSqlServerDataSource,
 }))
 vi.mock('@/lib/dal/requirement-areas', () => ({
   listAreas: mocks.listAreas,

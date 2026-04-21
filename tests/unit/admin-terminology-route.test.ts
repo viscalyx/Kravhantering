@@ -6,13 +6,13 @@ import {
 } from '@/lib/ui-terminology'
 
 const routeState = vi.hoisted(() => ({
-  getRequestDatabaseConnection: vi.fn(() => ({ db: true })),
+  getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   getUiTerminology: vi.fn(),
   updateUiTerminology: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabaseConnection: routeState.getRequestDatabaseConnection,
+  getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({

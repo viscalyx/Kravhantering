@@ -1,9 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import BetterSqlite3 from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { beforeEach, describe, expect, it } from 'vitest'
-import * as schema from '@/drizzle/schema'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createQualityCharacteristic,
   createType,
@@ -14,201 +9,225 @@ import {
   updateQualityCharacteristic,
   updateType,
 } from '@/lib/dal/requirement-types'
-import type { Database as AppDatabase } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { requirementTypeEntity } from '@/lib/typeorm/entities'
 
-function createTestDb() {
-  const sqlite = new BetterSqlite3(':memory:')
-  const migDir = join(process.cwd(), 'drizzle', 'migrations')
-  const files = readdirSync(migDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort()
-  for (const f of files) {
-    const sql = readFileSync(join(migDir, f), 'utf-8')
-    for (const statement of sql.split('--> statement-breakpoint')) {
-      const s = statement.trim()
-      if (s) sqlite.exec(s)
-    }
+function createSqlServerDb() {
+  const repository = {
+    find: vi.fn(),
+    findOne: vi.fn(),
+    create: vi.fn(input => input),
+    save: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   }
-  return drizzle(sqlite, { schema }) as unknown as AppDatabase
+  const getRepository = vi.fn(() => repository)
+  const query =
+    vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
+  const db = {
+    getRepository,
+    query,
+  } as unknown as SqlServerDatabase
+  return { db, repository, getRepository, query }
 }
 
-describe('requirement-types DAL', () => {
-  let db: AppDatabase
-
+describe('requirement-types DAL (SQL Server path)', () => {
   beforeEach(() => {
-    db = createTestDb()
+    vi.clearAllMocks()
   })
 
-  describe('createType', () => {
-    it('creates a type and returns it', async () => {
-      const t = await createType(db, {
-        nameSv: 'Funktionella',
-        nameEn: 'Functional',
-      })
-      expect(t.id).toBeDefined()
-      expect(t.nameSv).toBe('Funktionella')
-      expect(t.nameEn).toBe('Functional')
+  it('listTypes returns types grouped with their quality characteristics', async () => {
+    const { db, repository, getRepository, query } = createSqlServerDb()
+    repository.find.mockResolvedValueOnce([
+      { id: 1, nameSv: 'Funktionskrav', nameEn: 'Functional' },
+      { id: 2, nameSv: 'Säkerhetskrav', nameEn: 'Security' },
+    ])
+    query.mockResolvedValueOnce([
+      {
+        id: 10,
+        nameSv: 'Tillgänglighet',
+        nameEn: 'Availability',
+        requirementTypeId: 1,
+        parentId: null,
+      },
+      {
+        id: 11,
+        nameSv: 'Integritet',
+        nameEn: 'Integrity',
+        requirementTypeId: 2,
+        parentId: null,
+      },
+    ])
+
+    const result = await listTypes(db)
+
+    expect(getRepository).toHaveBeenCalledWith(requirementTypeEntity)
+    expect(repository.find).toHaveBeenCalledWith({ order: { nameSv: 'ASC' } })
+    expect(result).toHaveLength(2)
+    expect(result[0]).toMatchObject({
+      id: 1,
+      nameSv: 'Funktionskrav',
+      qualityCharacteristics: [expect.objectContaining({ id: 10 })],
     })
+    expect(result[1].qualityCharacteristics[0]).toMatchObject({ id: 11 })
   })
 
-  describe('listTypes', () => {
-    it('returns types ordered by nameSv with categories', async () => {
-      const t1 = await createType(db, {
-        nameSv: 'B-typ',
-        nameEn: 'B-type',
-      })
-      await createType(db, {
-        nameSv: 'A-typ',
-        nameEn: 'A-type',
-      })
-      // Add a category to t1
-      await db.insert(schema.qualityCharacteristics).values({
-        nameSv: 'Kat',
-        nameEn: 'Cat',
-        requirementTypeId: t1.id,
-      })
+  it('listQualityCharacteristics filters by typeId when provided', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
 
-      const list = await listTypes(db)
-      expect(list.length).toBe(2)
-      // ordered by nameSv: A-typ before B-typ
-      expect(list[0].nameEn).toBe('A-type')
-      expect(list[1].nameEn).toBe('B-type')
-      expect(list[1].qualityCharacteristics.length).toBe(1)
-    })
+    await listQualityCharacteristics(db, 5)
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE requirement_type_id = @0'),
+      [5],
+    )
   })
 
-  describe('listQualityCharacteristics', () => {
-    it('returns all categories when no typeId given', async () => {
-      const t = await createType(db, {
-        nameSv: 'Typ',
-        nameEn: 'Type',
-      })
-      await db.insert(schema.qualityCharacteristics).values([
-        { nameSv: 'K1', nameEn: 'C1', requirementTypeId: t.id },
-        { nameSv: 'K2', nameEn: 'C2', requirementTypeId: t.id },
-      ])
-      const cats = await listQualityCharacteristics(db)
-      expect(cats.length).toBe(2)
-    })
+  it('listQualityCharacteristics omits WHERE clause when no typeId', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
 
-    it('filters by typeId', async () => {
-      const t1 = await createType(db, {
-        nameSv: 'T1',
-        nameEn: 'T1e',
-      })
-      const t2 = await createType(db, {
-        nameSv: 'T2',
-        nameEn: 'T2e',
-      })
-      await db.insert(schema.qualityCharacteristics).values([
-        { nameSv: 'A', nameEn: 'A', requirementTypeId: t1.id },
-        { nameSv: 'B', nameEn: 'B', requirementTypeId: t2.id },
-      ])
-      const cats = await listQualityCharacteristics(db, t1.id)
-      expect(cats.length).toBe(1)
-      expect(cats[0].nameEn).toBe('A')
-    })
+    await listQualityCharacteristics(db)
+
+    const [sql, params] = query.mock.calls[0]
+    expect(sql).not.toContain('WHERE')
+    expect(params).toEqual([])
   })
 
-  describe('updateType', () => {
-    it('updates a type and returns updated row', async () => {
-      const t = await createType(db, {
-        nameSv: 'Orig',
-        nameEn: 'Orig',
-      })
-      const updated = await updateType(db, t.id, { nameSv: 'Ny' })
-      if (!updated) {
-        throw new Error('Expected updated type to be returned')
-      }
-      expect(updated.nameSv).toBe('Ny')
-      expect(updated.nameEn).toBe('Orig')
+  it('createType saves a new type and returns mapped row', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.save.mockImplementation(async row => ({ id: 99, ...row }))
+
+    const result = await createType(db, { nameSv: 'Nytt', nameEn: 'New' })
+
+    expect(repository.create).toHaveBeenCalledWith({
+      nameSv: 'Nytt',
+      nameEn: 'New',
     })
+    expect(result).toEqual({ id: 99, nameSv: 'Nytt', nameEn: 'New' })
   })
 
-  describe('deleteType', () => {
-    it('removes the type', async () => {
-      const t = await createType(db, {
-        nameSv: 'Del',
-        nameEn: 'Del',
-      })
-      await deleteType(db, t.id)
-      const list = await listTypes(db)
-      expect(list.length).toBe(0)
+  it('updateType applies only supplied fields and returns reloaded row', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValueOnce({
+      id: 3,
+      nameSv: 'Uppdaterad',
+      nameEn: 'Updated',
     })
+
+    const result = await updateType(db, 3, { nameSv: 'Uppdaterad' })
+
+    expect(repository.update).toHaveBeenCalledWith(3, { nameSv: 'Uppdaterad' })
+    expect(result).toEqual({ id: 3, nameSv: 'Uppdaterad', nameEn: 'Updated' })
   })
 
-  describe('createQualityCharacteristic', () => {
-    it('creates a quality characteristic and returns it', async () => {
-      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
-      const qc = await createQualityCharacteristic(db, {
-        nameSv: 'Säkerhet',
-        nameEn: 'Security',
-        requirementTypeId: t.id,
-      })
-      expect(qc.id).toBeDefined()
-      expect(qc.nameSv).toBe('Säkerhet')
-      expect(qc.nameEn).toBe('Security')
-      expect(qc.requirementTypeId).toBe(t.id)
-      expect(qc.parentId).toBeNull()
+  it('updateType skips update when no fields supplied', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValueOnce({
+      id: 3,
+      nameSv: 'Same',
+      nameEn: 'Same',
     })
 
-    it('creates a child characteristic with parentId', async () => {
-      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
-      const parent = await createQualityCharacteristic(db, {
-        nameSv: 'Förälder',
-        nameEn: 'Parent',
-        requirementTypeId: t.id,
-      })
-      const child = await createQualityCharacteristic(db, {
-        nameSv: 'Barn',
-        nameEn: 'Child',
-        requirementTypeId: t.id,
-        parentId: parent.id,
-      })
-      expect(child.parentId).toBe(parent.id)
-    })
+    await updateType(db, 3, {})
+
+    expect(repository.update).not.toHaveBeenCalled()
   })
 
-  describe('updateQualityCharacteristic', () => {
-    it('updates and returns the updated row', async () => {
-      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
-      const qc = await createQualityCharacteristic(db, {
-        nameSv: 'Orig',
-        nameEn: 'Orig',
-        requirementTypeId: t.id,
-      })
-      const updated = await updateQualityCharacteristic(db, qc.id, {
+  it('deleteType removes by id via the repository', async () => {
+    const { db, repository } = createSqlServerDb()
+
+    await deleteType(db, 42)
+
+    expect(repository.delete).toHaveBeenCalledWith(42)
+  })
+
+  it('createQualityCharacteristic inserts with OUTPUT and returns row', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 50,
+        nameSv: 'Prestanda',
+        nameEn: 'Performance',
+        requirementTypeId: 1,
+        parentId: null,
+      },
+    ])
+
+    const result = await createQualityCharacteristic(db, {
+      nameSv: 'Prestanda',
+      nameEn: 'Performance',
+      requirementTypeId: 1,
+    })
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO quality_characteristics'),
+      ['Prestanda', 'Performance', 1, null],
+    )
+    expect(result).toMatchObject({ id: 50, parentId: null })
+  })
+
+  it('updateQualityCharacteristic builds a dynamic SET clause for provided fields', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 50,
         nameSv: 'Ny',
-      })
-      expect(updated?.nameSv).toBe('Ny')
-      expect(updated?.nameEn).toBe('Orig')
+        nameEn: 'New',
+        requirementTypeId: 2,
+        parentId: null,
+      },
+    ])
+
+    const result = await updateQualityCharacteristic(db, 50, {
+      nameSv: 'Ny',
+      requirementTypeId: 2,
     })
 
-    it('returns null for non-existent id', async () => {
-      const result = await updateQualityCharacteristic(db, 9999, {
-        nameSv: 'X',
-      })
-      expect(result).toBeNull()
-    })
+    const [sql, params] = query.mock.calls[0]
+    expect(sql).toContain('name_sv = @0')
+    expect(sql).toContain('requirement_type_id = @1')
+    expect(sql).toContain('WHERE id = @2')
+    expect(params).toEqual(['Ny', 2, 50])
+    expect(result).toMatchObject({ id: 50 })
   })
 
-  describe('deleteQualityCharacteristic', () => {
-    it('deletes an existing characteristic and returns true', async () => {
-      const t = await createType(db, { nameSv: 'Typ', nameEn: 'Type' })
-      const qc = await createQualityCharacteristic(db, {
-        nameSv: 'Del',
-        nameEn: 'Del',
-        requirementTypeId: t.id,
-      })
-      const result = await deleteQualityCharacteristic(db, qc.id)
-      expect(result).toBe(true)
-      const list = await listQualityCharacteristics(db)
-      expect(list.length).toBe(0)
-    })
+  it('updateQualityCharacteristic returns current row when no fields supplied', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 50,
+        nameSv: 'Unchanged',
+        nameEn: 'Unchanged',
+        requirementTypeId: 1,
+        parentId: null,
+      },
+    ])
 
-    it('returns false for non-existent id', async () => {
-      const result = await deleteQualityCharacteristic(db, 9999)
-      expect(result).toBe(false)
-    })
+    const result = await updateQualityCharacteristic(db, 50, {})
+
+    const [sql, params] = query.mock.calls[0]
+    expect(sql).toMatch(/^\s*SELECT/)
+    expect(params).toEqual([50])
+    expect(result).toMatchObject({ id: 50 })
+  })
+
+  it('deleteQualityCharacteristic returns true when a row was deleted', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 50 }])
+
+    await expect(deleteQualityCharacteristic(db, 50)).resolves.toBe(true)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('DELETE FROM quality_characteristics'),
+      [50],
+    )
+  })
+
+  it('deleteQualityCharacteristic returns false when no row was deleted', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
+
+    await expect(deleteQualityCharacteristic(db, 999)).resolves.toBe(false)
   })
 })

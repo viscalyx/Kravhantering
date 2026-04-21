@@ -474,6 +474,7 @@ export async function createPackage(
     businessNeedsReference?: string | null
   },
 ) {
+  const now = new Date()
   const rows = (await db.query(
     `
       INSERT INTO requirement_packages (
@@ -482,7 +483,9 @@ export async function createPackage(
         package_responsibility_area_id,
         package_implementation_type_id,
         package_lifecycle_status_id,
-        business_needs_reference
+        business_needs_reference,
+        created_at,
+        updated_at
       )
       OUTPUT
         INSERTED.id AS id,
@@ -494,7 +497,7 @@ export async function createPackage(
         INSERTED.business_needs_reference AS businessNeedsReference,
         INSERTED.created_at AS createdAt,
         INSERTED.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3, @4, @5)
+      VALUES (@0, @1, @2, @3, @4, @5, @6, @6)
     `,
     [
       data.uniqueId,
@@ -503,6 +506,7 @@ export async function createPackage(
       data.packageImplementationTypeId ?? null,
       data.packageLifecycleStatusId ?? null,
       data.businessNeedsReference ?? null,
+      now,
     ],
   )) as Row[]
 
@@ -713,15 +717,15 @@ async function getOrCreatePackageNeedsReferenceWithMetadata(
   const normalizedText = text.trim()
   const insertedRows = (await db.query(
     `
-      INSERT INTO package_needs_references (package_id, text)
+      INSERT INTO package_needs_references (package_id, text, created_at)
       OUTPUT INSERTED.id AS id
-      SELECT @0, @1
+      SELECT @0, @1, @2
       WHERE NOT EXISTS (
         SELECT 1 FROM package_needs_references
         WHERE package_id = @0 AND text = @1
       )
     `,
-    [packageId, normalizedText],
+    [packageId, normalizedText, new Date()],
   )) as Array<{ id: number }>
 
   if (insertedRows[0]) {
@@ -1355,10 +1359,11 @@ export async function linkRequirementsToPackage(
           requirement_id,
           requirement_version_id,
           needs_reference_id,
-          package_item_status_id
+          package_item_status_id,
+          created_at
         )
         OUTPUT INSERTED.id AS id
-        SELECT @0, @1, @2, @3, @4
+        SELECT @0, @1, @2, @3, @4, @5
         WHERE NOT EXISTS (
           SELECT 1 FROM requirement_package_items
           WHERE requirement_package_id = @0 AND requirement_id = @1
@@ -1370,6 +1375,7 @@ export async function linkRequirementsToPackage(
         item.requirementVersionId,
         item.needsReferenceId ?? null,
         DEFAULT_PACKAGE_ITEM_STATUS_ID,
+        new Date(),
       ],
     )) as Array<{ id: number }>
     if (rows.length > 0) {
