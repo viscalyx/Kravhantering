@@ -5,7 +5,7 @@ import {
   type QualityCharacteristicRow,
   updateQualityCharacteristic,
 } from '@/lib/dal/requirement-types'
-import { getRequestDatabaseConnection } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -18,7 +18,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Record<string, unknown>
   if (
     (body.nameSv != null && typeof body.nameSv !== 'string') ||
@@ -46,7 +46,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
 
   const allCategories = await listQualityCharacteristics(db)
   const hasChildren = allCategories.some(

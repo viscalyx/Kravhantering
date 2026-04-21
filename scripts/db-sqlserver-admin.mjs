@@ -4,14 +4,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DataSource } from 'typeorm'
-import {
-  createLegacySqliteSnapshot,
-  getLegacyTableMetadata,
-  readLegacySeedRows,
-} from './sqlserver-bootstrap.mjs'
-import {
-  InitialSqlServerSchema1713720000000,
-} from '../typeorm/migrations/0001_initial_sqlserver.mjs'
+import { InitialSqlServerSchema1713720000000 } from '../typeorm/migrations/0001_initial_sqlserver.mjs'
+import { seedDatabase } from '../typeorm/seed.mjs'
 
 export const DEFAULT_BROWSE_CONNECTION_NAME =
   'Kravhantering SQL Server (read-only)'
@@ -130,9 +124,9 @@ function getExplicitSqlServerDatabaseUrl(env = process.env, options = {}) {
 
   return (
     candidates
-    .map(value => value?.trim())
-    .find(value => value && isSqlServerUrl(value))
-  ) ?? null
+      .map(value => value?.trim())
+      .find(value => value && isSqlServerUrl(value)) ?? null
+  )
 }
 
 function buildSqlServerDatabaseUrlFromParts(env = process.env, options = {}) {
@@ -144,7 +138,7 @@ function buildSqlServerDatabaseUrlFromParts(env = process.env, options = {}) {
     : env.DB_USER?.trim() || (env.MSSQL_SA_PASSWORD ? 'sa' : undefined)
   const password = readonly
     ? env.DB_READONLY_PASSWORD
-    : env.DB_PASSWORD ?? env.MSSQL_SA_PASSWORD
+    : (env.DB_PASSWORD ?? env.MSSQL_SA_PASSWORD)
 
   if (!host || !database || !username || !password) {
     return null
@@ -164,10 +158,7 @@ function buildSqlServerDatabaseUrlFromParts(env = process.env, options = {}) {
   url.port = String(port)
   url.pathname = `/${encodeURIComponent(database)}`
   url.searchParams.set('encrypt', String(encrypt))
-  url.searchParams.set(
-    'trustServerCertificate',
-    String(trustServerCertificate),
-  )
+  url.searchParams.set('trustServerCertificate', String(trustServerCertificate))
 
   return url.toString()
 }
@@ -264,24 +255,13 @@ function escapeSqlServerStringLiteral(value) {
   return String(value).replaceAll("'", "''")
 }
 
-function getSqlServerSchemaName(env = process.env) {
-  return env.DB_SCHEMA?.trim() || 'dbo'
-}
-
-function quoteQualifiedSqlServerTableName(tableName, env = process.env) {
-  return `${quoteSqlServerIdentifier(getSqlServerSchemaName(env))}.${quoteSqlServerIdentifier(tableName)}`
-}
-
 function createMasterConnectionString(connectionString) {
   const url = new URL(connectionString)
   url.pathname = '/master'
   return url.toString()
 }
 
-function buildMigrationDataSourceOptions(
-  connectionString,
-  env = process.env,
-) {
+function buildMigrationDataSourceOptions(connectionString, env = process.env) {
   const parsed = parseSqlServerConnectionString(connectionString, env)
 
   return {
@@ -303,9 +283,7 @@ function buildMigrationDataSourceOptions(
 async function defaultConnect(config) {
   const mssqlModule = await import('mssql')
   const connect =
-    mssqlModule.connect ??
-    mssqlModule.default?.connect ??
-    mssqlModule.default
+    mssqlModule.connect ?? mssqlModule.default?.connect ?? mssqlModule.default
 
   if (typeof connect !== 'function') {
     throw new Error('Unable to load the mssql driver connect() function.')
@@ -314,7 +292,12 @@ async function defaultConnect(config) {
   return connect(config)
 }
 
-async function withPool(connectionString, connectImpl, callback, env = process.env) {
+async function withPool(
+  connectionString,
+  connectImpl,
+  callback,
+  env = process.env,
+) {
   const pool = await connectImpl(createMssqlConfig(connectionString, env))
 
   try {
@@ -324,54 +307,16 @@ async function withPool(connectionString, connectImpl, callback, env = process.e
   }
 }
 
-function hasIdentityPrimaryKey(tableMetadata) {
-  if (tableMetadata.primaryKey.length !== 1) {
-    return false
-  }
-
-  const primaryColumn = tableMetadata.columns.find(
-    column => column.name === tableMetadata.primaryKey[0],
-  )
-
-  return String(primaryColumn?.type ?? '')
-    .toLowerCase()
-    .includes('int')
-}
-
-function normalizeSeedValue(value) {
-  if (value === undefined) {
-    return null
-  }
-
-  if (typeof value === 'boolean') {
-    return value ? 1 : 0
-  }
-
-  return value
-}
-
-function formatSeedDebugValue(value) {
-  if (value == null) {
-    return value
-  }
-
-  if (value instanceof Date) {
-    return value.toISOString()
-  }
-
-  if (typeof value === 'bigint') {
-    return value.toString()
-  }
-
-  return value
-}
-
 function containsSqlServerLoginName(password, username) {
   const normalizedPassword = String(password ?? '').toLowerCase()
-  const normalizedUsername = String(username ?? '').trim().toLowerCase()
+  const normalizedUsername = String(username ?? '')
+    .trim()
+    .toLowerCase()
 
-  return normalizedUsername.length >= 3 &&
+  return (
+    normalizedUsername.length >= 3 &&
     normalizedPassword.includes(normalizedUsername)
+  )
 }
 
 export async function resetSqlServerDatabase(connectionString, options = {}) {
@@ -380,11 +325,14 @@ export async function resetSqlServerDatabase(connectionString, options = {}) {
   const parsed = parseSqlServerConnectionString(connectionString, env)
   const masterConnectionString = createMasterConnectionString(connectionString)
 
-  return withPool(masterConnectionString, connectImpl, async pool => {
-    const request = pool.request()
-    request.input('databaseName', parsed.database)
+  return withPool(
+    masterConnectionString,
+    connectImpl,
+    async pool => {
+      const request = pool.request()
+      request.input('databaseName', parsed.database)
 
-    await request.query(`
+      await request.query(`
       IF DB_ID(@databaseName) IS NOT NULL
       BEGIN
         DECLARE @dropSql nvarchar(max) =
@@ -399,11 +347,13 @@ export async function resetSqlServerDatabase(connectionString, options = {}) {
       EXEC sp_executesql @createSql
     `)
 
-    return {
-      database: parsed.database,
-      server: parsed.server,
-    }
-  }, env)
+      return {
+        database: parsed.database,
+        server: parsed.server,
+      }
+    },
+    env,
+  )
 }
 
 export async function runSqlServerMigrations(connectionString, options = {}) {
@@ -466,8 +416,11 @@ export async function ensureReadonlySqlServerAccess(
   const masterConnectionString = createMasterConnectionString(connectionString)
 
   try {
-    await withPool(masterConnectionString, connectImpl, async pool => {
-      await pool.request().query(`
+    await withPool(
+      masterConnectionString,
+      connectImpl,
+      async pool => {
+        await pool.request().query(`
         IF EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = ${escapedUserNameLiteral})
         BEGIN
           ALTER LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
@@ -477,7 +430,9 @@ export async function ensureReadonlySqlServerAccess(
           CREATE LOGIN ${escapedLoginName} WITH PASSWORD = ${escapedPassword}
         END
       `)
-    }, env)
+      },
+      env,
+    )
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error)
     throw new Error(
@@ -486,8 +441,11 @@ export async function ensureReadonlySqlServerAccess(
   }
 
   try {
-    await withPool(connectionString, connectImpl, async pool => {
-      await pool.request().query(`
+    await withPool(
+      connectionString,
+      connectImpl,
+      async pool => {
+        await pool.request().query(`
         IF DATABASE_PRINCIPAL_ID(${escapedUserNameLiteral}) IS NULL
         BEGIN
           CREATE USER ${escapedUserName} FOR LOGIN ${escapedLoginName}
@@ -509,7 +467,9 @@ export async function ensureReadonlySqlServerAccess(
 
         GRANT VIEW DEFINITION TO ${escapedUserName}
       `)
-    }, env)
+      },
+      env,
+    )
   } catch (error) {
     const details = error instanceof Error ? error.message : String(error)
     throw new Error(
@@ -524,145 +484,31 @@ export async function ensureReadonlySqlServerAccess(
 }
 
 export async function seedSqlServerDatabase(connectionString, options = {}) {
-  const connectImpl = options.connectImpl ?? defaultConnect
+  const DataSourceCtor = options.dataSourceCtor ?? DataSource
   const env = options.env ?? process.env
-  const sqliteFactory =
-    options.createLegacySqliteSnapshotImpl ?? createLegacySqliteSnapshot
-  const metadataFactory =
-    options.getLegacyTableMetadataImpl ?? getLegacyTableMetadata
-  const seedRowReader = options.readLegacySeedRowsImpl ?? readLegacySeedRows
-  const sqlite = sqliteFactory({
-    cwd: options.cwd ?? process.cwd(),
-    includeSeed: true,
-  })
+  const dataSource = new DataSourceCtor(
+    buildMigrationDataSourceOptions(connectionString, env),
+  )
+
+  await dataSource.initialize()
+  let insertedRows = 0
 
   try {
-    const metadata = metadataFactory(sqlite)
-
-    return await withPool(connectionString, connectImpl, async pool => {
-      const transaction =
-        typeof pool.transaction === 'function' ? pool.transaction() : null
-      const requestFactory =
-        transaction && typeof transaction.request === 'function'
-          ? () => transaction.request()
-          : () => pool.request()
-
-      if (transaction && typeof transaction.begin === 'function') {
-        await transaction.begin()
-      }
-
-      let insertedRows = 0
-
-      try {
-        for (const tableMetadata of metadata) {
-          const qualifiedTableName = quoteQualifiedSqlServerTableName(
-            tableMetadata.name,
-            env,
-          )
-          await requestFactory().query(
-            `ALTER TABLE ${qualifiedTableName} NOCHECK CONSTRAINT ALL`,
-          )
-        }
-
-        for (const tableMetadata of metadata) {
-          const rows = seedRowReader(sqlite, tableMetadata)
-
-          if (rows.length === 0) {
-            continue
-          }
-
-          const hasIdentity = hasIdentityPrimaryKey(tableMetadata)
-          const qualifiedTableName = quoteQualifiedSqlServerTableName(
-            tableMetadata.name,
-            env,
-          )
-          const identityInsertOnSql =
-            `SET IDENTITY_INSERT ${qualifiedTableName} ON`
-          const identityInsertOffSql =
-            `SET IDENTITY_INSERT ${qualifiedTableName} OFF`
-
-          for (const row of rows) {
-            const columns = tableMetadata.columns.filter(column =>
-              Object.hasOwn(row, column.name),
-            )
-            const request = requestFactory()
-            const parameterValues = {}
-            const parameterTokens = columns.map((column, index) => {
-              const parameterName = `p${index}`
-              const normalizedValue = normalizeSeedValue(row[column.name])
-              request.input(parameterName, normalizedValue)
-              parameterValues[parameterName] = formatSeedDebugValue(normalizedValue)
-              return `@${parameterName}`
-            })
-            const insertSql =
-              `INSERT INTO ${qualifiedTableName} (${columns
-                .map(column => quoteSqlServerIdentifier(column.name))
-                .join(', ')}) VALUES (${parameterTokens.join(', ')})`
-            const batchSql = hasIdentity
-              ? `${identityInsertOnSql}; ${insertSql}; ${identityInsertOffSql};`
-              : insertSql
-
-            try {
-              await request.query(batchSql)
-            } catch (error) {
-              const details =
-                error instanceof Error ? error.message : String(error)
-              throw new Error(
-                [
-                  `SQL Server seed failed for table ${tableMetadata.name}: ${details}`,
-                  `identityInsertEnabled: ${String(hasIdentity)}`,
-                  `identityInsertOnSql: ${identityInsertOnSql}`,
-                  `insertSql: ${insertSql}`,
-                  `batchSql: ${batchSql}`,
-                  `parameters: ${JSON.stringify(parameterValues)}`,
-                  `row: ${JSON.stringify(
-                    columns.reduce((accumulator, column) => {
-                      accumulator[column.name] = formatSeedDebugValue(
-                        row[column.name],
-                      )
-                      return accumulator
-                    }, {}),
-                  )}`,
-                ].join('\n'),
-              )
-            }
-
-            insertedRows += 1
-          }
-        }
-
-        for (const tableMetadata of metadata) {
-          const qualifiedTableName = quoteQualifiedSqlServerTableName(
-            tableMetadata.name,
-            env,
-          )
-          await requestFactory().query(
-            `ALTER TABLE ${qualifiedTableName} WITH CHECK CHECK CONSTRAINT ALL`,
-          )
-        }
-
-        if (transaction && typeof transaction.commit === 'function') {
-          await transaction.commit()
-        }
-      } catch (error) {
-        if (transaction && typeof transaction.rollback === 'function') {
-          await transaction.rollback()
-        }
-        throw error
-      }
-
-      const readonlyAccess = await ensureReadonlySqlServerAccess(
-        connectionString,
-        options,
-      )
-
-      return {
-        insertedRows,
-        readonlyAccessConfigured: readonlyAccess.configured,
-      }
-    }, env)
+    insertedRows = await seedDatabase(dataSource)
   } finally {
-    sqlite.close()
+    if (typeof dataSource.destroy === 'function') {
+      await dataSource.destroy()
+    }
+  }
+
+  const readonlyAccess = await ensureReadonlySqlServerAccess(
+    connectionString,
+    options,
+  )
+
+  return {
+    insertedRows,
+    readonlyAccessConfigured: readonlyAccess.configured,
   }
 }
 
@@ -670,15 +516,20 @@ export async function healthCheckSqlServer(connectionString, options = {}) {
   const connectImpl = options.connectImpl ?? defaultConnect
   const env = options.env ?? process.env
 
-  return withPool(connectionString, connectImpl, async pool => {
-    const result = await pool.request().query('SELECT 1 AS ok')
+  return withPool(
+    connectionString,
+    connectImpl,
+    async pool => {
+      const result = await pool.request().query('SELECT 1 AS ok')
 
-    return {
-      database: createMssqlConfig(connectionString, env).database,
-      ok: Array.isArray(result.recordset) && result.recordset.length > 0,
-      server: createMssqlConfig(connectionString, env).server,
-    }
-  }, env)
+      return {
+        database: createMssqlConfig(connectionString, env).database,
+        ok: Array.isArray(result.recordset) && result.recordset.length > 0,
+        server: createMssqlConfig(connectionString, env).server,
+      }
+    },
+    env,
+  )
 }
 
 export async function waitForSqlServer(connectionString, options = {}) {
@@ -687,7 +538,8 @@ export async function waitForSqlServer(connectionString, options = {}) {
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_WAIT_RETRY_MS
   const sleepImpl =
     options.sleepImpl ??
-    (delayMs => new Promise(resolvePromise => setTimeout(resolvePromise, delayMs)))
+    (delayMs =>
+      new Promise(resolvePromise => setTimeout(resolvePromise, delayMs)))
   const timeoutMs = options.timeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS
 
   const deadline = nowImpl() + timeoutMs
@@ -791,21 +643,26 @@ export async function main(args, dependencies = {}) {
       return 0
     } catch (error) {
       consoleObj.error(
-        error instanceof Error ? error.message : 'SQL Server health check failed.',
+        error instanceof Error
+          ? error.message
+          : 'SQL Server health check failed.',
       )
       return 1
     }
   }
 
   if (command === 'wait') {
-    const masterConnectionString = createMasterConnectionString(connectionString)
+    const masterConnectionString =
+      createMasterConnectionString(connectionString)
 
     try {
       const result = await waitForSqlServer(
         masterConnectionString,
         dependencies,
       )
-      consoleObj.log(`SQL Server is ready (${result.server}/${result.database}).`)
+      consoleObj.log(
+        `SQL Server is ready (${result.server}/${result.database}).`,
+      )
       return 0
     } catch (error) {
       consoleObj.error(
@@ -817,7 +674,10 @@ export async function main(args, dependencies = {}) {
 
   if (command === 'reset') {
     try {
-      const result = await resetSqlServerDatabase(connectionString, dependencies)
+      const result = await resetSqlServerDatabase(
+        connectionString,
+        dependencies,
+      )
       consoleObj.log(
         `SQL Server database reset (${result.server}/${result.database}).`,
       )
@@ -832,7 +692,10 @@ export async function main(args, dependencies = {}) {
 
   if (command === 'migrate') {
     try {
-      const result = await runSqlServerMigrations(connectionString, dependencies)
+      const result = await runSqlServerMigrations(
+        connectionString,
+        dependencies,
+      )
       consoleObj.log(
         `SQL Server migrations applied to ${result.database} (${result.migrationsApplied} migration${result.migrationsApplied === 1 ? '' : 's'}).`,
       )
@@ -852,7 +715,9 @@ export async function main(args, dependencies = {}) {
         `SQL Server seed completed (${result.insertedRows} inserted row${result.insertedRows === 1 ? '' : 's'}).`,
       )
       if (result.readonlyAccessConfigured) {
-        consoleObj.log('Configured read-only database access for browse tooling.')
+        consoleObj.log(
+          'Configured read-only database access for browse tooling.',
+        )
       }
       return 0
     } catch (error) {
@@ -864,10 +729,13 @@ export async function main(args, dependencies = {}) {
   }
 
   if (command === 'setup') {
-    const masterConnectionString = createMasterConnectionString(connectionString)
+    const masterConnectionString =
+      createMasterConnectionString(connectionString)
 
     try {
-      consoleObj.log('Step 1/4: waiting for SQL Server to accept connections...')
+      consoleObj.log(
+        'Step 1/4: waiting for SQL Server to accept connections...',
+      )
       await waitForSqlServer(masterConnectionString, dependencies)
       consoleObj.log('Step 2/4: resetting SQL Server database...')
       await resetSqlServerDatabase(connectionString, dependencies)
@@ -882,9 +750,39 @@ export async function main(args, dependencies = {}) {
       )
       return 0
     } catch (error) {
-      consoleObj.error(
-        error instanceof Error ? error.message : 'SQL Server setup failed.',
-      )
+      const message =
+        error instanceof Error ? error.message : 'SQL Server setup failed.'
+      consoleObj.error(message)
+      if (error instanceof Error && error.stack) {
+        consoleObj.error(error.stack)
+      }
+      if (error && typeof error === 'object') {
+        const extras = {}
+        for (const key of [
+          'code',
+          'number',
+          'state',
+          'class',
+          'serverName',
+          'procName',
+          'lineNumber',
+        ]) {
+          if (key in error) extras[key] = error[key]
+        }
+        if (Object.keys(extras).length > 0) {
+          consoleObj.error(
+            `SQL Server error details: ${JSON.stringify(extras)}`,
+          )
+        }
+        if ('originalError' in error && error.originalError) {
+          consoleObj.error(`Original error: ${String(error.originalError)}`)
+        }
+      }
+      if (process.env.SEED_DEBUG !== '1' && process.env.SEED_DEBUG !== 'true') {
+        consoleObj.error(
+          'Hint: re-run with `SEED_DEBUG=1 npm run db:setup` for per-table seed progress.',
+        )
+      }
       return 1
     }
   }

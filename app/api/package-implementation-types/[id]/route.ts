@@ -3,7 +3,7 @@ import {
   deletePackageImplementationType,
   updatePackageImplementationType,
 } from '@/lib/dal/package-implementation-types'
-import { getRequestDatabaseConnection } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -12,7 +12,7 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Parameters<
     typeof updatePackageImplementationType
   >[2]
@@ -25,7 +25,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   await deletePackageImplementationType(db, Number(id))
   return NextResponse.json({ ok: true })
 }

@@ -6,14 +6,12 @@ import {
   listPackageItems,
   updatePackageItemFieldsByItemRef,
 } from '@/lib/dal/requirement-packages'
-import { type getDb, getRequestDatabase } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string; itemId: string }>
 
-async function resolvePackageId(
-  idOrSlug: string,
-  db: ReturnType<typeof getDb>,
-) {
+async function resolvePackageId(idOrSlug: string, db: SqlServerDatabase) {
   const bySlug = await getPackageBySlug(db, idOrSlug)
   if (bySlug) {
     return bySlug.id
@@ -37,7 +35,7 @@ export async function GET(
   if (!Number.isInteger(numericItemId) || numericItemId < 1) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(id, db)
 
   if (packageId === null) {
@@ -100,7 +98,7 @@ export async function PATCH(
   } catch {
     return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(id, db)
   if (packageId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -5,7 +5,7 @@ import {
   getUiTerminology,
   updateUiTerminology,
 } from '@/lib/dal/ui-settings'
-import { getRequestDatabaseConnection } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { buildUiTerminologyPayload, UI_TERM_KEYS } from '@/lib/ui-terminology'
 
 const termFormsSchema = z
@@ -46,7 +46,7 @@ function toValidationError(error: unknown) {
 
 export async function GET() {
   try {
-    const db = await getRequestDatabaseConnection()
+    const db = await getRequestSqlServerDataSource()
     const terminology = await getUiTerminology(db)
 
     return NextResponse.json({
@@ -90,7 +90,7 @@ export async function PUT(request: Request) {
         { status: 400 },
       )
     }
-    const db = await getRequestDatabaseConnection()
+    const db = await getRequestSqlServerDataSource()
     const terminology = await updateUiTerminology(db, body.terminology)
 
     return NextResponse.json({

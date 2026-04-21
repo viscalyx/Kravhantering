@@ -53,10 +53,7 @@ function parseBoolean(
   return defaultValue
 }
 
-function parseInteger(
-  value: string | undefined,
-  defaultValue: number,
-): number {
+function parseInteger(value: string | undefined, defaultValue: number): number {
   if (value == null || value.trim() === '') {
     return defaultValue
   }
@@ -79,9 +76,9 @@ function getExplicitSqlServerDatabaseUrl(
 
   return (
     candidates
-    .map(value => value?.trim())
-    .find(value => value && isSqlServerUrl(value))
-  ) ?? null
+      .map(value => value?.trim())
+      .find(value => value && isSqlServerUrl(value)) ?? null
+  )
 }
 
 function buildSqlServerDatabaseUrlFromParts(
@@ -95,7 +92,7 @@ function buildSqlServerDatabaseUrlFromParts(
     : env.DB_USER?.trim() || (env.MSSQL_SA_PASSWORD ? 'sa' : undefined)
   const password = readonly
     ? env.DB_READONLY_PASSWORD
-    : env.DB_PASSWORD ?? env.MSSQL_SA_PASSWORD
+    : (env.DB_PASSWORD ?? env.MSSQL_SA_PASSWORD)
 
   if (!host || !database || !username || !password) {
     return null
@@ -115,10 +112,7 @@ function buildSqlServerDatabaseUrlFromParts(
   url.port = String(port)
   url.pathname = `/${encodeURIComponent(database)}`
   url.searchParams.set('encrypt', String(encrypt))
-  url.searchParams.set(
-    'trustServerCertificate',
-    String(trustServerCertificate),
-  )
+  url.searchParams.set('trustServerCertificate', String(trustServerCertificate))
 
   return url.toString()
 }
@@ -144,9 +138,7 @@ export function getSqlServerDatabaseUrl(
       ? 'SQLSERVER_DATABASE_READONLY_URL or DATABASE_READONLY_URL, or DB_HOST/DB_PORT/DB_NAME/DB_READONLY_USER/DB_READONLY_PASSWORD'
       : 'SQLSERVER_DATABASE_URL or DATABASE_URL, or DB_HOST/DB_PORT/DB_NAME with DB_USER/DB_PASSWORD (or MSSQL_SA_PASSWORD for the default sa login)'
 
-    throw new Error(
-      `${variableName} must be configured for SQL Server access.`,
-    )
+    throw new Error(`${variableName} must be configured for SQL Server access.`)
   }
 
   return resolved
@@ -158,8 +150,7 @@ export function buildSqlServerDataSourceOptions(
   const env = options.env ?? process.env
   const url = options.url ?? getSqlServerDatabaseUrl(env, options.readonly)
   const logging =
-    options.logging ??
-    (parseBoolean(env.DB_LOGGING, false) ? ['error'] : false)
+    options.logging ?? (parseBoolean(env.DB_LOGGING, false) ? ['error'] : false)
 
   return {
     type: 'mssql',

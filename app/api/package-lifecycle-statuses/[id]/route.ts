@@ -3,7 +3,7 @@ import {
   deletePackageLifecycleStatus,
   updatePackageLifecycleStatus,
 } from '@/lib/dal/package-lifecycle-statuses'
-import { getRequestDatabaseConnection } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -21,7 +21,7 @@ export async function PUT(
   if (id === null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Parameters<
     typeof updatePackageLifecycleStatus
   >[2]
@@ -49,7 +49,7 @@ export async function DELETE(
   if (id === null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   try {
     const deletedCount = await deletePackageLifecycleStatus(db, id)
     if (deletedCount === 0) {

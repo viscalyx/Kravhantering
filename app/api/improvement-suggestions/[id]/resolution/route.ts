@@ -1,7 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { SUGGESTION_DISMISSED, SUGGESTION_RESOLVED } from '@/drizzle/schema'
-import { recordResolution } from '@/lib/dal/improvement-suggestions'
-import { getRequestDatabaseConnection } from '@/lib/db'
+import {
+  recordResolution,
+  SUGGESTION_DISMISSED,
+  SUGGESTION_RESOLVED,
+} from '@/lib/dal/improvement-suggestions'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -71,7 +74,7 @@ export async function POST(
       { status: 400 },
     )
   }
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await recordResolution(db, numericId, {

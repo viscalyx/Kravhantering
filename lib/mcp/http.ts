@@ -1,5 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { createRequirementsLogger } from '@/lib/requirements/logging'
 import { createRequirementsService } from '@/lib/requirements/service'
@@ -25,7 +25,7 @@ function createMethodNotAllowedResponse() {
 
 export async function handleRequirementsMcpRequest(
   request: Request,
-  db: Database,
+  db: SqlServerDatabase,
 ) {
   if (!['DELETE', 'GET', 'POST'].includes(request.method)) {
     return createMethodNotAllowedResponse()

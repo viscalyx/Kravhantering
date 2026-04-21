@@ -3,6 +3,23 @@
   "language": "en,sv",
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
+    "cutover",
+    "Cutover",
+    "Passw",
+    "mtxr",
+    "sqltools",
+    "plrnr",
+    "plrus",
+    "LTRIM",
+    "RTRIM",
+    "ROWCOUNT",
+    "nvarchar",
+    "QUOTENAME",
+    "executesql",
+    "recordset",
+    "datareader",
+    "Millis",
+    "analysability",
     "acceptanskriterie",
     "analyserbarhet",
     "analyzability",
@@ -293,7 +310,8 @@
     "rewriteable",
     "readback",
     "inspectable",
-    "pycache"
+    "pycache",
+    "typeorm"
   ],
   "flagWords": [],
   "ignorePaths": [

@@ -1,56 +1,179 @@
-import {
-  buildSqlServerDropStatements,
-  buildSqlServerSchemaStatements,
-  createLegacySqliteSnapshot,
-  getLegacyTableMetadata,
-} from '../../scripts/sqlserver-bootstrap.mjs'
+const UP_STATEMENTS = [
+  'CREATE TABLE [norm_references] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [norm_reference_id] nvarchar(450) NOT NULL,\n  [name] nvarchar(max) NOT NULL,\n  [type] nvarchar(max) NOT NULL,\n  [reference] nvarchar(max) NOT NULL,\n  [version] nvarchar(max) NULL,\n  [issuer] nvarchar(max) NOT NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  [uri] nvarchar(max) NULL,\n  CONSTRAINT [pk_norm_references] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [owners] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [first_name] nvarchar(max) NOT NULL,\n  [last_name] nvarchar(max) NOT NULL,\n  [email] nvarchar(450) NOT NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_owners] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_implementation_types] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  CONSTRAINT [pk_package_implementation_types] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_item_statuses] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  [description_sv] nvarchar(max) NULL,\n  [description_en] nvarchar(max) NULL,\n  [color] nvarchar(max) NOT NULL,\n  [sort_order] int NOT NULL DEFAULT (0),\n  CONSTRAINT [pk_package_item_statuses] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_lifecycle_statuses] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  CONSTRAINT [pk_package_lifecycle_statuses] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_responsibility_areas] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  CONSTRAINT [pk_package_responsibility_areas] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_areas] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [prefix] nvarchar(450) NOT NULL,\n  [name] nvarchar(max) NOT NULL,\n  [description] nvarchar(max) NULL,\n  [owner_id] int NULL,\n  [next_sequence] int NOT NULL DEFAULT (1),\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_requirement_areas] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_categories] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  CONSTRAINT [pk_requirement_categories] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_list_column_defaults] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [column_id] nvarchar(450) NOT NULL,\n  [sort_order] int NOT NULL,\n  [is_default_visible] bit NOT NULL DEFAULT (1),\n  [updated_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_requirement_list_column_defaults] PRIMARY KEY ([id])\n);',
+  "CREATE TABLE [requirement_packages] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [package_responsibility_area_id] int NULL,\n  [package_implementation_type_id] int NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  [business_needs_reference] nvarchar(max) NULL,\n  [unique_id] nvarchar(450) NOT NULL DEFAULT (N''),\n  [name] nvarchar(max) NOT NULL DEFAULT (N''),\n  [package_lifecycle_status_id] int NULL,\n  [local_requirement_next_sequence] int NOT NULL DEFAULT (1),\n  CONSTRAINT [pk_requirement_packages] PRIMARY KEY ([id])\n);",
+  'CREATE TABLE [package_needs_references] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [package_id] int NOT NULL,\n  [text] nvarchar(450) NOT NULL,\n  [created_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_package_needs_references] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_statuses] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  [sort_order] int NOT NULL DEFAULT (0),\n  [color] nvarchar(max) NOT NULL,\n  [is_system] bit NOT NULL DEFAULT (0),\n  CONSTRAINT [pk_requirement_statuses] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_status_transitions] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [from_requirement_status_id] int NOT NULL,\n  [to_requirement_status_id] int NOT NULL,\n  CONSTRAINT [pk_requirement_status_transitions] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_types] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  CONSTRAINT [pk_requirement_types] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [quality_characteristics] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(max) NOT NULL,\n  [name_en] nvarchar(max) NOT NULL,\n  [requirement_type_id] int NOT NULL,\n  [parent_id] int NULL,\n  CONSTRAINT [pk_quality_characteristics] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirements] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [unique_id] nvarchar(450) NOT NULL,\n  [requirement_area_id] int NOT NULL,\n  [sequence_number] int NOT NULL,\n  [is_archived] bit NOT NULL DEFAULT (0),\n  [created_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_requirements] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [risk_levels] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(450) NOT NULL,\n  [name_en] nvarchar(450) NOT NULL,\n  [sort_order] int NOT NULL DEFAULT (0),\n  [color] nvarchar(max) NOT NULL,\n  CONSTRAINT [pk_risk_levels] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_local_requirements] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [package_id] int NOT NULL,\n  [unique_id] nvarchar(450) NOT NULL,\n  [sequence_number] int NOT NULL,\n  [requirement_area_id] int NULL,\n  [description] nvarchar(max) NOT NULL,\n  [acceptance_criteria] nvarchar(max) NULL,\n  [requirement_category_id] int NULL,\n  [requirement_type_id] int NULL,\n  [quality_characteristic_id] int NULL,\n  [risk_level_id] int NULL,\n  [is_testing_required] bit NOT NULL DEFAULT (0),\n  [verification_method] nvarchar(max) NULL,\n  [needs_reference_id] int NULL,\n  [package_item_status_id] int NULL,\n  [note] nvarchar(max) NULL,\n  [status_updated_at] datetime2(3) NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_package_local_requirements] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_local_requirement_deviations] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [package_local_requirement_id] int NOT NULL,\n  [motivation] nvarchar(max) NOT NULL,\n  [is_review_requested] bit NOT NULL DEFAULT (0),\n  [decision] int NULL,\n  [decision_motivation] nvarchar(max) NULL,\n  [decided_by] nvarchar(max) NULL,\n  [decided_at] datetime2(3) NULL,\n  [created_by] nvarchar(max) NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NULL,\n  CONSTRAINT [pk_package_local_requirement_deviations] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_local_requirement_norm_references] (\n  [package_local_requirement_id] int NOT NULL,\n  [norm_reference_id] int NOT NULL,\n  CONSTRAINT [pk_package_local_requirement_norm_references] PRIMARY KEY ([package_local_requirement_id], [norm_reference_id])\n);',
+  'CREATE TABLE [requirement_versions] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [requirement_id] int NOT NULL,\n  [version_number] int NOT NULL,\n  [description] nvarchar(max) NOT NULL,\n  [acceptance_criteria] nvarchar(max) NULL,\n  [requirement_category_id] int NULL,\n  [requirement_type_id] int NULL,\n  [quality_characteristic_id] int NULL,\n  [requirement_status_id] int NOT NULL,\n  [is_testing_required] bit NOT NULL DEFAULT (0),\n  [verification_method] nvarchar(max) NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [edited_at] datetime2(3) NULL,\n  [published_at] datetime2(3) NULL,\n  [archived_at] datetime2(3) NULL,\n  [created_by] nvarchar(max) NULL,\n  [archive_initiated_at] datetime2(3) NULL,\n  [risk_level_id] int NULL,\n  CONSTRAINT [pk_requirement_versions] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [improvement_suggestions] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [requirement_id] int NOT NULL,\n  [requirement_version_id] int NULL,\n  [content] nvarchar(max) NOT NULL,\n  [is_review_requested] bit NOT NULL DEFAULT (0),\n  [resolution] int NULL,\n  [resolution_motivation] nvarchar(max) NULL,\n  [resolved_by] nvarchar(max) NULL,\n  [resolved_at] datetime2(3) NULL,\n  [created_by] nvarchar(max) NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NULL,\n  [review_requested_at] datetime2(3) NULL,\n  CONSTRAINT [pk_improvement_suggestions] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_package_items] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [requirement_package_id] int NOT NULL,\n  [requirement_id] int NOT NULL,\n  [requirement_version_id] int NOT NULL,\n  [needs_reference_id] int NULL,\n  [unused_1] nvarchar(max) NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [package_item_status_id] int NULL,\n  [note] nvarchar(max) NULL,\n  [status_updated_at] datetime2(3) NULL,\n  CONSTRAINT [pk_requirement_package_items] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [deviations] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [package_item_id] int NOT NULL,\n  [motivation] nvarchar(max) NOT NULL,\n  [decision] int NULL,\n  [decision_motivation] nvarchar(max) NULL,\n  [decided_by] nvarchar(max) NULL,\n  [decided_at] datetime2(3) NULL,\n  [created_by] nvarchar(max) NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NULL,\n  [is_review_requested] bit NOT NULL DEFAULT (0),\n  CONSTRAINT [pk_deviations] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [requirement_version_norm_references] (\n  [requirement_version_id] int NOT NULL,\n  [norm_reference_id] int NOT NULL,\n  CONSTRAINT [pk_requirement_version_norm_references] PRIMARY KEY ([requirement_version_id], [norm_reference_id])\n);',
+  'CREATE TABLE [ui_terminology] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [key] nvarchar(450) NOT NULL,\n  [singular_sv] nvarchar(max) NOT NULL,\n  [plural_sv] nvarchar(max) NOT NULL,\n  [definite_plural_sv] nvarchar(max) NOT NULL,\n  [singular_en] nvarchar(max) NOT NULL,\n  [plural_en] nvarchar(max) NOT NULL,\n  [definite_plural_en] nvarchar(max) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_ui_terminology] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [usage_scenarios] (\n  [id] int IDENTITY(1,1) NOT NULL,\n  [name_sv] nvarchar(max) NOT NULL,\n  [name_en] nvarchar(max) NOT NULL,\n  [description_sv] nvarchar(max) NULL,\n  [description_en] nvarchar(max) NULL,\n  [owner_id] int NULL,\n  [created_at] datetime2(3) NOT NULL,\n  [updated_at] datetime2(3) NOT NULL,\n  CONSTRAINT [pk_usage_scenarios] PRIMARY KEY ([id])\n);',
+  'CREATE TABLE [package_local_requirement_usage_scenarios] (\n  [package_local_requirement_id] int NOT NULL,\n  [usage_scenario_id] int NOT NULL,\n  CONSTRAINT [pk_package_local_requirement_usage_scenarios] PRIMARY KEY ([package_local_requirement_id], [usage_scenario_id])\n);',
+  'CREATE TABLE [requirement_version_usage_scenarios] (\n  [requirement_version_id] int NOT NULL,\n  [usage_scenario_id] int NOT NULL,\n  CONSTRAINT [pk_requirement_version_usage_scenarios] PRIMARY KEY ([requirement_version_id], [usage_scenario_id])\n);',
+  'CREATE UNIQUE INDEX [uq_norm_references_norm_reference_id] ON [norm_references] ([norm_reference_id]);',
+  'CREATE UNIQUE INDEX [uq_owners_email] ON [owners] ([email]);',
+  'CREATE UNIQUE INDEX [uq_package_implementation_types_name_en] ON [package_implementation_types] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_package_implementation_types_name_sv] ON [package_implementation_types] ([name_sv]);',
+  'CREATE UNIQUE INDEX [uq_package_item_statuses_name_en] ON [package_item_statuses] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_package_item_statuses_name_sv] ON [package_item_statuses] ([name_sv]);',
+  'CREATE UNIQUE INDEX [uq_package_lifecycle_statuses_name_en] ON [package_lifecycle_statuses] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_package_lifecycle_statuses_name_sv] ON [package_lifecycle_statuses] ([name_sv]);',
+  'CREATE UNIQUE INDEX [uq_package_responsibility_areas_name_en] ON [package_responsibility_areas] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_package_responsibility_areas_name_sv] ON [package_responsibility_areas] ([name_sv]);',
+  'CREATE UNIQUE INDEX [uq_requirement_areas_prefix] ON [requirement_areas] ([prefix]);',
+  'CREATE UNIQUE INDEX [uq_requirement_categories_name_en] ON [requirement_categories] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_requirement_categories_name_sv] ON [requirement_categories] ([name_sv]);',
+  'CREATE UNIQUE INDEX [uq_requirement_list_column_defaults_sort_order] ON [requirement_list_column_defaults] ([sort_order]);',
+  'CREATE UNIQUE INDEX [uq_requirement_list_column_defaults_column_id] ON [requirement_list_column_defaults] ([column_id]);',
+  'CREATE UNIQUE INDEX [uq_requirement_packages_unique_id] ON [requirement_packages] ([unique_id]);',
+  'CREATE UNIQUE INDEX [uq_package_needs_references_package_id_id] ON [package_needs_references] ([package_id], [id]);',
+  'CREATE UNIQUE INDEX [uq_package_needs_references_package_text] ON [package_needs_references] ([package_id], [text]);',
+  'CREATE UNIQUE INDEX [uq_requirement_statuses_name_en] ON [requirement_statuses] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_requirement_statuses_name_sv] ON [requirement_statuses] ([name_sv]);',
+  'CREATE UNIQUE INDEX [uq_requirement_status_transitions_from_to] ON [requirement_status_transitions] ([from_requirement_status_id], [to_requirement_status_id]);',
+  'CREATE UNIQUE INDEX [uq_requirement_types_name_en] ON [requirement_types] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_requirement_types_name_sv] ON [requirement_types] ([name_sv]);',
+  'CREATE INDEX [idx_quality_characteristics_parent_id] ON [quality_characteristics] ([parent_id]);',
+  'CREATE INDEX [idx_quality_characteristics_requirement_type_id] ON [quality_characteristics] ([requirement_type_id]);',
+  'CREATE INDEX [idx_requirements_is_archived] ON [requirements] ([is_archived]);',
+  'CREATE INDEX [idx_requirements_requirement_area_id] ON [requirements] ([requirement_area_id]);',
+  'CREATE UNIQUE INDEX [uq_requirements_unique_id] ON [requirements] ([unique_id]);',
+  'CREATE UNIQUE INDEX [uq_risk_levels_name_en] ON [risk_levels] ([name_en]);',
+  'CREATE UNIQUE INDEX [uq_risk_levels_name_sv] ON [risk_levels] ([name_sv]);',
+  'CREATE INDEX [idx_package_local_requirements_package_item_status_id] ON [package_local_requirements] ([package_item_status_id]);',
+  'CREATE INDEX [idx_package_local_requirements_requirement_area_id] ON [package_local_requirements] ([requirement_area_id]);',
+  'CREATE INDEX [idx_package_local_requirements_package_id] ON [package_local_requirements] ([package_id]);',
+  'CREATE UNIQUE INDEX [uq_package_local_requirements_package_id_sequence_number] ON [package_local_requirements] ([package_id], [sequence_number]);',
+  'CREATE UNIQUE INDEX [uq_package_local_requirements_package_id_unique_id] ON [package_local_requirements] ([package_id], [unique_id]);',
+  'CREATE INDEX [idx_package_local_requirement_deviations_package_local_requirement_id] ON [package_local_requirement_deviations] ([package_local_requirement_id]);',
+  'CREATE INDEX [idx_package_local_requirement_norm_references_norm_reference_id] ON [package_local_requirement_norm_references] ([norm_reference_id]);',
+  'CREATE UNIQUE INDEX [uq_requirement_versions_requirement_id_version_number] ON [requirement_versions] ([requirement_id], [version_number]);',
+  'CREATE INDEX [idx_requirement_versions_requirement_id] ON [requirement_versions] ([requirement_id]);',
+  'CREATE INDEX [idx_improvement_suggestions_requirement_version_id] ON [improvement_suggestions] ([requirement_version_id]);',
+  'CREATE INDEX [idx_improvement_suggestions_requirement_id] ON [improvement_suggestions] ([requirement_id]);',
+  'CREATE INDEX [idx_requirement_package_items_package_item_status_id] ON [requirement_package_items] ([package_item_status_id]);',
+  'CREATE UNIQUE INDEX [uq_requirement_package_items_package_requirement] ON [requirement_package_items] ([requirement_package_id], [requirement_id]);',
+  'CREATE INDEX [idx_requirement_package_items_requirement_id] ON [requirement_package_items] ([requirement_id]);',
+  'CREATE INDEX [idx_requirement_package_items_requirement_package_id] ON [requirement_package_items] ([requirement_package_id]);',
+  'CREATE INDEX [idx_deviations_package_item_id] ON [deviations] ([package_item_id]);',
+  'CREATE INDEX [idx_requirement_version_norm_references_norm_reference_id] ON [requirement_version_norm_references] ([norm_reference_id]);',
+  'CREATE UNIQUE INDEX [uq_ui_terminology_key] ON [ui_terminology] ([key]);',
+  'CREATE INDEX [idx_package_local_requirement_usage_scenarios_usage_scenario_id] ON [package_local_requirement_usage_scenarios] ([usage_scenario_id]);',
+  'CREATE INDEX [idx_requirement_version_usage_scenarios_usage_scenario_id] ON [requirement_version_usage_scenarios] ([usage_scenario_id]);',
+  'ALTER TABLE [requirement_areas] ADD CONSTRAINT [fk_requirement_areas_owner_id] FOREIGN KEY ([owner_id]) REFERENCES [owners] ([id]);',
+  'ALTER TABLE [requirement_packages] ADD CONSTRAINT [fk_requirement_packages_package_implementation_type_id] FOREIGN KEY ([package_implementation_type_id]) REFERENCES [package_implementation_types] ([id]);',
+  'ALTER TABLE [requirement_packages] ADD CONSTRAINT [fk_requirement_packages_package_responsibility_area_id] FOREIGN KEY ([package_responsibility_area_id]) REFERENCES [package_responsibility_areas] ([id]);',
+  'ALTER TABLE [requirement_packages] ADD CONSTRAINT [fk_requirement_packages_package_lifecycle_status_id] FOREIGN KEY ([package_lifecycle_status_id]) REFERENCES [package_lifecycle_statuses] ([id]);',
+  'ALTER TABLE [package_needs_references] ADD CONSTRAINT [fk_package_needs_references_package_id] FOREIGN KEY ([package_id]) REFERENCES [requirement_packages] ([id]);',
+  'ALTER TABLE [requirement_status_transitions] ADD CONSTRAINT [fk_requirement_status_transitions_to_requirement_status_id] FOREIGN KEY ([to_requirement_status_id]) REFERENCES [requirement_statuses] ([id]);',
+  'ALTER TABLE [requirement_status_transitions] ADD CONSTRAINT [fk_requirement_status_transitions_from_requirement_status_id] FOREIGN KEY ([from_requirement_status_id]) REFERENCES [requirement_statuses] ([id]);',
+  'ALTER TABLE [quality_characteristics] ADD CONSTRAINT [fk_quality_characteristics_requirement_type_id] FOREIGN KEY ([requirement_type_id]) REFERENCES [requirement_types] ([id]);',
+  'ALTER TABLE [requirements] ADD CONSTRAINT [fk_requirements_requirement_area_id] FOREIGN KEY ([requirement_area_id]) REFERENCES [requirement_areas] ([id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_package_item_status_id] FOREIGN KEY ([package_item_status_id]) REFERENCES [package_item_statuses] ([id]) ON DELETE SET NULL;',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_package_id_needs_reference_id] FOREIGN KEY ([package_id], [needs_reference_id]) REFERENCES [package_needs_references] ([package_id], [id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_risk_level_id] FOREIGN KEY ([risk_level_id]) REFERENCES [risk_levels] ([id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_quality_characteristic_id] FOREIGN KEY ([quality_characteristic_id]) REFERENCES [quality_characteristics] ([id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_requirement_type_id] FOREIGN KEY ([requirement_type_id]) REFERENCES [requirement_types] ([id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_requirement_category_id] FOREIGN KEY ([requirement_category_id]) REFERENCES [requirement_categories] ([id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_requirement_area_id] FOREIGN KEY ([requirement_area_id]) REFERENCES [requirement_areas] ([id]);',
+  'ALTER TABLE [package_local_requirements] ADD CONSTRAINT [fk_package_local_requirements_package_id] FOREIGN KEY ([package_id]) REFERENCES [requirement_packages] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [package_local_requirement_deviations] ADD CONSTRAINT [fk_package_local_requirement_deviations_package_local_requirement_id] FOREIGN KEY ([package_local_requirement_id]) REFERENCES [package_local_requirements] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [package_local_requirement_norm_references] ADD CONSTRAINT [fk_package_local_requirement_norm_references_norm_reference_id] FOREIGN KEY ([norm_reference_id]) REFERENCES [norm_references] ([id]);',
+  'ALTER TABLE [package_local_requirement_norm_references] ADD CONSTRAINT [fk_package_local_requirement_norm_references_package_local_requirement_id] FOREIGN KEY ([package_local_requirement_id]) REFERENCES [package_local_requirements] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [requirement_versions] ADD CONSTRAINT [fk_requirement_versions_requirement_status_id] FOREIGN KEY ([requirement_status_id]) REFERENCES [requirement_statuses] ([id]);',
+  'ALTER TABLE [requirement_versions] ADD CONSTRAINT [fk_requirement_versions_quality_characteristic_id] FOREIGN KEY ([quality_characteristic_id]) REFERENCES [quality_characteristics] ([id]);',
+  'ALTER TABLE [requirement_versions] ADD CONSTRAINT [fk_requirement_versions_requirement_type_id] FOREIGN KEY ([requirement_type_id]) REFERENCES [requirement_types] ([id]);',
+  'ALTER TABLE [requirement_versions] ADD CONSTRAINT [fk_requirement_versions_requirement_category_id] FOREIGN KEY ([requirement_category_id]) REFERENCES [requirement_categories] ([id]);',
+  'ALTER TABLE [requirement_versions] ADD CONSTRAINT [fk_requirement_versions_requirement_id] FOREIGN KEY ([requirement_id]) REFERENCES [requirements] ([id]);',
+  'ALTER TABLE [requirement_versions] ADD CONSTRAINT [fk_requirement_versions_risk_level_id] FOREIGN KEY ([risk_level_id]) REFERENCES [risk_levels] ([id]);',
+  'ALTER TABLE [improvement_suggestions] ADD CONSTRAINT [fk_improvement_suggestions_requirement_version_id] FOREIGN KEY ([requirement_version_id]) REFERENCES [requirement_versions] ([id]) ON DELETE SET NULL;',
+  'ALTER TABLE [improvement_suggestions] ADD CONSTRAINT [fk_improvement_suggestions_requirement_id] FOREIGN KEY ([requirement_id]) REFERENCES [requirements] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [requirement_package_items] ADD CONSTRAINT [fk_requirement_package_items_requirement_package_id_needs_reference_id] FOREIGN KEY ([requirement_package_id], [needs_reference_id]) REFERENCES [package_needs_references] ([package_id], [id]);',
+  'ALTER TABLE [requirement_package_items] ADD CONSTRAINT [fk_requirement_package_items_requirement_version_id] FOREIGN KEY ([requirement_version_id]) REFERENCES [requirement_versions] ([id]);',
+  'ALTER TABLE [requirement_package_items] ADD CONSTRAINT [fk_requirement_package_items_requirement_id] FOREIGN KEY ([requirement_id]) REFERENCES [requirements] ([id]);',
+  'ALTER TABLE [requirement_package_items] ADD CONSTRAINT [fk_requirement_package_items_requirement_package_id] FOREIGN KEY ([requirement_package_id]) REFERENCES [requirement_packages] ([id]);',
+  'ALTER TABLE [requirement_package_items] ADD CONSTRAINT [fk_requirement_package_items_package_item_status_id] FOREIGN KEY ([package_item_status_id]) REFERENCES [package_item_statuses] ([id]);',
+  'ALTER TABLE [deviations] ADD CONSTRAINT [fk_deviations_package_item_id] FOREIGN KEY ([package_item_id]) REFERENCES [requirement_package_items] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [requirement_version_norm_references] ADD CONSTRAINT [fk_requirement_version_norm_references_norm_reference_id] FOREIGN KEY ([norm_reference_id]) REFERENCES [norm_references] ([id]);',
+  'ALTER TABLE [requirement_version_norm_references] ADD CONSTRAINT [fk_requirement_version_norm_references_requirement_version_id] FOREIGN KEY ([requirement_version_id]) REFERENCES [requirement_versions] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [usage_scenarios] ADD CONSTRAINT [fk_usage_scenarios_owner_id] FOREIGN KEY ([owner_id]) REFERENCES [owners] ([id]);',
+  'ALTER TABLE [package_local_requirement_usage_scenarios] ADD CONSTRAINT [fk_package_local_requirement_usage_scenarios_usage_scenario_id] FOREIGN KEY ([usage_scenario_id]) REFERENCES [usage_scenarios] ([id]);',
+  'ALTER TABLE [package_local_requirement_usage_scenarios] ADD CONSTRAINT [fk_package_local_requirement_usage_scenarios_package_local_requirement_id] FOREIGN KEY ([package_local_requirement_id]) REFERENCES [package_local_requirements] ([id]) ON DELETE CASCADE;',
+  'ALTER TABLE [requirement_version_usage_scenarios] ADD CONSTRAINT [fk_requirement_version_usage_scenarios_usage_scenario_id] FOREIGN KEY ([usage_scenario_id]) REFERENCES [usage_scenarios] ([id]);',
+  'ALTER TABLE [requirement_version_usage_scenarios] ADD CONSTRAINT [fk_requirement_version_usage_scenarios_requirement_version_id] FOREIGN KEY ([requirement_version_id]) REFERENCES [requirement_versions] ([id]);',
+]
+
+const DOWN_STATEMENTS = [
+  "IF OBJECT_ID(N'requirement_version_usage_scenarios', N'U') IS NOT NULL DROP TABLE [requirement_version_usage_scenarios];",
+  "IF OBJECT_ID(N'package_local_requirement_usage_scenarios', N'U') IS NOT NULL DROP TABLE [package_local_requirement_usage_scenarios];",
+  "IF OBJECT_ID(N'usage_scenarios', N'U') IS NOT NULL DROP TABLE [usage_scenarios];",
+  "IF OBJECT_ID(N'ui_terminology', N'U') IS NOT NULL DROP TABLE [ui_terminology];",
+  "IF OBJECT_ID(N'requirement_version_norm_references', N'U') IS NOT NULL DROP TABLE [requirement_version_norm_references];",
+  "IF OBJECT_ID(N'deviations', N'U') IS NOT NULL DROP TABLE [deviations];",
+  "IF OBJECT_ID(N'requirement_package_items', N'U') IS NOT NULL DROP TABLE [requirement_package_items];",
+  "IF OBJECT_ID(N'improvement_suggestions', N'U') IS NOT NULL DROP TABLE [improvement_suggestions];",
+  "IF OBJECT_ID(N'requirement_versions', N'U') IS NOT NULL DROP TABLE [requirement_versions];",
+  "IF OBJECT_ID(N'package_local_requirement_norm_references', N'U') IS NOT NULL DROP TABLE [package_local_requirement_norm_references];",
+  "IF OBJECT_ID(N'package_local_requirement_deviations', N'U') IS NOT NULL DROP TABLE [package_local_requirement_deviations];",
+  "IF OBJECT_ID(N'package_local_requirements', N'U') IS NOT NULL DROP TABLE [package_local_requirements];",
+  "IF OBJECT_ID(N'risk_levels', N'U') IS NOT NULL DROP TABLE [risk_levels];",
+  "IF OBJECT_ID(N'requirements', N'U') IS NOT NULL DROP TABLE [requirements];",
+  "IF OBJECT_ID(N'quality_characteristics', N'U') IS NOT NULL DROP TABLE [quality_characteristics];",
+  "IF OBJECT_ID(N'requirement_types', N'U') IS NOT NULL DROP TABLE [requirement_types];",
+  "IF OBJECT_ID(N'requirement_status_transitions', N'U') IS NOT NULL DROP TABLE [requirement_status_transitions];",
+  "IF OBJECT_ID(N'requirement_statuses', N'U') IS NOT NULL DROP TABLE [requirement_statuses];",
+  "IF OBJECT_ID(N'package_needs_references', N'U') IS NOT NULL DROP TABLE [package_needs_references];",
+  "IF OBJECT_ID(N'requirement_packages', N'U') IS NOT NULL DROP TABLE [requirement_packages];",
+  "IF OBJECT_ID(N'requirement_list_column_defaults', N'U') IS NOT NULL DROP TABLE [requirement_list_column_defaults];",
+  "IF OBJECT_ID(N'requirement_categories', N'U') IS NOT NULL DROP TABLE [requirement_categories];",
+  "IF OBJECT_ID(N'requirement_areas', N'U') IS NOT NULL DROP TABLE [requirement_areas];",
+  "IF OBJECT_ID(N'package_responsibility_areas', N'U') IS NOT NULL DROP TABLE [package_responsibility_areas];",
+  "IF OBJECT_ID(N'package_lifecycle_statuses', N'U') IS NOT NULL DROP TABLE [package_lifecycle_statuses];",
+  "IF OBJECT_ID(N'package_item_statuses', N'U') IS NOT NULL DROP TABLE [package_item_statuses];",
+  "IF OBJECT_ID(N'package_implementation_types', N'U') IS NOT NULL DROP TABLE [package_implementation_types];",
+  "IF OBJECT_ID(N'owners', N'U') IS NOT NULL DROP TABLE [owners];",
+  "IF OBJECT_ID(N'norm_references', N'U') IS NOT NULL DROP TABLE [norm_references];",
+]
 
 export class InitialSqlServerSchema1713720000000 {
   name = 'InitialSqlServerSchema1713720000000'
-
   async up(queryRunner) {
-    const sqlite = createLegacySqliteSnapshot()
-
-    try {
-      const metadata = getLegacyTableMetadata(sqlite)
-
-      for (const statement of buildSqlServerSchemaStatements(metadata)) {
-        try {
-          await queryRunner.query(statement)
-        } catch (error) {
-          const details =
-            error instanceof Error ? error.message : String(error)
-          throw new Error(
-            `InitialSqlServerSchema1713720000000 failed while executing SQL:\n${statement}\n\n${details}`,
-          )
-        }
+    for (const sql of UP_STATEMENTS) {
+      try {
+        await queryRunner.query(sql)
+      } catch (err) {
+        err.message = `${err.message}\n--- failing statement:\n${sql}`
+        throw err
       }
-    } finally {
-      sqlite.close()
     }
   }
-
   async down(queryRunner) {
-    const sqlite = createLegacySqliteSnapshot()
-
-    try {
-      const metadata = getLegacyTableMetadata(sqlite)
-
-      for (const statement of buildSqlServerDropStatements(metadata)) {
-        try {
-          await queryRunner.query(statement)
-        } catch (error) {
-          const details =
-            error instanceof Error ? error.message : String(error)
-          throw new Error(
-            `InitialSqlServerSchema1713720000000 failed while rolling back SQL:\n${statement}\n\n${details}`,
-          )
-        }
+    for (const sql of DOWN_STATEMENTS) {
+      try {
+        await queryRunner.query(sql)
+      } catch (err) {
+        err.message = `${err.message}\n--- failing statement:\n${sql}`
+        throw err
       }
-    } finally {
-      sqlite.close()
     }
   }
 }
-
 export default InitialSqlServerSchema1713720000000

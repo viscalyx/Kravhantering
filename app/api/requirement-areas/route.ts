@@ -5,10 +5,10 @@ import {
   listAreas,
   type RequirementAreaRow,
 } from '@/lib/dal/requirement-areas'
-import { getRequestDatabaseConnection } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   const [areas, owners] = await Promise.all([listAreas(db), listOwners(db)])
   const ownerMap = new Map(
     owners.map((owner: Owner) => [
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const db = await getRequestDatabaseConnection()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Parameters<typeof createArea>[1]
   const area = await createArea(db, body)
   return NextResponse.json(area, { status: 201 })

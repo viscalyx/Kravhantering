@@ -1,514 +1,226 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import BetterSqlite3 from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { describe, expect, it } from 'vitest'
-import * as schema from '@/drizzle/schema'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  countRequirements,
-  listRequirements,
-  STATUS_ARCHIVED,
-  STATUS_DRAFT,
-  STATUS_REVIEW,
+  getRequirementById,
+  getRequirementByUniqueId,
 } from '@/lib/dal/requirements'
-import type { Database as AppDatabase } from '@/lib/db'
 
-function createTestDb() {
-  const sqlite = new BetterSqlite3(':memory:')
-  const migrationsDir = join(process.cwd(), 'drizzle/migrations')
-  const migrationFiles = readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort()
+function createSqlServerDb() {
+  const query =
+    vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
+  const getRepository = vi.fn()
+  const db = {
+    getRepository,
+    query,
+  } as unknown as Parameters<typeof getRequirementById>[0]
 
-  for (const file of migrationFiles) {
-    const migrationSql = readFileSync(join(migrationsDir, file), 'utf8')
-    for (const statement of migrationSql.split('--> statement-breakpoint')) {
-      const sql = statement.trim()
-      if (sql) {
-        sqlite.exec(sql)
-      }
-    }
-  }
-
-  const db = drizzle(sqlite, { schema })
-  return { db, sqlite }
+  return { db, query }
 }
 
-type TestDb = ReturnType<typeof createTestDb>['db']
+describe('requirements DAL (SQL Server path)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
 
-async function seedLookups(db: TestDb) {
-  await db.insert(schema.requirementStatuses).values([
-    {
-      color: '#3b82f6',
-      id: STATUS_DRAFT,
-      isSystem: true,
-      nameEn: 'Draft',
-      nameSv: 'Utkast',
-      sortOrder: 1,
-    },
-    {
-      color: '#eab308',
-      id: STATUS_REVIEW,
-      isSystem: true,
-      nameEn: 'Review',
-      nameSv: 'Granskning',
-      sortOrder: 2,
-    },
-    {
-      color: '#22c55e',
+  it('returns null when the requirement does not exist', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
+
+    await expect(getRequirementById(db, 42)).resolves.toBeNull()
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM requirements requirement'),
+      [42],
+    )
+  })
+
+  it('hydrates the requirement, area, versions, joins and package count', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 7,
+          uniqueId: 'SEC-0001',
+          requirementAreaId: 3,
+          sequenceNumber: 1,
+          isArchived: 0,
+          createdAt: new Date('2026-04-20T08:00:00.000Z'),
+          areaId: 3,
+          areaPrefix: 'SEC-',
+          areaName: 'Security',
+          areaDescription: null,
+          areaOwnerId: 11,
+          areaNextSequence: 2,
+          areaCreatedAt: new Date('2026-04-19T08:00:00.000Z'),
+          areaUpdatedAt: new Date('2026-04-19T09:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 21,
+          requirementId: 7,
+          versionNumber: 2,
+          description: 'desc-v2',
+          acceptanceCriteria: 'ac-v2',
+          requirementCategoryId: 4,
+          requirementTypeId: 5,
+          qualityCharacteristicId: 6,
+          riskLevelId: 1,
+          statusId: 3,
+          requiresTesting: 1,
+          verificationMethod: 'inspection',
+          createdAt: new Date('2026-04-20T08:30:00.000Z'),
+          editedAt: null,
+          publishedAt: new Date('2026-04-20T09:00:00.000Z'),
+          archivedAt: null,
+          archiveInitiatedAt: null,
+          createdBy: 'anna',
+          categoryId: 4,
+          categoryNameEn: 'Functional',
+          categoryNameSv: 'Funktionell',
+          typeId: 5,
+          typeNameEn: 'Type EN',
+          typeNameSv: 'Type SV',
+          qcId: 6,
+          qcNameEn: 'QC EN',
+          qcNameSv: 'QC SV',
+          qcRequirementTypeId: 5,
+          qcParentId: null,
+          rlId: 1,
+          rlNameEn: 'High',
+          rlNameSv: 'Hög',
+          rlColor: '#ff0000',
+          rlSortOrder: 10,
+          statusRowId: 3,
+          statusNameEn: 'Published',
+          statusNameSv: 'Publicerad',
+          statusColor: '#22c55e',
+          statusSortOrder: 30,
+          statusIsSystem: 1,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          requirementVersionId: 21,
+          normReferenceId: 100,
+          nrId: 100,
+          nrNormReferenceId: 'ISO-25010',
+          nrName: 'ISO/IEC 25010',
+          nrType: 'standard',
+          nrReference: 'ISO 25010:2023',
+          nrVersion: '2023',
+          nrIssuer: 'ISO',
+          nrUri: 'https://example.com',
+          nrCreatedAt: new Date('2026-04-01T00:00:00.000Z'),
+          nrUpdatedAt: new Date('2026-04-02T00:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          requirementVersionId: 21,
+          usageScenarioId: 200,
+          scId: 200,
+          scNameEn: 'Citizen portal',
+          scNameSv: 'Medborgarportal',
+          scDescriptionEn: null,
+          scDescriptionSv: null,
+          scOwnerId: null,
+          scCreatedAt: new Date('2026-03-01T00:00:00.000Z'),
+          scUpdatedAt: new Date('2026-03-02T00:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([{ packageCount: 2 }])
+
+    const result = await getRequirementById(db, 7)
+
+    expect(result).not.toBeNull()
+    expect(result?.id).toBe(7)
+    expect(result?.uniqueId).toBe('SEC-0001')
+    expect(result?.isArchived).toBe(false)
+    expect(result?.packageCount).toBe(2)
+    expect(result?.area).toEqual({
       id: 3,
-      isSystem: true,
-      nameEn: 'Published',
-      nameSv: 'Publicerad',
-      sortOrder: 3,
-    },
-    {
-      color: '#6b7280',
-      id: STATUS_ARCHIVED,
-      isSystem: true,
-      nameEn: 'Archived',
-      nameSv: 'Arkiverad',
-      sortOrder: 4,
-    },
-  ])
-
-  await db.insert(schema.requirementAreas).values({
-    id: 1,
-    name: 'Archived area',
-    prefix: 'ARC',
-  })
-}
-
-async function seedArchivedRequirement(
-  db: TestDb,
-  input: {
-    archivedDescription: string
-    id: number
-    pendingDescription: string
-    pendingStatusId: number
-    uniqueId: string
-  },
-) {
-  await db.insert(schema.requirements).values({
-    id: input.id,
-    isArchived: true,
-    requirementAreaId: 1,
-    sequenceNumber: input.id,
-    uniqueId: input.uniqueId,
-  })
-
-  await db.insert(schema.requirementVersions).values([
-    {
-      archivedAt: '2026-03-01T00:00:00.000Z',
-      description: input.archivedDescription,
-      publishedAt: '2026-02-28T00:00:00.000Z',
-      requirementId: input.id,
-      statusId: STATUS_ARCHIVED,
-      versionNumber: 1,
-    },
-    {
-      description: input.pendingDescription,
-      editedAt: '2026-03-02T00:00:00.000Z',
-      requirementId: input.id,
-      statusId: input.pendingStatusId,
-      versionNumber: 2,
-    },
-  ])
-}
-
-async function seedRequirement(
-  db: TestDb,
-  input: {
-    categoryId?: number | null
-    id: number
-    statusId: number
-    uniqueId: string
-    versionNumber: number
-  },
-) {
-  await db.insert(schema.requirements).values({
-    id: input.id,
-    isArchived: input.statusId === STATUS_ARCHIVED,
-    requirementAreaId: 1,
-    sequenceNumber: input.id,
-    uniqueId: input.uniqueId,
-  })
-
-  await db.insert(schema.requirementVersions).values({
-    createdAt: '2026-03-01T00:00:00.000Z',
-    description: `Requirement ${input.uniqueId}`,
-    publishedAt: input.statusId === 3 ? '2026-03-01T00:00:00.000Z' : undefined,
-    requirementCategoryId: input.categoryId ?? undefined,
-    requirementId: input.id,
-    statusId: input.statusId,
-    versionNumber: input.versionNumber,
-  })
-}
-
-describe('requirements DAL list semantics', () => {
-  it('uses the archived version as the list display version when a newer draft or review exists', async () => {
-    const { db, sqlite } = createTestDb()
-
-    try {
-      await seedLookups(db)
-      await seedArchivedRequirement(db, {
-        archivedDescription: 'Archived requirement with draft replacement',
-        id: 1,
-        pendingDescription: 'Draft replacement',
-        pendingStatusId: STATUS_DRAFT,
-        uniqueId: 'ARC0001',
-      })
-      await seedArchivedRequirement(db, {
-        archivedDescription: 'Archived requirement with review replacement',
-        id: 2,
-        pendingDescription: 'Review replacement',
-        pendingStatusId: STATUS_REVIEW,
-        uniqueId: 'ARC0002',
-      })
-
-      const rows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-      })
-
-      expect(rows).toHaveLength(2)
-      expect(rows[0]).toMatchObject({
-        description: 'Archived requirement with draft replacement',
-        maxVersion: 2,
-        pendingVersionStatusColor: '#3b82f6',
-        pendingVersionStatusId: STATUS_DRAFT,
-        status: STATUS_ARCHIVED,
-        statusNameEn: 'Archived',
-        uniqueId: 'ARC0001',
-        versionNumber: 1,
-      })
-      expect(rows[1]).toMatchObject({
-        description: 'Archived requirement with review replacement',
-        maxVersion: 2,
-        pendingVersionStatusColor: '#eab308',
-        pendingVersionStatusId: STATUS_REVIEW,
-        status: STATUS_ARCHIVED,
-        statusNameEn: 'Archived',
-        uniqueId: 'ARC0002',
-        versionNumber: 1,
-      })
-    } finally {
-      sqlite.close()
-    }
-  })
-
-  it('keeps countRequirements aligned with archived effective status filtering', async () => {
-    const { db, sqlite } = createTestDb()
-
-    try {
-      await seedLookups(db)
-      await seedArchivedRequirement(db, {
-        archivedDescription: 'Archived requirement with draft replacement',
-        id: 1,
-        pendingDescription: 'Draft replacement',
-        pendingStatusId: STATUS_DRAFT,
-        uniqueId: 'ARC0001',
-      })
-      await seedArchivedRequirement(db, {
-        archivedDescription: 'Archived requirement with review replacement',
-        id: 2,
-        pendingDescription: 'Review replacement',
-        pendingStatusId: STATUS_REVIEW,
-        uniqueId: 'ARC0002',
-      })
-
-      const archivedRows = await listRequirements(
-        db as unknown as AppDatabase,
-        {
-          includeArchived: true,
-          statuses: [STATUS_ARCHIVED],
+      prefix: 'SEC-',
+      name: 'Security',
+      description: null,
+      ownerId: 11,
+      nextSequence: 2,
+      createdAt: '2026-04-19T08:00:00.000Z',
+      updatedAt: '2026-04-19T09:00:00.000Z',
+    })
+    expect(result?.versions).toHaveLength(1)
+    const version = result?.versions[0]
+    expect(version?.id).toBe(21)
+    expect(version?.versionNumber).toBe(2)
+    expect(version?.requiresTesting).toBe(true)
+    expect(version?.status).toBe(3)
+    expect(version?.statusNameEn).toBe('Published')
+    expect(version?.statusNameSv).toBe('Publicerad')
+    expect(version?.statusColor).toBe('#22c55e')
+    expect(version?.category).toEqual({
+      id: 4,
+      nameEn: 'Functional',
+      nameSv: 'Funktionell',
+    })
+    expect(version?.riskLevel).toEqual({
+      id: 1,
+      nameEn: 'High',
+      nameSv: 'Hög',
+      color: '#ff0000',
+      sortOrder: 10,
+    })
+    expect(version?.versionNormReferences).toEqual([
+      {
+        normReferenceId: 100,
+        requirementVersionId: 21,
+        normReference: {
+          id: 100,
+          normReferenceId: 'ISO-25010',
+          name: 'ISO/IEC 25010',
+          type: 'standard',
+          reference: 'ISO 25010:2023',
+          version: '2023',
+          issuer: 'ISO',
+          uri: 'https://example.com',
+          createdAt: '2026-04-01T00:00:00.000Z',
+          updatedAt: '2026-04-02T00:00:00.000Z',
         },
-      )
-      const archivedCount = await countRequirements(
-        db as unknown as AppDatabase,
-        {
-          includeArchived: true,
-          statuses: [STATUS_ARCHIVED],
+      },
+    ])
+    expect(version?.versionScenarios).toEqual([
+      {
+        requirementVersionId: 21,
+        usageScenarioId: 200,
+        scenario: {
+          id: 200,
+          nameEn: 'Citizen portal',
+          nameSv: 'Medborgarportal',
+          descriptionEn: null,
+          descriptionSv: null,
+          ownerId: null,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z',
         },
-      )
-      const draftCount = await countRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        statuses: [STATUS_DRAFT],
-      })
-
-      expect(archivedRows).toHaveLength(2)
-      expect(archivedCount).toBe(2)
-      expect(draftCount).toBe(0)
-    } finally {
-      sqlite.close()
-    }
+      },
+    ])
   })
 
-  it('sorts by locale-specific text columns and keeps empty values last', async () => {
-    const { db, sqlite } = createTestDb()
+  it('resolves a requirement by unique id and delegates to getRequirementById', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 7 }]).mockResolvedValueOnce([])
 
-    try {
-      await seedLookups(db)
-      await db.insert(schema.requirementCategories).values([
-        { id: 1, nameEn: 'Alpha', nameSv: 'Zulu' },
-        { id: 2, nameEn: 'Omega', nameSv: 'Alfa' },
-      ])
-      await seedRequirement(db, {
-        categoryId: 1,
-        id: 1,
-        statusId: 3,
-        uniqueId: 'ARC0001',
-        versionNumber: 1,
-      })
-      await seedRequirement(db, {
-        categoryId: 2,
-        id: 2,
-        statusId: 3,
-        uniqueId: 'ARC0002',
-        versionNumber: 1,
-      })
-      await seedRequirement(db, {
-        categoryId: null,
-        id: 3,
-        statusId: 3,
-        uniqueId: 'ARC0003',
-        versionNumber: 1,
-      })
-
-      const svRows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        locale: 'sv',
-        sortBy: 'category',
-      })
-      const enRows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        locale: 'en',
-        sortBy: 'category',
-      })
-
-      expect(svRows.map(row => row.uniqueId)).toEqual([
-        'ARC0002',
-        'ARC0001',
-        'ARC0003',
-      ])
-      expect(enRows.map(row => row.uniqueId)).toEqual([
-        'ARC0001',
-        'ARC0002',
-        'ARC0003',
-      ])
-    } finally {
-      sqlite.close()
-    }
+    await expect(getRequirementByUniqueId(db, 'SEC-0001')).resolves.toBeNull()
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('FROM requirements'),
+      ['SEC-0001'],
+    )
   })
 
-  it('sorts by status workflow order and version with uniqueId tie-breakers', async () => {
-    const { db, sqlite } = createTestDb()
+  it('returns null when no requirement matches the unique id', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([])
 
-    try {
-      await seedLookups(db)
-      await seedRequirement(db, {
-        id: 1,
-        statusId: STATUS_DRAFT,
-        uniqueId: 'ARC0002',
-        versionNumber: 3,
-      })
-      await seedRequirement(db, {
-        id: 2,
-        statusId: STATUS_DRAFT,
-        uniqueId: 'ARC0001',
-        versionNumber: 3,
-      })
-      await seedRequirement(db, {
-        id: 3,
-        statusId: STATUS_REVIEW,
-        uniqueId: 'ARC0003',
-        versionNumber: 1,
-      })
-
-      const statusRows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        sortBy: 'status',
-      })
-      const versionRows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        sortBy: 'version',
-        sortDirection: 'desc',
-      })
-
-      expect(statusRows.map(row => row.uniqueId)).toEqual([
-        'ARC0001',
-        'ARC0002',
-        'ARC0003',
-      ])
-      expect(versionRows.map(row => row.uniqueId)).toEqual([
-        'ARC0001',
-        'ARC0002',
-        'ARC0003',
-      ])
-    } finally {
-      sqlite.close()
-    }
-  })
-
-  it('filters by descriptionSearch, typeIds, qualityCharacteristicIds, and requiresTesting', async () => {
-    const { db, sqlite } = createTestDb()
-
-    try {
-      await seedLookups(db)
-      await db.insert(schema.requirementTypes).values({
-        id: 1,
-        nameEn: 'Functional',
-        nameSv: 'Funktionellt',
-      })
-      await db.insert(schema.qualityCharacteristics).values({
-        id: 1,
-        nameEn: 'Maintainability',
-        nameSv: 'Underhållbarhet',
-        requirementTypeId: 1,
-      })
-
-      await db.insert(schema.requirements).values({
-        id: 1,
-        isArchived: false,
-        requirementAreaId: 1,
-        sequenceNumber: 1,
-        uniqueId: 'ARC0001',
-      })
-      await db.insert(schema.requirementVersions).values({
-        description: 'Secure integration test',
-        qualityCharacteristicId: 1,
-        requirementId: 1,
-        requirementTypeId: 1,
-        requiresTesting: true,
-        statusId: 3,
-        publishedAt: '2026-03-01T00:00:00.000Z',
-        versionNumber: 1,
-      })
-
-      await db.insert(schema.requirements).values({
-        id: 2,
-        isArchived: false,
-        requirementAreaId: 1,
-        sequenceNumber: 2,
-        uniqueId: 'ARC0002',
-      })
-      await db.insert(schema.requirementVersions).values({
-        description: 'General requirement',
-        requirementId: 2,
-        requiresTesting: false,
-        statusId: 3,
-        publishedAt: '2026-03-01T00:00:00.000Z',
-        versionNumber: 1,
-      })
-
-      const byDesc = await listRequirements(db as unknown as AppDatabase, {
-        descriptionSearch: 'Secure',
-        includeArchived: true,
-      })
-      expect(byDesc).toHaveLength(1)
-      expect(byDesc[0].uniqueId).toBe('ARC0001')
-
-      const byType = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        typeIds: [1],
-      })
-      expect(byType).toHaveLength(1)
-      expect(byType[0].uniqueId).toBe('ARC0001')
-
-      const byQc = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        qualityCharacteristicIds: [1],
-      })
-      expect(byQc).toHaveLength(1)
-      expect(byQc[0].uniqueId).toBe('ARC0001')
-
-      const byTesting = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        requiresTesting: [true],
-      })
-      expect(byTesting).toHaveLength(1)
-      expect(byTesting[0].uniqueId).toBe('ARC0001')
-    } finally {
-      sqlite.close()
-    }
-  })
-
-  it('sorts by description and area with empty values last', async () => {
-    const { db, sqlite } = createTestDb()
-
-    try {
-      await seedLookups(db)
-
-      await db.insert(schema.requirementAreas).values([
-        { id: 2, name: 'Zulu area', prefix: 'ZUL' },
-        { id: 3, name: '', prefix: 'EMP' },
-      ])
-
-      await db.insert(schema.requirements).values({
-        id: 1,
-        isArchived: false,
-        requirementAreaId: 1,
-        sequenceNumber: 1,
-        uniqueId: 'ARC0001',
-      })
-      await db.insert(schema.requirementVersions).values({
-        description: 'Zulu description',
-        requirementId: 1,
-        statusId: 3,
-        publishedAt: '2026-03-01T00:00:00.000Z',
-        versionNumber: 1,
-      })
-
-      await db.insert(schema.requirements).values({
-        id: 2,
-        isArchived: false,
-        requirementAreaId: 2,
-        sequenceNumber: 2,
-        uniqueId: 'ARC0002',
-      })
-      await db.insert(schema.requirementVersions).values({
-        description: 'Alpha description',
-        requirementId: 2,
-        statusId: 3,
-        publishedAt: '2026-03-01T00:00:00.000Z',
-        versionNumber: 1,
-      })
-
-      await db.insert(schema.requirements).values({
-        id: 3,
-        isArchived: false,
-        requirementAreaId: 3,
-        sequenceNumber: 3,
-        uniqueId: 'ARC0003',
-      })
-      await db.insert(schema.requirementVersions).values({
-        description: '',
-        requirementId: 3,
-        statusId: 3,
-        publishedAt: '2026-03-01T00:00:00.000Z',
-        versionNumber: 1,
-      })
-
-      const descRows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        sortBy: 'description',
-      })
-      expect(descRows.map(r => r.uniqueId)).toEqual([
-        'ARC0002',
-        'ARC0001',
-        'ARC0003',
-      ])
-
-      const areaRows = await listRequirements(db as unknown as AppDatabase, {
-        includeArchived: true,
-        sortBy: 'area',
-      })
-      expect(areaRows.map(r => r.uniqueId)).toEqual([
-        'ARC0001',
-        'ARC0002',
-        'ARC0003',
-      ])
-    } finally {
-      sqlite.close()
-    }
+    await expect(getRequirementByUniqueId(db, 'NONE')).resolves.toBeNull()
+    expect(query).toHaveBeenCalledTimes(1)
   })
 })

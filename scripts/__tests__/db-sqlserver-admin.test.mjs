@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildReadonlyBrowseConfig,
   createMssqlConfig,
-  ensureReadonlySqlServerAccess,
   formatReadonlyBrowseConfig,
   getSqlServerDatabaseUrl,
   healthCheckSqlServer,
@@ -11,7 +10,6 @@ import {
   parseSqlServerConnectionString,
   resetSqlServerDatabase,
   runSqlServerMigrations,
-  seedSqlServerDatabase,
   stripWrappingQuotes,
   waitForSqlServer,
 } from '../db-sqlserver-admin.mjs'
@@ -123,7 +121,7 @@ describe('db-sqlserver-admin.mjs', () => {
   it('reads encrypt query params case-insensitively', () => {
     expect(
       parseSqlServerConnectionString(
-        'mssql://reader:Secret123!@db.internal:1444/kravhantering?Encrypted=false&TrustServerCertificate=true',
+        'mssql://reader:Secret123!@db.internal:1444/kravhantering?Encrypt=false&TrustServerCertificate=true',
       ),
     ).toMatchObject({
       encrypt: false,
@@ -197,6 +195,7 @@ describe('db-sqlserver-admin.mjs', () => {
         encrypt: true,
         trustServerCertificate: true,
       },
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: VS Code SQLTools placeholder syntax
       password: '${env:DB_READONLY_PASSWORD}',
       port: 1433,
       previewLimit: 100,
@@ -268,9 +267,7 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(exitCode).toBe(0)
     expect(error).not.toHaveBeenCalled()
     expect(log).toHaveBeenCalledTimes(2)
-    expect(log.mock.calls[1][0]).toContain(
-      '"username": "readonly"',
-    )
+    expect(log.mock.calls[1][0]).toContain('"username": "readonly"')
   })
 
   it('resets the database by connecting to master and issuing drop/create SQL', async () => {
@@ -325,240 +322,6 @@ describe('db-sqlserver-admin.mjs', () => {
       database: 'kravhantering',
       migrationsApplied: 1,
     })
-  })
-
-  it('seeds SQL Server from the legacy snapshot and enables readonly access', async () => {
-    const query = vi.fn(async () => undefined)
-    const requestFactory = vi.fn(() => ({
-      input: vi.fn().mockReturnThis(),
-      query,
-    }))
-    const begin = vi.fn(async () => undefined)
-    const commit = vi.fn(async () => undefined)
-    const rollback = vi.fn(async () => undefined)
-    const close = vi.fn(async () => {})
-    const connectImpl = vi.fn(async () => ({
-      close,
-      request: requestFactory,
-      transaction: vi.fn(() => ({
-        begin,
-        commit,
-        request: requestFactory,
-        rollback,
-      })),
-    }))
-    const sqlite = {
-      close: vi.fn(),
-    }
-
-    const result = await seedSqlServerDatabase(
-      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-      {
-        connectImpl,
-        createLegacySqliteSnapshotImpl: vi.fn(() => sqlite),
-        env: {
-          DATABASE_READONLY_URL:
-            'mssql://readonly:Readonly123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        },
-        getLegacyTableMetadataImpl: vi.fn(() => [
-          {
-            columns: [
-              { name: 'id', type: 'INTEGER' },
-              { name: 'name_sv', type: 'TEXT' },
-            ],
-            foreignKeys: [],
-            indexes: [],
-            name: 'requirement_categories',
-            primaryKey: ['id'],
-          },
-        ]),
-        readLegacySeedRowsImpl: vi.fn(() => [
-          { id: 1, name_sv: 'Sakerhet' },
-          { id: 2, name_sv: 'Integration' },
-        ]),
-      },
-    )
-
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'SET IDENTITY_INSERT [dbo].[requirement_categories] ON; INSERT INTO [dbo].[requirement_categories]',
-      ),
-    )
-    expect(result).toEqual({
-      insertedRows: 2,
-      readonlyAccessConfigured: true,
-    })
-    expect(begin).toHaveBeenCalled()
-    expect(commit).toHaveBeenCalled()
-    expect(rollback).not.toHaveBeenCalled()
-    expect(sqlite.close).toHaveBeenCalled()
-  })
-
-  it('includes the failing insert SQL and parameters when seed insertion fails', async () => {
-    const query = vi
-      .fn()
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(
-        new Error(
-          "Cannot insert explicit value for identity column in table 'deviations' when IDENTITY_INSERT is set to OFF.",
-        ),
-      )
-      .mockResolvedValueOnce(undefined)
-    const requestFactory = vi.fn(() => ({
-      input: vi.fn().mockReturnThis(),
-      query,
-    }))
-    const connectImpl = vi.fn(async () => ({
-      close: vi.fn(async () => undefined),
-      request: requestFactory,
-      transaction: vi.fn(() => ({
-        begin: vi.fn(async () => undefined),
-        commit: vi.fn(async () => undefined),
-        request: requestFactory,
-        rollback: vi.fn(async () => undefined),
-      })),
-    }))
-    const sqlite = {
-      close: vi.fn(),
-    }
-
-    await expect(
-      seedSqlServerDatabase(
-        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        {
-          connectImpl,
-          createLegacySqliteSnapshotImpl: vi.fn(() => sqlite),
-          getLegacyTableMetadataImpl: vi.fn(() => [
-            {
-              columns: [
-                { name: 'id', type: 'INTEGER' },
-                { name: 'package_item_id', type: 'INTEGER' },
-                { name: 'motivation', type: 'TEXT' },
-              ],
-              foreignKeys: [],
-              indexes: [],
-              name: 'deviations',
-              primaryKey: ['id'],
-            },
-          ]),
-          readLegacySeedRowsImpl: vi.fn(() => [
-            { id: 1, motivation: 'Need deviation', package_item_id: 42 },
-          ]),
-        },
-      ),
-    ).rejects.toThrow(
-      /identityInsertOnSql: SET IDENTITY_INSERT \[dbo\]\.\[deviations\] ON/,
-    )
-    await expect(
-      seedSqlServerDatabase(
-        'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        {
-          connectImpl,
-          createLegacySqliteSnapshotImpl: vi.fn(() => sqlite),
-          getLegacyTableMetadataImpl: vi.fn(() => [
-            {
-              columns: [
-                { name: 'id', type: 'INTEGER' },
-                { name: 'package_item_id', type: 'INTEGER' },
-                { name: 'motivation', type: 'TEXT' },
-              ],
-              foreignKeys: [],
-              indexes: [],
-              name: 'deviations',
-              primaryKey: ['id'],
-            },
-          ]),
-          readLegacySeedRowsImpl: vi.fn(() => [
-            { id: 1, motivation: 'Need deviation', package_item_id: 42 },
-          ]),
-        },
-      ),
-    ).rejects.toThrow(
-      /batchSql: SET IDENTITY_INSERT \[dbo\]\.\[deviations\] ON; INSERT INTO \[dbo\]\.\[deviations\]/,
-    )
-  })
-
-  it('creates readonly SQL Server access when readonly credentials differ', async () => {
-    const query = vi.fn(async () => undefined)
-    const request = vi.fn(() => ({ query }))
-    const close = vi.fn(async () => undefined)
-    const connectImpl = vi.fn(async () => ({
-      close,
-      request,
-    }))
-
-    const result = await ensureReadonlySqlServerAccess(
-      'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-      {
-        connectImpl,
-        env: {
-          DATABASE_READONLY_URL:
-            'mssql://readonly:Readonly123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        },
-      },
-    )
-
-    expect(result).toEqual({
-      configured: true,
-      username: 'readonly',
-    })
-    expect(query).toHaveBeenCalledWith(expect.stringContaining('CREATE LOGIN'))
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('ALTER ROLE db_datareader ADD MEMBER'),
-    )
-  })
-
-  it('runs full setup through the CLI command', async () => {
-    const error = vi.fn()
-    const log = vi.fn()
-    const healthCheckImpl = vi.fn(async () => ({
-      database: 'kravhantering',
-      ok: true,
-      server: '127.0.0.1',
-    }))
-    class FakeDataSource {
-      destroy = vi.fn(async () => undefined)
-      initialize = vi.fn(async () => undefined)
-      runMigrations = vi.fn(async () => [{ name: 'InitialMigration' }])
-    }
-    const query = vi.fn(async () => undefined)
-    const requestFactory = vi.fn(() => ({
-      input: vi.fn().mockReturnThis(),
-      query,
-    }))
-    const connectImpl = vi.fn(async () => ({
-      close: vi.fn(async () => undefined),
-      request: requestFactory,
-    }))
-
-    const exitCode = await main(['setup'], {
-      connectImpl,
-      consoleObj: { error, log },
-      createLegacySqliteSnapshotImpl: vi.fn(() => ({
-        close: vi.fn(),
-      })),
-      dataSourceCtor: FakeDataSource,
-      env: {
-        DATABASE_READONLY_URL:
-          'mssql://readonly:Readonly123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-        SQLSERVER_DATABASE_URL:
-          'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
-      },
-      getLegacyTableMetadataImpl: vi.fn(() => []),
-      healthCheckImpl,
-      readLegacySeedRowsImpl: vi.fn(() => []),
-    })
-
-    expect(exitCode).toBe(0)
-    expect(error).not.toHaveBeenCalled()
-    expect(healthCheckImpl).toHaveBeenCalledWith(
-      'mssql://sa:Password123!@127.0.0.1:1433/master?encrypt=true&trustServerCertificate=true',
-      expect.objectContaining({
-        healthCheckImpl,
-      }),
-    )
-    expect(log).toHaveBeenCalledWith('SQL Server setup completed (0 inserted rows).')
   })
 
   it('waits against master for the CLI wait command', async () => {

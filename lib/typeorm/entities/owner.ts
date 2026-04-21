@@ -14,9 +14,10 @@ export const ownerEntity = new EntitySchema<OwnerEntity>({
   tableName: 'owners',
   columns: {
     id: {
+      name: 'id',
       generated: 'increment',
       primary: true,
-      type: Number,
+      type: 'int',
     },
     firstName: {
       name: 'first_name',

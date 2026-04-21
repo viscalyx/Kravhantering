@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import type { DataSource } from 'typeorm'
-import { createSqlServerDataSource } from '@/lib/typeorm/sqlserver-config'
 import { sqlServerEntities } from '@/lib/typeorm/entities'
+import { createSqlServerDataSource } from '@/lib/typeorm/sqlserver-config'
 
 interface AppDataSourceOptions {
   name?: string

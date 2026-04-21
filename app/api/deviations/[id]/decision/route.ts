@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { recordDecision } from '@/lib/dal/deviations'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -45,7 +45,7 @@ export async function POST(
       { status: 400 },
     )
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await recordDecision(db, numericId, {

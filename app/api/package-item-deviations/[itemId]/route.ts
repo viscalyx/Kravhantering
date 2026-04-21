@@ -6,7 +6,7 @@ import {
   listDeviationsForPackageLocalRequirement,
 } from '@/lib/dal/deviations'
 import { parsePackageItemRef } from '@/lib/dal/requirement-packages'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ itemId: string }>
@@ -38,7 +38,7 @@ export async function GET(
   if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     const deviations =
@@ -97,7 +97,7 @@ export async function POST(
     createdBy?: string
     motivation: string
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     const result =

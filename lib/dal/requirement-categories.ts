@@ -1,8 +1,8 @@
-import { requirementCategories } from '@/drizzle/schema'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
-  isSqlServerDatabaseConnection,
-  type AppDatabaseConnection,
-} from '@/lib/db'
+  type RequirementCategoryEntity,
+  requirementCategoryEntity,
+} from '@/lib/typeorm/entities'
 
 export interface RequirementCategoryRow {
   id: number
@@ -10,21 +10,19 @@ export interface RequirementCategoryRow {
   nameSv: string
 }
 
-export async function listCategories(
-  db: AppDatabaseConnection,
-): Promise<RequirementCategoryRow[]> {
-  if (isSqlServerDatabaseConnection(db)) {
-    return db.query(`
-      SELECT
-        id,
-        name_sv AS nameSv,
-        name_en AS nameEn
-      FROM requirement_categories
-      ORDER BY name_sv ASC
-    `)
+function mapCategory(row: RequirementCategoryEntity): RequirementCategoryRow {
+  return {
+    id: row.id,
+    nameEn: row.nameEn,
+    nameSv: row.nameSv,
   }
+}
 
-  return db.query.requirementCategories.findMany({
-    orderBy: [requirementCategories.nameSv],
-  })
+export async function listCategories(
+  db: SqlServerDatabase,
+): Promise<RequirementCategoryRow[]> {
+  const rows = await db
+    .getRepository(requirementCategoryEntity)
+    .find({ order: { nameSv: 'ASC' } })
+  return rows.map(mapCategory)
 }

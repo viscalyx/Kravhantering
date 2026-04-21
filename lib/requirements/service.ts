@@ -1,12 +1,8 @@
 import {
-  DEVIATION_APPROVED,
-  DEVIATION_REJECTED,
-  SUGGESTION_DISMISSED,
-  SUGGESTION_RESOLVED,
-} from '@/drizzle/schema'
-import {
   countDeviationsByPackage,
   createDeviation,
+  DEVIATION_APPROVED,
+  DEVIATION_REJECTED,
   deleteDeviation,
   listDeviationsForPackage,
   recordDecision,
@@ -20,6 +16,8 @@ import {
   recordResolution,
   requestReview,
   revertToDraft,
+  SUGGESTION_DISMISSED,
+  SUGGESTION_RESOLVED,
   updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
 import {
@@ -73,7 +71,7 @@ import {
   type UiSettingsLoader,
 } from '@/lib/dal/ui-settings'
 import { listScenarios } from '@/lib/dal/usage-scenarios'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   AllowAllAuthorizationService,
   type AuthorizationService,
@@ -712,7 +710,10 @@ export interface RequirementsService {
   }>
 }
 
-async function resolveRequirement(db: Database, ref: RequirementRefInput) {
+async function resolveRequirement(
+  db: SqlServerDatabase,
+  ref: RequirementRefInput,
+) {
   if (ref.uniqueId) {
     return getRequirementByUniqueId(db, ref.uniqueId)
   }
@@ -724,7 +725,10 @@ async function resolveRequirement(db: Database, ref: RequirementRefInput) {
   throw internalError('Requirement reference is missing')
 }
 
-async function resolveRequirementId(db: Database, ref: RequirementRefInput) {
+async function resolveRequirementId(
+  db: SqlServerDatabase,
+  ref: RequirementRefInput,
+) {
   const requirement = await resolveRequirement(db, ref)
 
   if (!requirement) {
@@ -737,7 +741,10 @@ async function resolveRequirementId(db: Database, ref: RequirementRefInput) {
   return requirement.id
 }
 
-async function ensureAreaExists(db: Database, areaId: number | undefined) {
+async function ensureAreaExists(
+  db: SqlServerDatabase,
+  areaId: number | undefined,
+) {
   if (areaId == null) {
     return null
   }
@@ -750,7 +757,10 @@ async function ensureAreaExists(db: Database, areaId: number | undefined) {
   return area
 }
 
-async function resolvePackageIdOrThrow(db: Database, input: PackageRefInput) {
+async function resolvePackageIdOrThrow(
+  db: SqlServerDatabase,
+  input: PackageRefInput,
+) {
   const packageId =
     input.packageId != null
       ? input.packageId
@@ -842,7 +852,7 @@ async function withLogging<T>(
 }
 
 export function createRequirementsService(
-  db: Database,
+  db: SqlServerDatabase,
   {
     authorization = new AllowAllAuthorizationService(),
     logger = createRequirementsLogger(),
@@ -1049,17 +1059,19 @@ export function createRequirementsService(
             items: transitions,
             message: createServiceMessage(
               getCatalogTitle('transitions', locale, terminology),
-              transitions.map((transition: RequirementStatusTransitionDetail) => {
-                const fromName =
-                  locale === 'sv'
-                    ? transition.fromStatus.nameSv
-                    : transition.fromStatus.nameEn
-                const toName =
-                  locale === 'sv'
-                    ? transition.toStatus.nameSv
-                    : transition.toStatus.nameEn
-                return `${fromName} -> ${toName}`
-              }),
+              transitions.map(
+                (transition: RequirementStatusTransitionDetail) => {
+                  const fromName =
+                    locale === 'sv'
+                      ? transition.fromStatus.nameSv
+                      : transition.fromStatus.nameEn
+                  const toName =
+                    locale === 'sv'
+                      ? transition.toStatus.nameSv
+                      : transition.toStatus.nameEn
+                  return `${fromName} -> ${toName}`
+                },
+              ),
               responseFormat,
             ),
             pagination: null,
@@ -1303,8 +1315,9 @@ export function createRequirementsService(
                 'Edit operation requires requirement.description',
               )
             }
-
-            await ensureAreaExists(db, payload.areaId)
+            if (payload.areaId != null) {
+              await ensureAreaExists(db, payload.areaId)
+            }
             const version = await editRequirement(db, requirementId, {
               acceptanceCriteria: payload.acceptanceCriteria,
               createdBy: payload.createdBy ?? context.actor.id ?? undefined,
@@ -1342,11 +1355,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'archive') {
-            await initiateArchiving(
-              db,
-              requirementId,
-              context.actor.id ?? undefined,
-            )
+            await initiateArchiving(db, requirementId)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1368,11 +1377,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'approve_archiving') {
-            await approveArchiving(
-              db,
-              requirementId,
-              context.actor.id ?? undefined,
-            )
+            await approveArchiving(db, requirementId)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1394,11 +1399,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'cancel_archiving') {
-            await cancelArchiving(
-              db,
-              requirementId,
-              context.actor.id ?? undefined,
-            )
+            await cancelArchiving(db, requirementId)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1532,12 +1533,7 @@ export function createRequirementsService(
         },
         async () => {
           const requirementId = await resolveRequirementId(db, input)
-          await transitionStatus(
-            db,
-            requirementId,
-            input.toStatusId,
-            context.actor.id ?? undefined,
-          )
+          await transitionStatus(db, requirementId, input.toStatusId)
           const detail = formatRequirementDetail(
             (await getRequirementById(db, requirementId)) ??
               (() => {

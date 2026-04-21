@@ -1,1 +1,0 @@
-ALTER TABLE `deviations` ADD `is_review_requested` integer DEFAULT 0 NOT NULL;

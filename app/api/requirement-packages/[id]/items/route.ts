@@ -8,8 +8,8 @@ import {
   listPackageItems,
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
-import type { Database } from '@/lib/db'
-import { getRequestDatabase } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -170,7 +170,7 @@ function parsePostBody(body: unknown): ParseResult<ParsedPostBody> {
   }
 }
 
-async function resolvePackageId(db: Database, idOrSlug: string) {
+async function resolvePackageId(db: SqlServerDatabase, idOrSlug: string) {
   const bySlug = await getPackageBySlug(db, idOrSlug)
   if (bySlug) return bySlug.id
   if (/^\d+$/.test(idOrSlug)) {
@@ -185,7 +185,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -208,7 +208,7 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
@@ -258,7 +258,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)

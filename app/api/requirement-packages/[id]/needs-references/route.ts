@@ -4,12 +4,12 @@ import {
   getPackageBySlug,
   listPackageNeedsReferences,
 } from '@/lib/dal/requirement-packages'
-import type { Database } from '@/lib/db'
-import { getRequestDatabase } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
-async function resolvePackageId(db: Database, idOrSlug: string) {
+async function resolvePackageId(db: SqlServerDatabase, idOrSlug: string) {
   if (/^\d+$/.test(idOrSlug)) {
     const pkg = await getPackageById(db, Number(idOrSlug))
     return pkg?.id ?? null
@@ -23,7 +23,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

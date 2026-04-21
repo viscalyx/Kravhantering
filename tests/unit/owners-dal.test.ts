@@ -1,9 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import BetterSqlite3 from 'better-sqlite3'
-import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { beforeEach, describe, expect, it } from 'vitest'
-import * as schema from '@/drizzle/schema'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createOwner,
   deleteOwner,
@@ -11,142 +6,185 @@ import {
   listOwners,
   updateOwner,
 } from '@/lib/dal/owners'
-import type { Database as AppDatabase } from '@/lib/db'
+import { ownerEntity } from '@/lib/typeorm/entities'
 
-function createTestDb() {
-  const sqlite = new BetterSqlite3(':memory:')
-  const migrationsDir = join(process.cwd(), 'drizzle/migrations')
-  const sqlFiles = readdirSync(migrationsDir)
-    .filter(f => f.endsWith('.sql'))
-    .sort()
-  for (const file of sqlFiles) {
-    const sql = readFileSync(join(migrationsDir, file), 'utf8')
-    for (const statement of sql.split('--> statement-breakpoint')) {
-      const s = statement.trim()
-      if (s) sqlite.exec(s)
-    }
-  }
-  const db = drizzle(sqlite, { schema })
-  return { db, sqlite }
+interface FakeRepository {
+  create: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
+  find: ReturnType<typeof vi.fn>
+  findOne: ReturnType<typeof vi.fn>
+  save: ReturnType<typeof vi.fn>
+  update: ReturnType<typeof vi.fn>
 }
 
-type TestDb = ReturnType<typeof createTestDb>['db']
+function createSqlServerDb() {
+  const repository: FakeRepository = {
+    create: vi.fn(input => input),
+    delete: vi.fn(),
+    find: vi.fn(),
+    findOne: vi.fn(),
+    save: vi.fn(),
+    update: vi.fn(),
+  }
+  const getRepository = vi.fn(() => repository)
+  const db = {
+    getRepository,
+  } as unknown as Parameters<typeof listOwners>[0]
+  return { db, getRepository, repository }
+}
 
-describe('owners DAL', () => {
-  let db: TestDb
-
+describe('owners DAL (TypeORM repository path)', () => {
   beforeEach(() => {
-    ;({ db } = createTestDb())
+    vi.clearAllMocks()
   })
 
-  describe('listOwners', () => {
-    it('returns empty array when no owners exist', async () => {
-      const result = await listOwners(db as unknown as AppDatabase)
-      expect(result).toEqual([])
-    })
+  it('lists owners ordered by last name then first name', async () => {
+    const { db, getRepository, repository } = createSqlServerDb()
+    repository.find.mockResolvedValue([
+      {
+        id: 1,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        email: 'ada@example.com',
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+      },
+    ])
 
-    it('returns owners sorted by lastName then firstName', async () => {
-      await db.insert(schema.owners).values([
-        { firstName: 'Zara', lastName: 'Andersson', email: 'zara@test.com' },
-        { firstName: 'Anna', lastName: 'Andersson', email: 'anna@test.com' },
-        { firstName: 'Erik', lastName: 'Berg', email: 'erik@test.com' },
-      ])
-      const result = await listOwners(db as unknown as AppDatabase)
-      expect(result).toHaveLength(3)
-      expect(result[0].firstName).toBe('Anna')
-      expect(result[1].firstName).toBe('Zara')
-      expect(result[2].lastName).toBe('Berg')
+    const result = await listOwners(db)
+
+    expect(getRepository).toHaveBeenCalledWith(ownerEntity)
+    expect(repository.find).toHaveBeenCalledWith({
+      order: { lastName: 'ASC', firstName: 'ASC' },
     })
+    expect(result).toEqual([
+      {
+        id: 1,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        email: 'ada@example.com',
+      },
+    ])
   })
 
-  describe('getOwnerById', () => {
-    it('returns null for non-existent id', async () => {
-      const result = await getOwnerById(db as unknown as AppDatabase, 999)
-      expect(result).toBeNull()
-    })
+  it('returns null when getOwnerById finds no row', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValue(null)
 
-    it('returns the owner when found', async () => {
-      const [inserted] = await db
-        .insert(schema.owners)
-        .values({ firstName: 'Anna', lastName: 'Svensson', email: 'a@b.com' })
-        .returning()
-      const result = await getOwnerById(
-        db as unknown as AppDatabase,
-        inserted.id,
-      )
-      expect(result).toEqual({
-        id: inserted.id,
-        firstName: 'Anna',
-        lastName: 'Svensson',
-        email: 'a@b.com',
-      })
-    })
+    const result = await getOwnerById(db, 99)
+
+    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 99 } })
+    expect(result).toBeNull()
   })
 
-  describe('createOwner', () => {
-    it('inserts and returns the new owner', async () => {
-      const result = await createOwner(db as unknown as AppDatabase, {
-        firstName: 'Erik',
-        lastName: 'Lindberg',
-        email: 'erik@test.com',
-      })
-      expect(result).toMatchObject({
-        firstName: 'Erik',
-        lastName: 'Lindberg',
-        email: 'erik@test.com',
-      })
-      expect(result.id).toBeGreaterThan(0)
-    })
-  })
-
-  describe('updateOwner', () => {
-    it('updates fields and returns the owner', async () => {
-      const [inserted] = await db
-        .insert(schema.owners)
-        .values({ firstName: 'Old', lastName: 'Name', email: 'old@test.com' })
-        .returning()
-      const result = await updateOwner(
-        db as unknown as AppDatabase,
-        inserted.id,
-        {
-          firstName: 'New',
-          email: 'new@test.com',
-        },
-      )
-      expect(result).toMatchObject({
-        id: inserted.id,
-        firstName: 'New',
-        lastName: 'Name',
-        email: 'new@test.com',
-      })
+  it('returns the mapped owner when getOwnerById finds a row', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.findOne.mockResolvedValue({
+      id: 5,
+      firstName: 'Grace',
+      lastName: 'Hopper',
+      email: 'grace@example.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
     })
 
-    it('returns null for non-existent id', async () => {
-      const result = await updateOwner(db as unknown as AppDatabase, 999, {
-        firstName: 'X',
-      })
-      expect(result).toBeNull()
+    const result = await getOwnerById(db, 5)
+
+    expect(result).toEqual({
+      id: 5,
+      firstName: 'Grace',
+      lastName: 'Hopper',
+      email: 'grace@example.com',
     })
   })
 
-  describe('deleteOwner', () => {
-    it('returns true when owner exists', async () => {
-      const [inserted] = await db
-        .insert(schema.owners)
-        .values({ firstName: 'Del', lastName: 'Me', email: 'del@test.com' })
-        .returning()
-      const result = await deleteOwner(
-        db as unknown as AppDatabase,
-        inserted.id,
-      )
-      expect(result).toBe(true)
-      const remaining = await listOwners(db as unknown as AppDatabase)
-      expect(remaining).toHaveLength(0)
+  it('creates an owner and returns the persisted record with ISO timestamps', async () => {
+    const { db, repository } = createSqlServerDb()
+    const createdAt = new Date('2026-04-21T08:00:00.000Z')
+    const updatedAt = new Date('2026-04-21T08:00:00.000Z')
+    repository.save.mockResolvedValue({
+      id: 42,
+      firstName: 'Edsger', // cSpell:ignore Edsger
+      lastName: 'Dijkstra',
+      email: 'edsger@example.com',
+      createdAt,
+      updatedAt,
     })
 
-    it('returns false for non-existent id', async () => {
-      const result = await deleteOwner(db as unknown as AppDatabase, 999)
-      expect(result).toBe(false)
+    const result = await createOwner(db, {
+      firstName: 'Edsger',
+      lastName: 'Dijkstra',
+      email: 'edsger@example.com',
     })
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        firstName: 'Edsger',
+        lastName: 'Dijkstra',
+        email: 'edsger@example.com',
+        createdAt: expect.any(Date),
+        updatedAt: expect.any(Date),
+      }),
+    )
+    expect(repository.save).toHaveBeenCalledTimes(1)
+    expect(result).toEqual({
+      id: 42,
+      firstName: 'Edsger',
+      lastName: 'Dijkstra',
+      email: 'edsger@example.com',
+      createdAt: '2026-04-21T08:00:00.000Z',
+      updatedAt: '2026-04-21T08:00:00.000Z',
+    })
+  })
+
+  it('updates an owner and returns the refreshed row', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.update.mockResolvedValue({ affected: 1 })
+    repository.findOne.mockResolvedValue({
+      id: 7,
+      firstName: 'Alan',
+      lastName: 'Turing',
+      email: 'alan@example.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const result = await updateOwner(db, 7, { firstName: 'Alan' })
+
+    expect(repository.update).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        firstName: 'Alan',
+        updatedAt: expect.any(Date),
+      }),
+    )
+    expect(repository.findOne).toHaveBeenCalledWith({ where: { id: 7 } })
+    expect(result).toEqual({
+      id: 7,
+      firstName: 'Alan',
+      lastName: 'Turing',
+      email: 'alan@example.com',
+    })
+  })
+
+  it('returns null from updateOwner when no row was affected', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.update.mockResolvedValue({ affected: 0 })
+
+    const result = await updateOwner(db, 404, { firstName: 'Ghost' })
+
+    expect(repository.findOne).not.toHaveBeenCalled()
+    expect(result).toBeNull()
+  })
+
+  it('deletes an owner and reports whether a row was removed', async () => {
+    const { db, repository } = createSqlServerDb()
+    repository.delete.mockResolvedValueOnce({ affected: 1 })
+    repository.delete.mockResolvedValueOnce({ affected: 0 })
+
+    await expect(deleteOwner(db, 1)).resolves.toBe(true)
+    await expect(deleteOwner(db, 2)).resolves.toBe(false)
+    expect(repository.delete).toHaveBeenNthCalledWith(1, 1)
+    expect(repository.delete).toHaveBeenNthCalledWith(2, 2)
   })
 })

@@ -7,7 +7,7 @@ import {
   parsePackageItemRef,
 } from '@/lib/dal/requirement-packages'
 import { getRequirementById, STATUS_PUBLISHED } from '@/lib/dal/requirements'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 
 type Params = Promise<{ id: string }>
@@ -118,7 +118,7 @@ export async function GET(
   if (itemRefs.length === 0) {
     return NextResponse.json({ error: 'Missing refs' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const pkg = /^\d+$/.test(id)
     ? await getPackageById(db, Number(id))
     : await getPackageBySlug(db, id)
