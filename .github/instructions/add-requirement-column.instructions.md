@@ -1,11 +1,11 @@
 ---
-applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,drizzle/{schema.ts,seed.sql},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
+applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.ts,lib/**/*.ts,i18n/**/*.ts,lib/typeorm/entities/**/*.ts,typeorm/{seed.mjs,migrations/**/*.mjs},tests/**/*.test.ts,tests/**/*.test.tsx,tests/**/*.spec.ts,tests/**/*.spec.tsx,docs/*.md}"
 ---
 
 # Add Requirement Column Or Property
 
-- The approved target architecture is SQL Server + TypeORM. Until the full cutover is complete, requirement-column changes may still need to update the current Drizzle/SQLite assets, but they should not assume those assets are the long-term platform.
-- If a change affects persistence, keep the SQL Server migration plan and seed-parity expectations in sync.
+- See `.github/instructions/database-schema.instructions.md` for schema, migration, and seed rules when persistence changes.
+- Re-run `npm run db:setup` after schema or seed changes to verify the clean migrate + seed flow.
 
 ## Scope
 
@@ -23,14 +23,14 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 - Treat list order and default visibility as org-managed defaults, not hardcoded UI state.
 - Ensure the new column flows through `DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS` via the list-view registry.
-- Seed `requirement_list_column_defaults` in `drizzle/seed.sql` with the new column id, `sort_order`, and `is_default_visible`.
+- Seed `requirement_list_column_defaults` in `typeorm/seed.mjs` with the new column id, `sort_order`, and `is_default_visible`.
 - If the column is persisted in the admin API payload, ensure `app/api/admin/requirement-columns/route.ts` still validates the full column set.
 - Reset actions must return to admin-managed defaults, not stale local defaults.
 
 ## Terminology
 
 - If the property label is one of the admin-configurable term families, add or update the mapping in `lib/ui-terminology.ts`.
-- Update both `messages/en.json` and `messages/sv.json` with fallback labels.
+- See `.github/instructions/translations.instructions.md` for the message-file update workflow.
 - Bind all visible labels to translation keys. Do not hardcode labels in list headers, edit forms, inline detail panes, detail pages, CSV, service output, or MCP HTML.
 - If the new column introduces a new configurable term family, add it to:
   - `UI_TERM_KEYS`
@@ -53,9 +53,7 @@ applyTo: "{components/**/*.tsx,app/[locale]/requirements/**/*.tsx,app/api/**/*.t
 
 ## Persistence
 
-- If the new column requires new schema fields or tables, update `drizzle/schema.ts`, generate a migration, and update `drizzle/seed.sql`.
-- Run `npm run db:generate` after schema changes.
-- Run the relevant clean setup flow after schema or seed changes. During the legacy SQLite phase this is still `npm run db:setup`.
+- If the new column requires new schema fields or tables, update the relevant TypeORM entity in `lib/typeorm/entities/`, add a new migration under `typeorm/migrations/`, and update `typeorm/seed.mjs` with representative seed rows. See `.github/instructions/database-schema.instructions.md`.
 
 ## Verification
 

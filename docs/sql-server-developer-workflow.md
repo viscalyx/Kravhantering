@@ -1,16 +1,10 @@
 # SQL Server Developer Workflow
 
-This document describes the **approved target** developer workflow for the
-SQL Server + TypeORM migration.
-
-The repository is still carrying a large SQLite + Drizzle implementation while
-the migration is in progress. Until the full DAL/runtime cutover is complete,
-the SQL Server workflow below should be treated as the migration scaffold and
-reference path for new work.
+This document describes the developer workflow for the application's sole
+database stack: **Microsoft SQL Server + TypeORM**.
 
 See also:
 
-- [sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
 - [database-schema.md](./database-schema.md)
 
 ## Local SQL Server Container
@@ -30,13 +24,13 @@ cp .devcontainer/.env.example .devcontainer/.env
 Start the local SQL Server Developer container with:
 
 ```bash
-npm run db:sqlserver:up
+npm run db:up
 ```
 
 Stop it with:
 
 ```bash
-npm run db:sqlserver:down
+npm run db:down
 ```
 
 The default Compose file is [docker-compose.sqlserver.yml](../docker-compose.sqlserver.yml).
@@ -51,13 +45,13 @@ The local SQL Server workflow uses `encrypt=true` together with
 development because the SQL Server container presents a self-signed
 certificate unless you add your own trusted certificate chain.
 
-## Migration-Window Environment Variables
+## Environment Variables
 
-During the coexistence window, the SQL Server scaffold uses dedicated
-variables so it does not collide with the current SQLite runtime:
+The SQL Server admin scripts and runtime read environment variables from
+`.env.sqlserver` (host) and `.devcontainer/.env` (devcontainer).
 
-`db:up` and `db:sqlserver:up` now read their SQL Server variables from
-`.env.sqlserver`, not from committed Compose defaults.
+`db:up` reads its SQL Server variables from `.env.sqlserver`, not from
+committed Compose defaults.
 
 The default devcontainer Compose stack now reads its SQL Server variables from
 `.devcontainer/.env`.
@@ -84,35 +78,43 @@ DB_TRUST_SERVER_CERTIFICATE=...
 The write connection defaults to the `sa` login using `MSSQL_SA_PASSWORD`
 unless you explicitly set `DB_USER` / `DB_PASSWORD`.
 
-`DATABASE_URL` and `DATABASE_READONLY_URL` remain the preferred **optional
-overrides** when you need to point at an explicit connection string instead of
-the derived local/dev settings. The temporary `SQLSERVER_DATABASE_URL` and
-`SQLSERVER_DATABASE_READONLY_URL` aliases are still supported in code during
-the migration, but the local `.env*` files should normally stick to `DB_*`
-values plus optional commented `DATABASE_*` overrides.
+For the read-only login, avoid passwords that contain the login name
+(`readonly`) because SQL Server password policy can reject them even when they
+otherwise look complex.
 
-The canonical runtime contract remains:
+`DATABASE_URL` and `DATABASE_READONLY_URL` are the canonical runtime contract
+when you need to point at an explicit connection string instead of the derived
+local/dev settings. `SQLSERVER_DATABASE_URL` and
+`SQLSERVER_DATABASE_READONLY_URL` are accepted aliases used by the admin CLI;
+the Next.js runtime only reads `DATABASE_URL`.
+
+The canonical runtime contract is:
 
 ```env
 DATABASE_URL=...
 DATABASE_READONLY_URL=...
 ```
 
-## SQL Server Scaffold Commands
+## SQL Server Admin Commands
 
 <!-- markdownlint-disable MD013 -->
 | Command | Purpose |
 | --- | --- |
-| `npm run db:sqlserver:up` | Start the local SQL Server Developer container |
-| `npm run db:sqlserver:down` | Stop the local SQL Server Developer container |
-| `npm run db:sqlserver:wait` | Poll the configured SQL Server endpoint until it responds |
-| `npm run db:sqlserver:health` | Run a simple `SELECT 1` health probe |
-| `npm run db:sqlserver:browse` | Print a read-only VS Code SQLTools connection block |
+| `npm run db:up` | Start the local SQL Server Developer container |
+| `npm run db:down` | Stop the local SQL Server Developer container |
+| `npm run db:wait` | Poll the configured SQL Server endpoint until it responds |
+| `npm run db:health` | Run a simple `SELECT 1` health probe |
+| `npm run db:browse` | Print a read-only VS Code SQLTools connection block |
+| `npm run db:setup` | Wait, reset, run TypeORM migrations, seed, and configure the read-only login |
+| `npm run db:generate` | Generate a new TypeORM migration based on entity changes |
+| `npm run db:migrate` | Run TypeORM migrations only |
+| `npm run db:seed` | Apply `typeorm/seed.mjs` only |
+| `npm run db:reset` | Drop and recreate the database |
 <!-- markdownlint-enable MD013 -->
 
-These scaffold commands do **not** mean the full TypeORM migration is complete.
-They establish the container, connection, and browse surfaces needed to migrate
-the repository safely.
+Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
+applies the migrations in `typeorm/migrations/`, and seeds via
+`typeorm/seed.mjs`.
 
 ## Read-Only Browse Workflow
 
@@ -128,7 +130,7 @@ The blessed VS Code-friendly path is:
 4. Run:
 
    ```bash
-   npm run db:sqlserver:browse
+   npm run db:browse
    ```
 
 5. Copy the printed JSON into the SQLTools connection UI or workspace
@@ -140,23 +142,14 @@ committing secrets into the repo.
 
 ## Seed Data Preservation
 
-The migration must preserve current dev/test seed data semantics unless a
-change is absolutely necessary for SQL Server correctness.
-
-That means:
+Keep current dev/test seed data semantics stable unless a change is absolutely
+necessary. That means:
 
 - keep stable IDs and business identifiers where feasible
 - preserve scenario coverage and edge-case fixtures
 - preserve ordering assumptions that tests or guides rely on
 - document every unavoidable change explicitly
 
-## Current Cutover Status
-
-As of April 19, 2026:
-
-- SQL Server + TypeORM is the approved target architecture.
-- SQL Server container, config, and browse scaffolding are being added.
-- The main app runtime, DAL modules, and tests still require a larger port from
-  SQLite + Drizzle.
-- The detailed migration checklist lives in
-  [sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md).
+Seed inserts in `typeorm/seed.mjs` must be idempotent: guard with
+`IF NOT EXISTS` (or composite-PK equivalent) and wrap identity-bearing tables
+in `SET IDENTITY_INSERT [table] ON/OFF` so the seed can be re-run safely.

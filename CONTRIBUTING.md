@@ -15,14 +15,11 @@ for VS Code agent sandboxing features, choose
 
 If you prefer host-based development outside the dev container, install Node.js
 24.x, npm, and a Docker-compatible `docker compose` runtime. The default local
-workflow is `npm run db:up`, `npm run db:setup`, then `npm run dev`.
+workflow is `docker compose -f docker-compose.sqlserver.yml up -d`,
+`npm run db:setup`, then `npm run dev`.
 
-The repository is also migrating toward **SQL Server + TypeORM** as the
-approved database architecture. Use
-[docs/sql-server-typeorm-migration-plan.md](docs/sql-server-typeorm-migration-plan.md)
-as the canonical migration reference and
-[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
-for the new SQL Server scaffold commands.
+Use [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+for setup, migrations, and the read-only browse workflow.
 
 ## Available Scripts
 
@@ -93,7 +90,8 @@ app/              Next.js App Router pages and API routes
   [locale]/       Locale-prefixed pages (sv, en)
   api/            REST API endpoints
 components/       Reusable React components
-drizzle/          Database schema, seed data & migrations
+lib/typeorm/      TypeORM entities, data source, and SQL Server config
+typeorm/          Migrations and seed data
 i18n/             Internationalization configuration
 lib/              Shared utilities and data-access layer
   dal/            Data Access Layer modules
@@ -162,7 +160,9 @@ docs when working on it:
 
 - [docs/mcp-server-user-guide.md](docs/mcp-server-user-guide.md)
 - [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
-- [docs/TODO-mcp-server-auth-plan.md](docs/TODO-mcp-server-auth-plan.md)
+
+MCP authentication and authorization are not yet enforced. Protect
+`/api/mcp` at the platform edge if you expose it outside local development.
 
 ## OpenRouter (AI Requirement Generation)
 
@@ -206,17 +206,13 @@ Translation strings are stored in [messages/](messages/).
 
 ## Database
 
-The approved target architecture is **Microsoft SQL Server + TypeORM**.
+The database stack is **Microsoft SQL Server + TypeORM**.
 
-The checked-in application is still carrying a large **SQLite + Drizzle** data
-layer while the migration is in progress. That means:
-
-- current default app runtime commands still use the SQLite workflow
-- new SQL Server scaffolding lives alongside the current runtime
-- the migration reference is
-  [docs/sql-server-typeorm-migration-plan.md](docs/sql-server-typeorm-migration-plan.md)
-- the scaffold workflow is
-  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+- Schema lives in TypeORM entities under `lib/typeorm/entities/`.
+- Migrations live in `typeorm/migrations/`.
+- Seed data lives in `typeorm/seed.mjs`.
+- The full developer setup, browse workflow, and CLI reference live in
+  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
 
 For the full schema reference, see
 [docs/database-schema.md](docs/database-schema.md). Status
@@ -239,58 +235,15 @@ Before rebuilding either devcontainer profile, copy:
 cp .devcontainer/.env.example .devcontainer/.env
 ```
 
-<!-- markdownlint-disable MD013 -->
-| Command | Description |
-| --- | --- |
-| `npm run db:generate` | Generate migrations from schema |
-| `npm run db:up` | Start the local SQL Server Developer container |
-| `npm run db:down` | Stop the local SQL Server Developer container |
-| `npm run db:health` | Check the configured database endpoint |
-| `npm run db:migrate` | Apply migrations to the configured SQL Server DB |
-| `npm run db:seed` | Seed the configured SQL Server DB with test data |
-| `npm run db:reset` | Reset the configured SQL Server DB |
-| `npm run db:setup` | Wait, reset, migrate, and seed in one step |
-| `npm run db:browse` | Print a read-only SQLTools MSSQL connection block |
-| `npm run db:sqlserver:up` | Start the local SQL Server Developer container scaffold |
-| `npm run db:sqlserver:down` | Stop the local SQL Server Developer container scaffold |
-| `npm run db:sqlserver:wait` | Poll the configured SQL Server endpoint until it responds |
-| `npm run db:sqlserver:health` | Run a SQL Server `SELECT 1` health probe |
-| `npm run db:sqlserver:browse` | Print a read-only SQLTools MSSQL connection block |
-<!-- markdownlint-enable MD013 -->
+For the full `npm run db:*` command reference, see
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md#sql-server-admin-commands).
 
 ### Browsing the Local Database
 
-For the approved future SQL Server browse workflow, use
+Use the SQLTools + MSSQL workflow described in
 [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
-The remainder of this section documents the current SQLite browse behavior
-while the migration is still in progress.
-
-The recommended VS Code extension **SQLite Viewer**
-(`qwtel.sqlite-viewer`) is included in the dev container. In both
-devcontainer variants, the shared SQLite Docker volume is mounted
-read-only into the app container, so you can inspect the live database
-without opening a shell in the `db` service.
-
-1. Run `npm run db:browse`, or open the database file in VS Code:
-
-   ```text
-   /var/lib/kravhantering/devcontainer.sqlite
-   ```
-
-1. For direct CLI inspection, run:
-
-   ```bash
-   sqlite3 /var/lib/kravhantering/devcontainer.sqlite
-   ```
-
-For host-based development outside the dev container, the database file
-still lives inside the `db` service volume at
-`/var/lib/kravhantering/dev.sqlite`. In that workflow, either inspect the
-volume through Docker tooling or point `DATABASE_URL` at a local file such
-as `file:./tmp/dev.sqlite` and rerun `npm run db:setup`. The `db:browse`
-script works automatically in the devcontainer and in file-backed
-`DATABASE_URL` mode. With the host-based Docker proxy workflow, it will
-explain that the live SQLite file is not mounted locally.
+`npm run db:browse` prints a ready-to-paste read-only SQLTools connection block
+based on `DATABASE_READONLY_URL` (or `SQLSERVER_DATABASE_READONLY_URL`).
 
 > [!Tip]
 > The default contributor path is:

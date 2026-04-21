@@ -6,9 +6,7 @@ applyTo: "app/[locale]/requirements/[id]/requirement-detail-client.tsx"
 
 ## Content Order
 
-The detail pane card renders content sections in this fixed order for both the
-inline detail pane (expanded inside the requirements table) and the full-page
-requirement detail view — they share the same single-column layout:
+The inline detail pane and the full-page requirement detail view share the same single-column layout. Sections render in this fixed order:
 
 1. Requirement text (description) — always first
 2. Acceptance criteria — always second
@@ -17,13 +15,7 @@ requirement detail view — they share the same single-column layout:
 4. References (if any)
 5. Scenarios
 
-There is no sidebar. All metadata lives inside the card's metadata grid.
-
-## Rationale
-
-Requirement text and acceptance criteria are the primary content a reader needs.
-Classification metadata (area, owner, category, type, etc.) is secondary context
-and must not push the main content down.
+- No sidebar. All metadata lives inside the card's metadata grid.
 
 ## Area Owner Display
 

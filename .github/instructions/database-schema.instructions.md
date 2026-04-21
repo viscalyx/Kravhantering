@@ -1,23 +1,35 @@
 ---
-applyTo: "{drizzle/schema.ts,drizzle/seed.sql,drizzle/migrations/*.sql,drizzle/migrations/meta/*.json,lib/typeorm/**/*.ts,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md,docs/sql-server-typeorm-migration-plan.md}"
+applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs/database-schema.md,docs/arkitekturbeskrivning-kravhantering.md}"
 ---
 
 # Database Schema Changes
 
-## Migration Direction
+## Stack
 
-- The approved target architecture is SQL Server + TypeORM.
-- Do not expand the legacy SQLite + Drizzle implementation unless you are keeping the current app stable during migration.
+- The sole database stack is SQL Server + TypeORM.
+- Schema is defined by TypeORM entities under `lib/typeorm/entities/`.
+- Migrations live in `typeorm/migrations/` (one `.mjs` file per migration).
+- Seed data lives in `typeorm/seed.mjs` and is applied by `npm run db:seed`.
 - Preserve current seed-data meaning and identifiers wherever possible. Document unavoidable drift explicitly.
-- Keep `docs/sql-server-typeorm-migration-plan.md` and the affected docs in sync with any migration-direction changes.
 
 ## Standard
 
 - Follow `docs/database-schema.md` for every schema change.
-- Use `id` as the only primary key unless the table is a documented join-table exception.
-- Use `<name>_<locale>` for localized columns such as `name_sv`, `description_en`, `singular_sv`.
+- All identifiers are US English, lowercase ASCII `snake_case`. Tables: plural nouns. Columns: singular, no abbreviations.
+- PK: always `id` unless the table is a documented join-table exception. FK: `<referenced_table_singular>_id`.
+- Timestamps: `created_at`, `updated_at`, `deleted_at`, `published_at`, `archived_at`, `edited_at`.
+- Constraint names: `pk_<table>`, `fk_<table>_<col>`, `uq_<table>_<col>`, `idx_<table>_<col>`, `chk_<table>_<col>`.
+- Always pass an explicit `name` to TypeORM `@Index`/`@Unique` and to migration `CREATE INDEX` / `ALTER TABLE … ADD CONSTRAINT`. Never rely on auto-generated names.
 - Prefix boolean columns with `is_`, `has_`, or `can_`.
+- Use `<field>_en` / `<field>_sv` paired columns for every user-facing text field in taxonomy/lookup tables (`name_en`, `name_sv`, `description_en`, `description_sv`). UI selects by active locale.
+- `*_en` values use US English spelling (`behavior`, not `behaviour`; `analyzability`, not `analysability`).
 - Keep natural keys such as `key` and `column_id` as non-primary columns with unique indexes.
+- Data values may contain Swedish characters (UTF-8).
+- See `docs/database-schema.md` § Database Naming Standard for the full specification.
+
+## Versioning
+
+- Any table or column linked to a requirement must also appear in `requirement_versions` and related version tables so every requirement-linked property is captured in the version snapshot.
 
 ## Retired Columns
 
@@ -27,26 +39,28 @@ applyTo: "{drizzle/schema.ts,drizzle/seed.sql,drizzle/migrations/*.sql,drizzle/m
   schema or migration constraints prevent safe removal.
 - Number `unused_n` per table. Use the lowest available positive integer in
   that table.
-- Use `ALTER TABLE ... RENAME COLUMN ... TO unused_n` for the rename.
+- Use `sp_rename '<table>.<old>', '<new>', 'COLUMN'` (or
+  `EXEC sp_rename`) for the rename inside the migration.
 - Clear existing data from the renamed column in the same migration. Prefer
   `NULL`; if the column cannot be `NULL`, use a neutral empty value with no
   business meaning.
-- Keep `drizzle/schema.ts` in sync with a neutral field name such as
-  `unused1`.
+- Keep the corresponding TypeORM entity in sync with a neutral field name
+  such as `unused1`.
 - Remove retired-column wiring from DAL, services, UI, tests, and docs. Do
   not keep product semantics attached to an `unused_n` column.
 
 ## Foreign Keys
 
-- Use table-level `foreignKey({ name: 'fk_<table>_<col>', columns: [...], foreignColumns: [...] })` for all FK constraints that need explicit names.
-- Do not rely on `.references()` for named constraints — `ReferenceConfig.actions` has no `constraintName` option (drizzle-orm ≥ 0.45).
+- Define foreign keys via TypeORM `@ManyToOne` / `@JoinColumn({ name: '<col>_id', foreignKeyConstraintName: 'fk_<table>_<col>' })`.
 - Name FK constraints `fk_<table>_<col>` where `<table>` is the declaring table and `<col>` is the referencing column name.
-- Chain `.onDelete(action)` / `.onUpdate(action)` on the `foreignKey()` builder for referential actions.
+- Specify referential actions (`onDelete`, `onUpdate`) on the relation decorator.
+- In raw migration SQL use `ALTER TABLE [<table>] ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ([<col>_id]) REFERENCES [<other>] ([id]) ON DELETE <action>`.
 
 ## Sync
 
-- Update `drizzle/schema.ts`, migrations, `drizzle/seed.sql`, affected
-  DAL/tests, and `docs/database-schema.md` in the same change.
+- Update the affected TypeORM entity, the new migration in
+  `typeorm/migrations/`, `typeorm/seed.mjs`, the affected DAL/tests, and
+  `docs/database-schema.md` in the same change.
 - If a deviation is required, add it to `Accepted Exceptions` in
   `docs/database-schema.md` in the same change.
 
@@ -67,7 +81,7 @@ update **every** applicable section of `docs/database-schema.md`:
    - *Unique Indexes* — add/remove rows for `uq_*` indexes.
    - *Non-Unique Indexes* — add/remove rows for `idx_*` indexes.
    - *Named Foreign Key Constraints* — add/remove rows for explicitly
-     named `fk_*` constraints (those using `foreignKey({ name })`).
+     named `fk_*` constraints.
 5. **Index Relationship Diagram** — add/remove nodes and edges in the
    Mermaid `graph LR` diagram.
 6. **Status Workflow** — update the seed-transitions table and workflow
@@ -97,29 +111,32 @@ remove **all** references to it from `docs/database-schema.md`:
 - Nodes and edges in the Index Relationship Diagram.
 - Any prose references in the Status Workflow or other narrative sections.
 
-## Legacy Drizzle Migration Generation
+## Migration Workflow
 
-While the repository still depends on the legacy Drizzle path, every legacy
-migration must produce three artifacts inside `drizzle/migrations/`:
+1. Update or add the relevant TypeORM entity under `lib/typeorm/entities/`.
+2. Add a new migration file under `typeorm/migrations/` named
+   `NNNN_<name>.mjs`. Migrations are hand-authored; embed the `up` and
+   `down` SQL statements as string arrays and execute them with
+   `queryRunner.query(...)`.
+3. Prefer SQL Server `ALTER TABLE … ADD`, `ALTER COLUMN`, and `sp_rename`
+   over drop-and-recreate for renames and additions, to keep FK safety.
+4. Update `typeorm/seed.mjs` so every table in the schema has
+   representative, idempotent seed rows. Wrap identity tables in
+   `SET IDENTITY_INSERT [table] ON/OFF` and guard inserts with
+   `IF NOT EXISTS`.
+5. Run `npm run db:setup` to verify the full clean migrate + seed flow
+   against a local SQL Server.
 
-1. `NNNN_<name>.sql` — the migration SQL.
-2. `meta/_journal.json` — an entry for the new migration.
-3. `meta/NNNN_snapshot.json` — a full schema snapshot after the migration.
+## Lifecycle Dates
 
-Missing snapshots break `npx drizzle-kit generate` for all future runs.
-
-### Legacy Workflow
-
-1. Update `drizzle/schema.ts` to reflect the desired end state.
-2. Run `npx drizzle-kit generate`. This creates all three artifacts.
-3. Inspect the generated SQL. If it is correct, done.
-4. If the SQL is wrong (e.g. DROP-and-recreate instead of `ALTER TABLE`),
-   **edit only the `.sql` file**. Keep the generated journal entry and
-   snapshot file unchanged.
-5. Run `npm run db:setup` to verify the legacy migration applies cleanly.
+- When changing lifecycle date columns, status fields, or status seed values, update `docs/version-lifecycle-dates.md`.
+- `edited_at` is set only when user-initiated content fields change (e.g. description, acceptance criteria, category).
+- `edited_at` must not change on status transitions (`transitionStatus`, `initiateArchiving`, `approveArchiving`, `cancelArchiving`) or on system-controlled date changes (`published_at`, `archived_at`, `archive_initiated_at`).
+- Status transitions are in-place `UPDATE` operations on the existing version row — they must not create new version rows.
 
 ### Prohibited
 
-- Never create a `.sql` migration without a matching snapshot in `meta/`.
-- Never hand-write or delete `meta/NNNN_snapshot.json` files.
-- Never add a journal entry without a corresponding snapshot.
+- Never use `synchronize: true` in production runtime configuration.
+- Never edit a migration that has already been released; add a new one.
+- Never store the same text value (e.g. status name, category label)
+  inline across many rows — use a lookup table with an integer primary key.

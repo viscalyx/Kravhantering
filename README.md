@@ -187,22 +187,15 @@ This project also includes an in-app MCP server for requirements management.
 
 ## Tech Stack
 
-The repository is in the middle of an approved database migration.
-
-- Target architecture: **Microsoft SQL Server + TypeORM**
-- Current checked-in runtime: large **SQLite + Drizzle** implementation still
-  being migrated
-- Canonical migration reference:
-  [docs/sql-server-typeorm-migration-plan.md](docs/sql-server-typeorm-migration-plan.md)
-- SQL Server scaffold workflow:
-  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+The application uses **Microsoft SQL Server + TypeORM** as its sole database
+stack. See
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+for setup, migrations, seeding, and the developer browse workflow.
 
 - **Framework:** [Next.js](https://nextjs.org/) 16 (React 19)
 - **Language:** TypeScript 5
 - **Styling:** Tailwind CSS 4
-- **Approved database target:** Microsoft SQL Server via TypeORM
-- **Current migration-state database runtime:** SQLite via Drizzle ORM
-- **Current local/CI database runtime:** Separate SQLite proxy service container
+- **Database:** Microsoft SQL Server via TypeORM
 - **Internationalization:** next-intl (Swedish & English)
 - **App runtime:** Native Next.js self-hosting (`next dev`, `next start`)
 - **Production target:** OpenShift-compatible Node container deployment
@@ -217,21 +210,23 @@ The repository is in the middle of an approved database migration.
 
 ## Getting Started
 
-The steps below still describe the current checked-in runtime. For the SQL
-Server scaffold that is being introduced for the migration, see
-[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
+### Local development using devcontainers
+
+Start the devcontainers by opening the project in VS Code and accepting the
+prompt to "Reopen in Container". The devcontainer includes the local
+*SQL Server Developer* container, so you can run the full application and
+database stack without any additional setup.
+
+### Local development without devcontainers
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local setup, including
+Node.js prerequisites, environment files, and database commands. The
+condensed flow is:
 
 ```bash
-# Install dependencies
 npm install
-
-# Start the local SQLite proxy database service
-npm run db:up
-
-# Set up the local database (wait, reset, migrate & seed)
+docker compose -f docker-compose.sqlserver.yml up -d
 npm run db:setup
-
-# Start the development server
 npm run dev
 ```
 

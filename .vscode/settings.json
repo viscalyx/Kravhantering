@@ -115,9 +115,11 @@
       "previewLimit": 50,
       "server": "db",
       "port": 1433,
+      "askForPassword": true,
       "driver": "MSSQL",
-      "name": "db",
-      "username": "sa"
+      "name": "Kravhantering",
+      "database": "Kravhantering",
+      "username": "readonly"
     }
   ]
 }

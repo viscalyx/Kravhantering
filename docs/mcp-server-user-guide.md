@@ -88,21 +88,17 @@ As of March 8, 2026, the MCP route is designed for future authentication and
 authorization, but the in-route auth phase has not been enabled yet.
 
 If you expose `/api/mcp` outside local development before that phase lands,
-protect it at the platform edge. The planned auth rollout is documented in
-[TODO-mcp-server-auth-plan.md](./TODO-mcp-server-auth-plan.md).
+protect it at the platform edge.
 
 ## Run It Locally
 
-The repository is migrating toward SQL Server + TypeORM, but the current
-checked-in MCP runtime still uses the existing local DB workflow below. For the
-approved migration direction and SQL Server scaffold, see
-[sql-server-typeorm-migration-plan.md](./sql-server-typeorm-migration-plan.md)
-and
+The MCP server is part of the Next.js app and uses the same SQL Server +
+TypeORM stack. For the full developer setup, see
 [sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
 
 1. Install dependencies with `npm install`.
-2. Start the local DB service with `npm run db:up`.
-3. Prepare the local SQLite database with `npm run db:setup`.
+2. Start the local SQL Server with `npm run db:up`.
+3. Migrate and seed the local database with `npm run db:setup`.
 4. Start the app with `npm run dev`.
 5. Connect your MCP client to `http://localhost:3000/api/mcp`.
 
