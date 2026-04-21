@@ -292,8 +292,7 @@
     "adminflöden",
     "rewriteable",
     "readback",
-    "inspectable",
-    "pycache"
+    "inspectable"
   ],
   "flagWords": [],
   "ignorePaths": [
