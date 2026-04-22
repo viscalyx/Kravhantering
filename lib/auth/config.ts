@@ -90,8 +90,14 @@ let cached: AuthConfig | undefined
 function loadAuthConfig(): AuthConfig {
   const enabled = parseBooleanFlag(process.env.AUTH_ENABLED, true)
   const isProduction = process.env.NODE_ENV === 'production'
+  // Opt-in escape hatch for `npm run start:prodlike:noauth` — local
+  // prod-like validation that still wants the dev-mode bypass. Never set
+  // this in a real deployment; the app logs a loud warning when it kicks
+  // in and the production-mode strict-check is the actual safety net.
+  const allowDisableInProduction =
+    process.env.AUTH_ALLOW_DISABLE_IN_PRODUCTION === 'true'
 
-  if (!enabled && isProduction) {
+  if (!enabled && isProduction && !allowDisableInProduction) {
     throw new AuthConfigError(
       'AUTH_ENABLED=false is rejected in production. Refusing to boot.',
     )
@@ -102,6 +108,13 @@ function loadAuthConfig(): AuthConfig {
     console.warn(
       '[auth] AUTH_ENABLED=false — running without authentication. Do not use in production.',
     )
+    if (isProduction && allowDisableInProduction) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[auth] AUTH_ALLOW_DISABLE_IN_PRODUCTION=true: NODE_ENV=production without auth. ' +
+          'This must only be used for local prod-like integration tests.',
+      )
+    }
     // Return a stub config; callers must check `enabled` before using OIDC fields.
     return {
       enabled: false,

@@ -17,6 +17,7 @@ const helpState = vi.hoisted(() => ({
 vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => (key: string) =>
     namespace ? `${namespace}.${key}` : key,
+  useLocale: () => 'en',
 }))
 
 vi.mock('@/i18n/routing', () => ({

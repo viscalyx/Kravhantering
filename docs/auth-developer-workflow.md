@@ -19,6 +19,8 @@ only when `AUTH_ENABLED=false`.
 
 ## Local IdP (Keycloak)
 
+<!-- cSpell:ignore socat -->
+
 Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.0`)
 and import the realm config from `dev/keycloak/realm-kravhantering-dev.json`
 on every start. The JSON file is the source of truth — changes made via
@@ -84,11 +86,13 @@ Inside the `app` container, however, `localhost:8080` does **not** reach
 Keycloak — Keycloak runs in the sibling `idp` container and is reachable
 on the compose network only as `idp:8080`. Because the OIDC issuer URL
 must be the same for the host browser and for Next.js server-side calls
-(token exchange, userinfo, JWKS), the devcontainer's `postStartCommand`
+(token exchange, user information, JWKS), the devcontainer's `postStartCommand`
 launches a `socat` forwarder that binds `127.0.0.1:8080` inside the
 `app` container and forwards to `idp:8080`. This keeps the browser-
 facing issuer (`http://localhost:8080/realms/kravhantering-dev`) and
 the server-side fetch URL identical.
+
+<!-- cSpell:ignore ECONNREFUSED -->
 
 If `npm run dev` ever fails with `ECONNREFUSED 127.0.0.1:8080` from
 `/api/auth/*`, the forwarder is not running. Restart it with the
@@ -288,6 +292,7 @@ Production values are set per environment by ops on the real IdP.
 | --- | --- | --- | --- |
 | `AUTH_TRUST_PROXY` | no | `true` | When `true`, the app honours `X-Forwarded-Proto` / `X-Forwarded-Host` so generated redirect URIs use `https://<route-host>` instead of the in-pod scheme/host. Required behind the OpenShift Route. Set `false` only if exposing the pod directly without a proxy (rare). |
 | `AUTH_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Opt-in escape hatch that lets the OIDC client accept an `http://` issuer when `NODE_ENV=production`. Required for `npm run start:prodlike`, which runs in production mode against the local Keycloak. **Never** set to `true` in a real deployment — the app logs a loud warning when this kicks in. |
+| `AUTH_ALLOW_DISABLE_IN_PRODUCTION` | no | `false` | Opt-in escape hatch that lets `AUTH_ENABLED=false` boot under `NODE_ENV=production`. Used by `npm run start:prodlike:noauth` (which the prodlike Playwright suite runs) so integration tests can exercise the built bundle without an authenticated browser session. **Never** set to `true` in a real deployment — the app logs a loud warning when this kicks in. |
 <!-- markdownlint-enable MD013 -->
 
 ### Sensitive vs non-sensitive

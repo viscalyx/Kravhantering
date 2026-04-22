@@ -334,7 +334,8 @@
     "rewriteable",
     "readback",
     "inspectable",
-    "typeorm"
+    "typeorm",
+    "authorsteward"
   ],
   "flagWords": [],
   "ignorePaths": [
