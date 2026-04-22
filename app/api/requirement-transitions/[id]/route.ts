@@ -16,7 +16,7 @@ export async function POST(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = createRequestContext(request, 'rest')
+  const context = await createRequestContext(request, 'rest')
   const body = (await request.json()) as Record<string, unknown>
 
   const statusId = Number(body.statusId)

@@ -5,6 +5,12 @@ import { vi } from 'vitest'
 
 ;(process.env as Record<string, string | undefined>).NODE_ENV = 'test'
 
+// Default to AUTH_ENABLED=false in unit tests so route handlers and the
+// request-context helper don't require the full OIDC env-var set. Individual
+// tests that exercise the auth-on path explicitly opt in by setting the env
+// var and calling `resetAuthConfigForTests()`.
+;(process.env as Record<string, string | undefined>).AUTH_ENABLED = 'false'
+
 // Mock framer-motion globally — all motion.* elements are handled via Proxy.
 // Individual test files should NOT re-mock framer-motion.
 vi.mock('framer-motion', () => {

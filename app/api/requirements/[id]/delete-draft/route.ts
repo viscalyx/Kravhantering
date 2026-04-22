@@ -16,7 +16,7 @@ export async function POST(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = createRequestContext(_request, 'rest')
+  const context = await createRequestContext(_request, 'rest')
 
   try {
     const ref = parseRequirementRef(id)

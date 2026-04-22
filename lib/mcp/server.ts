@@ -125,7 +125,10 @@ function getMessageString(
   return typeof current === 'string' ? current : fallback
 }
 
-function getBaseContext(request: Request, toolName?: string): RequestContext {
+function getBaseContext(
+  request: Request,
+  toolName?: string,
+): Promise<RequestContext> {
   return createRequestContext(request, 'mcp', toolName)
 }
 
@@ -570,7 +573,7 @@ export function createKravhanteringMcpServer(
       const versionNumber = uri.searchParams.get('version')
       const uniqueId = getRequirementUniqueIdFromResourceUri(uri, variables)
       const payload = await service.getRequirement(
-        getBaseContext(request, 'requirements_get_requirement'),
+        await getBaseContext(request, 'requirements_get_requirement'),
         {
           locale: toResponseLocale(uri.searchParams.get('locale') ?? undefined),
           responseFormat: 'json',
@@ -621,7 +624,7 @@ export function createKravhanteringMcpServer(
       )
       const uniqueId = getRequirementUniqueIdFromResourceUri(uri, variables)
       const payload = await service.getRequirement(
-        getBaseContext(request, 'requirements_get_requirement'),
+        await getBaseContext(request, 'requirements_get_requirement'),
         {
           locale,
           responseFormat: 'markdown',
@@ -672,7 +675,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.queryCatalog(
-          getBaseContext(request, 'requirements_query_catalog'),
+          await getBaseContext(request, 'requirements_query_catalog'),
           toCatalogInput(input),
         )
         return {
@@ -708,7 +711,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.getRequirement(
-          getBaseContext(request, 'requirements_get_requirement'),
+          await getBaseContext(request, 'requirements_get_requirement'),
           toGetInput(input),
         )
         const links = getRequirementLinkPayload(payload)
@@ -751,7 +754,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.manageRequirement(
-          getBaseContext(request, 'requirements_manage_requirement'),
+          await getBaseContext(request, 'requirements_manage_requirement'),
           toManageInput(input),
         )
         const content: Array<
@@ -825,7 +828,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.transitionRequirement(
-          getBaseContext(request, 'requirements_transition_requirement'),
+          await getBaseContext(request, 'requirements_transition_requirement'),
           toTransitionInput(input),
         )
 
@@ -908,7 +911,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.listPackages(
-          getBaseContext(request, 'requirements_list_packages'),
+          await getBaseContext(request, 'requirements_list_packages'),
           {
             locale: toResponseLocale(input.locale),
             nameSearch: input.nameSearch,
@@ -993,7 +996,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.getPackageItems(
-          getBaseContext(request, 'requirements_get_package_items'),
+          await getBaseContext(request, 'requirements_get_package_items'),
           {
             descriptionSearch: input.descriptionSearch,
             locale: toResponseLocale(input.locale),
@@ -1074,7 +1077,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.addToPackage(
-          getBaseContext(request, 'requirements_add_to_package'),
+          await getBaseContext(request, 'requirements_add_to_package'),
           {
             locale: toResponseLocale(input.locale),
             needsReferenceText: input.needsReferenceText,
@@ -1146,7 +1149,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.removeFromPackage(
-          getBaseContext(request, 'requirements_remove_from_package'),
+          await getBaseContext(request, 'requirements_remove_from_package'),
           {
             locale: toResponseLocale(input.locale),
             packageId: input.packageId,
@@ -1207,7 +1210,10 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.listSuggestions(
-          getBaseContext(request, 'requirements_list_improvement_suggestions'),
+          await getBaseContext(
+            request,
+            'requirements_list_improvement_suggestions',
+          ),
           {
             locale: toResponseLocale(input.locale),
             requirementId: input.requirementId,
@@ -1349,7 +1355,10 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.manageSuggestion(
-          getBaseContext(request, 'requirements_manage_improvement_suggestion'),
+          await getBaseContext(
+            request,
+            'requirements_manage_improvement_suggestion',
+          ),
           {
             content: input.content,
             createdBy: input.createdBy,
@@ -1431,7 +1440,7 @@ export function createKravhanteringMcpServer(
     async input => {
       try {
         const payload = await service.generateRequirements(
-          getBaseContext(request, 'requirements_generate_requirements'),
+          await getBaseContext(request, 'requirements_generate_requirements'),
           input as GenerateRequirementsInput,
         )
 

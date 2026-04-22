@@ -73,8 +73,8 @@ import {
 import { listScenarios } from '@/lib/dal/usage-scenarios'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
-  AllowAllAuthorizationService,
   type AuthorizationService,
+  createDefaultAuthorizationService,
   type RequestContext,
   type RequirementsAction,
 } from '@/lib/requirements/auth'
@@ -854,7 +854,7 @@ async function withLogging<T>(
 export function createRequirementsService(
   db: SqlServerDatabase,
   {
-    authorization = new AllowAllAuthorizationService(),
+    authorization = createDefaultAuthorizationService(),
     logger = createRequirementsLogger(),
     uiSettings = createUiSettingsLoader(db),
   }: {

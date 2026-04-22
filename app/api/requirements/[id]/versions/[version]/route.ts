@@ -18,7 +18,7 @@ export async function GET(
   const { id, version } = await params
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = createRequestContext(_request, 'rest')
+  const context = await createRequestContext(_request, 'rest')
 
   try {
     const ref = parseRequirementRef(id)

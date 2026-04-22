@@ -77,7 +77,24 @@
     "packageItemStatuses": "Usage statuses",
     "admin": "Admin",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "signedInAs": "Signed in as {name}",
+    "roles": "Roles",
+    "userInfoTitle": "Account details",
+    "userInfoName": "Name",
+    "userInfoEmail": "Email",
+    "userInfoSubject": "Subject",
+    "userInfoSessionExpires": "Session expires",
+    "userInfoRoles": "Roles",
+    "userInfoNoRoles": "No roles assigned"
+  },
+  "roles": {
+    "author": "Author",
+    "reviewer": "Reviewer",
+    "steward": "Steward",
+    "admin": "Administrator"
   },
   "notFound": {
     "title": "404",

@@ -77,7 +77,24 @@
     "packageItemStatuses": "Användningsstatusar",
     "admin": "Administration",
     "openMenu": "Öppna meny",
-    "closeMenu": "Stäng meny"
+    "closeMenu": "Stäng meny",
+    "signIn": "Logga in",
+    "signOut": "Logga ut",
+    "signedInAs": "Inloggad som {name}",
+    "roles": "Roller",
+    "userInfoTitle": "Kontouppgifter",
+    "userInfoName": "Namn",
+    "userInfoEmail": "E-post",
+    "userInfoSubject": "Användar-id",
+    "userInfoSessionExpires": "Sessionen går ut",
+    "userInfoRoles": "Roller",
+    "userInfoNoRoles": "Inga roller tilldelade"
+  },
+  "roles": {
+    "author": "Författare",
+    "reviewer": "Granskare",
+    "steward": "Förvaltare",
+    "admin": "Administratör"
   },
   "notFound": {
     "title": "404",

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
+import { getAuthConfig } from '@/lib/auth/config'
+import { getSessionFromRequest, isSignedIn } from '@/lib/auth/session'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -62,7 +64,74 @@ function applyRequestHeaderOverrides(response: NextResponse, headers: Headers) {
   }
 }
 
-export default function proxy(request: NextRequest) {
+const ALLOWED_UNAUTH_PREFIXES = [
+  '/api/auth/',
+  '/api/health',
+  '/api/ready',
+  '/_next/',
+  '/favicon',
+]
+
+const ALLOWED_UNAUTH_EXACT = new Set(['/favicon.ico', '/robots.txt'])
+
+function isAllowedWithoutAuth(pathname: string): boolean {
+  if (ALLOWED_UNAUTH_EXACT.has(pathname)) return true
+  return ALLOWED_UNAUTH_PREFIXES.some(prefix => pathname.startsWith(prefix))
+}
+
+function wantsJsonResponse(request: NextRequest): boolean {
+  const accept = request.headers.get('accept') ?? ''
+  if (accept.includes('application/json')) return true
+  return request.method !== 'GET' && request.method !== 'HEAD'
+}
+
+function isMcpPath(pathname: string): boolean {
+  return pathname === '/api/mcp' || pathname.startsWith('/api/mcp/')
+}
+
+function isApiPath(pathname: string): boolean {
+  return pathname === '/api' || pathname.startsWith('/api/')
+}
+
+async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
+  const cfg = getAuthConfig()
+  if (!cfg.enabled) return null
+
+  const { pathname, search } = request.nextUrl
+
+  if (isAllowedWithoutAuth(pathname)) return null
+
+  // /api/mcp/* is a non-browser endpoint; require a bearer token. Token
+  // validity is checked inside the MCP route handler (Phase 5a).
+  if (isMcpPath(pathname)) {
+    const auth = request.headers.get('authorization') ?? ''
+    if (!/^Bearer\s+\S+/i.test(auth)) {
+      return NextResponse.json(
+        { error: 'Unauthorized', detail: 'Missing Bearer token.' },
+        { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
+      )
+    }
+    return null
+  }
+
+  // Cookie-based session check for everything else.
+  const probe = new Response()
+  const session = await getSessionFromRequest(request, probe)
+  if (isSignedIn(session)) return null
+
+  if (isApiPath(pathname) || wantsJsonResponse(request)) {
+    return NextResponse.json(
+      { error: 'Unauthorized', detail: 'Sign in required.' },
+      { status: 401 },
+    )
+  }
+
+  const loginUrl = new URL('/api/auth/login', request.url)
+  loginUrl.searchParams.set('returnTo', `${pathname}${search ?? ''}`)
+  return NextResponse.redirect(loginUrl, { status: 302 })
+}
+
+function applyPageHeaders(request: NextRequest): NextResponse {
   const response = intlMiddleware(request)
 
   const nonceBytes = new Uint8Array(16)
@@ -80,6 +149,17 @@ export default function proxy(request: NextRequest) {
   return response
 }
 
+export default async function proxy(request: NextRequest) {
+  const authResponse = await enforceAuth(request)
+  if (authResponse) return authResponse
+
+  if (isApiPath(request.nextUrl.pathname)) {
+    return NextResponse.next()
+  }
+
+  return applyPageHeaders(request)
+}
+
 export const config = {
-  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
+  matcher: ['/((?!_next|_vercel|.*\\..*).*)'],
 }

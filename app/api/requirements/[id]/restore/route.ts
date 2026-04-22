@@ -17,7 +17,7 @@ export async function POST(
   const body = (await request.json()) as { versionNumber: number }
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = createRequestContext(request, 'rest')
+  const context = await createRequestContext(request, 'rest')
 
   try {
     const ref = parseRequirementRef(id)
