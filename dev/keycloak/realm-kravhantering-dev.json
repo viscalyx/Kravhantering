@@ -1,0 +1,171 @@
+{
+  "realm": "kravhantering-dev",
+  "enabled": true,
+  "displayName": "Kravhantering Dev",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 28800,
+  "ssoSessionMaxLifespan": 28800,
+  "roles": {
+    "realm": [
+      { "name": "Author", "description": "Can author requirements" },
+      { "name": "Reviewer", "description": "Can review requirements" },
+      { "name": "Steward", "description": "Can steward requirements" },
+      { "name": "Admin", "description": "Full administrative access" }
+    ]
+  },
+  "users": [
+    {
+      "username": "alice.author",
+      "enabled": true,
+      "email": "alice.author@example.test",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Author",
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": ["Author"]
+    },
+    {
+      "username": "rita.reviewer",
+      "enabled": true,
+      "email": "rita.reviewer@example.test",
+      "emailVerified": true,
+      "firstName": "Rita",
+      "lastName": "Reviewer",
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": ["Reviewer"]
+    },
+    {
+      "username": "steve.steward",
+      "enabled": true,
+      "email": "steve.steward@example.test",
+      "emailVerified": true,
+      "firstName": "Steve",
+      "lastName": "Steward",
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": ["Steward"]
+    },
+    {
+      "username": "sam.authorsteward",
+      "enabled": true,
+      "email": "sam.authorsteward@example.test",
+      "emailVerified": true,
+      "firstName": "Sam",
+      "lastName": "AuthorSteward",
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": ["Author", "Steward"]
+    },
+    {
+      "username": "ada.admin",
+      "enabled": true,
+      "email": "ada.admin@example.test",
+      "emailVerified": true,
+      "firstName": "Ada",
+      "lastName": "Admin",
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": ["Admin", "Steward", "Reviewer", "Author"]
+    },
+    {
+      "username": "noah.noroles",
+      "enabled": true,
+      "email": "noah.noroles@example.test",
+      "emailVerified": true,
+      "firstName": "Noah",
+      "lastName": "NoRoles",
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "kravhantering-app",
+      "name": "Kravhantering App (browser)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-only-app-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/api/auth/callback",
+        "http://127.0.0.1:3000/api/auth/callback",
+        "http://localhost:3001/api/auth/callback",
+        "http://127.0.0.1:3001/api/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+      ],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3000/##http://127.0.0.1:3000/##http://localhost:3001/##http://127.0.0.1:3001/",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-as-json-array",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "kravhantering-mcp",
+      "name": "Kravhantering MCP (service)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-only-mcp-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "implicitFlowEnabled": false,
+      "attributes": {
+        "access.token.lifespan": "3600"
+      },
+      "protocolMappers": [
+        {
+          "name": "mcp-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "kravhantering-app",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

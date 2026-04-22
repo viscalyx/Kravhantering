@@ -179,7 +179,7 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [3000, 3001, 4443, 1433, 9323, 51204],
+  "forwardPorts": [3000, 3001, 4443, 1433, 8080, 9323, 51204],
   "portsAttributes": {
     "3000": {
       "label": "Next.js Dev Server 1",
@@ -198,6 +198,10 @@
       "label": "SQL Server Developer",
       "onAutoForward": "notify"
     },
+    "8080": {
+      "label": "Keycloak (local OIDC IdP)",
+      "onAutoForward": "notify"
+    },
     "9323": {
       "label": "Playwright Report",
       "onAutoForward": "notify"
@@ -214,8 +218,14 @@
 
   // Copy .devcontainer/.env.example to .devcontainer/.env before the first rebuild.
   // Use 'postStartCommand' to run commands after the container starts and every time it starts
-  // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly
-  "postStartCommand": "bash -lc 'git config --global --unset gpg.ssh.program || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server failures persist, look at the database container logs to see what failed.\" >&2; }'",
+  // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly.
+  // Also start a socat forwarder so server-side OIDC calls to
+  // http://localhost:8080 (Keycloak issuer) inside this container reach the
+  // `idp` service container. Without this, Next.js fetches from /api/auth/*
+  // fail with ECONNREFUSED 127.0.0.1:8080 because Keycloak runs in a
+  // separate container reachable only as `idp:8080`. The script is
+  // idempotent and runs the forwarder fully detached.
+  "postStartCommand": "bash -lc 'git config --global --unset gpg.ssh.program || true; bash .devcontainer/start-keycloak-forwarder.sh || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server failures persist, look at the database container logs to see what failed.\" >&2; }'",
 
   // Configure remote user
   "remoteUser": "vscode"
