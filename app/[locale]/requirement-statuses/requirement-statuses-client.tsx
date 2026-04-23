@@ -95,7 +95,7 @@ export default function RequirementStatusesClient() {
       if (!res.ok) {
         await confirm({
           message:
-            (await readResponseMessage(res)) ?? res.statusText ?? tc('error'),
+            (await readResponseMessage(res)) || res.statusText || tc('error'),
           showCancel: false,
           icon: 'warning',
           anchorEl: submitter,
@@ -145,9 +145,8 @@ export default function RequirementStatusesClient() {
       method: 'DELETE',
     })
     if (!res.ok) {
-      const data = (await res.json()) as { error?: string }
       await confirm({
-        message: data.error ?? tc('error'),
+        message: (await readResponseMessage(res)) || tc('error'),
         showCancel: false,
         icon: 'warning',
         anchorEl,

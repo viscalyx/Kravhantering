@@ -1,10 +1,10 @@
 /**
  * Drop-in replacement for `fetch()` used by client components for
  * **same-origin** API calls. For state-changing methods (POST/PUT/PATCH/
- * DELETE) it always sets `X-Requested-With: XMLHttpRequest`, which the
- * server-side CSRF check (`assertSameOriginRequest`) requires. Safe (GET/
- * HEAD/OPTIONS) requests are forwarded unchanged so existing call sites and
- * tests that pass a bare init object continue to behave identically.
+ * DELETE) it always sets or normalizes `X-Requested-With: XMLHttpRequest`,
+ * which the server-side CSRF check (`assertSameOriginRequest`) requires. Safe
+ * (GET/HEAD/OPTIONS) requests are forwarded unchanged so existing call sites
+ * and tests that pass a bare init object continue to behave identically.
  */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
@@ -47,7 +47,8 @@ export function apiFetch(
   }
 
   const headers = buildHeaders(input, init)
-  if (!headers.has('x-requested-with')) {
+  const xRequestedWith = headers.get('x-requested-with')
+  if (!xRequestedWith || xRequestedWith.toLowerCase() !== 'xmlhttprequest') {
     headers.set('X-Requested-With', 'XMLHttpRequest')
   }
 

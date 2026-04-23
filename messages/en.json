@@ -80,6 +80,7 @@
     "closeMenu": "Close menu",
     "signIn": "Sign in",
     "signOut": "Sign out",
+    "signingOut": "Signing out…",
     "signedInAs": "Signed in as {name}",
     "roles": "Roles",
     "userInfoTitle": "Account details",

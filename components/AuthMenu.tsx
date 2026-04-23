@@ -35,6 +35,7 @@ interface AuthLogoutButtonProps {
   className: string
   formClassName?: string
   label: string
+  loadingLabel: string
 }
 
 function isFocusVisibleTarget(target: HTMLElement): boolean {
@@ -84,8 +85,19 @@ function AuthLogoutButton({
   className,
   formClassName,
   label,
+  loadingLabel,
 }: AuthLogoutButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const buttonLabel = isSubmitting ? loadingLabel : label
+  const buttonTitle = isSubmitting ? loadingLabel : undefined
+  const buttonClassName = [
+    className,
+    'min-h-[44px] min-w-[44px] focus-visible:outline-none',
+    'focus-visible:ring-2 focus-visible:ring-primary-400/60',
+    'focus-visible:ring-offset-2 focus-visible:ring-offset-white',
+    'disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none',
+    'dark:focus-visible:ring-offset-secondary-950',
+  ].join(' ')
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -125,23 +137,34 @@ function AuthLogoutButton({
       onSubmit={handleSubmit}
     >
       <button
-        className={className}
+        aria-busy={isSubmitting}
+        aria-label={buttonLabel}
+        className={buttonClassName}
         disabled={isSubmitting}
+        title={buttonTitle}
         type="submit"
         {...devMarker({ name: 'button', value: 'sign out' })}
       >
         <LogOut aria-hidden="true" className="h-4 w-4" />
-        {label}
+        {buttonLabel}
       </button>
     </form>
   )
 }
 
-export default function AuthMenu({
-  variant,
-}: {
+interface ComponentProps {
   variant: 'desktop' | 'mobile'
-}) {
+}
+
+type UserInfoRowMarker = 'name' | 'email' | 'subject' | 'session expires'
+
+interface UserInfoRow {
+  devMarker: UserInfoRowMarker
+  label: string
+  value: string
+}
+
+export default function AuthMenu({ variant }: ComponentProps) {
   const t = useTranslations('nav')
   const tr = useTranslations('roles')
   const locale = useLocale()
@@ -182,10 +205,11 @@ export default function AuthMenu({
     const returnTo = encodeURIComponent(`${localePrefixed}${searchAndHash}`)
     return (
       <a
+        aria-label={t('signIn')}
         className={
           variant === 'desktop'
-            ? 'inline-flex min-h-11 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800'
-            : 'flex items-center gap-2 px-3.5 py-3 rounded-xl text-sm font-medium text-secondary-700 dark:text-secondary-300 hover:bg-secondary-100 dark:hover:bg-secondary-800'
+            ? 'inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
+            : 'flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-xl px-3.5 py-3 text-sm font-medium text-secondary-700 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-offset-secondary-950'
         }
         href={`/api/auth/login?returnTo=${returnTo}`}
         {...devMarker({ name: 'link', value: 'sign in' })}
@@ -208,15 +232,24 @@ export default function AuthMenu({
     timeStyle: 'short',
   }).format(new Date(me.expiresAt * 1000))
 
-  const userInfoRows: Array<{ label: string; value: string }> = [
-    { label: t('userInfoName'), value: displayName },
+  const userInfoRows: UserInfoRow[] = [
+    { devMarker: 'name', label: t('userInfoName'), value: displayName },
   ]
   if (me.email) {
-    userInfoRows.push({ label: t('userInfoEmail'), value: me.email })
+    userInfoRows.push({
+      devMarker: 'email',
+      label: t('userInfoEmail'),
+      value: me.email,
+    })
   }
-  userInfoRows.push({ label: t('userInfoSubject'), value: me.sub })
+  userInfoRows.push({
+    devMarker: 'subject',
+    label: t('userInfoSubject'),
+    value: me.sub,
+  })
   if (sessionExpiresLabel) {
     userInfoRows.push({
+      devMarker: 'session expires',
       label: t('userInfoSessionExpires'),
       value: sessionExpiresLabel,
     })
@@ -251,9 +284,10 @@ export default function AuthMenu({
       >
         {userIdentity}
         <AuthLogoutButton
-          className="inline-flex min-h-11 min-w-11 items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+          className="inline-flex items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
           formClassName="self-start"
           label={t('signOut')}
+          loadingLabel={t('signingOut')}
         />
       </div>
     )
@@ -324,7 +358,7 @@ export default function AuthMenu({
             <motion.div
               animate={{ opacity: 1, y: 0 }}
               aria-label={t('userInfoTitle')}
-              className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-secondary-200 bg-white p-4 shadow-lg dark:border-secondary-700 dark:bg-secondary-900"
+              className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),24rem)] max-w-sm rounded-xl border border-secondary-200 bg-white p-4 shadow-lg dark:border-secondary-700 dark:bg-secondary-900"
               exit={{ opacity: 0, y: -4 }}
               id={popupId}
               initial={{ opacity: 0, y: -4 }}
@@ -348,7 +382,7 @@ export default function AuthMenu({
               </h2>
               <dl className="grid grid-cols-1 gap-y-2 text-sm">
                 {userInfoRows.map(row => (
-                  <div className="flex flex-col gap-0.5" key={row.label}>
+                  <div className="flex flex-col gap-0.5" key={row.devMarker}>
                     <dt className="text-xs font-medium text-secondary-500 dark:text-secondary-400">
                       {row.label}
                     </dt>
@@ -356,7 +390,7 @@ export default function AuthMenu({
                       className="wrap-break-word text-secondary-900 dark:text-secondary-100"
                       {...devMarker({
                         name: 'text',
-                        value: `user info ${row.label}`,
+                        value: `user info ${row.devMarker}`,
                       })}
                     >
                       {row.value}
@@ -397,6 +431,7 @@ export default function AuthMenu({
                 className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
                 formClassName="mt-4"
                 label={t('signOut')}
+                loadingLabel={t('signingOut')}
               />
             </motion.div>
           )}

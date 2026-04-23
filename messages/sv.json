@@ -80,6 +80,7 @@
     "closeMenu": "Stäng meny",
     "signIn": "Logga in",
     "signOut": "Logga ut",
+    "signingOut": "Loggar ut…",
     "signedInAs": "Inloggad som {name}",
     "roles": "Roller",
     "userInfoTitle": "Kontouppgifter",
