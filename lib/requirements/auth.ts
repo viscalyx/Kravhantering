@@ -1,3 +1,4 @@
+import type { LoggedInSession } from '@/lib/auth/session'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 // In-process attachment of verified actor identities to Request objects.
@@ -230,19 +231,14 @@ async function getActorContextFromSessionOrHeaders(
       isAuthenticated: false,
     }
   }
-  const data = session as unknown as {
-    sub?: string
-    hsaId?: string
-    name?: string
-    roles?: string[]
-  }
+  const data: LoggedInSession = session
   return {
-    id: data.sub ?? null,
-    displayName: typeof data.name === 'string' ? data.name : '',
-    hsaId: typeof data.hsaId === 'string' ? data.hsaId : null,
-    roles: Array.isArray(data.roles) ? [...data.roles] : [],
+    id: data.sub,
+    displayName: data.name,
+    hsaId: data.hsaId,
+    roles: [...data.roles],
     source: 'oidc',
-    isAuthenticated: Boolean(data.sub),
+    isAuthenticated: true,
   }
 }
 

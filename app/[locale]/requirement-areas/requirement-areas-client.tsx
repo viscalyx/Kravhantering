@@ -51,6 +51,7 @@ export default function RequirementAreasClient() {
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [form, setForm] = useState({
     prefix: '',
@@ -127,6 +128,7 @@ export default function RequirementAreasClient() {
       ownerId: area.ownerId != null ? String(area.ownerId) : '',
     })
     setFormError(null)
+    setDeleteError(null)
     setShowForm(true)
   }
 
@@ -142,8 +144,22 @@ export default function RequirementAreasClient() {
       }))
     )
       return
-    await apiFetch(`/api/requirement-areas/${id}`, { method: 'DELETE' })
-    fetchAreas()
+    setDeleteError(null)
+    try {
+      const res = await apiFetch(`/api/requirement-areas/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        setDeleteError(data?.error ?? `${res.status} ${res.statusText}`.trim())
+        return
+      }
+      fetchAreas()
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : tc('error'))
+    }
   }
 
   return (
@@ -163,6 +179,7 @@ export default function RequirementAreasClient() {
             onClick={() => {
               setShowForm(true)
               setEditId(null)
+              setDeleteError(null)
               setFormError(null)
               setForm({ prefix: '', name: '', description: '', ownerId: '' })
             }}
@@ -172,6 +189,15 @@ export default function RequirementAreasClient() {
             {tc('create')}
           </button>
         </div>
+
+        {deleteError && (
+          <div
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200"
+            role="alert"
+          >
+            {deleteError}
+          </div>
+        )}
 
         <AnimatePresence>
           {showForm && (

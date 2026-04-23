@@ -8,17 +8,36 @@
  */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
+function buildHeaders(input: RequestInfo | URL, init?: RequestInit): Headers {
+  const headers = new Headers(
+    input instanceof Request ? input.headers : undefined,
+  )
+  if (!(input instanceof Request)) {
+    return new Headers(init?.headers)
+  }
+
+  new Headers(init?.headers).forEach((value, key) => {
+    headers.set(key, value)
+  })
+  return headers
+}
+
 export function apiFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
-  const method = (init?.method ?? 'GET').toUpperCase()
-  if (SAFE_METHODS.has(method)) {
-    return fetch(input, init as RequestInit)
-  }
-  const headers = new Headers(init?.headers)
-  if (!headers.has('x-requested-with')) {
+  const method = (
+    init?.method ?? (input instanceof Request ? input.method : 'GET')
+  ).toUpperCase()
+  const headers = buildHeaders(input, init)
+
+  if (!SAFE_METHODS.has(method) && !headers.has('x-requested-with')) {
     headers.set('X-Requested-With', 'XMLHttpRequest')
   }
+
+  if (input instanceof Request) {
+    return fetch(new Request(input, { ...(init ?? {}), headers }))
+  }
+
   return fetch(input, { ...(init ?? {}), headers })
 }

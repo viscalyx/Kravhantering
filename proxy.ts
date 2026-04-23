@@ -97,19 +97,25 @@ function applyRequestHeaderOverrides(response: NextResponse, headers: Headers) {
   }
 }
 
-const ALLOWED_UNAUTH_PREFIXES = [
-  '/api/auth/',
+const ALLOWED_UNAUTH_API_PREFIXES = ['/api/auth/']
+const ALLOWED_UNAUTH_NON_API_PREFIXES = ['/_next/', '/favicon']
+const ALLOWED_UNAUTH_EXACT = new Set([
   '/api/health',
   '/api/ready',
-  '/_next/',
-  '/favicon',
-]
-
-const ALLOWED_UNAUTH_EXACT = new Set(['/favicon.ico', '/robots.txt'])
+  '/favicon.ico',
+  '/robots.txt',
+])
 
 function isAllowedWithoutAuth(pathname: string): boolean {
   if (ALLOWED_UNAUTH_EXACT.has(pathname)) return true
-  return ALLOWED_UNAUTH_PREFIXES.some(prefix => pathname.startsWith(prefix))
+  if (pathname.startsWith('/api/')) {
+    return ALLOWED_UNAUTH_API_PREFIXES.some(prefix =>
+      pathname.startsWith(prefix),
+    )
+  }
+  return ALLOWED_UNAUTH_NON_API_PREFIXES.some(prefix =>
+    pathname.startsWith(prefix),
+  )
 }
 
 function wantsJsonResponse(request: NextRequest): boolean {
@@ -216,5 +222,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next|_vercel|.*\\..*).*)'],
+  matcher: ['/api/:path*', '/((?!api|_next|_vercel|.*\\..*).*)'],
 }

@@ -58,7 +58,7 @@ export interface AuthConfig {
   clientSecret: string
   /** Iron-session cookie name. */
   cookieName: string
-  /** Iron-session encryption password (≥32 bytes). */
+  /** Iron-session encryption password (≥32 characters, not bytes). */
   cookiePassword: string
   /** Master switch. Defaults to true; explicit false rejected in production. */
   enabled: boolean
@@ -83,6 +83,37 @@ export class AuthConfigError extends Error {
     super(message)
     this.name = 'AuthConfigError'
   }
+}
+
+function collectPlaceholderViolations(values: {
+  clientId: string
+  clientSecret: string
+  cookiePassword: string
+}): string[] {
+  const violations: string[] = []
+
+  if (values.clientId === 'kravhantering-app') {
+    violations.push(
+      'AUTH_OIDC_CLIENT_ID must not use the local dev app id `kravhantering-app`.',
+    )
+  }
+  if (values.clientSecret.toLowerCase().startsWith('dev-only')) {
+    violations.push(
+      'AUTH_OIDC_CLIENT_SECRET must not use a dev-only placeholder secret.',
+    )
+  }
+
+  const normalizedCookiePassword = values.cookiePassword.toLowerCase()
+  if (
+    normalizedCookiePassword.includes('prodlike-only') ||
+    normalizedCookiePassword.startsWith('replace-with-')
+  ) {
+    violations.push(
+      'AUTH_SESSION_COOKIE_PASSWORD must not use a committed placeholder value.',
+    )
+  }
+
+  return violations
 }
 
 let cached: AuthConfig | undefined
@@ -160,6 +191,20 @@ function loadAuthConfig(): AuthConfig {
     throw new AuthConfigError(
       'AUTH_SESSION_COOKIE_PASSWORD must be at least 32 characters.',
     )
+  }
+
+  if (isProduction) {
+    const placeholderViolations = collectPlaceholderViolations({
+      clientId: clientId as string,
+      clientSecret: clientSecret as string,
+      cookiePassword: cookiePassword as string,
+    })
+    if (placeholderViolations.length > 0) {
+      throw new AuthConfigError(
+        'Refusing to boot with placeholder auth configuration in production: ' +
+          placeholderViolations.join(' '),
+      )
+    }
   }
 
   return {

@@ -1399,7 +1399,19 @@ export default function RequirementDetailClient({
       }))
     )
       return
-    await apiFetch(`/api/requirements/${requirementId}`, { method: 'DELETE' })
+    const res = await apiFetch(`/api/requirements/${requirementId}`, {
+      method: 'DELETE',
+    })
+    if (!res.ok) {
+      const details = await readResponseMessage(res)
+      console.error('Archive initiation failed:', details ?? res.statusText)
+      await confirm({
+        message: details ?? t('transitionFailed'),
+        showCancel: false,
+        icon: 'warning',
+      })
+      return
+    }
     // Stay on the page — the requirement enters archiving review
     await Promise.all([fetchRequirement(), onChange?.()])
   }
@@ -1575,11 +1587,24 @@ export default function RequirementDetailClient({
       }))
     )
       return
-    await apiFetch(`/api/requirements/${requirementId}/restore`, {
+    const res = await apiFetch(`/api/requirements/${requirementId}/restore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ versionNumber }),
     })
+    if (!res.ok) {
+      const details = await readResponseMessage(res)
+      console.error(
+        'Restore requirement version failed:',
+        details ?? res.statusText,
+      )
+      await confirm({
+        message: details ?? t('transitionFailed'),
+        showCancel: false,
+        icon: 'warning',
+      })
+      return
+    }
     await Promise.all([fetchRequirement(), onChange?.()])
   }
 

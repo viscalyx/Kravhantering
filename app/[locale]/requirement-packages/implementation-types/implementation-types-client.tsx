@@ -46,6 +46,7 @@ export default function ImplementationTypesClient() {
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ nameSv: '', nameEn: '' })
 
   const fetchItems = useCallback(async () => {
@@ -66,20 +67,30 @@ export default function ImplementationTypesClient() {
     e.preventDefault()
     if (submitting) return
     setSubmitting(true)
+    setError(null)
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId
         ? `/api/package-implementation-types/${editId}`
         : '/api/package-implementation-types'
-      await apiFetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        setError(body?.error ?? res.statusText ?? tc('error'))
+        return
+      }
       setShowForm(false)
       setEditId(null)
       setForm({ nameSv: '', nameEn: '' })
       fetchItems()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : tc('error'))
     } finally {
       setSubmitting(false)
     }
@@ -87,6 +98,7 @@ export default function ImplementationTypesClient() {
 
   const handleEdit = (item: ImplementationType) => {
     setEditId(item.id)
+    setError(null)
     setForm({ nameSv: item.nameSv, nameEn: item.nameEn })
     setShowForm(true)
   }
@@ -103,10 +115,22 @@ export default function ImplementationTypesClient() {
       }))
     )
       return
-    await apiFetch(`/api/package-implementation-types/${id}`, {
-      method: 'DELETE',
-    })
-    fetchItems()
+    setError(null)
+    try {
+      const res = await apiFetch(`/api/package-implementation-types/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        setError(body?.error ?? res.statusText ?? tc('error'))
+        return
+      }
+      fetchItems()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : tc('error'))
+    }
   }
 
   return (
@@ -126,6 +150,7 @@ export default function ImplementationTypesClient() {
             onClick={() => {
               setShowForm(true)
               setEditId(null)
+              setError(null)
               setForm({ nameSv: '', nameEn: '' })
             }}
             type="button"
@@ -134,6 +159,15 @@ export default function ImplementationTypesClient() {
             {tc('create')}
           </button>
         </div>
+
+        {error && (
+          <div
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
 
         <AnimatePresence>
           {showForm && (

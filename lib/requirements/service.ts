@@ -2411,11 +2411,12 @@ function isStatusError(error: unknown): error is Error & {
   details?: Record<string, unknown>
   status: 401 | 403
 } {
-  return (
-    error instanceof Error &&
-    ((error as { status?: unknown }).status === 401 ||
-      (error as { status?: unknown }).status === 403)
-  )
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const maybeStatus = error as { status?: unknown }
+  return maybeStatus.status === 401 || maybeStatus.status === 403
 }
 
 function toRequirementsCode(status: 401 | 403): RequirementsErrorCode {

@@ -81,6 +81,6 @@ export function assertSameOriginRequest(request: Request): void {
   }
   if (xrw.toLowerCase() !== 'xmlhttprequest') {
     recordCsrfRejection(request, { reason: 'x_requested_with_invalid' })
-    throw new CsrfError('Missing X-Requested-With header.')
+    throw new CsrfError('Invalid X-Requested-With header.')
   }
 }

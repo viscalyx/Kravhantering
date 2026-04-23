@@ -81,13 +81,23 @@ export default function LifecycleStatusesClient() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const res = await apiFetch('/api/package-lifecycle-statuses')
-    if (res.ok)
+    try {
+      const res = await apiFetch('/api/package-lifecycle-statuses')
+      if (!res.ok) {
+        setError(tc('unexpectedError'))
+        return
+      }
       setItems(
         ((await res.json()) as { statuses?: LifecycleStatus[] }).statuses ?? [],
       )
-    setLoading(false)
-  }, [])
+      setError(null)
+    } catch (error) {
+      console.error('Failed to load lifecycle statuses:', error)
+      setError(tc('unexpectedError'))
+    } finally {
+      setLoading(false)
+    }
+  }, [tc])
 
   useEffect(() => {
     fetchItems()

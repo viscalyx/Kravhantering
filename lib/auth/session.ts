@@ -3,39 +3,57 @@
  * claims in a signed + encrypted cookie. Stateless — no server-side store.
  *
  * The session payload is intentionally small (<4KB cookie limit). The raw
- * ID token is kept only for `end_session_endpoint`'s `id_token_hint`; the
- * raw access token is not stored at all (browser flow uses cookies).
+ * ID token is stored only when it still fits the cookie budget so logout can
+ * send `id_token_hint`; the raw access token is not stored at all (browser
+ * flow uses cookies).
  */
 
 import {
   getIronSession,
   type IronSession,
   type SessionOptions,
+  sealData,
 } from 'iron-session'
 import { cookies } from 'next/headers'
 import { getAuthConfig } from '@/lib/auth/config'
 
 export interface SessionData {
   /** Epoch seconds when the access token expires (informational). */
-  accessTokenExpiresAt: number
+  accessTokenExpiresAt?: number
   /** Email address; only set when the IdP asserted `email_verified === true`. */
   email?: string
   /** Family name (`family_name` claim). Required by the claim contract. */
-  familyName: string
+  familyName?: string
   /** Given name (`given_name` claim). Required by the claim contract. */
-  givenName: string
+  givenName?: string
   /**
    * HSA-id from the `employeeHsaId` claim. Required by the claim contract.
    * Validated against `lib/auth/hsa-id.ts` at login time.
    */
-  hsaId: string
-  /** Raw ID token JWT, used as id_token_hint for IdP-initiated logout. */
-  idToken: string
+  hsaId?: string
+  /**
+   * Raw ID token JWT, used as id_token_hint for IdP-initiated logout when it
+   * fits inside the session cookie budget.
+   */
+  idToken?: string
   /** Resolved display name (see `resolveDisplayName`). */
+  name?: string
+  roles?: string[]
+  sub?: string
+}
+
+export interface LoggedInSession extends SessionData {
+  accessTokenExpiresAt: number
+  familyName: string
+  givenName: string
+  hsaId: string
+  idToken?: string
   name: string
   roles: string[]
   sub: string
 }
+
+const SESSION_COOKIE_EXPIRY_SKEW_SECONDS = 60
 
 function buildSessionOptions(): SessionOptions {
   const config = getAuthConfig()
@@ -78,11 +96,85 @@ export async function getSessionFromRequest(
   return getIronSession<SessionData>(request, response, buildSessionOptions())
 }
 
+function hasNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== ''
+}
+
+function hasFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 /** True when the session carries enough data to consider the user signed in. */
 export function isSignedIn(
   session: SessionData | IronSession<SessionData>,
-): boolean {
-  return Boolean((session as Partial<SessionData>).sub)
+): session is LoggedInSession {
+  return (
+    hasNonEmptyString(session.sub) &&
+    hasNonEmptyString(session.givenName) &&
+    hasNonEmptyString(session.familyName) &&
+    hasNonEmptyString(session.hsaId) &&
+    hasNonEmptyString(session.name) &&
+    Array.isArray(session.roles) &&
+    hasFiniteNumber(session.accessTokenExpiresAt)
+  )
+}
+
+function computeCookieMaxAge(ttl: number): number {
+  if (ttl === 0) {
+    return 2_147_483_647
+  }
+  return ttl - SESSION_COOKIE_EXPIRY_SKEW_SECONDS
+}
+
+function toCookieSameSite(
+  value: NonNullable<SessionOptions['cookieOptions']>['sameSite'],
+): string | null {
+  if (value === undefined || value === false) {
+    return null
+  }
+  if (value === true) {
+    return 'Strict'
+  }
+  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`
+}
+
+export async function estimateSerializedSessionCookieLength(
+  sessionData: SessionData,
+): Promise<number> {
+  const options = buildSessionOptions()
+  const cookieOptions =
+    options.cookieOptions ??
+    ({} as NonNullable<SessionOptions['cookieOptions']>)
+  const seal = await sealData(sessionData, {
+    password: options.password,
+    ttl: options.ttl,
+  })
+
+  const maxAge = cookieOptions.maxAge ?? computeCookieMaxAge(options.ttl ?? 0)
+  const parts = [`${options.cookieName}=${seal}`]
+  parts.push(`Max-Age=${maxAge}`)
+
+  if (cookieOptions.domain) {
+    parts.push(`Domain=${cookieOptions.domain}`)
+  }
+  if (cookieOptions.expires instanceof Date) {
+    parts.push(`Expires=${cookieOptions.expires.toUTCString()}`)
+  }
+  if (cookieOptions.path) {
+    parts.push(`Path=${cookieOptions.path}`)
+  }
+  if (cookieOptions.httpOnly) {
+    parts.push('HttpOnly')
+  }
+  if (cookieOptions.secure) {
+    parts.push('Secure')
+  }
+  const sameSite = toCookieSameSite(cookieOptions.sameSite)
+  if (sameSite) {
+    parts.push(`SameSite=${sameSite}`)
+  }
+
+  return parts.join('; ').length
 }
 
 export interface SessionDiagnostics {

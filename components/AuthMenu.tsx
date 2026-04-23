@@ -10,6 +10,7 @@ import { devMarker } from '@/lib/developer-mode-markers'
 type AuthMeAuthenticated = {
   authenticated: true
   sub: string
+  hsaId: string
   givenName: string | null
   familyName: string | null
   name: string | null
@@ -113,9 +114,7 @@ export default function AuthMenu({
       typeof window === 'undefined'
         ? ''
         : `${window.location.search}${window.location.hash}`
-    const returnTo = encodeURIComponent(
-      `${localePrefixed || `/${locale}`}${searchAndHash}`,
-    )
+    const returnTo = encodeURIComponent(`${localePrefixed}${searchAndHash}`)
     return (
       <a
         className={
@@ -190,7 +189,7 @@ export default function AuthMenu({
       >
         {userIdentity}
         <AuthLogoutButton
-          className="inline-flex items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+          className="inline-flex min-h-11 min-w-11 items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
           formClassName="self-start"
           label={t('signOut')}
         />

@@ -79,15 +79,32 @@ export default function RequirementStatusesClient() {
       const url = editId
         ? `/api/requirement-statuses/${editId}`
         : '/api/requirement-statuses'
-      await apiFetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as {
+          error?: string
+        } | null
+        await confirm({
+          message: data?.error ?? res.statusText ?? tc('error'),
+          showCancel: false,
+          icon: 'warning',
+        })
+        return
+      }
       setShowForm(false)
       setEditId(null)
       setForm({ nameSv: '', nameEn: '', sortOrder: 0, color: '#3b82f6' })
-      fetchStatuses()
+      await fetchStatuses()
+    } catch (error) {
+      await confirm({
+        message: error instanceof Error ? error.message : tc('error'),
+        showCancel: false,
+        icon: 'warning',
+      })
     } finally {
       setSubmitting(false)
     }

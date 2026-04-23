@@ -6,11 +6,19 @@ import { HsaIdFormatError, isHsaId } from '@/lib/auth/hsa-id'
 import { getLoginState } from '@/lib/auth/login-state'
 import { getOidcConfiguration, oidcClient } from '@/lib/auth/oidc'
 import { parseRolesClaim, resolveDisplayName } from '@/lib/auth/roles'
-import { getSession } from '@/lib/auth/session'
+import {
+  estimateSerializedSessionCookieLength,
+  getSession,
+  type LoggedInSession,
+  type SessionData,
+} from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
 const LOCALE_FREE_ALLOWED_PATHS = new Set(['/'])
+
+const ACCESS_TOKEN_EXPIRY_FALLBACK_SECONDS = 300
+const SESSION_COOKIE_SAFE_MAX_LENGTH = 3800
 
 function sanitizeReturnTo(raw: string | null | undefined): string {
   const fallback = `/${routing.defaultLocale}`
@@ -40,6 +48,42 @@ function recordLoginFailure(
     request,
     detail: { reason, ...(extra ?? {}) },
   })
+}
+
+function buildMissingNameReason(
+  givenNameMissing: boolean,
+  familyNameMissing: boolean,
+): string {
+  const reasons: string[] = []
+  if (givenNameMissing) reasons.push('given_name_missing')
+  if (familyNameMissing) reasons.push('family_name_missing')
+  return reasons.join(',')
+}
+
+async function resolveSessionIdToken(
+  sessionData: SessionData,
+  idToken: string | undefined,
+): Promise<string | undefined> {
+  if (!idToken) {
+    return undefined
+  }
+
+  const estimatedCookieLength = await estimateSerializedSessionCookieLength({
+    ...sessionData,
+    idToken,
+  })
+  if (estimatedCookieLength <= SESSION_COOKIE_SAFE_MAX_LENGTH) {
+    return idToken
+  }
+
+  console.warn(
+    '[auth] OIDC id_token omitted from session cookie because it would exceed the safe cookie budget.',
+    {
+      estimatedCookieLength,
+      safeLimit: SESSION_COOKIE_SAFE_MAX_LENGTH,
+    },
+  )
+  return undefined
 }
 
 export async function GET(request: NextRequest) {
@@ -143,7 +187,7 @@ export async function GET(request: NextRequest) {
     loginState.destroy()
     recordLoginFailure(
       request,
-      givenNameMissing ? 'given_name_missing' : 'family_name_missing',
+      buildMissingNameReason(givenNameMissing, familyNameMissing),
     )
     return NextResponse.json(
       {
@@ -188,20 +232,46 @@ export async function GET(request: NextRequest) {
       ? emailRaw
       : undefined
 
+  const tokenLifetimeSeconds = tokens.expiresIn()
   const accessTokenExpiresAt =
     Math.floor(Date.now() / 1000) +
-    (tokens.expiresIn() ?? cfg.sessionTtlSeconds)
+    (typeof tokenLifetimeSeconds === 'number' && tokenLifetimeSeconds > 0
+      ? tokenLifetimeSeconds
+      : ACCESS_TOKEN_EXPIRY_FALLBACK_SECONDS)
+
+  const sessionData: LoggedInSession = {
+    sub: claims.sub,
+    hsaId,
+    givenName,
+    familyName,
+    name,
+    email,
+    roles,
+    accessTokenExpiresAt,
+  }
+  const sessionIdToken = await resolveSessionIdToken(
+    sessionData,
+    tokens.id_token,
+  )
 
   const session = await getSession()
-  session.sub = claims.sub
-  session.hsaId = hsaId
-  session.givenName = givenName
-  session.familyName = familyName
-  session.name = name
-  session.email = email
-  session.roles = roles
-  session.idToken = tokens.id_token ?? ''
-  session.accessTokenExpiresAt = accessTokenExpiresAt
+  session.sub = sessionData.sub
+  session.hsaId = sessionData.hsaId
+  session.givenName = sessionData.givenName
+  session.familyName = sessionData.familyName
+  session.name = sessionData.name
+  if (sessionData.email === undefined) {
+    delete session.email
+  } else {
+    session.email = sessionData.email
+  }
+  session.roles = sessionData.roles
+  if (sessionIdToken === undefined) {
+    delete session.idToken
+  } else {
+    session.idToken = sessionIdToken
+  }
+  session.accessTokenExpiresAt = sessionData.accessTokenExpiresAt
   await session.save()
 
   recordSecurityEvent({
