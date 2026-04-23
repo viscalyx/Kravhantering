@@ -408,3 +408,21 @@ test against the real PhenixID dev realm. The in-process mock and
 Keycloak both implement the spec but cannot surface PhenixID-specific
 quirks (claim format, custom `acr_values`, end-session parameters, case
 sensitivity in `iss`).
+
+1. Sign in interactively and complete the callback round-trip successfully.
+   Confirm the browser lands on the expected post-login page without callback
+   errors.
+2. Call `/api/auth/me` with the signed-in session and verify the returned user
+   data matches the expected claims.
+   Check `sub`, `employeeHsaId`-derived fields, role claims, and any expected
+   `acr_values` formatting from PhenixID.
+3. Open a protected page while signed out and verify the browser is redirected
+   to the login flow, then back to the original page after authentication.
+4. Call a protected API without a valid session and verify it returns `401`
+   rather than HTML or a redirect payload.
+5. Trigger logout and verify both the local session and the IdP session end as
+   expected.
+   Confirm the post-logout redirect lands on the configured return URL.
+6. Exercise the MCP bearer-token flow end to end.
+   Verify token issuance, issuer/audience values, and successful access to an
+   MCP-protected endpoint with the issued token.
