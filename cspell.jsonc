@@ -367,7 +367,8 @@
     "readback",
     "inspectable",
     "typeorm",
-    "authorsteward"
+    "authorsteward",
+    "sandboxed"
   ],
   "flagWords": [],
   "ignorePaths": [
