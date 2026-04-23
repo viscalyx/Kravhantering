@@ -14,19 +14,6 @@
 import { createServer, type Server } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
-// Lazy import to avoid loading `oidc-provider` (and its many transitive deps)
-// in unit tests that don't need it.
-// The `oidc-provider` module ships CJS with no types; we treat it as unknown
-// and cast at the call site.
-type OidcProviderType = new (
-  issuer: string,
-  options: Record<string, unknown>,
-) => {
-  callback(): (req: unknown, res: unknown) => void
-  interactionResult: (...args: unknown[]) => Promise<unknown>
-  [key: string]: unknown
-}
-
 export interface MockUser {
   email: string
   employeeHsaId: string
@@ -136,9 +123,9 @@ export interface StartMockIdpOptions {
 export async function startMockIdp(
   options: StartMockIdpOptions = {},
 ): Promise<MockIdpHandle> {
-  const { default: Provider } = (await import('oidc-provider')) as {
-    default: OidcProviderType
-  }
+  // Lazy import keeps heavy OIDC dependencies out of tests that don't use the
+  // mock while still letting TypeScript validate the Provider contract.
+  const { default: Provider } = await import('oidc-provider')
 
   const clientId = options.clientId ?? 'kravhantering-app-test'
   const clientSecret = options.clientSecret ?? 'test-secret'
@@ -155,7 +142,6 @@ export async function startMockIdp(
     portProbe.listen(0, '127.0.0.1', () => resolve())
   })
   const { port } = portProbe.address() as AddressInfo
-  await new Promise<void>(resolve => portProbe.close(() => resolve()))
 
   const issuer = `http://127.0.0.1:${port}`
 
@@ -174,7 +160,7 @@ export async function startMockIdp(
         token_endpoint_auth_method: 'client_secret_post',
       },
     ],
-    pkce: { required: () => true, methods: ['S256'] },
+    pkce: { required: () => true },
     features: {
       devInteractions: { enabled: false },
       clientCredentials: { enabled: true },
@@ -207,8 +193,8 @@ export async function startMockIdp(
       roles: ['roles'],
       employeeHsaId: ['employeeHsaId'],
     },
-    extraTokenClaims: async (_ctx: unknown, token: { accountId?: string }) => {
-      const sub = token.accountId
+    extraTokenClaims: async (_ctx, token) => {
+      const sub = token.kind === 'AccessToken' ? token.accountId : undefined
       const account = Object.values(users).find(u => u.sub === sub)
       return account
         ? { roles: account.roles, employeeHsaId: account.employeeHsaId }
@@ -217,10 +203,8 @@ export async function startMockIdp(
   })
 
   const callback = provider.callback()
-  const server = createServer(callback) as Server
-  await new Promise<void>(resolve => {
-    server.listen(port, '127.0.0.1', () => resolve())
-  })
+  portProbe.on('request', callback)
+  const server = portProbe as Server
 
   return {
     issuer,

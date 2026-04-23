@@ -37,10 +37,10 @@ vi.mock('@/i18n/routing', () => ({
   routing: { defaultLocale: 'sv', locales: ['sv', 'en'] },
 }))
 
-function buildCallbackRequest(): NextRequest {
-  return new NextRequest(
-    'http://localhost/api/auth/callback?code=abc&state=state',
-  )
+function buildCallbackRequest(
+  url = 'http://localhost/api/auth/callback?code=abc&state=state',
+): NextRequest {
+  return new NextRequest(url)
 }
 
 function freshLoginState(overrides: Partial<typeof loginStateMock> = {}) {
@@ -323,5 +323,28 @@ describe('auth callback security audit events', () => {
     await GET(buildCallbackRequest())
     const events = emittedSecurityEvents().map(e => e.event)
     expect(events).toEqual(['auth.login.succeeded'])
+  })
+
+  it('redirects to the configured public origin after a successful login', async () => {
+    getLoginStateMock.mockResolvedValue(
+      freshLoginState({ returnTo: '/sv/requirements?tab=open' }),
+    )
+    getSessionMock.mockResolvedValue(freshPriorSession())
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({ ...SUCCESS_CLAIMS, roles: ['Admin'] }),
+      expiresIn: () => 3600,
+      id_token: 'idt',
+    })
+
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest(
+        'http://internal-host/api/auth/callback?code=abc&state=state',
+      ),
+    )
+
+    expect(response.headers.get('location')).toBe(
+      'http://localhost:3000/sv/requirements?tab=open',
+    )
   })
 })

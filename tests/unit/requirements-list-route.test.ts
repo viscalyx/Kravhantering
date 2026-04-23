@@ -6,6 +6,18 @@ vi.mock('@/lib/db', () => ({
 
 const mockQueryCatalog = vi.fn()
 const mockManageRequirement = vi.fn()
+const mockCreateRequestContext = vi.fn(() => ({
+  actor: {
+    id: null,
+    displayName: '',
+    hsaId: null,
+    roles: [],
+    source: 'anonymous',
+    isAuthenticated: false,
+  },
+  requestId: 'test',
+  source: 'rest',
+}))
 
 vi.mock('@/lib/requirements/service', () => ({
   createRequirementsService: () => ({
@@ -16,18 +28,7 @@ vi.mock('@/lib/requirements/service', () => ({
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
-  createRequestContext: () => ({
-    actor: {
-      id: null,
-      displayName: '',
-      hsaId: null,
-      roles: [],
-      source: 'anonymous',
-      isAuthenticated: false,
-    },
-    requestId: 'test',
-    source: 'rest',
-  }),
+  createRequestContext: mockCreateRequestContext,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
@@ -126,6 +127,17 @@ describe('requirements route', () => {
       const res = await GET(req as never)
       expect(res.status).toBe(500)
     })
+
+    it('returns handled errors when request context creation fails', async () => {
+      mockCreateRequestContext.mockRejectedValueOnce(new Error('auth failed'))
+
+      const { GET } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements')
+      const res = await GET(req as never)
+
+      expect(res.status).toBe(500)
+      expect(mockQueryCatalog).not.toHaveBeenCalled()
+    })
   })
 
   describe('POST', () => {
@@ -163,6 +175,21 @@ describe('requirements route', () => {
       })
       const res = await POST(req as never)
       expect(res.status).toBe(500)
+    })
+
+    it('returns handled errors when request context creation fails', async () => {
+      mockCreateRequestContext.mockRejectedValueOnce(new Error('auth failed'))
+
+      const { POST } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements', {
+        method: 'POST',
+        body: JSON.stringify({ description: 'New requirement', areaId: 1 }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never)
+
+      expect(res.status).toBe(500)
+      expect(mockManageRequirement).not.toHaveBeenCalled()
     })
   })
 })

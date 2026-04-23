@@ -32,10 +32,12 @@ function mockAuthEnv() {
 
 describe('auth logout security audit events', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
+  let warnSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     mockAuthEnv()
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     getSessionMock.mockReset()
     getOidcConfigurationMock.mockReset()
     buildEndSessionUrlMock.mockReset()
@@ -47,6 +49,7 @@ describe('auth logout security audit events', () => {
 
   afterEach(() => {
     infoSpy.mockRestore()
+    warnSpy.mockRestore()
   })
 
   function emittedSecurityEvents(): Array<Record<string, unknown>> {
@@ -64,20 +67,22 @@ describe('auth logout security audit events', () => {
       )
   }
 
-  async function importGet() {
-    const mod = await import('@/app/api/auth/logout/route')
-    return mod.GET
+  async function importRoute() {
+    return import('@/app/api/auth/logout/route')
   }
 
-  it('emits auth.logout with the signed-in actor', async () => {
+  it('emits auth.logout with the signed-in actor on POST', async () => {
+    const destroy = vi.fn()
     getSessionMock.mockResolvedValue({
       sub: 'user-1',
       hsaId: 'SE2321000032-rev1',
       idToken: 'idt',
-      destroy: vi.fn(),
+      destroy,
     })
-    const GET = await importGet()
-    await GET(new NextRequest('http://localhost/api/auth/logout'))
+    const { POST } = await importRoute()
+    await POST(
+      new NextRequest('http://localhost/api/auth/logout', { method: 'POST' }),
+    )
     const events = emittedSecurityEvents()
     expect(events).toHaveLength(1)
     expect(events[0].event).toBe('auth.logout')
@@ -87,15 +92,56 @@ describe('auth logout security audit events', () => {
       sub: 'user-1',
       hsaId: 'SE2321000032-rev1',
     })
+    expect(destroy).toHaveBeenCalledOnce()
   })
 
-  it('emits auth.logout with anonymous source when no session is present', async () => {
-    getSessionMock.mockResolvedValue({ destroy: vi.fn() })
-    const GET = await importGet()
-    await GET(new NextRequest('http://localhost/api/auth/logout'))
+  it('emits auth.logout with anonymous source on POST when no session is present', async () => {
+    const destroy = vi.fn()
+    getSessionMock.mockResolvedValue({ destroy })
+    const { POST } = await importRoute()
+    await POST(
+      new NextRequest('http://localhost/api/auth/logout', { method: 'POST' }),
+    )
     const events = emittedSecurityEvents()
     expect(events).toHaveLength(1)
     expect(events[0].event).toBe('auth.logout')
     expect(events[0].actor).toEqual({ source: 'anonymous' })
+    expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('keeps GET non-destructive and redirects locally', async () => {
+    const destroy = vi.fn()
+    getSessionMock.mockResolvedValue({ destroy, sub: 'user-1' })
+    const { GET } = await importRoute()
+    const response = await GET(
+      new NextRequest('http://localhost/api/auth/logout'),
+    )
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('http://localhost:3000/')
+    expect(destroy).not.toHaveBeenCalled()
+    expect(emittedSecurityEvents()).toHaveLength(0)
+  })
+
+  it('logs a warning and falls back to the local redirect when discovery fails', async () => {
+    const destroy = vi.fn()
+    getSessionMock.mockResolvedValue({ destroy })
+    getOidcConfigurationMock.mockRejectedValue(new Error('discovery failed'))
+
+    const { POST } = await importRoute()
+    const response = await POST(
+      new NextRequest('http://localhost/api/auth/logout', { method: 'POST' }),
+    )
+
+    expect(response.headers.get('location')).toBe('http://localhost:3000/')
+    expect(destroy).toHaveBeenCalledOnce()
+    expect(warnSpy).toHaveBeenCalledWith(
+      'OIDC end_session_endpoint discovery/build failed',
+      expect.objectContaining({
+        error: 'discovery failed',
+        hasIdTokenHint: false,
+        postLogoutRedirectUri: 'http://localhost:3000/',
+      }),
+    )
   })
 })
