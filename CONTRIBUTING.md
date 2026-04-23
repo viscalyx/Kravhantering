@@ -15,7 +15,11 @@ for VS Code agent sandboxing features, choose
 
 If you prefer host-based development outside the dev container, install Node.js
 24.x, npm, and a Docker-compatible `docker compose` runtime. The default local
-workflow is `npm run db:up`, `npm run db:setup`, then `npm run dev`.
+workflow is `docker compose -f docker-compose.sqlserver.yml up -d`,
+`npm run db:setup`, then `npm run dev`.
+
+Use [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+for setup, migrations, and the read-only browse workflow.
 
 ## Available Scripts
 
@@ -86,7 +90,8 @@ app/              Next.js App Router pages and API routes
   [locale]/       Locale-prefixed pages (sv, en)
   api/            REST API endpoints
 components/       Reusable React components
-drizzle/          Database schema, seed data & migrations
+lib/typeorm/      TypeORM entities, data source, and SQL Server config
+typeorm/          Migrations and seed data
 i18n/             Internationalization configuration
 lib/              Shared utilities and data-access layer
   dal/            Data Access Layer modules
@@ -155,7 +160,9 @@ docs when working on it:
 
 - [docs/mcp-server-user-guide.md](docs/mcp-server-user-guide.md)
 - [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
-- [docs/TODO-mcp-server-auth-plan.md](docs/TODO-mcp-server-auth-plan.md)
+
+MCP authentication and authorization are not yet enforced. Protect
+`/api/mcp` at the platform edge if you expose it outside local development.
 
 ## OpenRouter (AI Requirement Generation)
 
@@ -199,10 +206,13 @@ Translation strings are stored in [messages/](messages/).
 
 ## Database
 
-The application uses **SQLite** via Drizzle ORM. The default local and CI
-workflow runs the database behind a small HTTP proxy service in a separate
-container, which keeps the development shape close to the later container-based
-production deployment.
+The database stack is **Microsoft SQL Server + TypeORM**.
+
+- Schema lives in TypeORM entities under `lib/typeorm/entities/`.
+- Migrations live in `typeorm/migrations/`.
+- Seed data lives in `typeorm/seed.mjs`.
+- The full developer setup, browse workflow, and CLI reference live in
+  [docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
 
 For the full schema reference, see
 [docs/database-schema.md](docs/database-schema.md). Status
@@ -213,48 +223,27 @@ lifecycle dates in
 
 ### Useful Commands
 
-<!-- markdownlint-disable MD013 -->
-| Command | Description |
-| --- | --- |
-| `npm run db:generate` | Generate migrations from schema |
-| `npm run db:up` | Start the local SQLite proxy DB container |
-| `npm run db:down` | Stop the local SQLite proxy DB container |
-| `npm run db:health` | Check the configured database endpoint |
-| `npm run db:migrate` | Apply migrations to the configured SQLite DB |
-| `npm run db:seed` | Seed the configured SQLite DB with test data |
-| `npm run db:reset` | Reset the configured SQLite DB |
-| `npm run db:setup` | Wait, reset, migrate, and seed in one step |
-| `npm run db:browse` | Open the inspectable SQLite file in VS Code |
-<!-- markdownlint-enable MD013 -->
+Before using the host-side SQL Server scaffold, copy:
+
+```bash
+cp .env.sqlserver.example .env.sqlserver
+```
+
+Before rebuilding either devcontainer profile, copy:
+
+```bash
+cp .devcontainer/.env.example .devcontainer/.env
+```
+
+For the full `npm run db:*` command reference, see
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md#sql-server-admin-commands).
 
 ### Browsing the Local Database
 
-The recommended VS Code extension **SQLite Viewer**
-(`qwtel.sqlite-viewer`) is included in the dev container. In both
-devcontainer variants, the shared SQLite Docker volume is mounted
-read-only into the app container, so you can inspect the live database
-without opening a shell in the `db` service.
-
-1. Run `npm run db:browse`, or open the database file in VS Code:
-
-   ```text
-   /var/lib/kravhantering/devcontainer.sqlite
-   ```
-
-1. For direct CLI inspection, run:
-
-   ```bash
-   sqlite3 /var/lib/kravhantering/devcontainer.sqlite
-   ```
-
-For host-based development outside the dev container, the database file
-still lives inside the `db` service volume at
-`/var/lib/kravhantering/dev.sqlite`. In that workflow, either inspect the
-volume through Docker tooling or point `DATABASE_URL` at a local file such
-as `file:./tmp/dev.sqlite` and rerun `npm run db:setup`. The `db:browse`
-script works automatically in the devcontainer and in file-backed
-`DATABASE_URL` mode. With the host-based Docker proxy workflow, it will
-explain that the live SQLite file is not mounted locally.
+Use the SQLTools + MSSQL workflow described in
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md).
+`npm run db:browse` prints a ready-to-paste read-only SQLTools connection block
+based on `DATABASE_READONLY_URL` (or `SQLSERVER_DATABASE_READONLY_URL`).
 
 > [!Tip]
 > The default contributor path is:

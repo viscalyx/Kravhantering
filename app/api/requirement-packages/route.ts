@@ -4,16 +4,16 @@ import {
   isSlugTaken,
   listPackages,
 } from '@/lib/dal/requirement-packages'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packages = await listPackages(db)
   return NextResponse.json({ packages })
 }
 
 export async function POST(request: NextRequest) {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Parameters<typeof createPackage>[1]
 
   if (

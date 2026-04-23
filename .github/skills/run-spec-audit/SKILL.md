@@ -2,12 +2,13 @@
 name: run-spec-audit
 description: >-
   Run a spec-vs-code audit on this codebase. Compare actual implementation in
-  app/, lib/, drizzle/schema.ts, and tests against project specifications in
-  docs/. Report only defects with exact file and line citations, classified as
-  MISSING, DIVERGENT, UNDOCUMENTED, or PHANTOM. Use when asked to audit code
-  against specs, find spec divergence, run a Council of Three audit, check
-  doc-code consistency, verify lifecycle/transition/report/MCP behavior matches
-  documentation, run spec compliance, code-vs-docs check, or audit lifecycle.
+  app/, lib/, lib/typeorm/, typeorm/, and tests against project
+  specifications in docs/. Report only defects with exact file and line
+  citations, classified as MISSING, DIVERGENT, UNDOCUMENTED, or PHANTOM. Use
+  when asked to audit code against specs, find spec divergence, run a Council
+  of Three audit, check doc-code consistency, verify lifecycle/transition/
+  report/MCP behavior matches documentation, run spec compliance, code-vs-docs
+  check, or audit lifecycle.
 ---
 
 # Spec Audit
@@ -61,9 +62,10 @@ Read these specification documents first:
 12. `AGENTS.md`
 13. `docs/developer-mode-overlay.md`
 14. `docs/reference-data-and-ai.md`
+15. `docs/sql-server-developer-workflow.md`
 
-Then read the actual code in `app/`, `lib/`, `drizzle/schema.ts`, and
-`tests/quality/functional.test.ts`.
+Then read the actual code in `app/`, `lib/`, `lib/typeorm/entities/`,
+`typeorm/`, and `tests/quality/functional.test.ts`.
 
 Also read `./references/integration-contracts.md` (relative to the skill folder)
 for the authoritative REST and MCP field schemas used by scrutiny areas 8–10.
@@ -166,9 +168,9 @@ for relevance:
 
 1. List all `docs/*.md` files in the repo. Flag any doc not in the
    context-files list that could be relevant to spec compliance.
-2. List key code directories (`app/`, `lib/`, `drizzle/`,
-   `components/`). Flag new top-level modules or DAL files not
-   covered by the scrutiny areas.
+2. List key code directories (`app/`, `lib/`, `lib/typeorm/`,
+   `typeorm/`, `components/`). Flag new top-level modules or DAL files
+   not covered by the scrutiny areas.
 3. Check `references/scrutiny-areas.md` for stale file paths or
    function names that no longer exist.
 4. Compare `tests/quality/QUALITY.md` scenario count and IDs against

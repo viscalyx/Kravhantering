@@ -4,7 +4,7 @@ import {
   getPackageLocalDeviation,
   updatePackageLocalDeviation,
 } from '@/lib/dal/deviations'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -23,7 +23,7 @@ export async function GET(
   if (deviationId == null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     return NextResponse.json(await getPackageLocalDeviation(db, deviationId))
@@ -80,7 +80,7 @@ export async function PUT(
   ) {
     return NextResponse.json({ error: 'Invalid createdBy' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await updatePackageLocalDeviation(db, deviationId, {
@@ -113,7 +113,7 @@ export async function DELETE(
   if (deviationId == null) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await deletePackageLocalDeviation(db, deviationId)

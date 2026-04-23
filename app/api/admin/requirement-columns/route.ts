@@ -5,7 +5,7 @@ import {
   getRequirementListColumnDefaults,
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -40,7 +40,7 @@ function toValidationError(error: unknown) {
 
 export async function GET() {
   try {
-    const db = await getRequestDatabase()
+    const db = await getRequestSqlServerDataSource()
 
     return NextResponse.json({
       columns: await getRequirementListColumnDefaults(db),
@@ -96,7 +96,7 @@ export async function PUT(request: Request) {
         { status: 400 },
       )
     }
-    const db = await getRequestDatabase()
+    const db = await getRequestSqlServerDataSource()
 
     return NextResponse.json({
       columns: await updateRequirementListColumnDefaults(db, body.columns),

@@ -3,7 +3,7 @@ import {
   createQualityCharacteristic,
   listQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
@@ -14,12 +14,12 @@ export async function GET(request: NextRequest) {
     if (!Number.isInteger(parsed) || parsed < 1) {
       return NextResponse.json({ error: 'Invalid typeId' }, { status: 400 })
     }
-    const db = await getRequestDatabase()
+    const db = await getRequestSqlServerDataSource()
     const qualityCharacteristics = await listQualityCharacteristics(db, parsed)
     return NextResponse.json({ qualityCharacteristics })
   }
 
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const qualityCharacteristics = await listQualityCharacteristics(db)
   return NextResponse.json({ qualityCharacteristics })
 }
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   ) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const category = await createQualityCharacteristic(
     db,
     body as unknown as Parameters<typeof createQualityCharacteristic>[1],

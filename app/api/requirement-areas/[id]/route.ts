@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { deleteArea, updateArea } from '@/lib/dal/requirement-areas'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -13,7 +13,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Parameters<typeof updateArea>[2]
   const area = await updateArea(db, numericId, body)
   return NextResponse.json(area)
@@ -28,7 +28,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   await deleteArea(db, numericId)
   return NextResponse.json({ ok: true })
 }

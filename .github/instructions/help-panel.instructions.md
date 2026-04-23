@@ -4,8 +4,6 @@ applyTo: "{components/HelpPanel.tsx,app/[locale]/**/*-client.tsx}"
 
 ## Help Panel
 
-### Overview
-
 - Call `useHelpContent(HELP_CONSTANT)` at the top of each `*-client.tsx` view.
 - Define `HELP_CONSTANT` at module scope with type `HelpContent`.
 - Keep help keys relative to the `help` namespace.
@@ -53,7 +51,7 @@ applyTo: "{components/HelpPanel.tsx,app/[locale]/**/*-client.tsx}"
   `HelpContent` constant in the same file and the corresponding keys in both message files.
 - When removing a view, remove its `help.*` keys from both message files.
 - Keep `HelpContent` constants at module scope (not inside the component function).
-- New `help` translation keys must be added to BOTH `messages/en.json` and `messages/sv.json`.
+- See `.github/instructions/translations.instructions.md` for the `en.json` / `sv.json` update workflow.
 - Use text sections with `kind: 'text'`, `headingKey`, and `bodyKey`.
 - Use visual sections with `kind: 'visual'`, `headingKey`, optional `bodyKey`, and `visualId`.
 - Keep help visuals translation-driven; do not pass arbitrary JSX through `HelpContent`.

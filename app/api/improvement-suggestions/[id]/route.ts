@@ -4,7 +4,7 @@ import {
   getSuggestion,
   updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -18,7 +18,7 @@ export async function GET(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     const item = await getSuggestion(db, numericId)
@@ -57,7 +57,7 @@ export async function PUT(
   if (typeof content !== 'string') {
     return NextResponse.json({ error: 'Invalid content' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await updateSuggestion(db, numericId, { content })
@@ -86,7 +86,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await deleteSuggestion(db, numericId)

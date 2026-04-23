@@ -1,8 +1,8 @@
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
 
 async function handleRequest(request: Request) {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   return handleRequirementsMcpRequest(request, db)
 }
 

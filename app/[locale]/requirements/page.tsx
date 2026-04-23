@@ -4,7 +4,7 @@ import {
   formatUiSettingsLoadError,
   getRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS } from '@/lib/requirements/list-view'
 import RequirementsClient from './requirements-client'
 
@@ -18,7 +18,7 @@ export default async function RequirementsPage() {
 
   try {
     initialColumnDefaults = await getRequirementListColumnDefaults(
-      await getRequestDatabase(),
+      await getRequestSqlServerDataSource(),
     )
   } catch (error) {
     console.error(

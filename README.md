@@ -187,11 +187,15 @@ This project also includes an in-app MCP server for requirements management.
 
 ## Tech Stack
 
+The application uses **Microsoft SQL Server + TypeORM** as its sole database
+stack. See
+[docs/sql-server-developer-workflow.md](docs/sql-server-developer-workflow.md)
+for setup, migrations, seeding, and the developer browse workflow.
+
 - **Framework:** [Next.js](https://nextjs.org/) 16 (React 19)
 - **Language:** TypeScript 5
 - **Styling:** Tailwind CSS 4
-- **Database:** SQLite via Drizzle ORM
-- **Local/CI database runtime:** Separate SQLite proxy service container
+- **Database:** Microsoft SQL Server via TypeORM
 - **Internationalization:** next-intl (Swedish & English)
 - **App runtime:** Native Next.js self-hosting (`next dev`, `next start`)
 - **Production target:** OpenShift-compatible Node container deployment
@@ -206,17 +210,23 @@ This project also includes an in-app MCP server for requirements management.
 
 ## Getting Started
 
+### Local development using devcontainers
+
+Start the devcontainers by opening the project in VS Code and accepting the
+prompt to "Reopen in Container". The devcontainer includes the local
+*SQL Server Developer* container, so you can run the full application and
+database stack without any additional setup.
+
+### Local development without devcontainers
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local setup, including
+Node.js prerequisites, environment files, and database commands. The
+condensed flow is:
+
 ```bash
-# Install dependencies
 npm install
-
-# Start the local SQLite proxy database service
-npm run db:up
-
-# Set up the local database (wait, reset, migrate & seed)
+docker compose -f docker-compose.sqlserver.yml up -d
 npm run db:setup
-
-# Start the development server
 npm run dev
 ```
 

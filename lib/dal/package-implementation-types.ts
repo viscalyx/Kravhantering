@@ -1,42 +1,60 @@
-import { eq } from 'drizzle-orm'
-import { packageImplementationTypes } from '@/drizzle/schema'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import {
+  type PackageImplementationTypeEntity,
+  packageImplementationTypeEntity,
+} from '@/lib/typeorm/entities'
 
-export async function listPackageImplementationTypes(db: Database) {
-  return db.query.packageImplementationTypes.findMany({
-    orderBy: [packageImplementationTypes.nameSv],
-  })
+export interface PackageImplementationTypeRow {
+  id: number
+  nameEn: string
+  nameSv: string
+}
+
+function map(
+  row: PackageImplementationTypeEntity,
+): PackageImplementationTypeRow {
+  return { id: row.id, nameEn: row.nameEn, nameSv: row.nameSv }
+}
+
+export async function listPackageImplementationTypes(
+  db: SqlServerDatabase,
+): Promise<PackageImplementationTypeRow[]> {
+  const rows = await db
+    .getRepository(packageImplementationTypeEntity)
+    .find({ order: { nameSv: 'ASC' } })
+  return rows.map(map)
 }
 
 export async function createPackageImplementationType(
-  db: Database,
+  db: SqlServerDatabase,
   data: { nameSv: string; nameEn: string },
-) {
-  const [row] = await db
-    .insert(packageImplementationTypes)
-    .values(data)
-    .returning()
-  return row
+): Promise<PackageImplementationTypeRow> {
+  const repository = db.getRepository(packageImplementationTypeEntity)
+  const row = await repository.save(
+    repository.create({ nameSv: data.nameSv, nameEn: data.nameEn }),
+  )
+  return map(row)
 }
 
 export async function updatePackageImplementationType(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
   data: { nameSv?: string; nameEn?: string },
-) {
-  const [updated] = await db
-    .update(packageImplementationTypes)
-    .set(data)
-    .where(eq(packageImplementationTypes.id, id))
-    .returning()
-  return updated
+): Promise<PackageImplementationTypeRow | undefined> {
+  const repository = db.getRepository(packageImplementationTypeEntity)
+  const patch: Partial<PackageImplementationTypeEntity> = {}
+  if (data.nameSv !== undefined) patch.nameSv = data.nameSv
+  if (data.nameEn !== undefined) patch.nameEn = data.nameEn
+  if (Object.keys(patch).length > 0) {
+    await repository.update(id, patch)
+  }
+  const row = await repository.findOne({ where: { id } })
+  return row ? map(row) : undefined
 }
 
 export async function deletePackageImplementationType(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
-) {
-  await db
-    .delete(packageImplementationTypes)
-    .where(eq(packageImplementationTypes.id, id))
+): Promise<void> {
+  await db.getRepository(packageImplementationTypeEntity).delete(id)
 }

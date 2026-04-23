@@ -4,11 +4,6 @@
   "service": "app",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
-  "containerEnv": {
-    "DATABASE_URL": "http://db:9000",
-    "NODE_ENV": "development",
-    "NEXT_TELEMETRY_DISABLED": "1"
-  },
   "remoteEnv": {
     "GH_TOKEN": "${localEnv:GH_TOKEN}",
     "OPENROUTER_API_KEY": "${localEnv:OPENROUTER_API_KEY}",
@@ -71,7 +66,8 @@
         "vitest.explorer",
         "bierner.markdown-mermaid",
         "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
-        "qwtel.sqlite-viewer",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-mssql",
         "ms-python.python",
         "ms-python.vscode-pylance",
         "ms-python.debugpy"
@@ -183,7 +179,7 @@
   },
 
   // Use 'forwardPorts' to make a list of ports inside the container available locally
-  "forwardPorts": [3000, 3001, 4443, 9000, 9323, 51204],
+  "forwardPorts": [3000, 3001, 4443, 1433, 9323, 51204],
   "portsAttributes": {
     "3000": {
       "label": "Next.js Dev Server 1",
@@ -198,8 +194,8 @@
       "protocol": "https",
       "onAutoForward": "notify"
     },
-    "9000": {
-      "label": "SQLite Proxy DB",
+    "1433": {
+      "label": "SQL Server Developer",
       "onAutoForward": "notify"
     },
     "9323": {
@@ -216,9 +212,10 @@
   // Do not use this git configuration command here, as it will prevent ssh-agent forwarding
   "postCreateCommand": "npm install -g npm@latest && npm install && npx playwright install --with-deps",
 
+  // Copy .devcontainer/.env.example to .devcontainer/.env before the first rebuild.
   // Use 'postStartCommand' to run commands after the container starts and every time it starts
   // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly
-  "postStartCommand": "git config --global --unset gpg.ssh.program || true && npm run db:setup",
+  "postStartCommand": "bash -lc 'git config --global --unset gpg.ssh.program || true; npm run db:setup || { echo \"Automatic db:setup failed; retrying once after 10 seconds...\" >&2; sleep 10; npm run db:setup || echo \"Automatic db:setup still failed. If SQL Server failures persist, look at the database container logs to see what failed.\" >&2; }'",
 
   // Configure remote user
   "remoteUser": "vscode"

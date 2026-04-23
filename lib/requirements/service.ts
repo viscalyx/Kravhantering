@@ -1,12 +1,8 @@
 import {
-  DEVIATION_APPROVED,
-  DEVIATION_REJECTED,
-  SUGGESTION_DISMISSED,
-  SUGGESTION_RESOLVED,
-} from '@/drizzle/schema'
-import {
   countDeviationsByPackage,
   createDeviation,
+  DEVIATION_APPROVED,
+  DEVIATION_REJECTED,
   deleteDeviation,
   listDeviationsForPackage,
   recordDecision,
@@ -20,10 +16,19 @@ import {
   recordResolution,
   requestReview,
   revertToDraft,
+  SUGGESTION_DISMISSED,
+  SUGGESTION_RESOLVED,
   updateSuggestion,
 } from '@/lib/dal/improvement-suggestions'
-import { getAreaById, listAreas } from '@/lib/dal/requirement-areas'
-import { listCategories } from '@/lib/dal/requirement-categories'
+import {
+  getAreaById,
+  listAreas,
+  type RequirementAreaRow,
+} from '@/lib/dal/requirement-areas'
+import {
+  listCategories,
+  type RequirementCategoryRow,
+} from '@/lib/dal/requirement-categories'
 import {
   getPackageBySlug,
   getPublishedVersionIdForRequirement,
@@ -32,10 +37,17 @@ import {
   listPackages,
   unlinkRequirementsFromPackage,
 } from '@/lib/dal/requirement-packages'
-import { listStatuses, listTransitions } from '@/lib/dal/requirement-statuses'
+import {
+  listStatuses,
+  listTransitions,
+  type RequirementStatusRecord,
+  type RequirementStatusTransitionDetail,
+} from '@/lib/dal/requirement-statuses'
 import {
   listQualityCharacteristics,
   listTypes,
+  type QualityCharacteristicRow,
+  type RequirementTypeWithQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
 import {
   approveArchiving,
@@ -59,7 +71,7 @@ import {
   type UiSettingsLoader,
 } from '@/lib/dal/ui-settings'
 import { listScenarios } from '@/lib/dal/usage-scenarios'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   AllowAllAuthorizationService,
   type AuthorizationService,
@@ -698,7 +710,10 @@ export interface RequirementsService {
   }>
 }
 
-async function resolveRequirement(db: Database, ref: RequirementRefInput) {
+async function resolveRequirement(
+  db: SqlServerDatabase,
+  ref: RequirementRefInput,
+) {
   if (ref.uniqueId) {
     return getRequirementByUniqueId(db, ref.uniqueId)
   }
@@ -710,7 +725,10 @@ async function resolveRequirement(db: Database, ref: RequirementRefInput) {
   throw internalError('Requirement reference is missing')
 }
 
-async function resolveRequirementId(db: Database, ref: RequirementRefInput) {
+async function resolveRequirementId(
+  db: SqlServerDatabase,
+  ref: RequirementRefInput,
+) {
   const requirement = await resolveRequirement(db, ref)
 
   if (!requirement) {
@@ -723,7 +741,10 @@ async function resolveRequirementId(db: Database, ref: RequirementRefInput) {
   return requirement.id
 }
 
-async function ensureAreaExists(db: Database, areaId: number | undefined) {
+async function ensureAreaExists(
+  db: SqlServerDatabase,
+  areaId: number | undefined,
+) {
   if (areaId == null) {
     return null
   }
@@ -736,7 +757,10 @@ async function ensureAreaExists(db: Database, areaId: number | undefined) {
   return area
 }
 
-async function resolvePackageIdOrThrow(db: Database, input: PackageRefInput) {
+async function resolvePackageIdOrThrow(
+  db: SqlServerDatabase,
+  input: PackageRefInput,
+) {
   const packageId =
     input.packageId != null
       ? input.packageId
@@ -828,7 +852,7 @@ async function withLogging<T>(
 }
 
 export function createRequirementsService(
-  db: Database,
+  db: SqlServerDatabase,
   {
     authorization = new AllowAllAuthorizationService(),
     logger = createRequirementsLogger(),
@@ -920,7 +944,9 @@ export function createRequirementsService(
               items: areas,
               message: createServiceMessage(
                 getCatalogTitle('areas', locale, terminology),
-                areas.map(area => `${area.prefix}: ${area.name}`),
+                areas.map(
+                  (area: RequirementAreaRow) => `${area.prefix}: ${area.name}`,
+                ),
                 responseFormat,
               ),
               pagination: null,
@@ -934,7 +960,7 @@ export function createRequirementsService(
               items: categories,
               message: createServiceMessage(
                 getCatalogTitle('categories', locale, terminology),
-                categories.map(category =>
+                categories.map((category: RequirementCategoryRow) =>
                   locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
                 responseFormat,
@@ -950,7 +976,7 @@ export function createRequirementsService(
               items: types,
               message: createServiceMessage(
                 getCatalogTitle('types', locale, terminology),
-                types.map(type =>
+                types.map((type: RequirementTypeWithQualityCharacteristics) =>
                   locale === 'sv' ? type.nameSv : type.nameEn,
                 ),
                 responseFormat,
@@ -969,8 +995,9 @@ export function createRequirementsService(
               items: qualityCharacteristics,
               message: createServiceMessage(
                 getCatalogTitle('quality_characteristics', locale, terminology),
-                qualityCharacteristics.map(category =>
-                  locale === 'sv' ? category.nameSv : category.nameEn,
+                qualityCharacteristics.map(
+                  (category: QualityCharacteristicRow) =>
+                    locale === 'sv' ? category.nameSv : category.nameEn,
                 ),
                 responseFormat,
               ),
@@ -1001,7 +1028,7 @@ export function createRequirementsService(
               items: statuses,
               message: createServiceMessage(
                 getCatalogTitle('statuses', locale, terminology),
-                statuses.map(status =>
+                statuses.map((status: RequirementStatusRecord) =>
                   locale === 'sv' ? status.nameSv : status.nameEn,
                 ),
                 responseFormat,
@@ -1032,17 +1059,19 @@ export function createRequirementsService(
             items: transitions,
             message: createServiceMessage(
               getCatalogTitle('transitions', locale, terminology),
-              transitions.map(transition => {
-                const fromName =
-                  locale === 'sv'
-                    ? transition.fromStatus.nameSv
-                    : transition.fromStatus.nameEn
-                const toName =
-                  locale === 'sv'
-                    ? transition.toStatus.nameSv
-                    : transition.toStatus.nameEn
-                return `${fromName} -> ${toName}`
-              }),
+              transitions.map(
+                (transition: RequirementStatusTransitionDetail) => {
+                  const fromName =
+                    locale === 'sv'
+                      ? transition.fromStatus.nameSv
+                      : transition.fromStatus.nameEn
+                  const toName =
+                    locale === 'sv'
+                      ? transition.toStatus.nameSv
+                      : transition.toStatus.nameEn
+                  return `${fromName} -> ${toName}`
+                },
+              ),
               responseFormat,
             ),
             pagination: null,
@@ -1286,8 +1315,9 @@ export function createRequirementsService(
                 'Edit operation requires requirement.description',
               )
             }
-
-            await ensureAreaExists(db, payload.areaId)
+            if (payload.areaId != null) {
+              await ensureAreaExists(db, payload.areaId)
+            }
             const version = await editRequirement(db, requirementId, {
               acceptanceCriteria: payload.acceptanceCriteria,
               createdBy: payload.createdBy ?? context.actor.id ?? undefined,
@@ -1325,11 +1355,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'archive') {
-            await initiateArchiving(
-              db,
-              requirementId,
-              context.actor.id ?? undefined,
-            )
+            await initiateArchiving(db, requirementId)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1351,11 +1377,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'approve_archiving') {
-            await approveArchiving(
-              db,
-              requirementId,
-              context.actor.id ?? undefined,
-            )
+            await approveArchiving(db, requirementId)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1377,11 +1399,7 @@ export function createRequirementsService(
           }
 
           if (input.operation === 'cancel_archiving') {
-            await cancelArchiving(
-              db,
-              requirementId,
-              context.actor.id ?? undefined,
-            )
+            await cancelArchiving(db, requirementId)
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {
@@ -1515,12 +1533,7 @@ export function createRequirementsService(
         },
         async () => {
           const requirementId = await resolveRequirementId(db, input)
-          await transitionStatus(
-            db,
-            requirementId,
-            input.toStatusId,
-            context.actor.id ?? undefined,
-          )
+          await transitionStatus(db, requirementId, input.toStatusId)
           const detail = formatRequirementDetail(
             (await getRequirementById(db, requirementId)) ??
               (() => {

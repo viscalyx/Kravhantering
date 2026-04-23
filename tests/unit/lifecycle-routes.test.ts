@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockGetDb = vi.fn().mockReturnValue({})
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: (...a: unknown[]) => mockGetDb(...a),
+  getRequestSqlServerDataSource: (...a: unknown[]) => mockGetDb(...a),
 }))
 
 const mockManageRequirement = vi.fn()

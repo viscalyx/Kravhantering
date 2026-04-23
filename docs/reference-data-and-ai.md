@@ -66,7 +66,8 @@ Source: `lib/dal/owners.ts`
 - `listOwners()` — orders by `lastName`, then `firstName`
   (both ascending).
 - `getOwnerById()` — returns `null` if not found.
-- `createOwner()` — returns the raw Drizzle row.
+- `createOwner()` — returns the persisted Owner row produced by the
+  TypeORM repository.
 - `updateOwner()` — always sets `updatedAt` to the current
   ISO timestamp. Returns `null` if the ID does not match.
 - `deleteOwner()` — returns `boolean` indicating whether a

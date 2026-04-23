@@ -1,0 +1,26 @@
+name: kravhantering-sqlserver-dev
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: ${ACCEPT_EULA:-Y}
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Copy .env.sqlserver.example to .env.sqlserver and set MSSQL_SA_PASSWORD}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"
+        ]
+      interval: 5s
+      retries: 20
+      start_period: 10s
+      timeout: 5s
+    ports:
+      - "${SQLSERVER_HOST_PORT:-1433}:1433"
+    volumes:
+      - sqlserver-db-data:/var/opt/mssql
+
+volumes:
+  sqlserver-db-data:

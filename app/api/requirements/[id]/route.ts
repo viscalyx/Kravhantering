@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getOwnerById } from '@/lib/dal/owners'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   createRequirementsService,
@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
   const context = createRequestContext(_request, 'rest')
 
@@ -49,7 +49,7 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')
   const body = (await request.json()) as Record<string, unknown>
@@ -104,7 +104,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
   const context = createRequestContext(_request, 'rest')
 

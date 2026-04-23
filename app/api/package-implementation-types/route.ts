@@ -3,16 +3,16 @@ import {
   createPackageImplementationType,
   listPackageImplementationTypes,
 } from '@/lib/dal/package-implementation-types'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const types = await listPackageImplementationTypes(db)
   return NextResponse.json({ types })
 }
 
 export async function POST(request: Request) {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const body = (await request.json()) as Parameters<
     typeof createPackageImplementationType
   >[1]

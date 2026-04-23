@@ -1,5 +1,5 @@
 ---
-applyTo: "**/*.md"
+applyTo: "{docs/**/*.md,README.md,CONTRIBUTING.md,SECURITY.md,CODE_OF_CONDUCT.md,packages/**/*.md}"
 ---
 
 # Markdown Linting

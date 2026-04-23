@@ -44,6 +44,10 @@ open a VS Code editor in your browser. This typically takes
 
 ## 2 — Wait for automatic setup
 
+The sole database stack is SQL Server + TypeORM; see
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md)
+for setup, migrations, and the read-only browse workflow.
+
 The dev container runs two lifecycle scripts automatically.
 You can follow their progress in the integrated terminal.
 
@@ -63,19 +67,18 @@ git config --global --unset gpg.ssh.program || true && npm run db:setup
 ```
 
 This configures Git for agent forwarding and prepares the local
-SQLite database service — wait, reset, migrate, and seed.
+SQL Server database — wait, reset, migrate, and seed.
 
 > **Tip:** Wait until both scripts finish before running any
 > commands. The terminal prompt reappears when they are done.
 
-The dev container already starts a sibling `db` service for you. The app uses
-`DATABASE_URL=http://db:9000` inside the container, so you do not need to start
-the database manually in Codespaces.
+The dev container already starts a sibling SQL Server `db` service. The app
+uses the connection string defined by `DATABASE_URL` inside the container, so
+you do not need to start the database manually in Codespaces.
 
-If you want to inspect table data, run `npm run db:browse`, open
-`/var/lib/kravhantering/devcontainer.sqlite` with the included
-`qwtel.sqlite-viewer` VS Code extension, or query it directly with
-`sqlite3 /var/lib/kravhantering/devcontainer.sqlite` in the terminal.
+To inspect table data, run `npm run db:browse` and follow the SQLTools +
+MSSQL workflow described in
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
 
 ## 3 — Start the dev server
 
@@ -296,8 +299,7 @@ These contracts are testable invariants for Codespace-based
 workflows:
 
 - **`npm run db:setup` is idempotent** — safe to re-run at any
-  time. It waits for, resets, migrates, and seeds the local SQLite database
-  service.
+  time. It waits for, resets, migrates, and seeds the local SQL Server database.
 - **Port 3000 must be public** for external MCP clients
   (ChatGPT, Copilot) to reach the endpoint. Private ports
   return authentication errors.

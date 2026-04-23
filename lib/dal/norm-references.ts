@@ -1,12 +1,9 @@
-import { eq, inArray, sql } from 'drizzle-orm'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
-  normReferences,
-  requirementStatuses,
-  requirements,
-  requirementVersionNormReferences,
-  requirementVersions,
-} from '@/drizzle/schema'
-import type { Database } from '@/lib/db'
+  type NormReferenceEntity,
+  normReferenceEntity,
+} from '@/lib/typeorm/entities'
+import { toIsoString } from '@/lib/typeorm/value-mappers'
 
 interface NormReferenceRow {
   createdAt: string
@@ -34,96 +31,117 @@ interface LinkedRequirementRow {
 
 export type { LinkedRequirementRow, NormReferenceRow }
 
+function map(row: NormReferenceEntity): NormReferenceRow {
+  return {
+    id: row.id,
+    normReferenceId: row.normReferenceId,
+    name: row.name,
+    type: row.type,
+    reference: row.reference,
+    version: row.version,
+    issuer: row.issuer,
+    uri: row.uri,
+    createdAt: toIsoString(row.createdAt),
+    updatedAt: toIsoString(row.updatedAt),
+  }
+}
+
 export async function listNormReferences(
-  db: Database,
+  db: SqlServerDatabase,
 ): Promise<NormReferenceRow[]> {
-  return db.query.normReferences.findMany({
-    orderBy: [normReferences.normReferenceId],
-  })
+  const rows = await db
+    .getRepository(normReferenceEntity)
+    .find({ order: { normReferenceId: 'ASC' } })
+  return rows.map(map)
 }
 
 export async function getNormReferenceById(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
 ): Promise<NormReferenceRow | null> {
-  return (
-    (await db.query.normReferences.findFirst({
-      where: eq(normReferences.id, id),
-    })) ?? null
-  )
+  const row = await db
+    .getRepository(normReferenceEntity)
+    .findOne({ where: { id } })
+  return row ? map(row) : null
 }
 
+// Note: kept on raw SQL because this is a join/aggregation query against
+// requirement_versions; per the Query Decision Order, raw SQL is the right
+// tool for reporting-style reads that don't need full entity hydration.
 export async function countLinkedRequirements(
-  db: Database,
+  db: SqlServerDatabase,
   options?: { statuses?: number[] },
 ): Promise<Record<number, number>> {
-  const query = db
-    .select({
-      normReferenceId: requirementVersionNormReferences.normReferenceId,
-      count:
-        sql<number>`COUNT(DISTINCT ${requirementVersions.requirementId})`.as(
-          'count',
-        ),
+  const statuses = options?.statuses?.filter(
+    status => Number.isInteger(status) && status > 0,
+  )
+  const params: number[] = []
+  const conditions = ['1 = 1']
+
+  if (statuses?.length) {
+    const placeholders = statuses.map(status => {
+      params.push(status)
+      return `@${params.length - 1}`
     })
-    .from(requirementVersionNormReferences)
-    .innerJoin(
-      requirementVersions,
-      eq(
-        requirementVersionNormReferences.requirementVersionId,
-        requirementVersions.id,
-      ),
+    conditions.push(
+      `requirement_versions.requirement_status_id IN (${placeholders.join(', ')})`,
     )
-    .groupBy(requirementVersionNormReferences.normReferenceId)
-  if (options?.statuses && options.statuses.length > 0) {
-    query.where(inArray(requirementVersions.statusId, options.statuses))
   }
-  const rows = await query
+
+  const rows = await db.query(
+    `
+      SELECT
+        links.norm_reference_id AS normReferenceId,
+        COUNT(DISTINCT requirement_versions.requirement_id) AS count
+      FROM requirement_version_norm_references AS links
+      INNER JOIN requirement_versions
+        ON links.requirement_version_id = requirement_versions.id
+      WHERE ${conditions.join(' AND ')}
+      GROUP BY links.norm_reference_id
+    `,
+    params,
+  )
+
   const counts: Record<number, number> = {}
-  for (const row of rows) {
+  for (const row of rows as Array<{ count: number; normReferenceId: number }>) {
     counts[row.normReferenceId] = row.count
   }
   return counts
 }
 
+// Note: kept on raw SQL because of the multi-table join and explicit column
+// projection.
 export async function getLinkedRequirements(
-  db: Database,
+  db: SqlServerDatabase,
   normReferenceDbId: number,
 ): Promise<LinkedRequirementRow[]> {
-  return db
-    .select({
-      id: requirements.id,
-      uniqueId: requirements.uniqueId,
-      description: requirementVersions.description,
-      versionNumber: requirementVersions.versionNumber,
-      statusId: requirementVersions.statusId,
-      statusNameSv: requirementStatuses.nameSv,
-      statusNameEn: requirementStatuses.nameEn,
-      statusColor: requirementStatuses.color,
-    })
-    .from(requirementVersionNormReferences)
-    .innerJoin(
-      requirementVersions,
-      eq(
-        requirementVersionNormReferences.requirementVersionId,
-        requirementVersions.id,
-      ),
-    )
-    .innerJoin(
-      requirements,
-      eq(requirementVersions.requirementId, requirements.id),
-    )
-    .leftJoin(
-      requirementStatuses,
-      eq(requirementVersions.statusId, requirementStatuses.id),
-    )
-    .where(
-      eq(requirementVersionNormReferences.normReferenceId, normReferenceDbId),
-    )
-    .orderBy(requirements.uniqueId)
+  return db.query(
+    `
+      SELECT
+        requirements.id AS id,
+        requirements.unique_id AS uniqueId,
+        requirement_versions.description AS description,
+        requirement_versions.version_number AS versionNumber,
+        requirement_versions.requirement_status_id AS statusId,
+        requirement_statuses.name_sv AS statusNameSv,
+        requirement_statuses.name_en AS statusNameEn,
+        requirement_statuses.color AS statusColor
+      FROM requirement_version_norm_references AS links
+      INNER JOIN requirement_versions
+        ON links.requirement_version_id = requirement_versions.id
+      INNER JOIN requirements
+        ON requirement_versions.requirement_id = requirements.id
+      LEFT JOIN requirement_statuses
+        ON requirement_versions.requirement_status_id = requirement_statuses.id
+      WHERE links.norm_reference_id = @0
+      ORDER BY requirements.unique_id ASC
+    `,
+    [normReferenceDbId],
+  )
 }
 
 async function deriveNormReferenceId(
-  db: Database,
+  db: SqlServerDatabase,
   reference: string,
   name: string,
 ): Promise<string> {
@@ -151,36 +169,51 @@ async function deriveNormReferenceId(
   }
 
   // 3. Last resort: NR-001, NR-002 ...
-  const result = await db
-    .select({
-      maxSeq: sql<
-        number | null
-      >`COALESCE(MAX(CAST(SUBSTR(${normReferences.normReferenceId}, 4) AS INTEGER)), 0)`,
-    })
-    .from(normReferences)
-    .where(sql`${normReferences.normReferenceId} LIKE 'NR-%'`)
-  const nextSeq = ((result[0]?.maxSeq ?? 0) as number) + 1
-  return resolveCollision(db, `NR-${String(nextSeq).padStart(3, '0')}`)
+  const rows = await db.query(`
+    SELECT norm_reference_id AS normReferenceId
+    FROM norm_references
+    WHERE norm_reference_id LIKE 'NR-%'
+  `)
+  const maxSeq = (rows as Array<{ normReferenceId: string }>).reduce(
+    (max, row) => {
+      const match = /^NR-(\d+)$/.exec(row.normReferenceId)
+      if (!match) {
+        return max
+      }
+      return Math.max(max, Number.parseInt(match[1], 10))
+    },
+    0,
+  )
+  return resolveCollision(db, `NR-${String(maxSeq + 1).padStart(3, '0')}`)
 }
 
-async function resolveCollision(db: Database, base: string): Promise<string> {
-  const existing = await db.query.normReferences.findFirst({
-    where: eq(normReferences.normReferenceId, base),
+async function resolveCollision(
+  db: SqlServerDatabase,
+  base: string,
+): Promise<string> {
+  const repository = db.getRepository(normReferenceEntity)
+  const existing = await repository.findOne({
+    where: { normReferenceId: base },
   })
-  if (!existing) return base
-  // Try suffixes -2, -3, ...
+  if (!existing) {
+    return base
+  }
+
   for (let i = 2; i <= 999; i++) {
     const candidate = `${base}-${i}`
-    const conflict = await db.query.normReferences.findFirst({
-      where: eq(normReferences.normReferenceId, candidate),
+    const conflict = await repository.findOne({
+      where: { normReferenceId: candidate },
     })
-    if (!conflict) return candidate
+    if (!conflict) {
+      return candidate
+    }
   }
+
   return `${base}-${Date.now()}`
 }
 
 export async function createNormReference(
-  db: Database,
+  db: SqlServerDatabase,
   data: {
     normReferenceId?: string
     name: string
@@ -194,9 +227,11 @@ export async function createNormReference(
   const normReferenceId =
     data.normReferenceId?.trim() ||
     (await deriveNormReferenceId(db, data.reference, data.name))
-  const [row] = await db
-    .insert(normReferences)
-    .values({
+
+  const repository = db.getRepository(normReferenceEntity)
+  const now = new Date()
+  const row = await repository.save(
+    repository.create({
       normReferenceId,
       name: data.name,
       type: data.type,
@@ -204,13 +239,15 @@ export async function createNormReference(
       version: data.version ?? null,
       issuer: data.issuer,
       uri: data.uri ?? null,
-    })
-    .returning()
-  return row
+      createdAt: now,
+      updatedAt: now,
+    }),
+  )
+  return map(row)
 }
 
 export async function updateNormReference(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
   data: {
     normReferenceId?: string
@@ -222,17 +259,25 @@ export async function updateNormReference(
     uri?: string | null
   },
 ): Promise<NormReferenceRow | undefined> {
-  const [updated] = await db
-    .update(normReferences)
-    .set({ ...data, updatedAt: new Date().toISOString() })
-    .where(eq(normReferences.id, id))
-    .returning()
-  return updated
+  const repository = db.getRepository(normReferenceEntity)
+  const patch: Partial<NormReferenceEntity> = {}
+  if (data.normReferenceId !== undefined)
+    patch.normReferenceId = data.normReferenceId
+  if (data.name !== undefined) patch.name = data.name
+  if (data.type !== undefined) patch.type = data.type
+  if (data.reference !== undefined) patch.reference = data.reference
+  if (data.version !== undefined) patch.version = data.version
+  if (data.issuer !== undefined) patch.issuer = data.issuer
+  if (data.uri !== undefined) patch.uri = data.uri
+  patch.updatedAt = new Date()
+  await repository.update(id, patch)
+  const row = await repository.findOne({ where: { id } })
+  return row ? map(row) : undefined
 }
 
 export async function deleteNormReference(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
 ): Promise<void> {
-  await db.delete(normReferences).where(eq(normReferences.id, id))
+  await db.getRepository(normReferenceEntity).delete(id)
 }

@@ -2,13 +2,13 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
-  getRequestDatabase: vi.fn(() => ({ db: true })),
+  getRequestSqlServerDataSource: vi.fn(() => ({ db: true })),
   getRequirementListColumnDefaults: vi.fn(),
   updateRequirementListColumnDefaults: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: routeState.getRequestDatabase,
+  getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({

@@ -6,8 +6,8 @@ import {
   getPackageLocalRequirementDetail,
   updatePackageLocalRequirement,
 } from '@/lib/dal/requirement-packages'
-import type { Database } from '@/lib/db'
-import { getRequestDatabase } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string; localRequirementId: string }>
@@ -44,7 +44,7 @@ function parseOptionalIntegerArray(value: unknown): number[] {
 }
 
 async function resolvePackageId(
-  db: Database,
+  db: SqlServerDatabase,
   idOrSlug: string,
 ): Promise<number | null> {
   if (/^\d+$/.test(idOrSlug)) {
@@ -69,7 +69,7 @@ export async function GET(
       { status: 400 },
     )
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -102,7 +102,7 @@ export async function PUT(
       { status: 400 },
     )
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -197,7 +197,7 @@ export async function DELETE(
       { status: 400 },
     )
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const packageId = await resolvePackageId(db, id)
   if (packageId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

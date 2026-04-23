@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requestPackageLocalReview } from '@/lib/dal/deviations'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -13,7 +13,7 @@ export async function POST(_request: Request, { params }: { params: Params }) {
   }
 
   try {
-    const db = await getRequestDatabase()
+    const db = await getRequestSqlServerDataSource()
     await requestPackageLocalReview(db, deviationId)
     return NextResponse.json({ ok: true })
   } catch (error) {

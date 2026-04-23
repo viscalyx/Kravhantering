@@ -6,12 +6,12 @@ import {
   isSlugTaken,
   updatePackage,
 } from '@/lib/dal/requirement-packages'
-import type { Database } from '@/lib/db'
-import { getRequestDatabase } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
-async function resolvePackage(db: Database, idOrSlug: string) {
+async function resolvePackage(db: SqlServerDatabase, idOrSlug: string) {
   if (/^\d+$/.test(idOrSlug)) return getPackageById(db, Number(idOrSlug))
   return getPackageBySlug(db, idOrSlug)
 }
@@ -21,7 +21,7 @@ export async function GET(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const pkg = await resolvePackage(db, id)
   if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(pkg)
@@ -32,7 +32,7 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   const pkg = await resolvePackage(db, id)
   if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -59,7 +59,7 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const pkg = await resolvePackage(db, id)
   if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   await deletePackage(db, pkg.id)

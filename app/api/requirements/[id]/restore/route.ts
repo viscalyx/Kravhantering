@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   createRequirementsService,
@@ -15,7 +15,7 @@ export async function POST(
 ) {
   const { id } = await params
   const body = (await request.json()) as { versionNumber: number }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')
 

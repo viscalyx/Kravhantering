@@ -6,7 +6,7 @@ const mockDeleteQualityCharacteristic = vi.fn()
 const mockListQualityCharacteristics = vi.fn()
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: () => ({}),
+  getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/dal/requirement-types', () => ({

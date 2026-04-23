@@ -45,6 +45,9 @@ certificates
 # Environment variables
 # Only .local files should contain secrets and are gitignored below.
 # All other .env files can be committed to share configuration across contributors.
+.devcontainer/.env
+.devcontainer/elevated/.env
+.env.sqlserver
 .env.local
 .env.*.local
 

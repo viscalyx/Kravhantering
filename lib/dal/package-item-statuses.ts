@@ -1,14 +1,12 @@
-import { eq, sql } from 'drizzle-orm'
-import {
-  packageItemStatuses,
-  requirementPackageItems,
-  requirementPackages,
-} from '@/drizzle/schema'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   DEFAULT_PACKAGE_ITEM_STATUS_ID,
   DEVIATED_PACKAGE_ITEM_STATUS_ID,
 } from '@/lib/package-item-status-constants'
+import {
+  type PackageItemStatusEntity,
+  packageItemStatusEntity,
+} from '@/lib/typeorm/entities'
 
 export interface PackageItemStatusRow {
   color: string
@@ -28,38 +26,53 @@ interface LinkedPackageRow {
 
 export type { LinkedPackageRow }
 
+function map(row: PackageItemStatusEntity): PackageItemStatusRow {
+  return {
+    color: row.color,
+    descriptionEn: row.descriptionEn,
+    descriptionSv: row.descriptionSv,
+    id: row.id,
+    nameEn: row.nameEn,
+    nameSv: row.nameSv,
+    sortOrder: row.sortOrder,
+  }
+}
+
 export async function listPackageItemStatuses(
-  db: Database,
+  db: SqlServerDatabase,
 ): Promise<PackageItemStatusRow[]> {
-  return db.query.packageItemStatuses.findMany({
-    orderBy: [packageItemStatuses.sortOrder],
-  })
+  const rows = await db
+    .getRepository(packageItemStatusEntity)
+    .find({ order: { sortOrder: 'ASC' } })
+  return rows.map(map)
 }
 
 export async function getPackageItemStatusById(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
 ): Promise<PackageItemStatusRow | null> {
-  return (
-    (await db.query.packageItemStatuses.findFirst({
-      where: eq(packageItemStatuses.id, id),
-    })) ?? null
-  )
+  const row = await db
+    .getRepository(packageItemStatusEntity)
+    .findOne({ where: { id } })
+  return row ? map(row) : null
 }
 
 export async function countLinkedPackageItems(
-  db: Database,
+  db: SqlServerDatabase,
 ): Promise<Record<number, number>> {
-  const rows = await db
-    .select({
-      statusId: requirementPackageItems.packageItemStatusId,
-      count: sql<number>`COUNT(*)`.as('count'),
-    })
-    .from(requirementPackageItems)
-    .where(sql`${requirementPackageItems.packageItemStatusId} IS NOT NULL`)
-    .groupBy(requirementPackageItems.packageItemStatusId)
+  const rows = await db.query(`
+    SELECT
+      package_item_status_id AS statusId,
+      COUNT(*) AS count
+    FROM requirement_package_items
+    WHERE package_item_status_id IS NOT NULL
+    GROUP BY package_item_status_id
+  `)
   const counts: Record<number, number> = {}
-  for (const row of rows) {
+  for (const row of rows as Array<{
+    count: number
+    statusId: number | null
+  }>) {
     if (row.statusId != null) {
       counts[row.statusId] = row.count
     }
@@ -68,27 +81,28 @@ export async function countLinkedPackageItems(
 }
 
 export async function getLinkedPackageItems(
-  db: Database,
+  db: SqlServerDatabase,
   statusId: number,
 ): Promise<LinkedPackageRow[]> {
-  return db
-    .select({
-      packageId: requirementPackages.id,
-      packageName: requirementPackages.name,
-      requirementCount: sql<number>`COUNT(*)`.as('requirement_count'),
-    })
-    .from(requirementPackageItems)
-    .innerJoin(
-      requirementPackages,
-      eq(requirementPackages.id, requirementPackageItems.packageId),
-    )
-    .where(eq(requirementPackageItems.packageItemStatusId, statusId))
-    .groupBy(requirementPackages.id, requirementPackages.name)
-    .orderBy(requirementPackages.name)
+  return db.query(
+    `
+      SELECT
+        requirement_packages.id AS packageId,
+        requirement_packages.name AS packageName,
+        COUNT(*) AS requirementCount
+      FROM requirement_package_items
+      INNER JOIN requirement_packages
+        ON requirement_packages.id = requirement_package_items.package_id
+      WHERE requirement_package_items.package_item_status_id = @0
+      GROUP BY requirement_packages.id, requirement_packages.name
+      ORDER BY requirement_packages.name ASC
+    `,
+    [statusId],
+  )
 }
 
 export async function createPackageItemStatus(
-  db: Database,
+  db: SqlServerDatabase,
   data: {
     nameSv: string
     nameEn: string
@@ -98,22 +112,22 @@ export async function createPackageItemStatus(
     sortOrder?: number
   },
 ): Promise<PackageItemStatusRow> {
-  const [row] = await db
-    .insert(packageItemStatuses)
-    .values({
+  const repository = db.getRepository(packageItemStatusEntity)
+  const row = await repository.save(
+    repository.create({
       nameSv: data.nameSv,
       nameEn: data.nameEn,
       descriptionSv: data.descriptionSv ?? null,
       descriptionEn: data.descriptionEn ?? null,
       color: data.color,
       sortOrder: data.sortOrder ?? 0,
-    })
-    .returning()
-  return row
+    }),
+  )
+  return map(row)
 }
 
 export async function updatePackageItemStatus(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
   data: {
     nameSv?: string
@@ -128,18 +142,27 @@ export async function updatePackageItemStatus(
   const isLockedSortOrder =
     id === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
     id === DEVIATED_PACKAGE_ITEM_STATUS_ID
-  const safeData = isLockedSortOrder ? rest : { ...rest, sortOrder }
-  const [updated] = await db
-    .update(packageItemStatuses)
-    .set(safeData)
-    .where(eq(packageItemStatuses.id, id))
-    .returning()
-  return updated
+  const safeSortOrder = isLockedSortOrder ? undefined : sortOrder
+
+  const patch: Partial<PackageItemStatusEntity> = {}
+  if (rest.nameSv !== undefined) patch.nameSv = rest.nameSv
+  if (rest.nameEn !== undefined) patch.nameEn = rest.nameEn
+  if (rest.descriptionSv !== undefined) patch.descriptionSv = rest.descriptionSv
+  if (rest.descriptionEn !== undefined) patch.descriptionEn = rest.descriptionEn
+  if (rest.color !== undefined) patch.color = rest.color
+  if (safeSortOrder !== undefined) patch.sortOrder = safeSortOrder
+
+  const repository = db.getRepository(packageItemStatusEntity)
+  if (Object.keys(patch).length > 0) {
+    await repository.update(id, patch)
+  }
+  const row = await repository.findOne({ where: { id } })
+  return row ? map(row) : undefined
 }
 
 export async function deletePackageItemStatus(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
 ): Promise<void> {
-  await db.delete(packageItemStatuses).where(eq(packageItemStatuses.id, id))
+  await db.getRepository(packageItemStatusEntity).delete(id)
 }

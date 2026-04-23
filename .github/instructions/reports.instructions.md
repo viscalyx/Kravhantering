@@ -6,9 +6,9 @@ applyTo: "{lib/reports/**/*,components/reports/**/*,app/[locale]/requirements/re
 
 ## Architecture
 
-- Shared template + dual renderer pattern
-- `lib/reports/` is engine-agnostic: no imports from `components/reports/` or `@react-pdf/renderer`
-- Each engine is independently removable
+- Shared template + dual renderer pattern.
+- `lib/reports/` is engine-agnostic: no imports from `components/reports/` or `@react-pdf/renderer`.
+- Each engine is independently removable.
 
 ## Changing Report Layout
 

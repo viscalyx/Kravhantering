@@ -2,9 +2,14 @@
 
 This document describes the complete database schema for
 **Kravkatalog** — a requirements management system built
-on SQLite using Drizzle ORM.
+on Microsoft SQL Server using TypeORM.
 
-The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
+The schema is defined by TypeORM entities under
+[`lib/typeorm/entities/`](../lib/typeorm/entities/). Migrations live in
+[`typeorm/migrations/`](../typeorm/migrations/) and seed data in
+[`typeorm/seed.mjs`](../typeorm/seed.mjs). The developer setup, browse
+workflow, and CLI reference live in
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md).
 
 ---
 
@@ -17,7 +22,6 @@ The schema is defined in [`drizzle/schema.ts`](../drizzle/schema.ts).
 5. [Core Domain Tables](#core-domain-tables)
 6. [Join / Bridge Tables](#join--bridge-tables)
 7. [Status Workflow](#status-workflow)
-8. [Write-Ahead Logging (WAL)](#write-ahead-logging-wal)
 
 ---
 
@@ -82,7 +86,7 @@ Apply these rules to all schema objects.
 <!-- markdownlint-disable MD013 -->
 | Rule | Exception | Rationale |
 | ---- | --------- | --------- |
-| 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. SQLite does not support adding a PK via `ALTER TABLE`. |
+| 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. |
 | 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the usage-scenarios join table above. |
 | 4 | `package_local_requirement_usage_scenarios` uses composite PK `(package_local_requirement_id, usage_scenario_id)` instead of a single `id` | Same rationale as the version-based usage-scenarios join table above. |
 | 4 | `package_local_requirement_norm_references` uses composite PK `(package_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
@@ -1321,22 +1325,21 @@ its purpose and the table/column(s) it covers.
 
 ### Named Foreign Key Constraints
 
-Most foreign keys use Drizzle's inline `.references()`
-with auto-generated constraint names. This is the
-standard pattern for simple single-column FKs with
-default `NO ACTION` semantics.
+Most foreign keys are declared on TypeORM `@ManyToOne` /
+`@JoinColumn` decorators with auto-generated constraint
+names. This is the standard pattern for simple
+single-column FKs with default `NO ACTION` semantics.
 
-Use the table-level `foreignKey({ name })` builder
-when a constraint needs a stable, human-readable name
-— for example composite FKs, `ON DELETE CASCADE`, or
-other non-default referential actions.
-`ReferenceConfig.actions` (`.references()`) has no
-`constraintName` option in drizzle-orm ≥ 0.45, so
-inline `.references()` **must not** be used when a
-named constraint is needed.
+Use the `foreignKeyConstraintName` option on TypeORM
+`@JoinColumn`/`@JoinTable` decorators (or an explicit
+`ALTER TABLE ... ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ...`
+in the migration) when a constraint needs a stable,
+human-readable name — for example composite FKs,
+`ON DELETE CASCADE`, or other non-default referential
+actions.
 
-The following table lists the constraints that use
-explicit `foreignKey({ name })`:
+The following table lists the constraints that are
+explicitly named:
 
 <!-- markdownlint-disable MD013 -->
 | Constraint Name | Table | Column(s) | References | On Delete |
@@ -1461,30 +1464,3 @@ graph LR
 ```
 <!-- markdownlint-enable MD013 -->
 <!-- cSpell:enable -->
----
-
-## Write-Ahead Logging (WAL)
-
-WAL is already active at every level of the stack —
-the app enables it for file-backed SQLite databases and the proxy service keeps
-the backing database in WAL mode.
-
-<!-- markdownlint-disable MD013 -->
-| Surface | WAL status | Configurable? |
-| --- | --- | --- |
-| SQLite proxy service (local dev / CI) | Enabled by the proxy on startup | Yes, in service code |
-| Local file-backed `better-sqlite3` DB | Enabled by the app on startup | Yes, in app code |
-| `better-sqlite3 :memory:` (unit tests) | Not applicable (in-memory) | No |
-<!-- markdownlint-enable MD013 -->
-
-**Proxy-backed dev/CI:** `scripts/sqlite_http_server.py` opens the shared
-SQLite file with `PRAGMA journal_mode = WAL`, so the separate DB service uses
-WAL for normal local development and prod-like test runs.
-
-**Direct file mode:** `lib/db.ts` also enables WAL when `DATABASE_URL` points
-to a local SQLite file. This is mainly useful for focused debugging or tests;
-the default contributor workflow uses the separate DB service.
-
-**Unit tests:** All test databases use `new BetterSqlite3(':memory:')`.
-WAL mode requires a file-based database and cannot be applied to
-in-memory databases.

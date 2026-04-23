@@ -3,14 +3,14 @@ import { getDefaultUiTerminology } from '@/lib/ui-terminology'
 
 const {
   applyUiTerminologyMessagesMock,
-  getRequestDatabaseMock,
+  getRequestSqlServerDataSourceMock,
   getUiTerminologyMock,
 } = vi.hoisted(() => ({
   applyUiTerminologyMessagesMock: vi.fn(baseMessages => ({
     ...baseMessages,
     __dbTerminologyApplied: true,
   })),
-  getRequestDatabaseMock: vi.fn(),
+  getRequestSqlServerDataSourceMock: vi.fn(),
   getUiTerminologyMock: vi.fn(),
 }))
 
@@ -26,7 +26,7 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: getRequestDatabaseMock,
+  getRequestSqlServerDataSource: getRequestSqlServerDataSourceMock,
 }))
 
 vi.mock('@/lib/dal/ui-settings', () => ({
@@ -55,14 +55,14 @@ describe('i18n request config', () => {
       ...baseMessages,
       __dbTerminologyApplied: true,
     }))
-    getRequestDatabaseMock.mockReset()
+    getRequestSqlServerDataSourceMock.mockReset()
     getUiTerminologyMock.mockReset()
     delete (globalThis as { EdgeRuntime?: string }).EdgeRuntime
   })
 
   it('loads database-backed terminology instead of falling back to static messages', async () => {
     const terminology = getDefaultUiTerminology()
-    getRequestDatabaseMock.mockResolvedValueOnce({})
+    getRequestSqlServerDataSourceMock.mockResolvedValueOnce({})
     getUiTerminologyMock.mockResolvedValueOnce(terminology)
 
     const getRequestConfig = (await import('@/i18n/request')).default as ({
@@ -88,7 +88,9 @@ describe('i18n request config', () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    getRequestDatabaseMock.mockRejectedValueOnce(new Error('db unavailable'))
+    getRequestSqlServerDataSourceMock.mockRejectedValueOnce(
+      new Error('db unavailable'),
+    )
 
     try {
       const getRequestConfig = (await import('@/i18n/request')).default as ({

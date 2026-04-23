@@ -1,1 +1,0 @@
-CREATE INDEX `idx_requirement_version_usage_scenarios_usage_scenario_id` ON `requirement_version_usage_scenarios` (`usage_scenario_id`);

@@ -1,6 +1,5 @@
-import { eq } from 'drizzle-orm'
-import { owners } from '@/drizzle/schema'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import { type OwnerEntity, ownerEntity } from '@/lib/typeorm/entities'
 
 export interface Owner {
   email: string
@@ -9,72 +8,87 @@ export interface Owner {
   lastName: string
 }
 
-export async function listOwners(db: Database): Promise<Owner[]> {
-  const rows = await db.query.owners.findMany({
-    orderBy: [owners.lastName, owners.firstName],
+export interface PersistedOwner extends Owner {
+  createdAt: string
+  updatedAt: string
+}
+
+function mapOwnerRecord(
+  owner: Pick<OwnerEntity, 'email' | 'firstName' | 'id' | 'lastName'>,
+): Owner {
+  return {
+    email: owner.email,
+    firstName: owner.firstName,
+    id: owner.id,
+    lastName: owner.lastName,
+  }
+}
+
+function mapPersistedOwner(owner: OwnerEntity): PersistedOwner {
+  return {
+    ...mapOwnerRecord(owner),
+    createdAt: owner.createdAt.toISOString(),
+    updatedAt: owner.updatedAt.toISOString(),
+  }
+}
+
+export async function listOwners(db: SqlServerDatabase): Promise<Owner[]> {
+  const rows = await db.getRepository(ownerEntity).find({
+    order: {
+      lastName: 'ASC',
+      firstName: 'ASC',
+    },
   })
-  return rows.map(o => ({
-    id: o.id,
-    firstName: o.firstName,
-    lastName: o.lastName,
-    email: o.email,
-  }))
+  return rows.map(mapOwnerRecord)
 }
 
 export async function getOwnerById(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
 ): Promise<Owner | null> {
-  const row = await db.query.owners.findFirst({
-    where: eq(owners.id, id),
-  })
-  if (!row) return null
-  return {
-    id: row.id,
-    firstName: row.firstName,
-    lastName: row.lastName,
-    email: row.email,
-  }
+  const row = await db.getRepository(ownerEntity).findOne({ where: { id } })
+  return row ? mapOwnerRecord(row) : null
 }
 
 export async function createOwner(
-  db: Database,
+  db: SqlServerDatabase,
   data: { firstName: string; lastName: string; email: string },
-) {
-  const [row] = await db
-    .insert(owners)
-    .values({
+): Promise<PersistedOwner> {
+  const repository = db.getRepository(ownerEntity)
+  const now = new Date()
+  const row = await repository.save(
+    repository.create({
+      createdAt: now,
+      email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
-      email: data.email,
-    })
-    .returning()
-  return row
+      updatedAt: now,
+    }),
+  )
+  return mapPersistedOwner(row)
 }
 
 export async function updateOwner(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
   data: { firstName?: string; lastName?: string; email?: string },
 ): Promise<Owner | null> {
-  const rows = await db
-    .update(owners)
-    .set({
-      ...data,
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(owners.id, id))
-    .returning()
-  if (!rows[0]) return null
-  return {
-    id: rows[0].id,
-    firstName: rows[0].firstName,
-    lastName: rows[0].lastName,
-    email: rows[0].email,
+  const repository = db.getRepository(ownerEntity)
+  const result = await repository.update(id, {
+    ...data,
+    updatedAt: new Date(),
+  })
+  if (!result.affected) {
+    return null
   }
+  const row = await repository.findOne({ where: { id } })
+  return row ? mapOwnerRecord(row) : null
 }
 
-export async function deleteOwner(db: Database, id: number): Promise<boolean> {
-  const rows = await db.delete(owners).where(eq(owners.id, id)).returning()
-  return rows.length > 0
+export async function deleteOwner(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<boolean> {
+  const result = await db.getRepository(ownerEntity).delete(id)
+  return (result.affected ?? 0) > 0
 }

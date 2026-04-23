@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { listCategories } from '@/lib/dal/requirement-categories'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const categories = await listCategories(db)
   return NextResponse.json({ categories })
 }

@@ -6,7 +6,8 @@ services:
       context: ..
       dockerfile: .devcontainer/Dockerfile
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       # Mount the root folder that contains .git
       - ..:/workspace:cached
@@ -17,50 +18,43 @@ services:
         target: /home/vscode/.codex
         bind:
           create_host_path: true
-      # Mount the shared SQLite volume read-only so VS Code tools can inspect the DB.
-      - sqlite-db-data:/var/lib/kravhantering:ro
     # Keep container running
     command: sleep infinity
-    # Set environment variables
+    env_file:
+    - path: .env
+      required: false
     environment:
-      - DATABASE_URL=http://db:9000
-      - NODE_ENV=development
-      - NEXT_TELEMETRY_DISABLED=1
+      DATABASE_READONLY_PASSWORD_ENV: ${DATABASE_READONLY_PASSWORD_ENV:-DATABASE_READONLY_PASSWORD}
+      DB_TRUST_SERVER_CERTIFICATE: ${DB_TRUST_SERVER_CERTIFICATE:-true}
+      NODE_ENV: ${NODE_ENV:-development}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
     # Ports are forwarded via devcontainer.json forwardPorts (VS Code handles this)
     # Proper init system for signal handling and zombie process reaping
     init: true
 
   db:
-    image: python:3.12-slim
-    working_dir: /workspace
-    command:
-      [
-        "python3",
-        "/workspace/scripts/sqlite_http_server.py",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "9000",
-        "--db-file",
-        "/var/lib/kravhantering/devcontainer.sqlite"
-      ]
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    env_file:
+    - path: .env
+      required: false
     environment:
-      - PYTHONUNBUFFERED=1
-      - SQLITE_PROXY_QUIET=1
+      ACCEPT_EULA: ${ACCEPT_EULA:-Y}
+      MSSQL_PID: ${MSSQL_PID:-Developer}
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Copy .devcontainer/.env.example to .devcontainer/.env and set MSSQL_SA_PASSWORD}
     healthcheck:
       test:
         [
-          "CMD",
-          "python3",
-          "-c",
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9000/healthz', timeout=2).read()"
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"
         ]
-      interval: 2s
-      retries: 30
-      timeout: 2s
+      interval: 5s
+      retries: 20
+      start_period: 10s
+      timeout: 5s
+    ports:
+      - "${SQLSERVER_HOST_PORT:-1433}:1433"
     volumes:
-      - ..:/workspace:cached,ro
-      - sqlite-db-data:/var/lib/kravhantering
+      - sqlserver-devcontainer-data:/var/opt/mssql
 
 volumes:
-  sqlite-db-data:
+  sqlserver-devcontainer-data:

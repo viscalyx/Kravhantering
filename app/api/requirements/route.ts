@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
@@ -15,7 +15,7 @@ import {
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
 export async function GET(request: NextRequest) {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const uiSettings = createUiSettingsLoader(db)
   const service = createRequirementsService(db, { uiSettings })
   const context = createRequestContext(request, 'rest')
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
   const context = createRequestContext(request, 'rest')
   const body = (await request.json()) as Record<string, unknown>

@@ -29,8 +29,9 @@ For admin-managed UI terminology and default column settings, see
 ## File Map
 
 - `app/api/mcp/route.ts`
-  Server entrypoint that builds the DB handle via `getRequestDatabase()` and
-  forwards the request into the MCP transport handler.
+  Server entrypoint that builds the DB handle via
+  `getRequestSqlServerDataSource()` and forwards the request into the MCP
+  transport handler.
 - `lib/mcp/http.ts`
   Creates a fresh `WebStandardStreamableHTTPServerTransport` for each request
   and connects the server instance.
@@ -316,8 +317,6 @@ When implementing auth:
 - populate actor data at the HTTP edge
 - enforce authorization in the shared service
 
-See [TODO-mcp-server-auth-plan.md](./TODO-mcp-server-auth-plan.md).
-
 ## How To Add Or Change Functionality
 
 ### Change Behavior
@@ -373,6 +372,11 @@ Manual verification should still include:
 
 ## Local Development Notes
 
+The MCP server uses the same SQL Server + TypeORM stack as the rest of the
+app. See
+[sql-server-developer-workflow.md](./sql-server-developer-workflow.md)
+for the full setup.
+
 - Start the DB service with `npm run db:up` and prepare it with
   `npm run db:setup`.
 - Start the app with `npm run dev`.
@@ -396,5 +400,4 @@ Manual verification should still include:
 ## Related Docs
 
 - [mcp-server-user-guide.md](./mcp-server-user-guide.md)
-- [TODO-mcp-server-auth-plan.md](./TODO-mcp-server-auth-plan.md)
 - [requirements-mcp-evaluation.xml](./requirements-mcp-evaluation.xml)

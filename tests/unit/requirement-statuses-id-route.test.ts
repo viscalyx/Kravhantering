@@ -3,10 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockUpdateStatus = vi.fn()
 const mockDeleteStatus = vi.fn()
-const getRequestDatabaseMock = vi.hoisted(() => vi.fn(() => ({})))
+const getRequestSqlServerDataSourceMock = vi.hoisted(() => vi.fn(() => ({})))
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: getRequestDatabaseMock,
+  getRequestSqlServerDataSource: getRequestSqlServerDataSourceMock,
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({
@@ -90,7 +90,7 @@ describe('requirement-statuses/[id] route', () => {
     const res = await PUT(req, makeParams('abc'))
 
     expect(res.status).toBe(400)
-    expect(getRequestDatabaseMock).not.toHaveBeenCalled()
+    expect(getRequestSqlServerDataSourceMock).not.toHaveBeenCalled()
     expect(mockUpdateStatus).not.toHaveBeenCalled()
   })
 
@@ -100,7 +100,7 @@ describe('requirement-statuses/[id] route', () => {
     const res = await DELETE(req, makeParams('abc'))
 
     expect(res.status).toBe(400)
-    expect(getRequestDatabaseMock).not.toHaveBeenCalled()
+    expect(getRequestSqlServerDataSourceMock).not.toHaveBeenCalled()
     expect(mockDeleteStatus).not.toHaveBeenCalled()
   })
 })

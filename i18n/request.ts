@@ -4,7 +4,7 @@ import {
   formatUiSettingsLoadError,
   getUiTerminology,
 } from '@/lib/dal/ui-settings'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { applyUiTerminologyMessages, type UiLocale } from '@/lib/ui-terminology'
 
 function isEdgeRuntime() {
@@ -29,7 +29,9 @@ export default getRequestConfig(async ({ requestLocale }) => {
   }
 
   try {
-    const terminology = await getUiTerminology(await getRequestDatabase())
+    const terminology = await getUiTerminology(
+      await getRequestSqlServerDataSource(),
+    )
 
     return {
       locale,

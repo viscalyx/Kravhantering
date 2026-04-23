@@ -4,10 +4,10 @@ import {
   createRiskLevel,
   listRiskLevels,
 } from '@/lib/dal/risk-levels'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const [riskLevels, counts] = await Promise.all([
     listRiskLevels(db),
     countLinkedRequirements(db),
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const db = await getRequestDatabase()
+    const db = await getRequestSqlServerDataSource()
     const riskLevel = await createRiskLevel(db, body)
     return NextResponse.json(riskLevel, { status: 201 })
   } catch (error) {

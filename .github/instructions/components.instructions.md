@@ -14,12 +14,9 @@ applyTo: 'components/**/*.tsx'
 
 ## Client Islands
 
-Components in `components/` are typically `'use client'` islands that receive data as props from server page components in `app/`. Keep them focused on interactivity — data fetching and heavy processing belong in the server page.
-
-Examples:
-
-- `KravkatalogClient` — server page renders it with no props; fetches requirement list client-side, handles filtering, pagination, and export
-- `RequirementDetailClient` — receives `requirementId` from server page, handles status transitions, editing, and version history
+- Components in `components/` are typically `'use client'` islands that receive data as props from server pages in `app/`.
+- Keep them focused on interactivity. Data fetching and heavy processing belong in the server page.
+- Reference examples: `KravkatalogClient`, `RequirementDetailClient`.
 
 ## Required
 
@@ -27,7 +24,8 @@ Examples:
 
 ## Animation Patterns
 
-Use Framer Motion with `AnimatePresence` for enter/exit transitions (e.g. modals, overlays):
+- Use Framer Motion with `AnimatePresence` for enter/exit transitions (modals, overlays).
+- See `ConfirmModal.tsx` for a reference implementation.
 
 ```tsx
 <AnimatePresence>
@@ -43,8 +41,6 @@ Use Framer Motion with `AnimatePresence` for enter/exit transitions (e.g. modals
   )}
 </AnimatePresence>
 ```
-
-See `ConfirmModal.tsx` for a full example.
 
 ## Images
 

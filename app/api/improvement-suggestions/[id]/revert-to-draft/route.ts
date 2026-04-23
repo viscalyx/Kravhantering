@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { revertToDraft } from '@/lib/dal/improvement-suggestions'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -14,7 +14,7 @@ export async function POST(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
 
   try {
     await revertToDraft(db, numericId)

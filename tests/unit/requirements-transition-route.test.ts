@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockTransitionRequirement = vi.fn()
 
 vi.mock('@/lib/db', () => ({
-  getRequestDatabase: () => ({}),
+  getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({

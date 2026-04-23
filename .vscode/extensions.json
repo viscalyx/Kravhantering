@@ -28,9 +28,10 @@
     "usernamehw.errorlens",
     "bierner.markdown-mermaid",
     "bpruitt-goddard.mermaid-markdown-syntax-highlighting",
-    "qwtel.sqlite-viewer",
+    "mtxr.sqltools",
+    "mtxr.sqltools-driver-mssql",
     "ms-python.python",
-    "ms-python.debugpy"
+    "ms-python.debugpy",
 
     // GitHub Copilot
     "GitHub.copilot-chat",
@@ -38,5 +39,6 @@
 
     // Testing
     "ms-playwright.playwright",
-    "vitest.explorer"  ]
+    "vitest.explorer"
+  ]
 }

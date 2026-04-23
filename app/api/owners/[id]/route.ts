@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { deleteOwner, updateOwner } from '@/lib/dal/owners'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
@@ -13,7 +13,7 @@ export async function PUT(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const raw: unknown = await request.json()
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -50,7 +50,7 @@ export async function DELETE(
   if (!Number.isInteger(numericId) || numericId < 1) {
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
-  const db = await getRequestDatabase()
+  const db = await getRequestSqlServerDataSource()
   const deleted = await deleteOwner(db, numericId)
   if (!deleted) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -1,57 +1,71 @@
-import { eq } from 'drizzle-orm'
-import { packageLifecycleStatuses } from '@/drizzle/schema'
-import type { Database } from '@/lib/db'
+import type { SqlServerDatabase } from '@/lib/db'
+import {
+  type PackageLifecycleStatusEntity,
+  packageLifecycleStatusEntity,
+} from '@/lib/typeorm/entities'
 
-export async function listPackageLifecycleStatuses(db: Database) {
-  return db.query.packageLifecycleStatuses.findMany({
-    orderBy: [packageLifecycleStatuses.nameSv],
-  })
+export interface PackageLifecycleStatusRow {
+  id: number
+  nameEn: string
+  nameSv: string
+}
+
+function map(row: PackageLifecycleStatusEntity): PackageLifecycleStatusRow {
+  return { id: row.id, nameEn: row.nameEn, nameSv: row.nameSv }
+}
+
+export async function listPackageLifecycleStatuses(
+  db: SqlServerDatabase,
+): Promise<PackageLifecycleStatusRow[]> {
+  const rows = await db
+    .getRepository(packageLifecycleStatusEntity)
+    .find({ order: { nameSv: 'ASC' } })
+  return rows.map(map)
 }
 
 export async function createPackageLifecycleStatus(
-  db: Database,
+  db: SqlServerDatabase,
   data: { nameSv: string; nameEn: string },
-) {
+): Promise<PackageLifecycleStatusRow> {
   const nameSv = data.nameSv.trim()
   const nameEn = data.nameEn.trim()
   if (!nameSv || !nameEn) {
     throw new Error('nameSv and nameEn are required')
   }
-  const [row] = await db
-    .insert(packageLifecycleStatuses)
-    .values({ nameSv, nameEn })
-    .returning()
-  return row
+  const repository = db.getRepository(packageLifecycleStatusEntity)
+  const row = await repository.save(repository.create({ nameSv, nameEn }))
+  return map(row)
 }
 
 export async function updatePackageLifecycleStatus(
-  db: Database,
+  db: SqlServerDatabase,
   id: number,
   data: { nameSv?: string; nameEn?: string },
-) {
-  const trimmed: { nameSv?: string; nameEn?: string } = {}
+): Promise<PackageLifecycleStatusRow | undefined> {
+  const patch: Partial<PackageLifecycleStatusEntity> = {}
   if (data.nameSv !== undefined) {
     const v = data.nameSv.trim()
     if (!v) throw new Error('nameSv must not be empty')
-    trimmed.nameSv = v
+    patch.nameSv = v
   }
   if (data.nameEn !== undefined) {
     const v = data.nameEn.trim()
     if (!v) throw new Error('nameEn must not be empty')
-    trimmed.nameEn = v
+    patch.nameEn = v
   }
-  const [updated] = await db
-    .update(packageLifecycleStatuses)
-    .set(trimmed)
-    .where(eq(packageLifecycleStatuses.id, id))
-    .returning()
-  return updated
+
+  const repository = db.getRepository(packageLifecycleStatusEntity)
+  if (Object.keys(patch).length > 0) {
+    await repository.update(id, patch)
+  }
+  const row = await repository.findOne({ where: { id } })
+  return row ? map(row) : undefined
 }
 
-export async function deletePackageLifecycleStatus(db: Database, id: number) {
-  const result = await db
-    .delete(packageLifecycleStatuses)
-    .where(eq(packageLifecycleStatuses.id, id))
-    .returning()
-  return result.length
+export async function deletePackageLifecycleStatus(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<number> {
+  const result = await db.getRepository(packageLifecycleStatusEntity).delete(id)
+  return result.affected ?? 0
 }

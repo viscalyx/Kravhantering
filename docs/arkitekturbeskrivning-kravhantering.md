@@ -17,10 +17,16 @@ relevanta för lösningens nuvarande utformning. Varje
 perspektiv riktar sig till de intressenter som anges i
 respektive avsnitt.
 
+> Migreringsstatus: den godkända målarkitekturen är nu
+> **Microsoft SQL Server + TypeORM**. Se
+> [sql-server-developer-workflow.md](./sql-server-developer-workflow.md)
+> för utvecklingsflödet och
+> [database-schema.md](./database-schema.md) för schemat.
+
 **Konventioner:**
 
-- Tekniska produktnamn (Next.js, SQLite, Drizzle
-  ORM etc.) skrivs på engelska enligt branschstandard.
+- Tekniska produktnamn (Next.js, Microsoft SQL Server, TypeORM
+  etc.) skrivs på engelska enligt branschstandard.
 - Mermaid-diagram renderas i GitHub-markdown.
 - ArchiMate-modeller presenteras i ASCII-notation och
   är avsedda att ersättas med verktygsexport.
@@ -58,7 +64,7 @@ graph TB
     end
 
     subgraph "Databas"
-        DB["SQLite-databas<br/>Drizzle ORM"]
+        DB["Microsoft SQL Server<br/>TypeORM"]
     end
 
     subgraph "Utgående format"
@@ -83,13 +89,13 @@ graph TB
 | --- | --- | --- |
 | Användargränssnitt | Next.js 16, React 19, Tailwind CSS 4 | Tvåspråkig webbapplikation med App Router |
 | API-lager | REST-ändpunkter, MCP-server | CRUD, livscykelövergångar, AI-integration |
-| Databas | SQLite via Drizzle ORM | Kravdata, versionshistorik, taxonomi |
+| Databas | Microsoft SQL Server via TypeORM | Kravdata, versionshistorik, taxonomi |
 | Infrastruktur | Node.js-container och separat databastjänst | Lokal utveckling, CI och framtida OpenShift-drift |
 <!-- markdownlint-enable MD013 -->
 
-> **Notera:** Lösningen använder nu en plattformsneutral Next.js- och
-> SQLite-arkitektur. Lokal utveckling och CI kör appen mot en separat
-> databastjänst, och samma runtime-kontrakt kan senare översättas till
+> **Notera:** Lösningen använder en plattformsneutral Next.js- och
+> SQL Server-arkitektur. Lokal utveckling och CI kör appen mot en separat
+> SQL Server-container, och samma runtime-kontrakt kan översättas till
 > OpenShift med separata containrar för applikation och databas.
 
 ### ArchiMate — Översikt (ASCII)
@@ -138,7 +144,7 @@ graph TB
 │             << Technology Layer >>                      │
 │                                                         │
 │  [Technology Service]    [Technology Service]           │
-│   Node.js-container       SQLite DB-tjänst              │
+│   Node.js-container       SQL Server DB-tjänst          │
 │                                                         │
 │  [Technology Service]    [Technology Service]           │
 │   Ingress / statiska      OpenShift-kompatibel drift    │
@@ -567,8 +573,8 @@ interna applikationssambanden:
 │                    └───────────┬────────────┘                 │
 │                                │                              │
 │                    ┌───────────▼────────────┐                 │
-│                    │   SQLite DB-tjänst     │                 │
-│                    │   (proxy + SQLite)     │                 │
+│                    │   SQL Server DB-tjänst │                 │
+│                    │   (mssql container)    │                 │
 │                    └────────────────────────┘                 │
 │                                                               │
 │  << Application Interfaces >>                                 │
@@ -614,9 +620,10 @@ lib/
   requirements/          Affärslogik (service, auth, errors)
   mcp/                   MCP-serverkonfiguration
   reports/               Rapportmallar och datahämtning
-drizzle/
-  schema.ts              Databasschema (Drizzle ORM)
-  seed.sql               Testdata
+lib/typeorm/entities/    Databasschema (TypeORM-entiteter)
+typeorm/
+  migrations/            TypeORM-migreringar
+  seed.mjs               Testdata
   migrations/            SQL-migreringar
 messages/
   en.json                Engelska översättningar
@@ -639,8 +646,8 @@ mönster:
    med en modul per databastabell (t.ex.
    `requirements.ts`, `owners.ts`,
    `requirement-areas.ts`).
-4. **Databaslager** — Drizzle ORM-schema i
-   `drizzle/schema.ts` med 15+ tabeller och
+4. **Databaslager** — TypeORM-entiteter under
+   `lib/typeorm/entities/` med 15+ tabeller och
    explicita relationer.
 
 ### Datamodell — kärnrelationer
@@ -722,19 +729,20 @@ Publicerad > Arkiverad > Granskning > Utkast.
 
 Kravhantering använder nu en **självhostad Next.js-runtime** med ett tydligt
 miljövariabelkontrakt för databasåtkomst. Lokal utveckling och CI kör appen
-mot en separat SQLite-proxytjänst, och målbilden för produktion är en
+mot en separat SQL Server-container, och målbilden för produktion är en
 containerbaserad deployment på **OpenShift**.
 
-> **Plattformsoberoende:** Applikationen bygger på Next.js, SQLite och Drizzle
-> ORM. Det gör att samma affärslogik kan köras lokalt, i CI och senare i
-> OpenShift så länge runtime-miljön levererar en Node.js-process och ett
+> **Plattformsoberoende:** Applikationen bygger på Next.js, Microsoft SQL
+> Server och TypeORM. Det gör att samma affärslogik kan köras lokalt, i CI
+> och senare i OpenShift så länge runtime-miljön levererar en Node.js-process
+> och ett
 > `DATABASE_URL` till en kompatibel databastjänst.
 
 <!-- markdownlint-disable MD013 -->
 | Tjänst | Användning |
 | --- | --- |
 | Next.js app-container | Kör webbapplikationen via `next dev` eller `next start` |
-| SQLite DB-tjänst | Exponerar SQLite via en enkel HTTP-proxy i dev/CI |
+| SQL Server DB-tjänst | Microsoft SQL Server-container för dev/CI |
 | Ingress / statiska filer | Exponerar appen och serverar byggda tillgångar |
 <!-- markdownlint-enable MD013 -->
 
@@ -773,7 +781,7 @@ Container deployment / ingress
 <!-- markdownlint-disable MD013 -->
 | Bindning | Typ | Beskrivning |
 | --- | --- | --- |
-| `DATABASE_URL` | URL / anslutningssträng | Databasanslutning till SQLite-tjänst eller fil |
+| `DATABASE_URL` | URL / anslutningssträng | SQL Server-anslutningssträng (mssql://) |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Sträng | Nyckel för server actions i flerinstansmiljöer |
 | `OPENROUTER_API_KEY` | Sträng | AI-integration för kravgenerering |
 <!-- markdownlint-enable MD013 -->
@@ -867,7 +875,7 @@ Ubuntu 24.04 med följande förinstallerade verktyg:
 | Biome | 2.4 | Linting och formatering |
 | cSpell | 9.7 | Stavningskontroll (sv + en) |
 | markdownlint | — | Markdown-kvalitet |
-| SQLite proxy service | Python 3.12-baserad container | Lokal databastjänst |
+| Microsoft SQL Server | mssql/server image | Lokal databastjänst |
 
 ### Testramverk
 
@@ -903,17 +911,17 @@ npm run test:integration:prodlike Mot byggd version
 
 ### Lokal databashantering
 
-Utvecklare arbetar mot en separat lokal SQLite-tjänst:
+Utvecklare arbetar mot en separat lokal SQL Server-container:
 
 ```text
 npm run db:up
-  └── Starta SQLite proxy service-container
+  └── Starta lokal SQL Server-container
 
 npm run db:setup
   ├── Vänta på databastjänsten
   ├── Rensa befintlig databas
   ├── Applicera migreringar
-  └── Tilldela testdata (drizzle/seed.sql)
+  └── Tilldela testdata (typeorm/seed.mjs)
 ```
 
 Testdata innehåller 367 krav fördelade på tio
@@ -944,9 +952,10 @@ informationssäkerhetsåtgärder i nuvarande version:
 
 #### Skydd mot injektionsattacker
 
-- **Parameteriserade frågor** — Drizzle ORM
-  genererar parameteriserade SQL-frågor. Ingen rå
-  SQL-interpolering förekommer i applikationen.
+- **Parameteriserade frågor** — TypeORM-repositories och
+  QueryBuilder genererar parameteriserade SQL-frågor. Rå
+  SQL används endast med bundna parametrar; ingen
+  sträng-interpolering av användarinmatning förekommer.
 - **Content Security Policy** — Nonce-baserad CSP
   per förfrågan förhindrar obehörig skriptkörning
   (XSS). Produktionsmiljön kräver nonce för alla
@@ -991,7 +1000,7 @@ utökade säkerhetsåtgärder:
 ---
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:words driftplattformar plattformskrav Turso begärandeloggning Självhostad -->
+<!-- cSpell:words driftplattformar plattformskrav begärandeloggning Självhostad -->
 <!-- markdownlint-enable MD013 -->
 
 ## 10. Infrastruktur- och nätperspektiv
@@ -1002,7 +1011,7 @@ utökade säkerhetsåtgärder:
 
 ### Plattformskrav
 
-Eftersom lösningen nu bygger på ett generellt Next.js- och SQLite-kontrakt
+Eftersom lösningen bygger på ett generellt Next.js- och SQL Server-kontrakt
 beskriver detta perspektiv de **generella infrastrukturkrav** som gäller
 oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 
@@ -1019,13 +1028,11 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 
 #### Databas
 
-- **SQLite-kompatibel databas** — applikationen
-  använder Drizzle ORM med SQLite-dialekt.
-  Alternativ inkluderar:
-  - separat SQLite-proxytjänst (nuvarande utvecklings- och CI-flöde)
-  - Turso (libSQL)
-  - lokal SQLite-fil för riktad felsökning
-  - framtida byte till annan databasmotor i ett separat projekt
+- **Microsoft SQL Server-kompatibel databas** — applikationen
+  använder TypeORM mot Microsoft SQL Server. Alternativ inkluderar:
+  - lokal SQL Server-container (utvecklings- och CI-flöde)
+  - managed Azure SQL Database
+  - SQL Server i OpenShift-driftmiljön
 - Databasen lagrar all kravdata, versionshistorik,
   taxonomi och UI-konfiguration.
 - Storleken är begränsad — 367 krav med full
@@ -1067,12 +1074,12 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 <!-- markdownlint-disable MD013 -->
 | Plattform | Compute | Databas | Statiska filer | Adapter |
 | --- | --- | --- | --- | --- |
-| Utveckling / CI (nuvarande) | Node.js-process / container | SQLite proxy service | Inbyggd Next.js-hantering | `next dev` / `next start` |
-| OpenShift (målbild) | Container / Deployment | separat DB-container eller framtida managed DB | Ingress / plattformslagring | `next start` |
-| Vercel | Serverless Functions | Turso / libSQL | Edge Network | Inbyggd Next.js |
-| AWS | ECS / App Runner / Lambda | Turso / libSQL eller RDS via separat dialekt- och schemamigrering | S3 + CloudFront | Node.js-adapter |
-| Azure | App Service / Functions | Turso / libSQL eller Azure SQL via separat dialekt- och schemamigrering | Blob Storage | Node.js-adapter |
-| Självhostad | Node.js-process | Lokal SQLite-fil | Nginx / Caddy | `next start` |
+| Utveckling / CI (nuvarande) | Node.js-process / container | SQL Server-container | Inbyggd Next.js-hantering | `next dev` / `next start` |
+| OpenShift (målbild) | Container / Deployment | SQL Server-container eller managed Azure SQL | Ingress / plattformslagring | `next start` |
+| Vercel | Serverless Functions | managed SQL Server (extern) | Edge Network | Inbyggd Next.js |
+| AWS | ECS / App Runner / Lambda | Amazon RDS for SQL Server | S3 + CloudFront | Node.js-adapter |
+| Azure | App Service / Functions | Azure SQL Database | Blob Storage | Node.js-adapter |
+| Självhostad | Node.js-process | SQL Server-container | Nginx / Caddy | `next start` |
 <!-- markdownlint-enable MD013 -->
 
 > **Byte av plattform** kräver anpassning av
@@ -1083,9 +1090,10 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 > oförändrade.
 >
 > **ER-diagrammet i detta dokument beskriver den nuvarande
-> SQLite/libSQL-modellen.** Om AWS RDS eller Azure SQL väljs
-> krävs ett separat migrationsprojekt för dialekt, schema och
-> driftsansvar innan plattformen kan betraktas som kompatibel.
+> Microsoft SQL Server-modellen.** Om en annan databasmotor (t.ex.
+> PostgreSQL) skulle väljas krävs ett separat migrationsprojekt för
+> dialekt, schema och driftsansvar innan plattformen kan betraktas som
+> kompatibel.
 
 ---
 

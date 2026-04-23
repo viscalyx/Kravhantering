@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { recordPackageLocalDecision } from '@/lib/dal/deviations'
-import { getRequestDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
@@ -47,7 +47,7 @@ export async function POST(
   }
 
   try {
-    const db = await getRequestDatabase()
+    const db = await getRequestSqlServerDataSource()
     await recordPackageLocalDecision(db, deviationId, {
       decision,
       decisionMotivation,
