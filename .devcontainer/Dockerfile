@@ -3,7 +3,7 @@
 # Includes: git, curl, wget, sudo, zsh, and the vscode user
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
-# cSPell:ignore mkcert socat
+# cSPell:ignore mkcert socat bubblewrap
 # Install system dependencies needed for npm native modules (node-gyp).
 # socat is used by the devcontainer postStartCommand to forward
 # 127.0.0.1:8080 inside this container to the Keycloak container
@@ -12,6 +12,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
+        bubblewrap \
         python3 \
         python3-yaml \
         ripgrep \

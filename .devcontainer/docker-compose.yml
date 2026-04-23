@@ -23,6 +23,8 @@ services:
         target: /home/vscode/.codex
         bind:
           create_host_path: true
+      # Keep Codex runtime temp wrappers container-local.
+      - codex-tmp:/home/vscode/.codex/tmp
     # Keep container running
     command: sleep infinity
     env_file:
@@ -86,3 +88,4 @@ services:
 
 volumes:
   sqlserver-devcontainer-data:
+  codex-tmp:

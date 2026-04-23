@@ -22,6 +22,8 @@ services:
         target: /home/vscode/.codex
         bind:
           create_host_path: true
+      # Keep Codex runtime temp wrappers container-local.
+      - codex-tmp:/home/vscode/.codex/tmp
     command: sleep infinity
     env_file:
     # TODO: Even if we reference the parent .env here, we still need to copy it to the elevated folder because docker-compose doesn't seem to support referencing files outside the compose file's directory for env_file.
@@ -100,3 +102,4 @@ services:
 
 volumes:
   sqlserver-elevated-devcontainer-data:
+  codex-tmp:
