@@ -56,7 +56,7 @@ export default defineConfig({
           timeout: 300_000,
           reuseExistingServer: !process.env.CI,
           env: {
-            DATABASE_URL: process.env.DATABASE_URL || 'http://127.0.0.1:9000',
+            ...process.env,
             NODE_ENV: 'production',
           },
         },
