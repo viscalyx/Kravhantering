@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const getAuthConfigMock = vi.fn()
+const getAuthConfigMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/auth/config', () => ({
   getAuthConfig: () => getAuthConfigMock(),

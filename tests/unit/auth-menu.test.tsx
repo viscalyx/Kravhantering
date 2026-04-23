@@ -36,6 +36,22 @@ describe('AuthMenu', () => {
       'href',
       `/api/auth/login?returnTo=${encodeURIComponent('/sv/requirements?tab=open#section-2')}`,
     )
+    expect(signInLink).toHaveAttribute('aria-label', 'signIn')
+    expect(signInLink.className).toContain('min-h-[44px]')
+    expect(signInLink.className).toContain('min-w-[44px]')
+    expect(signInLink.className).toContain('focus-visible:ring-2')
+  })
+
+  it('renders the mobile sign-in affordance with explicit focus and touch-target classes', async () => {
+    fetchMock.mockResolvedValue({ ok: false })
+
+    render(<AuthMenu variant="mobile" />)
+
+    const signInLink = await screen.findByRole('link', { name: 'signIn' })
+    expect(signInLink).toHaveAttribute('aria-label', 'signIn')
+    expect(signInLink.className).toContain('min-h-[44px]')
+    expect(signInLink.className).toContain('min-w-[44px]')
+    expect(signInLink.className).toContain('focus-visible:ring-2')
   })
 
   it('submits logout through fetch with the CSRF header', async () => {
@@ -66,6 +82,16 @@ describe('AuthMenu', () => {
     const signOutButton = await screen.findByRole('button', { name: 'signOut' })
     fireEvent.click(signOutButton)
 
+    const signingOutButton = await screen.findByRole('button', {
+      name: 'signingOut',
+    })
+    expect(signingOutButton).toBeDisabled()
+    expect(signingOutButton).toHaveAttribute('title', 'signingOut')
+    expect(signingOutButton.className).toContain('min-h-[44px]')
+    expect(signingOutButton.className).toContain('min-w-[44px]')
+    expect(signingOutButton.className).toContain('focus-visible:ring-2')
+    expect(signingOutButton.className).toContain('disabled:cursor-not-allowed')
+
     await waitFor(() => {
       expect(fetchMock).toHaveBeenNthCalledWith(
         2,
@@ -85,6 +111,53 @@ describe('AuthMenu', () => {
       ok: true,
       json: async () => ({ redirectTo: 'https://idp.example.test/logout' }),
     })
+  })
+
+  it('keeps user info developer-mode values stable in English', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: 'SE2321000032-admin1',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        roles: ['Admin'],
+        expiresAt: 123,
+      }),
+    })
+
+    render(<AuthMenu variant="desktop" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    fireEvent.click(trigger)
+
+    const dialog = await screen.findByRole('dialog', { name: 'userInfoTitle' })
+    expect(
+      dialog.querySelector('[data-developer-mode-value="user info name"]'),
+    ).not.toBeNull()
+    expect(
+      dialog.querySelector('[data-developer-mode-value="user info email"]'),
+    ).not.toBeNull()
+    expect(
+      dialog.querySelector('[data-developer-mode-value="user info subject"]'),
+    ).not.toBeNull()
+    expect(
+      dialog.querySelector(
+        '[data-developer-mode-value="user info session expires"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      dialog.querySelector(
+        '[data-developer-mode-value="user info userInfoName"]',
+      ),
+    ).toBeNull()
+    expect(dialog.className).toContain('max-w-sm')
+    expect(dialog.className).not.toContain('w-72')
   })
 
   it('keeps the desktop popup open when focus moves into the popup subtree', async () => {

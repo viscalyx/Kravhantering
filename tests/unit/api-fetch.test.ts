@@ -83,4 +83,21 @@ describe('apiFetch', () => {
     expect(headers.get('content-type')).toBe('application/json')
     expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
   })
+
+  it('normalizes invalid X-Requested-With values for mutating requests', async () => {
+    await apiFetch('/api/items', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'fetch',
+      },
+      body: JSON.stringify({ name: 'Item' }),
+    })
+
+    const headers = (fetchMock.mock.calls[0]?.[1] as RequestInit)
+      .headers as Headers
+
+    expect(headers.get('content-type')).toBe('application/json')
+    expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
+  })
 })
