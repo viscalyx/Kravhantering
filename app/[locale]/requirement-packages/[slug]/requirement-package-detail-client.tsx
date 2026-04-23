@@ -31,6 +31,7 @@ import { usePdfDownload } from '@/components/reports/pdf/usePdfDownload'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { exportToCsv } from '@/lib/export-csv'
+import { apiFetch } from '@/lib/http/api-fetch'
 import { fetchPackageItemsForReport } from '@/lib/reports/data/fetch-package-items'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
@@ -311,7 +312,7 @@ export default function KravpaketDetailClient({
   )
 
   const fetchPackageMeta = useCallback(async () => {
-    const res = await fetch(`/api/requirement-packages/${packageSlug}`)
+    const res = await apiFetch(`/api/requirement-packages/${packageSlug}`)
     if (res.ok) {
       setPkg((await res.json()) as PackageMeta)
     }
@@ -323,7 +324,9 @@ export default function KravpaketDetailClient({
     }: {
       throwOnError?: boolean
     } = {}): Promise<boolean> => {
-      const res = await fetch(`/api/requirement-packages/${packageSlug}/items`)
+      const res = await apiFetch(
+        `/api/requirement-packages/${packageSlug}/items`,
+      )
       if (!res.ok) {
         if (throwOnError) {
           throw new Error('Failed to refresh requirement package items')
@@ -351,7 +354,7 @@ export default function KravpaketDetailClient({
         sort: rightSort,
       })
       try {
-        const res = await fetch(`/api/requirements?${params}`)
+        const res = await apiFetch(`/api/requirements?${params}`)
         if (!res.ok) {
           if (throwOnError) {
             throw new Error('Failed to refresh available requirements')
@@ -389,7 +392,7 @@ export default function KravpaketDetailClient({
         offset: availableRows.length,
         sort: rightSort,
       })
-      const res = await fetch(`/api/requirements?${params}`)
+      const res = await apiFetch(`/api/requirements?${params}`)
       if (!res.ok || requestId !== latestAvailableRequestIdRef.current) return
       const data = (await res.json()) as {
         requirements?: RequirementRow[]
@@ -436,13 +439,13 @@ export default function KravpaketDetailClient({
         packageStatusesRes,
         packageItemStatusesRes,
       ] = await Promise.allSettled([
-        fetch('/api/requirement-areas'),
-        fetch('/api/usage-scenarios'),
-        fetch(`/api/requirement-packages/${packageSlug}/needs-references`),
-        fetch('/api/package-responsibility-areas'),
-        fetch('/api/package-implementation-types'),
-        fetch('/api/package-lifecycle-statuses'),
-        fetch('/api/package-item-statuses'),
+        apiFetch('/api/requirement-areas'),
+        apiFetch('/api/usage-scenarios'),
+        apiFetch(`/api/requirement-packages/${packageSlug}/needs-references`),
+        apiFetch('/api/package-responsibility-areas'),
+        apiFetch('/api/package-implementation-types'),
+        apiFetch('/api/package-lifecycle-statuses'),
+        apiFetch('/api/package-item-statuses'),
       ])
       if (areasRes.status === 'fulfilled' && areasRes.value.ok) {
         const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
@@ -518,7 +521,7 @@ export default function KravpaketDetailClient({
     const params = new URLSearchParams()
     params.set('linked', 'true')
     for (const s of statuses) params.append('statuses', String(s))
-    fetch(`/api/norm-references?${params}`)
+    apiFetch(`/api/norm-references?${params}`)
       .then(res => (res.ok ? res.json() : null))
       .then((data: unknown) => {
         const typed = data as {
@@ -535,7 +538,7 @@ export default function KravpaketDetailClient({
 
   // Fetch norm reference options for right panel (always published = status 3)
   useEffect(() => {
-    fetch('/api/norm-references?linked=true&statuses=3')
+    apiFetch('/api/norm-references?linked=true&statuses=3')
       .then(res => (res.ok ? res.json() : null))
       .then((data: unknown) => {
         const typed = data as {
@@ -559,7 +562,7 @@ export default function KravpaketDetailClient({
     setAddModalError(null)
     setOpenHelp(new Set())
     setShowAddModal(true)
-    const res = await fetch(
+    const res = await apiFetch(
       `/api/requirement-packages/${packageSlug}/needs-references`,
     )
     if (res.ok) {
@@ -577,7 +580,7 @@ export default function KravpaketDetailClient({
       return
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
       `/api/requirement-packages/${packageSlug}/needs-references`,
     )
     if (response.ok) {
@@ -602,7 +605,7 @@ export default function KravpaketDetailClient({
       } else if (addNeedsRefMode === 'new' && addNeedsRefText.trim()) {
         body.needsReferenceText = addNeedsRefText.trim()
       }
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/requirement-packages/${packageSlug}/items`,
         {
           method: 'POST',
@@ -642,7 +645,7 @@ export default function KravpaketDetailClient({
 
   const handleCreateLocalRequirement = useCallback(
     async (payload: PackageLocalRequirementSubmitPayload) => {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/requirement-packages/${packageSlug}/local-requirements`,
         {
           method: 'POST',
@@ -685,7 +688,7 @@ export default function KravpaketDetailClient({
         }),
       )
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/requirement-packages/${pkg.id}/items/${encodeURIComponent(itemRef)}`,
           {
             method: 'PATCH',
@@ -743,7 +746,7 @@ export default function KravpaketDetailClient({
       if (itemRefs.length === 0) return
 
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `/api/requirement-packages/${packageSlug}/items`,
           {
             method: 'DELETE',
@@ -821,7 +824,7 @@ export default function KravpaketDetailClient({
           items
             .filter(item => item.itemRef)
             .map(item =>
-              fetch(
+              apiFetch(
                 `/api/package-item-deviations/${encodeURIComponent(item.itemRef ?? '')}`,
                 {
                   method: 'POST',

@@ -13,6 +13,7 @@ import PackageLocalRequirementForm, {
 } from '@/components/PackageLocalRequirementForm'
 import RequirementDetailSections from '@/components/RequirementDetailSections'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 interface PackageLocalRequirementDetail {
   acceptanceCriteria: string | null
@@ -158,7 +159,7 @@ export default function PackageLocalRequirementDetailClient({
     setError(null)
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/requirement-packages/${packageSlug}/local-requirements/${localRequirementId}`,
       )
 
@@ -190,7 +191,7 @@ export default function PackageLocalRequirementDetailClient({
       }
 
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `/api/package-item-deviations/${encodeURIComponent(requirement.itemRef)}`,
           signal ? { signal } : undefined,
         )
@@ -260,7 +261,7 @@ export default function PackageLocalRequirementDetailClient({
 
   const handleEditSubmit = useCallback(
     async (payload: PackageLocalRequirementSubmitPayload) => {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/requirement-packages/${packageSlug}/local-requirements/${localRequirementId}`,
         {
           method: 'PUT',
@@ -299,7 +300,7 @@ export default function PackageLocalRequirementDetailClient({
 
       setIsDeleting(true)
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `/api/requirement-packages/${packageSlug}/local-requirements/${localRequirementId}`,
           {
             method: 'DELETE',
@@ -334,7 +335,7 @@ export default function PackageLocalRequirementDetailClient({
       setDeviationSaving(true)
 
       try {
-        const response = await fetch(input, init)
+        const response = await apiFetch(input, init)
         if (!response.ok) {
           const body = (await response.json().catch(() => null)) as unknown
           setDeviationError(

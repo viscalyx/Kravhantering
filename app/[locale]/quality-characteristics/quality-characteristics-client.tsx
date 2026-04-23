@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const QUALITY_CHARACTERISTICS_HELP: HelpContent = {
   sections: [
@@ -74,8 +75,8 @@ export default function QualityCharacteristicsClient() {
     setLoading(true)
     try {
       const [typesRes, catRes] = await Promise.all([
-        fetch('/api/requirement-types'),
-        fetch('/api/quality-characteristics'),
+        apiFetch('/api/requirement-types'),
+        apiFetch('/api/quality-characteristics'),
       ])
       if (typesRes.ok)
         setTypes(((await typesRes.json()) as { types?: Type[] }).types ?? [])
@@ -103,7 +104,7 @@ export default function QualityCharacteristicsClient() {
       ? `/api/quality-characteristics/${editId}`
       : '/api/quality-characteristics'
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,7 +153,7 @@ export default function QualityCharacteristicsClient() {
       }))
     )
       return
-    const res = await fetch(`/api/quality-characteristics/${id}`, {
+    const res = await apiFetch(`/api/quality-characteristics/${id}`, {
       method: 'DELETE',
     })
     if (!res.ok) {

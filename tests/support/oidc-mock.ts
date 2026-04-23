@@ -29,6 +29,7 @@ type OidcProviderType = new (
 
 export interface MockUser {
   email: string
+  employeeHsaId: string
   family_name: string
   given_name: string
   name: string
@@ -53,14 +54,45 @@ export interface MockIdpHandle {
 }
 
 const DEFAULT_USERS: Record<string, MockUser> = {
-  Author: {
-    sub: 'mock-author-sub',
-    given_name: 'Alice',
-    family_name: 'Author',
-    name: 'Alice Author',
-    email: 'alice.author@example.test',
-    preferred_username: 'alice.author',
-    roles: ['Author'],
+  AreaOwner: {
+    sub: 'mock-areaowner-sub',
+    given_name: 'Olle',
+    family_name: 'AreaOwner',
+    name: 'Olle AreaOwner',
+    email: 'olle.areaowner@example.test',
+    preferred_username: 'olle.areaowner',
+    employeeHsaId: 'SE2321000032-areaowner1',
+    roles: [],
+  },
+  AreaCoauthor: {
+    sub: 'mock-areaco-sub',
+    given_name: 'Cora',
+    family_name: 'CoAuthor',
+    name: 'Cora CoAuthor',
+    email: 'cora.coauthor@example.test',
+    preferred_username: 'cora.coauthor',
+    employeeHsaId: 'SE2321000032-areaco1',
+    roles: [],
+  },
+  PackageResp: {
+    sub: 'mock-pkgresp-sub',
+    given_name: 'Petra',
+    family_name: 'PackageResp',
+    name: 'Petra PackageResp',
+    email: 'petra.packageresp@example.test',
+    preferred_username: 'petra.packageresp',
+    employeeHsaId: 'SE2321000032-pkgresp1',
+    roles: [],
+  },
+  PackageCoauthor: {
+    sub: 'mock-pkgco-sub',
+    given_name: 'Paul',
+    family_name: 'PkgCoAuthor',
+    name: 'Paul PkgCoAuthor',
+    email: 'paul.pkgcoauthor@example.test',
+    preferred_username: 'paul.pkgcoauthor',
+    employeeHsaId: 'SE2321000032-pkgco1',
+    roles: [],
   },
   Reviewer: {
     sub: 'mock-reviewer-sub',
@@ -69,16 +101,8 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Rita Reviewer',
     email: 'rita.reviewer@example.test',
     preferred_username: 'rita.reviewer',
+    employeeHsaId: 'SE2321000032-reviewer1',
     roles: ['Reviewer'],
-  },
-  Steward: {
-    sub: 'mock-steward-sub',
-    given_name: 'Steve',
-    family_name: 'Steward',
-    name: 'Steve Steward',
-    email: 'steve.steward@example.test',
-    preferred_username: 'steve.steward',
-    roles: ['Steward'],
   },
   Admin: {
     sub: 'mock-admin-sub',
@@ -87,7 +111,8 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Ada Admin',
     email: 'ada.admin@example.test',
     preferred_username: 'ada.admin',
-    roles: ['Admin', 'Steward', 'Reviewer', 'Author'],
+    employeeHsaId: 'SE2321000032-admin1',
+    roles: ['Admin'],
   },
   NoRoles: {
     sub: 'mock-noroles-sub',
@@ -96,6 +121,7 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     name: 'Noah NoRoles',
     email: 'noah.noroles@example.test',
     preferred_username: 'noah.noroles',
+    employeeHsaId: 'SE2321000032-noroles1',
     roles: [],
   },
 }
@@ -169,6 +195,7 @@ export async function startMockIdp(
             email_verified: true,
             preferred_username: account.preferred_username,
             roles: account.roles,
+            employeeHsaId: account.employeeHsaId,
           }
         },
       }
@@ -178,11 +205,14 @@ export async function startMockIdp(
       profile: ['name', 'given_name', 'family_name', 'preferred_username'],
       email: ['email', 'email_verified'],
       roles: ['roles'],
+      employeeHsaId: ['employeeHsaId'],
     },
     extraTokenClaims: async (_ctx: unknown, token: { accountId?: string }) => {
       const sub = token.accountId
       const account = Object.values(users).find(u => u.sub === sub)
-      return account ? { roles: account.roles } : {}
+      return account
+        ? { roles: account.roles, employeeHsaId: account.employeeHsaId }
+        : {}
     },
   })
 

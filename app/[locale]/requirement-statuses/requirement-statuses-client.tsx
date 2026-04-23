@@ -8,6 +8,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const REQUIREMENT_STATUSES_HELP: HelpContent = {
   sections: [
@@ -57,7 +58,7 @@ export default function RequirementStatusesClient() {
 
   const fetchStatuses = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/requirement-statuses')
+    const res = await apiFetch('/api/requirement-statuses')
     if (res.ok) {
       const data = (await res.json()) as { statuses?: Status[] }
       setStatuses(data.statuses ?? [])
@@ -78,7 +79,7 @@ export default function RequirementStatusesClient() {
       const url = editId
         ? `/api/requirement-statuses/${editId}`
         : '/api/requirement-statuses'
-      await fetch(url, {
+      await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -115,7 +116,7 @@ export default function RequirementStatusesClient() {
       }))
     )
       return
-    const res = await fetch(`/api/requirement-statuses/${id}`, {
+    const res = await apiFetch(`/api/requirement-statuses/${id}`, {
       method: 'DELETE',
     })
     if (!res.ok) {

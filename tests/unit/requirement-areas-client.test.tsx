@@ -230,9 +230,10 @@ describe('RequirementAreasClient', () => {
     })
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-areas/1', {
-        method: 'DELETE',
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas/1',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
     })
   })
 

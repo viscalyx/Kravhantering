@@ -8,6 +8,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 import {
   DEFAULT_PACKAGE_ITEM_STATUS_ID,
   DEVIATED_PACKAGE_ITEM_STATUS_ID,
@@ -80,7 +81,7 @@ export default function PackageItemStatusesClient() {
   const fetchStatuses = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/package-item-statuses')
+      const res = await apiFetch('/api/package-item-statuses')
       if (res.ok)
         setStatuses(
           ((await res.json()) as { statuses?: PackageItemStatus[] }).statuses ??
@@ -99,7 +100,7 @@ export default function PackageItemStatusesClient() {
     const requestId = ++linkedItemRequestId.current
     setLinkedItemsLoading(true)
     try {
-      const res = await fetch(`/api/package-item-statuses/${statusId}`)
+      const res = await apiFetch(`/api/package-item-statuses/${statusId}`)
       if (res.ok && requestId === linkedItemRequestId.current) {
         const data = (await res.json()) as {
           linkedItems?: LinkedItem[]
@@ -127,7 +128,7 @@ export default function PackageItemStatusesClient() {
       const url = editId
         ? `/api/package-item-statuses/${editId}`
         : '/api/package-item-statuses'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,7 +196,7 @@ export default function PackageItemStatusesClient() {
     setDeleteError(null)
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/package-item-statuses/${id}`, {
+      const res = await apiFetch(`/api/package-item-statuses/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

@@ -26,6 +26,7 @@ import { useMemo, useRef, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 import {
   getOrderedRequirementListColumns,
@@ -195,7 +196,7 @@ export default function AdminClient({
     setTerminologySaveState('saving')
 
     try {
-      const response = await fetch('/api/admin/terminology', {
+      const response = await apiFetch('/api/admin/terminology', {
         body: JSON.stringify({ terminology }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',
@@ -234,7 +235,7 @@ export default function AdminClient({
     setColumnSaveState('saving')
 
     try {
-      const response = await fetch('/api/admin/requirement-columns', {
+      const response = await apiFetch('/api/admin/requirement-columns', {
         body: JSON.stringify({ columns: columnDefaults }),
         headers: { 'Content-Type': 'application/json' },
         method: 'PUT',

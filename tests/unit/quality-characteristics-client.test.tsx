@@ -148,11 +148,13 @@ describe('QualityCharacteristicsClient', () => {
 
     fireEvent.submit(screen.getByRole('button', { name: /common\.save/ }))
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/quality-characteristics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: expect.any(String),
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/quality-characteristics',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.any(String),
+        }),
+      )
     })
   })
 

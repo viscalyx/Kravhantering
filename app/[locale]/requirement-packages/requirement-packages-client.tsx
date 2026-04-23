@@ -15,6 +15,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 import { generatePackageSlug, normalizeSlugInput } from '@/lib/slug'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
@@ -203,7 +204,7 @@ export default function RequirementPackagesClient() {
       }
     }, 200)
     try {
-      const res = await fetch('/api/requirement-packages')
+      const res = await apiFetch('/api/requirement-packages')
       if (!res.ok) {
         const details = await readResponseMessage(res)
         throw new Error(
@@ -243,9 +244,9 @@ export default function RequirementPackagesClient() {
 
   const fetchTaxonomies = useCallback(async () => {
     const [areasRes, typesRes, statusesRes] = await Promise.all([
-      fetch('/api/package-responsibility-areas'),
-      fetch('/api/package-implementation-types'),
-      fetch('/api/package-lifecycle-statuses'),
+      apiFetch('/api/package-responsibility-areas'),
+      apiFetch('/api/package-implementation-types'),
+      apiFetch('/api/package-lifecycle-statuses'),
     ])
     if (areasRes.ok && isMountedRef.current)
       setResponsibilityAreas(
@@ -290,7 +291,7 @@ export default function RequirementPackagesClient() {
       const url = editPkg
         ? `/api/requirement-packages/${editPkg.uniqueId}`
         : '/api/requirement-packages'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -365,7 +366,7 @@ export default function RequirementPackagesClient() {
       return
 
     try {
-      const res = await fetch(`/api/requirement-packages/${pkg.uniqueId}`, {
+      const res = await apiFetch(`/api/requirement-packages/${pkg.uniqueId}`, {
         method: 'DELETE',
       })
 

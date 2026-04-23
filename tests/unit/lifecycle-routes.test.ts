@@ -22,7 +22,14 @@ vi.mock('@/lib/requirements/service', () => ({
 
 vi.mock('@/lib/requirements/auth', () => ({
   createRequestContext: () => ({
-    actor: { id: null, roles: [], source: 'anonymous', isAuthenticated: false },
+    actor: {
+      id: null,
+      displayName: '',
+      hsaId: null,
+      roles: [],
+      source: 'anonymous',
+      isAuthenticated: false,
+    },
     requestId: 'test',
     source: 'rest',
   }),

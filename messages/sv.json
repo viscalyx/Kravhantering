@@ -91,9 +91,7 @@
     "userInfoNoRoles": "Inga roller tilldelade"
   },
   "roles": {
-    "author": "Författare",
     "reviewer": "Granskare",
-    "steward": "Förvaltare",
     "admin": "Administratör"
   },
   "notFound": {

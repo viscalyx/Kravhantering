@@ -14,24 +14,70 @@
   "ssoSessionMaxLifespan": 28800,
   "roles": {
     "realm": [
-      { "name": "Author", "description": "Can author requirements" },
       { "name": "Reviewer", "description": "Can review requirements" },
-      { "name": "Steward", "description": "Can steward requirements" },
       { "name": "Admin", "description": "Full administrative access" }
     ]
   },
   "users": [
     {
-      "username": "alice.author",
+      "username": "olle.areaowner",
       "enabled": true,
-      "email": "alice.author@example.test",
+      "email": "olle.areaowner@example.test",
       "emailVerified": true,
-      "firstName": "Alice",
-      "lastName": "Author",
+      "firstName": "Olle",
+      "lastName": "AreaOwner",
+      "attributes": {
+        "hsaId": ["SE2321000032-areaowner1"]
+      },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
       ],
-      "realmRoles": ["Author"]
+      "realmRoles": []
+    },
+    {
+      "username": "cora.coauthor",
+      "enabled": true,
+      "email": "cora.coauthor@example.test",
+      "emailVerified": true,
+      "firstName": "Cora",
+      "lastName": "CoAuthor",
+      "attributes": {
+        "hsaId": ["SE2321000032-areaco1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
+      "username": "petra.packageresp",
+      "enabled": true,
+      "email": "petra.packageresp@example.test",
+      "emailVerified": true,
+      "firstName": "Petra",
+      "lastName": "PackageResp",
+      "attributes": {
+        "hsaId": ["SE2321000032-pkgresp1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
+      "username": "paul.pkgcoauthor",
+      "enabled": true,
+      "email": "paul.pkgcoauthor@example.test",
+      "emailVerified": true,
+      "firstName": "Paul",
+      "lastName": "PkgCoAuthor",
+      "attributes": {
+        "hsaId": ["SE2321000032-pkgco1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
     },
     {
       "username": "rita.reviewer",
@@ -40,34 +86,13 @@
       "emailVerified": true,
       "firstName": "Rita",
       "lastName": "Reviewer",
+      "attributes": {
+        "hsaId": ["SE2321000032-reviewer1"]
+      },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
       ],
       "realmRoles": ["Reviewer"]
-    },
-    {
-      "username": "steve.steward",
-      "enabled": true,
-      "email": "steve.steward@example.test",
-      "emailVerified": true,
-      "firstName": "Steve",
-      "lastName": "Steward",
-      "credentials": [
-        { "type": "password", "value": "devpass", "temporary": false }
-      ],
-      "realmRoles": ["Steward"]
-    },
-    {
-      "username": "sam.authorsteward",
-      "enabled": true,
-      "email": "sam.authorsteward@example.test",
-      "emailVerified": true,
-      "firstName": "Sam",
-      "lastName": "AuthorSteward",
-      "credentials": [
-        { "type": "password", "value": "devpass", "temporary": false }
-      ],
-      "realmRoles": ["Author", "Steward"]
     },
     {
       "username": "ada.admin",
@@ -76,10 +101,13 @@
       "emailVerified": true,
       "firstName": "Ada",
       "lastName": "Admin",
+      "attributes": {
+        "hsaId": ["SE2321000032-admin1"]
+      },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
       ],
-      "realmRoles": ["Admin", "Steward", "Reviewer", "Author"]
+      "realmRoles": ["Admin"]
     },
     {
       "username": "noah.noroles",
@@ -88,6 +116,9 @@
       "emailVerified": true,
       "firstName": "Noah",
       "lastName": "NoRoles",
+      "attributes": {
+        "hsaId": ["SE2321000032-noroles1"]
+      },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
       ],
@@ -136,6 +167,20 @@
             "claim.name": "roles",
             "jsonType.label": "String"
           }
+        },
+        {
+          "name": "employeeHsaId-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "hsaId",
+            "claim.name": "employeeHsaId",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     },
@@ -163,6 +208,20 @@
             "included.client.audience": "kravhantering-app",
             "id.token.claim": "false",
             "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "mcp-employeeHsaId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "employeeHsaId",
+            "claim.value": "mcp-client:kravhantering-mcp",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
           }
         }
       ]

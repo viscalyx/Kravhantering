@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const REQUIREMENT_AREAS_HELP: HelpContent = {
   sections: [
@@ -62,8 +63,8 @@ export default function RequirementAreasClient() {
     setLoading(true)
     try {
       const [areasRes, ownersRes] = await Promise.all([
-        fetch('/api/requirement-areas'),
-        fetch('/api/owners'),
+        apiFetch('/api/requirement-areas'),
+        apiFetch('/api/owners'),
       ])
       if (areasRes.ok)
         setAreas(((await areasRes.json()) as { areas?: Area[] }).areas ?? [])
@@ -90,7 +91,7 @@ export default function RequirementAreasClient() {
       const url = editId
         ? `/api/requirement-areas/${editId}`
         : '/api/requirement-areas'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,7 +142,7 @@ export default function RequirementAreasClient() {
       }))
     )
       return
-    await fetch(`/api/requirement-areas/${id}`, { method: 'DELETE' })
+    await apiFetch(`/api/requirement-areas/${id}`, { method: 'DELETE' })
     fetchAreas()
   }
 

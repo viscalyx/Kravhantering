@@ -20,12 +20,15 @@ export interface SessionData {
   familyName: string
   /** Given name (`given_name` claim). Required by the claim contract. */
   givenName: string
+  /**
+   * HSA-id from the `employeeHsaId` claim. Required by the claim contract.
+   * Validated against `lib/auth/hsa-id.ts` at login time.
+   */
+  hsaId: string
   /** Raw ID token JWT, used as id_token_hint for IdP-initiated logout. */
   idToken: string
   /** Resolved display name (see `resolveDisplayName`). */
   name: string
-  /** Optional refresh token. Present only if the IdP issues one. */
-  refreshToken?: string
   roles: string[]
   sub: string
 }
@@ -76,4 +79,38 @@ export function isSignedIn(
   session: SessionData | IronSession<SessionData>,
 ): boolean {
   return Boolean((session as Partial<SessionData>).sub)
+}
+
+export interface SessionDiagnostics {
+  reason?: 'invalid_session_cookie'
+  rejected: boolean
+  session: IronSession<SessionData>
+}
+
+/**
+ * Read the session like {@link getSessionFromRequest} but additionally
+ * reports whether a session cookie was present-but-invalid. `iron-session`
+ * silently returns an empty session on decrypt/expiry/tamper failures, so
+ * detection is "cookie present in request but resulting session has no
+ * `sub`". Used by `proxy.ts` to emit the `auth.session.rejected`
+ * security audit event without changing the public read API.
+ */
+export async function getSessionFromRequestWithDiagnostics(
+  request: Request,
+  response: Response,
+): Promise<SessionDiagnostics> {
+  const cfg = getAuthConfig()
+  const cookieHeader = request.headers.get('cookie') ?? ''
+  const cookiePresent = cookieHeader
+    .split(';')
+    .some(part => part.trim().startsWith(`${cfg.cookieName}=`))
+  const session = await getIronSession<SessionData>(
+    request,
+    response,
+    buildSessionOptions(),
+  )
+  if (cookiePresent && !isSignedIn(session)) {
+    return { session, rejected: true, reason: 'invalid_session_cookie' }
+  }
+  return { session, rejected: false }
 }

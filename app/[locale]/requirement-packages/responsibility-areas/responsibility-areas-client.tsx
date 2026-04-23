@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const RESPONSIBILITY_AREAS_HELP: HelpContent = {
   sections: [
@@ -48,7 +49,7 @@ export default function ResponsibilityAreasClient() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/package-responsibility-areas')
+    const res = await apiFetch('/api/package-responsibility-areas')
     if (res.ok)
       setItems(
         ((await res.json()) as { areas?: ResponsibilityArea[] }).areas ?? [],
@@ -66,7 +67,7 @@ export default function ResponsibilityAreasClient() {
     const url = editId
       ? `/api/package-responsibility-areas/${editId}`
       : '/api/package-responsibility-areas'
-    await fetch(url, {
+    await apiFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -95,7 +96,7 @@ export default function ResponsibilityAreasClient() {
       }))
     )
       return
-    await fetch(`/api/package-responsibility-areas/${id}`, {
+    await apiFetch(`/api/package-responsibility-areas/${id}`, {
       method: 'DELETE',
     })
     fetchItems()

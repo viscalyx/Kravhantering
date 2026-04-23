@@ -38,6 +38,7 @@ import SuggestionStepper from '@/components/SuggestionStepper'
 import VersionHistory from '@/components/VersionHistory'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 const REQUIREMENT_DETAIL_HELP: HelpContent = {
@@ -241,7 +242,7 @@ export default function RequirementDetailClient({
     setPackageItemDetail(null)
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/requirement-packages/${encodeURIComponent(
           packageSlug,
         )}/items/${packageItemId}`,
@@ -310,7 +311,9 @@ export default function RequirementDetailClient({
   const fetchDeviations = useCallback(async () => {
     if (!packageItemId) return
     try {
-      const res = await fetch(`/api/package-item-deviations/${packageItemId}`)
+      const res = await apiFetch(
+        `/api/package-item-deviations/${packageItemId}`,
+      )
       if (res.ok) {
         setDeviationError(null)
         const data = (await res.json()) as { deviations: DeviationData[] }
@@ -334,7 +337,7 @@ export default function RequirementDetailClient({
       if (!packageItemId || !motivation) return
       setDeviationSaving(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/package-item-deviations/${packageItemId}`,
           {
             method: 'POST',
@@ -363,7 +366,7 @@ export default function RequirementDetailClient({
       if (!latestDeviation || !motivation) return
       setDeviationSaving(true)
       try {
-        const res = await fetch(`/api/deviations/${latestDeviation.id}`, {
+        const res = await apiFetch(`/api/deviations/${latestDeviation.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ motivation, createdBy: createdBy || null }),
@@ -392,7 +395,7 @@ export default function RequirementDetailClient({
     if (!confirmed) return
     setDeviationSaving(true)
     try {
-      const res = await fetch(`/api/deviations/${latestDeviation.id}`, {
+      const res = await apiFetch(`/api/deviations/${latestDeviation.id}`, {
         method: 'DELETE',
       })
       if (res.ok) {
@@ -409,7 +412,7 @@ export default function RequirementDetailClient({
     if (!latestDeviation) return
     setDeviationSaving(true)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/deviations/${latestDeviation.id}/request-review`,
         { method: 'POST' },
       )
@@ -434,7 +437,7 @@ export default function RequirementDetailClient({
     if (!confirmed) return
     setDeviationSaving(true)
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/deviations/${latestDeviation.id}/revert-to-draft`,
         { method: 'POST' },
       )
@@ -453,7 +456,7 @@ export default function RequirementDetailClient({
       if (!latestDeviation) return
       setDeviationSaving(true)
       try {
-        const res = await fetch(
+        const res = await apiFetch(
           `/api/deviations/${latestDeviation.id}/decision`,
           {
             method: 'POST',
@@ -512,7 +515,9 @@ export default function RequirementDetailClient({
 
   const fetchSuggestions = useCallback(async () => {
     try {
-      const res = await fetch(`/api/requirement-suggestions/${requirementId}`)
+      const res = await apiFetch(
+        `/api/requirement-suggestions/${requirementId}`,
+      )
       if (res.ok) {
         setSuggestionError(null)
         const data = (await res.json()) as { suggestions: SuggestionData[] }
@@ -535,7 +540,7 @@ export default function RequirementDetailClient({
       init?: RequestInit,
       errorMessage?: string,
     ): Promise<boolean> => {
-      const res = await fetch(input, init)
+      const res = await apiFetch(input, init)
       if (!res.ok) {
         const details = await readResponseMessage(res)
         console.error('Suggestion mutation failed:', details ?? res.statusText)
@@ -810,7 +815,7 @@ export default function RequirementDetailClient({
 
   const fetchRequirement = useCallback(async () => {
     if (!hasDataRef.current) setLoading(true)
-    const res = await fetch(`/api/requirements/${requirementId}`)
+    const res = await apiFetch(`/api/requirements/${requirementId}`)
     if (res.ok) {
       setReq((await res.json()) as RequirementDetailResponse)
       hasDataRef.current = true
@@ -819,7 +824,7 @@ export default function RequirementDetailClient({
   }, [requirementId])
 
   const fetchTransitions = useCallback(async (statusId: number) => {
-    const res = await fetch(`/api/requirement-statuses`)
+    const res = await apiFetch(`/api/requirement-statuses`)
     if (res.ok) {
       const data = (await res.json()) as {
         statuses?: StatusInfo[]
@@ -1394,7 +1399,7 @@ export default function RequirementDetailClient({
       }))
     )
       return
-    await fetch(`/api/requirements/${requirementId}`, { method: 'DELETE' })
+    await apiFetch(`/api/requirements/${requirementId}`, { method: 'DELETE' })
     // Stay on the page — the requirement enters archiving review
     await Promise.all([fetchRequirement(), onChange?.()])
   }
@@ -1414,11 +1419,14 @@ export default function RequirementDetailClient({
       return
     setIsTransitioning(true)
     try {
-      const res = await fetch(`/api/requirement-transitions/${requirementId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statusId: STATUS_ARCHIVED }),
-      })
+      const res = await apiFetch(
+        `/api/requirement-transitions/${requirementId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ statusId: STATUS_ARCHIVED }),
+        },
+      )
       if (!res.ok) {
         const details = await readResponseMessage(res)
         console.error('Approve archiving failed:', details ?? res.statusText)
@@ -1449,11 +1457,14 @@ export default function RequirementDetailClient({
       return
     setIsTransitioning(true)
     try {
-      const res = await fetch(`/api/requirement-transitions/${requirementId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statusId: STATUS_PUBLISHED }),
-      })
+      const res = await apiFetch(
+        `/api/requirement-transitions/${requirementId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ statusId: STATUS_PUBLISHED }),
+        },
+      )
       if (!res.ok) {
         const details = await readResponseMessage(res)
         console.error('Cancel archiving failed:', details ?? res.statusText)
@@ -1480,9 +1491,12 @@ export default function RequirementDetailClient({
       }))
     )
       return
-    const res = await fetch(`/api/requirements/${requirementId}/delete-draft`, {
-      method: 'POST',
-    })
+    const res = await apiFetch(
+      `/api/requirements/${requirementId}/delete-draft`,
+      {
+        method: 'POST',
+      },
+    )
     if (res.ok) {
       const data = (await res.json()) as { deleted?: string }
       if (data.deleted === 'requirement') {
@@ -1525,11 +1539,14 @@ export default function RequirementDetailClient({
     }
     setIsTransitioning(true)
     try {
-      const res = await fetch(`/api/requirement-transitions/${requirementId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statusId: targetStatusId }),
-      })
+      const res = await apiFetch(
+        `/api/requirement-transitions/${requirementId}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ statusId: targetStatusId }),
+        },
+      )
       if (!res.ok) {
         const details = await readResponseMessage(res)
         console.error('Status transition failed:', details ?? res.statusText)
@@ -1558,7 +1575,7 @@ export default function RequirementDetailClient({
       }))
     )
       return
-    await fetch(`/api/requirements/${requirementId}/restore`, {
+    await apiFetch(`/api/requirements/${requirementId}/restore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ versionNumber }),
@@ -1628,7 +1645,7 @@ export default function RequirementDetailClient({
     if (packages.length === 0) {
       setPackagesLoading(true)
       try {
-        const res = await fetch('/api/requirement-packages')
+        const res = await apiFetch('/api/requirement-packages')
         if (!res.ok) {
           const details = await readResponseMessage(res)
           throw new Error(
@@ -1677,7 +1694,7 @@ export default function RequirementDetailClient({
     setNeedsReferencesLoading(true)
 
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/requirement-packages/${pkgId}/needs-references`,
         { signal: controller.signal },
       )
@@ -1754,7 +1771,7 @@ export default function RequirementDetailClient({
       body.needsReferenceText = addToPackageNeedsRefText.trim()
     }
     try {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/requirement-packages/${addToPackageId}/items`,
         {
           method: 'POST',

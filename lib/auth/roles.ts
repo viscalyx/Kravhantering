@@ -2,22 +2,18 @@
  * Parses the OIDC roles claim into the canonical app role list.
  *
  * Per the prescribed contract (see docs/plan-auth.md), PhenixID emits
- * `roles` as a JSON array of strings with values exactly `Author`,
- * `Reviewer`, `Steward`, `Admin`. This parser additionally tolerates two
- * legacy shapes for robustness:
- *   - space-separated string: "Author Reviewer"
+ * `roles` as a JSON array of strings with values exactly `Reviewer` or
+ * `Admin`. Author/Steward have been dropped — non-elevated users have an
+ * empty `roles` array. This parser additionally tolerates two legacy shapes
+ * for robustness:
+ *   - space-separated string: "Reviewer"
  *   - LDAP group DNs: "CN=kravhantering-admin,OU=Groups,DC=example,DC=test"
  *
- * Identity mapping is used by default (claim value === app role), so no
- * translation table is needed when the IdP follows the prescribed contract.
+ * Unknown role values (including legacy `Author`/`Steward`) are dropped so a
+ * stale IdP configuration never grants more capability than intended.
  */
 
-export const CANONICAL_ROLES = [
-  'Author',
-  'Reviewer',
-  'Steward',
-  'Admin',
-] as const
+export const CANONICAL_ROLES = ['Reviewer', 'Admin'] as const
 export type CanonicalRole = (typeof CANONICAL_ROLES)[number]
 
 const CANONICAL_BY_LOWER: Record<string, CanonicalRole> = Object.fromEntries(
@@ -30,9 +26,7 @@ const CANONICAL_BY_LOWER: Record<string, CanonicalRole> = Object.fromEntries(
  * PhenixID contract emits the canonical names directly.
  */
 const GROUP_CN_TO_ROLE: Record<string, CanonicalRole> = {
-  'kravhantering-author': 'Author',
   'kravhantering-reviewer': 'Reviewer',
-  'kravhantering-steward': 'Steward',
   'kravhantering-admin': 'Admin',
 }
 

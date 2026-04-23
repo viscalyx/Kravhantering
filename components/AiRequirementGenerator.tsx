@@ -29,6 +29,7 @@ import {
   type TaxonomyData,
 } from '@/lib/ai/requirement-prompt'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -320,7 +321,7 @@ export default function AiRequirementGenerator({
         params.set('supported_parameters', activeFilters.join(','))
       }
       const qs = params.toString()
-      fetch(`/api/ai/models${qs ? `?${qs}` : ''}`, { signal: ac.signal })
+      apiFetch(`/api/ai/models${qs ? `?${qs}` : ''}`, { signal: ac.signal })
         .then(
           r =>
             r.json() as Promise<{ error?: string; models?: OpenRouterModel[] }>,
@@ -367,7 +368,7 @@ export default function AiRequirementGenerator({
   // Fetch credits on open
   useEffect(() => {
     if (!open) return
-    fetch('/api/ai/credits')
+    apiFetch('/api/ai/credits')
       .then(r => r.json() as Promise<CreditInfo & { error?: string }>)
       .then(data => {
         if (data.error) {
@@ -588,7 +589,7 @@ export default function AiRequirementGenerator({
         providerPreferences.enforce_distillable_text = true
       }
 
-      const response = await fetch('/api/ai/generate-requirements', {
+      const response = await apiFetch('/api/ai/generate-requirements', {
         body: JSON.stringify({
           customInstruction: customInstruction || undefined,
           locale,
@@ -780,7 +781,7 @@ export default function AiRequirementGenerator({
       const succeededIndices: number[] = []
       for (let si = 0; si < selectedReqs.length; si++) {
         const req = selectedReqs[si]
-        const res = await fetch('/api/requirements', {
+        const res = await apiFetch('/api/requirements', {
           body: JSON.stringify({
             acceptanceCriteria: req.acceptanceCriteria,
             areaId,
@@ -1760,7 +1761,7 @@ export default function AiRequirementGenerator({
                               if (next && !systemPrompt) {
                                 setSystemPromptLoading(true)
                                 try {
-                                  const res = await fetch(
+                                  const res = await apiFetch(
                                     `/api/ai/system-prompt?locale=${locale}`,
                                   )
                                   const data = (await res.json()) as {

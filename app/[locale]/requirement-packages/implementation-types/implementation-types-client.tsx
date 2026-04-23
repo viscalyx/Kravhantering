@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const IMPLEMENTATION_TYPES_HELP: HelpContent = {
   sections: [
@@ -49,7 +50,7 @@ export default function ImplementationTypesClient() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/package-implementation-types')
+    const res = await apiFetch('/api/package-implementation-types')
     if (res.ok)
       setItems(
         ((await res.json()) as { types?: ImplementationType[] }).types ?? [],
@@ -70,7 +71,7 @@ export default function ImplementationTypesClient() {
       const url = editId
         ? `/api/package-implementation-types/${editId}`
         : '/api/package-implementation-types'
-      await fetch(url, {
+      await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -102,7 +103,7 @@ export default function ImplementationTypesClient() {
       }))
     )
       return
-    await fetch(`/api/package-implementation-types/${id}`, {
+    await apiFetch(`/api/package-implementation-types/${id}`, {
       method: 'DELETE',
     })
     fetchItems()

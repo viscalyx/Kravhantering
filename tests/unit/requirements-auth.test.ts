@@ -77,6 +77,8 @@ describe('requirements auth', () => {
           {
             actor: {
               id: 'u1',
+              displayName: 'u1',
+              hsaId: null,
               roles: ['admin'],
               source: 'headers',
               isAuthenticated: true,
@@ -98,6 +100,8 @@ describe('requirements auth', () => {
           {
             actor: {
               id: 'u1',
+              displayName: 'u1',
+              hsaId: null,
               roles: ['viewer'],
               source: 'headers',
               isAuthenticated: true,
@@ -117,6 +121,8 @@ describe('requirements auth', () => {
           {
             actor: {
               id: null,
+              displayName: '',
+              hsaId: null,
               roles: [],
               source: 'anonymous',
               isAuthenticated: false,

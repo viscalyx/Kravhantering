@@ -6,27 +6,34 @@ import {
 } from '@/lib/auth/roles'
 
 describe('CANONICAL_ROLES', () => {
-  it('enumerates the four canonical roles in spec order', () => {
-    expect(CANONICAL_ROLES).toEqual(['Author', 'Reviewer', 'Steward', 'Admin'])
+  it('enumerates the canonical roles in spec order', () => {
+    expect(CANONICAL_ROLES).toEqual(['Reviewer', 'Admin'])
   })
 })
 
 describe('parseRolesClaim', () => {
   it('accepts JSON array form', () => {
-    expect(parseRolesClaim(['Author', 'Admin'])).toEqual(['Author', 'Admin'])
+    expect(parseRolesClaim(['Reviewer', 'Admin'])).toEqual([
+      'Reviewer',
+      'Admin',
+    ])
   })
 
   it('parses space/comma-separated strings', () => {
-    expect(parseRolesClaim('Author Admin')).toEqual(['Author', 'Admin'])
-    expect(parseRolesClaim('Author, Reviewer')).toEqual(['Author', 'Reviewer'])
+    expect(parseRolesClaim('Reviewer Admin')).toEqual(['Reviewer', 'Admin'])
+    expect(parseRolesClaim('Admin, Reviewer')).toEqual(['Admin', 'Reviewer'])
+  })
+
+  it('drops legacy Author/Steward role values', () => {
+    expect(parseRolesClaim(['Author', 'Steward', 'Admin'])).toEqual(['Admin'])
   })
 
   it('maps LDAP group CNs to canonical roles', () => {
     const result = parseRolesClaim([
-      'CN=kravhantering-author,OU=Groups,DC=example,DC=com',
+      'CN=kravhantering-reviewer,OU=Groups,DC=example,DC=com',
       'CN=kravhantering-admin,OU=Groups,DC=example,DC=com',
     ])
-    expect(result).toContain('Author')
+    expect(result).toContain('Reviewer')
     expect(result).toContain('Admin')
   })
 

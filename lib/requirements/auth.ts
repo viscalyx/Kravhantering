@@ -25,6 +25,15 @@ export type ActorSource =
 export type RequestSource = 'rest' | 'mcp'
 
 export interface ActorContext {
+  /** Resolved display name. Empty string when not known. */
+  displayName: string
+  /**
+   * HSA-id when the actor was authenticated and a verified `employeeHsaId`
+   * claim was present. `null` for anonymous, header-trust, or MCP actors
+   * whose token did not carry the claim. MCP service-account tokens carry
+   * the synthetic `mcp-client:<client_id>` value here.
+   */
+  hsaId: string | null
   id: string | null
   isAuthenticated: boolean
   roles: string[]
@@ -176,6 +185,8 @@ export function getActorContextFromRequest(request: Request): ActorContext {
 
   return {
     id: actorId,
+    displayName: actorId ?? '',
+    hsaId: null,
     roles: rawRoles
       ? rawRoles
           .split(',')
@@ -201,6 +212,9 @@ async function getActorContextFromSessionOrHeaders(
     return getActorContextFromRequest(request)
   }
 
+  const { assertSameOriginRequest } = await import('@/lib/auth/csrf')
+  assertSameOriginRequest(request)
+
   try {
     const { getSessionFromRequest, isSignedIn } = await import(
       '@/lib/auth/session'
@@ -210,6 +224,8 @@ async function getActorContextFromSessionOrHeaders(
     if (!isSignedIn(session)) {
       return {
         id: null,
+        displayName: '',
+        hsaId: null,
         roles: [],
         source: 'anonymous',
         isAuthenticated: false,
@@ -217,10 +233,14 @@ async function getActorContextFromSessionOrHeaders(
     }
     const data = session as unknown as {
       sub?: string
+      hsaId?: string
+      name?: string
       roles?: string[]
     }
     return {
       id: data.sub ?? null,
+      displayName: typeof data.name === 'string' ? data.name : '',
+      hsaId: typeof data.hsaId === 'string' ? data.hsaId : null,
       roles: Array.isArray(data.roles) ? [...data.roles] : [],
       source: 'oidc',
       isAuthenticated: Boolean(data.sub),
@@ -228,6 +248,8 @@ async function getActorContextFromSessionOrHeaders(
   } catch {
     return {
       id: null,
+      displayName: '',
+      hsaId: null,
       roles: [],
       source: 'anonymous',
       isAuthenticated: false,

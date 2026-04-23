@@ -210,9 +210,10 @@ describe('OwnersClient', () => {
     })
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/owners/1', {
-        method: 'DELETE',
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/owners/1',
+        expect.objectContaining({ method: 'DELETE' }),
+      )
     })
   })
 

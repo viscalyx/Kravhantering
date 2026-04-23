@@ -8,11 +8,11 @@ export const dynamic = 'force-dynamic'
  * Returns the current signed-in user's identity for the UI to render.
  *
  *   { authenticated: false }
- *   { authenticated: true, sub, givenName, familyName, name, email?,
+ *   { authenticated: true, sub, hsaId, givenName, familyName, name, email?,
  *     roles, expiresAt }
  *
  * `email` is omitted when the IdP did not assert `email_verified === true`.
- * Never returns the raw id/access/refresh tokens.
+ * Never returns the raw id/access tokens.
  */
 export async function GET() {
   const cfg = getAuthConfig()
@@ -32,6 +32,7 @@ export async function GET() {
     {
       authenticated: true,
       sub: session.sub,
+      hsaId: session.hsaId,
       givenName: session.givenName,
       familyName: session.familyName,
       name: session.name,

@@ -26,9 +26,7 @@ type AuthMeUnauthenticated = {
 type AuthMe = AuthMeAuthenticated | AuthMeUnauthenticated
 
 const ROLE_KEY_BY_CANONICAL: Record<string, string> = {
-  Author: 'author',
   Reviewer: 'reviewer',
-  Steward: 'steward',
   Admin: 'admin',
 }
 
@@ -83,7 +81,8 @@ export default function AuthMenu({
   }
 
   if (!me.authenticated) {
-    const returnTo = encodeURIComponent(pathname || '/')
+    const localePrefixed = `/${locale}${pathname && pathname !== '/' ? pathname : ''}`
+    const returnTo = encodeURIComponent(localePrefixed || `/${locale}`)
     return (
       <a
         className={

@@ -91,9 +91,7 @@
     "userInfoNoRoles": "No roles assigned"
   },
   "roles": {
-    "author": "Author",
     "reviewer": "Reviewer",
-    "steward": "Steward",
     "admin": "Administrator"
   },
   "notFound": {

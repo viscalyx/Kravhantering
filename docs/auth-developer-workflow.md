@@ -118,15 +118,15 @@ docker compose -f .devcontainer/docker-compose.yml up -d idp
 
 All accounts use the password `devpass` (clearly dev-only, do not reuse).
 
-<!-- cSpell:ignore authorsteward -->
-| Username | Role(s) |
-| --- | --- |
-| `alice.author` | `Author` |
-| `rita.reviewer` | `Reviewer` |
-| `steve.steward` | `Steward` |
-| `sam.authorsteward` | `Author`, `Steward` |
-| `ada.admin` | `Author`, `Reviewer`, `Steward`, `Admin` |
-| `noah.noroles` | _(none — for negative testing)_ |
+| Username | Role(s) | `employeeHsaId` |
+| --- | --- | --- |
+| `olle.areaowner` | _(none)_ | `SE2321000032-areaowner1` |
+| `cora.coauthor` | _(none)_ | `SE2321000032-areaco1` |
+| `petra.packageresp` | _(none)_ | `SE2321000032-pkgresp1` |
+| `paul.pkgcoauthor` | _(none)_ | `SE2321000032-pkgco1` |
+| `rita.reviewer` | `Reviewer` | `SE2321000032-reviewer1` |
+| `ada.admin` | `Admin` | `SE2321000032-admin1` |
+| `noah.noroles` | _(none — for negative testing)_ | `SE2321000032-noroles1` |
 
 The realm JSON is imported only when the `idp` container starts **and
 the realm does not already exist** in Keycloak's embedded H2 store. A
@@ -161,8 +161,53 @@ Keycloak to finish booting before signing in.
 ### Roles claim
 
 The realm emits a `roles` claim as a JSON array of strings on both ID and
-access tokens. Values are exactly `Author`, `Reviewer`, `Steward`,
-`Admin` (the canonical names used throughout the app and for RBAC).
+access tokens. Values are exactly `Reviewer` and `Admin` (the canonical
+names used throughout the app and for RBAC). Authoring rights are not
+carried by the roles claim — they are assignment-driven via
+`employeeHsaId` (see [plan-RBAC.md](plan-RBAC.md)).
+
+### `employeeHsaId` claim
+
+The realm also emits an `employeeHsaId` claim on the ID token, access
+token and userinfo response. The value is sourced from each user's
+`hsaId` attribute (see the table above). Format rules (validated by
+`lib/auth/hsa-id.ts`):
+
+- Pattern: `/^SE\d{10}-[A-Za-z0-9]+$/u` — literal `SE`, 10 digits,
+  `-`, then one or more ASCII letters/digits.
+- Maximum length: 31 characters.
+- Example: `SE2321000032-1003`.
+
+Login is rejected with 401 when the claim is missing or fails this
+check.
+
+### MCP synthetic HSA-id
+
+The `kravhantering-mcp` Keycloak client is configured with an
+`oidc-hardcoded-claim` mapper that emits
+`employeeHsaId = mcp-client:kravhantering-mcp` on the access token used
+by the MCP service-account flow. Values that begin with `mcp-client:`
+deliberately bypass the HSA-id format validator; assignment-based
+authorization treats the literal string as the actor identity (see
+[plan-RBAC.md](plan-RBAC.md), open question #1).
+
+### No refresh tokens
+
+Browser sessions intentionally do **not** carry a refresh token. When
+the session expires, the user is bounced through `/api/auth/login` for
+silent re-auth against the still-valid SSO session at the IdP. This
+keeps the encrypted session cookie small and avoids long-lived tokens
+on the client.
+
+### CSRF: client `fetch` mutations
+
+Cookie-authenticated mutating requests (`POST` / `PUT` / `PATCH` /
+`DELETE`) must carry an `X-Requested-With: XMLHttpRequest` header and
+present a same-origin `Origin` (or `Referer`). Client code uses the
+`apiFetch` helper from `lib/http/api-fetch.ts`, which adds the header
+automatically; never call bare `fetch()` for mutating same-origin
+endpoints from the browser. See `lib/auth/csrf.ts` for the
+server-side check.
 
 ## Local env vars
 
@@ -250,7 +295,7 @@ independent — the shortest one wins.
 | Knob | Where | Default | Meaning |
 | --- | --- | --- | --- |
 | `AUTH_SESSION_TTL_SECONDS` | env → [lib/auth/config.ts](../lib/auth/config.ts), [lib/auth/session.ts](../lib/auth/session.ts) | `28800` (8 h) | Absolute lifetime of the encrypted `iron-session` cookie. **Does not slide on activity.** When the cookie expires, the next request hits `/api/auth/login` and is silently re-authenticated if the IdP SSO session is still alive; otherwise the user sees the IdP login page. |
-| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Tracks when the cached access token expires so the app knows when to refresh. Not user-visible. |
+| `session.accessTokenExpiresAt` | written in [app/api/auth/callback/route.ts](../app/api/auth/callback/route.ts) | `tokens.expiresIn()` from the IdP, falling back to `AUTH_SESSION_TTL_SECONDS` | Tracks when the cached access token expires so the app knows when to re-auth. Not user-visible. |
 <!-- markdownlint-enable MD013 -->
 
 The app does **not** implement an idle/inactivity timeout. There is no
@@ -265,9 +310,9 @@ Production values are set per environment by ops on the real IdP.
 <!-- markdownlint-disable MD013 -->
 | Setting | Default (dev) | Meaning |
 | --- | --- | --- |
-| `ssoSessionIdleTimeout` | `28800` (8 h) | **Idle** SSO session timeout. Resets each time the app refreshes the access token. If the user is gone longer than this, the next silent re-auth via `/api/auth/login` requires a fresh password. |
+| `ssoSessionIdleTimeout` | `28800` (8 h) | **Idle** SSO session timeout. If the user is gone longer than this, the next silent re-auth via `/api/auth/login` requires a fresh password. |
 | `ssoSessionMaxLifespan` | `28800` (8 h) | **Absolute** SSO session lifetime. Hard cap regardless of activity; after this the user must sign in again. |
-| `accessTokenLifespan` (realm) | `1800` (30 min) | Access-token lifetime issued to the `kravhantering-app` web client. The app refreshes inside this window using the refresh token. |
+| `accessTokenLifespan` (realm) | `1800` (30 min) | Access-token lifetime issued to the `kravhantering-app` web client. The app does **not** refresh access tokens client-side; on cookie expiry it re-bounces through `/api/auth/login`. |
 | `access.token.lifespan` (`kravhantering-mcp` client) | `3600` (1 h) | Access-token lifetime for service-to-service MCP tokens. Validated by [lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts). |
 <!-- markdownlint-enable MD013 -->
 
@@ -275,9 +320,10 @@ Production values are set per environment by ops on the real IdP.
 
 - A user signs in → cookie valid 8 h, IdP SSO session valid 8 h
   (idle + max), access token valid 30 min.
-- Active user: access token refreshes silently every 30 min, which also
-  rolls the IdP idle timeout forward. The cookie's 8 h absolute
-  lifetime is the binding limit.
+- Active user: when the cookie's 8 h absolute lifetime expires the next
+  request bounces through `/api/auth/login`, which silently re-auths
+  against the still-valid SSO session at the IdP and writes a fresh
+  cookie. There is no in-process refresh-token round-trip.
 - Idle user past 8 h: cookie has expired and IdP SSO session has
   expired → full IdP login on next request.
 - To enforce a shorter inactivity window (e.g. 30 min idle), lower
@@ -338,6 +384,22 @@ cookie holds an encrypted projection of the validated claims (not the raw
 token). To see what the IdP issued, use Keycloak's account console at
 `http://localhost:8080/realms/kravhantering-dev/account` or hit the
 discovery URL above and exchange a code manually.
+
+## Tailing the security audit stream
+
+Auth-related security events (`auth.login.succeeded`, `auth.login.failed`,
+`auth.logout`, `auth.session.rejected`, `auth.token.rejected`,
+`auth.mcp.token.accepted`, `auth.roles.changed`, `auth.csrf.rejected`)
+are emitted as single-line JSON to `console.info` and tagged with
+`"channel":"security-audit"`. To watch them locally:
+
+```bash
+npm run dev | grep '"channel":"security-audit"' | jq .
+```
+
+Use `jq 'select(.event=="auth.login.failed")'` to filter by event, or
+`select(.outcome=="failure")` to surface only rejections. Tokens, PKCE
+verifiers, `state`, `nonce`, and `code` values are stripped before emit.
 
 ## Pre-prod smoke test
 
