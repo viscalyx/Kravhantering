@@ -358,6 +358,13 @@ describe('db-sqlserver-admin.mjs', () => {
     const exitCode = await main(['reset'], {
       consoleObj: { error, log: vi.fn() },
       env: {
+        DATABASE_URL: '',
+        DB_HOST: '',
+        DB_NAME: '',
+        DB_PASSWORD: '',
+        DB_PORT: '',
+        DB_USER: '',
+        MSSQL_SA_PASSWORD: '',
         SQLSERVER_DATABASE_URL: '',
       },
     })
