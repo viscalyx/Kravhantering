@@ -73,7 +73,9 @@ describe('LifecycleStatusesClient', () => {
 
     render(<LifecycleStatusesClient />)
 
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('common.loading')).toBeInTheDocument()
+    })
     await waitFor(() => {
       expect(screen.queryByText('common.loading')).toBeNull()
     })

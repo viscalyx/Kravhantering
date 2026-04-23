@@ -85,6 +85,11 @@ describe('AuthMenu', () => {
     const signingOutButton = await screen.findByRole('button', {
       name: 'signingOut',
     })
+    const logoutForm = signingOutButton.closest('form')
+
+    expect(logoutForm).not.toBeNull()
+    expect(logoutForm).not.toHaveAttribute('action')
+    expect(logoutForm).not.toHaveAttribute('method')
     expect(signingOutButton).toBeDisabled()
     expect(signingOutButton).toHaveAttribute('title', 'signingOut')
     expect(signingOutButton.className).toContain('min-h-[44px]')

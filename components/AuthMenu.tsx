@@ -130,12 +130,7 @@ function AuthLogoutButton({
   }
 
   return (
-    <form
-      action="/api/auth/logout"
-      className={formClassName}
-      method="post"
-      onSubmit={handleSubmit}
-    >
+    <form className={formClassName} onSubmit={handleSubmit}>
       <button
         aria-busy={isSubmitting}
         aria-label={buttonLabel}

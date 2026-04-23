@@ -9,13 +9,11 @@
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
 function buildHeaders(input: RequestInfo | URL, init?: RequestInit): Headers {
-  const headers = new Headers(
-    input instanceof Request ? input.headers : undefined,
-  )
   if (!(input instanceof Request)) {
     return new Headers(init?.headers)
   }
 
+  const headers = new Headers(input.headers)
   new Headers(init?.headers).forEach((value, key) => {
     headers.set(key, value)
   })

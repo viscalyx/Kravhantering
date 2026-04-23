@@ -199,6 +199,37 @@ describe('RequirementStatusesClient', () => {
     })
   })
 
+  it('falls back to common.error when save throws an empty-message error', async () => {
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
+      target: { value: 'New' },
+    })
+
+    fetchMock.mockRejectedValueOnce(new Error(''))
+
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'common.error',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: saveButton,
+        }),
+      )
+    })
+  })
+
   it('opens edit form with existing data', async () => {
     render(<RequirementStatusesClient />)
     await waitFor(() => {
@@ -277,6 +308,39 @@ describe('RequirementStatusesClient', () => {
           anchorEl: deleteButtons[0],
         }),
       )
+    })
+  })
+
+  it('shows a fallback error and refreshes statuses when delete throws', async () => {
+    confirmMock.mockResolvedValue(true)
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Custom')).toBeInTheDocument()
+    })
+
+    fetchMock.mockRejectedValueOnce(new Error(''))
+    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+
+    const deleteButtons = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })
+    fireEvent.click(deleteButtons[0])
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          message: 'common.error',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: deleteButtons[0],
+        }),
+      )
+      expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/requirement-statuses')
     })
   })
 })

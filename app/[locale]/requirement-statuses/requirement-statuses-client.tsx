@@ -108,7 +108,8 @@ export default function RequirementStatusesClient() {
       await fetchStatuses()
     } catch (error) {
       await confirm({
-        message: error instanceof Error ? error.message : tc('error'),
+        message:
+          error instanceof Error ? error.message || tc('error') : tc('error'),
         showCancel: false,
         icon: 'warning',
         anchorEl: submitter,
@@ -141,18 +142,30 @@ export default function RequirementStatusesClient() {
       }))
     )
       return
-    const res = await apiFetch(`/api/requirement-statuses/${id}`, {
-      method: 'DELETE',
-    })
-    if (!res.ok) {
+    try {
+      const res = await apiFetch(`/api/requirement-statuses/${id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        return
+      }
       await confirm({
         message: (await readResponseMessage(res)) || tc('error'),
         showCancel: false,
         icon: 'warning',
         anchorEl,
       })
+    } catch (error) {
+      await confirm({
+        message:
+          error instanceof Error ? error.message || tc('error') : tc('error'),
+        showCancel: false,
+        icon: 'warning',
+        anchorEl,
+      })
+    } finally {
+      void fetchStatuses()
     }
-    fetchStatuses()
   }
 
   const inputClass =
