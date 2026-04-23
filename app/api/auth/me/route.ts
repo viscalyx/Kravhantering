@@ -16,16 +16,19 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET() {
   const cfg = getAuthConfig()
+  const headers = {
+    'Cache-Control': 'no-store',
+  }
   if (!cfg.enabled) {
     return NextResponse.json(
       { authenticated: false, authDisabled: true },
-      { status: 200 },
+      { headers, status: 200 },
     )
   }
 
   const session = await getSession()
   if (!isSignedIn(session)) {
-    return NextResponse.json({ authenticated: false }, { status: 200 })
+    return NextResponse.json({ authenticated: false }, { headers, status: 200 })
   }
 
   return NextResponse.json(
@@ -41,10 +44,8 @@ export async function GET() {
       expiresAt: session.accessTokenExpiresAt,
     },
     {
+      headers,
       status: 200,
-      headers: {
-        'Cache-Control': 'no-store',
-      },
     },
   )
 }

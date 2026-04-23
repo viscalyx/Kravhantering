@@ -6,10 +6,22 @@ import { getSession } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
+function createLocalRedirect(request: NextRequest, target: string) {
+  return NextResponse.redirect(new URL(target, request.url), { status: 302 })
+}
+
 export async function GET(request: NextRequest) {
   const cfg = getAuthConfig()
+  return createLocalRedirect(
+    request,
+    cfg.enabled ? cfg.postLogoutRedirectUri : '/',
+  )
+}
+
+export async function POST(request: NextRequest) {
+  const cfg = getAuthConfig()
   if (!cfg.enabled) {
-    return NextResponse.redirect(new URL('/', request.url), { status: 302 })
+    return createLocalRedirect(request, '/')
   }
 
   const session = await getSession()
@@ -35,24 +47,20 @@ export async function GET(request: NextRequest) {
   })
   session.destroy()
 
-  let endSessionUrl: URL
   try {
     const config = await getOidcConfiguration()
-    endSessionUrl = oidcClient.buildEndSessionUrl(config, {
+    const endSessionUrl = oidcClient.buildEndSessionUrl(config, {
       post_logout_redirect_uri: cfg.postLogoutRedirectUri,
       ...(idTokenHint ? { id_token_hint: idTokenHint } : {}),
     })
-  } catch {
+    return NextResponse.redirect(endSessionUrl, { status: 302 })
+  } catch (error) {
+    console.warn('OIDC end_session_endpoint discovery/build failed', {
+      error: error instanceof Error ? error.message : String(error),
+      hasIdTokenHint: Boolean(idTokenHint),
+      postLogoutRedirectUri: cfg.postLogoutRedirectUri,
+    })
     // IdP did not advertise an end_session_endpoint — just bounce home.
-    return NextResponse.redirect(
-      new URL(cfg.postLogoutRedirectUri, request.url),
-      { status: 302 },
-    )
+    return createLocalRedirect(request, cfg.postLogoutRedirectUri)
   }
-
-  return NextResponse.redirect(endSessionUrl, { status: 302 })
-}
-
-export async function POST(request: NextRequest) {
-  return GET(request)
 }

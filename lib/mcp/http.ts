@@ -28,7 +28,7 @@ function createMethodNotAllowedResponse() {
 export async function handleRequirementsMcpRequest(
   request: Request,
   db: SqlServerDatabase,
-) {
+): Promise<Response> {
   if (!['DELETE', 'GET', 'POST'].includes(request.method)) {
     return createMethodNotAllowedResponse()
   }

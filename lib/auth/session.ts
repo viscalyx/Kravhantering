@@ -7,7 +7,11 @@
  * raw access token is not stored at all (browser flow uses cookies).
  */
 
-import { getIronSession, type IronSession } from 'iron-session'
+import {
+  getIronSession,
+  type IronSession,
+  type SessionOptions,
+} from 'iron-session'
 import { cookies } from 'next/headers'
 import { getAuthConfig } from '@/lib/auth/config'
 
@@ -33,7 +37,7 @@ export interface SessionData {
   sub: string
 }
 
-function buildSessionOptions() {
+function buildSessionOptions(): SessionOptions {
   const config = getAuthConfig()
   return {
     cookieName: config.cookieName,

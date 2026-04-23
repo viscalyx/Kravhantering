@@ -19,9 +19,9 @@ export async function GET(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = await createRequestContext(_request, 'rest')
 
   try {
+    const context = await createRequestContext(_request, 'rest')
     const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
       ...ref,
@@ -51,10 +51,10 @@ export async function PUT(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = await createRequestContext(request, 'rest')
   const body = (await request.json()) as Record<string, unknown>
 
   try {
+    const context = await createRequestContext(request, 'rest')
     const ref = parseRequirementRef(id)
     const result = await service.manageRequirement(context, {
       ...ref,
@@ -106,9 +106,9 @@ export async function DELETE(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = await createRequestContext(_request, 'rest')
 
   try {
+    const context = await createRequestContext(_request, 'rest')
     const ref = parseRequirementRef(id)
     await service.manageRequirement(context, {
       ...ref,

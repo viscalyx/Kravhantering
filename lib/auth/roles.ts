@@ -107,14 +107,16 @@ export function parseRolesClaim(claim: unknown): CanonicalRole[] {
  * `name` → `given_name + family_name` → `preferred_username` → `email` →
  * `sub`. Returns the first non-empty value.
  */
-export function resolveDisplayName(claims: {
-  name?: unknown
-  given_name?: unknown
-  family_name?: unknown
-  preferred_username?: unknown
+export interface DisplayNameClaims {
   email?: unknown
+  family_name?: unknown
+  given_name?: unknown
+  name?: unknown
+  preferred_username?: unknown
   sub?: unknown
-}): string {
+}
+
+export function resolveDisplayName(claims: DisplayNameClaims): string {
   const pick = (value: unknown): string | undefined =>
     typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined
 

@@ -94,8 +94,10 @@ function loadAuthConfig(): AuthConfig {
   // prod-like validation that still wants the dev-mode bypass. Never set
   // this in a real deployment; the app logs a loud warning when it kicks
   // in and the production-mode strict-check is the actual safety net.
-  const allowDisableInProduction =
-    process.env.AUTH_ALLOW_DISABLE_IN_PRODUCTION === 'true'
+  const allowDisableInProduction = parseBooleanFlag(
+    process.env.AUTH_ALLOW_DISABLE_IN_PRODUCTION,
+    false,
+  )
 
   if (!enabled && isProduction && !allowDisableInProduction) {
     throw new AuthConfigError(

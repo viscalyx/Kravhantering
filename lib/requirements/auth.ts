@@ -215,37 +215,12 @@ async function getActorContextFromSessionOrHeaders(
   const { assertSameOriginRequest } = await import('@/lib/auth/csrf')
   assertSameOriginRequest(request)
 
-  try {
-    const { getSessionFromRequest, isSignedIn } = await import(
-      '@/lib/auth/session'
-    )
-    const probe = new Response()
-    const session = await getSessionFromRequest(request, probe)
-    if (!isSignedIn(session)) {
-      return {
-        id: null,
-        displayName: '',
-        hsaId: null,
-        roles: [],
-        source: 'anonymous',
-        isAuthenticated: false,
-      }
-    }
-    const data = session as unknown as {
-      sub?: string
-      hsaId?: string
-      name?: string
-      roles?: string[]
-    }
-    return {
-      id: data.sub ?? null,
-      displayName: typeof data.name === 'string' ? data.name : '',
-      hsaId: typeof data.hsaId === 'string' ? data.hsaId : null,
-      roles: Array.isArray(data.roles) ? [...data.roles] : [],
-      source: 'oidc',
-      isAuthenticated: Boolean(data.sub),
-    }
-  } catch {
+  const { getSessionFromRequest, isSignedIn } = await import(
+    '@/lib/auth/session'
+  )
+  const probe = new Response()
+  const session = await getSessionFromRequest(request, probe)
+  if (!isSignedIn(session)) {
     return {
       id: null,
       displayName: '',
@@ -254,6 +229,20 @@ async function getActorContextFromSessionOrHeaders(
       source: 'anonymous',
       isAuthenticated: false,
     }
+  }
+  const data = session as unknown as {
+    sub?: string
+    hsaId?: string
+    name?: string
+    roles?: string[]
+  }
+  return {
+    id: data.sub ?? null,
+    displayName: typeof data.name === 'string' ? data.name : '',
+    hsaId: typeof data.hsaId === 'string' ? data.hsaId : null,
+    roles: Array.isArray(data.roles) ? [...data.roles] : [],
+    source: 'oidc',
+    isAuthenticated: Boolean(data.sub),
   }
 }
 

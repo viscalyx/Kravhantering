@@ -231,5 +231,7 @@ export async function GET(request: NextRequest) {
   const returnTo = sanitizeReturnTo(loginState.returnTo)
   loginState.destroy()
 
-  return NextResponse.redirect(new URL(returnTo, request.url), { status: 302 })
+  return NextResponse.redirect(new URL(returnTo, cfg.redirectUri), {
+    status: 302,
+  })
 }

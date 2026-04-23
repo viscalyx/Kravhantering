@@ -8,7 +8,11 @@
  *   - never carries any user-identifying data
  */
 
-import { getIronSession, type IronSession } from 'iron-session'
+import {
+  getIronSession,
+  type IronSession,
+  type SessionOptions,
+} from 'iron-session'
 import { cookies } from 'next/headers'
 import { getAuthConfig } from '@/lib/auth/config'
 
@@ -24,7 +28,7 @@ export interface LoginStateData {
 
 const LOGIN_STATE_TTL_SECONDS = 5 * 60
 
-function buildOptions() {
+function buildOptions(): SessionOptions {
   const cfg = getAuthConfig()
   return {
     cookieName: `${cfg.cookieName}_login`,

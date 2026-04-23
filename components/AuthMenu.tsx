@@ -30,6 +30,12 @@ const ROLE_KEY_BY_CANONICAL: Record<string, string> = {
   Admin: 'admin',
 }
 
+interface AuthLogoutButtonProps {
+  className: string
+  formClassName?: string
+  label: string
+}
+
 function useAuthMe(): AuthMe | null {
   const [state, setState] = useState<AuthMe | null>(null)
 
@@ -44,11 +50,13 @@ function useAuthMe(): AuthMe | null {
     let cancelled = false
     fetch('/api/auth/me', { credentials: 'same-origin' })
       .then(async response => {
-        if (!response.ok) return null
+        if (!response.ok) {
+          return { authenticated: false } satisfies AuthMeUnauthenticated
+        }
         return (await response.json()) as AuthMe
       })
       .then(value => {
-        if (cancelled || !value) return
+        if (cancelled) return
         setState(value)
       })
       .catch(() => {
@@ -61,6 +69,25 @@ function useAuthMe(): AuthMe | null {
   }, [])
 
   return state
+}
+
+function AuthLogoutButton({
+  className,
+  formClassName,
+  label,
+}: AuthLogoutButtonProps) {
+  return (
+    <form action="/api/auth/logout" className={formClassName} method="post">
+      <button
+        className={className}
+        type="submit"
+        {...devMarker({ name: 'button', value: 'sign out' })}
+      >
+        <LogOut aria-hidden="true" className="h-4 w-4" />
+        {label}
+      </button>
+    </form>
+  )
 }
 
 export default function AuthMenu({
@@ -82,7 +109,13 @@ export default function AuthMenu({
 
   if (!me.authenticated) {
     const localePrefixed = `/${locale}${pathname && pathname !== '/' ? pathname : ''}`
-    const returnTo = encodeURIComponent(localePrefixed || `/${locale}`)
+    const searchAndHash =
+      typeof window === 'undefined'
+        ? ''
+        : `${window.location.search}${window.location.hash}`
+    const returnTo = encodeURIComponent(
+      `${localePrefixed || `/${locale}`}${searchAndHash}`,
+    )
     return (
       <a
         className={
@@ -156,14 +189,11 @@ export default function AuthMenu({
         })}
       >
         {userIdentity}
-        <a
+        <AuthLogoutButton
           className="inline-flex items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
-          href="/api/auth/logout"
-          {...devMarker({ name: 'link', value: 'sign out' })}
-        >
-          <LogOut aria-hidden="true" className="h-4 w-4" />
-          {t('signOut')}
-        </a>
+          formClassName="self-start"
+          label={t('signOut')}
+        />
       </div>
     )
   }
@@ -179,7 +209,7 @@ export default function AuthMenu({
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only
           info popup; the popup content is informational and the sign-out
-          link is a sibling element with proper keyboard focus. */}
+          button is a sibling element with proper keyboard focus. */}
       <div
         className="relative"
         onMouseEnter={() => setIsPopupOpen(true)}
@@ -266,14 +296,11 @@ export default function AuthMenu({
                   </dd>
                 </div>
               </dl>
-              <a
+              <AuthLogoutButton
                 className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
-                href="/api/auth/logout"
-                {...devMarker({ name: 'link', value: 'sign out' })}
-              >
-                <LogOut aria-hidden="true" className="h-4 w-4" />
-                {t('signOut')}
-              </a>
+                formClassName="mt-4"
+                label={t('signOut')}
+              />
             </motion.div>
           )}
         </AnimatePresence>

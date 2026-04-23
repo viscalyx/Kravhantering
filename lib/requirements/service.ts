@@ -82,6 +82,7 @@ import {
   internalError,
   isRequirementsServiceError,
   notFoundError,
+  type RequirementsErrorCode,
   validationError,
 } from '@/lib/requirements/errors'
 import type {
@@ -2406,11 +2407,37 @@ export function toResponseLocale(locale?: string): ResponseLocale {
   return locale === 'sv' ? 'sv' : 'en'
 }
 
+function isStatusError(error: unknown): error is Error & {
+  details?: Record<string, unknown>
+  status: 401 | 403
+} {
+  return (
+    error instanceof Error &&
+    ((error as { status?: unknown }).status === 401 ||
+      (error as { status?: unknown }).status === 403)
+  )
+}
+
+function toRequirementsCode(status: 401 | 403): RequirementsErrorCode {
+  return status === 401 ? 'unauthorized' : 'forbidden'
+}
+
 export function toHttpErrorPayload(error: unknown) {
   if (isRequirementsServiceError(error)) {
     return {
       body: {
         code: error.code,
+        details: error.details,
+        error: error.message,
+      },
+      status: error.status,
+    }
+  }
+
+  if (isStatusError(error)) {
+    return {
+      body: {
+        code: toRequirementsCode(error.status),
         details: error.details,
         error: error.message,
       },

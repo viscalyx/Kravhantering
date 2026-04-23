@@ -8,14 +8,16 @@ type VerifiedMcpToken = {
   actor: ActorContext
 }
 
+type RemoteJwks = ReturnType<typeof createRemoteJWKSet>
+
 type JwksCacheEntry = {
   issuer: string
-  jwks: ReturnType<typeof createRemoteJWKSet>
+  jwks: RemoteJwks
 }
 
 let jwksCache: JwksCacheEntry | null = null
 
-function getOrCreateJwks(issuer: string) {
+function getOrCreateJwks(issuer: string): RemoteJwks {
   if (jwksCache && jwksCache.issuer === issuer) return jwksCache.jwks
   const jwks = createRemoteJWKSet(
     new URL(`${issuer.replace(/\/$/, '')}/.well-known/jwks.json`),
@@ -24,7 +26,7 @@ function getOrCreateJwks(issuer: string) {
   return jwks
 }
 
-export function resetMcpJwksCacheForTests() {
+export function resetMcpJwksCacheForTests(): void {
   jwksCache = null
 }
 
