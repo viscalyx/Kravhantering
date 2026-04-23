@@ -84,6 +84,7 @@
     "signedInAs": "Inloggad som {name}",
     "roles": "Roller",
     "userInfoTitle": "Kontouppgifter",
+    "userInfoHsaId": "HSA-ID",
     "userInfoName": "Namn",
     "userInfoEmail": "E-post",
     "userInfoSubject": "Användar-id",

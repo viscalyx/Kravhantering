@@ -84,6 +84,7 @@
     "signedInAs": "Signed in as {name}",
     "roles": "Roles",
     "userInfoTitle": "Account details",
+    "userInfoHsaId": "HSA-ID",
     "userInfoName": "Name",
     "userInfoEmail": "Email",
     "userInfoSubject": "Subject",

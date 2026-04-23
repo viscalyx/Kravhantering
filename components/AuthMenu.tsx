@@ -151,7 +151,12 @@ interface ComponentProps {
   variant: 'desktop' | 'mobile'
 }
 
-type UserInfoRowMarker = 'name' | 'email' | 'subject' | 'session expires'
+type UserInfoRowMarker =
+  | 'name'
+  | 'email'
+  | 'subject'
+  | 'session expires'
+  | 'hsaId'
 
 interface UserInfoRow {
   devMarker: UserInfoRowMarker
@@ -215,7 +220,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
     )
   }
 
-  const displayName = me.name || me.email || me.sub
+  const displayName = me.name || me.email || me.hsaId || me.sub
   const localizedRole = (role: string): string =>
     ROLE_KEY_BY_CANONICAL[role] ? tr(ROLE_KEY_BY_CANONICAL[role]) : role
   // Admin overrides every other role (it carries every permission), so
@@ -229,9 +234,19 @@ export default function AuthMenu({ variant }: ComponentProps) {
       }).format(new Date(me.expiresAt * 1000))
     : null
 
-  const userInfoRows: UserInfoRow[] = [
-    { devMarker: 'name', label: t('userInfoName'), value: displayName },
-  ]
+  const userInfoRows: UserInfoRow[] = []
+  if (me.hsaId) {
+    userInfoRows.push({
+      devMarker: 'hsaId',
+      label: t('userInfoHsaId'),
+      value: me.hsaId,
+    })
+  }
+  userInfoRows.push({
+    devMarker: 'name',
+    label: t('userInfoName'),
+    value: me.name || '',
+  })
   if (me.email) {
     userInfoRows.push({
       devMarker: 'email',
