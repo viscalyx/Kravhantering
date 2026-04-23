@@ -1,5 +1,7 @@
+import type { IronSession } from 'iron-session'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resetAuthConfigForTests } from '@/lib/auth/config'
+import type { SessionData } from '@/lib/auth/session'
 
 const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
@@ -21,22 +23,30 @@ describe('getSessionFromRequestWithDiagnostics', () => {
     vi.restoreAllMocks()
   })
 
-  async function writeValidSessionCookie(): Promise<string> {
+  async function writeSessionCookie(
+    mutate: (session: IronSession<SessionData>) => void,
+  ): Promise<string> {
     const { getSessionFromRequest } = await import('@/lib/auth/session')
     const writeReq = new Request('http://localhost/')
     const writeRes = new Response()
     const session = await getSessionFromRequest(writeReq, writeRes)
-    session.sub = 'user-1'
-    session.givenName = 'Alice'
-    session.familyName = 'Reviewer'
-    session.name = 'Alice Reviewer'
-    session.hsaId = 'SE2321000032-rev1'
-    session.roles = ['Reviewer']
-    session.idToken = 'jwt'
-    session.accessTokenExpiresAt = 1
+    mutate(session)
     await session.save()
     const setCookie = writeRes.headers.get('set-cookie') ?? ''
     return setCookie.split(';')[0] ?? ''
+  }
+
+  async function writeValidSessionCookie(): Promise<string> {
+    return writeSessionCookie(session => {
+      session.sub = 'user-1'
+      session.givenName = 'Alice'
+      session.familyName = 'Reviewer'
+      session.name = 'Alice Reviewer'
+      session.hsaId = 'SE2321000032-rev1'
+      session.roles = ['Reviewer']
+      session.idToken = 'jwt'
+      session.accessTokenExpiresAt = 1
+    })
   }
 
   it('returns rejected=false when no cookie is present', async () => {
@@ -62,6 +72,21 @@ describe('getSessionFromRequestWithDiagnostics', () => {
     )
     expect(result.rejected).toBe(false)
     expect(result.session.sub).toBe('user-1')
+  })
+
+  it('returns rejected=true for a stale partial session cookie', async () => {
+    const cookieHeader = await writeSessionCookie(session => {
+      session.sub = 'user-1'
+    })
+    const { getSessionFromRequestWithDiagnostics } = await import(
+      '@/lib/auth/session'
+    )
+    const result = await getSessionFromRequestWithDiagnostics(
+      new Request('http://localhost/', { headers: { cookie: cookieHeader } }),
+      new Response(),
+    )
+    expect(result.rejected).toBe(true)
+    expect(result.reason).toBe('invalid_session_cookie')
   })
 
   it('returns rejected=true with reason when the cookie is garbage', async () => {

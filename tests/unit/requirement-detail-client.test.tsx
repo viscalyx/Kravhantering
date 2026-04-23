@@ -360,6 +360,7 @@ function createDeferred<T>() {
 
 function setupFetch({
   addToPackageHandler,
+  archiveHandler,
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
   initialRequirement,
@@ -368,6 +369,7 @@ function setupFetch({
   packages = [],
   packagesHandler,
   reactivateNextRequirement,
+  restoreHandler,
   restoreNextRequirement,
   transitionNextRequirement,
 }: {
@@ -375,6 +377,7 @@ function setupFetch({
     packageId: string,
     init?: RequestInit,
   ) => Promise<Response> | Response
+  archiveHandler?: (init?: RequestInit) => Promise<Response> | Response
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
   initialRequirement: ReturnType<typeof makeRequirement>
@@ -394,6 +397,7 @@ function setupFetch({
   packages?: { id: number; name: string }[]
   packagesHandler?: () => Promise<Response> | Response
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
+  restoreHandler?: (init?: RequestInit) => Promise<Response> | Response
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
 }) {
@@ -419,6 +423,9 @@ function setupFetch({
         url === `/api/requirements/${currentRequirement.id}` &&
         method === 'DELETE'
       ) {
+        if (archiveHandler) {
+          return archiveHandler(init)
+        }
         return response({})
       }
 
@@ -446,6 +453,9 @@ function setupFetch({
         url === `/api/requirements/${currentRequirement.id}/restore` &&
         method === 'POST'
       ) {
+        if (restoreHandler) {
+          return restoreHandler(init)
+        }
         if (restoreNextRequirement) {
           currentRequirement = structuredClone(restoreNextRequirement)
         }
@@ -1009,6 +1019,38 @@ describe('RequirementDetailClient', () => {
     )
     // Should stay on page (refresh requirement) instead of navigating away
     expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it('keeps the requirement open when archive initiation fails', async () => {
+    const onChange = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Published description',
+        publishedAt: '2026-03-02',
+        requiresTesting: true,
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      archiveHandler: () => response({ error: 'Archive failed' }, false),
+    })
+
+    renderSubject({ onChange })
+
+    expect(await screen.findByText('Published description')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Archive' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Archive failed')).toBeInTheDocument()
+    })
+    expect(onChange).not.toHaveBeenCalled()
   })
 
   it('keeps archived requirements actionable while a newer draft replacement exists', async () => {
@@ -2030,5 +2072,46 @@ describe('RequirementDetailClient', () => {
         'There is no published version of this requirement.',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('keeps the requirement open when restore fails', async () => {
+    const onChange = vi.fn()
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Published description',
+        publishedAt: '2026-03-02',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+      makeVersion(1, {
+        archivedAt: '2026-03-01',
+        description: 'Archived description',
+        status: 4,
+        statusColor: '#6b7280',
+        statusNameEn: 'Archived',
+        statusNameSv: 'Arkiverad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      restoreHandler: () => response({ error: 'Restore failed' }, false),
+    })
+
+    renderSubject({ defaultVersion: 1, onChange })
+
+    expect(await screen.findByText('Archived description')).toBeInTheDocument()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Restore version' }),
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Restore failed')).toBeInTheDocument()
+    })
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

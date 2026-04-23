@@ -21,6 +21,9 @@ vi.mock('@/components/ConfirmModal', () => ({
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
+function errJson(body: unknown, status = 500, statusText = 'Server Error') {
+  return { ok: false, json: async () => body, status, statusText }
+}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -235,6 +238,35 @@ describe('RequirementAreasClient', () => {
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
+  })
+
+  it('shows a delete error and skips refresh when delete fails', async () => {
+    confirmMock.mockResolvedValue(true)
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas/1') {
+        return errJson({ error: 'Cannot delete area' }, 409, 'Conflict')
+      }
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: sampleAreas })
+      }
+      if (url === '/api/owners') return okJson({ owners: sampleOwners })
+      return okJson({})
+    })
+
+    const deleteButtons = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })
+    fireEvent.click(deleteButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('Cannot delete area')
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('does not delete when confirm is cancelled', async () => {

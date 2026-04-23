@@ -129,6 +129,36 @@ describe('RequirementStatusesClient', () => {
     })
   })
 
+  it('keeps the form open when save fails', async () => {
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
+      target: { value: 'New' },
+    })
+
+    fetchMock.mockResolvedValueOnce(errJson({ error: 'Cannot save' }))
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Cannot save',
+          showCancel: false,
+          icon: 'warning',
+        }),
+      )
+    })
+    expect(screen.getByLabelText(/statusMgmt\.name.+SV/)).toBeInTheDocument()
+  })
+
   it('opens edit form with existing data', async () => {
     render(<RequirementStatusesClient />)
     await waitFor(() => {

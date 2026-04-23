@@ -17,10 +17,21 @@ describe('session helpers', () => {
     resetAuthConfigForTests()
   })
 
-  it('isSignedIn returns false for empty sessions and true when sub is set', async () => {
+  it('isSignedIn returns false for empty and partial sessions, and true for complete sessions', async () => {
     const { isSignedIn } = await import('@/lib/auth/session')
     expect(isSignedIn({} as never)).toBe(false)
-    expect(isSignedIn({ sub: 'alice' } as never)).toBe(true)
+    expect(isSignedIn({ sub: 'alice' } as never)).toBe(false)
+    expect(
+      isSignedIn({
+        sub: 'alice',
+        givenName: 'Alice',
+        familyName: 'Reviewer',
+        name: 'Alice Reviewer',
+        hsaId: 'SE2321000032-reviewer1',
+        roles: ['Reviewer'],
+        accessTokenExpiresAt: 1,
+      } as never),
+    ).toBe(true)
   })
 
   it('round-trips session data via iron-session', async () => {

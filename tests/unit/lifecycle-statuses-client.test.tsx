@@ -64,6 +64,20 @@ describe('LifecycleStatusesClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
+  it('clears loading and shows an error when the initial fetch fails', async () => {
+    fetchMock.mockRejectedValue(new Error('boom'))
+
+    render(<LifecycleStatusesClient />)
+
+    expect(screen.getByText('common.loading')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByText('common.loading')).toBeNull()
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'common.unexpectedError',
+    )
+  })
+
   it('opens create form', async () => {
     render(<LifecycleStatusesClient />)
     await waitFor(() => {

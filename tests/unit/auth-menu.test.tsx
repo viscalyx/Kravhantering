@@ -44,6 +44,7 @@ describe('AuthMenu', () => {
       json: async () => ({
         authenticated: true,
         sub: 'user-1',
+        hsaId: 'SE2321000032-admin1',
         givenName: 'Ada',
         familyName: 'Admin',
         name: 'Ada Admin',
@@ -59,6 +60,8 @@ describe('AuthMenu', () => {
     const form = signOutButton.closest('form')
 
     expect(signOutButton).toHaveAttribute('type', 'submit')
+    expect(signOutButton.className).toContain('min-h-11')
+    expect(signOutButton.className).toContain('min-w-11')
     expect(form).not.toBeNull()
     expect(form?.getAttribute('method')).toBe('post')
     expect(form?.getAttribute('action')).toBe('/api/auth/logout')

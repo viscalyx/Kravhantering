@@ -11,7 +11,7 @@ vi.mock('next-intl/middleware', () => ({
 }))
 vi.mock('@/i18n/routing', () => ({ routing: {} }))
 
-const { default: proxy } = await import('@/proxy')
+const { config, default: proxy } = await import('@/proxy')
 const { resetAuthConfigForTests } = await import('@/lib/auth/config')
 
 const COOKIE_PASSWORD =
@@ -139,6 +139,34 @@ describe('proxy', () => {
     } finally {
       restore()
     }
+  })
+
+  it('passes through exact public health routes', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(buildRequest('http://localhost/api/health'))
+      expect(response.status).toBe(200)
+    } finally {
+      restore()
+    }
+  })
+
+  it('requires auth for dotted api paths', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(
+        buildRequest('http://localhost/api/files/report.json', {
+          method: 'POST',
+        }),
+      )
+      expect(response.status).toBe(401)
+    } finally {
+      restore()
+    }
+  })
+
+  it('matches api paths explicitly so dotted routes stay behind auth', () => {
+    expect(config.matcher).toContain('/api/:path*')
   })
 
   it('requires Authorization: Bearer for /api/mcp', async () => {

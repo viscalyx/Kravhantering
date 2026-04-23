@@ -18,11 +18,14 @@ const getLoginStateMock = vi.fn()
 const getSessionMock = vi.fn()
 const getOidcConfigurationMock = vi.fn()
 const authorizationCodeGrantMock = vi.fn()
+const estimateSerializedSessionCookieLengthMock = vi.fn()
 
 vi.mock('@/lib/auth/login-state', () => ({
   getLoginState: () => getLoginStateMock(),
 }))
 vi.mock('@/lib/auth/session', () => ({
+  estimateSerializedSessionCookieLength: (...args: unknown[]) =>
+    estimateSerializedSessionCookieLengthMock(...args),
   getSession: () => getSessionMock(),
   isSignedIn: () => false,
 }))
@@ -90,11 +93,13 @@ describe('auth callback security audit events', () => {
     getSessionMock.mockReset()
     getOidcConfigurationMock.mockReset()
     authorizationCodeGrantMock.mockReset()
+    estimateSerializedSessionCookieLengthMock.mockReset()
     getOidcConfigurationMock.mockResolvedValue({})
+    estimateSerializedSessionCookieLengthMock.mockResolvedValue(512)
   })
 
   afterEach(() => {
-    infoSpy.mockRestore()
+    vi.restoreAllMocks()
   })
 
   function emittedSecurityEvents(): Array<Record<string, unknown>> {
@@ -216,6 +221,21 @@ describe('auth callback security audit events', () => {
     expect(
       (emittedSecurityEvents()[0].detail as Record<string, unknown>).reason,
     ).toBe('family_name_missing')
+  })
+
+  it('emits both missing-name reasons when given_name and family_name are absent', async () => {
+    getLoginStateMock.mockResolvedValue(freshLoginState())
+    getSessionMock.mockResolvedValue(freshPriorSession())
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({ ...SUCCESS_CLAIMS, given_name: '', family_name: '' }),
+      expiresIn: () => 3600,
+      id_token: 'idt',
+    })
+    const GET = await importGet()
+    await GET(buildCallbackRequest())
+    expect(
+      (emittedSecurityEvents()[0].detail as Record<string, unknown>).reason,
+    ).toBe('given_name_missing,family_name_missing')
   })
 
   it('emits auth.login.failed with reason=hsa_id_missing', async () => {
@@ -346,5 +366,50 @@ describe('auth callback security audit events', () => {
     expect(response.headers.get('location')).toBe(
       'http://localhost:3000/sv/requirements?tab=open',
     )
+  })
+
+  it('uses the conservative token-expiry fallback when expiresIn is missing', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000)
+    getLoginStateMock.mockResolvedValue(freshLoginState())
+    const priorSession = freshPriorSession()
+    const currentSession = freshPriorSession()
+    getSessionMock
+      .mockResolvedValueOnce(priorSession)
+      .mockResolvedValueOnce(currentSession)
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({ ...SUCCESS_CLAIMS, roles: ['Reviewer'] }),
+      expiresIn: () => undefined,
+      id_token: 'idt',
+    })
+
+    const GET = await importGet()
+    await GET(buildCallbackRequest())
+
+    expect(currentSession.accessTokenExpiresAt).toBe(1_700_000_300)
+    expect(currentSession.save).toHaveBeenCalledOnce()
+  })
+
+  it('omits idToken from the saved session when the cookie budget would overflow', async () => {
+    getLoginStateMock.mockResolvedValue(freshLoginState())
+    const priorSession = freshPriorSession()
+    const currentSession = freshPriorSession({ idToken: 'old-token' })
+    getSessionMock
+      .mockResolvedValueOnce(priorSession)
+      .mockResolvedValueOnce(currentSession)
+    estimateSerializedSessionCookieLengthMock.mockResolvedValue(4097)
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({ ...SUCCESS_CLAIMS, roles: ['Reviewer'] }),
+      expiresIn: () => 3600,
+      id_token: 'oversized-id-token',
+    })
+
+    const GET = await importGet()
+    await GET(buildCallbackRequest())
+
+    expect(estimateSerializedSessionCookieLengthMock).toHaveBeenCalledWith(
+      expect.objectContaining({ idToken: 'oversized-id-token' }),
+    )
+    expect(currentSession.idToken).toBeUndefined()
+    expect(currentSession.save).toHaveBeenCalledOnce()
   })
 })

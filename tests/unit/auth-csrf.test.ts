@@ -165,7 +165,7 @@ describe('assertSameOriginRequest security audit events', () => {
           xrw: 'NotXHR',
         }),
       ),
-    ).toThrow(CsrfError)
+    ).toThrow('Invalid X-Requested-With header.')
     const events = emittedSecurityEvents()
     expect(events).toHaveLength(1)
     expect(events[0].detail).toEqual({ reason: 'x_requested_with_invalid' })
