@@ -28,13 +28,3 @@ services:
       - "${KEYCLOAK_HOST_PORT:-8080}:8080"
     volumes:
       - ./dev/keycloak:/opt/keycloak/data/import:ro
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/kravhantering-dev/.well-known/openid-configuration HTTP/1.1\r\nHost: localhost:8080\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200 OK'"
-        ]
-      interval: 5s
-      retries: 30
-      start_period: 30s
-      timeout: 5s
