@@ -3,7 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { LogIn, LogOut, UserCircle2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { usePathname } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 
@@ -11,12 +11,12 @@ type AuthMeAuthenticated = {
   authenticated: true
   sub: string
   hsaId: string
-  givenName: string | null
-  familyName: string | null
-  name: string | null
-  email: string | null
+  givenName: string
+  familyName: string
+  name: string
+  email?: string
   roles: string[]
-  expiresAt: number | null
+  expiresAt: number
 }
 
 type AuthMeUnauthenticated = {
@@ -35,6 +35,14 @@ interface AuthLogoutButtonProps {
   className: string
   formClassName?: string
   label: string
+}
+
+function isFocusVisibleTarget(target: HTMLElement): boolean {
+  try {
+    return target.matches(':focus-visible')
+  } catch {
+    return false
+  }
 }
 
 function useAuthMe(): AuthMe | null {
@@ -77,10 +85,48 @@ function AuthLogoutButton({
   formClassName,
   label,
 }: AuthLogoutButtonProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch('/api/auth/logout', {
+        credentials: 'same-origin',
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        method: 'POST',
+      })
+      if (!response.ok) {
+        throw new Error(`Logout failed with status ${response.status}`)
+      }
+
+      const body = (await response.json().catch(() => null)) as {
+        redirectTo?: unknown
+      } | null
+      const redirectTo =
+        body && typeof body.redirectTo === 'string' ? body.redirectTo : null
+      window.location.assign(redirectTo ?? '/')
+    } catch (error) {
+      console.error('Logout failed', error)
+      setIsSubmitting(false)
+    }
+  }
+
   return (
-    <form action="/api/auth/logout" className={formClassName} method="post">
+    <form
+      action="/api/auth/logout"
+      className={formClassName}
+      method="post"
+      onSubmit={handleSubmit}
+    >
       <button
         className={className}
+        disabled={isSubmitting}
         type="submit"
         {...devMarker({ name: 'button', value: 'sign out' })}
       >
@@ -103,6 +149,25 @@ export default function AuthMenu({
   const me = useAuthMe()
   const popupId = useId()
   const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const popupRootRef = useRef<HTMLDivElement | null>(null)
+  const suppressNextFocusOpenRef = useRef(false)
+  const triggerRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (!isPopupOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (popupRootRef.current?.contains(target)) return
+      setIsPopupOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [isPopupOpen])
 
   if (!me || ('authDisabled' in me && me.authDisabled)) {
     return null
@@ -138,13 +203,10 @@ export default function AuthMenu({
   // show only the Admin chip in that case to keep the popup compact.
   const isAdmin = me.roles.includes('Admin')
   const visibleRoles = isAdmin ? ['Admin'] : me.roles
-  const sessionExpiresLabel =
-    me.expiresAt !== null
-      ? new Intl.DateTimeFormat(locale, {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        }).format(new Date(me.expiresAt * 1000))
-      : null
+  const sessionExpiresLabel = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(me.expiresAt * 1000))
 
   const userInfoRows: Array<{ label: string; value: string }> = [
     { label: t('userInfoName'), value: displayName },
@@ -206,13 +268,33 @@ export default function AuthMenu({
         value: 'signed-in user',
       })}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover-only
-          info popup; the popup content is informational and the sign-out
-          button is a sibling element with proper keyboard focus. */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: hover and focus
+          state are coordinated on this wrapper so the keyboard-reachable user
+          info popover stays mounted while focus moves within it. */}
       <div
         className="relative"
+        onBlur={event => {
+          const nextTarget = event.relatedTarget
+          if (
+            nextTarget instanceof Node &&
+            event.currentTarget.contains(nextTarget)
+          ) {
+            return
+          }
+          setIsPopupOpen(false)
+        }}
         onMouseEnter={() => setIsPopupOpen(true)}
-        onMouseLeave={() => setIsPopupOpen(false)}
+        onMouseLeave={() => {
+          const activeElement = document.activeElement
+          if (
+            activeElement instanceof Node &&
+            popupRootRef.current?.contains(activeElement)
+          ) {
+            return
+          }
+          setIsPopupOpen(false)
+        }}
+        ref={popupRootRef}
       >
         <button
           aria-describedby={isPopupOpen ? popupId : undefined}
@@ -220,8 +302,17 @@ export default function AuthMenu({
           aria-haspopup="dialog"
           aria-label={t('signedInAs', { name: displayName })}
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-secondary-700 transition-all duration-200 hover:bg-secondary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:text-secondary-300 dark:hover:bg-secondary-800 dark:focus-visible:ring-primary-400/60 dark:focus-visible:ring-offset-secondary-950"
-          onBlur={() => setIsPopupOpen(false)}
-          onFocus={() => setIsPopupOpen(true)}
+          onClick={() => setIsPopupOpen(open => !open)}
+          onFocus={event => {
+            if (suppressNextFocusOpenRef.current) {
+              suppressNextFocusOpenRef.current = false
+              return
+            }
+            if (isFocusVisibleTarget(event.currentTarget)) {
+              setIsPopupOpen(true)
+            }
+          }}
+          ref={triggerRef}
           title={t('signedInAs', { name: displayName })}
           type="button"
           {...devMarker({ name: 'button', value: 'user info trigger' })}
@@ -237,6 +328,13 @@ export default function AuthMenu({
               exit={{ opacity: 0, y: -4 }}
               id={popupId}
               initial={{ opacity: 0, y: -4 }}
+              onKeyDown={event => {
+                if (event.key !== 'Escape') return
+                event.preventDefault()
+                suppressNextFocusOpenRef.current = true
+                setIsPopupOpen(false)
+                triggerRef.current?.focus()
+              }}
               role="dialog"
               transition={{ duration: 0.12 }}
               {...devMarker({

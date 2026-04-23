@@ -17,6 +17,7 @@
  */
 
 import { recordSecurityEvent } from '@/lib/auth/audit'
+import { getAuthConfig } from '@/lib/auth/config'
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 
@@ -50,6 +51,32 @@ function recordCsrfRejection(
   })
 }
 
+function firstForwardedValue(value: string | null): string | null {
+  if (!value) return null
+  const first = value.split(',')[0]?.trim()
+  return first && first.length > 0 ? first : null
+}
+
+function resolveExpectedOrigin(request: Request): string {
+  const cfg = getAuthConfig()
+  const configuredOrigin = cfg.enabled ? originFromUrl(cfg.redirectUri) : null
+  if (configuredOrigin) {
+    return configuredOrigin
+  }
+
+  const forwardedProto = firstForwardedValue(
+    request.headers.get('x-forwarded-proto'),
+  )
+  const forwardedHost = firstForwardedValue(
+    request.headers.get('x-forwarded-host'),
+  )
+  if (forwardedProto && forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`
+  }
+
+  return new URL(request.url).origin
+}
+
 /**
  * Throws {@link CsrfError} when `request` is a state-changing call that
  * fails the same-origin / `X-Requested-With` checks. No-op on safe methods.
@@ -57,7 +84,7 @@ function recordCsrfRejection(
 export function assertSameOriginRequest(request: Request): void {
   if (SAFE_METHODS.has(request.method.toUpperCase())) return
 
-  const expected = new URL(request.url).origin
+  const expected = resolveExpectedOrigin(request)
   const originHeader = request.headers.get('origin')
   const refererOrigin = originFromUrl(request.headers.get('referer'))
   const claimed = originHeader ?? refererOrigin

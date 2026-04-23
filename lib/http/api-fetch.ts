@@ -29,14 +29,26 @@ export function apiFetch(
   const method = (
     init?.method ?? (input instanceof Request ? input.method : 'GET')
   ).toUpperCase()
-  const headers = buildHeaders(input, init)
 
-  if (!SAFE_METHODS.has(method) && !headers.has('x-requested-with')) {
-    headers.set('X-Requested-With', 'XMLHttpRequest')
+  if (SAFE_METHODS.has(method)) {
+    if (init === undefined) {
+      return fetch(input)
+    }
+
+    if (input instanceof Request) {
+      if (init.headers === undefined) {
+        return fetch(new Request(input, init))
+      }
+      const headers = buildHeaders(input, init)
+      return fetch(new Request(input, { ...init, headers }))
+    }
+
+    return fetch(input, init)
   }
 
-  if (input instanceof Request) {
-    return fetch(new Request(input, { ...(init ?? {}), headers }))
+  const headers = buildHeaders(input, init)
+  if (!headers.has('x-requested-with')) {
+    headers.set('X-Requested-With', 'XMLHttpRequest')
   }
 
   return fetch(input, { ...(init ?? {}), headers })

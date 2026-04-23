@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getAuthConfig } from '@/lib/auth/config'
+import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import { getOidcConfiguration, oidcClient } from '@/lib/auth/oidc'
 import { getSession } from '@/lib/auth/session'
 
@@ -8,6 +9,24 @@ export const dynamic = 'force-dynamic'
 
 function createLocalRedirect(request: NextRequest, target: string) {
   return NextResponse.redirect(new URL(target, request.url), { status: 302 })
+}
+
+function createPostLogoutResponse(
+  request: NextRequest,
+  target: string | URL,
+): NextResponse {
+  const url = target instanceof URL ? target : new URL(target, request.url)
+  const accept = request.headers.get('accept')?.toLowerCase() ?? ''
+  if (accept.includes('application/json')) {
+    return NextResponse.json(
+      { redirectTo: url.toString() },
+      {
+        headers: { 'Cache-Control': 'no-store' },
+        status: 200,
+      },
+    )
+  }
+  return NextResponse.redirect(url, { status: 302 })
 }
 
 export async function GET(request: NextRequest) {
@@ -21,8 +40,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const cfg = getAuthConfig()
   if (!cfg.enabled) {
-    return createLocalRedirect(request, '/')
+    return createPostLogoutResponse(request, '/')
   }
+  assertSameOriginRequest(request)
 
   const session = await getSession()
   const idTokenHint =
@@ -53,7 +73,7 @@ export async function POST(request: NextRequest) {
       post_logout_redirect_uri: cfg.postLogoutRedirectUri,
       ...(idTokenHint ? { id_token_hint: idTokenHint } : {}),
     })
-    return NextResponse.redirect(endSessionUrl, { status: 302 })
+    return createPostLogoutResponse(request, endSessionUrl)
   } catch (error) {
     console.warn('OIDC end_session_endpoint discovery/build failed', {
       error: error instanceof Error ? error.message : String(error),
@@ -61,6 +81,6 @@ export async function POST(request: NextRequest) {
       postLogoutRedirectUri: cfg.postLogoutRedirectUri,
     })
     // IdP did not advertise an end_session_endpoint — just bounce home.
-    return createLocalRedirect(request, cfg.postLogoutRedirectUri)
+    return createPostLogoutResponse(request, cfg.postLogoutRedirectUri)
   }
 }

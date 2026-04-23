@@ -8,6 +8,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 
 const IMPLEMENTATION_TYPES_HELP: HelpContent = {
   sections: [
@@ -79,10 +80,9 @@ export default function ImplementationTypesClient() {
         body: JSON.stringify(form),
       })
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          error?: string
-        } | null
-        setError(body?.error ?? res.statusText ?? tc('error'))
+        setError(
+          (await readResponseMessage(res)) ?? res.statusText ?? tc('error'),
+        )
         return
       }
       setShowForm(false)
@@ -121,10 +121,9 @@ export default function ImplementationTypesClient() {
         method: 'DELETE',
       })
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as {
-          error?: string
-        } | null
-        setError(body?.error ?? res.statusText ?? tc('error'))
+        setError(
+          (await readResponseMessage(res)) ?? res.statusText ?? tc('error'),
+        )
         return
       }
       fetchItems()

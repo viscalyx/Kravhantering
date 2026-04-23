@@ -1409,6 +1409,7 @@ export default function RequirementDetailClient({
         message: details ?? t('transitionFailed'),
         showCancel: false,
         icon: 'warning',
+        anchorEl,
       })
       return
     }
@@ -1445,6 +1446,7 @@ export default function RequirementDetailClient({
         await confirm({
           message: details ?? t('transitionFailed'),
           showCancel: false,
+          anchorEl,
         })
         return
       }
@@ -1483,6 +1485,7 @@ export default function RequirementDetailClient({
         await confirm({
           message: details ?? t('transitionFailed'),
           showCancel: false,
+          anchorEl,
         })
         return
       }
@@ -1565,6 +1568,7 @@ export default function RequirementDetailClient({
         await confirm({
           message: details ?? t('transitionFailed'),
           showCancel: false,
+          anchorEl,
         })
         return
       }
@@ -1602,6 +1606,7 @@ export default function RequirementDetailClient({
         message: details ?? t('transitionFailed'),
         showCancel: false,
         icon: 'warning',
+        anchorEl,
       })
       return
     }

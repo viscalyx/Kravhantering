@@ -9,6 +9,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 
 const REQUIREMENT_STATUSES_HELP: HelpContent = {
   sections: [
@@ -73,6 +74,13 @@ export default function RequirementStatusesClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (submitting) return
+    const nativeEvent = e.nativeEvent as Event & {
+      submitter?: EventTarget | null
+    }
+    const submitter =
+      nativeEvent.submitter instanceof HTMLElement
+        ? nativeEvent.submitter
+        : undefined
     setSubmitting(true)
     try {
       const method = editId ? 'PUT' : 'POST'
@@ -85,13 +93,12 @@ export default function RequirementStatusesClient() {
         body: JSON.stringify(form),
       })
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as {
-          error?: string
-        } | null
         await confirm({
-          message: data?.error ?? res.statusText ?? tc('error'),
+          message:
+            (await readResponseMessage(res)) ?? res.statusText ?? tc('error'),
           showCancel: false,
           icon: 'warning',
+          anchorEl: submitter,
         })
         return
       }
@@ -104,6 +111,7 @@ export default function RequirementStatusesClient() {
         message: error instanceof Error ? error.message : tc('error'),
         showCancel: false,
         icon: 'warning',
+        anchorEl: submitter,
       })
     } finally {
       setSubmitting(false)

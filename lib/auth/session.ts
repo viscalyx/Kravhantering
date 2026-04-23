@@ -123,7 +123,7 @@ function computeCookieMaxAge(ttl: number): number {
   if (ttl === 0) {
     return 2_147_483_647
   }
-  return ttl - SESSION_COOKIE_EXPIRY_SKEW_SECONDS
+  return Math.max(0, ttl - SESSION_COOKIE_EXPIRY_SKEW_SECONDS)
 }
 
 function toCookieSameSite(

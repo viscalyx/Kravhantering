@@ -63,9 +63,16 @@ function buildMissingNameReason(
 async function resolveSessionIdToken(
   sessionData: SessionData,
   idToken: string | undefined,
-): Promise<string | undefined> {
+): Promise<{
+  auditDetail?: {
+    estimatedCookieLength: number
+    logoutHintOmitted: true
+    safeLimit: number
+  }
+  value: string | undefined
+}> {
   if (!idToken) {
-    return undefined
+    return { value: undefined }
   }
 
   const estimatedCookieLength = await estimateSerializedSessionCookieLength({
@@ -73,17 +80,17 @@ async function resolveSessionIdToken(
     idToken,
   })
   if (estimatedCookieLength <= SESSION_COOKIE_SAFE_MAX_LENGTH) {
-    return idToken
+    return { value: idToken }
   }
 
-  console.warn(
-    '[auth] OIDC id_token omitted from session cookie because it would exceed the safe cookie budget.',
-    {
+  return {
+    auditDetail: {
       estimatedCookieLength,
+      logoutHintOmitted: true,
       safeLimit: SESSION_COOKIE_SAFE_MAX_LENGTH,
     },
-  )
-  return undefined
+    value: undefined,
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -109,6 +116,7 @@ export async function GET(request: NextRequest) {
   const loginState = await getLoginState()
   if (!loginState.codeVerifier) {
     recordLoginFailure(request, 'code_verifier_missing')
+    loginState.destroy()
     return NextResponse.json(
       { error: 'Login session expired or missing. Please retry.' },
       { status: 400 },
@@ -116,6 +124,7 @@ export async function GET(request: NextRequest) {
   }
   if (!loginState.state) {
     recordLoginFailure(request, 'state_missing')
+    loginState.destroy()
     return NextResponse.json(
       { error: 'Login session expired or missing. Please retry.' },
       { status: 400 },
@@ -123,6 +132,7 @@ export async function GET(request: NextRequest) {
   }
   if (!loginState.nonce) {
     recordLoginFailure(request, 'nonce_missing')
+    loginState.destroy()
     return NextResponse.json(
       { error: 'Login session expired or missing. Please retry.' },
       { status: 400 },
@@ -249,10 +259,8 @@ export async function GET(request: NextRequest) {
     roles,
     accessTokenExpiresAt,
   }
-  const sessionIdToken = await resolveSessionIdToken(
-    sessionData,
-    tokens.id_token,
-  )
+  const { auditDetail: sessionIdTokenAudit, value: sessionIdToken } =
+    await resolveSessionIdToken(sessionData, tokens.id_token)
 
   const session = await getSession()
   session.sub = sessionData.sub
@@ -279,12 +287,15 @@ export async function GET(request: NextRequest) {
     outcome: 'success',
     actor: { source: 'oidc', sub: claims.sub, hsaId },
     request,
-    detail: { roles: [...roles].sort() },
+    detail: {
+      roles: [...roles].sort(),
+      ...(sessionIdTokenAudit ?? {}),
+    },
   })
 
   // Role-change diff: only emit when the user already had a session AND the
   // resolved role set differs. Skip on first-ever login.
-  if (priorSub) {
+  if (priorSub === claims.sub) {
     const before = [...priorRoles].sort()
     const after = [...roles].sort()
     if (before.join(',') !== after.join(',')) {
