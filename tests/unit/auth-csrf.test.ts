@@ -90,7 +90,7 @@ describe('assertSameOriginRequest', () => {
     ).not.toThrow()
   })
 
-  it('accepts forwarded-origin requests when auth config is unavailable', () => {
+  it('accepts forwarded-origin requests when auth is disabled', () => {
     getAuthConfigMock.mockReturnValue({ enabled: false, redirectUri: '' })
 
     expect(() =>

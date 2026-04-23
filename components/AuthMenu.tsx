@@ -222,10 +222,12 @@ export default function AuthMenu({ variant }: ComponentProps) {
   // show only the Admin chip in that case to keep the popup compact.
   const isAdmin = me.roles.includes('Admin')
   const visibleRoles = isAdmin ? ['Admin'] : me.roles
-  const sessionExpiresLabel = new Intl.DateTimeFormat(locale, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(me.expiresAt * 1000))
+  const sessionExpiresLabel = Number.isFinite(me.expiresAt)
+    ? new Intl.DateTimeFormat(locale, {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(me.expiresAt * 1000))
+    : null
 
   const userInfoRows: UserInfoRow[] = [
     { devMarker: 'name', label: t('userInfoName'), value: displayName },
@@ -242,7 +244,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
     label: t('userInfoSubject'),
     value: me.sub,
   })
-  if (sessionExpiresLabel) {
+  if (sessionExpiresLabel !== null) {
     userInfoRows.push({
       devMarker: 'session expires',
       label: t('userInfoSessionExpires'),

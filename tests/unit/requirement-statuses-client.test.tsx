@@ -26,10 +26,18 @@ vi.mock('@/components/StatusBadge', () => ({
 }))
 
 function okJson(body: unknown) {
-  return { ok: true, json: async () => body }
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    statusText: '',
+    headers: { 'content-type': 'application/json' },
+  })
 }
 function errJson(body: unknown) {
-  return { ok: false, json: async () => body }
+  return new Response(JSON.stringify(body), {
+    status: 500,
+    statusText: '',
+    headers: { 'content-type': 'application/json' },
+  })
 }
 function errText(body: string, statusText = '') {
   return new Response(body, {
@@ -68,7 +76,7 @@ describe('RequirementStatusesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockImplementation(() => okJson({ statuses: sampleStatuses }))
   })
 
   it('renders heading and create button', async () => {

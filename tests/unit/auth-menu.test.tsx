@@ -165,6 +165,37 @@ describe('AuthMenu', () => {
     expect(dialog.className).not.toContain('w-72')
   })
 
+  it('skips the session expiry row when expiresAt is invalid', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: 'SE2321000032-admin1',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        roles: ['Admin'],
+        expiresAt: Number.NaN,
+      }),
+    })
+
+    render(<AuthMenu variant="desktop" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    fireEvent.click(trigger)
+
+    const dialog = await screen.findByRole('dialog', { name: 'userInfoTitle' })
+    expect(
+      dialog.querySelector(
+        '[data-developer-mode-value="user info session expires"]',
+      ),
+    ).toBeNull()
+  })
+
   it('keeps the desktop popup open when focus moves into the popup subtree', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
