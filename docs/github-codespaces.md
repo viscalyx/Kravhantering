@@ -281,6 +281,12 @@ after you pull the latest repo changes, rebuild the
 Codespace/devcontainer so the updated `.devcontainer/docker-compose.yml`
 security setting takes effect.
 
+If your devcontainer bind-mounts `${HOME}/.codex`, keep
+`/home/vscode/.codex/tmp` container-local instead of reusing the
+host temp directory. Host-generated Codex arg0 wrappers can point at
+host-only paths such as `/Applications/Codex.app/...`, which breaks
+sandboxed exec/edit startup inside the Linux container.
+
 If you intentionally selected the default
 **Kravhantering Development** configuration, those
 errors can be expected because that configuration does
