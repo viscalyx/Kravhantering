@@ -129,7 +129,7 @@ describe('RequirementStatusesClient', () => {
     })
   })
 
-  it('keeps the form open when save fails', async () => {
+  it('keeps the form open when save fails and anchors the dialog to the submitter', async () => {
     render(<RequirementStatusesClient />)
     await waitFor(() => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
@@ -145,7 +145,8 @@ describe('RequirementStatusesClient', () => {
 
     fetchMock.mockResolvedValueOnce(errJson({ error: 'Cannot save' }))
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+    fireEvent.click(saveButton)
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(
@@ -153,6 +154,7 @@ describe('RequirementStatusesClient', () => {
           message: 'Cannot save',
           showCancel: false,
           icon: 'warning',
+          anchorEl: saveButton,
         }),
       )
     })

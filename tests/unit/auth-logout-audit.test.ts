@@ -30,6 +30,18 @@ function mockAuthEnv() {
   resetAuthConfigForTests()
 }
 
+function buildPostRequest(
+  headers: Record<string, string> = {
+    origin: 'http://localhost:3000',
+    'x-requested-with': 'XMLHttpRequest',
+  },
+) {
+  return new NextRequest('http://localhost/api/auth/logout', {
+    method: 'POST',
+    headers,
+  })
+}
+
 describe('auth logout security audit events', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
   let warnSpy: ReturnType<typeof vi.spyOn>
@@ -80,9 +92,7 @@ describe('auth logout security audit events', () => {
       destroy,
     })
     const { POST } = await importRoute()
-    await POST(
-      new NextRequest('http://localhost/api/auth/logout', { method: 'POST' }),
-    )
+    await POST(buildPostRequest())
     const events = emittedSecurityEvents()
     expect(events).toHaveLength(1)
     expect(events[0].event).toBe('auth.logout')
@@ -99,14 +109,43 @@ describe('auth logout security audit events', () => {
     const destroy = vi.fn()
     getSessionMock.mockResolvedValue({ destroy })
     const { POST } = await importRoute()
-    await POST(
-      new NextRequest('http://localhost/api/auth/logout', { method: 'POST' }),
-    )
+    await POST(buildPostRequest())
     const events = emittedSecurityEvents()
     expect(events).toHaveLength(1)
     expect(events[0].event).toBe('auth.logout')
     expect(events[0].actor).toEqual({ source: 'anonymous' })
     expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('returns JSON redirect targets for XHR logout requests', async () => {
+    const destroy = vi.fn()
+    getSessionMock.mockResolvedValue({ destroy })
+    const { POST } = await importRoute()
+    const response = await POST(
+      buildPostRequest({
+        accept: 'application/json',
+        origin: 'http://localhost:3000',
+        'x-requested-with': 'XMLHttpRequest',
+      }),
+    )
+
+    await expect(response.json()).resolves.toEqual({
+      redirectTo: 'https://idp.example.test/end',
+    })
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+    expect(destroy).toHaveBeenCalledOnce()
+  })
+
+  it('rejects POST requests without X-Requested-With', async () => {
+    const { POST } = await importRoute()
+
+    await expect(
+      POST(
+        buildPostRequest({
+          origin: 'http://localhost:3000',
+        }),
+      ),
+    ).rejects.toThrow('Missing X-Requested-With header.')
   })
 
   it('keeps GET non-destructive and redirects locally', async () => {
@@ -129,9 +168,7 @@ describe('auth logout security audit events', () => {
     getOidcConfigurationMock.mockRejectedValue(new Error('discovery failed'))
 
     const { POST } = await importRoute()
-    const response = await POST(
-      new NextRequest('http://localhost/api/auth/logout', { method: 'POST' }),
-    )
+    const response = await POST(buildPostRequest())
 
     expect(response.headers.get('location')).toBe('http://localhost:3000/')
     expect(destroy).toHaveBeenCalledOnce()

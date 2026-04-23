@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthMenu from '@/components/AuthMenu'
 
@@ -38,7 +38,56 @@ describe('AuthMenu', () => {
     )
   })
 
-  it('renders sign-out as a POST form button for authenticated users', async () => {
+  it('submits logout through fetch with the CSRF header', async () => {
+    let resolveLogout: ((value: unknown) => void) | undefined
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          authenticated: true,
+          sub: 'user-1',
+          hsaId: 'SE2321000032-admin1',
+          givenName: 'Ada',
+          familyName: 'Admin',
+          name: 'Ada Admin',
+          email: 'ada@example.test',
+          roles: ['Admin'],
+          expiresAt: 123,
+        }),
+      })
+      .mockReturnValueOnce(
+        new Promise(resolve => {
+          resolveLogout = resolve
+        }),
+      )
+
+    render(<AuthMenu variant="mobile" />)
+
+    const signOutButton = await screen.findByRole('button', { name: 'signOut' })
+    fireEvent.click(signOutButton)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        '/api/auth/logout',
+        expect.objectContaining({
+          credentials: 'same-origin',
+          headers: expect.objectContaining({
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          }),
+          method: 'POST',
+        }),
+      )
+    })
+
+    resolveLogout?.({
+      ok: true,
+      json: async () => ({ redirectTo: 'https://idp.example.test/logout' }),
+    })
+  })
+
+  it('keeps the desktop popup open when focus moves into the popup subtree', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -50,20 +99,57 @@ describe('AuthMenu', () => {
         name: 'Ada Admin',
         email: 'ada@example.test',
         roles: ['Admin'],
-        expiresAt: null,
+        expiresAt: 123,
       }),
     })
 
-    render(<AuthMenu variant="mobile" />)
+    render(<AuthMenu variant="desktop" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    fireEvent.click(trigger)
 
     const signOutButton = await screen.findByRole('button', { name: 'signOut' })
-    const form = signOutButton.closest('form')
+    fireEvent.blur(trigger, { relatedTarget: signOutButton })
+    fireEvent.focus(signOutButton)
 
-    expect(signOutButton).toHaveAttribute('type', 'submit')
-    expect(signOutButton.className).toContain('min-h-11')
-    expect(signOutButton.className).toContain('min-w-11')
-    expect(form).not.toBeNull()
-    expect(form?.getAttribute('method')).toBe('post')
-    expect(form?.getAttribute('action')).toBe('/api/auth/logout')
+    expect(signOutButton).toBeInTheDocument()
+    expect(
+      screen.getByRole('dialog', { name: 'userInfoTitle' }),
+    ).toBeInTheDocument()
+  })
+
+  it('closes the popup on Escape and restores focus to the trigger', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: 'SE2321000032-admin1',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        roles: ['Admin'],
+        expiresAt: 123,
+      }),
+    })
+
+    render(<AuthMenu variant="desktop" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    fireEvent.click(trigger)
+
+    const signOutButton = await screen.findByRole('button', { name: 'signOut' })
+    signOutButton.focus()
+    fireEvent.keyDown(signOutButton, { key: 'Escape' })
+
+    await waitFor(() => {
+      expect(trigger).toHaveFocus()
+    })
+    expect(screen.queryByRole('dialog', { name: 'userInfoTitle' })).toBeNull()
   })
 })

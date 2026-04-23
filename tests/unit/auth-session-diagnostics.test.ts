@@ -6,21 +6,48 @@ import type { SessionData } from '@/lib/auth/session'
 const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
 
+const TRACKED_ENV_KEYS = [
+  'AUTH_ENABLED',
+  'AUTH_OIDC_CLIENT_ID',
+  'AUTH_OIDC_CLIENT_SECRET',
+  'AUTH_OIDC_ISSUER_URL',
+  'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI',
+  'AUTH_OIDC_REDIRECT_URI',
+  'AUTH_SESSION_COOKIE_PASSWORD',
+] as const
+
+const env = process.env as Record<string, string | undefined>
+const originalEnv = Object.fromEntries(
+  TRACKED_ENV_KEYS.map(key => [key, env[key]]),
+) as Record<(typeof TRACKED_ENV_KEYS)[number], string | undefined>
+
+function restoreTrackedEnv() {
+  for (const key of TRACKED_ENV_KEYS) {
+    const value = originalEnv[key]
+    if (value === undefined) {
+      delete env[key]
+    } else {
+      env[key] = value
+    }
+  }
+}
+
 describe('getSessionFromRequestWithDiagnostics', () => {
   beforeEach(() => {
-    process.env.AUTH_ENABLED = 'true'
-    process.env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
-    process.env.AUTH_OIDC_CLIENT_ID = 'kravhantering-app'
-    process.env.AUTH_OIDC_CLIENT_SECRET = 'secret'
-    process.env.AUTH_OIDC_REDIRECT_URI =
-      'http://localhost:3000/api/auth/callback'
-    process.env.AUTH_OIDC_POST_LOGOUT_REDIRECT_URI = 'http://localhost:3000/'
-    process.env.AUTH_SESSION_COOKIE_PASSWORD = COOKIE_PASSWORD
+    env.AUTH_ENABLED = 'true'
+    env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
+    env.AUTH_OIDC_CLIENT_ID = 'kravhantering-app'
+    env.AUTH_OIDC_CLIENT_SECRET = 'secret'
+    env.AUTH_OIDC_REDIRECT_URI = 'http://localhost:3000/api/auth/callback'
+    env.AUTH_OIDC_POST_LOGOUT_REDIRECT_URI = 'http://localhost:3000/'
+    env.AUTH_SESSION_COOKIE_PASSWORD = COOKIE_PASSWORD
     resetAuthConfigForTests()
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
+    restoreTrackedEnv()
+    resetAuthConfigForTests()
   })
 
   async function writeSessionCookie(
@@ -104,9 +131,8 @@ describe('getSessionFromRequestWithDiagnostics', () => {
   })
 
   it('returns rejected=true when the cookie was sealed with a different password', async () => {
-    // Write a cookie under one password, then read it under a different one.
     const cookieHeader = await writeValidSessionCookie()
-    process.env.AUTH_SESSION_COOKIE_PASSWORD =
+    env.AUTH_SESSION_COOKIE_PASSWORD =
       'different-cookie-password-must-be-at-least-32-chars'
     resetAuthConfigForTests()
     const { getSessionFromRequestWithDiagnostics } = await import(

@@ -10,6 +10,12 @@ describe('apiFetch', () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
   })
 
+  it('forwards bare safe string inputs without manufacturing an init object', async () => {
+    await apiFetch('/api/items')
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/items')
+  })
+
   it('honors Request inputs and overlays init headers for safe methods', async () => {
     const input = new Request('http://localhost/api/items', {
       method: 'GET',
@@ -51,10 +57,13 @@ describe('apiFetch', () => {
     })
 
     const request = fetchMock.mock.calls[0]?.[0] as Request
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const headers = init.headers as Headers
+
     expect(request.method).toBe('POST')
-    expect(request.headers.get('content-type')).toBe('application/json')
-    expect(request.headers.get('x-correlation-id')).toBe('abc-123')
-    expect(request.headers.get('x-requested-with')).toBe('XMLHttpRequest')
+    expect(headers.get('content-type')).toBe('application/json')
+    expect(headers.get('x-correlation-id')).toBe('abc-123')
+    expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
   })
 
   it('adds X-Requested-With for mutating string inputs while preserving init headers', async () => {

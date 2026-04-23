@@ -194,6 +194,35 @@ describe('ImplementationTypesClient', () => {
     ).toBeInTheDocument()
   })
 
+  it('uses the shared response-message fallback for message-shaped errors', async () => {
+    render(<ImplementationTypesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Type en')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(
+      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      { target: { value: 'Ny' } },
+    )
+    fireEvent.change(
+      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      { target: { value: 'New' } },
+    )
+
+    fetchMock.mockResolvedValueOnce(
+      errJson({ message: 'Cannot save from message' }),
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Cannot save from message',
+      )
+    })
+  })
+
   it('shows an error and skips refresh when delete fails', async () => {
     confirmMock.mockResolvedValue(true)
     render(<ImplementationTypesClient />)

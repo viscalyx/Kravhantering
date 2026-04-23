@@ -123,9 +123,8 @@ describe('auth callback security audit events', () => {
   }
 
   it('emits auth.login.failed with reason=code_verifier_missing', async () => {
-    getLoginStateMock.mockResolvedValue(
-      freshLoginState({ codeVerifier: '' as never }),
-    )
+    const loginState = freshLoginState({ codeVerifier: '' as never })
+    getLoginStateMock.mockResolvedValue(loginState)
     getSessionMock.mockResolvedValue(freshPriorSession())
     const GET = await importGet()
     await GET(buildCallbackRequest())
@@ -135,10 +134,12 @@ describe('auth callback security audit events', () => {
     expect((events[0].detail as Record<string, unknown>).reason).toBe(
       'code_verifier_missing',
     )
+    expect(loginState.destroy).toHaveBeenCalledOnce()
   })
 
   it('emits auth.login.failed with reason=state_missing', async () => {
-    getLoginStateMock.mockResolvedValue(freshLoginState({ state: '' as never }))
+    const loginState = freshLoginState({ state: '' as never })
+    getLoginStateMock.mockResolvedValue(loginState)
     getSessionMock.mockResolvedValue(freshPriorSession())
     const GET = await importGet()
     await GET(buildCallbackRequest())
@@ -146,16 +147,19 @@ describe('auth callback security audit events', () => {
     expect(
       (emittedSecurityEvents()[0].detail as Record<string, unknown>).reason,
     ).toBe('state_missing')
+    expect(loginState.destroy).toHaveBeenCalledOnce()
   })
 
   it('emits auth.login.failed with reason=nonce_missing', async () => {
-    getLoginStateMock.mockResolvedValue(freshLoginState({ nonce: '' as never }))
+    const loginState = freshLoginState({ nonce: '' as never })
+    getLoginStateMock.mockResolvedValue(loginState)
     getSessionMock.mockResolvedValue(freshPriorSession())
     const GET = await importGet()
     await GET(buildCallbackRequest())
     expect(
       (emittedSecurityEvents()[0].detail as Record<string, unknown>).reason,
     ).toBe('nonce_missing')
+    expect(loginState.destroy).toHaveBeenCalledOnce()
   })
 
   it('emits auth.login.failed with reason=token_exchange_failed and errorName', async () => {
@@ -345,6 +349,22 @@ describe('auth callback security audit events', () => {
     expect(events).toEqual(['auth.login.succeeded'])
   })
 
+  it('does NOT emit auth.roles.changed when the prior session belongs to a different user', async () => {
+    getLoginStateMock.mockResolvedValue(freshLoginState())
+    getSessionMock.mockResolvedValue(
+      freshPriorSession({ sub: 'user-2', roles: ['Reviewer'] }),
+    )
+    authorizationCodeGrantMock.mockResolvedValue({
+      claims: () => ({ ...SUCCESS_CLAIMS, roles: ['Admin'] }),
+      expiresIn: () => 3600,
+      id_token: 'idt',
+    })
+    const GET = await importGet()
+    await GET(buildCallbackRequest())
+    const events = emittedSecurityEvents().map(e => e.event)
+    expect(events).toEqual(['auth.login.succeeded'])
+  })
+
   it('redirects to the configured public origin after a successful login', async () => {
     getLoginStateMock.mockResolvedValue(
       freshLoginState({ returnTo: '/sv/requirements?tab=open' }),
@@ -411,5 +431,16 @@ describe('auth callback security audit events', () => {
     )
     expect(currentSession.idToken).toBeUndefined()
     expect(currentSession.save).toHaveBeenCalledOnce()
+    expect(emittedSecurityEvents()).toContainEqual(
+      expect.objectContaining({
+        event: 'auth.login.succeeded',
+        detail: {
+          estimatedCookieLength: 4097,
+          logoutHintOmitted: true,
+          roles: ['Reviewer'],
+          safeLimit: 3800,
+        },
+      }),
+    )
   })
 })

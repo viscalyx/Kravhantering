@@ -1,21 +1,55 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const getAuthConfigMock = vi.fn()
+
+vi.mock('@/lib/auth/config', () => ({
+  getAuthConfig: () => getAuthConfigMock(),
+}))
+
 import { assertSameOriginRequest, CsrfError } from '@/lib/auth/csrf'
 
 function buildRequest(
   method: string,
-  init: { origin?: string; referer?: string; xrw?: string } = {},
+  init: {
+    origin?: string
+    referer?: string
+    requestUrl?: string
+    xForwardedHost?: string
+    xForwardedProto?: string
+    xrw?: string
+  } = {},
 ): Request {
   const headers = new Headers()
   if (init.origin) headers.set('origin', init.origin)
   if (init.referer) headers.set('referer', init.referer)
+  if (init.xForwardedHost) {
+    headers.set('x-forwarded-host', init.xForwardedHost)
+  }
+  if (init.xForwardedProto) {
+    headers.set('x-forwarded-proto', init.xForwardedProto)
+  }
   if (init.xrw) headers.set('x-requested-with', init.xrw)
-  return new Request('https://app.example.test/api/owners/1', {
-    method,
-    headers,
-  })
+  return new Request(
+    init.requestUrl ?? 'https://app.example.test/api/owners/1',
+    {
+      method,
+      headers,
+    },
+  )
 }
 
 describe('assertSameOriginRequest', () => {
+  beforeEach(() => {
+    getAuthConfigMock.mockReturnValue({
+      enabled: true,
+      redirectUri: 'https://app.example.test/api/auth/callback',
+    })
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('is a no-op for safe methods', () => {
     expect(() => assertSameOriginRequest(buildRequest('GET'))).not.toThrow()
     expect(() => assertSameOriginRequest(buildRequest('HEAD'))).not.toThrow()
@@ -38,6 +72,34 @@ describe('assertSameOriginRequest', () => {
       assertSameOriginRequest(
         buildRequest('PUT', {
           referer: 'https://app.example.test/page',
+          xrw: 'XMLHttpRequest',
+        }),
+      ),
+    ).not.toThrow()
+  })
+
+  it('accepts when the configured external origin differs from request.url', () => {
+    expect(() =>
+      assertSameOriginRequest(
+        buildRequest('POST', {
+          origin: 'https://app.example.test',
+          requestUrl: 'http://internal-host/api/owners/1',
+          xrw: 'XMLHttpRequest',
+        }),
+      ),
+    ).not.toThrow()
+  })
+
+  it('accepts forwarded-origin requests when auth config is unavailable', () => {
+    getAuthConfigMock.mockReturnValue({ enabled: false, redirectUri: '' })
+
+    expect(() =>
+      assertSameOriginRequest(
+        buildRequest('POST', {
+          origin: 'https://app.example.test',
+          requestUrl: 'http://internal-host/api/owners/1',
+          xForwardedHost: 'app.example.test',
+          xForwardedProto: 'https',
           xrw: 'XMLHttpRequest',
         }),
       ),
@@ -89,11 +151,16 @@ describe('assertSameOriginRequest security audit events', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    getAuthConfigMock.mockReturnValue({
+      enabled: true,
+      redirectUri: 'https://app.example.test/api/auth/callback',
+    })
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
   })
 
   afterEach(() => {
     infoSpy.mockRestore()
+    vi.clearAllMocks()
   })
 
   function emittedSecurityEvents(): Array<Record<string, unknown>> {
