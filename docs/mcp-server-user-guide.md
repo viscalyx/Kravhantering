@@ -30,7 +30,8 @@ agents can use it reliably.
   history.
 - `requirements_manage_requirement`
   Create, edit, archive, delete the latest draft, or restore a historical
-  version.
+  version. For `operation: "edit"`, first fetch the requirement and pass the
+  version's current `editedAt` value back as `requirement.expectedEditedAt`.
 - `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 
@@ -323,6 +324,11 @@ data first:
 
 This is especially useful because transitions use `toStatusId`, and creation or
 editing may require IDs for areas and classification fields.
+
+For edits, also fetch the requirement immediately before preparing the edit.
+Use the latest version's `editedAt` value as `requirement.expectedEditedAt`.
+If the server returns `409 Conflict` with `reason: "stale_requirement_edit"`,
+read the returned latest snapshot and compare before retrying.
 
 ### 2. Prefer `uniqueId`
 
