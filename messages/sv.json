@@ -1118,7 +1118,6 @@
     "showRawResponse": "Visa råsvar",
     "tokensCount": "{count} tokens",
     "requirementsGenerated": "krav genererade",
-    "noUsageScenariosAvailable": "Inga användningsscenarier tillgängliga",
     "selectAll": "Markera alla",
     "deselectAll": "Avmarkera alla",
     "selectRequirement": "Markera krav {index}",
@@ -1173,6 +1172,36 @@
     "topicHelp": "Beskriv det <strong>system eller den funktion</strong> du vill ha krav för. AI:n använder detta som kontext vid generering.",
     "areaHelp": "Välj vilket <strong>område</strong> de genererade kraven ska placeras i. Det avgör var de visas i kravlistan.",
     "modelHelp": "Välj vilken <strong>AI-modell</strong> som ska användas. Större modeller ger resultat av högre kvalitet men tar längre tid.",
+    "prompt": {
+      "defaultInstruction": "Generera 5-10 välstrukturerade systemkrav för det givna ämnet.\n\nVarje krav MÅSTE:\n- Ha en tydlig, testbar och entydig beskrivning (enligt ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Använda formen \"Systemet ska...\" för funktionella krav\n- Använda \"Systemet ska kunna...\" eller kvalitetsattributspråk för icke-funktionella krav\n- Inkludera acceptanskriterier där det är tillämpligt\n- Referera till lämpliga kvalitetsegenskaper från ISO/IEC 25010:2023\n- Inkludera en motivering som förklarar varför kravet finns\n\nFör icke-funktionella krav, tillämpa kvalitetsmodellen ISO/IEC 25010:2023:\n- Mappa till den mest specifika kvalitetsunderegenskapen\n- Beakta prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet och underhållbarhet\n\nBedöm risknivå baserat på:\n- Påverkan på systemsäkerhet, informationssäkerhet eller kärnfunktionalitet (Hög)\n- Påverkan på användarupplevelse eller icke-kritiska funktioner (Medel)\n- Önskvärt eller kosmetiska krav (Låg)",
+      "userHeader": "Ämne / Systemkontext",
+      "noUsageScenariosAvailable": "Inga användningsscenarier tillgängliga",
+      "system": {
+        "intro": "Du är en expert på kravhantering. Du genererar systemkrav enligt internationella standarder:\n- ISO/IEC/IEEE 29148:2018 (Kravhantering)\n- ISO/IEC 25030:2019 (Ramverk för kvalitetskrav)\n- ISO/IEC 25010:2023 (Kvalitetsmodell)",
+        "taxonomyIntro": "Du MÅSTE använda följande taxonomi-ID:n i din output. Använd bara ID:n från listorna nedan.",
+        "headings": {
+          "types": "Kravtyper",
+          "categories": "Kategorier",
+          "qualityCharacteristics": "Kvalitetsegenskaper (ISO 25010:2023)",
+          "riskLevels": "Risknivåer",
+          "usageScenarios": "Användningsscenarier",
+          "outputRules": "Outputregler"
+        },
+        "outputRules": [
+          "Generera giltig JSON som matchar det angivna schemat",
+          "Använd exakta ID:n från taxonomin ovan",
+          "typeId krävs för varje krav",
+          "qualityCharacteristicId rekommenderas för icke-funktionella krav",
+          "categoryId bör sättas när kategorin är tydlig",
+          "riskLevelId bör alltid sättas",
+          "scenarioIds måste vara [] eller bara innehålla ID:n från listan över användningsscenarier ovan",
+          "requiresTesting måste vara true för funktionella krav och säkerhetskrav",
+          "verificationMethod bör beskriva hur kravet verifieras när requiresTesting är true",
+          "rationale måste förklara varför kravet är viktigt för systemet",
+          "Skriv beskrivningar, acceptanskriterier, verifieringsmetoder och motiveringar på svenska"
+        ]
+      }
+    },
     "customInstructionHelp": "Skriv över den <strong>standardinstruktion</strong> som skickas till AI:n. Använd detta för att styra stil, omfattning eller format på de genererade kraven.",
     "errors": {
       "failedToLoadModels": "Kunde inte läsa in modeller",

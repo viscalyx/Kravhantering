@@ -1118,7 +1118,6 @@
     "showRawResponse": "Show raw response",
     "tokensCount": "{count} tokens",
     "requirementsGenerated": "requirements generated",
-    "noUsageScenariosAvailable": "No usage scenarios available",
     "selectAll": "Select all",
     "deselectAll": "Deselect all",
     "selectRequirement": "Select requirement {index}",
@@ -1173,6 +1172,35 @@
     "topicHelp": "Describe the <strong>system or feature</strong> you want requirements for. The AI uses this as context when generating requirements.",
     "areaHelp": "Choose which <strong>area</strong> the generated requirements will be placed in. This determines where they appear in the requirements list.",
     "modelHelp": "Select the <strong>AI model</strong> to use. Larger models produce higher-quality results but take longer to generate.",
+    "prompt": {
+      "defaultInstruction": "Generate 5-10 well-structured system requirements for the given topic.\n\nEach requirement MUST:\n- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Use \"The system shall...\" form for functional requirements\n- Use \"The system shall be able to...\" or quality-attribute language for non-functional requirements\n- Include acceptance criteria where applicable\n- Reference appropriate quality characteristics from ISO/IEC 25010:2023\n- Include a rationale explaining why the requirement exists\n\nFor non-functional requirements, apply the ISO/IEC 25010:2023 quality model:\n- Map each to the most specific quality sub-characteristic\n- Consider performance efficiency, security, usability, reliability, and maintainability\n\nAssess risk level based on:\n- Impact on system safety, security, or core functionality (High)\n- Impact on user experience or non-critical features (Medium)\n- Nice-to-have or cosmetic requirements (Low)",
+      "userHeader": "Topic / System Context",
+      "noUsageScenariosAvailable": "No usage scenarios available",
+      "system": {
+        "intro": "You are an expert requirements engineer. You generate system requirements following international standards:\n- ISO/IEC/IEEE 29148:2018 (Requirements engineering)\n- ISO/IEC 25030:2019 (Quality requirements framework)\n- ISO/IEC 25010:2023 (Quality model)",
+        "taxonomyIntro": "You MUST use the following taxonomy IDs in your output. Only use IDs from the lists below.",
+        "headings": {
+          "types": "Requirement Types",
+          "categories": "Categories",
+          "qualityCharacteristics": "Quality Characteristics (ISO 25010:2023)",
+          "riskLevels": "Risk Levels",
+          "usageScenarios": "Usage Scenarios",
+          "outputRules": "Output Rules"
+        },
+        "outputRules": [
+          "Output valid JSON matching the provided schema",
+          "Use exact IDs from the taxonomy above",
+          "typeId is required for every requirement",
+          "qualityCharacteristicId is recommended for non-functional requirements",
+          "categoryId should be set when the category is clear",
+          "riskLevelId should always be set",
+          "scenarioIds must be [] or only contain IDs from the usage scenarios list above",
+          "requiresTesting must be true for functional requirements and security requirements",
+          "verificationMethod should describe how to verify the requirement when requiresTesting is true",
+          "rationale must explain why the requirement matters for the system"
+        ]
+      }
+    },
     "customInstructionHelp": "Override the <strong>default instruction</strong> sent to the AI. Use this to steer the style, scope, or format of the generated requirements.",
     "errors": {
       "failedToLoadModels": "Failed to load models",
