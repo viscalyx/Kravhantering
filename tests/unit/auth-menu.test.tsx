@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthMenu from '@/components/AuthMenu'
 
@@ -116,6 +116,58 @@ describe('AuthMenu', () => {
       ok: true,
       json: async () => ({ redirectTo: 'https://idp.example.test/logout' }),
     })
+  })
+
+  it('re-enables the sign-out button when logout fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+    let rejectLogout: ((reason?: unknown) => void) | undefined
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          authenticated: true,
+          sub: 'user-1',
+          hsaId: 'SE2321000032-admin1',
+          givenName: 'Ada',
+          familyName: 'Admin',
+          name: 'Ada Admin',
+          email: 'ada@example.test',
+          roles: ['Admin'],
+          expiresAt: 123,
+        }),
+      })
+      .mockReturnValueOnce(
+        new Promise((_, reject) => {
+          rejectLogout = reject
+        }),
+      )
+
+    try {
+      render(<AuthMenu variant="mobile" />)
+
+      const signOutButton = await screen.findByRole('button', {
+        name: 'signOut',
+      })
+      fireEvent.click(signOutButton)
+
+      expect(
+        await screen.findByRole('button', { name: 'signingOut' }),
+      ).toBeDisabled()
+
+      await act(async () => {
+        rejectLogout?.(new Error('Logout failed'))
+      })
+
+      await waitFor(() => {
+        const restoredButton = screen.getByRole('button', { name: 'signOut' })
+        expect(restoredButton).toBeEnabled()
+        expect(restoredButton).not.toHaveAttribute('title')
+      })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('keeps user info developer-mode values stable in English', async () => {

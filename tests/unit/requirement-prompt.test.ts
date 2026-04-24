@@ -49,6 +49,7 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('ID 2: Non-functional')
     expect(prompt).toContain('ID 1: Business')
     expect(prompt).toContain('ID 3: High')
+    expect(prompt).toContain('ID 2: High load')
     expect(prompt).toContain(
       'ID 2: Functional suitability > Functional correctness',
     )
@@ -64,6 +65,9 @@ describe('buildSystemPrompt', () => {
   it('includes output rules', () => {
     const prompt = buildSystemPrompt(testTaxonomy)
     expect(prompt).toContain('typeId is required')
+    expect(prompt).toContain(
+      'scenarioIds must be [] or only contain IDs from the usage scenarios list above',
+    )
     expect(prompt).toContain('requiresTesting must be true')
   })
 
@@ -72,7 +76,22 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Du är en expert på kravhantering')
     expect(prompt).toContain('Kravtyper')
     expect(prompt).toContain('Risknivåer')
+    expect(prompt).toContain('Användningsscenarier')
     expect(prompt).toContain('ID 1: Functional')
+  })
+
+  it('uses localized fallback text when no usage scenarios are available', () => {
+    const taxonomyWithoutScenarios: TaxonomyData = {
+      ...testTaxonomy,
+      scenarios: [],
+    }
+
+    expect(buildSystemPrompt(taxonomyWithoutScenarios)).toContain(
+      'No usage scenarios available',
+    )
+    expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).toContain(
+      'Inga användningsscenarier tillgängliga',
+    )
   })
 })
 

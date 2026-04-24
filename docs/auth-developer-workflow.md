@@ -1,14 +1,15 @@
 # Auth developer workflow
 
 This document covers how authentication works in local development and in
-tests. Production wiring is in [plan-auth.md](./plan-auth.md) (Phase 7).
+tests. For the runtime architecture, production target setup, and IdP
+contract, see [auth-how-it-works.md](./auth-how-it-works.md).
 
 ## Modes
 
 <!-- markdownlint-disable MD013 -->
 | Mode | When | How |
 | --- | --- | --- |
-| `AUTH_ENABLED=true` (default) | Normal dev, CI, prod | Real OIDC flow against local Keycloak (dev) or PhenixID (deployed). |
+| `AUTH_ENABLED=true` (default) | Normal dev, CI, prod | Real OIDC flow against local Keycloak (dev) or the configured OIDC provider (deployed). |
 | `AUTH_ENABLED=false` | Quick local exploration only | Bypasses login. Refused at boot when `NODE_ENV=production`. |
 <!-- markdownlint-enable MD013 -->
 
@@ -164,7 +165,7 @@ The realm emits a `roles` claim as a JSON array of strings on both ID and
 access tokens. Values are exactly `Reviewer` and `Admin` (the canonical
 names used throughout the app and for RBAC). Authoring rights are not
 carried by the roles claim — they are assignment-driven via
-`employeeHsaId` (see [plan-RBAC.md](plan-RBAC.md)).
+`employeeHsaId`.
 
 ### `employeeHsaId` claim
 
@@ -188,8 +189,7 @@ The `kravhantering-mcp` Keycloak client is configured with an
 `employeeHsaId = mcp-client:kravhantering-mcp` on the access token used
 by the MCP service-account flow. Values that begin with `mcp-client:`
 deliberately bypass the HSA-id format validator; assignment-based
-authorization treats the literal string as the actor identity (see
-[plan-RBAC.md](plan-RBAC.md), open question #1).
+authorization treats the literal string as the actor identity.
 
 ### No refresh tokens
 
@@ -239,7 +239,8 @@ different sources:
   generates a per-worker issuer + client and writes the matching values).
 - **OpenShift dev/test/prod**: split between a `kravhantering-auth` Secret
   (anything sensitive) and a ConfigMap (everything else). See
-  [plan-auth.md Phase 7](./plan-auth.md) for the full mapping.
+  [auth-how-it-works.md](./auth-how-it-works.md) for the committed production
+  mapping.
 
 ### Master switches
 
@@ -250,22 +251,22 @@ different sources:
 | `NEXT_PUBLIC_AUTH_ENABLED` | yes (client) | `true` | Browser-visible mirror of `AUTH_ENABLED`. Two variables exist because Next.js only inlines env vars whose names start with `NEXT_PUBLIC_` into the client bundle — non-prefixed vars (`AUTH_ENABLED`) are stripped from browser code for safety. The mirror lets `components/AuthMenu.tsx` decide statically whether to render Sign in / Sign out without a `/api/auth/me` round-trip on every page load. **Must match `AUTH_ENABLED`** — they are validated together at boot, and a mismatch (e.g. server-on / client-off) is rejected so the UI can never lie about whether auth is active. |
 <!-- markdownlint-enable MD013 -->
 
-### OIDC client (PhenixID / Keycloak)
+### OIDC client (deployed OIDC provider / Keycloak)
 
 These describe the relationship between the app (the OIDC Relying Party)
 and the IdP. In dev they point at the local Keycloak realm; in deployed
-envs at the per-env PhenixID tenant.
+envs at the per-env OIDC issuer and client registration.
 
 <!-- markdownlint-disable MD013 -->
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `AUTH_OIDC_ISSUER_URL` | yes | _(none)_ | Issuer base URL. The app appends `/.well-known/openid-configuration` to discover the authorization, token, JWKS, and end-session endpoints. Must exactly match the `iss` claim the IdP emits — trailing slash matters. |
-| `AUTH_OIDC_CLIENT_ID` | yes | `kravhantering-app` (dev) | Confidential web-client id registered in the IdP. In OpenShift this comes from the `kravhantering-auth` Secret (per-env, see Q2b in `plan-auth.md`). |
+| `AUTH_OIDC_CLIENT_ID` | yes | `kravhantering-app` (dev) | Confidential web-client id registered in the IdP. In OpenShift this comes from the `kravhantering-auth` Secret in the per-environment production setup. |
 | `AUTH_OIDC_CLIENT_SECRET` | yes | _(none)_ | Web-client secret. **Secret**: never commit a real value, never log. Local dev uses the placeholder `dev-only-app-secret` baked into the Keycloak realm JSON. |
-| `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. **Must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from PhenixID. Re-register on every OpenShift Route hostname change (blue/green cutover). |
+| `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. **Must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. Re-register on every OpenShift Route hostname change (blue/green cutover). |
 | `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Also pre-registered per env. |
-| `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if PhenixID requires them to release the `roles` claim. |
-| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads. Override only if the IdP cannot emit `roles` (the prescribed contract — see "Required token claims" in `plan-auth.md`). |
+| `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if your OIDC provider requires them to release the `roles` claim. |
+| `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
 | `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
 <!-- markdownlint-enable MD013 -->
 
@@ -374,8 +375,8 @@ dev server only. Treat it as the exception, not the norm.
 Unit + integration tests use `tests/support/oidc-mock.ts`, which spins up
 [`oidc-provider`](https://github.com/panva/node-oidc-provider) in-process on
 a random port per worker. No Docker. Same `openid-client` code path as
-Keycloak / PhenixID. Use `mockIdp.loginAs('Admin')` to pre-select the
-identity that the next interaction will return.
+Keycloak / a deployed OIDC provider. Use `mockIdp.loginAs('Admin')` to
+pre-select the identity that the next interaction will return.
 
 ## Inspecting tokens
 
@@ -404,9 +405,10 @@ verifiers, `state`, `nonce`, and `code` values are stripped before emit.
 ## Pre-prod smoke test
 
 Before any first cutover to a deployed environment, run a manual smoke
-test against the real PhenixID dev realm. The in-process mock and
-Keycloak both implement the spec but cannot surface PhenixID-specific
-quirks (claim format, custom `acr_values`, end-session parameters, case
+test against the real deployed OIDC provider in a dev or pre-prod
+environment. The in-process mock and Keycloak both implement the spec but
+cannot surface provider-specific quirks (claim format, custom `acr_values`,
+end-session parameters, case
 sensitivity in `iss`).
 
 1. Sign in interactively and complete the callback round-trip successfully.
@@ -415,7 +417,7 @@ sensitivity in `iss`).
 2. Call `/api/auth/me` with the signed-in session and verify the returned user
    data matches the expected claims.
    Check `sub`, `employeeHsaId`-derived fields, role claims, and any expected
-   `acr_values` formatting from PhenixID.
+   `acr_values` formatting from the deployed OIDC provider.
 3. Open a protected page while signed out and verify the browser is redirected
    to the login flow, then back to the original page after authentication.
 4. Call a protected API without a valid session and verify it returns `401`

@@ -5,6 +5,8 @@
  */
 
 import type { GenerationStats } from '@/lib/ai/openrouter-client'
+import enMessages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -137,6 +139,34 @@ export function getDefaultInstruction(locale: 'en' | 'sv' = 'en'): string {
   return locale === 'sv' ? DEFAULT_INSTRUCTION_SV : DEFAULT_INSTRUCTION_EN
 }
 
+const PROMPT_MESSAGES = {
+  en: enMessages,
+  sv: svMessages,
+} satisfies Record<'en' | 'sv', Record<string, unknown>>
+
+function getPromptMessage(locale: 'en' | 'sv', path: readonly string[]): string {
+  let current: unknown = PROMPT_MESSAGES[locale]
+
+  for (const segment of path) {
+    if (
+      typeof current !== 'object' ||
+      current === null ||
+      Array.isArray(current)
+    ) {
+      throw new Error(
+        `Missing prompt localization for ${locale}:${path.join('.')}`,
+      )
+    }
+    current = (current as Record<string, unknown>)[segment]
+  }
+
+  if (typeof current !== 'string') {
+    throw new Error(`Missing prompt localization for ${locale}:${path.join('.')}`)
+  }
+
+  return current
+}
+
 // ---------------------------------------------------------------------------
 // Prompt builder
 // ---------------------------------------------------------------------------
@@ -154,6 +184,10 @@ export function buildSystemPrompt(
   const riskList = taxonomy.riskLevels
     .map(r => `  - ID ${r.id}: ${r.name}`)
     .join('\n')
+  const scenarioList =
+    taxonomy.scenarios.length > 0
+      ? taxonomy.scenarios.map(s => `  - ID ${s.id}: ${s.name}`).join('\n')
+      : `  - ${getPromptMessage(locale, ['ai', 'noUsageScenariosAvailable'])}`
 
   const qcList = taxonomy.qualityCharacteristics
     .map(
@@ -182,6 +216,9 @@ ${qcList}
 ## Risknivåer
 ${riskList}
 
+## Användningsscenarier
+${scenarioList}
+
 ## Outputregler
 - Generera giltig JSON som matchar det angivna schemat
 - Använd exakta ID:n från taxonomin ovan
@@ -189,6 +226,7 @@ ${riskList}
 - qualityCharacteristicId rekommenderas för icke-funktionella krav
 - categoryId bör sättas när kategorin är tydlig
 - riskLevelId bör alltid sättas
+- scenarioIds måste vara [] eller bara innehålla ID:n från listan över användningsscenarier ovan
 - requiresTesting måste vara true för funktionella krav och säkerhetskrav
 - verificationMethod bör beskriva hur kravet verifieras när requiresTesting är true
 - rationale måste förklara varför kravet är viktigt för systemet
@@ -214,6 +252,9 @@ ${qcList}
 ## Risk Levels
 ${riskList}
 
+## Usage Scenarios
+${scenarioList}
+
 ## Output Rules
 - Output valid JSON matching the provided schema
 - Use exact IDs from the taxonomy above
@@ -221,6 +262,7 @@ ${riskList}
 - qualityCharacteristicId is recommended for non-functional requirements
 - categoryId should be set when the category is clear
 - riskLevelId should always be set
+- scenarioIds must be [] or only contain IDs from the usage scenarios list above
 - requiresTesting must be true for functional requirements and security requirements
 - verificationMethod should describe how to verify the requirement when requiresTesting is true
 - rationale must explain why the requirement matters for the system`
