@@ -117,6 +117,11 @@ Supports:
 - `delete_draft`
 - `restore_version`
 
+Edit calls must include `requirement.expectedEditedAt`, copied from the
+latest version's `editedAt` value returned by `requirements_get_requirement`.
+The shared service maps stale tokens to `409 Conflict` details with
+`reason: "stale_requirement_edit"` and the latest requirement snapshot.
+
 The shared service also supports `reactivate` for REST parity, but that
 operation is intentionally not exposed as an MCP tool operation in v1.
 
