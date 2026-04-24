@@ -1,7 +1,7 @@
 /**
  * Parses the OIDC roles claim into the canonical app role list.
  *
- * Per the prescribed contract (see docs/plan-auth.md), PhenixID emits
+ * Per the committed auth contract, PhenixID emits
  * `roles` as a JSON array of strings with values exactly `Reviewer` or
  * `Admin`. Author/Steward have been dropped — non-elevated users have an
  * empty `roles` array. This parser additionally tolerates two legacy shapes

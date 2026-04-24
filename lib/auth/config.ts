@@ -3,7 +3,8 @@
  * a typed `authConfig`. Boot-time guard: when `AUTH_ENABLED=false` and
  * `NODE_ENV=production`, this module throws — fail-closed.
  *
- * See `docs/plan-auth.md` for the full env-var contract.
+ * See `docs/auth-how-it-works.md` and `docs/auth-developer-workflow.md`
+ * for the committed env-var contract and deployment expectations.
  */
 
 const FLAG_TRUE_VALUES = new Set(['1', 'true', 'yes', 'on'])

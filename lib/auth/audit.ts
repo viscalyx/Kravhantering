@@ -1,5 +1,5 @@
 /**
- * Security event audit log (plan-auth Phase 5c).
+ * Security event audit log for authentication and token handling.
  *
  * Emits one JSON line per security event to `console.info`, tagged with
  * `channel:"security-audit"` so the OpenShift log collector can route the

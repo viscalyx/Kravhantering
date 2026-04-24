@@ -167,7 +167,7 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
  * `true` but no role policy has been declared yet, we intentionally return
  * `AllowAllAuthorizationService` so authenticated users can operate while
  * the role catalogue / policy is defined in a follow-up workstream (out of
- * scope for the auth plan itself — see `docs/plan-auth.md` §"Scope").
+ * scope for the initial auth rollout).
  *
  * Once policies are declared, replace the allow-all fallback with a real
  * `RoleBasedAuthorizationService({ ... })`.
