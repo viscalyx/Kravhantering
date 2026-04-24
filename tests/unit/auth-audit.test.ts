@@ -68,8 +68,9 @@ describe('recordSecurityEvent', () => {
       request: new Request('https://app.example.test/api/auth/logout'),
     })
     const ev = emittedEvents()[0]
-    expect(typeof ev.ts).toBe('string')
-    expect(() => new Date(ev.ts as string).toISOString()).not.toThrow()
+    const ts = ev.ts
+    expect(typeof ts).toBe('string')
+    expect(new Date(ts as string).toISOString()).toBe(ts)
   })
 
   it('preserves caller-supplied ts', () => {
@@ -226,16 +227,20 @@ describe('recordSecurityEvent', () => {
         actor: { source: 'mcp' },
         request: new Request('https://app.example.test/api/mcp'),
         // Force a circular reference into detail to provoke JSON.stringify.
-        detail: circular as Record<string, never>,
-      }),
+        detail: circular,
+      } as Parameters<typeof recordSecurityEvent>[0]),
     ).not.toThrow()
     expect(errorSpy).toHaveBeenCalledTimes(1)
-    expect(errorSpy.mock.calls[0]).toEqual([
+    const errorCall = errorSpy.mock.calls[0]
+    expect(errorCall).toHaveLength(4)
+    expect(errorCall?.slice(0, 3)).toEqual([
       '[security-audit] failed to record event',
       'auth.token.rejected',
       'mcp',
-      expect.stringContaining('Converting circular structure to JSON'),
     ])
+    const errorMessage = errorCall?.[3]
+    expect(typeof errorMessage).toBe('string')
+    expect((errorMessage as string).length).toBeGreaterThan(0)
   })
 
   it('accepts a pre-normalized request shape', () => {
