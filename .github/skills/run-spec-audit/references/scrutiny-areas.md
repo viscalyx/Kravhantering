@@ -57,7 +57,18 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 4"`
 
-## 5. Package-Local Requirements and Deviations — Scenario 6, 7
+## 5. Draft Edit Concurrency — Scenario 11
+
+- **Code:** `lib/dal/requirements.ts` and
+  `lib/requirements/service.ts` — optimistic edit preconditions.
+- **Spec:** `docs/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
+- **Question:** Are stale draft edits rejected before content or joins are
+  rewritten?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 11"`
+
+## 6. Package-Local Requirements and Deviations — Scenario 6, 7
 
 - **Code:** `lib/dal/requirement-packages.ts` — package-local
   requirement, needs-reference, and deviation-gated status functions.
@@ -73,7 +84,7 @@ maintenance rule.
 - **Verify (S7):** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 7"`
 
-## 6. Deviation Lifecycle Guards and Decision Immutability — Scenario 9
+## 7. Deviation Lifecycle Guards and Decision Immutability — Scenario 9
 
 - **Code:** `lib/dal/deviations.ts` — approval/rejection logic,
   review-requested guards, edit/delete guards.
@@ -87,7 +98,7 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 9"`
 
-## 7. Suggestion Terminal State — Scenario 8
+## 8. Suggestion Terminal State — Scenario 8
 
 - **Code:** `lib/dal/improvement-suggestions.ts` — resolution logic.
 - **Spec:** `docs/lifecycle-workflow.md`.
@@ -98,7 +109,7 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
   -t "Scenario 8"`
 
-## 8. List View Defensive Parsing
+## 9. List View Defensive Parsing
 
 - **Code:** `lib/requirements/list-view.ts`.
 - **Spec:** `docs/requirements-ui-behaviour.md` and
@@ -106,7 +117,7 @@ maintenance rule.
 - **Question:** Do malformed admin defaults, invalid visible-column
   JSON, hidden filters, or bad widths fail safely?
 
-## 9. REST and MCP Output Consistency
+## 10. REST and MCP Output Consistency
 
 - **Code:** `lib/mcp/http.ts`, `lib/mcp/server.ts`,
   `app/api/requirements/[id]/route.ts`,
@@ -118,7 +129,7 @@ maintenance rule.
 - **Question:** Do REST and MCP outputs, transport rules, and field
   names match the documentation and field contracts?
 
-## 10. CSV Export
+## 11. CSV Export
 
 - **Code:** `lib/export-csv.ts`.
 - **Spec:** `docs/reports.md`.
@@ -127,7 +138,7 @@ maintenance rule.
 - **Question:** Does export behavior match the documented CSV
   expectations for separators and escaping?
 
-## 11. Coverage Target Alignment
+## 12. Coverage Target Alignment
 
 - **Source:** `tests/quality/QUALITY.md` — Coverage Targets table.
 - **Question:** Do the subsystems and file paths listed in the
@@ -135,7 +146,7 @@ maintenance rule.
   Flag new DAL files, renamed modules, or removed subsystems that
   make the targets stale.
 
-## 12. MCP Tool Inventory Parity — Scenario 10
+## 13. MCP Tool Inventory Parity — Scenario 10
 
 - **Code:** `lib/mcp/server.ts`.
 - **Spec:** `docs/mcp-server-contributor-guide.md` ("Server Contract",
@@ -161,7 +172,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 13. Reference Data Behavioral Contracts
+## 14. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/package-implementation-types.ts`,
@@ -176,7 +187,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 14. AI Generation Contracts
+## 15. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.
