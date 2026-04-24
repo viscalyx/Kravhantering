@@ -140,7 +140,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishi
 <!-- markdownlint-enable MD013 -->
 
 **What happened:** `editRequirement()` rejects edits against review and
-archived versions at `lib/dal/requirements.ts:795-805`. If those rows are
+archived versions at `lib/dal/requirements.ts:806-812`. If those rows are
 edited in place, the project loses the meaning of approval, publication, and
 archival timestamps because the historical record itself mutates.
 
@@ -315,6 +315,33 @@ contributor guide and the number of tool entries listed in the user guide.
 <!-- markdownlint-disable MD013 -->
 ```sh
 npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP tool inventory matches documentation"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+### Scenario 11: Stale Draft Edits Are Rejected Before Replacing Latest Content
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
+
+**What happened:** Draft content is intentionally editable in place, but
+`editRequirement()` now requires the caller's `expectedEditedAt` token to match
+the latest draft row before it updates the row or rewrites its scenario and norm
+reference joins at `lib/dal/requirements.ts:741-875`. The shared service
+requires the token and adds the latest snapshot to stale conflict responses at
+`lib/requirements/service.ts:1314-1357`. If those guards are removed, a second
+editor can silently replace the first editor's saved content while still
+receiving a successful response.
+
+**The requirement:** Editing a draft must be conditional on the `edited_at`
+value captured when editing started. A stale edit must fail with a conflict and
+must leave the latest saved version content unchanged.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 11: stale draft edits are rejected before replacing latest content"
 ```
 <!-- markdownlint-enable MD013 -->
 
