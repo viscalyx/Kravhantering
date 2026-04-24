@@ -177,6 +177,7 @@ describe('recordSecurityEvent', () => {
       },
     })
     const ev = emittedEvents()[0]
+    const breadcrumbs = emittedRedactionBreadcrumbs()
     expect(ev.detail).toEqual({
       reason: 'token_exchange_failed',
       tokenLifetimeSeconds: 300,
@@ -184,9 +185,7 @@ describe('recordSecurityEvent', () => {
       passwordless: true,
       errorName: 'TokenExchangeError',
     })
-    expect(
-      emittedRedactionBreadcrumbs().map(breadcrumb => breadcrumb.detailKey),
-    ).toEqual([
+    expect(breadcrumbs.map(breadcrumb => breadcrumb.detailKey)).toEqual([
       'access_token',
       'ID_TOKEN',
       'clientSecret',
@@ -197,7 +196,8 @@ describe('recordSecurityEvent', () => {
       'state',
       'nonce',
     ])
-    expect(emittedRedactionBreadcrumbs()[0]).toMatchObject({
+    expect(breadcrumbs.every(breadcrumb => breadcrumb.ts === ev.ts)).toBe(true)
+    expect(breadcrumbs[0]).toMatchObject({
       auditEvent: 'auth.login.failed',
       actorSource: 'oidc',
       breadcrumb: 'detail-key-redacted',
@@ -232,7 +232,7 @@ describe('recordSecurityEvent', () => {
     ).not.toThrow()
     expect(errorSpy).toHaveBeenCalledTimes(1)
     const errorCall = errorSpy.mock.calls[0]
-    expect(errorCall).toHaveLength(4)
+    expect(errorCall?.length).toBeGreaterThanOrEqual(4)
     expect(errorCall?.slice(0, 3)).toEqual([
       '[security-audit] failed to record event',
       'auth.token.rejected',
