@@ -15,9 +15,26 @@ describe('recordSecurityEvent', () => {
     errorSpy.mockRestore()
   })
 
-  function emittedEvents(): Array<Record<string, unknown>> {
+  function emittedJsonLines(): Array<Record<string, unknown>> {
     return infoSpy.mock.calls.map((call: unknown[]) =>
       JSON.parse(String(call[0])),
+    )
+  }
+
+  function emittedEvents(): Array<Record<string, unknown>> {
+    return emittedJsonLines().filter(
+      event =>
+        event.channel === 'security-audit' &&
+        typeof event.event === 'string' &&
+        typeof event.outcome === 'string',
+    )
+  }
+
+  function emittedRedactionBreadcrumbs(): Array<Record<string, unknown>> {
+    return emittedJsonLines().filter(
+      event =>
+        event.channel === 'security-audit' &&
+        event.breadcrumb === 'detail-key-redacted',
     )
   }
 
@@ -132,16 +149,42 @@ describe('recordSecurityEvent', () => {
         clientSecret: 'should-be-stripped',
         Password: 'should-be-stripped',
         code: 'should-be-stripped',
+        authorizationCode: 'should-be-stripped',
         code_verifier: 'should-be-stripped',
         state: 'should-be-stripped',
         nonce: 'should-be-stripped',
+        tokenLifetimeSeconds: 300,
+        secretariat: 'safe-field-name',
+        passwordless: true,
         errorName: 'TokenExchangeError',
       },
     })
     const ev = emittedEvents()[0]
     expect(ev.detail).toEqual({
       reason: 'token_exchange_failed',
+      tokenLifetimeSeconds: 300,
+      secretariat: 'safe-field-name',
+      passwordless: true,
       errorName: 'TokenExchangeError',
+    })
+    expect(
+      emittedRedactionBreadcrumbs().map(breadcrumb => breadcrumb.detailKey),
+    ).toEqual([
+      'access_token',
+      'ID_TOKEN',
+      'clientSecret',
+      'Password',
+      'code',
+      'authorizationCode',
+      'code_verifier',
+      'state',
+      'nonce',
+    ])
+    expect(emittedRedactionBreadcrumbs()[0]).toMatchObject({
+      auditEvent: 'auth.login.failed',
+      actorSource: 'oidc',
+      breadcrumb: 'detail-key-redacted',
+      channel: 'security-audit',
     })
   })
 
@@ -171,6 +214,12 @@ describe('recordSecurityEvent', () => {
       }),
     ).not.toThrow()
     expect(errorSpy).toHaveBeenCalledTimes(1)
+    expect(errorSpy.mock.calls[0]).toEqual([
+      '[security-audit] failed to record event',
+      'auth.token.rejected',
+      'mcp',
+      expect.stringContaining('Converting circular structure to JSON'),
+    ])
   })
 
   it('accepts a pre-normalized request shape', () => {

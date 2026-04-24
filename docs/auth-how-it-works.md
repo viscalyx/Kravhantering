@@ -203,7 +203,10 @@ sequenceDiagram
   `auth.mcp.token.accepted`, `auth.roles.changed`, and
   `auth.csrf.rejected`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
-  authorization codes, PKCE verifiers, `state`, and `nonce`.
+  authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
+  detail key is redacted, the audit writer also emits a structured
+  `detail-key-redacted` breadcrumb with the source event, actor source, and
+  redacted key name.
 
 ### Audit event stream
 
@@ -219,7 +222,8 @@ sequenceDiagram
   request.
 - `detail` is optional and is redacted defensively so top-level fields such as
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
-  are not emitted.
+  are not emitted. Redaction breadcrumbs use the same `security-audit` channel
+  and carry `breadcrumb: "detail-key-redacted"` instead of an audit `event`.
 - The audit writer is intentionally transport-free: it does not push directly
   to Kafka, a webhook, a SIEM, or a database. It writes structured events to
   the process log stream and does not buffer them in the app.

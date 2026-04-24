@@ -189,6 +189,53 @@ export function getPromptMessageList(
   return current
 }
 
+const SYSTEM_PROMPT_HEADING_KEYS = [
+  'types',
+  'categories',
+  'qualityCharacteristics',
+  'riskLevels',
+  'usageScenarios',
+  'outputRules',
+] as const
+
+type SystemPromptHeadingKey = (typeof SYSTEM_PROMPT_HEADING_KEYS)[number]
+type SystemPromptHeadings = Record<SystemPromptHeadingKey, string>
+
+function getSystemPromptHeadings(locale: 'en' | 'sv'): SystemPromptHeadings {
+  const path = ['ai', 'prompt', 'system', 'headings'] as const
+  const current = getPromptValue(locale, path)
+
+  if (
+    typeof current !== 'object' ||
+    current === null ||
+    Array.isArray(current)
+  ) {
+    throw invalidPromptLocalizationTypeError(
+      locale,
+      path,
+      'record<string,string>',
+      current,
+    )
+  }
+
+  const currentRecord = current as Record<string, unknown>
+  const headings: Partial<SystemPromptHeadings> = {}
+  for (const key of SYSTEM_PROMPT_HEADING_KEYS) {
+    const heading = currentRecord[key]
+    if (typeof heading !== 'string') {
+      throw invalidPromptLocalizationTypeError(
+        locale,
+        [...path, key],
+        'string',
+        heading,
+      )
+    }
+    headings[key] = heading
+  }
+
+  return headings as SystemPromptHeadings
+}
+
 // ---------------------------------------------------------------------------
 // Default instruction constant
 // ---------------------------------------------------------------------------
@@ -220,6 +267,7 @@ export function buildSystemPrompt(
   taxonomy: TaxonomyData,
   locale: 'en' | 'sv' = 'en',
 ): string {
+  const headings = getSystemPromptHeadings(locale)
   const typeList = taxonomy.types
     .map(t => `  - ID ${t.id}: ${t.name}`)
     .join('\n')
@@ -257,52 +305,22 @@ export function buildSystemPrompt(
 
 ${getPromptMessage(locale, ['ai', 'prompt', 'system', 'taxonomyIntro'])}
 
-## ${getPromptMessage(locale, ['ai', 'prompt', 'system', 'headings', 'types'])}
+## ${headings.types}
 ${typeList}
 
-## ${getPromptMessage(locale, [
-    'ai',
-    'prompt',
-    'system',
-    'headings',
-    'categories',
-  ])}
+## ${headings.categories}
 ${catList}
 
-## ${getPromptMessage(locale, [
-    'ai',
-    'prompt',
-    'system',
-    'headings',
-    'qualityCharacteristics',
-  ])}
+## ${headings.qualityCharacteristics}
 ${qcList}
 
-## ${getPromptMessage(locale, [
-    'ai',
-    'prompt',
-    'system',
-    'headings',
-    'riskLevels',
-  ])}
+## ${headings.riskLevels}
 ${riskList}
 
-## ${getPromptMessage(locale, [
-    'ai',
-    'prompt',
-    'system',
-    'headings',
-    'usageScenarios',
-  ])}
+## ${headings.usageScenarios}
 ${scenarioList}
 
-## ${getPromptMessage(locale, [
-    'ai',
-    'prompt',
-    'system',
-    'headings',
-    'outputRules',
-  ])}
+## ${headings.outputRules}
 ${outputRules}`
 }
 

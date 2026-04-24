@@ -66,12 +66,18 @@ interface NormalizedSecurityEvent {
   ts: string
 }
 
+interface RedactedSecurityEventDetail {
+  detail?: Record<string, SecurityEventDetailValue>
+  redactedKeys: string[]
+}
+
 const DENY_LIST_PATTERNS: readonly RegExp[] = [
-  /token/i,
-  /secret/i,
-  /password/i,
+  /^.*token(?:_?hint)?$/i,
+  /^.*secret$/i,
+  /^.*password$/i,
   /^code$/i,
-  /^code_verifier$/i,
+  /^authorization_?code$/i,
+  /^code_?verifier$/i,
   /^state$/i,
   /^nonce$/i,
 ]
@@ -82,16 +88,20 @@ function isDenied(key: string): boolean {
 
 function redactDetail(
   detail: Record<string, SecurityEventDetailValue> | undefined,
-): Record<string, SecurityEventDetailValue> | undefined {
-  if (!detail) return undefined
+): RedactedSecurityEventDetail {
+  if (!detail) return { redactedKeys: [] }
   const out: Record<string, SecurityEventDetailValue> = {}
+  const redactedKeys: string[] = []
   let kept = 0
   for (const [key, value] of Object.entries(detail)) {
-    if (isDenied(key)) continue
+    if (isDenied(key)) {
+      redactedKeys.push(key)
+      continue
+    }
     out[key] = value
     kept += 1
   }
-  return kept === 0 ? undefined : out
+  return { detail: kept === 0 ? undefined : out, redactedKeys }
 }
 
 function normalizeRequest(
@@ -118,6 +128,52 @@ function normalizeRequest(
   return input as SecurityEventRequest
 }
 
+function safeLogString(value: unknown, fallback: string): string {
+  if (typeof value === 'string') return value
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'symbol'
+  ) {
+    return String(value)
+  }
+  return fallback
+}
+
+function auditEventName(input: SecurityEventInput): string {
+  return safeLogString(input.event, 'unknown-event')
+}
+
+function auditActorSource(input: SecurityEventInput): string {
+  return safeLogString(
+    (input as { actor?: { source?: unknown } }).actor?.source,
+    'unknown-actor',
+  )
+}
+
+function recordRedactionBreadcrumb(
+  input: SecurityEventInput,
+  detailKey: string,
+  ts: string,
+): void {
+  try {
+    // eslint-disable-next-line no-console
+    console.info(
+      JSON.stringify({
+        channel: 'security-audit',
+        ts,
+        breadcrumb: 'detail-key-redacted',
+        auditEvent: auditEventName(input),
+        actorSource: auditActorSource(input),
+        detailKey,
+      }),
+    )
+  } catch {
+    /* swallow — redaction observability must not break auth flow */
+  }
+}
+
 /**
  * Record a single security event. Never throws — defensive try/catch
  * ensures auth flow continues even if logging fails.
@@ -132,15 +188,20 @@ export function recordSecurityEvent(input: SecurityEventInput): void {
       actor: input.actor,
       request: normalizeRequest(input.request),
     }
-    const detail = redactDetail(input.detail)
+    const { detail, redactedKeys } = redactDetail(input.detail)
     if (detail) normalized.detail = detail
     // eslint-disable-next-line no-console
     console.info(JSON.stringify(normalized))
+    for (const detailKey of redactedKeys) {
+      recordRedactionBreadcrumb(input, detailKey, normalized.ts)
+    }
   } catch (err) {
     try {
       // eslint-disable-next-line no-console
       console.error(
         '[security-audit] failed to record event',
+        auditEventName(input),
+        auditActorSource(input),
         err instanceof Error ? err.message : String(err),
       )
     } catch {
