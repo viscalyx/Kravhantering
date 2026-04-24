@@ -116,7 +116,8 @@ sequenceDiagram
 
 - [`components/AuthMenu.tsx`](../components/AuthMenu.tsx) uses
   `NEXT_PUBLIC_AUTH_ENABLED` as a client-side gate. When auth is enabled it
-  calls `/api/auth/me` once on mount to render the signed-in user.
+  calls `/api/auth/me` once on mount to render the signed-in user and aborts
+  that request if the menu unmounts before the response settles.
 - `/api/auth/me` returns:
   `sub`, `hsaId`, `givenName`, `familyName`, `name`, `email?`, `roles`, and
   `expiresAt`. It never returns the raw ID token or raw access token.
@@ -126,6 +127,9 @@ sequenceDiagram
   checks same-origin and `X-Requested-With`, records `auth.logout`,
   destroys the session cookie, discovers the IdP end-session URL when
   possible, and returns a redirect target for the caller.
+- `AuthMenu` follows the redirect target only for successful logout responses.
+  Failed logout attempts keep the user on the current page and show an inline
+  alert.
 - `GET /api/auth/logout` is intentionally non-destructive. It only redirects
   locally and does not clear the session.
 - If a session cookie is present but invalid or unreadable,

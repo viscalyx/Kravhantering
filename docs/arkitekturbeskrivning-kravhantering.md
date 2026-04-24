@@ -579,41 +579,54 @@ beskrivs de interna applikationssambanden:
 <!-- Replace with ArchiMate tool export -->
 
 ```text
-┌───────────────────────────────────────────────────────────────┐
-│          << Application Cooperation Viewpoint >>              │
-│                                                               │
-│  ┌────────────┐         ┌────────────────────────────────┐    │
-│  │ Webbläsare │────────>│    Next.js App Router (UI)     │    │
-│  │ (Användare)│  HTTPS  │    /[locale]/requirements/...  │    │
-│  └────────────┘         └──────────┬─────┬───────────────┘    │
-│                                    │     │                    │
-│  ┌────────────┐         ┌──────────▼──┐  │                    │
-│  │ AI-agenter │────────>│  MCP-server │  │                    │
-│  │ (MCP-      │  HTTP   │  /api/mcp   │  │                    │
-│  │  klienter) │         └──────┬──────┘  │                    │
-│  └────────────┘                │         │                    │
-│                                ▼         ▼                    │
-│                    ┌──────────────────────────┐               │
-│                    │   RequirementsService    │               │
-│                    │   (Gemensam affärslogik) │               │
-│                    └───────────┬──────────────┘               │
-│                                │                              │
-│                    ┌───────────▼────────────┐                 │
-│                    │   Data Access Layer    │                 │
-│                    │   (lib/dal/)           │                 │
-│                    └───────────┬────────────┘                 │
-│                                │                              │
-│                    ┌───────────▼────────────┐                 │
-│                    │   SQL Server DB-tjänst │                 │
-│                    │   (mssql container)    │                 │
-│                    └────────────────────────┘                 │
-│                                                               │
-│  << Application Interfaces >>                                 │
-│  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐    │
-│  │ JSON/REST │  │ CSV      │  │ PDF (react-pdf / print)  │    │
-│  └───────────┘  └──────────┘  └──────────────────────────┘    │
-└───────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│               << Application Cooperation Viewpoint >>                       │
+│                                                                             │
+│  ┌────────────┐   HTTPS   ┌────────────────────────────────┐                │
+│  │ Webbläsare │──────────>│ Next.js App Router (UI + API)  │                │
+│  │ (Användare)│           │ /[locale]/... + /api/auth/*    │                │
+│  └─────┬──────┘           └──────────┬─────┬───────────────┘                │
+│        │ auth request/response       │     │ tokenutbyte, JWKS, logout      │
+│        │                             │     │                                │
+│        ▼                             │     ▼                                │
+│  ┌───────────────────────────────────┴───────────────────────────────┐      │
+│  │ << External Application Service >>                                │      │
+│  │ OIDC-identitetsleverantör                                         │      │
+│  └───────────────────────────────────▲───────────────────────────────┘      │
+│                                      │                                      │
+│  ┌────────────┐   HTTP    ┌──────────┴──┐                                   │
+│  │ AI-agenter │──────────>│ MCP-server  │  JWKS/key retrieval               │
+│  │ (MCP-      │           │ /api/mcp    │  för JWT-verifiering              │
+│  │  klienter) │           └──────┬──────┘                                   │
+│  └────────────┘                  │                                          │
+│                                  ▼                                          │
+│                      ┌──────────────────────────┐                           │
+│                      │   RequirementsService    │                           │
+│                      │   (Gemensam affärslogik) │                           │
+│                      └───────────┬──────────────┘                           │
+│                                  │                                          │
+│                      ┌───────────▼────────────┐                             │
+│                      │   Data Access Layer    │                             │
+│                      │   (lib/dal/)           │                             │
+│                      └───────────┬────────────┘                             │
+│                                  │                                          │
+│                      ┌───────────▼────────────┐                             │
+│                      │   SQL Server DB-tjänst │                             │
+│                      │   (mssql container)    │                             │
+│                      └────────────────────────┘                             │
+│                                                                             │
+│  << Application Interfaces >>                                               │
+│  ┌───────────┐  ┌──────────┐  ┌──────────────────────────┐                  │
+│  │ JSON/REST │  │ CSV      │  │ PDF (react-pdf / print)  │                  │
+│  └───────────┘  └──────────┘  └──────────────────────────┘                  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+Diagrammet markerar OIDC som en extern integration.
+Webbläsaren initierar autentiseringsbegäran och tar emot
+svaret via applikationens callback, medan applikationsgränsen
+ansvarar för tokenutbyte, JWKS-/nyckelhämtning och logout mot
+identitetsleverantören.
 
 ---
 
@@ -870,8 +883,18 @@ Identitetsmodellen i applikationen utgår från:
 - **`sub`** — stabil identitet från leverantören
 - **`employeeHsaId`** — verksamhetsnära identitetsnyckel
   som krävs i både webb- och MCP-flöden
-- **`roles`** — globala roller, i nuläget
-  normaliserade till `Reviewer` och `Admin`
+- **`roles`** — globala IdP-roller. Nuvarande
+  autentiseringskontrakt normaliserar `roles` till
+  `Reviewer` och `Admin`. Detta är en avsiktlig
+  förenkling av den tekniska rolluppgiften, men inte en
+  permanent förenkling av målmodellen. Målmodellen
+  innehåller `Author`, `Reviewer`, `Manager` och `Admin`:
+  `Reviewer` och `Admin` bevaras som globala roller,
+  `Author` ska härledas från uppdrag som ägare eller
+  medförfattare via `employeeHsaId`, och `Manager`
+  motsvaras i nuläget inte av en egen `roles`-post utan
+  tappar sin separata funktionsavgränsning tills
+  policybaserad auktorisering införs.
 
 Arkitekturen använder följande utvidgningspunkter i
 `lib/requirements/auth.ts`:

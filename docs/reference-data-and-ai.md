@@ -156,6 +156,13 @@ falls back to `json_object`.
 both English and Swedish. The prompt language matches the
 active locale.
 
+`messages/sv.json` intentionally has one extra
+`ai.prompt.system.outputRules` item requiring generated
+descriptions, acceptance criteria, verification methods and
+rationales to be written in Swedish. Keep this locale-specific
+rule when comparing `outputRules` with `messages/en.json`;
+alignment should preserve deliberate language constraints.
+
 **Taxonomy binding:** the system prompt includes all taxonomy
 IDs with their locale-appropriate names so the model can
 reference valid IDs in its output.

@@ -76,6 +76,8 @@ The emitted attributes are:
 - Auth account-detail rows keep their developer-mode values in English as
   `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are localized.
+- Auth logout failures use the stable `text: logout error` marker so the
+  localized alert text does not become the developer-mode identifier.
 - Requirement package form save errors and package-list load errors stay inside
   the existing `packages` form/table surfaces; they do not add separate
   developer-mode markers.
