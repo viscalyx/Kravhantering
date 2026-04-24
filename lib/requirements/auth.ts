@@ -1,4 +1,10 @@
-import type { LoggedInSession } from '@/lib/auth/session'
+import { getAuthConfig } from '@/lib/auth/config'
+import { assertSameOriginRequest } from '@/lib/auth/csrf'
+import {
+  getSessionFromRequest,
+  isSignedIn,
+  type LoggedInSession,
+} from '@/lib/auth/session'
 import { forbiddenError } from '@/lib/requirements/errors'
 
 // In-process attachment of verified actor identities to Request objects.
@@ -16,13 +22,7 @@ function getAttachedActor(request: Request): ActorContext | undefined {
   return ATTACHED_ACTORS.get(request)
 }
 
-export type ActorSource =
-  | 'anonymous'
-  | 'headers'
-  | 'session'
-  | 'oidc'
-  | 'token'
-  | 'mcp'
+export type ActorSource = 'anonymous' | 'headers' | 'oidc' | 'mcp'
 export type RequestSource = 'rest' | 'mcp'
 
 export interface ActorContext {
@@ -205,7 +205,6 @@ async function getActorContextFromSessionOrHeaders(
   const attached = getAttachedActor(request)
   if (attached) return attached
 
-  const { getAuthConfig } = await import('@/lib/auth/config')
   const cfg = getAuthConfig()
   if (!cfg.enabled) {
     // Legacy dev/opt-out path — header trust is only honored when
@@ -213,12 +212,8 @@ async function getActorContextFromSessionOrHeaders(
     return getActorContextFromRequest(request)
   }
 
-  const { assertSameOriginRequest } = await import('@/lib/auth/csrf')
   assertSameOriginRequest(request)
 
-  const { getSessionFromRequest, isSignedIn } = await import(
-    '@/lib/auth/session'
-  )
   const probe = new Response()
   const session = await getSessionFromRequest(request, probe)
   if (!isSignedIn(session)) {

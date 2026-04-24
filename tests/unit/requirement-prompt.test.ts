@@ -6,6 +6,9 @@ import {
   DEFAULT_INSTRUCTION_SV,
   type GeneratedRequirement,
   getDefaultInstruction,
+  getPromptMessage,
+  getPromptMessageList,
+  getPromptValue,
   REQUIREMENT_FORMAT_SCHEMA,
   type TaxonomyData,
   validateGeneratedRequirements,
@@ -89,8 +92,40 @@ describe('buildSystemPrompt', () => {
     expect(buildSystemPrompt(taxonomyWithoutScenarios)).toContain(
       'No usage scenarios available',
     )
+    expect(buildSystemPrompt(taxonomyWithoutScenarios)).not.toContain(
+      '  - No usage scenarios available',
+    )
     expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).toContain(
       'Inga användningsscenarier tillgängliga',
+    )
+    expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).not.toContain(
+      '  - Inga användningsscenarier tillgängliga',
+    )
+  })
+})
+
+describe('prompt localization helpers', () => {
+  it('throws missing localization errors only for absent paths', () => {
+    expect(() => getPromptValue('en', ['ai', 'prompt', 'missing'])).toThrow(
+      'Missing prompt localization for en:ai.prompt.missing',
+    )
+    expect(() =>
+      getPromptValue('en', ['ai', 'prompt', 'defaultInstruction', 'nested']),
+    ).toThrow(
+      'Missing prompt localization for en:ai.prompt.defaultInstruction.nested',
+    )
+  })
+
+  it('throws invalid type errors for existing paths with the wrong shape', () => {
+    expect(() =>
+      getPromptMessage('en', ['ai', 'prompt', 'system', 'outputRules']),
+    ).toThrow(
+      'Invalid prompt localization type for en:ai.prompt.system.outputRules: expected string but got array<string>',
+    )
+    expect(() =>
+      getPromptMessageList('en', ['ai', 'prompt', 'defaultInstruction']),
+    ).toThrow(
+      'Invalid prompt localization type for en:ai.prompt.defaultInstruction: expected string[] but got string',
     )
   })
 })

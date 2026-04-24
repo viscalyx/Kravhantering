@@ -81,6 +81,7 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "signingOut": "Signing out…",
+    "logoutError": "Could not sign out. Try again.",
     "signedInAs": "Signed in as {name}",
     "userInfoTitle": "Account details",
     "userInfoHsaId": "HSA-ID",

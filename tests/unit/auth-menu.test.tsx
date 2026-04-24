@@ -54,6 +54,25 @@ describe('AuthMenu', () => {
     expect(signInLink.className).toContain('focus-visible:ring-2')
   })
 
+  it('aborts the auth status request when unmounted', async () => {
+    let signal: AbortSignal | undefined
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      signal = init?.signal ?? undefined
+      return new Promise(() => {})
+    })
+
+    const { unmount } = render(<AuthMenu variant="desktop" />)
+
+    await waitFor(() => {
+      expect(signal).toBeDefined()
+    })
+    expect(signal?.aborted).toBe(false)
+
+    unmount()
+
+    expect(signal?.aborted).toBe(true)
+  })
+
   it('submits logout through fetch with the CSRF header', async () => {
     let resolveLogout: ((value: unknown) => void) | undefined
     fetchMock
@@ -164,7 +183,56 @@ describe('AuthMenu', () => {
         const restoredButton = screen.getByRole('button', { name: 'signOut' })
         expect(restoredButton).toBeEnabled()
         expect(restoredButton).not.toHaveAttribute('title')
+        expect(restoredButton).toHaveAccessibleDescription('logoutError')
       })
+      const alert = screen.getByRole('alert')
+      expect(alert).toHaveTextContent('logoutError')
+      expect(alert).toHaveAttribute('data-developer-mode-value', 'logout error')
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
+  it('shows a logout error without reading a redirect target on non-ok responses', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => {})
+    const jsonMock = vi.fn(async () => ({ redirectTo: '/should-not-read' }))
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          authenticated: true,
+          sub: 'user-1',
+          hsaId: 'SE2321000032-admin1',
+          givenName: 'Ada',
+          familyName: 'Admin',
+          name: 'Ada Admin',
+          email: 'ada@example.test',
+          roles: ['Admin'],
+          expiresAt: 123,
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: jsonMock,
+      })
+
+    try {
+      render(<AuthMenu variant="mobile" />)
+
+      const signOutButton = await screen.findByRole('button', {
+        name: 'signOut',
+      })
+      fireEvent.click(signOutButton)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('logoutError')
+      expect(jsonMock).not.toHaveBeenCalled()
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Logout failed',
+        expect.any(Error),
+      )
     } finally {
       consoleErrorSpy.mockRestore()
     }

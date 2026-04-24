@@ -33,6 +33,7 @@ const ROLE_KEY_BY_CANONICAL: Record<string, string> = {
 
 interface AuthLogoutButtonProps {
   className: string
+  errorLabel: string
   formClassName?: string
   label: string
   loadingLabel: string
@@ -56,6 +57,18 @@ function resolveLogoutRedirectTarget(
   return redirectTo === '' ? '/' : redirectTo
 }
 
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError'
+  }
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === 'AbortError'
+  )
+}
+
 function useAuthMe(): AuthMe | null {
   const [state, setState] = useState<AuthMe | null>(null)
 
@@ -67,8 +80,11 @@ function useAuthMe(): AuthMe | null {
       return
     }
 
-    let cancelled = false
-    fetch('/api/auth/me', { credentials: 'same-origin' })
+    const controller = new AbortController()
+    fetch('/api/auth/me', {
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
       .then(async response => {
         if (!response.ok) {
           return { authenticated: false } satisfies AuthMeUnauthenticated
@@ -76,15 +92,14 @@ function useAuthMe(): AuthMe | null {
         return (await response.json()) as AuthMe
       })
       .then(value => {
-        if (cancelled) return
         setState(value)
       })
-      .catch(() => {
-        if (cancelled) return
+      .catch(error => {
+        if (isAbortError(error)) return
         setState({ authenticated: false })
       })
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [])
 
@@ -93,11 +108,14 @@ function useAuthMe(): AuthMe | null {
 
 function AuthLogoutButton({
   className,
+  errorLabel,
   formClassName,
   label,
   loadingLabel,
 }: AuthLogoutButtonProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [logoutError, setLogoutError] = useState(false)
+  const errorId = useId()
   const buttonLabel = isSubmitting ? loadingLabel : label
   const buttonTitle = isSubmitting ? loadingLabel : undefined
   const buttonClassName = [
@@ -113,6 +131,7 @@ function AuthLogoutButton({
     event.preventDefault()
     if (isSubmitting) return
 
+    setLogoutError(false)
     setIsSubmitting(true)
     try {
       const response = await fetch('/api/auth/logout', {
@@ -124,6 +143,7 @@ function AuthLogoutButton({
         method: 'POST',
       })
       if (!response.ok) {
+        setLogoutError(true)
         throw new Error(`Logout failed with status ${response.status}`)
       }
 
@@ -133,6 +153,7 @@ function AuthLogoutButton({
       window.location.assign(resolveLogoutRedirectTarget(body))
     } catch (error) {
       console.error('Logout failed', error)
+      setLogoutError(true)
       setIsSubmitting(false)
     }
   }
@@ -141,6 +162,7 @@ function AuthLogoutButton({
     <form className={formClassName} onSubmit={handleSubmit}>
       <button
         aria-busy={isSubmitting}
+        aria-describedby={logoutError ? errorId : undefined}
         aria-label={buttonLabel}
         className={buttonClassName}
         disabled={isSubmitting}
@@ -151,6 +173,17 @@ function AuthLogoutButton({
         <LogOut aria-hidden="true" className="h-4 w-4" />
         {buttonLabel}
       </button>
+      {logoutError && (
+        <p
+          aria-live="assertive"
+          className="mt-2 max-w-sm text-sm text-red-600 dark:text-red-400"
+          id={errorId}
+          role="alert"
+          {...devMarker({ name: 'text', value: 'logout error' })}
+        >
+          {errorLabel}
+        </p>
+      )}
     </form>
   )
 }
@@ -305,6 +338,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
         {userIdentity}
         <AuthLogoutButton
           className="inline-flex items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+          errorLabel={t('logoutError')}
           formClassName="self-start"
           label={t('signOut')}
           loadingLabel={t('signingOut')}
@@ -449,6 +483,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
               </dl>
               <AuthLogoutButton
                 className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                errorLabel={t('logoutError')}
                 formClassName="mt-4"
                 label={t('signOut')}
                 loadingLabel={t('signingOut')}

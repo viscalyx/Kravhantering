@@ -103,7 +103,7 @@ function normalizeRequest(
     try {
       path = new URL(req.url).pathname
     } catch {
-      path = req.url
+      path = req.url.split(/[?#]/, 1)[0] ?? ''
     }
     const out: SecurityEventRequest = {
       method: req.method,

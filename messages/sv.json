@@ -81,6 +81,7 @@
     "signIn": "Logga in",
     "signOut": "Logga ut",
     "signingOut": "Loggar ut…",
+    "logoutError": "Kunde inte logga ut. Försök igen.",
     "signedInAs": "Inloggad som {name}",
     "userInfoTitle": "Kontouppgifter",
     "userInfoHsaId": "HSA-ID",

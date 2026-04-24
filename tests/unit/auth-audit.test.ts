@@ -89,6 +89,24 @@ describe('recordSecurityEvent', () => {
     })
   })
 
+  it('strips query and fragment when URL parsing falls back', () => {
+    recordSecurityEvent({
+      event: 'auth.login.failed',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request: {
+        headers: new Headers(),
+        method: 'GET',
+        url: '/api/auth/callback?code=abc&state=xyz#frag',
+      } as Request,
+    })
+    const ev = emittedEvents()[0]
+    expect(ev.request).toEqual({
+      method: 'GET',
+      path: '/api/auth/callback',
+    })
+  })
+
   it('omits userAgent and requestId when those headers are absent', () => {
     recordSecurityEvent({
       event: 'auth.logout',

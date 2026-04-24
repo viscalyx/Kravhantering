@@ -95,7 +95,51 @@ const PROMPT_MESSAGES = {
   sv: svMessages,
 } satisfies Record<'en' | 'sv', Record<string, unknown>>
 
-function getPromptValue(locale: 'en' | 'sv', path: readonly string[]): unknown {
+function promptLocalizationPath(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): string {
+  return `${locale}:${path.join('.')}`
+}
+
+function promptValueType(value: unknown): string {
+  if (Array.isArray(value)) {
+    const itemTypes = [
+      ...new Set(value.map(item => promptValueType(item))),
+    ].sort()
+    return itemTypes.length === 0 ? 'array' : `array<${itemTypes.join('|')}>`
+  }
+  if (value === null) return 'null'
+  return typeof value
+}
+
+function missingPromptLocalizationError(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): Error {
+  return new Error(
+    `Missing prompt localization for ${promptLocalizationPath(locale, path)}`,
+  )
+}
+
+function invalidPromptLocalizationTypeError(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+  expected: string,
+  actual: unknown,
+): Error {
+  return new Error(
+    `Invalid prompt localization type for ${promptLocalizationPath(
+      locale,
+      path,
+    )}: expected ${expected} but got ${promptValueType(actual)}`,
+  )
+}
+
+export function getPromptValue(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): unknown {
   let current: unknown = PROMPT_MESSAGES[locale]
 
   for (const segment of path) {
@@ -104,32 +148,32 @@ function getPromptValue(locale: 'en' | 'sv', path: readonly string[]): unknown {
       current === null ||
       Array.isArray(current)
     ) {
-      throw new Error(
-        `Missing prompt localization for ${locale}:${path.join('.')}`,
-      )
+      throw missingPromptLocalizationError(locale, path)
     }
-    current = (current as Record<string, unknown>)[segment]
+    const currentRecord = current as Record<string, unknown>
+    if (currentRecord[segment] === undefined) {
+      throw missingPromptLocalizationError(locale, path)
+    }
+    current = currentRecord[segment]
   }
 
   return current
 }
 
-function getPromptMessage(
+export function getPromptMessage(
   locale: 'en' | 'sv',
   path: readonly string[],
 ): string {
   const current = getPromptValue(locale, path)
 
   if (typeof current !== 'string') {
-    throw new Error(
-      `Missing prompt localization for ${locale}:${path.join('.')}`,
-    )
+    throw invalidPromptLocalizationTypeError(locale, path, 'string', current)
   }
 
   return current
 }
 
-function getPromptMessageList(
+export function getPromptMessageList(
   locale: 'en' | 'sv',
   path: readonly string[],
 ): string[] {
@@ -139,9 +183,7 @@ function getPromptMessageList(
     !Array.isArray(current) ||
     current.some(item => typeof item !== 'string')
   ) {
-    throw new Error(
-      `Missing prompt localization for ${locale}:${path.join('.')}`,
-    )
+    throw invalidPromptLocalizationTypeError(locale, path, 'string[]', current)
   }
 
   return current
@@ -190,11 +232,11 @@ export function buildSystemPrompt(
   const scenarioList =
     taxonomy.scenarios.length > 0
       ? taxonomy.scenarios.map(s => `  - ID ${s.id}: ${s.name}`).join('\n')
-      : `  - ${getPromptMessage(locale, [
+      : `_${getPromptMessage(locale, [
           'ai',
           'prompt',
           'noUsageScenariosAvailable',
-        ])}`
+        ])}_`
   const outputRules = getPromptMessageList(locale, [
     'ai',
     'prompt',
