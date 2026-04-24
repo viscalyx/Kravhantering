@@ -48,6 +48,11 @@ Editing is **not allowed** when the current version is in Review
 or Archived status. Review must first be moved back to Draft;
 Archived must be restored (which creates a new Draft version).
 
+Edit requests must include the `edited_at` value that was current
+when editing started. The server treats that value as an optimistic
+concurrency token and rejects the save with `409 Conflict` if another
+save has changed `edited_at` before the request arrives.
+
 ## When `edited_at` Is Updated
 
 `edited_at` is set **only** when user-initiated content fields
@@ -251,10 +256,12 @@ The version history pills show the relevant date per status:
   `published_at` and `archived_at` are `NULL`.
 - **Editing a requirement** (`editRequirement`): When the current
   version is Draft, updates the existing row in place with
-  `edited_at` set to the current time. When the current version
-  is Published, creates a new Draft version with `edited_at` set
-  to the current time. **Not allowed** when the current version
-  is in Review or Archived status.
+  `edited_at` set to the current time, but only when the caller's
+  `expectedEditedAt` value still matches the row's previous
+  `edited_at`. When the current version is Published, creates a new
+  Draft version with `edited_at` set to the current time after the
+  same precondition check. **Not allowed** when the current version is
+  in Review or Archived status.
 - **Transitioning status** (`transitionStatus`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to the
   target status. Sets `published_at` or `archived_at` when
