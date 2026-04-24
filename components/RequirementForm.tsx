@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Plus, X } from 'lucide-react'
+import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -11,15 +11,27 @@ import RequirementFormFields, {
 } from '@/components/RequirementFormFields'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 interface RequirementFormProps {
+  expectedEditedAt?: string | null
   initialData?: Partial<
     Omit<RequirementFormFieldValues, 'normReferenceIds' | 'scenarioIds'>
   >
   initialNormReferenceIds?: number[]
   initialScenarioIds?: number[]
   mode: 'create' | 'edit'
+  onRefreshLatest?: () => Promise<void> | void
   requirementId?: number | string
+}
+
+interface RequirementEditErrorPayload {
+  code?: string
+  details?: {
+    latest?: RequirementDetailResponse | null
+    reason?: string
+  }
+  error?: string
 }
 
 interface NormReferenceOption {
@@ -46,9 +58,11 @@ const EMPTY_FORM: RequirementFormFieldValues = {
 }
 
 export default function RequirementForm({
+  expectedEditedAt,
   initialData,
   initialNormReferenceIds,
   initialScenarioIds,
+  onRefreshLatest,
   requirementId,
   mode,
 }: RequirementFormProps) {
@@ -74,6 +88,9 @@ export default function RequirementForm({
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [staleConflict, setStaleConflict] = useState<{
+    latest: RequirementDetailResponse | null
+  } | null>(null)
   const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
     () => {
       try {
@@ -138,6 +155,7 @@ export default function RequirementForm({
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    setStaleConflict(null)
 
     try {
       const url =
@@ -156,6 +174,7 @@ export default function RequirementForm({
             : undefined,
           riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
           description: form.description || undefined,
+          expectedEditedAt: mode === 'edit' ? expectedEditedAt : undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
           requiresTesting: form.requiresTesting,
           verificationMethod: form.requiresTesting
@@ -198,9 +217,18 @@ export default function RequirementForm({
           router.push(`/requirements?selected=${targetUniqueId}`)
         }
       } else {
-        const err = (await res.json().catch(() => null)) as {
-          error?: string
-        } | null
+        const err = (await res
+          .json()
+          .catch(() => null)) as RequirementEditErrorPayload | null
+        if (
+          res.status === 409 &&
+          err?.code === 'conflict' &&
+          err.details?.reason === 'stale_requirement_edit'
+        ) {
+          setStaleConflict({ latest: err.details.latest ?? null })
+          setError(null)
+          return
+        }
         setError(err?.error ?? res.statusText)
       }
     } catch (e) {
@@ -209,6 +237,13 @@ export default function RequirementForm({
       setSubmitting(false)
     }
   }
+
+  const latestConflictVersion = staleConflict?.latest?.versions[0]
+  const latestConflictTarget =
+    staleConflict?.latest?.uniqueId ?? String(requirementId ?? '')
+  const latestConflictHref = latestConflictVersion?.versionNumber
+    ? `/requirements/${latestConflictTarget}/${latestConflictVersion.versionNumber}`
+    : `/requirements/${latestConflictTarget}`
 
   const normReferenceCreateButton = (
     <button
@@ -305,6 +340,46 @@ export default function RequirementForm({
           />,
           document.body,
         )}
+
+      {staleConflict && (
+        <div
+          className="mt-5 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200"
+          role="alert"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
+            />
+            <div>
+              <p className="font-semibold">{t('staleEditConflict')}</p>
+              <p className="mt-1">{t('staleEditConflictHelp')}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
+                  onClick={() => router.push(latestConflictHref)}
+                  type="button"
+                >
+                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t('staleEditViewLatest')}
+                </button>
+                {onRefreshLatest && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
+                    onClick={() => {
+                      void onRefreshLatest()
+                    }}
+                    type="button"
+                  >
+                    <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                    {t('staleEditReload')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="mt-5 text-sm text-red-600 dark:text-red-400" role="alert">

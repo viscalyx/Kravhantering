@@ -67,6 +67,12 @@ export async function PUT(
         categoryId: body.categoryId ? Number(body.categoryId) : undefined,
         createdBy: body.ownerId ? String(body.ownerId) : undefined,
         description: String(body.description ?? ''),
+        expectedEditedAt:
+          body.expectedEditedAt === null
+            ? null
+            : body.expectedEditedAt != null
+              ? String(body.expectedEditedAt)
+              : undefined,
         normReferenceIds: Array.isArray(body.normReferenceIds)
           ? body.normReferenceIds
               .map(value => Number(value))

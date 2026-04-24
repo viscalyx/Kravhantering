@@ -79,6 +79,7 @@ import {
   type RequirementsAction,
 } from '@/lib/requirements/auth'
 import {
+  conflictError,
   internalError,
   isRequirementsServiceError,
   notFoundError,
@@ -123,6 +124,7 @@ export interface RequirementMutationInput {
   categoryId?: number
   createdBy?: string
   description?: string
+  expectedEditedAt?: string | null
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
   requiresTesting?: boolean
@@ -1316,23 +1318,46 @@ export function createRequirementsService(
                 'Edit operation requires requirement.description',
               )
             }
+            if (payload.expectedEditedAt === undefined) {
+              throw validationError(
+                'Edit operation requires requirement.expectedEditedAt',
+                { reason: 'missing_edit_precondition' },
+              )
+            }
             if (payload.areaId != null) {
               await ensureAreaExists(db, payload.areaId)
             }
-            const version = await editRequirement(db, requirementId, {
-              acceptanceCriteria: payload.acceptanceCriteria,
-              createdBy: payload.createdBy ?? context.actor.id ?? undefined,
-              description: payload.description,
-              normReferenceIds: payload.normReferenceIds,
-              requirementAreaId: payload.areaId,
-              requirementCategoryId: payload.categoryId,
-              qualityCharacteristicId: payload.qualityCharacteristicId,
-              requirementTypeId: payload.typeId,
-              requiresTesting: payload.requiresTesting,
-              riskLevelId: payload.riskLevelId,
-              verificationMethod: payload.verificationMethod,
-              scenarioIds: payload.scenarioIds,
-            })
+            let version: Awaited<ReturnType<typeof editRequirement>>
+            try {
+              version = await editRequirement(db, requirementId, {
+                acceptanceCriteria: payload.acceptanceCriteria,
+                createdBy: payload.createdBy ?? context.actor.id ?? undefined,
+                description: payload.description,
+                expectedEditedAt: payload.expectedEditedAt,
+                normReferenceIds: payload.normReferenceIds,
+                requirementAreaId: payload.areaId,
+                requirementCategoryId: payload.categoryId,
+                qualityCharacteristicId: payload.qualityCharacteristicId,
+                requirementTypeId: payload.typeId,
+                requiresTesting: payload.requiresTesting,
+                riskLevelId: payload.riskLevelId,
+                verificationMethod: payload.verificationMethod,
+                scenarioIds: payload.scenarioIds,
+              })
+            } catch (error) {
+              if (
+                isRequirementsServiceError(error) &&
+                error.code === 'conflict' &&
+                error.details?.reason === 'stale_requirement_edit'
+              ) {
+                const latest = await getRequirementById(db, requirementId)
+                throw conflictError(error.message, {
+                  ...error.details,
+                  latest: latest ? formatRequirementDetail(latest) : null,
+                })
+              }
+              throw error
+            }
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
                 (() => {

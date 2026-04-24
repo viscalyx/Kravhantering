@@ -476,6 +476,7 @@ interface RequirementMutationData {
   acceptanceCriteria?: string
   createdBy?: string
   description: string
+  expectedEditedAt?: string | null
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
   requirementAreaId: number
@@ -681,6 +682,7 @@ interface VersionLite {
   archiveInitiatedAt: string | null
   createdBy: string | null
   description: string
+  editedAt: string | null
   id: number
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
@@ -702,6 +704,7 @@ async function getLatestVersionLite(
         archive_initiated_at AS archiveInitiatedAt,
         description,
         acceptance_criteria AS acceptanceCriteria,
+        edited_at AS editedAt,
         requirement_category_id AS requirementCategoryId,
         requirement_type_id AS requirementTypeId,
         quality_characteristic_id AS qualityCharacteristicId,
@@ -721,6 +724,7 @@ async function getLatestVersionLite(
     statusId: Number(row.statusId),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     description: String(row.description ?? ''),
+    editedAt: toIso(row.editedAt),
     acceptanceCriteria:
       row.acceptanceCriteria == null ? null : String(row.acceptanceCriteria),
     requirementCategoryId: toNum(row.requirementCategoryId),
@@ -734,6 +738,45 @@ async function getLatestVersionLite(
   }
 }
 
+function normalizeExpectedEditedAt(value: string | null | undefined) {
+  if (value === undefined) {
+    throw validationError(
+      'Edit operation requires requirement.expectedEditedAt',
+    )
+  }
+  if (value === null) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    throw validationError(
+      'Edit operation requires a valid requirement.expectedEditedAt timestamp',
+    )
+  }
+  return date.toISOString()
+}
+
+function hasMatchingEditedAt(current: string | null, expected: string | null) {
+  if (current == null || expected == null) {
+    return current == null && expected == null
+  }
+  return new Date(current).getTime() === new Date(expected).getTime()
+}
+
+function staleRequirementEditError(
+  requirementId: number,
+  expectedEditedAt: string | null,
+  latestEditedAt: string | null,
+) {
+  return conflictError(
+    'This requirement was updated after you started editing. Refresh to review the latest version before saving.',
+    {
+      expectedEditedAt,
+      latestEditedAt,
+      reason: 'stale_requirement_edit',
+      requirementId,
+    },
+  )
+}
+
 export async function editRequirement(
   db: SqlServerDatabase,
   requirementId: number,
@@ -743,6 +786,7 @@ export async function editRequirement(
 ): Promise<VersionInsertedRow> {
   const scenarioIds = uniqueIds(data.scenarioIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
+  const expectedEditedAt = normalizeExpectedEditedAt(data.expectedEditedAt)
   const now = new Date()
   const verificationMethod = data.requiresTesting
     ? (data.verificationMethod ?? null)
@@ -767,11 +811,11 @@ export async function editRequirement(
         'Cannot edit an archived requirement — restore it first',
       )
     }
-
-    if (data.requirementAreaId != null) {
-      await tx.query(
-        `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
-        [data.requirementAreaId, requirementId],
+    if (!hasMatchingEditedAt(current.editedAt, expectedEditedAt)) {
+      throw staleRequirementEditError(
+        requirementId,
+        data.expectedEditedAt ?? null,
+        current.editedAt,
       )
     }
 
@@ -788,7 +832,11 @@ export async function editRequirement(
               verification_method = @7,
               edited_at = @8
           ${VERSION_OUTPUT}
-          WHERE id = @9`,
+          WHERE id = @9
+            AND (
+              (@10 IS NULL AND edited_at IS NULL)
+              OR edited_at = CONVERT(datetime2, @10, 127)
+            )`,
         [
           data.description,
           data.acceptanceCriteria ?? null,
@@ -800,10 +848,24 @@ export async function editRequirement(
           verificationMethod,
           now,
           current.id,
+          expectedEditedAt,
         ],
       )) as Array<Record<string, unknown>>
+      if (!updateRows[0]) {
+        throw staleRequirementEditError(
+          requirementId,
+          data.expectedEditedAt ?? null,
+          current.editedAt,
+        )
+      }
       result = mapVersion(updateRows[0] ?? {})
 
+      if (data.requirementAreaId != null) {
+        await tx.query(
+          `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
+          [data.requirementAreaId, requirementId],
+        )
+      }
       await tx.query(
         `DELETE FROM requirement_version_usage_scenarios WHERE requirement_version_id = @0`,
         [current.id],
@@ -821,6 +883,12 @@ export async function editRequirement(
       tx,
       requirementId,
     )
+    if (data.requirementAreaId != null) {
+      await tx.query(
+        `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
+        [data.requirementAreaId, requirementId],
+      )
+    }
     const insertRows = (await tx.query(
       `INSERT INTO requirement_versions (
           requirement_id, version_number, description, acceptance_criteria,

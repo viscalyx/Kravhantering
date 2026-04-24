@@ -408,6 +408,7 @@ const RequirementMutationSchema = z
     categoryId: z.number().int().positive().optional(),
     createdBy: z.string().max(200).optional(),
     description: z.string().max(4000).optional(),
+    expectedEditedAt: z.string().max(80).nullable().optional(),
     requiresTesting: z.boolean().optional(),
     verificationMethod: z.string().max(4000).optional(),
     scenarioIds: z.array(z.number().int().positive()).optional(),
