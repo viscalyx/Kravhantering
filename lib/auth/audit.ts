@@ -107,13 +107,16 @@ function redactDetail(
 function normalizeRequest(
   input: Request | SecurityEventRequest,
 ): SecurityEventRequest {
+  const stripQueryAndFragment = (path: string): string =>
+    path.split(/[?#]/, 1)[0] ?? ''
+
   if (input instanceof Request) {
     const req = input
     let path = ''
     try {
       path = new URL(req.url).pathname
     } catch {
-      path = req.url.split(/[?#]/, 1)[0] ?? ''
+      path = stripQueryAndFragment(req.url)
     }
     const out: SecurityEventRequest = {
       method: req.method,
@@ -125,7 +128,13 @@ function normalizeRequest(
     if (requestId) out.requestId = requestId
     return out
   }
-  return input as SecurityEventRequest
+  const out: SecurityEventRequest = {
+    method: input.method,
+    path: stripQueryAndFragment(input.path),
+  }
+  if (input.userAgent) out.userAgent = input.userAgent
+  if (input.requestId) out.requestId = input.requestId
+  return out
 }
 
 function safeLogString(value: unknown, fallback: string): string {

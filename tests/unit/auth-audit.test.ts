@@ -114,9 +114,14 @@ describe('recordSecurityEvent', () => {
     const requestLike = {
       headers: { get: getHeader },
       method: 'GET',
-      path: '/already-normalized',
+      path: '/already-normalized?code=abc#fragment',
+      requestId: 'req-plain',
+      userAgent: 'PlainAgent/1.0',
       url: 'https://app.example.test/should-not-be-used?code=abc&state=xyz',
-    } as unknown as SecurityEventRequest
+    } as SecurityEventRequest & {
+      headers: { get: typeof getHeader }
+      url: string
+    }
 
     recordSecurityEvent({
       event: 'auth.login.failed',
@@ -126,12 +131,13 @@ describe('recordSecurityEvent', () => {
     })
     const ev = emittedEvents()[0]
     expect(getHeader).not.toHaveBeenCalled()
-    expect(ev.request).toMatchObject({
+    expect(ev.request).toEqual({
       method: 'GET',
       path: '/already-normalized',
-      url: 'https://app.example.test/should-not-be-used?code=abc&state=xyz',
+      requestId: 'req-plain',
+      userAgent: 'PlainAgent/1.0',
     })
-    expect((ev.request as Record<string, unknown>).userAgent).toBeUndefined()
+    expect((ev.request as Record<string, unknown>).url).toBeUndefined()
   })
 
   it('omits userAgent and requestId when those headers are absent', () => {
@@ -241,5 +247,26 @@ describe('recordSecurityEvent', () => {
     })
     const ev = emittedEvents()[0]
     expect(ev.request).toEqual({ method: 'POST', path: '/api/owners' })
+  })
+
+  it('strips query and fragment from pre-normalized request paths', () => {
+    recordSecurityEvent({
+      event: 'auth.csrf.rejected',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request: {
+        method: 'POST',
+        path: '/api/owners?code=abc&state=xyz#token',
+        requestId: 'req-99',
+        userAgent: 'TestAgent/2.0',
+      },
+    })
+    const ev = emittedEvents()[0]
+    expect(ev.request).toEqual({
+      method: 'POST',
+      path: '/api/owners',
+      requestId: 'req-99',
+      userAgent: 'TestAgent/2.0',
+    })
   })
 })

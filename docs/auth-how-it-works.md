@@ -217,9 +217,9 @@ sequenceDiagram
   `ts`, `event`, `outcome`, `actor`, `request`, and optional `detail`.
 - `actor` identifies the source (`oidc`, `mcp`, or `anonymous`) and may also
   include `sub`, `hsaId`, and `clientId`.
-- `request` includes the HTTP method and path, and may also include
-  `requestId` and `userAgent` when those values were present on the incoming
-  request.
+- `request` includes the HTTP method and path without query strings or
+  fragments, and may also include `requestId` and `userAgent` when those
+  values were present on the incoming request.
 - `detail` is optional and is redacted defensively so top-level fields such as
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
   are not emitted. Redaction breadcrumbs use the same `security-audit` channel
