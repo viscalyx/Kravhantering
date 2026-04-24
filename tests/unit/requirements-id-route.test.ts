@@ -21,9 +21,15 @@ vi.mock('@/lib/requirements/service', () => ({
     getRequirement: mockGetRequirement,
     manageRequirement: mockManageRequirement,
   }),
-  toHttpErrorPayload: (err: Error) => ({
-    body: { error: err.message },
-    status: 400,
+  toHttpErrorPayload: (
+    err: Error & {
+      code?: string
+      details?: Record<string, unknown>
+      status?: number
+    },
+  ) => ({
+    body: { code: err.code, details: err.details, error: err.message },
+    status: err.status ?? 400,
   }),
 }))
 
@@ -102,6 +108,7 @@ describe('requirements/[id] route', () => {
         method: 'PUT',
         body: JSON.stringify({
           description: 'Updated',
+          expectedEditedAt: '2026-03-08T00:00:00.000Z',
           references: [{ name: 'Ref1', uri: 'http://example.com' }],
           scenarioIds: [1, 2],
         }),
@@ -117,8 +124,42 @@ describe('requirements/[id] route', () => {
         expect.objectContaining({
           id: 1,
           operation: 'edit',
+          requirement: expect.objectContaining({
+            expectedEditedAt: '2026-03-08T00:00:00.000Z',
+          }),
         }),
       )
+    })
+
+    it('returns stale edit conflicts with details from the service', async () => {
+      mockManageRequirement.mockRejectedValue(
+        Object.assign(new Error('This requirement was updated'), {
+          code: 'conflict',
+          details: {
+            latest: { uniqueId: 'REQ-001' },
+            reason: 'stale_requirement_edit',
+          },
+          status: 409,
+        }),
+      )
+
+      const req = new NextRequest('http://localhost/api/requirements/1', {
+        method: 'PUT',
+        body: JSON.stringify({
+          description: 'Updated',
+          expectedEditedAt: '2026-03-08T00:00:00.000Z',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await PUT(req, makeParams('1'))
+      const json = (await res.json()) as {
+        code: string
+        details: { reason: string }
+      }
+
+      expect(res.status).toBe(409)
+      expect(json.code).toBe('conflict')
+      expect(json.details.reason).toBe('stale_requirement_edit')
     })
 
     it('returns error on failure', async () => {

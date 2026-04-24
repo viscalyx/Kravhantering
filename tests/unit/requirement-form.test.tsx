@@ -27,6 +27,10 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
+function errJson(body: unknown, status = 400, statusText = 'Bad Request') {
+  return { ok: false, json: async () => body, status, statusText }
+}
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -168,6 +172,7 @@ describe('RequirementForm', () => {
 
     const { container } = render(
       <RequirementForm
+        expectedEditedAt="2026-03-08T00:00:00.000Z"
         initialData={{ description: 'Existing' }}
         mode="edit"
         requirementId={5}
@@ -187,6 +192,76 @@ describe('RequirementForm', () => {
         expect.objectContaining({ method: 'PUT' }),
       )
     })
+    const putCall = fetchMock.mock.calls.find(
+      (c: unknown[]) =>
+        c[0] === '/api/requirements/5' &&
+        (c[1] as RequestInit)?.method === 'PUT',
+    )
+    const body = JSON.parse((putCall?.[1] as RequestInit).body as string)
+    expect(body.expectedEditedAt).toBe('2026-03-08T00:00:00.000Z')
+  })
+
+  it('shows a stale edit conflict prompt without clearing form data', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT')
+        return Promise.resolve(
+          errJson(
+            {
+              code: 'conflict',
+              details: {
+                latest: {
+                  uniqueId: 'REQ-001',
+                  versions: [{ versionNumber: 2 }],
+                },
+                reason: 'stale_requirement_edit',
+              },
+              error: 'This requirement was updated',
+            },
+            409,
+            'Conflict',
+          ),
+        )
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { container } = render(
+      <RequirementForm
+        expectedEditedAt="2026-03-08T00:00:00.000Z"
+        initialData={{ description: 'Existing' }}
+        mode="edit"
+        requirementId={5}
+      />,
+    )
+
+    const desc = await screen.findByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    fireEvent.change(desc, { target: { value: 'Unsaved local text' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'requirement.staleEditConflict',
+      )
+    })
+    expect(desc).toHaveValue('Unsaved local text')
+    expect(
+      screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
+    ).toBeInTheDocument()
   })
 
   it('navigates back on cancel', async () => {

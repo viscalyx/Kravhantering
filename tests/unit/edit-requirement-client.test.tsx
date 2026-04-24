@@ -30,11 +30,13 @@ vi.mock('@/components/HelpPanel', () => ({
 
 vi.mock('@/components/RequirementForm', () => ({
   default: (props: {
+    expectedEditedAt?: string | null
     mode: string
-    requirementId?: number
+    requirementId?: number | string
     initialData?: Record<string, string | boolean>
   }) => (
     <div
+      data-expected-edited-at={props.expectedEditedAt ?? ''}
       data-initial-data={JSON.stringify(props.initialData)}
       data-mode={props.mode}
       data-testid="req-form"
@@ -127,11 +129,23 @@ describe('EditRequirementClient', () => {
   })
 
   it('fetches requirement data and renders form', async () => {
+    fetchMock.mockResolvedValue(
+      okJson(
+        makeRequirementDetailResponse(
+          {},
+          { editedAt: '2026-03-08T00:00:00.000Z' },
+        ),
+      ),
+    )
     render(<EditRequirementClient requirementId={1} />)
     await waitFor(() => {
       expect(screen.getByTestId('req-form')).toBeInTheDocument()
     })
     expect(screen.getByTestId('req-form')).toHaveAttribute('data-mode', 'edit')
+    expect(screen.getByTestId('req-form')).toHaveAttribute(
+      'data-expected-edited-at',
+      '2026-03-08T00:00:00.000Z',
+    )
     expect(screen.getByText(/REQ-001/)).toBeInTheDocument()
   })
 

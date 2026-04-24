@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 const mocks = vi.hoisted(() => ({
@@ -713,10 +713,67 @@ describe('createRequirementsService', () => {
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'edit',
-      requirement: { description: 'Updated text' },
+      requirement: {
+        description: 'Updated text',
+        expectedEditedAt: '2026-03-08T00:00:00.000Z',
+      },
     })
     expect(result.operation).toBe('edit')
-    expect(mocks.editRequirement).toHaveBeenCalled()
+    expect(mocks.editRequirement).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        expectedEditedAt: '2026-03-08T00:00:00.000Z',
+      }),
+    )
+  })
+
+  it('rejects edits without an optimistic concurrency token', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: { description: 'Updated text' },
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'missing_edit_precondition' },
+    })
+    expect(mocks.editRequirement).not.toHaveBeenCalled()
+  })
+
+  it('adds the latest requirement snapshot to stale edit conflicts', async () => {
+    mocks.editRequirement.mockRejectedValue(
+      conflictError('This requirement was updated after you started editing.', {
+        reason: 'stale_requirement_edit',
+      }),
+    )
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: {
+          description: 'Updated text',
+          expectedEditedAt: '2026-03-08T00:00:00.000Z',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        latest: expect.objectContaining({ uniqueId: 'INT0001' }),
+        reason: 'stale_requirement_edit',
+      },
+    })
   })
 
   it('initiates archiving review for a requirement', async () => {

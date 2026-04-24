@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
 } from '@/lib/dal/requirements'
@@ -8,12 +9,17 @@ function createSqlServerDb() {
   const query =
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
   const getRepository = vi.fn()
+  const transaction = vi.fn(
+    async (callback: (manager: { query: typeof query }) => Promise<unknown>) =>
+      callback({ query }),
+  )
   const db = {
     getRepository,
     query,
+    transaction,
   } as unknown as Parameters<typeof getRequirementById>[0]
 
-  return { db, query }
+  return { db, query, transaction }
 }
 
 describe('requirements DAL (SQL Server path)', () => {
@@ -222,5 +228,44 @@ describe('requirements DAL (SQL Server path)', () => {
 
     await expect(getRequirementByUniqueId(db, 'NONE')).resolves.toBeNull()
     expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects stale draft edits before rewriting joins', async () => {
+    const { db, query } = createSqlServerDb()
+    const editedAt = new Date('2026-04-20T08:30:00.000Z')
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 21,
+          statusId: 1,
+          editedAt,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await expect(
+      editRequirement(db, 7, {
+        description: 'Stale update',
+        expectedEditedAt: editedAt.toISOString(),
+        normReferenceIds: [100],
+        scenarioIds: [200],
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: { reason: 'stale_requirement_edit' },
+    })
+
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls[1]).toContain('edited_at = CONVERT(datetime2, @10, 127)')
+    expect(
+      sqlCalls.some(sql =>
+        sql.includes('DELETE FROM requirement_version_usage_scenarios'),
+      ),
+    ).toBe(false)
+    expect(
+      sqlCalls.some(sql =>
+        sql.includes('DELETE FROM requirement_version_norm_references'),
+      ),
+    ).toBe(false)
   })
 })

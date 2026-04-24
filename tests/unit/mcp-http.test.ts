@@ -535,6 +535,7 @@ describe('handleRequirementsMcpRequest', () => {
         uniqueId: 'INT0001',
         requirement: {
           description: 'Updated description',
+          expectedEditedAt: '2026-03-08T00:00:00.000Z',
           normReferenceIds: [1, 2],
         },
       },
@@ -546,6 +547,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       expect.objectContaining({
         requirement: expect.objectContaining({
+          expectedEditedAt: '2026-03-08T00:00:00.000Z',
           normReferenceIds: [1, 2],
         }),
       }),
