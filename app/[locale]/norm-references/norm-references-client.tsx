@@ -10,6 +10,7 @@ import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import StatusBadge from '@/components/StatusBadge'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const NORM_REFERENCES_HELP: HelpContent = {
   sections: [
@@ -119,7 +120,7 @@ export default function NormReferencesClient() {
     setLoading(true)
     setNormListError(false)
     try {
-      const res = await fetch('/api/norm-references')
+      const res = await apiFetch('/api/norm-references')
       if (requestId !== normReqRequestId.current) return
       if (res.ok) {
         setNormReferences(
@@ -147,7 +148,7 @@ export default function NormReferencesClient() {
     setLinkedRequirementsLoading(true)
     setLinkedRequirementsError(false)
     try {
-      const res = await fetch(`/api/norm-references/${id}`)
+      const res = await apiFetch(`/api/norm-references/${id}`)
       if (requestId !== linkedReqRequestId.current) return
       if (res.ok) {
         const data = (await res.json()) as {
@@ -185,7 +186,7 @@ export default function NormReferencesClient() {
       const url = editId
         ? `/api/norm-references/${editId}`
         : '/api/norm-references'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -263,7 +264,7 @@ export default function NormReferencesClient() {
     setDeleteError(null)
     setDeletingIds(prev => new Set(prev).add(id))
     try {
-      const res = await fetch(`/api/norm-references/${id}`, {
+      const res = await apiFetch(`/api/norm-references/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

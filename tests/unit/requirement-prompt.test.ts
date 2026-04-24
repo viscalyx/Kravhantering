@@ -6,6 +6,9 @@ import {
   DEFAULT_INSTRUCTION_SV,
   type GeneratedRequirement,
   getDefaultInstruction,
+  getPromptMessage,
+  getPromptMessageList,
+  getPromptValue,
   REQUIREMENT_FORMAT_SCHEMA,
   type TaxonomyData,
   validateGeneratedRequirements,
@@ -42,6 +45,26 @@ const testTaxonomy: TaxonomyData = {
   ],
 }
 
+const PROMPT_LOCALES = ['en', 'sv'] as const
+
+const REQUIRED_PROMPT_MESSAGE_PATHS = [
+  ['ai', 'prompt', 'defaultInstruction'],
+  ['ai', 'prompt', 'noUsageScenariosAvailable'],
+  ['ai', 'prompt', 'userHeader'],
+  ['ai', 'prompt', 'system', 'intro'],
+  ['ai', 'prompt', 'system', 'taxonomyIntro'],
+  ['ai', 'prompt', 'system', 'headings', 'types'],
+  ['ai', 'prompt', 'system', 'headings', 'categories'],
+  ['ai', 'prompt', 'system', 'headings', 'qualityCharacteristics'],
+  ['ai', 'prompt', 'system', 'headings', 'riskLevels'],
+  ['ai', 'prompt', 'system', 'headings', 'usageScenarios'],
+  ['ai', 'prompt', 'system', 'headings', 'outputRules'],
+] as const
+
+const REQUIRED_PROMPT_MESSAGE_LIST_PATHS = [
+  ['ai', 'prompt', 'system', 'outputRules'],
+] as const
+
 describe('buildSystemPrompt', () => {
   it('includes all taxonomy IDs', () => {
     const prompt = buildSystemPrompt(testTaxonomy)
@@ -49,6 +72,7 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('ID 2: Non-functional')
     expect(prompt).toContain('ID 1: Business')
     expect(prompt).toContain('ID 3: High')
+    expect(prompt).toContain('ID 2: High load')
     expect(prompt).toContain(
       'ID 2: Functional suitability > Functional correctness',
     )
@@ -64,6 +88,9 @@ describe('buildSystemPrompt', () => {
   it('includes output rules', () => {
     const prompt = buildSystemPrompt(testTaxonomy)
     expect(prompt).toContain('typeId is required')
+    expect(prompt).toContain(
+      'scenarioIds must be [] or only contain IDs from the usage scenarios list above',
+    )
     expect(prompt).toContain('requiresTesting must be true')
   })
 
@@ -72,7 +99,76 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Du är en expert på kravhantering')
     expect(prompt).toContain('Kravtyper')
     expect(prompt).toContain('Risknivåer')
+    expect(prompt).toContain('Användningsscenarier')
     expect(prompt).toContain('ID 1: Functional')
+  })
+
+  it('uses localized fallback text when no usage scenarios are available', () => {
+    const taxonomyWithoutScenarios: TaxonomyData = {
+      ...testTaxonomy,
+      scenarios: [],
+    }
+
+    expect(buildSystemPrompt(taxonomyWithoutScenarios)).toContain(
+      'No usage scenarios available',
+    )
+    expect(buildSystemPrompt(taxonomyWithoutScenarios)).not.toContain(
+      '  - No usage scenarios available',
+    )
+    expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).toContain(
+      'Inga användningsscenarier tillgängliga',
+    )
+    expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).not.toContain(
+      '  - Inga användningsscenarier tillgängliga',
+    )
+  })
+})
+
+describe('prompt localization helpers', () => {
+  it.each(
+    PROMPT_LOCALES,
+  )('has every required string prompt message for %s', locale => {
+    for (const path of REQUIRED_PROMPT_MESSAGE_PATHS) {
+      expect(
+        getPromptMessage(locale, path),
+        `${locale}:${path.join('.')}`,
+      ).not.toBe('')
+    }
+  })
+
+  it.each(
+    PROMPT_LOCALES,
+  )('has every required prompt message list for %s', locale => {
+    for (const path of REQUIRED_PROMPT_MESSAGE_LIST_PATHS) {
+      expect(
+        getPromptMessageList(locale, path),
+        `${locale}:${path.join('.')}`,
+      ).not.toEqual([])
+    }
+  })
+
+  it('throws missing localization errors only for absent paths', () => {
+    expect(() => getPromptValue('en', ['ai', 'prompt', 'missing'])).toThrow(
+      'Missing prompt localization for en:ai.prompt.missing',
+    )
+    expect(() =>
+      getPromptValue('en', ['ai', 'prompt', 'defaultInstruction', 'nested']),
+    ).toThrow(
+      'Missing prompt localization for en:ai.prompt.defaultInstruction.nested',
+    )
+  })
+
+  it('throws invalid type errors for existing paths with the wrong shape', () => {
+    expect(() =>
+      getPromptMessage('en', ['ai', 'prompt', 'system', 'outputRules']),
+    ).toThrow(
+      'Invalid prompt localization type for en:ai.prompt.system.outputRules: expected string but got array<string>',
+    )
+    expect(() =>
+      getPromptMessageList('en', ['ai', 'prompt', 'defaultInstruction']),
+    ).toThrow(
+      'Invalid prompt localization type for en:ai.prompt.defaultInstruction: expected string[] but got string',
+    )
   })
 })
 

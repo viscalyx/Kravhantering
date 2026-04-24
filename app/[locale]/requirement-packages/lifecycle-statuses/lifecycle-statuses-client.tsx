@@ -8,6 +8,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const LIFECYCLE_STATUSES_HELP: HelpContent = {
   sections: [
@@ -80,13 +81,23 @@ export default function LifecycleStatusesClient() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/package-lifecycle-statuses')
-    if (res.ok)
+    try {
+      const res = await apiFetch('/api/package-lifecycle-statuses')
+      if (!res.ok) {
+        setError(tc('unexpectedError'))
+        return
+      }
       setItems(
         ((await res.json()) as { statuses?: LifecycleStatus[] }).statuses ?? [],
       )
-    setLoading(false)
-  }, [])
+      setError(null)
+    } catch (error) {
+      console.error('Failed to load lifecycle statuses:', error)
+      setError(tc('unexpectedError'))
+    } finally {
+      setLoading(false)
+    }
+  }, [tc])
 
   useEffect(() => {
     fetchItems()
@@ -101,7 +112,7 @@ export default function LifecycleStatusesClient() {
       ? `/api/package-lifecycle-statuses/${editId}`
       : '/api/package-lifecycle-statuses'
     try {
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -142,7 +153,7 @@ export default function LifecycleStatusesClient() {
     setIsDeleting(id)
     setError(null)
     try {
-      const res = await fetch(`/api/package-lifecycle-statuses/${id}`, {
+      const res = await apiFetch(`/api/package-lifecycle-statuses/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

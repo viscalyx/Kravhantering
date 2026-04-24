@@ -2,13 +2,16 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockTransitionRequirement = vi.fn()
+const mockCreateRequestContext = vi.hoisted(() =>
+  vi.fn(() => ({ source: 'rest' })),
+)
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
-  createRequestContext: () => ({ source: 'rest' }),
+  createRequestContext: mockCreateRequestContext,
 }))
 
 vi.mock('@/lib/requirements/service', () => ({
@@ -69,5 +72,18 @@ describe('requirements/[id]/transition route', () => {
     })
     const res = await POST(req, makeParams('1'))
     expect(res.status).toBe(400)
+  })
+
+  it('returns handled errors when request context creation fails', async () => {
+    mockCreateRequestContext.mockRejectedValueOnce(new Error('auth failed'))
+    const req = new NextRequest('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ statusId: 5 }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+
+    const res = await POST(req, makeParams('1'))
+    expect(res.status).toBe(400)
+    expect(mockTransitionRequirement).not.toHaveBeenCalled()
   })
 })

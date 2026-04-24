@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 import { normalizeSlugInput } from '@/lib/slug'
 
 interface TaxonomyItem {
@@ -118,24 +119,27 @@ export default function PackageEditPanel({
     setSubmitError(null)
 
     try {
-      const response = await fetch(`/api/requirement-packages/${packageSlug}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uniqueId: form.uniqueId,
-          name: form.name,
-          packageResponsibilityAreaId: form.packageResponsibilityAreaId
-            ? Number(form.packageResponsibilityAreaId)
-            : null,
-          packageImplementationTypeId: form.packageImplementationTypeId
-            ? Number(form.packageImplementationTypeId)
-            : null,
-          packageLifecycleStatusId: form.packageLifecycleStatusId
-            ? Number(form.packageLifecycleStatusId)
-            : null,
-          businessNeedsReference: form.businessNeedsReference || null,
-        }),
-      })
+      const response = await apiFetch(
+        `/api/requirement-packages/${packageSlug}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uniqueId: form.uniqueId,
+            name: form.name,
+            packageResponsibilityAreaId: form.packageResponsibilityAreaId
+              ? Number(form.packageResponsibilityAreaId)
+              : null,
+            packageImplementationTypeId: form.packageImplementationTypeId
+              ? Number(form.packageImplementationTypeId)
+              : null,
+            packageLifecycleStatusId: form.packageLifecycleStatusId
+              ? Number(form.packageLifecycleStatusId)
+              : null,
+            businessNeedsReference: form.businessNeedsReference || null,
+          }),
+        },
+      )
 
       if (response.status === 409) {
         setSlugError(t('uniqueIdTaken'))

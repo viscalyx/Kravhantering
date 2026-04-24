@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
   const db = await getRequestSqlServerDataSource()
   const uiSettings = createUiSettingsLoader(db)
   const service = createRequirementsService(db, { uiSettings })
-  const context = createRequestContext(request, 'rest')
 
   const url = new URL(request.url)
   const format = url.searchParams.get('format')
@@ -67,6 +66,7 @@ export async function GET(request: NextRequest) {
   const includeArchived = statuses.length === 0 || statuses.includes(4)
 
   try {
+    const context = await createRequestContext(request, 'rest')
     const result = await service.queryCatalog(context, {
       areaIds: areaIds.length > 0 ? areaIds : undefined,
       categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -167,10 +167,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const context = createRequestContext(request, 'rest')
   const body = (await request.json()) as Record<string, unknown>
 
   try {
+    const context = await createRequestContext(request, 'rest')
     const result = await service.manageRequirement(context, {
       operation: 'create',
       requirement: {

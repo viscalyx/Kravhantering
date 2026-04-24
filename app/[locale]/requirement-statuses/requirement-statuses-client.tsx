@@ -8,6 +8,8 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 
 const REQUIREMENT_STATUSES_HELP: HelpContent = {
   sections: [
@@ -57,7 +59,7 @@ export default function RequirementStatusesClient() {
 
   const fetchStatuses = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/requirement-statuses')
+    const res = await apiFetch('/api/requirement-statuses')
     if (res.ok) {
       const data = (await res.json()) as { statuses?: Status[] }
       setStatuses(data.statuses ?? [])
@@ -72,21 +74,46 @@ export default function RequirementStatusesClient() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (submitting) return
+    const nativeEvent = e.nativeEvent as Event & {
+      submitter?: EventTarget | null
+    }
+    const submitter =
+      nativeEvent.submitter instanceof HTMLElement
+        ? nativeEvent.submitter
+        : undefined
     setSubmitting(true)
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId
         ? `/api/requirement-statuses/${editId}`
         : '/api/requirement-statuses'
-      await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      if (!res.ok) {
+        await confirm({
+          message:
+            (await readResponseMessage(res)) || res.statusText || tc('error'),
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: submitter,
+        })
+        return
+      }
       setShowForm(false)
       setEditId(null)
       setForm({ nameSv: '', nameEn: '', sortOrder: 0, color: '#3b82f6' })
-      fetchStatuses()
+      await fetchStatuses()
+    } catch (error) {
+      await confirm({
+        message:
+          error instanceof Error ? error.message || tc('error') : tc('error'),
+        showCancel: false,
+        icon: 'warning',
+        anchorEl: submitter,
+      })
     } finally {
       setSubmitting(false)
     }
@@ -115,19 +142,30 @@ export default function RequirementStatusesClient() {
       }))
     )
       return
-    const res = await fetch(`/api/requirement-statuses/${id}`, {
-      method: 'DELETE',
-    })
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: string }
+    try {
+      const res = await apiFetch(`/api/requirement-statuses/${id}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        return
+      }
       await confirm({
-        message: data.error ?? tc('error'),
+        message: (await readResponseMessage(res)) || tc('error'),
         showCancel: false,
         icon: 'warning',
         anchorEl,
       })
+    } catch (error) {
+      await confirm({
+        message:
+          error instanceof Error ? error.message || tc('error') : tc('error'),
+        showCancel: false,
+        icon: 'warning',
+        anchorEl,
+      })
+    } finally {
+      void fetchStatuses()
     }
-    fetchStatuses()
   }
 
   const inputClass =

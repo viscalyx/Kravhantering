@@ -9,6 +9,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const RISK_LEVELS_HELP: HelpContent = {
   sections: [
@@ -79,7 +80,7 @@ export default function RiskLevelsClient() {
   const fetchRiskLevels = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/risk-levels')
+      const res = await apiFetch('/api/risk-levels')
       if (res.ok)
         setRiskLevels(
           ((await res.json()) as { riskLevels?: RiskLevel[] }).riskLevels ?? [],
@@ -97,7 +98,7 @@ export default function RiskLevelsClient() {
     const requestId = ++linkedReqRequestId.current
     setLinkedRequirementsLoading(true)
     try {
-      const res = await fetch(`/api/risk-levels/${riskLevelId}`)
+      const res = await apiFetch(`/api/risk-levels/${riskLevelId}`)
       if (res.ok && requestId === linkedReqRequestId.current) {
         const data = (await res.json()) as {
           linkedRequirements?: LinkedRequirement[]
@@ -123,7 +124,7 @@ export default function RiskLevelsClient() {
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId ? `/api/risk-levels/${editId}` : '/api/risk-levels'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -172,7 +173,7 @@ export default function RiskLevelsClient() {
     setDeleteError(null)
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/risk-levels/${id}`, {
+      const res = await apiFetch(`/api/risk-levels/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

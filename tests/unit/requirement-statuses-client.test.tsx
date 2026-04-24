@@ -26,10 +26,25 @@ vi.mock('@/components/StatusBadge', () => ({
 }))
 
 function okJson(body: unknown) {
-  return { ok: true, json: async () => body }
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    statusText: '',
+    headers: { 'content-type': 'application/json' },
+  })
 }
 function errJson(body: unknown) {
-  return { ok: false, json: async () => body }
+  return new Response(JSON.stringify(body), {
+    status: 500,
+    statusText: '',
+    headers: { 'content-type': 'application/json' },
+  })
+}
+function errText(body: string, statusText = '') {
+  return new Response(body, {
+    status: 500,
+    statusText,
+    headers: { 'content-type': 'text/plain' },
+  })
 }
 
 const fetchMock = vi.fn()
@@ -61,7 +76,7 @@ describe('RequirementStatusesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockImplementation(() => okJson({ statuses: sampleStatuses }))
   })
 
   it('renders heading and create button', async () => {
@@ -129,6 +144,100 @@ describe('RequirementStatusesClient', () => {
     })
   })
 
+  it('keeps the form open when save fails and anchors the dialog to the submitter', async () => {
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
+      target: { value: 'New' },
+    })
+
+    fetchMock.mockResolvedValueOnce(errJson({ error: 'Cannot save' }))
+
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Cannot save',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: saveButton,
+        }),
+      )
+    })
+    expect(screen.getByLabelText(/statusMgmt\.name.+SV/)).toBeInTheDocument()
+  })
+
+  it('falls back to common.error when save fails without a response message', async () => {
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
+      target: { value: 'New' },
+    })
+
+    fetchMock.mockResolvedValueOnce(errText(''))
+
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'common.error',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: saveButton,
+        }),
+      )
+    })
+  })
+
+  it('falls back to common.error when save throws an empty-message error', async () => {
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Draft')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
+      target: { value: 'New' },
+    })
+
+    fetchMock.mockRejectedValueOnce(new Error(''))
+
+    const saveButton = screen.getByRole('button', { name: /common\.save/i })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'common.error',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: saveButton,
+        }),
+      )
+    })
+  })
+
   it('opens edit form with existing data', async () => {
     render(<RequirementStatusesClient />)
     await waitFor(() => {
@@ -186,7 +295,7 @@ describe('RequirementStatusesClient', () => {
       expect(screen.getByText('Custom')).toBeInTheDocument()
     })
 
-    fetchMock.mockResolvedValueOnce(errJson({ error: 'Cannot delete' }))
+    fetchMock.mockResolvedValueOnce(errText('Cannot delete'))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
@@ -194,9 +303,52 @@ describe('RequirementStatusesClient', () => {
     fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledWith(
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        1,
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          message: 'Cannot delete',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: deleteButtons[0],
+        }),
+      )
+    })
+  })
+
+  it('shows a fallback error and refreshes statuses when delete throws', async () => {
+    confirmMock.mockResolvedValue(true)
+    render(<RequirementStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Custom')).toBeInTheDocument()
+    })
+
+    fetchMock.mockRejectedValueOnce(new Error(''))
+    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+
+    const deleteButtons = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })
+    fireEvent.click(deleteButtons[0])
+
+    await waitFor(() => {
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
+      )
+      expect(confirmMock).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          message: 'common.error',
+          showCancel: false,
+          icon: 'warning',
+          anchorEl: deleteButtons[0],
+        }),
+      )
+      expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/requirement-statuses')
     })
   })
 })

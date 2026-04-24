@@ -5,6 +5,8 @@
  */
 
 import type { GenerationStats } from '@/lib/ai/openrouter-client'
+import enMessages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,53 +90,173 @@ export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
   type: 'object',
 }
 
+const PROMPT_MESSAGES = {
+  en: enMessages,
+  sv: svMessages,
+} satisfies Record<'en' | 'sv', Record<string, unknown>>
+
+function promptLocalizationPath(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): string {
+  return `${locale}:${path.join('.')}`
+}
+
+function promptValueType(value: unknown): string {
+  if (Array.isArray(value)) {
+    const itemTypes = [
+      ...new Set(value.map(item => promptValueType(item))),
+    ].sort()
+    return itemTypes.length === 0 ? 'array' : `array<${itemTypes.join('|')}>`
+  }
+  if (value === null) return 'null'
+  return typeof value
+}
+
+function missingPromptLocalizationError(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): Error {
+  return new Error(
+    `Missing prompt localization for ${promptLocalizationPath(locale, path)}`,
+  )
+}
+
+function invalidPromptLocalizationTypeError(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+  expected: string,
+  actual: unknown,
+): Error {
+  return new Error(
+    `Invalid prompt localization type for ${promptLocalizationPath(
+      locale,
+      path,
+    )}: expected ${expected} but got ${promptValueType(actual)}`,
+  )
+}
+
+export function getPromptValue(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): unknown {
+  let current: unknown = PROMPT_MESSAGES[locale]
+
+  for (const segment of path) {
+    if (
+      typeof current !== 'object' ||
+      current === null ||
+      Array.isArray(current)
+    ) {
+      throw missingPromptLocalizationError(locale, path)
+    }
+    const currentRecord = current as Record<string, unknown>
+    if (currentRecord[segment] === undefined) {
+      throw missingPromptLocalizationError(locale, path)
+    }
+    current = currentRecord[segment]
+  }
+
+  return current
+}
+
+export function getPromptMessage(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): string {
+  const current = getPromptValue(locale, path)
+
+  if (typeof current !== 'string') {
+    throw invalidPromptLocalizationTypeError(locale, path, 'string', current)
+  }
+
+  return current
+}
+
+export function getPromptMessageList(
+  locale: 'en' | 'sv',
+  path: readonly string[],
+): string[] {
+  const current = getPromptValue(locale, path)
+
+  if (
+    !Array.isArray(current) ||
+    current.some(item => typeof item !== 'string')
+  ) {
+    throw invalidPromptLocalizationTypeError(locale, path, 'string[]', current)
+  }
+
+  return current
+}
+
+const SYSTEM_PROMPT_HEADING_KEYS = [
+  'types',
+  'categories',
+  'qualityCharacteristics',
+  'riskLevels',
+  'usageScenarios',
+  'outputRules',
+] as const
+
+type SystemPromptHeadingKey = (typeof SYSTEM_PROMPT_HEADING_KEYS)[number]
+type SystemPromptHeadings = Record<SystemPromptHeadingKey, string>
+
+function getSystemPromptHeadings(locale: 'en' | 'sv'): SystemPromptHeadings {
+  const path = ['ai', 'prompt', 'system', 'headings'] as const
+  const current = getPromptValue(locale, path)
+
+  if (
+    typeof current !== 'object' ||
+    current === null ||
+    Array.isArray(current)
+  ) {
+    throw invalidPromptLocalizationTypeError(
+      locale,
+      path,
+      'record<string,string>',
+      current,
+    )
+  }
+
+  const currentRecord = current as Record<string, unknown>
+  const headings: Partial<SystemPromptHeadings> = {}
+  for (const key of SYSTEM_PROMPT_HEADING_KEYS) {
+    const heading = currentRecord[key]
+    if (typeof heading !== 'string') {
+      throw invalidPromptLocalizationTypeError(
+        locale,
+        [...path, key],
+        'string',
+        heading,
+      )
+    }
+    headings[key] = heading
+  }
+
+  return headings as SystemPromptHeadings
+}
+
 // ---------------------------------------------------------------------------
 // Default instruction constant
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_INSTRUCTION_EN = `Generate 5-10 well-structured system requirements for the given topic.
+export const DEFAULT_INSTRUCTION_EN = getPromptMessage('en', [
+  'ai',
+  'prompt',
+  'defaultInstruction',
+])
 
-Each requirement MUST:
-- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)
-- Use "The system shall…" form for functional requirements
-- Use "The system shall be able to…" or quality-attribute language for non-functional requirements
-- Include acceptance criteria where applicable
-- Reference appropriate quality characteristics from ISO/IEC 25010:2023
-- Include a rationale explaining why the requirement exists
-
-For non-functional requirements, apply the ISO/IEC 25010:2023 quality model:
-- Map each to the most specific quality sub-characteristic
-- Consider performance efficiency, security, usability, reliability, and maintainability
-
-Assess risk level based on:
-- Impact on system safety, security, or core functionality (High)
-- Impact on user experience or non-critical features (Medium)
-- Nice-to-have or cosmetic requirements (Low)`
-
-export const DEFAULT_INSTRUCTION_SV = `Generera 5-10 välstrukturerade systemkrav för det givna ämnet.
-
-Varje krav MÅSTE:
-- Ha en tydlig, testbar och entydig beskrivning (enligt ISO/IEC/IEEE 29148:2018 §5.2.5)
-- Använda formen "Systemet ska…" för funktionella krav
-- Använda "Systemet ska kunna…" eller kvalitetsattributspråk för icke-funktionella krav
-- Inkludera acceptanskriterier där det är tillämpligt
-- Referera till lämpliga kvalitetsegenskaper från ISO/IEC 25010:2023
-- Inkludera en motivering som förklarar varför kravet finns
-
-För icke-funktionella krav, tillämpa kvalitetsmodellen ISO/IEC 25010:2023:
-- Mappa till den mest specifika kvalitetsunderegenskapen
-- Beakta prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet och underhållbarhet
-
-Bedöm risknivå baserat på:
-- Påverkan på systemsäkerhet, informationssäkerhet eller kärnfunktionalitet (Hög)
-- Påverkan på användarupplevelse eller icke-kritiska funktioner (Medel)
-- Önskvärt eller kosmetiska krav (Låg)`
+export const DEFAULT_INSTRUCTION_SV = getPromptMessage('sv', [
+  'ai',
+  'prompt',
+  'defaultInstruction',
+])
 
 /** @deprecated Use DEFAULT_INSTRUCTION_EN instead */
 export const DEFAULT_INSTRUCTION = DEFAULT_INSTRUCTION_EN
 
 export function getDefaultInstruction(locale: 'en' | 'sv' = 'en'): string {
-  return locale === 'sv' ? DEFAULT_INSTRUCTION_SV : DEFAULT_INSTRUCTION_EN
+  return getPromptMessage(locale, ['ai', 'prompt', 'defaultInstruction'])
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +267,7 @@ export function buildSystemPrompt(
   taxonomy: TaxonomyData,
   locale: 'en' | 'sv' = 'en',
 ): string {
+  const headings = getSystemPromptHeadings(locale)
   const typeList = taxonomy.types
     .map(t => `  - ID ${t.id}: ${t.name}`)
     .join('\n')
@@ -154,6 +277,22 @@ export function buildSystemPrompt(
   const riskList = taxonomy.riskLevels
     .map(r => `  - ID ${r.id}: ${r.name}`)
     .join('\n')
+  const scenarioList =
+    taxonomy.scenarios.length > 0
+      ? taxonomy.scenarios.map(s => `  - ID ${s.id}: ${s.name}`).join('\n')
+      : `_${getPromptMessage(locale, [
+          'ai',
+          'prompt',
+          'noUsageScenariosAvailable',
+        ])}_`
+  const outputRules = getPromptMessageList(locale, [
+    'ai',
+    'prompt',
+    'system',
+    'outputRules',
+  ])
+    .map(rule => `- ${rule}`)
+    .join('\n')
 
   const qcList = taxonomy.qualityCharacteristics
     .map(
@@ -162,68 +301,27 @@ export function buildSystemPrompt(
     )
     .join('\n')
 
-  if (locale === 'sv') {
-    return `Du är en expert på kravhantering. Du genererar systemkrav enligt internationella standarder:
-- ISO/IEC/IEEE 29148:2018 (Kravhantering)
-- ISO/IEC 25030:2019 (Ramverk för kvalitetskrav)
-- ISO/IEC 25010:2023 (Kvalitetsmodell)
+  return `${getPromptMessage(locale, ['ai', 'prompt', 'system', 'intro'])}
 
-Du MÅSTE använda följande taxonomi-ID:n i din output. Använd bara ID:n från listorna nedan.
+${getPromptMessage(locale, ['ai', 'prompt', 'system', 'taxonomyIntro'])}
 
-## Kravtyper
+## ${headings.types}
 ${typeList}
 
-## Kategorier
+## ${headings.categories}
 ${catList}
 
-## Kvalitetsegenskaper (ISO 25010:2023)
+## ${headings.qualityCharacteristics}
 ${qcList}
 
-## Risknivåer
+## ${headings.riskLevels}
 ${riskList}
 
-## Outputregler
-- Generera giltig JSON som matchar det angivna schemat
-- Använd exakta ID:n från taxonomin ovan
-- typeId krävs för varje krav
-- qualityCharacteristicId rekommenderas för icke-funktionella krav
-- categoryId bör sättas när kategorin är tydlig
-- riskLevelId bör alltid sättas
-- requiresTesting måste vara true för funktionella krav och säkerhetskrav
-- verificationMethod bör beskriva hur kravet verifieras när requiresTesting är true
-- rationale måste förklara varför kravet är viktigt för systemet
-- Skriv beskrivningar, acceptanskriterier, verifieringsmetoder och motiveringar på svenska`
-  }
+## ${headings.usageScenarios}
+${scenarioList}
 
-  return `You are an expert requirements engineer. You generate system requirements following international standards:
-- ISO/IEC/IEEE 29148:2018 (Requirements engineering)
-- ISO/IEC 25030:2019 (Quality requirements framework)
-- ISO/IEC 25010:2023 (Quality model)
-
-You MUST use the following taxonomy IDs in your output. Only use IDs from the lists below.
-
-## Requirement Types
-${typeList}
-
-## Categories
-${catList}
-
-## Quality Characteristics (ISO 25010:2023)
-${qcList}
-
-## Risk Levels
-${riskList}
-
-## Output Rules
-- Output valid JSON matching the provided schema
-- Use exact IDs from the taxonomy above
-- typeId is required for every requirement
-- qualityCharacteristicId is recommended for non-functional requirements
-- categoryId should be set when the category is clear
-- riskLevelId should always be set
-- requiresTesting must be true for functional requirements and security requirements
-- verificationMethod should describe how to verify the requirement when requiresTesting is true
-- rationale must explain why the requirement matters for the system`
+## ${headings.outputRules}
+${outputRules}`
 }
 
 export function buildUserPrompt(
@@ -232,8 +330,11 @@ export function buildUserPrompt(
   locale?: 'en' | 'sv',
 ): string {
   const instruction = customInstruction?.trim() || getDefaultInstruction(locale)
-  const header =
-    locale === 'sv' ? 'Ämne / Systemkontext' : 'Topic / System Context'
+  const header = getPromptMessage(locale ?? 'en', [
+    'ai',
+    'prompt',
+    'userHeader',
+  ])
   return `${instruction}
 
 ## ${header}

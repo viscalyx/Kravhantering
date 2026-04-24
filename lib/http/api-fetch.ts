@@ -1,0 +1,54 @@
+/**
+ * Drop-in replacement for `fetch()` used by client components for
+ * **same-origin** API calls. For state-changing methods (POST/PUT/PATCH/
+ * DELETE) it always sets or normalizes `X-Requested-With: XMLHttpRequest`,
+ * which the server-side CSRF check (`assertSameOriginRequest`) requires. Safe
+ * (GET/HEAD/OPTIONS) requests are forwarded unchanged so existing call sites
+ * and tests that pass a bare init object continue to behave identically.
+ */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+
+function buildHeaders(input: RequestInfo | URL, init?: RequestInit): Headers {
+  if (!(input instanceof Request)) {
+    return new Headers(init?.headers)
+  }
+
+  const headers = new Headers(input.headers)
+  new Headers(init?.headers).forEach((value, key) => {
+    headers.set(key, value)
+  })
+  return headers
+}
+
+export function apiFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const method = (
+    init?.method ?? (input instanceof Request ? input.method : 'GET')
+  ).toUpperCase()
+
+  if (SAFE_METHODS.has(method)) {
+    if (init === undefined) {
+      return fetch(input)
+    }
+
+    if (input instanceof Request) {
+      if (init.headers === undefined) {
+        return fetch(new Request(input, init))
+      }
+      const headers = buildHeaders(input, init)
+      return fetch(new Request(input, { ...init, headers }))
+    }
+
+    return fetch(input, init)
+  }
+
+  const headers = buildHeaders(input, init)
+  const xRequestedWith = headers.get('x-requested-with')
+  if (!xRequestedWith || xRequestedWith.toLowerCase() !== 'xmlhttprequest') {
+    headers.set('X-Requested-With', 'XMLHttpRequest')
+  }
+
+  return fetch(input, { ...(init ?? {}), headers })
+}

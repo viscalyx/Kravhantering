@@ -17,6 +17,7 @@ const helpState = vi.hoisted(() => ({
 vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => (key: string) =>
     namespace ? `${namespace}.${key}` : key,
+  useLocale: () => 'en',
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -38,6 +39,12 @@ vi.mock('@/components/Logo', () => ({
 
 vi.mock('@/components/ThemeToggle', () => ({
   default: () => <div data-testid="theme-toggle" />,
+}))
+
+vi.mock('@/components/AuthMenu', () => ({
+  default: ({ variant }: { variant: 'desktop' | 'mobile' }) => (
+    <div data-testid={`auth-menu-${variant}`} />
+  ),
 }))
 
 vi.mock('@/components/HelpPanel', () => ({

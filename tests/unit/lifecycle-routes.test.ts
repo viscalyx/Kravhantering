@@ -8,6 +8,18 @@ vi.mock('@/lib/db', () => ({
 
 const mockManageRequirement = vi.fn()
 const mockGetRequirement = vi.fn()
+const mockCreateRequestContext = vi.fn(() => ({
+  actor: {
+    id: null,
+    displayName: '',
+    hsaId: null,
+    roles: [],
+    source: 'anonymous',
+    isAuthenticated: false,
+  },
+  requestId: 'test',
+  source: 'rest',
+}))
 const mockToHttpErrorPayload = vi
   .fn()
   .mockReturnValue({ body: { error: 'fail' }, status: 500 })
@@ -21,11 +33,7 @@ vi.mock('@/lib/requirements/service', () => ({
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
-  createRequestContext: () => ({
-    actor: { id: null, roles: [], source: 'anonymous', isAuthenticated: false },
-    requestId: 'test',
-    source: 'rest',
-  }),
+  createRequestContext: mockCreateRequestContext,
 }))
 
 describe('lifecycle routes', () => {
@@ -214,6 +222,21 @@ describe('lifecycle routes', () => {
           status: 500,
         }),
       )
+    })
+
+    it('GET returns handled errors when request context creation fails', async () => {
+      mockCreateRequestContext.mockRejectedValueOnce(new Error('auth failed'))
+
+      const { GET } = await import(
+        '@/app/api/requirements/[id]/versions/[version]/route'
+      )
+      const req = new Request('http://localhost/api/requirements/1/versions/2')
+      const res = await GET(req as never, {
+        params: Promise.resolve({ id: '1', version: '2' }),
+      })
+
+      expect(res.status).toBe(500)
+      expect(mockGetRequirement).not.toHaveBeenCalled()
     })
   })
 })

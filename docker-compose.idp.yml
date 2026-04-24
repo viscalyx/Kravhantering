@@ -1,0 +1,30 @@
+#
+# Local OIDC IdP for development. Spins up Keycloak as a spec-compliant
+# stand-in for PhenixID. The realm `kravhantering-dev` is imported on every
+# start from `dev/keycloak/realm-kravhantering-dev.json`, so the JSON file is
+# the source of truth — changes made via the admin UI on http://localhost:8080
+# are NOT persisted across container restarts.
+#
+# Usage:
+#   docker compose -f docker-compose.idp.yml up -d idp
+#   docker compose -f docker-compose.idp.yml down
+#
+# This file is independent of docker-compose.dev.yml and
+# docker-compose.sqlserver.yml; bring up only what you need.
+
+name: kravhantering-idp-dev
+
+services:
+  idp:
+    image: quay.io/keycloak/keycloak:26.0
+    command:
+      - start-dev
+      - --import-realm
+      - --http-port=8080
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${KEYCLOAK_HOST_PORT:-8080}:8080"
+    volumes:
+      - ./dev/keycloak:/opt/keycloak/data/import:ro

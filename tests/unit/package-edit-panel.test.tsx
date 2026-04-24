@@ -135,7 +135,12 @@ describe('PackageEditPanel', () => {
     ]
     expect(url).toBe('/api/requirement-packages/ETJANSTPLATT')
     expect(requestInit?.method).toBe('PUT')
-    expect(requestInit?.headers).toEqual({ 'Content-Type': 'application/json' })
+    expect(
+      Object.fromEntries(new Headers(requestInit?.headers).entries()),
+    ).toEqual({
+      'content-type': 'application/json',
+      'x-requested-with': 'XMLHttpRequest',
+    })
     expect(JSON.parse((requestInit?.body as string) ?? '{}')).toMatchObject({
       businessNeedsReference: 'Current business need',
       name: 'Nytt paketnamn',

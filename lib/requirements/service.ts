@@ -73,8 +73,8 @@ import {
 import { listScenarios } from '@/lib/dal/usage-scenarios'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
-  AllowAllAuthorizationService,
   type AuthorizationService,
+  createDefaultAuthorizationService,
   type RequestContext,
   type RequirementsAction,
 } from '@/lib/requirements/auth'
@@ -82,6 +82,7 @@ import {
   internalError,
   isRequirementsServiceError,
   notFoundError,
+  type RequirementsErrorCode,
   validationError,
 } from '@/lib/requirements/errors'
 import type {
@@ -854,7 +855,7 @@ async function withLogging<T>(
 export function createRequirementsService(
   db: SqlServerDatabase,
   {
-    authorization = new AllowAllAuthorizationService(),
+    authorization = createDefaultAuthorizationService(),
     logger = createRequirementsLogger(),
     uiSettings = createUiSettingsLoader(db),
   }: {
@@ -2406,11 +2407,38 @@ export function toResponseLocale(locale?: string): ResponseLocale {
   return locale === 'sv' ? 'sv' : 'en'
 }
 
+function isStatusError(error: unknown): error is Error & {
+  details?: Record<string, unknown>
+  status: 401 | 403
+} {
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  const maybeStatus = error as { status?: unknown }
+  return maybeStatus.status === 401 || maybeStatus.status === 403
+}
+
+function toRequirementsCode(status: 401 | 403): RequirementsErrorCode {
+  return status === 401 ? 'unauthorized' : 'forbidden'
+}
+
 export function toHttpErrorPayload(error: unknown) {
   if (isRequirementsServiceError(error)) {
     return {
       body: {
         code: error.code,
+        details: error.details,
+        error: error.message,
+      },
+      status: error.status,
+    }
+  }
+
+  if (isStatusError(error)) {
+    return {
+      body: {
+        code: toRequirementsCode(error.status),
         details: error.details,
         error: error.message,
       },

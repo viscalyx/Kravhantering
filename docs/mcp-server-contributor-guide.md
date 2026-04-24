@@ -306,9 +306,20 @@ Current extension points:
 
 Current behavior:
 
-- MCP and REST requests build a request context from headers.
-- The default service wiring uses `AllowAllAuthorizationService`.
-- Auth is planned, but not enforced, at the MCP route yet.
+- MCP and REST requests build a request context from the OIDC session
+  cookie when `AUTH_ENABLED=true`, and from the legacy `x-user-id` /
+  `x-user-roles` headers when `AUTH_ENABLED=false` (dev / test only).
+- The MCP HTTP route additionally verifies a Bearer JWT against the IdP's
+  JWKS (Phase 5a). The verified actor is attached to the in-flight
+  `Request` object via an in-process `WeakMap<Request, ActorContext>` in
+  `lib/requirements/auth.ts` (`attachVerifiedActor`). The MCP server
+  picks it up through `createRequestContext(request, 'mcp', ...)` without
+  trusting any request header. Tests can use the same seam to inject
+  verified actors.
+- The default service wiring uses `AllowAllAuthorizationService` via
+  `createDefaultAuthorizationService()`. Replace with
+  `RoleBasedAuthorizationService` when role policies are declared
+  (tracked in viscalyx/Kravhantering#39).
 
 When implementing auth:
 

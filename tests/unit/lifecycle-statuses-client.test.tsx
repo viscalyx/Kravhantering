@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const confirmMock = vi.fn()
@@ -30,6 +31,13 @@ import LifecycleStatusesClient from '@/app/[locale]/requirement-packages/lifecyc
 
 const sampleItems = [{ id: 1, nameSv: 'Utveckling', nameEn: 'Development' }]
 
+async function waitForItemsLoaded() {
+  await waitFor(() => {
+    expect(screen.queryByText('common.loading')).toBeNull()
+  })
+  expect(screen.getByText('Development')).toBeInTheDocument()
+}
+
 describe('LifecycleStatusesClient', () => {
   afterEach(cleanup)
 
@@ -46,16 +54,12 @@ describe('LifecycleStatusesClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
-    })
+    await waitForItemsLoaded()
   })
 
   it('fetches and displays items', async () => {
     render(<LifecycleStatusesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
-    })
+    await waitForItemsLoaded()
   })
 
   it('shows loading text initially', () => {
@@ -64,12 +68,27 @@ describe('LifecycleStatusesClient', () => {
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
-  it('opens create form', async () => {
+  it('clears loading and shows an error when the initial fetch fails', async () => {
+    fetchMock.mockRejectedValue(new Error('boom'))
+
     render(<LifecycleStatusesClient />)
+
     await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
+      expect(screen.getByText('common.loading')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    await waitFor(() => {
+      expect(screen.queryByText('common.loading')).toBeNull()
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'common.unexpectedError',
+    )
+  })
+
+  it('opens create form', async () => {
+    const user = userEvent.setup()
+    render(<LifecycleStatusesClient />)
+    await waitForItemsLoaded()
+    await user.click(screen.getByRole('button', { name: /common\.create/i }))
     expect(
       screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
     ).toBeInTheDocument()
@@ -79,11 +98,10 @@ describe('LifecycleStatusesClient', () => {
   })
 
   it('submits create form', async () => {
+    const user = userEvent.setup()
     render(<LifecycleStatusesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
+    await waitForItemsLoaded()
+    await user.click(screen.getByRole('button', { name: /common\.create/i }))
 
     fireEvent.change(
       screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
@@ -97,7 +115,7 @@ describe('LifecycleStatusesClient', () => {
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
     fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleItems }))
 
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+    await user.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -108,14 +126,13 @@ describe('LifecycleStatusesClient', () => {
   })
 
   it('opens edit form with existing data', async () => {
+    const user = userEvent.setup()
     render(<LifecycleStatusesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
-    })
+    await waitForItemsLoaded()
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
-    fireEvent.click(editButtons[0])
+    await user.click(editButtons[0])
     expect(
       (
         screen.getByRole('textbox', {
@@ -126,23 +143,21 @@ describe('LifecycleStatusesClient', () => {
   })
 
   it('closes form on cancel', async () => {
+    const user = userEvent.setup()
     render(<LifecycleStatusesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
+    await waitForItemsLoaded()
+    await user.click(screen.getByRole('button', { name: /common\.create/i }))
+    await user.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
       screen.queryByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
     ).toBeNull()
   })
 
   it('deletes with confirm', async () => {
+    const user = userEvent.setup()
     confirmMock.mockResolvedValue(true)
     render(<LifecycleStatusesClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Development')).toBeInTheDocument()
-    })
+    await waitForItemsLoaded()
 
     fetchMock.mockResolvedValueOnce(okJson({}))
     fetchMock.mockResolvedValueOnce(okJson({ statuses: [] }))
@@ -150,7 +165,7 @@ describe('LifecycleStatusesClient', () => {
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })
-    fireEvent.click(deleteButtons[0])
+    await user.click(deleteButtons[0])
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(

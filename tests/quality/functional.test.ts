@@ -264,7 +264,7 @@ function appDb(): SqlServerDatabase {
   return db
 }
 
-function makeContext(headers?: HeadersInit): RequestContext {
+function makeContext(headers?: HeadersInit): Promise<RequestContext> {
   return createRequestContext(
     new Request('https://example.test', { headers }),
     'rest',
@@ -365,7 +365,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
 
     const service = createRequirementsService(appDb())
-    const detail = await service.getRequirement(makeContext(), {
+    const detail = await service.getRequirement(await makeContext(), {
       id: published.requirementId,
       responseFormat: 'json',
       view: 'detail',

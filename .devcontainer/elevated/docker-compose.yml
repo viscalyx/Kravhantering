@@ -8,6 +8,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      idp:
+        # Don't block on healthy — Keycloak takes ~30s to start and would
+        # slow every devcontainer attach. The app boots fine without it;
+        # OIDC discovery happens lazily on first sign-in.
+        condition: service_started
     volumes:
       - ../..:/workspace:cached
       # Persistent npm cache for faster installs across rebuilds (commented out - not needed for infrequent rebuilds)
@@ -17,6 +22,8 @@ services:
         target: /home/vscode/.codex
         bind:
           create_host_path: true
+      # Keep Codex runtime temp wrappers container-local.
+      - codex-tmp:/home/vscode/.codex/tmp
     command: sleep infinity
     env_file:
     # TODO: Even if we reference the parent .env here, we still need to copy it to the elevated folder because docker-compose doesn't seem to support referencing files outside the compose file's directory for env_file.
@@ -70,5 +77,29 @@ services:
     volumes:
       - sqlserver-elevated-devcontainer-data:/var/opt/mssql
 
+  idp:
+    # Local OIDC IdP (Keycloak) for development. Mirrors
+    # docker-compose.idp.yml so devcontainer users get auth-on by default
+    # per the plan in docs/plan-auth.md. The realm `kravhantering-dev` is
+    # imported on every start from `dev/keycloak/realm-kravhantering-dev.json`
+    # — changes made via the admin UI on http://localhost:8080 are NOT
+    # persisted across restarts.
+    image: quay.io/keycloak/keycloak:26.0
+    command:
+      - start-dev
+      - --import-realm
+      - --http-port=8080
+    env_file:
+    - path: ../.env
+      required: false
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${KEYCLOAK_HOST_PORT:-8080}:8080"
+    volumes:
+      - ../../dev/keycloak:/opt/keycloak/data/import:ro
+
 volumes:
   sqlserver-elevated-devcontainer-data:
+  codex-tmp:

@@ -9,6 +9,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const USAGE_SCENARIOS_HELP: HelpContent = {
   sections: [
@@ -92,7 +93,7 @@ export default function UsageScenariosClient() {
   const fetchScenarios = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/usage-scenarios')
+      const res = await apiFetch('/api/usage-scenarios')
       if (res.ok)
         setScenarios(
           ((await res.json()) as { scenarios?: Scenario[] }).scenarios ?? [],
@@ -106,7 +107,7 @@ export default function UsageScenariosClient() {
 
   const fetchOwners = useCallback(async () => {
     try {
-      const res = await fetch('/api/owners/all')
+      const res = await apiFetch('/api/owners/all')
       if (res.ok)
         setOwners(((await res.json()) as { owners?: Owner[] }).owners ?? [])
     } catch {
@@ -120,7 +121,7 @@ export default function UsageScenariosClient() {
     const requestId = ++linkedReqRequestId.current
     setLinkedRequirementsLoading(true)
     try {
-      const res = await fetch(`/api/usage-scenarios/${scenarioId}`)
+      const res = await apiFetch(`/api/usage-scenarios/${scenarioId}`)
       if (res.ok && requestId === linkedReqRequestId.current) {
         const data = (await res.json()) as {
           linkedRequirements?: LinkedRequirement[]
@@ -149,7 +150,7 @@ export default function UsageScenariosClient() {
       const url = editId
         ? `/api/usage-scenarios/${editId}`
         : '/api/usage-scenarios'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -206,7 +207,7 @@ export default function UsageScenariosClient() {
     setDeleteError(null)
     setDeletingId(id)
     try {
-      const res = await fetch(`/api/usage-scenarios/${id}`, {
+      const res = await apiFetch(`/api/usage-scenarios/${id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {

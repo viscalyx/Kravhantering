@@ -44,12 +44,19 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: 'bash -lc "npm run start:prodlike"',
+          // Same rationale as playwright.config.ts: integration tests run
+          // with auth disabled. The `:noauth` variant builds and runs the
+          // prod-like server with AUTH_ENABLED=false; because boot validation
+          // refuses that combination under NODE_ENV=production, the script
+          // also sets the opt-in escape hatch
+          // AUTH_ALLOW_DISABLE_IN_PRODUCTION=true. Never use that flag in a
+          // real deployment.
+          command: 'bash -lc "npm run start:prodlike:noauth"',
           url: 'http://127.0.0.1:3001',
           timeout: 300_000,
           reuseExistingServer: !process.env.CI,
           env: {
-            DATABASE_URL: process.env.DATABASE_URL || 'http://127.0.0.1:9000',
+            ...process.env,
             NODE_ENV: 'production',
           },
         },

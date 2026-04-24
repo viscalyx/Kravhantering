@@ -7,6 +7,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 
 const IMPLEMENTATION_TYPES_HELP: HelpContent = {
   sections: [
@@ -45,11 +47,12 @@ export default function ImplementationTypesClient() {
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ nameSv: '', nameEn: '' })
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/package-implementation-types')
+    const res = await apiFetch('/api/package-implementation-types')
     if (res.ok)
       setItems(
         ((await res.json()) as { types?: ImplementationType[] }).types ?? [],
@@ -65,20 +68,29 @@ export default function ImplementationTypesClient() {
     e.preventDefault()
     if (submitting) return
     setSubmitting(true)
+    setError(null)
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId
         ? `/api/package-implementation-types/${editId}`
         : '/api/package-implementation-types'
-      await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      if (!res.ok) {
+        setError(
+          (await readResponseMessage(res)) ?? res.statusText ?? tc('error'),
+        )
+        return
+      }
       setShowForm(false)
       setEditId(null)
       setForm({ nameSv: '', nameEn: '' })
       fetchItems()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : tc('error'))
     } finally {
       setSubmitting(false)
     }
@@ -86,6 +98,7 @@ export default function ImplementationTypesClient() {
 
   const handleEdit = (item: ImplementationType) => {
     setEditId(item.id)
+    setError(null)
     setForm({ nameSv: item.nameSv, nameEn: item.nameEn })
     setShowForm(true)
   }
@@ -102,10 +115,21 @@ export default function ImplementationTypesClient() {
       }))
     )
       return
-    await fetch(`/api/package-implementation-types/${id}`, {
-      method: 'DELETE',
-    })
-    fetchItems()
+    setError(null)
+    try {
+      const res = await apiFetch(`/api/package-implementation-types/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        setError(
+          (await readResponseMessage(res)) ?? res.statusText ?? tc('error'),
+        )
+        return
+      }
+      fetchItems()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : tc('error'))
+    }
   }
 
   return (
@@ -125,6 +149,7 @@ export default function ImplementationTypesClient() {
             onClick={() => {
               setShowForm(true)
               setEditId(null)
+              setError(null)
               setForm({ nameSv: '', nameEn: '' })
             }}
             type="button"
@@ -133,6 +158,15 @@ export default function ImplementationTypesClient() {
             {tc('create')}
           </button>
         </div>
+
+        {error && (
+          <div
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
 
         <AnimatePresence>
           {showForm && (

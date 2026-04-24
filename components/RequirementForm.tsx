@@ -10,6 +10,7 @@ import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
 import { useRouter } from '@/i18n/routing'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 interface RequirementFormProps {
   initialData?: Partial<
@@ -143,7 +144,7 @@ export default function RequirementForm({
         mode === 'create'
           ? '/api/requirements'
           : `/api/requirements/${requirementId}`
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -249,7 +250,7 @@ export default function RequirementForm({
               setNormRefSubmitting(true)
               setNormRefError(null)
               try {
-                const res = await fetch('/api/norm-references', {
+                const res = await apiFetch('/api/norm-references', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({

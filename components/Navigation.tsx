@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
+import AuthMenu from '@/components/AuthMenu'
 import { useHelp } from '@/components/HelpPanel'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import Logo from '@/components/Logo'
@@ -123,6 +124,9 @@ export default function Navigation() {
           >
             <Settings2 aria-hidden="true" className="h-5 w-5" />
           </Link>
+          <div className="hidden md:flex">
+            <AuthMenu variant="desktop" />
+          </div>
 
           {/* Mobile menu button */}
           <button
@@ -164,6 +168,9 @@ export default function Navigation() {
               </Link>
             )
           })}
+          <div className="mt-2 border-t border-secondary-200/60 pt-2 dark:border-secondary-700/40">
+            <AuthMenu variant="mobile" />
+          </div>
         </div>
       )}
     </nav>

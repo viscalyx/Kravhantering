@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { apiFetch } from '@/lib/http/api-fetch'
 
 const OWNERS_HELP: HelpContent = {
   sections: [
@@ -51,7 +52,7 @@ export default function OwnersClient() {
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/owners/all')
+      const res = await apiFetch('/api/owners/all')
       if (res.ok)
         setItems(((await res.json()) as { owners?: Owner[] }).owners ?? [])
     } finally {
@@ -69,7 +70,7 @@ export default function OwnersClient() {
     try {
       const method = editId ? 'PUT' : 'POST'
       const url = editId ? `/api/owners/${editId}` : '/api/owners'
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -107,7 +108,7 @@ export default function OwnersClient() {
       }))
     )
       return
-    await fetch(`/api/owners/${id}`, { method: 'DELETE' })
+    await apiFetch(`/api/owners/${id}`, { method: 'DELETE' })
     fetchItems()
   }
 

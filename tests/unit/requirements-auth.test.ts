@@ -41,18 +41,18 @@ describe('requirements auth', () => {
   })
 
   describe('createRequestContext', () => {
-    it('creates context with request ID from header', () => {
+    it('creates context with request ID from header', async () => {
       const req = new Request('http://localhost/test', {
         headers: { 'x-request-id': 'req-abc' },
       })
-      const ctx = createRequestContext(req, 'rest')
+      const ctx = await createRequestContext(req, 'rest')
       expect(ctx.requestId).toBe('req-abc')
       expect(ctx.source).toBe('rest')
     })
 
-    it('generates request ID when not provided', () => {
+    it('generates request ID when not provided', async () => {
       const req = new Request('http://localhost/test')
-      const ctx = createRequestContext(req, 'mcp', 'list_requirements')
+      const ctx = await createRequestContext(req, 'mcp', 'list_requirements')
       expect(ctx.requestId).toBeTruthy()
       expect(ctx.source).toBe('mcp')
       expect(ctx.toolName).toBe('list_requirements')
@@ -77,6 +77,8 @@ describe('requirements auth', () => {
           {
             actor: {
               id: 'u1',
+              displayName: 'u1',
+              hsaId: null,
               roles: ['admin'],
               source: 'headers',
               isAuthenticated: true,
@@ -98,6 +100,8 @@ describe('requirements auth', () => {
           {
             actor: {
               id: 'u1',
+              displayName: 'u1',
+              hsaId: null,
               roles: ['viewer'],
               source: 'headers',
               isAuthenticated: true,
@@ -117,6 +121,8 @@ describe('requirements auth', () => {
           {
             actor: {
               id: null,
+              displayName: '',
+              hsaId: null,
               roles: [],
               source: 'anonymous',
               isAuthenticated: false,

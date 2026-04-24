@@ -4,13 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockGetRequirement = vi.fn()
 const mockManageRequirement = vi.fn()
 const mockGetOwnerById = vi.fn()
+const mockCreateRequestContext = vi.hoisted(() =>
+  vi.fn(() => ({ source: 'rest' })),
+)
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
-  createRequestContext: () => ({ source: 'rest' }),
+  createRequestContext: mockCreateRequestContext,
 }))
 
 vi.mock('@/lib/requirements/service', () => ({
@@ -78,6 +81,16 @@ describe('requirements/[id] route', () => {
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
       expect(res.status).toBe(400)
+    })
+
+    it('returns handled errors when request context creation fails', async () => {
+      mockCreateRequestContext.mockRejectedValueOnce(new Error('auth failed'))
+
+      const req = new NextRequest('http://localhost/api/requirements/1')
+      const res = await GET(req, makeParams('1'))
+
+      expect(res.status).toBe(400)
+      expect(mockGetRequirement).not.toHaveBeenCalled()
     })
   })
 

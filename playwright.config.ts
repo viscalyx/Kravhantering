@@ -77,7 +77,14 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: 'npm run dev',
+          // Integration tests run with auth disabled. They cover product
+          // behaviour (developer mode, navigation, requirements UI), not the
+          // auth flow itself — that is exercised by dedicated unit tests in
+          // `tests/unit/auth-*.test.ts` against an in-process oidc-provider
+          // mock (`tests/support/oidc-mock.ts`). Running them under
+          // AUTH_ENABLED=true would just bounce every navigation through the
+          // real Keycloak login page and hang.
+          command: 'npm run dev:noauth',
           url: 'http://127.0.0.1:3000',
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,

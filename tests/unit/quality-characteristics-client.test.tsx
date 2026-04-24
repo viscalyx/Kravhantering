@@ -148,12 +148,32 @@ describe('QualityCharacteristicsClient', () => {
 
     fireEvent.submit(screen.getByRole('button', { name: /common\.save/ }))
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith('/api/quality-characteristics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: expect.any(String),
-      })
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/quality-characteristics',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.any(Headers),
+          body: JSON.stringify({
+            nameSv: 'Ny',
+            nameEn: 'New',
+            requirementTypeId: 1,
+            parentId: null,
+          }),
+        }),
+      )
     })
+
+    const postCall = fetchMock.mock.calls.find(call => {
+      const [url, options] = call as [string, RequestInit | undefined]
+      return (
+        url === '/api/quality-characteristics' && options?.method === 'POST'
+      )
+    })
+    expect(postCall).toBeDefined()
+    const [, options] = postCall as [string, RequestInit]
+    const headers = options.headers as Headers
+    expect(headers.get('content-type')).toBe('application/json')
+    expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
   })
 
   it('shows error alert on failed submit', async () => {

@@ -184,6 +184,8 @@ function makeContext() {
   return {
     actor: {
       id: 'alice',
+      displayName: 'alice',
+      hsaId: null,
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'headers' as const,

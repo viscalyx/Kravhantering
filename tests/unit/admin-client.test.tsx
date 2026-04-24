@@ -295,11 +295,13 @@ describe('AdminClient', () => {
 
     await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/admin/terminology', {
-      body: JSON.stringify({ terminology: updatedTerminology }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PUT',
-    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/terminology',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ terminology: updatedTerminology }),
+      }),
+    )
     expect(routerRefresh).toHaveBeenCalledTimes(1)
   })
 
@@ -391,11 +393,13 @@ describe('AdminClient', () => {
 
     await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/admin/requirement-columns', {
-      body: JSON.stringify({ columns: reorderedColumns }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PUT',
-    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/requirement-columns',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ columns: reorderedColumns }),
+      }),
+    )
     expect(getColumnOrder(container).slice(0, 5)).toEqual([
       'uniqueId',
       'description',
@@ -450,11 +454,13 @@ describe('AdminClient', () => {
 
     await waitFor(() => expect(screen.getByText('admin.saved')).toBeTruthy())
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/admin/requirement-columns', {
-      body: JSON.stringify({ columns: normalizedHiddenCategoryColumns }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'PUT',
-    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/requirement-columns',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ columns: normalizedHiddenCategoryColumns }),
+      }),
+    )
     expect(
       within(screen.getByTestId('admin-column-row-category')).getByRole(
         'checkbox',
