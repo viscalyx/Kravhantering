@@ -46,6 +46,16 @@ function isFocusVisibleTarget(target: HTMLElement): boolean {
   }
 }
 
+function resolveLogoutRedirectTarget(
+  body: { redirectTo?: unknown } | null,
+): string {
+  if (typeof body?.redirectTo !== 'string') {
+    return '/'
+  }
+  const redirectTo = body.redirectTo.trim()
+  return redirectTo === '' ? '/' : redirectTo
+}
+
 function useAuthMe(): AuthMe | null {
   const [state, setState] = useState<AuthMe | null>(null)
 
@@ -120,9 +130,7 @@ function AuthLogoutButton({
       const body = (await response.json().catch(() => null)) as {
         redirectTo?: unknown
       } | null
-      const redirectTo =
-        body && typeof body.redirectTo === 'string' ? body.redirectTo : null
-      window.location.assign(redirectTo ?? '/')
+      window.location.assign(resolveLogoutRedirectTarget(body))
     } catch (error) {
       console.error('Logout failed', error)
       setIsSubmitting(false)
