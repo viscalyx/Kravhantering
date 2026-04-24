@@ -19,7 +19,7 @@ const DEFAULT_LOCALE: (typeof LOCALES)[number] = 'sv'
 
 // Inbound headers that the legacy `lib/requirements/auth.ts` header-trust path
 // honors when `AUTH_ENABLED=false`. Once auth is enabled they MUST be stripped
-// so an attacker-supplied header cannot impersonate a user (plan-auth caveat #8).
+// so an attacker-supplied header cannot impersonate a user.
 const STRIPPED_REQUEST_HEADERS = ['x-user-id', 'x-user-roles']
 
 function stripUserHeaders(headers: Headers): Headers {
