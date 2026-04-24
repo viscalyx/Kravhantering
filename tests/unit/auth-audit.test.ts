@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { recordSecurityEvent } from '@/lib/auth/audit'
+import {
+  recordSecurityEvent,
+  type SecurityEventRequest,
+} from '@/lib/auth/audit'
 
 describe('recordSecurityEvent', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
@@ -106,22 +109,29 @@ describe('recordSecurityEvent', () => {
     })
   })
 
-  it('strips query and fragment when URL parsing falls back', () => {
+  it('does not treat request-shaped plain objects as Request instances', () => {
+    const getHeader = vi.fn(() => 'unexpected')
+    const requestLike = {
+      headers: { get: getHeader },
+      method: 'GET',
+      path: '/already-normalized',
+      url: 'https://app.example.test/should-not-be-used?code=abc&state=xyz',
+    } as unknown as SecurityEventRequest
+
     recordSecurityEvent({
       event: 'auth.login.failed',
       outcome: 'failure',
       actor: { source: 'oidc' },
-      request: {
-        headers: new Headers(),
-        method: 'GET',
-        url: '/api/auth/callback?code=abc&state=xyz#frag',
-      } as Request,
+      request: requestLike,
     })
     const ev = emittedEvents()[0]
-    expect(ev.request).toEqual({
+    expect(getHeader).not.toHaveBeenCalled()
+    expect(ev.request).toMatchObject({
       method: 'GET',
-      path: '/api/auth/callback',
+      path: '/already-normalized',
+      url: 'https://app.example.test/should-not-be-used?code=abc&state=xyz',
     })
+    expect((ev.request as Record<string, unknown>).userAgent).toBeUndefined()
   })
 
   it('omits userAgent and requestId when those headers are absent', () => {

@@ -45,6 +45,26 @@ const testTaxonomy: TaxonomyData = {
   ],
 }
 
+const PROMPT_LOCALES = ['en', 'sv'] as const
+
+const REQUIRED_PROMPT_MESSAGE_PATHS = [
+  ['ai', 'prompt', 'defaultInstruction'],
+  ['ai', 'prompt', 'noUsageScenariosAvailable'],
+  ['ai', 'prompt', 'userHeader'],
+  ['ai', 'prompt', 'system', 'intro'],
+  ['ai', 'prompt', 'system', 'taxonomyIntro'],
+  ['ai', 'prompt', 'system', 'headings', 'types'],
+  ['ai', 'prompt', 'system', 'headings', 'categories'],
+  ['ai', 'prompt', 'system', 'headings', 'qualityCharacteristics'],
+  ['ai', 'prompt', 'system', 'headings', 'riskLevels'],
+  ['ai', 'prompt', 'system', 'headings', 'usageScenarios'],
+  ['ai', 'prompt', 'system', 'headings', 'outputRules'],
+] as const
+
+const REQUIRED_PROMPT_MESSAGE_LIST_PATHS = [
+  ['ai', 'prompt', 'system', 'outputRules'],
+] as const
+
 describe('buildSystemPrompt', () => {
   it('includes all taxonomy IDs', () => {
     const prompt = buildSystemPrompt(testTaxonomy)
@@ -105,6 +125,28 @@ describe('buildSystemPrompt', () => {
 })
 
 describe('prompt localization helpers', () => {
+  it.each(
+    PROMPT_LOCALES,
+  )('has every required string prompt message for %s', locale => {
+    for (const path of REQUIRED_PROMPT_MESSAGE_PATHS) {
+      expect(
+        getPromptMessage(locale, path),
+        `${locale}:${path.join('.')}`,
+      ).not.toBe('')
+    }
+  })
+
+  it.each(
+    PROMPT_LOCALES,
+  )('has every required prompt message list for %s', locale => {
+    for (const path of REQUIRED_PROMPT_MESSAGE_LIST_PATHS) {
+      expect(
+        getPromptMessageList(locale, path),
+        `${locale}:${path.join('.')}`,
+      ).not.toEqual([])
+    }
+  })
+
   it('throws missing localization errors only for absent paths', () => {
     expect(() => getPromptValue('en', ['ai', 'prompt', 'missing'])).toThrow(
       'Missing prompt localization for en:ai.prompt.missing',

@@ -107,8 +107,8 @@ function redactDetail(
 function normalizeRequest(
   input: Request | SecurityEventRequest,
 ): SecurityEventRequest {
-  if (typeof (input as Request).headers?.get === 'function') {
-    const req = input as Request
+  if (input instanceof Request) {
+    const req = input
     let path = ''
     try {
       path = new URL(req.url).pathname
