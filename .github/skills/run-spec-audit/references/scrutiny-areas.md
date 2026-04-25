@@ -60,7 +60,8 @@ maintenance rule.
 ## 5. Draft Edit Concurrency — Scenario 11
 
 - **Code:** `lib/dal/requirements.ts` and
-  `lib/requirements/service.ts` — optimistic edit preconditions.
+  `lib/requirements/service.ts` — `baseVersionId`/`baseRevisionToken`
+  optimistic edit preconditions.
 - **Spec:** `docs/lifecycle-workflow.md`.
 - **Req tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
 - **Question:** Are stale draft edits rejected before content or joins are
