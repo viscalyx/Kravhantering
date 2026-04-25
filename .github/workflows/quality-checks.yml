@@ -62,7 +62,6 @@ jobs:
           dotenv_linter_flags: >-
             .devcontainer
             --recursive
-            --exclude .
             --exclude .devcontainer/.env
             --exclude .devcontainer/elevated/.env
           filter_mode: nofilter
