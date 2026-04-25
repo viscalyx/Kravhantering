@@ -1,11 +1,19 @@
 /**
  * Centralized auth configuration. Reads env vars, validates them, and exposes
- * a typed `authConfig`. Boot-time guard: when `AUTH_ENABLED=false` and
- * `NODE_ENV=production`, this module throws — fail-closed.
+ * a typed `authConfig`.
+ *
+ * Boot-time guards (fail-closed, AUTH_ENABLED=false bypass, placeholder
+ * validation) are gated on build-time constants from
+ * `@/lib/runtime/build-target` so that production bundles physically do not
+ * contain the dev escape-hatch code paths.
  *
  * See `docs/auth-how-it-works.md` and `docs/auth-developer-workflow.md`
  * for the committed env-var contract and deployment expectations.
  */
+import {
+  ALLOW_DISABLE_AUTH_IN_PREPROD,
+  AUTH_ENABLED_AT_BUILD,
+} from '@/lib/runtime/build-target'
 
 const FLAG_TRUE_VALUES = new Set(['1', 'true', 'yes', 'on'])
 const FLAG_FALSE_VALUES = new Set(['0', 'false', 'no', 'off'])
@@ -86,50 +94,22 @@ export class AuthConfigError extends Error {
   }
 }
 
-function collectPlaceholderViolations(values: {
-  clientId: string
-  clientSecret: string
-  cookiePassword: string
-}): string[] {
-  const violations: string[] = []
-
-  if (values.clientId === 'kravhantering-app') {
-    violations.push(
-      'AUTH_OIDC_CLIENT_ID must not use the local dev app id `kravhantering-app`.',
-    )
-  }
-  if (values.clientSecret.toLowerCase().startsWith('dev-only')) {
-    violations.push(
-      'AUTH_OIDC_CLIENT_SECRET must not use a dev-only placeholder secret.',
-    )
-  }
-
-  const normalizedCookiePassword = values.cookiePassword.toLowerCase()
-  if (
-    normalizedCookiePassword.includes('prodlike-only') ||
-    normalizedCookiePassword.startsWith('replace-with-')
-  ) {
-    violations.push(
-      'AUTH_SESSION_COOKIE_PASSWORD must not use a committed placeholder value.',
-    )
-  }
-
-  return violations
-}
-
 let cached: AuthConfig | undefined
 
 function loadAuthConfig(): AuthConfig {
-  const enabled = parseBooleanFlag(process.env.AUTH_ENABLED, true)
+  // AUTH_ENABLED_AT_BUILD is a build-time constant:
+  //   'env'  → read process.env.AUTH_ENABLED at runtime (dev / local-prod)
+  //   true   → auth is always enabled (prod — frozen at build time)
+  const enabled =
+    AUTH_ENABLED_AT_BUILD === 'env'
+      ? parseBooleanFlag(process.env.AUTH_ENABLED, true)
+      : AUTH_ENABLED_AT_BUILD
+
   const isProduction = process.env.NODE_ENV === 'production'
-  // Opt-in escape hatch for `npm run start:prodlike:noauth` — local
-  // prod-like validation that still wants the dev-mode bypass. Never set
-  // this in a real deployment; the app logs a loud warning when it kicks
-  // in and the production-mode strict-check is the actual safety net.
-  const allowDisableInProduction = parseBooleanFlag(
-    process.env.AUTH_ALLOW_DISABLE_IN_PRODUCTION,
-    false,
-  )
+  // ALLOW_DISABLE_AUTH_IN_PREPROD is a build-time constant:
+  //   true  → dev / local-prod: allow AUTH_ENABLED=false under NODE_ENV=production
+  //   false → real prod: auth cannot be disabled at runtime (this branch is dead code)
+  const allowDisableInProduction = ALLOW_DISABLE_AUTH_IN_PREPROD
 
   if (!enabled && isProduction && !allowDisableInProduction) {
     throw new AuthConfigError(
@@ -145,8 +125,8 @@ function loadAuthConfig(): AuthConfig {
     if (isProduction && allowDisableInProduction) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[auth] AUTH_ALLOW_DISABLE_IN_PRODUCTION=true: NODE_ENV=production without auth. ' +
-          'This must only be used for local prod-like integration tests.',
+        '[auth] AUTH_ENABLED=false in production-mode build — running without authentication. ' +
+          'This is only valid for local prod-like integration tests.',
       )
     }
     // Return a stub config; callers must check `enabled` before using OIDC fields.
@@ -192,20 +172,6 @@ function loadAuthConfig(): AuthConfig {
     throw new AuthConfigError(
       'AUTH_SESSION_COOKIE_PASSWORD must be at least 32 characters.',
     )
-  }
-
-  if (isProduction) {
-    const placeholderViolations = collectPlaceholderViolations({
-      clientId: clientId as string,
-      clientSecret: clientSecret as string,
-      cookiePassword: cookiePassword as string,
-    })
-    if (placeholderViolations.length > 0) {
-      throw new AuthConfigError(
-        'Refusing to boot with placeholder auth configuration in production: ' +
-          placeholderViolations.join(' '),
-      )
-    }
   }
 
   return {

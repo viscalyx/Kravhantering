@@ -7,6 +7,7 @@ import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
 } from '@/lib/auth/session'
+import { USE_DEV_CSP } from '@/lib/runtime/build-target'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -193,8 +194,7 @@ function applyPageHeaders(
   const nonceBytes = new Uint8Array(16)
   crypto.getRandomValues(nonceBytes)
   const nonce = btoa(String.fromCharCode(...nonceBytes)).replace(/=+$/, '')
-  const csp =
-    process.env.NODE_ENV === 'production' ? buildCsp(nonce) : buildDevCsp(nonce)
+  const csp = USE_DEV_CSP ? buildDevCsp(nonce) : buildCsp(nonce)
   const requestHeaders = new Headers(request.headers)
   if (authEnabled) stripUserHeaders(requestHeaders)
 

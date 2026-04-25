@@ -6,6 +6,7 @@ import {
   type LoggedInSession,
 } from '@/lib/auth/session'
 import { forbiddenError } from '@/lib/requirements/errors'
+import { ALLOW_LEGACY_HEADER_TRUST } from '@/lib/runtime/build-target'
 
 // In-process attachment of verified actor identities to Request objects.
 // Used by the MCP route after JWT verification and by tests.
@@ -207,9 +208,21 @@ async function getActorContextFromSessionOrHeaders(
 
   const cfg = getAuthConfig()
   if (!cfg.enabled) {
-    // Legacy dev/opt-out path — header trust is only honored when
-    // AUTH_ENABLED=false. Production refuses this configuration at boot.
-    return getActorContextFromRequest(request)
+    // ALLOW_LEGACY_HEADER_TRUST is a build-time constant (true only in `dev`).
+    // When true, honour x-user-id / x-user-roles headers so unit tests and
+    // the dev no-auth workflow can inject a simulated actor without OIDC.
+    // When false (local-prod / prod) this branch returns anonymous instead.
+    if (ALLOW_LEGACY_HEADER_TRUST) {
+      return getActorContextFromRequest(request)
+    }
+    return {
+      id: null,
+      displayName: '',
+      hsaId: null,
+      roles: [],
+      source: 'anonymous',
+      isAuthenticated: false,
+    }
   }
 
   assertSameOriginRequest(request)

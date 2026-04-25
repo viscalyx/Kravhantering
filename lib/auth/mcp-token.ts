@@ -3,6 +3,7 @@ import { recordSecurityEvent } from '@/lib/auth/audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { parseRolesClaim } from '@/lib/auth/roles'
 import type { ActorContext } from '@/lib/requirements/auth'
+import { ALLOW_LEGACY_HEADER_TRUST } from '@/lib/runtime/build-target'
 
 type VerifiedMcpToken = {
   actor: ActorContext
@@ -52,7 +53,9 @@ export async function verifyMcpBearerToken(
 ): Promise<VerifiedMcpToken | null> {
   const { getAuthConfig } = await import('@/lib/auth/config')
   const cfg = getAuthConfig()
-  if (!cfg.enabled) return null
+  // ALLOW_LEGACY_HEADER_TRUST is a build-time constant (false in prod).
+  // In prod this entire branch is dead code and webpack eliminates it.
+  if (ALLOW_LEGACY_HEADER_TRUST && !cfg.enabled) return null
 
   const header = request.headers.get('authorization') ?? ''
   const match = /^Bearer\s+(\S+)$/i.exec(header)

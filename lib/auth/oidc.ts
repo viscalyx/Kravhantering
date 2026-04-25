@@ -6,6 +6,7 @@
 
 import * as client from 'openid-client'
 import { getAuthConfig } from '@/lib/auth/config'
+import { ALLOW_INSECURE_OIDC_ISSUER } from '@/lib/runtime/build-target'
 
 let configurationPromise: Promise<client.Configuration> | undefined
 
@@ -17,32 +18,21 @@ async function discover(): Promise<client.Configuration> {
     )
   }
   const issuerUrl = new URL(cfg.issuerUrl)
-  // openid-client v6 refuses http:// issuers by default. For local dev
-  // against Keycloak on http://localhost:8080 we opt in explicitly. Never
-  // allowed in production: lib/auth/config.ts already validates auth at boot,
-  // and we additionally gate this opt-in on a non-https issuer + non-production
-  // NODE_ENV so a misconfigured prod can never silently accept plaintext OIDC.
-  //
-  // Escape hatch for `npm run start:prodlike` (which sets NODE_ENV=production
-  // but still talks to the local http Keycloak): set
-  // AUTH_OIDC_ALLOW_INSECURE_ISSUER=true. This is opt-in and must never be
-  // set in a real production deployment.
+  // openid-client v6 refuses http:// issuers by default. ALLOW_INSECURE_OIDC_ISSUER
+  // is a build-time constant: `true` only in `dev` and `local-prod` targets,
+  // `false` in `prod` so this entire branch is dead code in production builds.
   const isInsecureIssuer = issuerUrl.protocol === 'http:'
-  const isProduction = process.env.NODE_ENV === 'production'
-  const insecureOptIn = process.env.AUTH_OIDC_ALLOW_INSECURE_ISSUER === 'true'
-  if (isInsecureIssuer && isProduction && !insecureOptIn) {
+  if (isInsecureIssuer && !ALLOW_INSECURE_OIDC_ISSUER) {
     throw new Error(
-      `Refusing to use insecure http:// OIDC issuer in production: ${cfg.issuerUrl}. ` +
-        'If this is a local prod-like run (e.g. npm run start:prodlike), set ' +
-        'AUTH_OIDC_ALLOW_INSECURE_ISSUER=true. Never set this in a real deployment.',
+      `Refusing to use insecure http:// OIDC issuer in this build: ${cfg.issuerUrl}. ` +
+        'Production builds require an https:// issuer.',
     )
   }
-  if (isInsecureIssuer && isProduction && insecureOptIn) {
+  if (isInsecureIssuer && ALLOW_INSECURE_OIDC_ISSUER) {
     // Loud, persistent warning so this can't be missed in logs.
     console.warn(
-      '[auth] AUTH_OIDC_ALLOW_INSECURE_ISSUER=true: accepting insecure http:// ' +
-        'OIDC issuer despite NODE_ENV=production. This must only be used for ' +
-        'local prod-like validation against a dev IdP.',
+      '[auth] ALLOW_INSECURE_OIDC_ISSUER=true (build-time constant): accepting insecure http:// ' +
+        'OIDC issuer. This must only be used for local dev/prodlike validation against a dev IdP.',
     )
   }
   const executeOptions = isInsecureIssuer

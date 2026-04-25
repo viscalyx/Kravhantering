@@ -72,6 +72,13 @@ export default defineConfig({
     alias: {
       // Module path mapping (equivalent to Jest's moduleNameMapper)
       '@': path.resolve(__dirname, '.'),
+      // Always resolve the build-target to the dev implementation in tests.
+      // Webpack aliases do not apply to vitest; this explicit alias ensures
+      // tests never accidentally use the local-prod or prod frozen constants.
+      '@/lib/runtime/build-target': path.resolve(
+        __dirname,
+        'lib/runtime/build-target.ts',
+      ),
       '@viscalyx/developer-mode-core': path.resolve(
         __dirname,
         'packages/developer-mode-core/src/index.ts',
