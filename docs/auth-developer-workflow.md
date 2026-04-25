@@ -4,19 +4,19 @@ This document covers how authentication works in local development and in
 tests. For the runtime architecture, production target setup, and IdP
 contract, see [auth-how-it-works.md](./auth-how-it-works.md).
 
-## Modes
+## Auth is mandatory in every build target
 
-<!-- markdownlint-disable MD013 -->
-| Mode | When | How |
-| --- | --- | --- |
-| `AUTH_ENABLED=true` (default) | Normal dev, CI, prod | Real OIDC flow against local Keycloak (dev) or the configured OIDC provider (deployed). |
-| `AUTH_ENABLED=false` | Quick local exploration only | Bypasses login. Refused at boot when `NODE_ENV=production`. |
-<!-- markdownlint-enable MD013 -->
+Authentication is always on. Every request hits the OIDC flow against
+the configured issuer (Keycloak in dev, the real OIDC provider in deployed
+environments). Identity is derived only from the verified iron-session
+cookie (browser flow) or a verified `Authorization: Bearer` JWT (MCP
+flow); the app no longer accepts `x-user-id` / `x-user-roles` request
+headers as a stand-in for a logged-in user, and `proxy.ts` strips both
+headers from every inbound request before any handler runs.
 
-`AUTH_ENABLED` defaults to `true` everywhere — secure-first. The only way to
-disable auth is to set `AUTH_ENABLED=false` explicitly, and only outside
-production. The legacy `x-user-id` / `x-user-roles` header path is honored
-only when `AUTH_ENABLED=false`.
+If the dev server cannot reach the IdP, requests fail loudly instead of
+falling back to an unauthenticated mode. Bring up Keycloak first with
+`npm run idp:up` (or via the devcontainer compose).
 
 ## Local IdP (Keycloak)
 
@@ -214,8 +214,6 @@ server-side check.
 Add the following to `.env.development.local` (or copy from `.env.example`):
 
 ```dotenv
-AUTH_ENABLED=true
-NEXT_PUBLIC_AUTH_ENABLED=true
 AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-dev
 AUTH_OIDC_CLIENT_ID=kravhantering-app
 AUTH_OIDC_CLIENT_SECRET=dev-only-app-secret
@@ -241,15 +239,6 @@ different sources:
   (anything sensitive) and a ConfigMap (everything else). See
   [auth-how-it-works.md](./auth-how-it-works.md) for the committed production
   mapping.
-
-### Master switches
-
-<!-- markdownlint-disable MD013 -->
-| Variable | Required | Default | Notes |
-| --- | --- | --- | --- |
-| `AUTH_ENABLED` | yes (server) | `true` | Master switch read by the server (middleware, API routes, `lib/auth/*`). Explicit `false` is rejected at boot when `NODE_ENV=production` (fail-closed). When `false`, middleware passes through and the legacy `x-user-id` / `x-user-roles` header path is honored for back-compat. |
-| `NEXT_PUBLIC_AUTH_ENABLED` | yes (client) | `true` | Browser-visible mirror of `AUTH_ENABLED`. Two variables exist because Next.js only inlines env vars whose names start with `NEXT_PUBLIC_` into the client bundle — non-prefixed vars (`AUTH_ENABLED`) are stripped from browser code for safety. The mirror lets `components/AuthMenu.tsx` decide statically whether to render Sign in / Sign out without a `/api/auth/me` round-trip on every page load. **Must match `AUTH_ENABLED`** — they are validated together at boot, and a mismatch (e.g. server-on / client-off) is rejected so the UI can never lie about whether auth is active. |
-<!-- markdownlint-enable MD013 -->
 
 ### OIDC client (deployed OIDC provider / Keycloak)
 
@@ -338,8 +327,7 @@ Production values are set per environment by ops on the real IdP.
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `AUTH_TRUST_PROXY` | no | `true` | When `true`, the app honours `X-Forwarded-Proto` / `X-Forwarded-Host` so generated redirect URIs use `https://<route-host>` instead of the in-pod scheme/host. Required behind the OpenShift Route. Set `false` only if exposing the pod directly without a proxy (rare). |
-| `AUTH_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Opt-in escape hatch that lets the OIDC client accept an `http://` issuer when `NODE_ENV=production`. Required for `npm run start:prodlike`, which runs in production mode against the local Keycloak. **Never** set to `true` in a real deployment — the app logs a loud warning when this kicks in. |
-| `AUTH_ALLOW_DISABLE_IN_PRODUCTION` | no | `false` | Opt-in escape hatch that lets `AUTH_ENABLED=false` boot under `NODE_ENV=production`. Used by `npm run start:prodlike:noauth` (which the prodlike Playwright suite runs) so integration tests can exercise the built bundle without an authenticated browser session. **Never** set to `true` in a real deployment — the app logs a loud warning when this kicks in. |
+| `AUTH_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Build-target constant (not a runtime env var). Both the `dev` and `local-prod` build targets set it to `true` so the local Keycloak on `http://localhost:8080` works; the `prod` build target hard-codes it to `false`. |
 <!-- markdownlint-enable MD013 -->
 
 ### Sensitive vs non-sensitive
@@ -348,8 +336,7 @@ For OpenShift, this is the split between Secret and ConfigMap:
 
 - **Secret (`kravhantering-auth`)**: `AUTH_OIDC_CLIENT_ID`,
   `AUTH_OIDC_CLIENT_SECRET`, `AUTH_SESSION_COOKIE_PASSWORD`.
-- **ConfigMap**: `AUTH_ENABLED`, `NEXT_PUBLIC_AUTH_ENABLED`,
-  `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
+- **ConfigMap**: `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
   `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`,
@@ -359,24 +346,21 @@ For OpenShift, this is the split between Secret and ConfigMap:
 authorization request), but it's grouped with the secret because ops
 hands the id and secret over together per env.
 
-## Bypassing auth temporarily
-
-For quick exploration on a low-resource machine that cannot run Keycloak:
-
-```sh
-npm run dev:noauth
-```
-
-This sets `AUTH_ENABLED=false` and `NEXT_PUBLIC_AUTH_ENABLED=false` for the
-dev server only. Treat it as the exception, not the norm.
-
 ## Tests
 
-Unit + integration tests use `tests/support/oidc-mock.ts`, which spins up
-[`oidc-provider`](https://github.com/panva/node-oidc-provider) in-process on
-a random port per worker. No Docker. Same `openid-client` code path as
-Keycloak / a deployed OIDC provider. Use `mockIdp.loginAs('Admin')` to
-pre-select the identity that the next interaction will return.
+Unit tests stub the resolved actor at the request boundary via
+`attachVerifiedActor()` (see `lib/requirements/auth.ts`); no OIDC round
+trip required. Auth-flow specifics (config validation, session helpers,
+callback / logout audit, MCP bearer verification, proxy enforcement) are
+exercised by the dedicated unit tests in `tests/unit/auth-*.test.ts`.
+
+Playwright integration tests run against the real Keycloak. The shared
+`tests/integration/global-setup.ts` performs one HTTP login per role and
+stores the resulting iron-session cookie under `test-results/auth/<role>.json`.
+Every spec then loads that storageState by default (configured in
+`playwright.config.ts` and `playwright.prodlike.config.ts`). The dedicated
+`tests/integration/auth-login.spec.ts` exercises the full redirect chain
+without the storageState fixture.
 
 ## Inspecting tokens
 
