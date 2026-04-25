@@ -20,9 +20,10 @@ stateDiagram-v2
 ```
 
 - **Draft:** Initial state. The requirement is being
-  authored or revised. Saving an edit requires the `edited_at`
-  value that was current when editing started; stale draft saves
-  are rejected instead of overwriting newer content.
+  authored or revised. Saving an edit requires the latest version's
+  `id` as `baseVersionId` and opaque `revisionToken` as
+  `baseRevisionToken`; stale draft saves are rejected instead of
+  overwriting newer content.
 - **Review:** The requirement is under review. This state
   is used both for publishing review (Draft → Review) and
   archiving review (Published → Review). The system

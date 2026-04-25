@@ -91,7 +91,12 @@ Combines:
 - requirement listing
 - free-text search
 - lookup tables for areas, categories, types, quality characteristics,
-  statuses, scenarios, and transitions
+  risk levels, statuses, scenarios, and transitions
+
+Requirement search supports pagination, sorting, archive inclusion, taxonomy
+filters, status/testing filters, norm-reference filters, and usage-scenario
+filters. Lookup catalogs ignore requirement-only filters except
+`typeId`, which filters the `quality_characteristics` catalog.
 
 This avoids a larger set of narrowly scoped read tools.
 
@@ -117,10 +122,12 @@ Supports:
 - `delete_draft`
 - `restore_version`
 
-Edit calls must include `requirement.expectedEditedAt`, copied from the
-latest version's `editedAt` value returned by `requirements_get_requirement`.
-The shared service maps stale tokens to `409 Conflict` details with
-`reason: "stale_requirement_edit"` and the latest requirement snapshot.
+Edit calls must first fetch the requirement with `view: "history"` and copy
+`requirement.versions[0].id` and `requirement.versions[0].revisionToken` into
+`requirement.baseVersionId` and
+`requirement.baseRevisionToken`. The shared service maps stale base-version
+tokens to `409 Conflict` details with `reason: "stale_requirement_edit"` and
+the latest requirement snapshot.
 
 The shared service also supports `reactivate` for REST parity, but that
 operation is intentionally not exposed as an MCP tool operation in v1.

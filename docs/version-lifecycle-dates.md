@@ -256,21 +256,23 @@ The version history pills show the relevant date per status:
   `published_at` and `archived_at` are `NULL`.
 - **Editing a requirement** (`editRequirement`): When the current
   version is Draft, updates the existing row in place with
-  `edited_at` set to the current time, but only when the caller's
-  `expectedEditedAt` value still matches the row's previous
-  `edited_at`. When the current version is Published, creates a new
-  Draft version with `edited_at` set to the current time after the
-  same precondition check. **Not allowed** when the current version is
-  in Review or Archived status.
+  `edited_at` set to the current time and rotates `revision_token`,
+  but only when the caller's `baseVersionId` and
+  `baseRevisionToken` still match the latest version row. When the
+  current version is Published, creates a new Draft version with
+  `edited_at` set to the current time after the same precondition
+  check. **Not allowed** when the current version is in Review or
+  Archived status.
 - **Transitioning status** (`transitionStatus`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to the
   target status. Sets `published_at` or `archived_at` when
   transitioning to Published or Archived respectively.
-  **Never** touches `edited_at`. **Never** creates a new version
-  row. When publishing, auto-archives any previously published
-  version of the same requirement. For archived requirements
-  with a pending Draft or Review replacement, `is_archived`
-  stays `true` until that replacement version is published.
+  Rotates `revision_token` because the row changed, but **never**
+  touches `edited_at`. **Never** creates a new version row. When
+  publishing, auto-archives any previously published version of the
+  same requirement. For archived requirements with a pending Draft or
+  Review replacement, `is_archived` stays `true` until that
+  replacement version is published.
 - **Initiating archiving** (`initiateArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
   Review and `archive_initiated_at` to the current time.

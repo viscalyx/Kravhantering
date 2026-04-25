@@ -24,14 +24,17 @@ agents can use it reliably.
 
 - `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
-  categories, types, type categories, statuses, scenarios, and transitions.
+  categories, types, quality characteristics, risk levels, statuses,
+  scenarios, and transitions.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.
 - `requirements_manage_requirement`
   Create, edit, archive, delete the latest draft, or restore a historical
-  version. For `operation: "edit"`, first fetch the requirement and pass the
-  version's current `editedAt` value back as `requirement.expectedEditedAt`.
+  version. For `operation: "edit"`, first fetch the requirement with
+  `view: "history"` and pass `requirement.versions[0].id` and
+  `requirement.versions[0].revisionToken` back as
+  `requirement.baseVersionId` and `requirement.baseRevisionToken`.
 - `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 
@@ -325,10 +328,12 @@ data first:
 This is especially useful because transitions use `toStatusId`, and creation or
 editing may require IDs for areas and classification fields.
 
-For edits, also fetch the requirement immediately before preparing the edit.
-Use the latest version's `editedAt` value as `requirement.expectedEditedAt`.
-If the server returns `409 Conflict` with `reason: "stale_requirement_edit"`,
-read the returned latest snapshot and compare before retrying.
+For edits, also fetch the requirement immediately before preparing the edit
+with `view: "history"`. Use `requirement.versions[0].id` as
+`requirement.baseVersionId` and `requirement.versions[0].revisionToken` as
+`requirement.baseRevisionToken`. If the server returns `409 Conflict` with
+`reason: "stale_requirement_edit"`, read the returned latest snapshot and
+compare before retrying.
 
 ### 2. Prefer `uniqueId`
 
@@ -391,8 +396,13 @@ tool. For requirement lists, it supports:
 - `categoryIds`
 - `typeIds`
 - `qualityCharacteristicIds`
+- `riskLevelIds`
+- `normReferenceIds`
+- `usageScenarioIds`
 - `statuses`
 - `requiresTesting`
+- `sortBy`
+- `sortDirection`
 
 ## Example Tasks
 
