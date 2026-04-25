@@ -198,15 +198,12 @@ async function createClient() {
 
 async function getTool(name: string) {
   const { client, transport } = await createClient()
-  const tools = await client.listTools()
-  const tool = tools.tools.find(tool => tool.name === name)
-
-  return {
-    cleanup: async () => {
-      await client.close()
-      await transport.close()
-    },
-    tool,
+  try {
+    const tools = await client.listTools()
+    return tools.tools.find(tool => tool.name === name)
+  } finally {
+    await client.close()
+    await transport.close()
   }
 }
 
@@ -251,9 +248,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_query_catalog filters and pagination', async () => {
-      const { cleanup, tool: queryTool } = await getTool(
-        'requirements_query_catalog',
-      )
+      const queryTool = await getTool('requirements_query_catalog')
 
       expect(queryTool).toBeDefined()
       expect(queryTool?.description).toContain('risk_levels')
@@ -263,14 +258,10 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('usageScenarioIds')
       expect(queryInputSchemaText).toContain('sortBy')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
-
-      await cleanup()
     })
 
     it('describes requirements_get_requirement history edit tokens', async () => {
-      const { cleanup, tool: getRequirementTool } = await getTool(
-        'requirements_get_requirement',
-      )
+      const getRequirementTool = await getTool('requirements_get_requirement')
 
       expect(getRequirementTool).toBeDefined()
       expect(getRequirementTool?.description).toContain('view: "history"')
@@ -284,14 +275,10 @@ describe('handleRequirementsMcpRequest', () => {
       )
       expect(getRequirementOutputSchemaText).toContain('revisionToken')
       expect(getRequirementOutputSchemaText).toContain('baseRevisionToken')
-
-      await cleanup()
     })
 
     it('describes requirements_manage_requirement create and edit inputs', async () => {
-      const { cleanup, tool: manageTool } = await getTool(
-        'requirements_manage_requirement',
-      )
+      const manageTool = await getTool('requirements_manage_requirement')
 
       expect(manageTool).toBeDefined()
       expect(manageTool?.description).toContain('requirement.baseVersionId')
@@ -307,12 +294,10 @@ describe('handleRequirementsMcpRequest', () => {
       expect(manageInputSchemaText).toContain(
         'requirement.versions[0].revisionToken',
       )
-
-      await cleanup()
     })
 
     it('describes requirements_transition_requirement revision output', async () => {
-      const { cleanup, tool: transitionTool } = await getTool(
+      const transitionTool = await getTool(
         'requirements_transition_requirement',
       )
 
@@ -321,12 +306,10 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(transitionTool?.outputSchema)).toContain(
         'revisionToken',
       )
-
-      await cleanup()
     })
 
     it('describes requirements_list_improvement_suggestions output', async () => {
-      const { cleanup, tool: listSuggestionsTool } = await getTool(
+      const listSuggestionsTool = await getTool(
         'requirements_list_improvement_suggestions',
       )
 
@@ -334,12 +317,10 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(listSuggestionsTool?.outputSchema)).toContain(
         'suggestions',
       )
-
-      await cleanup()
     })
 
     it('describes requirements_manage_improvement_suggestion resolution input', async () => {
-      const { cleanup, tool: manageSuggestionTool } = await getTool(
+      const manageSuggestionTool = await getTool(
         'requirements_manage_improvement_suggestion',
       )
 
@@ -351,22 +332,16 @@ describe('handleRequirementsMcpRequest', () => {
       expect(JSON.stringify(manageSuggestionTool?.outputSchema)).toContain(
         'result',
       )
-
-      await cleanup()
     })
 
     it('describes requirements_generate_requirements limits and output', async () => {
-      const { cleanup, tool: generateTool } = await getTool(
-        'requirements_generate_requirements',
-      )
+      const generateTool = await getTool('requirements_generate_requirements')
 
       expect(generateTool).toBeDefined()
       const generateInputSchemaText = JSON.stringify(generateTool?.inputSchema)
       expect(generateInputSchemaText).toContain('"maxLength":1000')
       expect(generateTool?.description).toContain('using the generated fields')
       expect(JSON.stringify(generateTool?.outputSchema)).toContain('stats')
-
-      await cleanup()
     })
   })
 
