@@ -56,8 +56,12 @@ jobs:
           # GitHub Actions variable to avoid hitting any security scanners that
           # look for hardcoded secrets.
           echo "MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}" >> .env.sqlserver
+          echo "TEST_PASSWORD=${TEST_PASSWORD}"
+          echo "TEST_VAR=${TEST_VAR}"
         env:
           MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
+          TEST_PASSWORD: ${{ vars.TEST_PASSWORD }}
+          TEST_VAR: ${{ vars.TEST_VAR }}
 
       - name: Start local database service
         run: npm run db:up
