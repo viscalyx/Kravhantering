@@ -51,6 +51,7 @@ export interface RequirementVersionDetail {
   publishedAt: string | null
   qualityCharacteristic: RequirementLocalizedEntity | null
   requiresTesting: boolean
+  revisionToken: string
   riskLevel: RiskLevelSummary | null
   status: number
   statusColor: string | null

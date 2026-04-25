@@ -195,6 +195,7 @@ erDiagram
 
     requirement_versions {
         integer id PK
+        text revision_token UK "uniqueidentifier"
         integer requirement_id FK
         integer version_number
         text description
@@ -896,13 +897,15 @@ the immutable properties; all mutable content lives in
 ### `requirement_versions`
 
 A **full snapshot** of a requirement at a specific
-version. Every edit creates a new version row, enabling
-complete audit history.
+version. Published edits create a new draft version row;
+draft edits update the latest draft in place under a revision-token
+precondition.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
+| `revision_token` | uniqueidentifier | Opaque optimistic-concurrency token; changes whenever the version row changes |
 | `requirement_id` | integer FK → `requirements.id` | Parent requirement |
 | `version_number` | integer | Monotonically increasing version within the requirement |
 | `description` | text | The requirement specification text |
@@ -922,9 +925,10 @@ complete audit history.
 | `created_by` | text | User or system that created this version (nullable) |
 <!-- markdownlint-enable MD013 -->
 
-**Unique constraint:**
+**Unique constraints:**
 `uq_requirement_versions_requirement_id_version_number`
-on `(requirement_id, version_number)`.
+on `(requirement_id, version_number)`;
+`uq_requirement_versions_revision_token` on `revision_token`.
 **Indexes:** `idx_requirement_versions_requirement_id`.
 
 **Lifecycle invariant:** `created_at` < `published_at`
@@ -1279,6 +1283,7 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_list_column_defaults_sort_order` | `requirement_list_column_defaults` | `sort_order` | Ensures each default list position is assigned to exactly one column |
 | `uq_requirements_unique_id` | `requirements` | `unique_id` | Ensures each requirement has a distinct human-readable ID |
 | `uq_requirement_versions_requirement_id_version_number` | `requirement_versions` | `(requirement_id, version_number)` | Ensures version numbers are unique per requirement |
+| `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
 | `uq_package_responsibility_areas_name_sv` | `package_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
 | `uq_package_responsibility_areas_name_en` | `package_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate owner email addresses |
@@ -1417,6 +1422,7 @@ graph LR
     R -- "idx_requirements_is_archived\n(is_archived)" --> R
 
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
+    RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
 
     RVS -- "idx_..._usage_scenario_id\n(usage_scenario_id)" --> RSC

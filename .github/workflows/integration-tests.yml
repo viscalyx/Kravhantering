@@ -52,25 +52,12 @@ jobs:
       - name: Prepare SQL Server env file
         run: |
           cp .env.sqlserver.ci .env.sqlserver
-          # This uses a well-known password from examples, but it's stored as a
-          # GitHub Actions variable to avoid hitting any security scanners that
-          # look for hardcoded secrets.
-          echo "MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}" >> .env.sqlserver
-        env:
-          MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
 
       - name: Start local database service
         run: npm run db:up
 
       - name: Setup local SQL Server database
         run: npm run db:setup
-        env:
-          MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
-          DB_HOST: 127.0.0.1
-          DB_PORT: 1433
-          DB_NAME: kravhantering
-          DB_ENCRYPT: 'true'
-          DB_TRUST_SERVER_CERTIFICATE: 'true'
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -79,12 +66,6 @@ jobs:
         run: ${{ matrix.testCommand }}
         env:
           CI: true
-          MSSQL_SA_PASSWORD: ${{ vars.MSSQL_SA_PASSWORD }}
-          DB_HOST: 127.0.0.1
-          DB_PORT: 1433
-          DB_NAME: kravhantering
-          DB_ENCRYPT: 'true'
-          DB_TRUST_SERVER_CERTIFICATE: 'true'
 
       - name: Upload test results (${{ matrix.server }})
         if: always()

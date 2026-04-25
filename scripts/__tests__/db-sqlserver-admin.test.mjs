@@ -300,11 +300,15 @@ describe('db-sqlserver-admin.mjs', () => {
     })
   })
 
-  it('runs the initial TypeORM migration through an injected DataSource', async () => {
+  it('runs registered TypeORM migrations through an injected DataSource', async () => {
+    let dataSourceOptions
     const destroy = vi.fn(async () => undefined)
     const initialize = vi.fn(async () => undefined)
     const runMigrations = vi.fn(async () => [{ name: 'InitialMigration' }])
     class FakeDataSource {
+      constructor(options) {
+        dataSourceOptions = options
+      }
       destroy = destroy
       initialize = initialize
       runMigrations = runMigrations
@@ -316,6 +320,12 @@ describe('db-sqlserver-admin.mjs', () => {
     )
 
     expect(initialize).toHaveBeenCalled()
+    expect(
+      dataSourceOptions.migrations.map(migration => migration.name),
+    ).toEqual([
+      'InitialSqlServerSchema1713720000000',
+      'RequirementVersionRevisionToken1713800000000',
+    ])
     expect(runMigrations).toHaveBeenCalled()
     expect(destroy).toHaveBeenCalled()
     expect(result).toEqual({

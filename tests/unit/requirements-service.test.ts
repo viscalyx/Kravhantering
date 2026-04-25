@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 const mocks = vi.hoisted(() => ({
@@ -119,6 +119,7 @@ function makeRequirementRecord() {
         id: 10,
         publishedAt: null,
         requiresTesting: true,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -260,6 +261,7 @@ describe('createRequirementsService', () => {
         qualityCharacteristicId: 9,
         requirementTypeId: 1,
         requiresTesting: true,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -320,6 +322,7 @@ describe('createRequirementsService', () => {
         qualityCharacteristicId: null,
         requirementTypeId: null,
         requiresTesting: false,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         status: 4,
         statusColor: '#6b7280',
         statusNameEn: 'Archived',
@@ -713,10 +716,74 @@ describe('createRequirementsService', () => {
     const result = await service.manageRequirement(makeContext(), {
       id: 1,
       operation: 'edit',
-      requirement: { description: 'Updated text' },
+      requirement: {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 10,
+        description: 'Updated text',
+      },
     })
     expect(result.operation).toBe('edit')
-    expect(mocks.editRequirement).toHaveBeenCalled()
+    expect(mocks.editRequirement).toHaveBeenCalledWith(
+      expect.anything(),
+      1,
+      expect.objectContaining({
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 10,
+      }),
+    )
+  })
+
+  it('rejects edits without an optimistic concurrency token', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: { description: 'Updated text' },
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      details: { reason: 'missing_edit_precondition' },
+    })
+    expect(mocks.editRequirement).not.toHaveBeenCalled()
+  })
+
+  it('adds the latest requirement snapshot to stale edit conflicts', async () => {
+    mocks.editRequirement.mockRejectedValue(
+      conflictError('This requirement was updated after you started editing.', {
+        baseVersionId: 10,
+        latestVersionId: 10,
+        reason: 'stale_requirement_edit',
+      }),
+    )
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated text',
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        baseVersionId: 10,
+        latest: expect.objectContaining({ uniqueId: 'INT0001' }),
+        latestVersionId: 10,
+        reason: 'stale_requirement_edit',
+      },
+    })
   })
 
   it('initiates archiving review for a requirement', async () => {

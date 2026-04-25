@@ -48,6 +48,12 @@ Editing is **not allowed** when the current version is in Review
 or Archived status. Review must first be moved back to Draft;
 Archived must be restored (which creates a new Draft version).
 
+Edit requests must include the `baseVersionId` and
+`baseRevisionToken` values that were current when editing started.
+The server treats those normalized fields as optimistic concurrency
+preconditions and rejects the save with `409 Conflict` if another save
+has changed the latest version row before the request arrives.
+
 ## When `edited_at` Is Updated
 
 `edited_at` is set **only** when user-initiated content fields
@@ -251,19 +257,23 @@ The version history pills show the relevant date per status:
   `published_at` and `archived_at` are `NULL`.
 - **Editing a requirement** (`editRequirement`): When the current
   version is Draft, updates the existing row in place with
-  `edited_at` set to the current time. When the current version
-  is Published, creates a new Draft version with `edited_at` set
-  to the current time. **Not allowed** when the current version
-  is in Review or Archived status.
+  `edited_at` set to the current time and rotates `revision_token`,
+  but only when the caller's `baseVersionId` and
+  `baseRevisionToken` still match the latest version row. When the
+  current version is Published, creates a new Draft version with
+  `edited_at` set to the current time after the same precondition
+  check. **Not allowed** when the current version is in Review or
+  Archived status.
 - **Transitioning status** (`transitionStatus`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to the
   target status. Sets `published_at` or `archived_at` when
   transitioning to Published or Archived respectively.
-  **Never** touches `edited_at`. **Never** creates a new version
-  row. When publishing, auto-archives any previously published
-  version of the same requirement. For archived requirements
-  with a pending Draft or Review replacement, `is_archived`
-  stays `true` until that replacement version is published.
+  Rotates `revision_token` because the row changed, but **never**
+  touches `edited_at`. **Never** creates a new version row. When
+  publishing, auto-archives any previously published version of the
+  same requirement. For archived requirements with a pending Draft or
+  Review replacement, `is_archived` stays `true` until that
+  replacement version is published.
 - **Initiating archiving** (`initiateArchiving`): In-place
   `UPDATE` on the existing version row. Sets `statusId` to
   Review and `archive_initiated_at` to the current time.

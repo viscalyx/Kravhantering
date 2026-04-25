@@ -21,9 +21,19 @@ vi.mock('@/lib/requirements/service', () => ({
     getRequirement: mockGetRequirement,
     manageRequirement: mockManageRequirement,
   }),
-  toHttpErrorPayload: (err: Error) => ({
-    body: { error: err.message },
-    status: 400,
+  toHttpErrorPayload: (
+    err: Error & {
+      code?: string
+      details?: Record<string, unknown>
+      status?: number
+    },
+  ) => ({
+    body: {
+      code: err.code ?? 'internal',
+      details: err.details,
+      error: err.message,
+    },
+    status: err.status ?? 500,
   }),
 }))
 
@@ -80,7 +90,7 @@ describe('requirements/[id] route', () => {
 
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
     })
 
     it('returns handled errors when request context creation fails', async () => {
@@ -89,7 +99,7 @@ describe('requirements/[id] route', () => {
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
 
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
       expect(mockGetRequirement).not.toHaveBeenCalled()
     })
   })
@@ -101,6 +111,8 @@ describe('requirements/[id] route', () => {
       const req = new NextRequest('http://localhost/api/requirements/1', {
         method: 'PUT',
         body: JSON.stringify({
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
           description: 'Updated',
           references: [{ name: 'Ref1', uri: 'http://example.com' }],
           scenarioIds: [1, 2],
@@ -117,8 +129,46 @@ describe('requirements/[id] route', () => {
         expect.objectContaining({
           id: 1,
           operation: 'edit',
+          requirement: expect.objectContaining({
+            baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+            baseVersionId: 10,
+          }),
         }),
       )
+    })
+
+    it('returns stale edit conflicts with details from the service', async () => {
+      mockManageRequirement.mockRejectedValue(
+        Object.assign(new Error('This requirement was updated'), {
+          code: 'conflict',
+          details: {
+            baseVersionId: 10,
+            latest: { uniqueId: 'REQ-001' },
+            latestVersionId: 10,
+            reason: 'stale_requirement_edit',
+          },
+          status: 409,
+        }),
+      )
+
+      const req = new NextRequest('http://localhost/api/requirements/1', {
+        method: 'PUT',
+        body: JSON.stringify({
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated',
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await PUT(req, makeParams('1'))
+      const json = (await res.json()) as {
+        code: string
+        details: { reason: string }
+      }
+
+      expect(res.status).toBe(409)
+      expect(json.code).toBe('conflict')
+      expect(json.details.reason).toBe('stale_requirement_edit')
     })
 
     it('returns error on failure', async () => {
@@ -130,7 +180,7 @@ describe('requirements/[id] route', () => {
         headers: { 'Content-Type': 'application/json' },
       })
       const res = await PUT(req, makeParams('1'))
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
     })
   })
 
@@ -157,7 +207,7 @@ describe('requirements/[id] route', () => {
         method: 'DELETE',
       })
       const res = await DELETE(req, makeParams('1'))
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
     })
   })
 })

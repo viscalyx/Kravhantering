@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Plus, X } from 'lucide-react'
+import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -11,15 +11,28 @@ import RequirementFormFields, {
 } from '@/components/RequirementFormFields'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
+import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 interface RequirementFormProps {
+  baseRevisionToken?: string | null
+  baseVersionId?: number | null
   initialData?: Partial<
     Omit<RequirementFormFieldValues, 'normReferenceIds' | 'scenarioIds'>
   >
   initialNormReferenceIds?: number[]
   initialScenarioIds?: number[]
   mode: 'create' | 'edit'
+  onRefreshLatest?: () => Promise<void> | void
   requirementId?: number | string
+}
+
+interface RequirementEditErrorPayload {
+  code?: string
+  details?: {
+    latest?: RequirementDetailResponse | null
+    reason?: string
+  }
+  error?: string
 }
 
 interface NormReferenceOption {
@@ -46,9 +59,12 @@ const EMPTY_FORM: RequirementFormFieldValues = {
 }
 
 export default function RequirementForm({
+  baseRevisionToken,
+  baseVersionId,
   initialData,
   initialNormReferenceIds,
   initialScenarioIds,
+  onRefreshLatest,
   requirementId,
   mode,
 }: RequirementFormProps) {
@@ -73,7 +89,11 @@ export default function RequirementForm({
   >([])
 
   const [submitting, setSubmitting] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [staleConflict, setStaleConflict] = useState<{
+    latest: RequirementDetailResponse | null
+  } | null>(null)
   const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
     () => {
       try {
@@ -138,6 +158,7 @@ export default function RequirementForm({
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    setStaleConflict(null)
 
     try {
       const url =
@@ -156,6 +177,8 @@ export default function RequirementForm({
             : undefined,
           riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
           description: form.description || undefined,
+          baseRevisionToken: mode === 'edit' ? baseRevisionToken : undefined,
+          baseVersionId: mode === 'edit' ? baseVersionId : undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
           requiresTesting: form.requiresTesting,
           verificationMethod: form.requiresTesting
@@ -198,9 +221,18 @@ export default function RequirementForm({
           router.push(`/requirements?selected=${targetUniqueId}`)
         }
       } else {
-        const err = (await res.json().catch(() => null)) as {
-          error?: string
-        } | null
+        const err = (await res
+          .json()
+          .catch(() => null)) as RequirementEditErrorPayload | null
+        if (
+          res.status === 409 &&
+          err?.code === 'conflict' &&
+          err.details?.reason === 'stale_requirement_edit'
+        ) {
+          setStaleConflict({ latest: err.details.latest ?? null })
+          setError(null)
+          return
+        }
         setError(err?.error ?? res.statusText)
       }
     } catch (e) {
@@ -210,9 +242,32 @@ export default function RequirementForm({
     }
   }
 
+  const latestConflictVersion = staleConflict?.latest?.versions[0]
+  const latestConflictTarget = staleConflict?.latest?.uniqueId
+  const latestConflictHref = staleConflict?.latest
+    ? latestConflictVersion?.versionNumber
+      ? `/requirements/${latestConflictTarget}/${latestConflictVersion.versionNumber}`
+      : `/requirements/${latestConflictTarget}`
+    : null
+
+  const handleRefreshLatest = async () => {
+    if (!onRefreshLatest || isRefreshing) return
+    setIsRefreshing(true)
+    setError(null)
+    try {
+      await onRefreshLatest()
+      setStaleConflict(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : tc('error'))
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   const normReferenceCreateButton = (
     <button
       className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+      disabled={isRefreshing}
       onClick={() => setShowCreateNormRef(true)}
       type="button"
     >
@@ -306,6 +361,48 @@ export default function RequirementForm({
           document.body,
         )}
 
+      {staleConflict && (
+        <div
+          className="mt-5 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-800 dark:border-amber-800/70 dark:bg-amber-950/40 dark:text-amber-200"
+          role="alert"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle
+              aria-hidden="true"
+              className="mt-0.5 h-4 w-4 shrink-0 text-amber-500"
+            />
+            <div>
+              <p className="font-semibold">{t('staleEditConflict')}</p>
+              <p className="mt-1">{t('staleEditConflictHelp')}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {latestConflictHref && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
+                    disabled={isRefreshing}
+                    onClick={() => router.push(latestConflictHref)}
+                    type="button"
+                  >
+                    <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                    {t('staleEditViewLatest')}
+                  </button>
+                )}
+                {onRefreshLatest && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
+                    disabled={isRefreshing}
+                    onClick={handleRefreshLatest}
+                    type="button"
+                  >
+                    <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
+                    {isRefreshing ? tc('loading') : t('staleEditReload')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <p className="mt-5 text-sm text-red-600 dark:text-red-400" role="alert">
           {error}
@@ -314,12 +411,16 @@ export default function RequirementForm({
 
       <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
         <div className="flex items-center gap-3">
-          <button className="btn-primary" disabled={submitting} type="submit">
+          <button
+            className="btn-primary"
+            disabled={submitting || isRefreshing}
+            type="submit"
+          >
             {submitting ? tc('loading') : tc('save')}
           </button>
           <button
             className="px-4 py-2.5 rounded-xl border text-sm font-medium min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
-            disabled={submitting}
+            disabled={submitting || isRefreshing}
             onClick={() => router.back()}
             type="button"
           >
@@ -333,7 +434,7 @@ export default function RequirementForm({
               aria-label={t('afterSaveInline')}
               aria-pressed={saveDestination === 'inline'}
               className={`min-h-11 min-w-11 px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
-              disabled={submitting}
+              disabled={submitting || isRefreshing}
               onClick={() => {
                 setSaveDestination('inline')
                 try {
@@ -350,7 +451,7 @@ export default function RequirementForm({
               aria-label={t('afterSavePage')}
               aria-pressed={saveDestination === 'page'}
               className={`min-h-11 min-w-11 px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
-              disabled={submitting}
+              disabled={submitting || isRefreshing}
               onClick={() => {
                 setSaveDestination('page')
                 try {

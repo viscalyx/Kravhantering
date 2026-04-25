@@ -64,6 +64,12 @@ export async function PUT(
           ? String(body.acceptanceCriteria)
           : undefined,
         areaId: body.areaId ? Number(body.areaId) : undefined,
+        baseRevisionToken:
+          body.baseRevisionToken != null
+            ? String(body.baseRevisionToken)
+            : undefined,
+        baseVersionId:
+          body.baseVersionId != null ? Number(body.baseVersionId) : undefined,
         categoryId: body.categoryId ? Number(body.categoryId) : undefined,
         createdBy: body.ownerId ? String(body.ownerId) : undefined,
         description: String(body.description ?? ''),

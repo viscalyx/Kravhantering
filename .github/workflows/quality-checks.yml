@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
   pull-requests: write
 
 jobs:
@@ -44,6 +45,20 @@ jobs:
 
       - name: Run Python type check
         run: npm run lint:py
+
+      - name: Run dotenv-linter root check
+        uses: dotenv-linter/action-dotenv-linter@v3
+        with:
+          dotenv_linter_flags: .
+          filter_mode: nofilter
+          fail_level: any
+
+      - name: Run dotenv-linter devcontainer check
+        uses: dotenv-linter/action-dotenv-linter@v3
+        with:
+          dotenv_linter_flags: .devcontainer --recursive
+          filter_mode: nofilter
+          fail_level: any
 
       - name: Run tests and coverage
         run: npm run test:coverage
@@ -84,7 +99,8 @@ jobs:
               { name: 'Lint', command: 'npm run lint' },
               { name: 'Markdown Lint', command: 'npm run lint:md' },
               { name: 'Type Check', command: 'npm run type-check' },
-              { name: 'Python Type Check', command: 'npm run lint:py' }
+              { name: 'Python Type Check', command: 'npm run lint:py' },
+              { name: 'dotenv-linter', command: 'npm run dotenv:check' }
             ];
 
             let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';

@@ -27,6 +27,18 @@ function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
 
+function errJson(body: unknown, status = 400, statusText = 'Bad Request') {
+  return { ok: false, json: async () => body, status, statusText }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>(res => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -168,6 +180,8 @@ describe('RequirementForm', () => {
 
     const { container } = render(
       <RequirementForm
+        baseRevisionToken="11111111-1111-4111-8111-111111111111"
+        baseVersionId={10}
         initialData={{ description: 'Existing' }}
         mode="edit"
         requirementId={5}
@@ -186,6 +200,217 @@ describe('RequirementForm', () => {
         '/api/requirements/5',
         expect.objectContaining({ method: 'PUT' }),
       )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      (c: unknown[]) =>
+        c[0] === '/api/requirements/5' &&
+        (c[1] as RequestInit)?.method === 'PUT',
+    )
+    const body = JSON.parse((putCall?.[1] as RequestInit).body as string)
+    expect(body.baseRevisionToken).toBe('11111111-1111-4111-8111-111111111111')
+    expect(body.baseVersionId).toBe(10)
+  })
+
+  it('shows a stale edit conflict prompt without clearing form data', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT')
+        return Promise.resolve(
+          errJson(
+            {
+              code: 'conflict',
+              details: {
+                latest: {
+                  uniqueId: 'REQ-001',
+                  versions: [
+                    {
+                      revisionToken: '22222222-2222-4222-8222-222222222222',
+                      versionNumber: 2,
+                    },
+                  ],
+                },
+                reason: 'stale_requirement_edit',
+              },
+              error: 'This requirement was updated',
+            },
+            409,
+            'Conflict',
+          ),
+        )
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { container } = render(
+      <RequirementForm
+        baseRevisionToken="11111111-1111-4111-8111-111111111111"
+        baseVersionId={10}
+        initialData={{ description: 'Existing' }}
+        mode="edit"
+        requirementId={5}
+      />,
+    )
+
+    const desc = await screen.findByRole('textbox', {
+      name: /requirement\.description/,
+    })
+    fireEvent.change(desc, { target: { value: 'Unsaved local text' } })
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'requirement.staleEditConflict',
+      )
+    })
+    expect(desc).toHaveValue('Unsaved local text')
+    expect(
+      screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides the latest-version action when a stale conflict omits latest data', async () => {
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT')
+        return Promise.resolve(
+          errJson(
+            {
+              code: 'conflict',
+              details: {
+                latest: null,
+                reason: 'stale_requirement_edit',
+              },
+              error: 'This requirement was updated',
+            },
+            409,
+            'Conflict',
+          ),
+        )
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { container } = render(
+      <RequirementForm
+        baseRevisionToken="11111111-1111-4111-8111-111111111111"
+        baseVersionId={10}
+        initialData={{ description: 'Existing' }}
+        mode="edit"
+        requirementId={5}
+      />,
+    )
+
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'requirement.staleEditConflict',
+      )
+    })
+    expect(
+      screen.queryByRole('button', {
+        name: /requirement\.staleEditViewLatest/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('awaits stale-conflict refresh and disables conflict actions while loading', async () => {
+    const refresh = deferred<void>()
+    const onRefreshLatest = vi.fn(() => refresh.promise)
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'PUT')
+        return Promise.resolve(
+          errJson(
+            {
+              code: 'conflict',
+              details: {
+                latest: {
+                  uniqueId: 'REQ-001',
+                  versions: [
+                    {
+                      revisionToken: '22222222-2222-4222-8222-222222222222',
+                      versionNumber: 2,
+                    },
+                  ],
+                },
+                reason: 'stale_requirement_edit',
+              },
+              error: 'This requirement was updated',
+            },
+            409,
+            'Conflict',
+          ),
+        )
+      if (typeof url === 'string' && url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/requirement-categories')
+      )
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (
+        typeof url === 'string' &&
+        url.includes('/api/quality-characteristics')
+      )
+        return Promise.resolve(okJson({ qualityCharacteristics: [] }))
+      if (typeof url === 'string' && url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { container } = render(
+      <RequirementForm
+        baseRevisionToken="11111111-1111-4111-8111-111111111111"
+        baseVersionId={10}
+        initialData={{ description: 'Existing' }}
+        mode="edit"
+        onRefreshLatest={onRefreshLatest}
+        requirementId={5}
+      />,
+    )
+
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement)
+
+    const reload = await screen.findByRole('button', {
+      name: /requirement\.staleEditReload/,
+    })
+    fireEvent.click(reload)
+
+    expect(onRefreshLatest).toHaveBeenCalledTimes(1)
+    expect(reload).toBeDisabled()
+    expect(reload).toHaveTextContent('common.loading')
+    expect(
+      screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
+    ).toBeDisabled()
+
+    refresh.resolve()
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 

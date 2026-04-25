@@ -30,7 +30,7 @@ for setup, migrations, and the read-only browse workflow.
 | `npm run start:prodlike` | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
 | `npm run build` | Production build |
 | `npm run start` | Start the production server |
-| `npm run check` | Run all checks (TS, Python, format, lint, tests) |
+| `npm run check` | Run all checks (TS, Python, dotenv, format, lint, tests) |
 | `npm run test` | Run unit tests with Vitest |
 | `npm run test:watch` | Run unit tests in watch mode |
 | `npm run test:coverage` | Run unit tests with coverage |
@@ -39,10 +39,12 @@ for setup, migrations, and the read-only browse workflow.
 | `npm run lint` | Lint with Biome |
 | `npm run lint:fix` | Lint and auto-fix with Biome |
 | `npm run lint:py` | Type-check Python scripts with Pyright |
+| `npm run dotenv:check` | Check dotenv files with dotenv-linter |
+| `npm run dotenv:fix` | Auto-fix dotenv files with dotenv-linter |
 | `npm run format` | Format code with Biome |
 | `npm run spell` | Spell check with cspell |
 | `npm run lint:md` | Lint Markdown files |
-| `npm run fix` | Auto-fix formatting, linting & Markdown |
+| `npm run fix` | Auto-fix formatting, linting, Markdown, and dotenv files |
 | `npm run type-check` | TypeScript type checking |
 <!-- markdownlint-enable MD013 -->
 

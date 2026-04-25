@@ -22,6 +22,7 @@ export interface RequirementVersionEntity {
   requirementCategory: RequirementCategoryEntity | null
   requirementStatus: RequirementStatusEntity
   requirementType: RequirementTypeEntity | null
+  revisionToken: string
   riskLevel: RiskLevelEntity | null
   verificationMethod: string | null
   versionNumber: number
@@ -37,6 +38,11 @@ export const requirementVersionEntity =
         primary: true,
         type: 'int',
         generated: 'increment',
+      },
+      revisionToken: {
+        name: 'revision_token',
+        type: 'uniqueidentifier',
+        default: () => 'NEWID()',
       },
       versionNumber: { name: 'version_number', type: 'int' },
       description: { name: 'description', type: 'nvarchar', length: 'MAX' },
@@ -77,6 +83,10 @@ export const requirementVersionEntity =
       {
         name: 'uq_requirement_versions_requirement_id_version_number',
         columns: ['requirement', 'versionNumber'],
+      },
+      {
+        name: 'uq_requirement_versions_revision_token',
+        columns: ['revisionToken'],
       },
     ],
     indices: [

@@ -21,6 +21,10 @@ RUN apt-get update && \
         mkcert && \
     rm -rf /var/lib/apt/lists/*
 
+# Install dotenv-linter for env file checks.
+RUN curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | \
+    sh -s -- -b /usr/local/bin
+
 # Set the working directory
 WORKDIR /workspace
 

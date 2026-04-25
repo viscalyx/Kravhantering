@@ -48,40 +48,167 @@ const PaginationSchema = z
   })
   .strict()
 
+const ResponseFormatSchema = z
+  .enum(['json', 'markdown'])
+  .default('markdown')
+  .describe('Use "json" for machine-readable text, or "markdown" for display.')
+
+const ResponseLocaleSchema = z
+  .enum(['en', 'sv'])
+  .default('en')
+  .describe('Response language for names and messages.')
+
 const QueryCatalogOutputSchema = z
   .object({
-    catalog: z.string(),
-    items: z.array(z.record(z.string(), z.unknown())),
+    catalog: z
+      .enum([
+        'requirements',
+        'areas',
+        'categories',
+        'types',
+        'quality_characteristics',
+        'risk_levels',
+        'statuses',
+        'scenarios',
+        'transitions',
+      ])
+      .describe('Catalog that was returned.'),
+    items: z
+      .array(z.record(z.string(), z.unknown()))
+      .describe('Catalog rows. Shape depends on the selected catalog.'),
     message: z.string(),
-    pagination: PaginationSchema.nullable(),
+    pagination: PaginationSchema.nullable().describe(
+      'Pagination metadata for catalog "requirements"; null for lookup catalogs.',
+    ),
   })
   .strict()
+
+const RequirementVersionOutputSchema = z
+  .record(z.string(), z.unknown())
+  .describe(
+    'Requirement version object. Includes numeric id and opaque revisionToken. For edit preconditions, fetch requirements_get_requirement with view: "history" and use requirement.versions[0].id as requirement.baseVersionId plus requirement.versions[0].revisionToken as requirement.baseRevisionToken.',
+  )
+
+const RequirementDetailOutputSchema = z
+  .record(z.string(), z.unknown())
+  .describe(
+    'Requirement detail object. Its versions array contains selected version objects; with view: "history", requirement.versions[0] is the latest overall version and the edit base.',
+  )
 
 const GetRequirementOutputSchema = z
   .object({
     message: z.string(),
-    requirement: z.record(z.string(), z.unknown()),
+    requirement: RequirementDetailOutputSchema,
     requirementResourceUri: z.string(),
     requirementViewUri: z.string(),
-    version: z.record(z.string(), z.unknown()).optional(),
-    versions: z.array(z.record(z.string(), z.unknown())).optional(),
+    version: RequirementVersionOutputSchema.optional().describe(
+      'Requested version object when view is "version". Includes revisionToken.',
+    ),
+    versions: z
+      .array(RequirementVersionOutputSchema)
+      .optional()
+      .describe(
+        'All version objects when view is "history"; versions[0] is the latest overall version and includes id plus revisionToken for edit base fields.',
+      ),
   })
   .strict()
 
 const ManageRequirementOutputSchema = z
   .object({
-    detail: z.record(z.string(), z.unknown()).optional(),
+    detail: RequirementDetailOutputSchema.optional().describe(
+      'Updated requirement snapshot. On stale edit conflicts, error details.latest contains the latest snapshot with revisionToken.',
+    ),
     message: z.string(),
     operation: z.string(),
-    result: z.record(z.string(), z.unknown()),
+    result: z
+      .record(z.string(), z.unknown())
+      .describe(
+        'Operation result. Edit results include the updated version id.',
+      ),
   })
   .strict()
 
 const TransitionRequirementOutputSchema = z
   .object({
-    detail: z.record(z.string(), z.unknown()),
+    detail: RequirementDetailOutputSchema,
     message: z.string(),
-    version: z.record(z.string(), z.unknown()),
+    version: RequirementVersionOutputSchema.describe(
+      'Transitioned version object with the newly rotated revisionToken.',
+    ),
+  })
+  .strict()
+
+const ListSuggestionsOutputSchema = z
+  .object({
+    counts: z
+      .object({
+        dismissed: z.number(),
+        pending: z.number(),
+        resolved: z.number(),
+        total: z.number(),
+      })
+      .strict(),
+    message: z.string(),
+    suggestions: z.array(
+      z
+        .object({
+          content: z.string(),
+          createdAt: z.string(),
+          createdBy: z.string().nullable(),
+          id: z.number(),
+          isReviewRequested: z.number(),
+          requirementId: z.number(),
+          requirementVersionId: z.number().nullable(),
+          resolution: z.number().nullable(),
+          resolutionMotivation: z.string().nullable(),
+          resolvedAt: z.string().nullable(),
+          resolvedBy: z.string().nullable(),
+          updatedAt: z.string().nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict()
+
+const ManageSuggestionOutputSchema = z
+  .object({
+    message: z.string(),
+    result: z
+      .record(z.string(), z.unknown())
+      .describe('Created or updated suggestion data, or an operation result.'),
+  })
+  .strict()
+
+const GeneratedRequirementOutputSchema = z
+  .object({
+    acceptanceCriteria: z.string().nullable().optional(),
+    categoryId: z.number().optional(),
+    description: z.string(),
+    qualityCharacteristicId: z.number().optional(),
+    rationale: z.string(),
+    requiresTesting: z.boolean(),
+    riskLevelId: z.number().optional(),
+    scenarioIds: z.array(z.number()).optional(),
+    typeId: z.number(),
+    verificationMethod: z.string().nullable().optional(),
+  })
+  .strict()
+
+const GenerateRequirementsOutputSchema = z
+  .object({
+    message: z.string(),
+    model: z.string(),
+    requirements: z.array(GeneratedRequirementOutputSchema),
+    stats: z
+      .object({
+        completionTokens: z.number(),
+        cost: z.number(),
+        promptTokens: z.number(),
+        reasoningTokens: z.number(),
+        totalTokens: z.number(),
+      })
+      .strict(),
+    thinking: z.string(),
   })
   .strict()
 
@@ -357,7 +484,12 @@ function renderRequirementHtml(
 function createQueryCatalogSchema() {
   return z
     .object({
-      areaIds: z.array(z.number().int().positive()).optional(),
+      areaIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Requirement area IDs. Applies only to catalog "requirements".',
+        ),
       catalog: z
         .enum([
           'requirements',
@@ -365,25 +497,126 @@ function createQueryCatalogSchema() {
           'categories',
           'types',
           'quality_characteristics',
+          'risk_levels',
           'statuses',
           'scenarios',
           'transitions',
         ])
-        .default('requirements'),
-      categoryIds: z.array(z.number().int().positive()).optional(),
-      descriptionSearch: z.string().max(200).optional(),
-      includeArchived: z.boolean().optional(),
-      limit: z.number().int().min(1).max(50).default(20),
-      locale: z.enum(['en', 'sv']).default('en'),
-      offset: z.number().int().min(0).default(0),
-      requiresTesting: z.array(z.boolean()).optional(),
-      responseFormat: z.enum(['json', 'markdown']).default('markdown'),
-      statuses: z.array(z.number().int().positive()).optional(),
-      qualityCharacteristicIds: z.array(z.number().int().positive()).optional(),
-      riskLevelIds: z.array(z.number().int().positive()).optional(),
-      typeId: z.number().int().positive().optional(),
-      typeIds: z.array(z.number().int().positive()).optional(),
-      uniqueIdSearch: z.string().max(100).optional(),
+        .default('requirements')
+        .describe(
+          'Catalog to return. Use "requirements" for paged requirement search; lookup catalogs ignore requirement filters.',
+        ),
+      categoryIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Requirement category IDs. Applies only to catalog "requirements".',
+        ),
+      descriptionSearch: z
+        .string()
+        .max(200)
+        .optional()
+        .describe(
+          'Case-insensitive substring filter on requirement description. Applies only to catalog "requirements".',
+        ),
+      includeArchived: z
+        .boolean()
+        .optional()
+        .describe(
+          'Whether archived requirements are included. Applies only to catalog "requirements".',
+        ),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(50)
+        .default(20)
+        .describe('Page size for catalog "requirements"; maximum 50.'),
+      locale: ResponseLocaleSchema,
+      normReferenceIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Norm reference IDs. Applies only to catalog "requirements".',
+        ),
+      offset: z
+        .number()
+        .int()
+        .min(0)
+        .default(0)
+        .describe('Zero-based offset for catalog "requirements".'),
+      qualityCharacteristicIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Quality characteristic IDs. Applies only to catalog "requirements".',
+        ),
+      requiresTesting: z
+        .array(z.boolean())
+        .optional()
+        .describe(
+          'Filter by testing requirement. Applies only to catalog "requirements".',
+        ),
+      responseFormat: ResponseFormatSchema,
+      riskLevelIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe('Risk level IDs. Applies only to catalog "requirements".'),
+      sortBy: z
+        .enum([
+          'uniqueId',
+          'description',
+          'area',
+          'category',
+          'type',
+          'qualityCharacteristic',
+          'riskLevel',
+          'status',
+          'version',
+        ])
+        .optional()
+        .describe(
+          'Sort field for catalog "requirements". Defaults to uniqueId.',
+        ),
+      sortDirection: z
+        .enum(['asc', 'desc'])
+        .optional()
+        .describe(
+          'Sort direction for catalog "requirements". Defaults to asc.',
+        ),
+      statuses: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Requirement status IDs. Applies only to catalog "requirements".',
+        ),
+      typeId: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          'Requirement type ID used only to filter catalog "quality_characteristics".',
+        ),
+      typeIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Requirement type IDs. Applies only to catalog "requirements".',
+        ),
+      uniqueIdSearch: z
+        .string()
+        .max(100)
+        .optional()
+        .describe(
+          'Case-insensitive substring filter on requirement uniqueId. Applies only to catalog "requirements".',
+        ),
+      usageScenarioIds: z
+        .array(z.number().int().positive())
+        .optional()
+        .describe(
+          'Usage scenario IDs. Applies only to catalog "requirements".',
+        ),
     })
     .strict()
 }
@@ -391,63 +624,271 @@ function createQueryCatalogSchema() {
 function createGetRequirementSchema() {
   return z
     .object({
-      id: z.number().int().positive().optional(),
-      locale: z.enum(['en', 'sv']).default('en'),
-      responseFormat: z.enum(['json', 'markdown']).default('markdown'),
-      uniqueId: z.string().max(64).optional(),
-      versionNumber: z.number().int().positive().optional(),
-      view: z.enum(['detail', 'history', 'version']).default('detail'),
+      id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Numeric requirement ID. Use either id or uniqueId.'),
+      locale: ResponseLocaleSchema,
+      responseFormat: ResponseFormatSchema,
+      uniqueId: z
+        .string()
+        .max(64)
+        .optional()
+        .describe('Stable requirement ID, e.g. "REQ-001".'),
+      versionNumber: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Required when view is "version".'),
+      view: z
+        .enum(['detail', 'history', 'version'])
+        .default('detail')
+        .describe(
+          'Use "detail" for the latest published version, "version" with versionNumber for one historical version, or "history" before editing so requirement.versions[0] is the latest overall version.',
+        ),
     })
     .strict()
+    .superRefine((val, ctx) => {
+      if ((val.id == null) === (val.uniqueId == null)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Provide exactly one of id or uniqueId.',
+          path: ['id'],
+        })
+      }
+      if (val.view === 'version' && val.versionNumber == null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'versionNumber is required when view is "version".',
+          path: ['versionNumber'],
+        })
+      }
+    })
 }
 
 const RequirementMutationSchema = z
   .object({
-    acceptanceCriteria: z.string().max(4000).optional(),
-    areaId: z.number().int().positive().optional(),
-    categoryId: z.number().int().positive().optional(),
-    createdBy: z.string().max(200).optional(),
-    description: z.string().max(4000).optional(),
-    requiresTesting: z.boolean().optional(),
-    verificationMethod: z.string().max(4000).optional(),
-    scenarioIds: z.array(z.number().int().positive()).optional(),
-    normReferenceIds: z.array(z.number().int().positive()).optional(),
-    qualityCharacteristicId: z.number().int().positive().optional(),
-    riskLevelId: z.number().int().positive().optional(),
-    typeId: z.number().int().positive().optional(),
+    acceptanceCriteria: z
+      .string()
+      .max(4000)
+      .optional()
+      .describe('Acceptance criteria text for the requirement version.'),
+    areaId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Requirement area ID. Required when creating.'),
+    baseRevisionToken: z
+      .uuid()
+      .optional()
+      .describe(
+        'Required for operation "edit". First call requirements_get_requirement with view: "history", then copy requirement.versions[0].revisionToken.',
+      ),
+    baseVersionId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe(
+        'Required for operation "edit". First call requirements_get_requirement with view: "history", then copy requirement.versions[0].id.',
+      ),
+    categoryId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Requirement category ID.'),
+    createdBy: z
+      .string()
+      .max(200)
+      .optional()
+      .describe('Optional actor/user label for the created or edited version.'),
+    description: z
+      .string()
+      .max(4000)
+      .optional()
+      .describe('Requirement description text. Required for create and edit.'),
+    requiresTesting: z
+      .boolean()
+      .optional()
+      .describe('Whether the requirement must be verified by test.'),
+    verificationMethod: z
+      .string()
+      .max(4000)
+      .optional()
+      .describe(
+        'How the requirement should be verified when requiresTesting is true.',
+      ),
+    scenarioIds: z
+      .array(z.number().int().positive())
+      .optional()
+      .describe('Usage scenario IDs linked to the version.'),
+    normReferenceIds: z
+      .array(z.number().int().positive())
+      .optional()
+      .describe('Norm reference IDs linked to the version.'),
+    qualityCharacteristicId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Quality characteristic ID.'),
+    riskLevelId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Risk level ID.'),
+    typeId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Requirement type ID.'),
   })
   .strict()
 
 function createManageRequirementSchema() {
   return z
     .object({
-      id: z.number().int().positive().optional(),
-      locale: z.enum(['en', 'sv']).default('en'),
-      operation: z.enum([
-        'archive',
-        'create',
-        'delete_draft',
-        'edit',
-        'restore_version',
-      ]),
-      requirement: RequirementMutationSchema.optional(),
-      responseFormat: z.enum(['json', 'markdown']).default('markdown'),
-      uniqueId: z.string().max(64).optional(),
-      versionNumber: z.number().int().positive().optional(),
+      id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          'Numeric requirement ID. Required for non-create operations when uniqueId is not provided.',
+        ),
+      locale: ResponseLocaleSchema,
+      operation: z
+        .enum(['archive', 'create', 'delete_draft', 'edit', 'restore_version'])
+        .describe(
+          'Operation to perform. Create has no existing requirement ID; all other operations require id or uniqueId.',
+        ),
+      requirement: RequirementMutationSchema.optional().describe(
+        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, riskLevelId, requiresTesting, verificationMethod, scenarioIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
+      ),
+      responseFormat: ResponseFormatSchema,
+      uniqueId: z
+        .string()
+        .max(64)
+        .optional()
+        .describe(
+          'Stable requirement ID, e.g. "REQ-001". Required for non-create operations when id is not provided.',
+        ),
+      versionNumber: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Required for operation "restore_version".'),
     })
     .strict()
+    .superRefine((val, ctx) => {
+      if (
+        val.operation !== 'create' &&
+        (val.id == null) === (val.uniqueId == null)
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Provide exactly one of id or uniqueId for this operation.',
+          path: ['id'],
+        })
+      }
+
+      if (val.operation === 'create') {
+        if (!val.requirement?.areaId) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'requirement.areaId is required for operation "create".',
+            path: ['requirement', 'areaId'],
+          })
+        }
+        if (!val.requirement?.description) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'requirement.description is required for operation "create".',
+            path: ['requirement', 'description'],
+          })
+        }
+      }
+
+      if (val.operation === 'edit') {
+        if (!val.requirement?.description) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'requirement.description is required for operation "edit".',
+            path: ['requirement', 'description'],
+          })
+        }
+        if (val.requirement?.baseVersionId == null) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'requirement.baseVersionId is required for operation "edit".',
+            path: ['requirement', 'baseVersionId'],
+          })
+        }
+        if (val.requirement?.baseRevisionToken == null) {
+          ctx.addIssue({
+            code: 'custom',
+            message:
+              'requirement.baseRevisionToken is required for operation "edit".',
+            path: ['requirement', 'baseRevisionToken'],
+          })
+        }
+      }
+
+      if (val.operation === 'restore_version' && val.versionNumber == null) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'versionNumber is required for operation "restore_version".',
+          path: ['versionNumber'],
+        })
+      }
+    })
 }
 
 function createTransitionRequirementSchema() {
   return z
     .object({
-      id: z.number().int().positive().optional(),
-      locale: z.enum(['en', 'sv']).default('en'),
-      responseFormat: z.enum(['json', 'markdown']).default('markdown'),
-      toStatusId: z.number().int().positive(),
-      uniqueId: z.string().max(64).optional(),
+      id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Numeric requirement ID. Use either id or uniqueId.'),
+      locale: ResponseLocaleSchema,
+      responseFormat: ResponseFormatSchema,
+      toStatusId: z
+        .number()
+        .int()
+        .positive()
+        .describe(
+          'Target requirement status ID. Use requirements_query_catalog with catalog "transitions" or "statuses" before choosing this value.',
+        ),
+      uniqueId: z
+        .string()
+        .max(64)
+        .optional()
+        .describe('Stable requirement ID, e.g. "REQ-001".'),
     })
     .strict()
+    .superRefine((val, ctx) => {
+      if ((val.id == null) === (val.uniqueId == null)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Provide exactly one of id or uniqueId.',
+          path: ['id'],
+        })
+      }
+    })
 }
 
 function toCatalogInput(
@@ -461,15 +902,19 @@ function toCatalogInput(
     includeArchived: input.includeArchived,
     limit: input.limit,
     locale: toResponseLocale(input.locale),
+    normReferenceIds: input.normReferenceIds,
     offset: input.offset,
     requiresTesting: input.requiresTesting,
     responseFormat: toResponseFormat(input.responseFormat),
+    sortBy: input.sortBy,
+    sortDirection: input.sortDirection,
     statuses: input.statuses,
     qualityCharacteristicIds: input.qualityCharacteristicIds,
     riskLevelIds: input.riskLevelIds,
     typeId: input.typeId,
     typeIds: input.typeIds,
     uniqueIdSearch: input.uniqueIdSearch,
+    usageScenarioIds: input.usageScenarioIds,
   }
 }
 
@@ -667,7 +1112,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List or search requirements and supporting lookup catalogs such as areas, categories, types, scenarios, statuses, and transitions.',
+        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, statuses, scenarios, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Catalog',
@@ -703,7 +1148,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'Fetch the current requirement detail, a specific version, or the full version history by stable requirement ID.',
+        'Fetch the current requirement detail, a specific version, or the full version history by stable requirement ID. Before editing, call with view: "history" and use requirement.versions[0].id plus requirement.versions[0].revisionToken as the edit base.',
       inputSchema: createGetRequirementSchema(),
       outputSchema: GetRequirementOutputSchema,
       title: 'Get Requirement',
@@ -746,7 +1191,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Create, edit, archive, delete a latest draft, or restore a historical requirement version.',
+        'Create, edit, archive, delete a latest draft, or restore a historical requirement version. For operation "create", pass requirement.areaId and requirement.description, plus optional classification/verification fields. For operation "edit", first call requirements_get_requirement with view: "history", then pass requirement.versions[0].id as requirement.baseVersionId and requirement.versions[0].revisionToken as requirement.baseRevisionToken.',
       inputSchema: createManageRequirementSchema(),
       outputSchema: ManageRequirementOutputSchema,
       title: 'Manage Requirement',
@@ -820,7 +1265,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Transition a requirement version through the lifecycle states defined in requirement_status_transitions.',
+        'Transition a requirement version through the lifecycle states defined in requirement_status_transitions. A transition rotates the version revisionToken; refetch with requirements_get_requirement before a later edit.',
       inputSchema: createTransitionRequirementSchema(),
       outputSchema: TransitionRequirementOutputSchema,
       title: 'Transition Requirement',
@@ -1183,16 +1628,17 @@ export function createKravhanteringMcpServer(
         'List improvement suggestions for a specific requirement. Identify the requirement by numeric requirementId or by uniqueId (e.g. "REQ-001").',
       inputSchema: z
         .object({
-          locale: z.enum(['en', 'sv']).default('en'),
+          locale: ResponseLocaleSchema,
           requirementId: z
             .number()
             .int()
             .positive()
             .optional()
             .describe('Numeric ID of the requirement.'),
-          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+          responseFormat: ResponseFormatSchema,
           uniqueId: z
             .string()
+            .max(64)
             .optional()
             .describe('Unique requirement ID, e.g. "REQ-001".'),
         })
@@ -1205,6 +1651,7 @@ export function createKravhanteringMcpServer(
             })
           }
         }),
+      outputSchema: ListSuggestionsOutputSchema,
       title: 'List Improvement Suggestions for Requirement',
     },
     async input => {
@@ -1246,10 +1693,12 @@ export function createKravhanteringMcpServer(
         .object({
           content: z
             .string()
+            .max(4000)
             .optional()
             .describe('Suggestion text content. Required for create and edit.'),
           createdBy: z
             .string()
+            .max(200)
             .optional()
             .describe('Who created the suggestion.'),
           suggestionId: z
@@ -1260,16 +1709,18 @@ export function createKravhanteringMcpServer(
             .describe(
               'Numeric suggestion ID. Required for all operations except create.',
             ),
-          locale: z.enum(['en', 'sv']).default('en'),
-          operation: z.enum([
-            'create',
-            'delete',
-            'dismiss',
-            'edit',
-            'request_review',
-            'resolve',
-            'revert_to_draft',
-          ]),
+          locale: ResponseLocaleSchema,
+          operation: z
+            .enum([
+              'create',
+              'delete',
+              'dismiss',
+              'edit',
+              'request_review',
+              'resolve',
+              'revert_to_draft',
+            ])
+            .describe('Suggestion operation to perform.'),
           requirementId: z
             .number()
             .int()
@@ -1284,13 +1735,17 @@ export function createKravhanteringMcpServer(
             .describe('Optional version ID to link the suggestion to.'),
           resolutionMotivation: z
             .string()
+            .max(4000)
             .optional()
-            .describe('Motivation text for resolve/dismiss.'),
+            .describe('Motivation text. Required for resolve and dismiss.'),
           resolvedBy: z
             .string()
+            .max(200)
             .optional()
-            .describe('Who resolved/dismissed the suggestion.'),
-          responseFormat: z.enum(['json', 'markdown']).default('markdown'),
+            .describe(
+              'Who resolved/dismissed the suggestion. Required for resolve/dismiss when the request actor has no ID.',
+            ),
+          responseFormat: ResponseFormatSchema,
         })
         .strict()
         .superRefine((data, ctx) => {
@@ -1298,14 +1753,14 @@ export function createKravhanteringMcpServer(
             case 'create':
               if (!data.requirementId) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: 'custom',
                   message: 'requirementId is required for the create operation',
                   path: ['requirementId'],
                 })
               }
               if (!data.content) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: 'custom',
                   message: 'content is required for the create operation',
                   path: ['content'],
                 })
@@ -1314,14 +1769,14 @@ export function createKravhanteringMcpServer(
             case 'edit':
               if (!data.suggestionId) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: 'custom',
                   message: 'suggestionId is required for the edit operation',
                   path: ['suggestionId'],
                 })
               }
               if (!data.content) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: 'custom',
                   message: 'content is required for the edit operation',
                   path: ['content'],
                 })
@@ -1331,9 +1786,16 @@ export function createKravhanteringMcpServer(
             case 'dismiss':
               if (!data.suggestionId) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: 'custom',
                   message: `suggestionId is required for the ${data.operation} operation`,
                   path: ['suggestionId'],
+                })
+              }
+              if (!data.resolutionMotivation) {
+                ctx.addIssue({
+                  code: 'custom',
+                  message: `resolutionMotivation is required for the ${data.operation} operation`,
+                  path: ['resolutionMotivation'],
                 })
               }
               break
@@ -1342,7 +1804,7 @@ export function createKravhanteringMcpServer(
             case 'revert_to_draft':
               if (!data.suggestionId) {
                 ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
+                  code: 'custom',
                   message: `suggestionId is required for the ${data.operation} operation`,
                   path: ['suggestionId'],
                 })
@@ -1350,6 +1812,7 @@ export function createKravhanteringMcpServer(
               break
           }
         }),
+      outputSchema: ManageSuggestionOutputSchema,
       title: 'Manage Improvement Suggestion',
     },
     async input => {
@@ -1396,7 +1859,7 @@ export function createKravhanteringMcpServer(
         'Generate system requirements using AI (OpenRouter) based on a topic. ' +
         'Returns generated requirements with thinking trace. ' +
         'To create the generated requirements, call requirements_manage_requirement ' +
-        'with operation "create" for each requirement, setting requirement.areaId ' +
+        'with operation "create" for each requirement, using the generated fields as the requirement object and setting requirement.areaId ' +
         "to the areaId provided in this tool's input.",
       inputSchema: z
         .object({
@@ -1410,7 +1873,7 @@ export function createKravhanteringMcpServer(
             ),
           customInstruction: z
             .string()
-            .max(4000)
+            .max(5000)
             .optional()
             .describe(
               'Custom instruction to override the default generation prompt',
@@ -1429,12 +1892,13 @@ export function createKravhanteringMcpServer(
           topic: z
             .string()
             .min(1)
-            .max(4000)
+            .max(1000)
             .describe(
               'The topic or system context to generate requirements for',
             ),
         })
         .strict(),
+      outputSchema: GenerateRequirementsOutputSchema,
       title: 'Generate Requirements (AI)',
     },
     async input => {
