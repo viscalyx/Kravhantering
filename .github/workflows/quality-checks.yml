@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install dotenv-linter
+        run: curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | sudo sh -s -- -b /usr/local/bin
+
       - name: Run formatting check
         run: npm run format:check
 
@@ -44,6 +47,9 @@ jobs:
 
       - name: Run Python type check
         run: npm run lint:py
+
+      - name: Run dotenv-linter check
+        run: npm run dotenv:check
 
       - name: Run tests and coverage
         run: npm run test:coverage
@@ -84,7 +90,8 @@ jobs:
               { name: 'Lint', command: 'npm run lint' },
               { name: 'Markdown Lint', command: 'npm run lint:md' },
               { name: 'Type Check', command: 'npm run type-check' },
-              { name: 'Python Type Check', command: 'npm run lint:py' }
+              { name: 'Python Type Check', command: 'npm run lint:py' },
+              { name: 'dotenv-linter', command: 'npm run dotenv:check' }
             ];
 
             let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';
