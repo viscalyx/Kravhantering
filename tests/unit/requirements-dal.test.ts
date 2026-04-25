@@ -326,6 +326,58 @@ describe('requirements DAL (SQL Server path)', () => {
     ).toBe(false)
   })
 
+  it('returns a stale edit conflict before review status when the edit token is old', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 21,
+        revisionToken: '22222222-2222-4222-8222-222222222222',
+        statusId: 2,
+      },
+    ])
+
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 21,
+        description: 'Review edit with stale token',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        baseVersionId: 21,
+        latestVersionId: 21,
+        reason: 'stale_requirement_edit',
+      },
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
+  it('still rejects review edits after the edit token matches the latest version', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 21,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
+        statusId: 2,
+      },
+    ])
+
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 21,
+        description: 'Illegal review edit',
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      message: 'Cannot edit a requirement in Review status',
+    })
+
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+
   it('rotates the revision token when updating a draft', async () => {
     const { db, query } = createSqlServerDb()
     query

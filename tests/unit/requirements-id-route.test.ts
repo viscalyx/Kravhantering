@@ -28,8 +28,12 @@ vi.mock('@/lib/requirements/service', () => ({
       status?: number
     },
   ) => ({
-    body: { code: err.code, details: err.details, error: err.message },
-    status: err.status ?? 400,
+    body: {
+      code: err.code ?? 'internal',
+      details: err.details,
+      error: err.message,
+    },
+    status: err.status ?? 500,
   }),
 }))
 
@@ -86,7 +90,7 @@ describe('requirements/[id] route', () => {
 
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
     })
 
     it('returns handled errors when request context creation fails', async () => {
@@ -95,7 +99,7 @@ describe('requirements/[id] route', () => {
       const req = new NextRequest('http://localhost/api/requirements/1')
       const res = await GET(req, makeParams('1'))
 
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
       expect(mockGetRequirement).not.toHaveBeenCalled()
     })
   })
@@ -176,7 +180,7 @@ describe('requirements/[id] route', () => {
         headers: { 'Content-Type': 'application/json' },
       })
       const res = await PUT(req, makeParams('1'))
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
     })
   })
 
@@ -203,7 +207,7 @@ describe('requirements/[id] route', () => {
         method: 'DELETE',
       })
       const res = await DELETE(req, makeParams('1'))
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(500)
     })
   })
 })
