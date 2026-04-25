@@ -110,7 +110,7 @@ function createFakeService(
         uniqueId: 'INT0001',
         versions: [
           {
-            revisionToken: '11111111-1111-4111-8111-111111111111',
+            revisionToken: '22222222-2222-4222-8222-222222222222',
             versionNumber: 2,
           },
         ],
@@ -196,6 +196,20 @@ async function createClient() {
   return { client, fetch, transport }
 }
 
+async function getTool(name: string) {
+  const { client, transport } = await createClient()
+  const tools = await client.listTools()
+  const tool = tools.tools.find(tool => tool.name === name)
+
+  return {
+    cleanup: async () => {
+      await client.close()
+      await transport.close()
+    },
+    tool,
+  }
+}
+
 async function createInMemoryClient(
   server: ReturnType<typeof createKravhanteringMcpServer>,
 ) {
@@ -237,10 +251,8 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_query_catalog filters and pagination', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const queryTool = tools.tools.find(
-        tool => tool.name === 'requirements_query_catalog',
+      const { cleanup, tool: queryTool } = await getTool(
+        'requirements_query_catalog',
       )
 
       expect(queryTool).toBeDefined()
@@ -252,15 +264,12 @@ describe('handleRequirementsMcpRequest', () => {
       expect(queryInputSchemaText).toContain('sortBy')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
 
     it('describes requirements_get_requirement history edit tokens', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const getRequirementTool = tools.tools.find(
-        tool => tool.name === 'requirements_get_requirement',
+      const { cleanup, tool: getRequirementTool } = await getTool(
+        'requirements_get_requirement',
       )
 
       expect(getRequirementTool).toBeDefined()
@@ -276,15 +285,12 @@ describe('handleRequirementsMcpRequest', () => {
       expect(getRequirementOutputSchemaText).toContain('revisionToken')
       expect(getRequirementOutputSchemaText).toContain('baseRevisionToken')
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
 
     it('describes requirements_manage_requirement create and edit inputs', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const manageTool = tools.tools.find(
-        tool => tool.name === 'requirements_manage_requirement',
+      const { cleanup, tool: manageTool } = await getTool(
+        'requirements_manage_requirement',
       )
 
       expect(manageTool).toBeDefined()
@@ -302,15 +308,12 @@ describe('handleRequirementsMcpRequest', () => {
         'requirement.versions[0].revisionToken',
       )
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
 
     it('describes requirements_transition_requirement revision output', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const transitionTool = tools.tools.find(
-        tool => tool.name === 'requirements_transition_requirement',
+      const { cleanup, tool: transitionTool } = await getTool(
+        'requirements_transition_requirement',
       )
 
       expect(transitionTool).toBeDefined()
@@ -319,15 +322,12 @@ describe('handleRequirementsMcpRequest', () => {
         'revisionToken',
       )
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
 
     it('describes requirements_list_improvement_suggestions output', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const listSuggestionsTool = tools.tools.find(
-        tool => tool.name === 'requirements_list_improvement_suggestions',
+      const { cleanup, tool: listSuggestionsTool } = await getTool(
+        'requirements_list_improvement_suggestions',
       )
 
       expect(listSuggestionsTool).toBeDefined()
@@ -335,15 +335,12 @@ describe('handleRequirementsMcpRequest', () => {
         'suggestions',
       )
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
 
     it('describes requirements_manage_improvement_suggestion resolution input', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const manageSuggestionTool = tools.tools.find(
-        tool => tool.name === 'requirements_manage_improvement_suggestion',
+      const { cleanup, tool: manageSuggestionTool } = await getTool(
+        'requirements_manage_improvement_suggestion',
       )
 
       expect(manageSuggestionTool).toBeDefined()
@@ -355,15 +352,12 @@ describe('handleRequirementsMcpRequest', () => {
         'result',
       )
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
 
     it('describes requirements_generate_requirements limits and output', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
-      const generateTool = tools.tools.find(
-        tool => tool.name === 'requirements_generate_requirements',
+      const { cleanup, tool: generateTool } = await getTool(
+        'requirements_generate_requirements',
       )
 
       expect(generateTool).toBeDefined()
@@ -372,8 +366,7 @@ describe('handleRequirementsMcpRequest', () => {
       expect(generateTool?.description).toContain('using the generated fields')
       expect(JSON.stringify(generateTool?.outputSchema)).toContain('stats')
 
-      await client.close()
-      await transport.close()
+      await cleanup()
     })
   })
 
@@ -733,6 +726,15 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     expect(result.isError).not.toBe(true)
+    expect(result.structuredContent).toMatchObject({
+      detail: {
+        versions: [
+          expect.objectContaining({
+            revisionToken: '22222222-2222-4222-8222-222222222222',
+          }),
+        ],
+      },
+    })
     expect(fakeService.manageRequirement).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
