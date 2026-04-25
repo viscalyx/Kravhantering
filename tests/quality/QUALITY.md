@@ -140,9 +140,10 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishi
 <!-- markdownlint-enable MD013 -->
 
 **What happened:** `editRequirement()` rejects edits against review and
-archived versions at `lib/dal/requirements.ts:806-812`. If those rows are
-edited in place, the project loses the meaning of approval, publication, and
-archival timestamps because the historical record itself mutates.
+archived versions after stale edit preconditions at
+`lib/dal/requirements.ts:832-845`. If those rows are edited in place, the
+project loses the meaning of approval, publication, and archival timestamps
+because the historical record itself mutates.
 
 **The requirement:** Draft versions may be edited in place. Published edits
 must create a new draft. Review content must return to draft before editing.
@@ -320,7 +321,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP too
 
 ---
 
-### Scenario 11: Stale Draft Edits Are Rejected Before Replacing Latest Content
+### Scenario 11: stale draft edits are rejected before replacing latest content
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
 
@@ -328,8 +329,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP too
 `editRequirement()` now requires the caller's `baseVersionId` and
 `baseRevisionToken` to match the latest draft row before it updates the row or
 rewrites its scenario and norm reference joins at
-`lib/dal/requirements.ts:798-895`. The shared service requires both base fields
-and adds the latest snapshot to stale conflict responses at
+`lib/dal/requirements.ts:805-895`. The shared service requires both base
+fields and adds the latest snapshot to stale conflict responses at
 `lib/requirements/service.ts:1317-1364`. If those guards are removed, a second
 editor can silently replace the first editor's saved content while still
 receiving a successful response.

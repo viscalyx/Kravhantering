@@ -445,12 +445,16 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       requirementAreaId: area.id,
     })
 
-    await transitionStatus(appDb(), created.requirement.id, STATUS_REVIEW)
+    const reviewVersion = await transitionStatus(
+      appDb(),
+      created.requirement.id,
+      STATUS_REVIEW,
+    )
 
     await expect(
       editRequirement(appDb(), created.requirement.id, {
-        baseRevisionToken: created.version.revisionToken,
-        baseVersionId: created.version.id,
+        baseRevisionToken: reviewVersion.revisionToken,
+        baseVersionId: reviewVersion.id,
         description: 'Illegal review edit',
       }),
     ).rejects.toMatchObject({
@@ -463,11 +467,15 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await transitionStatus(appDb(), created.requirement.id, STATUS_PUBLISHED)
     await initiateArchiving(appDb(), created.requirement.id)
     await approveArchiving(appDb(), created.requirement.id)
+    const [archivedVersion] = await getVersionHistory(
+      appDb(),
+      created.requirement.id,
+    )
 
     await expect(
       editRequirement(appDb(), created.requirement.id, {
-        baseRevisionToken: created.version.revisionToken,
-        baseVersionId: created.version.id,
+        baseRevisionToken: archivedVersion.revisionToken,
+        baseVersionId: archivedVersion.id,
         description: 'Illegal archived edit',
       }),
     ).rejects.toMatchObject({
