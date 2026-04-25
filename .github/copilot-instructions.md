@@ -15,7 +15,8 @@
 ## Commands
 
 - `npm run check` - all checks (`type-check`, `lint:py`,
-  `format:check`, `spell:check`, `lint`, `lint:md`, `test`)
+  `dotenv:check`, `format:check`, `spell:check`, `lint`, `lint:md`,
+  `test`)
 - `npm run test` - run tests
 - `npm run dev` - start dev server
 
