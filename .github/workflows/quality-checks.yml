@@ -60,6 +60,9 @@ jobs:
           filter_mode: nofilter
           fail_level: any
 
+      - name: Verify prod build-target contract
+        run: npm run verify:prod-bundle
+
       - name: Run tests and coverage
         run: npm run test:coverage
 
@@ -100,7 +103,8 @@ jobs:
               { name: 'Markdown Lint', command: 'npm run lint:md' },
               { name: 'Type Check', command: 'npm run type-check' },
               { name: 'Python Type Check', command: 'npm run lint:py' },
-              { name: 'dotenv-linter', command: 'npm run dotenv:check' }
+              { name: 'dotenv-linter', command: 'npm run dotenv:check' },
+              { name: 'Prod build-target contract', command: 'npm run verify:prod-bundle' }
             ];
 
             let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';
