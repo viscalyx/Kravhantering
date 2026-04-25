@@ -127,6 +127,57 @@
   ],
   "clients": [
     {
+      "clientId": "kravhantering-local",
+      "name": "Kravhantering App Local (prodlike)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "local-kc-app-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "implicitFlowEnabled": false,
+      "redirectUris": [
+        "http://localhost:3001/api/auth/callback",
+        "http://127.0.0.1:3001/api/auth/callback"
+      ],
+      "webOrigins": ["http://localhost:3001", "http://127.0.0.1:3001"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:3001/##http://127.0.0.1:3001/",
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-as-json-array",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "employeeHsaId-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "hsaId",
+            "claim.name": "employeeHsaId",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
       "clientId": "kravhantering-app",
       "name": "Kravhantering App (browser)",
       "enabled": true,
