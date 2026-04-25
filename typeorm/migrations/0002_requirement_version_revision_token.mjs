@@ -1,5 +1,9 @@
 const UP_STATEMENTS = [
-  "IF COL_LENGTH(N'dbo.requirement_versions', N'revision_token') IS NULL\nBEGIN\n  ALTER TABLE [requirement_versions] ADD [revision_token] uniqueidentifier NULL;\n  UPDATE [requirement_versions] SET [revision_token] = NEWID() WHERE [revision_token] IS NULL;\n  ALTER TABLE [requirement_versions] ALTER COLUMN [revision_token] uniqueidentifier NOT NULL;\n  ALTER TABLE [requirement_versions] ADD CONSTRAINT [df_requirement_versions_revision_token] DEFAULT NEWID() FOR [revision_token];\n  CREATE UNIQUE INDEX [uq_requirement_versions_revision_token] ON [requirement_versions] ([revision_token]);\nEND",
+  "IF COL_LENGTH(N'dbo.requirement_versions', N'revision_token') IS NULL ALTER TABLE [requirement_versions] ADD [revision_token] uniqueidentifier NULL;",
+  'UPDATE [requirement_versions] SET [revision_token] = NEWID() WHERE [revision_token] IS NULL;',
+  "IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.requirement_versions') AND name = N'revision_token' AND is_nullable = 1) ALTER TABLE [requirement_versions] ALTER COLUMN [revision_token] uniqueidentifier NOT NULL;",
+  "IF NOT EXISTS (SELECT 1 FROM sys.default_constraints WHERE name = N'df_requirement_versions_revision_token' AND parent_object_id = OBJECT_ID(N'dbo.requirement_versions')) ALTER TABLE [requirement_versions] ADD CONSTRAINT [df_requirement_versions_revision_token] DEFAULT NEWID() FOR [revision_token];",
+  "IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'uq_requirement_versions_revision_token' AND object_id = OBJECT_ID(N'dbo.requirement_versions')) CREATE UNIQUE INDEX [uq_requirement_versions_revision_token] ON [requirement_versions] ([revision_token]);",
 ]
 
 const DOWN_STATEMENTS = [
