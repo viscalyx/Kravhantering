@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DataSource } from 'typeorm'
 import { InitialSqlServerSchema1713720000000 } from '../typeorm/migrations/0001_initial_sqlserver.mjs'
+import { RequirementVersionRevisionToken1713800000000 } from '../typeorm/migrations/0002_requirement_version_revision_token.mjs'
 import { seedDatabase } from '../typeorm/seed.mjs'
 
 export const DEFAULT_BROWSE_CONNECTION_NAME =
@@ -267,7 +268,10 @@ function buildMigrationDataSourceOptions(connectionString, env = process.env) {
   return {
     connectionTimeout: parsed.connectionTimeout,
     logging: false,
-    migrations: [InitialSqlServerSchema1713720000000],
+    migrations: [
+      InitialSqlServerSchema1713720000000,
+      RequirementVersionRevisionToken1713800000000,
+    ],
     options: {
       enableArithAbort: true,
       encrypt: parsed.encrypt,
