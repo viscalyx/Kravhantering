@@ -52,6 +52,7 @@ jobs:
       - name: Prepare SQL Server env file
         run: |
           cp .env.sqlserver.ci .env.sqlserver
+          cat .env.sqlserver
         #   # This uses a well-known password from examples, but it's stored as a
         #   # GitHub Actions variable to avoid hitting any security scanners that
         #   # look for hardcoded secrets.
