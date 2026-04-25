@@ -62,6 +62,23 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Start local IdP service
+        run: npm run idp:up
+
+      - name: Wait for IdP to be ready
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 – not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time."
+          exit 1
+
       - name: Run Playwright tests against ${{ matrix.server }} server
         run: ${{ matrix.testCommand }}
         env:
@@ -82,6 +99,10 @@ jobs:
           name: playwright-junit-${{ matrix.server }}
           path: test-results/${{ matrix.server }}/playwright-junit.xml
           retention-days: ${{ matrix.retentionDays }}
+
+      - name: Stop local IdP service
+        if: always()
+        run: npm run idp:down
 
       - name: Stop local database service
         if: always()
