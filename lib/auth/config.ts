@@ -2,18 +2,12 @@
  * Centralized auth configuration. Reads env vars, validates them, and exposes
  * a typed `authConfig`.
  *
- * Boot-time guards (fail-closed, AUTH_ENABLED=false bypass, placeholder
- * validation) are gated on build-time constants from
- * `@/lib/runtime/build-target` so that production bundles physically do not
- * contain the dev escape-hatch code paths.
+ * Authentication is mandatory in every build target.
+ * Boot fails closed when required OIDC env vars are missing.
  *
  * See `docs/auth-how-it-works.md` and `docs/auth-developer-workflow.md`
  * for the committed env-var contract and deployment expectations.
  */
-import {
-  ALLOW_DISABLE_AUTH_IN_PREPROD,
-  AUTH_ENABLED_AT_BUILD,
-} from '@/lib/runtime/build-target'
 
 const FLAG_TRUE_VALUES = new Set(['1', 'true', 'yes', 'on'])
 const FLAG_FALSE_VALUES = new Set(['0', 'false', 'no', 'off'])
@@ -61,21 +55,19 @@ function readNumber(name: string, defaultValue: number): number {
 export interface AuthConfig {
   /** Audience expected on access tokens (defaults to clientId). */
   apiAudience: string
-  /** Client id at the IdP. Required when enabled. */
+  /** Client id at the IdP. */
   clientId: string
-  /** Client secret at the IdP. Required when enabled. */
+  /** Client secret at the IdP. */
   clientSecret: string
   /** Iron-session cookie name. */
   cookieName: string
   /** Iron-session encryption password (≥32 characters, not bytes). */
   cookiePassword: string
-  /** Master switch. Defaults to true; explicit false rejected in production. */
-  enabled: boolean
-  /** OIDC discovery base URL (issuer). Required when enabled. */
+  /** OIDC discovery base URL (issuer). */
   issuerUrl: string
   /** Absolute URL the IdP redirects back to after end-session. */
   postLogoutRedirectUri: string
-  /** Absolute URL the IdP redirects back to. Required when enabled. */
+  /** Absolute URL the IdP redirects back to. */
   redirectUri: string
   /** Name of the claim that carries the role list. */
   rolesClaim: string
@@ -97,56 +89,6 @@ export class AuthConfigError extends Error {
 let cached: AuthConfig | undefined
 
 function loadAuthConfig(): AuthConfig {
-  // AUTH_ENABLED_AT_BUILD is a build-time constant:
-  //   'env'  → read process.env.AUTH_ENABLED at runtime (dev / local-prod)
-  //   true   → auth is always enabled (prod — frozen at build time)
-  const enabled =
-    AUTH_ENABLED_AT_BUILD === 'env'
-      ? parseBooleanFlag(process.env.AUTH_ENABLED, true)
-      : AUTH_ENABLED_AT_BUILD
-
-  const isProduction = process.env.NODE_ENV === 'production'
-  // ALLOW_DISABLE_AUTH_IN_PREPROD is a build-time constant:
-  //   true  → dev / local-prod: allow AUTH_ENABLED=false under NODE_ENV=production
-  //   false → real prod: auth cannot be disabled at runtime (this branch is dead code)
-  const allowDisableInProduction = ALLOW_DISABLE_AUTH_IN_PREPROD
-
-  if (!enabled && isProduction && !allowDisableInProduction) {
-    throw new AuthConfigError(
-      'AUTH_ENABLED=false is rejected in production. Refusing to boot.',
-    )
-  }
-
-  if (!enabled) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[auth] AUTH_ENABLED=false — running without authentication. Do not use in production.',
-    )
-    if (isProduction && allowDisableInProduction) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[auth] AUTH_ENABLED=false in production-mode build — running without authentication. ' +
-          'This is only valid for local prod-like integration tests.',
-      )
-    }
-    // Return a stub config; callers must check `enabled` before using OIDC fields.
-    return {
-      enabled: false,
-      issuerUrl: '',
-      clientId: '',
-      clientSecret: '',
-      redirectUri: '',
-      postLogoutRedirectUri: '',
-      scopes: 'openid profile email',
-      rolesClaim: 'roles',
-      apiAudience: '',
-      cookieName: 'kravhantering_session',
-      cookiePassword: '',
-      sessionTtlSeconds: 28_800,
-      trustProxy: parseBooleanFlag(process.env.AUTH_TRUST_PROXY, true),
-    }
-  }
-
   const issuerUrl = readString('AUTH_OIDC_ISSUER_URL')
   const clientId = readString('AUTH_OIDC_CLIENT_ID')
   const clientSecret = readString('AUTH_OIDC_CLIENT_SECRET')
@@ -164,7 +106,7 @@ function loadAuthConfig(): AuthConfig {
 
   if (missing.length > 0) {
     throw new AuthConfigError(
-      `AUTH_ENABLED=true but missing required env vars: ${missing.join(', ')}`,
+      `Missing required auth env vars: ${missing.join(', ')}`,
     )
   }
 
@@ -175,7 +117,6 @@ function loadAuthConfig(): AuthConfig {
   }
 
   return {
-    enabled: true,
     issuerUrl: issuerUrl as string,
     clientId: clientId as string,
     clientSecret: clientSecret as string,

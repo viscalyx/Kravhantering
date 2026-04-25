@@ -15,7 +15,7 @@ import {
 } from 'iron-session'
 import { cookies } from 'next/headers'
 import { getAuthConfig } from '@/lib/auth/config'
-import { COOKIE_SECURE } from '@/lib/runtime/build-target'
+import { USE_INSECURE_COOKIE } from '@/lib/runtime/build-target'
 
 export interface LoginStateData {
   codeVerifier: string
@@ -37,7 +37,7 @@ function buildOptions(): SessionOptions {
     ttl: LOGIN_STATE_TTL_SECONDS,
     cookieOptions: {
       httpOnly: true,
-      secure: COOKIE_SECURE,
+      secure: !USE_INSECURE_COOKIE,
       sameSite: 'lax' as const,
       path: '/',
     },

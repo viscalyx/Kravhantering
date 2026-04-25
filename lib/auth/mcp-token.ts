@@ -3,7 +3,6 @@ import { recordSecurityEvent } from '@/lib/auth/audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { parseRolesClaim } from '@/lib/auth/roles'
 import type { ActorContext } from '@/lib/requirements/auth'
-import { ALLOW_LEGACY_HEADER_TRUST } from '@/lib/runtime/build-target'
 
 type VerifiedMcpToken = {
   actor: ActorContext
@@ -44,18 +43,13 @@ export class McpAuthError extends Error {
 /**
  * Verifies a Bearer JWT on an incoming MCP request.
  *
- * Returns `null` when authentication is disabled (opt-out dev mode) so the
- * caller can continue with legacy header-trust behaviour. Throws
- * `McpAuthError` when a token is missing or invalid.
+ * Throws `McpAuthError` when a token is missing or invalid.
  */
 export async function verifyMcpBearerToken(
   request: Request,
-): Promise<VerifiedMcpToken | null> {
+): Promise<VerifiedMcpToken> {
   const { getAuthConfig } = await import('@/lib/auth/config')
   const cfg = getAuthConfig()
-  // ALLOW_LEGACY_HEADER_TRUST is a build-time constant (false in prod).
-  // In prod this entire branch is dead code and webpack eliminates it.
-  if (ALLOW_LEGACY_HEADER_TRUST && !cfg.enabled) return null
 
   const header = request.headers.get('authorization') ?? ''
   const match = /^Bearer\s+(\S+)$/i.exec(header)

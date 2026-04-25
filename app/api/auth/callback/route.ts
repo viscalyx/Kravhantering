@@ -95,12 +95,6 @@ async function resolveSessionIdToken(
 
 export async function GET(request: NextRequest) {
   const cfg = getAuthConfig()
-  if (!cfg.enabled) {
-    return NextResponse.json(
-      { error: 'Authentication is disabled.' },
-      { status: 404 },
-    )
-  }
 
   // Capture prior session roles BEFORE we overwrite the cookie. Used by the
   // role-change diff below; first-ever login has no prior session and skips.

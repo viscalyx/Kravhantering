@@ -6,7 +6,6 @@ import {
   type LoggedInSession,
 } from '@/lib/auth/session'
 import { forbiddenError } from '@/lib/requirements/errors'
-import { ALLOW_LEGACY_HEADER_TRUST } from '@/lib/runtime/build-target'
 
 // In-process attachment of verified actor identities to Request objects.
 // Used by the MCP route after JWT verification and by tests.
@@ -23,7 +22,7 @@ function getAttachedActor(request: Request): ActorContext | undefined {
   return ATTACHED_ACTORS.get(request)
 }
 
-export type ActorSource = 'anonymous' | 'headers' | 'oidc' | 'mcp'
+export type ActorSource = 'anonymous' | 'oidc' | 'mcp'
 export type RequestSource = 'rest' | 'mcp'
 
 export interface ActorContext {
@@ -164,66 +163,24 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
 
 /**
  * Default authorization service used by `createRequirementsService` when no
- * explicit service is provided. The wiring honors `AUTH_ENABLED`: when set to
- * `true` but no role policy has been declared yet, we intentionally return
- * `AllowAllAuthorizationService` so authenticated users can operate while
- * the role catalogue / policy is defined in a follow-up workstream (out of
- * scope for the initial auth rollout).
- *
- * Once policies are declared, replace the allow-all fallback with a real
- * `RoleBasedAuthorizationService({ ... })`.
+ * explicit service is provided. While the role catalogue / policy is being
+ * defined, we intentionally return `AllowAllAuthorizationService` so
+ * authenticated users can operate. Replace with a real
+ * `RoleBasedAuthorizationService({ ... })` once policies are declared.
  */
 export function createDefaultAuthorizationService(): AuthorizationService {
   return new AllowAllAuthorizationService()
 }
 
-export function getActorContextFromRequest(request: Request): ActorContext {
-  // Synchronous header-based path. When AUTH_ENABLED=true this path is not
-  // trusted — the session-based helper below is used instead. We still look
-  // at headers here so tests and the AUTH_ENABLED=false opt-out continue to
-  // work without async plumbing.
-  const actorId = request.headers.get('x-user-id')
-  const rawRoles = request.headers.get('x-user-roles')
-
-  return {
-    id: actorId,
-    displayName: actorId ?? '',
-    hsaId: null,
-    roles: rawRoles
-      ? rawRoles
-          .split(',')
-          .map(role => role.trim())
-          .filter(Boolean)
-      : [],
-    source: actorId ? 'headers' : 'anonymous',
-    isAuthenticated: Boolean(actorId),
-  }
-}
-
-async function getActorContextFromSessionOrHeaders(
+async function getActorContextFromSession(
   request: Request,
 ): Promise<ActorContext> {
   const attached = getAttachedActor(request)
   if (attached) return attached
 
-  const cfg = getAuthConfig()
-  if (!cfg.enabled) {
-    // ALLOW_LEGACY_HEADER_TRUST is a build-time constant (true only in `dev`).
-    // When true, honour x-user-id / x-user-roles headers so unit tests and
-    // the dev no-auth workflow can inject a simulated actor without OIDC.
-    // When false (local-prod / prod) this branch returns anonymous instead.
-    if (ALLOW_LEGACY_HEADER_TRUST) {
-      return getActorContextFromRequest(request)
-    }
-    return {
-      id: null,
-      displayName: '',
-      hsaId: null,
-      roles: [],
-      source: 'anonymous',
-      isAuthenticated: false,
-    }
-  }
+  // Auth is mandatory — calling getAuthConfig() ensures required env vars
+  // are present and throws on misconfiguration.
+  getAuthConfig()
 
   assertSameOriginRequest(request)
 
@@ -256,7 +213,7 @@ export async function createRequestContext(
   toolName?: string,
 ): Promise<RequestContext> {
   return {
-    actor: await getActorContextFromSessionOrHeaders(request),
+    actor: await getActorContextFromSession(request),
     requestId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
     source,
     toolName,

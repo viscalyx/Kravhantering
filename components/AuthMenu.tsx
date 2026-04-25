@@ -21,7 +21,6 @@ type AuthMeAuthenticated = {
 
 type AuthMeUnauthenticated = {
   authenticated: false
-  authDisabled?: boolean
 }
 
 type AuthMe = AuthMeAuthenticated | AuthMeUnauthenticated
@@ -73,13 +72,6 @@ function useAuthMe(): AuthMe | null {
   const [state, setState] = useState<AuthMe | null>(null)
 
   useEffect(() => {
-    if (
-      (process.env.NEXT_PUBLIC_AUTH_ENABLED ?? 'true').toLowerCase() === 'false'
-    ) {
-      setState({ authenticated: false, authDisabled: true })
-      return
-    }
-
     const controller = new AbortController()
     fetch('/api/auth/me', {
       credentials: 'same-origin',
@@ -233,7 +225,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
     }
   }, [isPopupOpen])
 
-  if (!me || ('authDisabled' in me && me.authDisabled)) {
+  if (!me) {
     return null
   }
 

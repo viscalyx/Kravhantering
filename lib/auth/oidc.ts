@@ -12,11 +12,6 @@ let configurationPromise: Promise<client.Configuration> | undefined
 
 async function discover(): Promise<client.Configuration> {
   const cfg = getAuthConfig()
-  if (!cfg.enabled) {
-    throw new Error(
-      'Auth is disabled — getOidcConfiguration() must not be called.',
-    )
-  }
   const issuerUrl = new URL(cfg.issuerUrl)
   // openid-client v6 refuses http:// issuers by default. ALLOW_INSECURE_OIDC_ISSUER
   // is a build-time constant: `true` only in `dev` and `local-prod` targets,

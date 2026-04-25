@@ -31,17 +31,11 @@ function createPostLogoutResponse(
 
 export async function GET(request: NextRequest) {
   const cfg = getAuthConfig()
-  return createLocalRedirect(
-    request,
-    cfg.enabled ? cfg.postLogoutRedirectUri : '/',
-  )
+  return createLocalRedirect(request, cfg.postLogoutRedirectUri)
 }
 
 export async function POST(request: NextRequest) {
   const cfg = getAuthConfig()
-  if (!cfg.enabled) {
-    return createPostLogoutResponse(request, '/')
-  }
   assertSameOriginRequest(request)
 
   const session = await getSession()

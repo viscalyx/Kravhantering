@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
 import { recordSecurityEvent } from '@/lib/auth/audit'
-import { getAuthConfig } from '@/lib/auth/config'
 import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
@@ -18,9 +17,8 @@ const intlMiddleware = createMiddleware(routing)
 const LOCALES = ['sv', 'en'] as const
 const DEFAULT_LOCALE: (typeof LOCALES)[number] = 'sv'
 
-// Inbound headers that the legacy `lib/requirements/auth.ts` header-trust path
-// honors when `AUTH_ENABLED=false`. Once auth is enabled they MUST be stripped
-// so an attacker-supplied header cannot impersonate a user.
+// Inbound headers that an attacker could try to use to impersonate a user.
+// Always stripped before requests reach app handlers.
 const STRIPPED_REQUEST_HEADERS = ['x-user-id', 'x-user-roles']
 
 function stripUserHeaders(headers: Headers): Headers {
@@ -134,9 +132,6 @@ function isApiPath(pathname: string): boolean {
 }
 
 async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
-  const cfg = getAuthConfig()
-  if (!cfg.enabled) return null
-
   const { pathname, search } = request.nextUrl
 
   if (isAllowedWithoutAuth(pathname)) return null
@@ -185,10 +180,7 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   return NextResponse.redirect(loginUrl, { status: 302 })
 }
 
-function applyPageHeaders(
-  request: NextRequest,
-  authEnabled: boolean,
-): NextResponse {
+function applyPageHeaders(request: NextRequest): NextResponse {
   const response = intlMiddleware(request)
 
   const nonceBytes = new Uint8Array(16)
@@ -196,7 +188,7 @@ function applyPageHeaders(
   const nonce = btoa(String.fromCharCode(...nonceBytes)).replace(/=+$/, '')
   const csp = USE_DEV_CSP ? buildDevCsp(nonce) : buildCsp(nonce)
   const requestHeaders = new Headers(request.headers)
-  if (authEnabled) stripUserHeaders(requestHeaders)
+  stripUserHeaders(requestHeaders)
 
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('content-security-policy', csp)
@@ -210,15 +202,12 @@ export default async function proxy(request: NextRequest) {
   const authResponse = await enforceAuth(request)
   if (authResponse) return authResponse
 
-  const authEnabled = getAuthConfig().enabled
-
   if (isApiPath(request.nextUrl.pathname)) {
-    if (!authEnabled) return NextResponse.next()
     const cleaned = stripUserHeaders(new Headers(request.headers))
     return NextResponse.next({ request: { headers: cleaned } })
   }
 
-  return applyPageHeaders(request, authEnabled)
+  return applyPageHeaders(request)
 }
 
 export const config = {

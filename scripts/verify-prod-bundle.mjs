@@ -23,8 +23,8 @@
 
 import { execSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const ROOT = new URL('..', import.meta.url).pathname
 const SERVER_DIR = resolve(ROOT, '.next/server')
@@ -45,10 +45,7 @@ const EXPECTED_PROD_EXPORTS = Object.freeze({
   USE_INSECURE_COOKIE: false,
 })
 
-const BUILD_TARGET_PROD_PATH = resolve(
-  ROOT,
-  'lib/runtime/build-target.prod.ts',
-)
+const BUILD_TARGET_PROD_PATH = resolve(ROOT, 'lib/runtime/build-target.prod.ts')
 
 let failed = false
 
@@ -142,8 +139,7 @@ const FORBIDDEN = [
   'replace-with-',
 ]
 
-const bundleArtifactsExist =
-  existsSync(SERVER_DIR) && existsSync(STATIC_DIR)
+const bundleArtifactsExist = existsSync(SERVER_DIR) && existsSync(STATIC_DIR)
 
 if (!bundleArtifactsExist) {
   console.log(

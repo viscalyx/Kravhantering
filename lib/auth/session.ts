@@ -16,7 +16,7 @@ import {
 } from 'iron-session'
 import { cookies } from 'next/headers'
 import { getAuthConfig } from '@/lib/auth/config'
-import { COOKIE_SECURE } from '@/lib/runtime/build-target'
+import { USE_INSECURE_COOKIE } from '@/lib/runtime/build-target'
 
 export interface SessionData {
   /** Epoch seconds when the access token expires (informational). */
@@ -64,7 +64,7 @@ function buildSessionOptions(): SessionOptions {
     ttl: config.sessionTtlSeconds,
     cookieOptions: {
       httpOnly: true,
-      secure: COOKIE_SECURE,
+      secure: !USE_INSECURE_COOKIE,
       sameSite: 'lax' as const,
       path: '/',
       // iron-session subtracts 60s automatically; leave maxAge undefined to
