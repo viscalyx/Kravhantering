@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
   pull-requests: write
 
 jobs:
@@ -27,9 +28,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install dotenv-linter
-        run: curl -sSfL https://raw.githubusercontent.com/dotenv-linter/dotenv-linter/master/install.sh | sudo sh -s -- -b /usr/local/bin
-
       - name: Run formatting check
         run: npm run format:check
 
@@ -48,8 +46,27 @@ jobs:
       - name: Run Python type check
         run: npm run lint:py
 
-      - name: Run dotenv-linter check
-        run: npm run dotenv:check
+      - name: Run dotenv-linter root check
+        uses: dotenv-linter/action-dotenv-linter@v3
+        with:
+          dotenv_linter_flags: >-
+            --exclude .env.sqlserver
+            --exclude .env.local
+            --exclude .env.*.local
+          filter_mode: nofilter
+          fail_level: any
+
+      - name: Run dotenv-linter devcontainer check
+        uses: dotenv-linter/action-dotenv-linter@v3
+        with:
+          dotenv_linter_flags: >-
+            .devcontainer
+            --recursive
+            --exclude .
+            --exclude .devcontainer/.env
+            --exclude .devcontainer/elevated/.env
+          filter_mode: nofilter
+          fail_level: any
 
       - name: Run tests and coverage
         run: npm run test:coverage
