@@ -48,10 +48,11 @@ Editing is **not allowed** when the current version is in Review
 or Archived status. Review must first be moved back to Draft;
 Archived must be restored (which creates a new Draft version).
 
-Edit requests must include the `edited_at` value that was current
-when editing started. The server treats that value as an optimistic
-concurrency token and rejects the save with `409 Conflict` if another
-save has changed `edited_at` before the request arrives.
+Edit requests must include the `baseVersionId` and
+`baseRevisionToken` values that were current when editing started.
+The server treats those normalized fields as optimistic concurrency
+preconditions and rejects the save with `409 Conflict` if another save
+has changed the latest version row before the request arrives.
 
 ## When `edited_at` Is Updated
 

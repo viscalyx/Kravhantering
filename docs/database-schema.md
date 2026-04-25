@@ -1422,6 +1422,7 @@ graph LR
     R -- "idx_requirements_is_archived\n(is_archived)" --> R
 
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
+    RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
 
     RVS -- "idx_..._usage_scenario_id\n(usage_scenario_id)" --> RSC
