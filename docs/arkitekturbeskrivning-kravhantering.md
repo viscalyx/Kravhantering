@@ -981,6 +981,7 @@ Ubuntu 24.04 med följande förinstallerade verktyg:
 | TypeScript | 5.9 (strict) | Typkontroll |
 | Biome | 2.4 | Linting och formatering |
 | cSpell | 9.7 | Stavningskontroll (sv + en) |
+| dotenv-linter | 4.x | Kontroll av .env-filer |
 | markdownlint | — | Markdown-kvalitet |
 | Microsoft SQL Server | mssql/server image | Lokal databastjänst |
 
@@ -1002,6 +1003,7 @@ Alla kontroller samlas i ett enda kommando:
 npm run check
   ├── type-check      Typkontroll (tsc --noEmit)
   ├── lint:py         Python-typkontroll (Pyright strict)
+  ├── dotenv:check    Kontroll av .env-filer
   ├── format:check    Formateringskontroll (Biome)
   ├── spell:check     Stavningskontroll (cSpell)
   ├── lint            Linting (Biome strict)
