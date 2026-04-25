@@ -688,7 +688,6 @@ interface VersionLite {
   archiveInitiatedAt: string | null
   createdBy: string | null
   description: string
-  editedAt: string | null
   id: number
   qualityCharacteristicId: number | null
   requirementCategoryId: number | null
@@ -714,7 +713,6 @@ async function getLatestVersionLite(
         archive_initiated_at AS archiveInitiatedAt,
         description,
         acceptance_criteria AS acceptanceCriteria,
-        edited_at AS editedAt,
         requirement_category_id AS requirementCategoryId,
         requirement_type_id AS requirementTypeId,
         quality_characteristic_id AS qualityCharacteristicId,
@@ -735,7 +733,6 @@ async function getLatestVersionLite(
     statusId: Number(row.statusId),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     description: String(row.description ?? ''),
-    editedAt: toIso(row.editedAt),
     acceptanceCriteria:
       row.acceptanceCriteria == null ? null : String(row.acceptanceCriteria),
     requirementCategoryId: toNum(row.requirementCategoryId),
@@ -752,7 +749,7 @@ async function getLatestVersionLite(
 const GUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-function normalizeBaseVersionId(value: number | null | undefined) {
+function normalizeBaseVersionId(value: number | null | undefined): number {
   if (value == null || !Number.isInteger(value) || value <= 0) {
     throw validationError('Edit operation requires requirement.baseVersionId', {
       reason: 'missing_edit_precondition',
@@ -761,7 +758,7 @@ function normalizeBaseVersionId(value: number | null | undefined) {
   return value
 }
 
-function normalizeBaseRevisionToken(value: string | null | undefined) {
+function normalizeBaseRevisionToken(value: string | null | undefined): string {
   if (value == null || value.trim() === '') {
     throw validationError(
       'Edit operation requires requirement.baseRevisionToken',
@@ -782,7 +779,7 @@ function staleRequirementEditError(
   requirementId: number,
   baseVersionId: number,
   latestVersionId: number,
-) {
+): ReturnType<typeof conflictError> {
   return conflictError(
     'This requirement was updated after you started editing. Refresh to review the latest version before saving.',
     {
@@ -816,12 +813,25 @@ export async function editRequirement(
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
+    const updateRequirementArea = async (): Promise<void> => {
+      if (data.requirementAreaId == null) return
+      await tx.query(
+        `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
+        [data.requirementAreaId, requirementId],
+      )
+    }
 
     const current = await getLatestVersionLite(tx, requirementId, {
       lockForUpdate: true,
     })
     if (!current) {
       throw notFoundError('No version found for requirement')
+    }
+    if (
+      current.id !== baseVersionId ||
+      current.revisionToken !== baseRevisionToken
+    ) {
+      throw staleRequirementEditError(requirementId, baseVersionId, current.id)
     }
     if (current.statusId === STATUS_REVIEW) {
       throw conflictError('Cannot edit a requirement in Review status')
@@ -830,12 +840,6 @@ export async function editRequirement(
       throw conflictError(
         'Cannot edit an archived requirement — restore it first',
       )
-    }
-    if (
-      current.id !== baseVersionId ||
-      current.revisionToken !== baseRevisionToken
-    ) {
-      throw staleRequirementEditError(requirementId, baseVersionId, current.id)
     }
 
     if (current.statusId === STATUS_DRAFT) {
@@ -877,12 +881,7 @@ export async function editRequirement(
       }
       result = mapVersion(updateRows[0] ?? {})
 
-      if (data.requirementAreaId != null) {
-        await tx.query(
-          `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
-          [data.requirementAreaId, requirementId],
-        )
-      }
+      await updateRequirementArea()
       await tx.query(
         `DELETE FROM requirement_version_usage_scenarios WHERE requirement_version_id = @0`,
         [current.id],
@@ -900,12 +899,7 @@ export async function editRequirement(
       tx,
       requirementId,
     )
-    if (data.requirementAreaId != null) {
-      await tx.query(
-        `UPDATE requirements SET requirement_area_id = @0 WHERE id = @1`,
-        [data.requirementAreaId, requirementId],
-      )
-    }
+    await updateRequirementArea()
     const insertRows = (await tx.query(
       `INSERT INTO requirement_versions (
           requirement_id, version_number, description, acceptance_criteria,

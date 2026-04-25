@@ -89,6 +89,7 @@ export default function RequirementForm({
   >([])
 
   const [submitting, setSubmitting] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [staleConflict, setStaleConflict] = useState<{
     latest: RequirementDetailResponse | null
@@ -242,15 +243,31 @@ export default function RequirementForm({
   }
 
   const latestConflictVersion = staleConflict?.latest?.versions[0]
-  const latestConflictTarget =
-    staleConflict?.latest?.uniqueId ?? String(requirementId ?? '')
-  const latestConflictHref = latestConflictVersion?.versionNumber
-    ? `/requirements/${latestConflictTarget}/${latestConflictVersion.versionNumber}`
-    : `/requirements/${latestConflictTarget}`
+  const latestConflictTarget = staleConflict?.latest?.uniqueId
+  const latestConflictHref = staleConflict?.latest
+    ? latestConflictVersion?.versionNumber
+      ? `/requirements/${latestConflictTarget}/${latestConflictVersion.versionNumber}`
+      : `/requirements/${latestConflictTarget}`
+    : null
+
+  const handleRefreshLatest = async () => {
+    if (!onRefreshLatest || isRefreshing) return
+    setIsRefreshing(true)
+    setError(null)
+    try {
+      await onRefreshLatest()
+      setStaleConflict(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : tc('error'))
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   const normReferenceCreateButton = (
     <button
       className="inline-flex items-center gap-1 text-sm text-primary-700 dark:text-primary-300 hover:underline min-h-11 min-w-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+      disabled={isRefreshing}
       onClick={() => setShowCreateNormRef(true)}
       type="button"
     >
@@ -358,24 +375,26 @@ export default function RequirementForm({
               <p className="font-semibold">{t('staleEditConflict')}</p>
               <p className="mt-1">{t('staleEditConflictHelp')}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
-                  onClick={() => router.push(latestConflictHref)}
-                  type="button"
-                >
-                  <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
-                  {t('staleEditViewLatest')}
-                </button>
+                {latestConflictHref && (
+                  <button
+                    className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
+                    disabled={isRefreshing}
+                    onClick={() => router.push(latestConflictHref)}
+                    type="button"
+                  >
+                    <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+                    {t('staleEditViewLatest')}
+                  </button>
+                )}
                 {onRefreshLatest && (
                   <button
-                    className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
-                    onClick={() => {
-                      void onRefreshLatest()
-                    }}
+                    className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700 dark:bg-secondary-900 dark:text-amber-100 dark:hover:bg-amber-950"
+                    disabled={isRefreshing}
+                    onClick={handleRefreshLatest}
                     type="button"
                   >
                     <RotateCcw aria-hidden="true" className="h-3.5 w-3.5" />
-                    {t('staleEditReload')}
+                    {isRefreshing ? tc('loading') : t('staleEditReload')}
                   </button>
                 )}
               </div>
@@ -392,12 +411,16 @@ export default function RequirementForm({
 
       <div className="flex flex-col gap-3 pt-4 mt-5 border-t">
         <div className="flex items-center gap-3">
-          <button className="btn-primary" disabled={submitting} type="submit">
+          <button
+            className="btn-primary"
+            disabled={submitting || isRefreshing}
+            type="submit"
+          >
             {submitting ? tc('loading') : tc('save')}
           </button>
           <button
             className="px-4 py-2.5 rounded-xl border text-sm font-medium min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"
-            disabled={submitting}
+            disabled={submitting || isRefreshing}
             onClick={() => router.back()}
             type="button"
           >
@@ -411,7 +434,7 @@ export default function RequirementForm({
               aria-label={t('afterSaveInline')}
               aria-pressed={saveDestination === 'inline'}
               className={`min-h-11 min-w-11 px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'inline' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
-              disabled={submitting}
+              disabled={submitting || isRefreshing}
               onClick={() => {
                 setSaveDestination('inline')
                 try {
@@ -428,7 +451,7 @@ export default function RequirementForm({
               aria-label={t('afterSavePage')}
               aria-pressed={saveDestination === 'page'}
               className={`min-h-11 min-w-11 px-3 py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 ${saveDestination === 'page' ? 'bg-primary-600 text-white' : 'bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700'}`}
-              disabled={submitting}
+              disabled={submitting || isRefreshing}
               onClick={() => {
                 setSaveDestination('page')
                 try {
