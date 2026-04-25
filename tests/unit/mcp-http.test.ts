@@ -118,6 +118,7 @@ function createFakeService(
         uniqueId: 'INT0001',
         versions: [
           {
+            id: 10,
             revisionToken: '22222222-2222-4222-8222-222222222222',
             versionNumber: 2,
           },
@@ -231,6 +232,7 @@ describe('handleRequirementsMcpRequest', () => {
     let tools: Awaited<ReturnType<Client['listTools']>>['tools'] = []
 
     beforeAll(async () => {
+      serviceState.getService.mockReturnValue(createFakeService())
       toolSchemaClient = await createClient()
       const response = await toolSchemaClient.client.listTools()
       tools = response.tools
@@ -264,7 +266,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_query_catalog filters and pagination', async () => {
-      const queryTool = await getTool('requirements_query_catalog')
+      const queryTool = getTool('requirements_query_catalog')
 
       expect(queryTool).toBeDefined()
       expect(queryTool?.description).toContain('risk_levels')
@@ -277,7 +279,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_get_requirement history edit tokens', async () => {
-      const getRequirementTool = await getTool('requirements_get_requirement')
+      const getRequirementTool = getTool('requirements_get_requirement')
 
       expect(getRequirementTool).toBeDefined()
       expect(getRequirementTool?.description).toContain('view: "history"')
@@ -294,7 +296,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_manage_requirement create and edit inputs', async () => {
-      const manageTool = await getTool('requirements_manage_requirement')
+      const manageTool = getTool('requirements_manage_requirement')
 
       expect(manageTool).toBeDefined()
       expect(manageTool?.description).toContain('requirement.baseVersionId')
@@ -313,9 +315,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_transition_requirement revision output', async () => {
-      const transitionTool = await getTool(
-        'requirements_transition_requirement',
-      )
+      const transitionTool = getTool('requirements_transition_requirement')
 
       expect(transitionTool).toBeDefined()
       expect(transitionTool?.description).toContain('rotates the version')
@@ -325,7 +325,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_list_improvement_suggestions output', async () => {
-      const listSuggestionsTool = await getTool(
+      const listSuggestionsTool = getTool(
         'requirements_list_improvement_suggestions',
       )
 
@@ -336,7 +336,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_manage_improvement_suggestion resolution input', async () => {
-      const manageSuggestionTool = await getTool(
+      const manageSuggestionTool = getTool(
         'requirements_manage_improvement_suggestion',
       )
 
@@ -351,7 +351,7 @@ describe('handleRequirementsMcpRequest', () => {
     })
 
     it('describes requirements_generate_requirements limits and output', async () => {
-      const generateTool = await getTool('requirements_generate_requirements')
+      const generateTool = getTool('requirements_generate_requirements')
 
       expect(generateTool).toBeDefined()
       const generateInputSchemaText = JSON.stringify(generateTool?.inputSchema)

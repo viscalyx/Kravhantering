@@ -49,21 +49,14 @@ jobs:
       - name: Run dotenv-linter root check
         uses: dotenv-linter/action-dotenv-linter@v3
         with:
-          dotenv_linter_flags: >-
-            --exclude .env.sqlserver
-            --exclude .env.local
-            --exclude .env.*.local
+          dotenv_linter_flags: .
           filter_mode: nofilter
           fail_level: any
 
       - name: Run dotenv-linter devcontainer check
         uses: dotenv-linter/action-dotenv-linter@v3
         with:
-          dotenv_linter_flags: >-
-            .devcontainer
-            --recursive
-            --exclude .devcontainer/.env
-            --exclude .devcontainer/elevated/.env
+          dotenv_linter_flags: .devcontainer --recursive
           filter_mode: nofilter
           fail_level: any
 
