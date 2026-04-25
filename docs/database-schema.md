@@ -195,7 +195,7 @@ erDiagram
 
     requirement_versions {
         integer id PK
-        text revision_token "uniqueidentifier"
+        text revision_token UK "uniqueidentifier"
         integer requirement_id FK
         integer version_number
         text description
