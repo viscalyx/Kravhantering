@@ -1,4 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 const serviceState = vi.hoisted(() => ({
   getService: vi.fn(),
@@ -196,17 +204,6 @@ async function createClient() {
   return { client, fetch, transport }
 }
 
-async function getTool(name: string) {
-  const { client, transport } = await createClient()
-  try {
-    const tools = await client.listTools()
-    return tools.tools.find(tool => tool.name === name)
-  } finally {
-    await client.close()
-    await transport.close()
-  }
-}
-
 async function createInMemoryClient(
   server: ReturnType<typeof createKravhanteringMcpServer>,
 ) {
@@ -230,11 +227,33 @@ describe('handleRequirementsMcpRequest', () => {
   })
 
   describe('tool schemas', () => {
-    it('lists the core MCP tools', async () => {
-      const { client, transport } = await createClient()
-      const tools = await client.listTools()
+    let toolSchemaClient: Awaited<ReturnType<typeof createClient>> | undefined
+    let tools: Awaited<ReturnType<Client['listTools']>>['tools'] = []
 
-      expect(tools.tools.map(tool => tool.name)).toEqual(
+    beforeAll(async () => {
+      toolSchemaClient = await createClient()
+      const response = await toolSchemaClient.client.listTools()
+      tools = response.tools
+    })
+
+    afterAll(async () => {
+      if (!toolSchemaClient) {
+        return
+      }
+
+      try {
+        await toolSchemaClient.client.close()
+      } finally {
+        await toolSchemaClient.transport.close()
+      }
+    })
+
+    function getTool(name: string) {
+      return tools.find(tool => tool.name === name)
+    }
+
+    it('lists the core MCP tools', async () => {
+      expect(tools.map(tool => tool.name)).toEqual(
         expect.arrayContaining([
           'requirements_get_requirement',
           'requirements_manage_requirement',
@@ -242,9 +261,6 @@ describe('handleRequirementsMcpRequest', () => {
           'requirements_transition_requirement',
         ]),
       )
-
-      await client.close()
-      await transport.close()
     })
 
     it('describes requirements_query_catalog filters and pagination', async () => {
