@@ -290,8 +290,8 @@ async function createPublishedRequirement(
   areaId: number,
   description: string,
 ): Promise<{
-  editedAt: string | null
   requirementId: number
+  revisionToken: string
   uniqueId: string
   publishedVersionId: number
 }> {
@@ -306,8 +306,8 @@ async function createPublishedRequirement(
     STATUS_PUBLISHED,
   )
   return {
-    editedAt: published.editedAt,
     requirementId: created.requirement.id,
+    revisionToken: published.revisionToken,
     uniqueId: created.requirement.uniqueId,
     publishedVersionId: published.id,
   }
@@ -363,8 +363,9 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
 
     await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
       description: 'Draft replacement that must stay private',
-      expectedEditedAt: published.editedAt,
     })
 
     const service = createRequirementsService(appDb())
@@ -390,8 +391,9 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
 
     await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
       description: 'Pending replacement',
-      expectedEditedAt: published.editedAt,
     })
 
     await expect(
@@ -412,8 +414,9 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
 
     await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
       description: 'Version two draft',
-      expectedEditedAt: published.editedAt,
     })
     await transitionStatus(appDb(), published.requirementId, STATUS_REVIEW)
     const republished = await transitionStatus(
@@ -446,8 +449,9 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     await expect(
       editRequirement(appDb(), created.requirement.id, {
+        baseRevisionToken: created.version.revisionToken,
+        baseVersionId: created.version.id,
         description: 'Illegal review edit',
-        expectedEditedAt: created.version.editedAt,
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -462,8 +466,9 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     await expect(
       editRequirement(appDb(), created.requirement.id, {
+        baseRevisionToken: created.version.revisionToken,
+        baseVersionId: created.version.id,
         description: 'Illegal archived edit',
-        expectedEditedAt: created.version.editedAt,
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -716,18 +721,24 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
 
     const firstSave = await editRequirement(appDb(), created.requirement.id, {
+      baseRevisionToken: created.version.revisionToken,
+      baseVersionId: created.version.id,
       description: 'First saved draft',
-      expectedEditedAt: created.version.editedAt,
     })
 
     await expect(
       editRequirement(appDb(), created.requirement.id, {
+        baseRevisionToken: created.version.revisionToken,
+        baseVersionId: created.version.id,
         description: 'Stale overwrite attempt',
-        expectedEditedAt: created.version.editedAt,
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
-      details: { reason: 'stale_requirement_edit' },
+      details: {
+        baseVersionId: created.version.id,
+        latestVersionId: created.version.id,
+        reason: 'stale_requirement_edit',
+      },
     })
 
     const history = await getVersionHistory(appDb(), created.requirement.id)

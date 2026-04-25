@@ -30,13 +30,15 @@ vi.mock('@/components/HelpPanel', () => ({
 
 vi.mock('@/components/RequirementForm', () => ({
   default: (props: {
-    expectedEditedAt?: string | null
+    baseRevisionToken?: string | null
+    baseVersionId?: number | null
     mode: string
     requirementId?: number | string
     initialData?: Record<string, string | boolean>
   }) => (
     <div
-      data-expected-edited-at={props.expectedEditedAt ?? ''}
+      data-base-revision-token={props.baseRevisionToken ?? ''}
+      data-base-version-id={props.baseVersionId ?? ''}
       data-initial-data={JSON.stringify(props.initialData)}
       data-mode={props.mode}
       data-testid="req-form"
@@ -78,6 +80,7 @@ function makeVersion(
     publishedAt: null,
     qualityCharacteristic: null,
     requiresTesting: true,
+    revisionToken: '11111111-1111-4111-8111-111111111111',
     riskLevel: null,
     status: 1,
     statusColor: '#3b82f6',
@@ -133,7 +136,10 @@ describe('EditRequirementClient', () => {
       okJson(
         makeRequirementDetailResponse(
           {},
-          { editedAt: '2026-03-08T00:00:00.000Z' },
+          {
+            id: 10,
+            revisionToken: '22222222-2222-4222-8222-222222222222',
+          },
         ),
       ),
     )
@@ -143,8 +149,12 @@ describe('EditRequirementClient', () => {
     })
     expect(screen.getByTestId('req-form')).toHaveAttribute('data-mode', 'edit')
     expect(screen.getByTestId('req-form')).toHaveAttribute(
-      'data-expected-edited-at',
-      '2026-03-08T00:00:00.000Z',
+      'data-base-version-id',
+      '10',
+    )
+    expect(screen.getByTestId('req-form')).toHaveAttribute(
+      'data-base-revision-token',
+      '22222222-2222-4222-8222-222222222222',
     )
     expect(screen.getByText(/REQ-001/)).toBeInTheDocument()
   })

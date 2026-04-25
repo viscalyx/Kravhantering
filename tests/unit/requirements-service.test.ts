@@ -119,6 +119,7 @@ function makeRequirementRecord() {
         id: 10,
         publishedAt: null,
         requiresTesting: true,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         status: 1,
         statusColor: '#3b82f6',
         statusNameEn: 'Draft',
@@ -260,6 +261,7 @@ describe('createRequirementsService', () => {
         qualityCharacteristicId: 9,
         requirementTypeId: 1,
         requiresTesting: true,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         status: 3,
         statusColor: '#22c55e',
         statusNameEn: 'Published',
@@ -320,6 +322,7 @@ describe('createRequirementsService', () => {
         qualityCharacteristicId: null,
         requirementTypeId: null,
         requiresTesting: false,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         status: 4,
         statusColor: '#6b7280',
         statusNameEn: 'Archived',
@@ -714,8 +717,9 @@ describe('createRequirementsService', () => {
       id: 1,
       operation: 'edit',
       requirement: {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 10,
         description: 'Updated text',
-        expectedEditedAt: '2026-03-08T00:00:00.000Z',
       },
     })
     expect(result.operation).toBe('edit')
@@ -723,7 +727,8 @@ describe('createRequirementsService', () => {
       expect.anything(),
       1,
       expect.objectContaining({
-        expectedEditedAt: '2026-03-08T00:00:00.000Z',
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 10,
       }),
     )
   })
@@ -750,6 +755,8 @@ describe('createRequirementsService', () => {
   it('adds the latest requirement snapshot to stale edit conflicts', async () => {
     mocks.editRequirement.mockRejectedValue(
       conflictError('This requirement was updated after you started editing.', {
+        baseVersionId: 10,
+        latestVersionId: 10,
         reason: 'stale_requirement_edit',
       }),
     )
@@ -763,14 +770,17 @@ describe('createRequirementsService', () => {
         id: 1,
         operation: 'edit',
         requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
           description: 'Updated text',
-          expectedEditedAt: '2026-03-08T00:00:00.000Z',
         },
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
       details: {
+        baseVersionId: 10,
         latest: expect.objectContaining({ uniqueId: 'INT0001' }),
+        latestVersionId: 10,
         reason: 'stale_requirement_edit',
       },
     })

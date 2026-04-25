@@ -292,6 +292,7 @@ function makeRequirementDetail(
         ownerName: 'Owner',
         publishedAt: '2026-03-01T00:00:00Z',
         requiresTesting: false,
+        revisionToken: `11111111-1111-4111-8111-${String(id).padStart(12, '0')}`,
         riskLevel: null,
         status: 3,
         statusColor: '#22c55e',

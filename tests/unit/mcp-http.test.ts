@@ -54,6 +54,7 @@ function createFakeService(
             },
             description: 'Support secure integration',
             id: 10,
+            revisionToken: '11111111-1111-4111-8111-111111111111',
             versionNormReferences: normReferences,
             requiresTesting,
             statusNameEn: 'Draft',
@@ -85,6 +86,7 @@ function createFakeService(
         },
         description: 'Support secure integration',
         id: 10,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         versionNormReferences: normReferences,
         requiresTesting,
         statusNameEn: 'Draft',
@@ -106,7 +108,12 @@ function createFakeService(
     manageRequirement: vi.fn().mockResolvedValue({
       detail: {
         uniqueId: 'INT0001',
-        versions: [{ versionNumber: 2 }],
+        versions: [
+          {
+            revisionToken: '11111111-1111-4111-8111-111111111111',
+            versionNumber: 2,
+          },
+        ],
       },
       message: 'Requirement updated',
       operation: 'edit',
@@ -122,6 +129,7 @@ function createFakeService(
           uniqueId: 'INT0001',
           version: {
             description: 'Support secure integration',
+            revisionToken: '11111111-1111-4111-8111-111111111111',
             versionNumber: 2,
           },
         },
@@ -155,6 +163,7 @@ function createFakeService(
       },
       message: 'Requirement transitioned',
       version: {
+        revisionToken: '11111111-1111-4111-8111-111111111111',
         versionNumber: 2,
       },
     }),
@@ -222,6 +231,76 @@ describe('handleRequirementsMcpRequest', () => {
         'requirements_transition_requirement',
       ]),
     )
+    const manageTool = tools.tools.find(
+      tool => tool.name === 'requirements_manage_requirement',
+    )
+    const queryTool = tools.tools.find(
+      tool => tool.name === 'requirements_query_catalog',
+    )
+    const getRequirementTool = tools.tools.find(
+      tool => tool.name === 'requirements_get_requirement',
+    )
+    const transitionTool = tools.tools.find(
+      tool => tool.name === 'requirements_transition_requirement',
+    )
+    const listSuggestionsTool = tools.tools.find(
+      tool => tool.name === 'requirements_list_improvement_suggestions',
+    )
+    const manageSuggestionTool = tools.tools.find(
+      tool => tool.name === 'requirements_manage_improvement_suggestion',
+    )
+    const generateTool = tools.tools.find(
+      tool => tool.name === 'requirements_generate_requirements',
+    )
+    expect(queryTool?.description).toContain('risk_levels')
+    const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
+    expect(queryInputSchemaText).toContain('risk_levels')
+    expect(queryInputSchemaText).toContain('normReferenceIds')
+    expect(queryInputSchemaText).toContain('usageScenarioIds')
+    expect(queryInputSchemaText).toContain('sortBy')
+    expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
+    expect(getRequirementTool?.description).toContain('view: "history"')
+    const getRequirementInputSchemaText = JSON.stringify(
+      getRequirementTool?.inputSchema,
+    )
+    expect(getRequirementInputSchemaText).toContain('history')
+    expect(getRequirementInputSchemaText).toContain('before editing')
+    const getRequirementOutputSchemaText = JSON.stringify(
+      getRequirementTool?.outputSchema,
+    )
+    expect(getRequirementOutputSchemaText).toContain('revisionToken')
+    expect(getRequirementOutputSchemaText).toContain('baseRevisionToken')
+    expect(manageTool?.description).toContain('requirement.baseVersionId')
+    expect(manageTool?.description).toContain('requirement.baseRevisionToken')
+    expect(manageTool?.description).toContain('operation "create"')
+    expect(manageTool?.description).toContain('requirement.areaId')
+    expect(manageTool?.description).toContain('requirement.description')
+    expect(manageTool?.description).toContain('view: "history"')
+    const manageInputSchemaText = JSON.stringify(manageTool?.inputSchema)
+    expect(manageInputSchemaText).toContain('For create')
+    expect(manageInputSchemaText).toContain('acceptanceCriteria')
+    expect(manageInputSchemaText).toContain('requirement.versions[0].id')
+    expect(manageInputSchemaText).toContain(
+      'requirement.versions[0].revisionToken',
+    )
+    expect(transitionTool?.description).toContain('rotates the version')
+    expect(JSON.stringify(transitionTool?.outputSchema)).toContain(
+      'revisionToken',
+    )
+    expect(JSON.stringify(listSuggestionsTool?.outputSchema)).toContain(
+      'suggestions',
+    )
+    const manageSuggestionInputSchemaText = JSON.stringify(
+      manageSuggestionTool?.inputSchema,
+    )
+    expect(manageSuggestionInputSchemaText).toContain('resolutionMotivation')
+    expect(JSON.stringify(manageSuggestionTool?.outputSchema)).toContain(
+      'result',
+    )
+    const generateInputSchemaText = JSON.stringify(generateTool?.inputSchema)
+    expect(generateInputSchemaText).toContain('"maxLength":1000')
+    expect(generateTool?.description).toContain('using the generated fields')
+    expect(JSON.stringify(generateTool?.outputSchema)).toContain('stats')
 
     const resource = await client.readResource({
       uri: 'requirements://requirement/INT0001?version=2',
@@ -295,6 +374,38 @@ describe('handleRequirementsMcpRequest', () => {
           uri: 'ui://requirements/requirement-detail/INT0001?version=2',
         }),
       ]),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('passes requirement catalog filters and sorting through the MCP schema', async () => {
+    const { client, transport } = await createClient()
+    const fakeService = serviceState.getService.mock.results[0]?.value
+
+    const result = await client.callTool({
+      arguments: {
+        catalog: 'requirements',
+        normReferenceIds: [4],
+        riskLevelIds: [2],
+        sortBy: 'riskLevel',
+        sortDirection: 'desc',
+        usageScenarioIds: [3],
+      },
+      name: 'requirements_query_catalog',
+    })
+
+    expect(result.isError).not.toBe(true)
+    expect(fakeService.queryCatalog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        normReferenceIds: [4],
+        riskLevelIds: [2],
+        sortBy: 'riskLevel',
+        sortDirection: 'desc',
+        usageScenarioIds: [3],
+      }),
     )
 
     await client.close()
@@ -534,8 +645,9 @@ describe('handleRequirementsMcpRequest', () => {
         operation: 'edit',
         uniqueId: 'INT0001',
         requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
           description: 'Updated description',
-          expectedEditedAt: '2026-03-08T00:00:00.000Z',
           normReferenceIds: [1, 2],
         },
       },
@@ -547,7 +659,8 @@ describe('handleRequirementsMcpRequest', () => {
       expect.anything(),
       expect.objectContaining({
         requirement: expect.objectContaining({
-          expectedEditedAt: '2026-03-08T00:00:00.000Z',
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
           normReferenceIds: [1, 2],
         }),
       }),

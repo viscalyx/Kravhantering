@@ -172,7 +172,8 @@ describe('RequirementForm', () => {
 
     const { container } = render(
       <RequirementForm
-        expectedEditedAt="2026-03-08T00:00:00.000Z"
+        baseRevisionToken="11111111-1111-4111-8111-111111111111"
+        baseVersionId={10}
         initialData={{ description: 'Existing' }}
         mode="edit"
         requirementId={5}
@@ -198,7 +199,8 @@ describe('RequirementForm', () => {
         (c[1] as RequestInit)?.method === 'PUT',
     )
     const body = JSON.parse((putCall?.[1] as RequestInit).body as string)
-    expect(body.expectedEditedAt).toBe('2026-03-08T00:00:00.000Z')
+    expect(body.baseRevisionToken).toBe('11111111-1111-4111-8111-111111111111')
+    expect(body.baseVersionId).toBe(10)
   })
 
   it('shows a stale edit conflict prompt without clearing form data', async () => {
@@ -211,7 +213,12 @@ describe('RequirementForm', () => {
               details: {
                 latest: {
                   uniqueId: 'REQ-001',
-                  versions: [{ versionNumber: 2 }],
+                  versions: [
+                    {
+                      revisionToken: '22222222-2222-4222-8222-222222222222',
+                      versionNumber: 2,
+                    },
+                  ],
                 },
                 reason: 'stale_requirement_edit',
               },
@@ -240,7 +247,8 @@ describe('RequirementForm', () => {
 
     const { container } = render(
       <RequirementForm
-        expectedEditedAt="2026-03-08T00:00:00.000Z"
+        baseRevisionToken="11111111-1111-4111-8111-111111111111"
+        baseVersionId={10}
         initialData={{ description: 'Existing' }}
         mode="edit"
         requirementId={5}

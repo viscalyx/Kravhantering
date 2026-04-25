@@ -107,8 +107,9 @@ describe('requirements/[id] route', () => {
       const req = new NextRequest('http://localhost/api/requirements/1', {
         method: 'PUT',
         body: JSON.stringify({
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
           description: 'Updated',
-          expectedEditedAt: '2026-03-08T00:00:00.000Z',
           references: [{ name: 'Ref1', uri: 'http://example.com' }],
           scenarioIds: [1, 2],
         }),
@@ -125,7 +126,8 @@ describe('requirements/[id] route', () => {
           id: 1,
           operation: 'edit',
           requirement: expect.objectContaining({
-            expectedEditedAt: '2026-03-08T00:00:00.000Z',
+            baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+            baseVersionId: 10,
           }),
         }),
       )
@@ -136,7 +138,9 @@ describe('requirements/[id] route', () => {
         Object.assign(new Error('This requirement was updated'), {
           code: 'conflict',
           details: {
+            baseVersionId: 10,
             latest: { uniqueId: 'REQ-001' },
+            latestVersionId: 10,
             reason: 'stale_requirement_edit',
           },
           status: 409,
@@ -146,8 +150,9 @@ describe('requirements/[id] route', () => {
       const req = new NextRequest('http://localhost/api/requirements/1', {
         method: 'PUT',
         body: JSON.stringify({
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
           description: 'Updated',
-          expectedEditedAt: '2026-03-08T00:00:00.000Z',
         }),
         headers: { 'Content-Type': 'application/json' },
       })

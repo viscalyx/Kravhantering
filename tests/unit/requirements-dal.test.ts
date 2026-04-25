@@ -10,8 +10,19 @@ function createSqlServerDb() {
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
   const getRepository = vi.fn()
   const transaction = vi.fn(
-    async (callback: (manager: { query: typeof query }) => Promise<unknown>) =>
-      callback({ query }),
+    async (
+      isolationOrCallback:
+        | string
+        | ((manager: { query: typeof query }) => Promise<unknown>),
+      maybeCallback?: (manager: { query: typeof query }) => Promise<unknown>,
+    ) => {
+      const callback =
+        typeof isolationOrCallback === 'function'
+          ? isolationOrCallback
+          : maybeCallback
+      if (!callback) throw new Error('Missing transaction callback')
+      return callback({ query })
+    },
   )
   const db = {
     getRepository,
@@ -63,6 +74,7 @@ describe('requirements DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 21,
+          revisionToken: '11111111-1111-4111-8111-111111111111',
           requirementId: 7,
           versionNumber: 2,
           description: 'desc-v2',
@@ -156,6 +168,7 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(result?.versions).toHaveLength(1)
     const version = result?.versions[0]
     expect(version?.id).toBe(21)
+    expect(version?.revisionToken).toBe('11111111-1111-4111-8111-111111111111')
     expect(version?.versionNumber).toBe(2)
     expect(version?.requiresTesting).toBe(true)
     expect(version?.status).toBe(3)
@@ -230,33 +243,36 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(query).toHaveBeenCalledTimes(1)
   })
 
-  it('rejects stale draft edits before rewriting joins', async () => {
+  it('rejects a stale base version id before updating a draft', async () => {
     const { db, query } = createSqlServerDb()
-    const editedAt = new Date('2026-04-20T08:30:00.000Z')
-    query
-      .mockResolvedValueOnce([
-        {
-          id: 21,
-          statusId: 1,
-          editedAt,
-        },
-      ])
-      .mockResolvedValueOnce([])
+    query.mockResolvedValueOnce([
+      {
+        id: 22,
+        revisionToken: '11111111-1111-4111-8111-111111111111',
+        statusId: 1,
+      },
+    ])
 
     await expect(
       editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 21,
         description: 'Stale update',
-        expectedEditedAt: editedAt.toISOString(),
         normReferenceIds: [100],
         scenarioIds: [200],
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
-      details: { reason: 'stale_requirement_edit' },
+      details: {
+        baseVersionId: 21,
+        latestVersionId: 22,
+        reason: 'stale_requirement_edit',
+      },
     })
 
     const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
-    expect(sqlCalls[1]).toContain('edited_at = CONVERT(datetime2, @10, 127)')
+    expect(sqlCalls).toHaveLength(1)
+    expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
     expect(
       sqlCalls.some(sql =>
         sql.includes('DELETE FROM requirement_version_usage_scenarios'),
@@ -267,5 +283,98 @@ describe('requirements DAL (SQL Server path)', () => {
         sql.includes('DELETE FROM requirement_version_norm_references'),
       ),
     ).toBe(false)
+  })
+
+  it('rejects a stale base revision token before rewriting joins', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([
+      {
+        id: 21,
+        revisionToken: '22222222-2222-4222-8222-222222222222',
+        statusId: 1,
+      },
+    ])
+
+    await expect(
+      editRequirement(db, 7, {
+        baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+        baseVersionId: 21,
+        description: 'Stale update',
+        normReferenceIds: [100],
+        scenarioIds: [200],
+      }),
+    ).rejects.toMatchObject({
+      code: 'conflict',
+      details: {
+        baseVersionId: 21,
+        latestVersionId: 21,
+        reason: 'stale_requirement_edit',
+      },
+    })
+
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls).toHaveLength(1)
+    expect(
+      sqlCalls.some(sql =>
+        sql.includes('DELETE FROM requirement_version_usage_scenarios'),
+      ),
+    ).toBe(false)
+    expect(
+      sqlCalls.some(sql =>
+        sql.includes('DELETE FROM requirement_version_norm_references'),
+      ),
+    ).toBe(false)
+  })
+
+  it('rotates the revision token when updating a draft', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          id: 21,
+          revisionToken: '11111111-1111-4111-8111-111111111111',
+          statusId: 1,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: null,
+          archiveInitiatedAt: null,
+          archivedAt: null,
+          createdAt: new Date('2026-04-20T08:30:00.000Z'),
+          createdBy: 'anna',
+          description: 'Updated draft',
+          editedAt: new Date('2026-04-20T09:30:00.000Z'),
+          id: 21,
+          publishedAt: null,
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementId: 7,
+          requirementTypeId: null,
+          requiresTesting: 0,
+          revisionToken: '22222222-2222-4222-8222-222222222222',
+          riskLevelId: null,
+          statusId: 1,
+          verificationMethod: null,
+          versionNumber: 2,
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+
+    const result = await editRequirement(db, 7, {
+      baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+      baseVersionId: 21,
+      description: 'Updated draft',
+      normReferenceIds: [],
+      scenarioIds: [],
+    })
+
+    const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+    expect(sqlCalls[1]).toContain('revision_token = NEWID()')
+    expect(sqlCalls[1]).toContain(
+      'revision_token = CONVERT(uniqueidentifier, @10)',
+    )
+    expect(result.revisionToken).toBe('22222222-2222-4222-8222-222222222222')
   })
 })
