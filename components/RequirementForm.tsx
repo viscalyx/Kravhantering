@@ -14,7 +14,8 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 interface RequirementFormProps {
-  expectedEditedAt?: string | null
+  baseRevisionToken?: string | null
+  baseVersionId?: number | null
   initialData?: Partial<
     Omit<RequirementFormFieldValues, 'normReferenceIds' | 'scenarioIds'>
   >
@@ -58,7 +59,8 @@ const EMPTY_FORM: RequirementFormFieldValues = {
 }
 
 export default function RequirementForm({
-  expectedEditedAt,
+  baseRevisionToken,
+  baseVersionId,
   initialData,
   initialNormReferenceIds,
   initialScenarioIds,
@@ -174,7 +176,8 @@ export default function RequirementForm({
             : undefined,
           riskLevelId: form.riskLevelId ? Number(form.riskLevelId) : undefined,
           description: form.description || undefined,
-          expectedEditedAt: mode === 'edit' ? expectedEditedAt : undefined,
+          baseRevisionToken: mode === 'edit' ? baseRevisionToken : undefined,
+          baseVersionId: mode === 'edit' ? baseVersionId : undefined,
           acceptanceCriteria: form.acceptanceCriteria || undefined,
           requiresTesting: form.requiresTesting,
           verificationMethod: form.requiresTesting
