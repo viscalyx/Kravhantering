@@ -286,6 +286,7 @@ export async function listRequirements(
       CAST(requirement.is_archived AS int) AS isArchived,
       requirement.created_at AS createdAt,
       version.id AS versionId,
+      version.revision_token AS revisionToken,
       version.version_number AS versionNumber,
       version.description AS description,
       version.acceptance_criteria AS acceptanceCriteria,
@@ -358,6 +359,7 @@ export async function listRequirements(
     isArchived: toBool(row.isArchived),
     createdAt: toIso(row.createdAt) ?? '',
     versionId: Number(row.versionId),
+    revisionToken: String(row.revisionToken ?? '').toLowerCase(),
     versionNumber: Number(row.versionNumber),
     description: String(row.description ?? ''),
     acceptanceCriteria:
@@ -474,9 +476,10 @@ async function getNextVersionNumberSqlServer(
 
 interface RequirementMutationData {
   acceptanceCriteria?: string
+  baseRevisionToken?: string | null
+  baseVersionId?: number | null
   createdBy?: string
   description: string
-  expectedEditedAt?: string | null
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
   requirementAreaId: number
@@ -536,6 +539,7 @@ interface VersionInsertedRow {
   requirementId: number
   requirementTypeId: number | null
   requiresTesting: boolean
+  revisionToken: string
   riskLevelId: number | null
   statusId: number
   verificationMethod: string | null
@@ -571,6 +575,7 @@ function mapVersion(row: Record<string, unknown>): VersionInsertedRow {
       row.verificationMethod == null ? null : String(row.verificationMethod),
     createdAt: toIso(row.createdAt) ?? '',
     editedAt: toIso(row.editedAt),
+    revisionToken: String(row.revisionToken ?? '').toLowerCase(),
     publishedAt: toIso(row.publishedAt),
     archivedAt: toIso(row.archivedAt),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
@@ -591,6 +596,7 @@ const REQUIREMENT_OUTPUT = `
 const VERSION_OUTPUT = `
   OUTPUT
     INSERTED.id AS id,
+    INSERTED.revision_token AS revisionToken,
     INSERTED.requirement_id AS requirementId,
     INSERTED.version_number AS versionNumber,
     INSERTED.description AS description,
@@ -688,6 +694,7 @@ interface VersionLite {
   requirementCategoryId: number | null
   requirementTypeId: number | null
   requiresTesting: boolean
+  revisionToken: string
   riskLevelId: number | null
   statusId: number
   verificationMethod: string | null
@@ -696,10 +703,13 @@ interface VersionLite {
 async function getLatestVersionLite(
   tx: SqlServerTxExecutor,
   requirementId: number,
+  options: { lockForUpdate?: boolean } = {},
 ): Promise<VersionLite | null> {
+  const lockHint = options.lockForUpdate ? ' WITH (UPDLOCK, HOLDLOCK)' : ''
   const rows = (await tx.query(
     `SELECT TOP (1)
         id,
+        revision_token AS revisionToken,
         requirement_status_id AS statusId,
         archive_initiated_at AS archiveInitiatedAt,
         description,
@@ -712,7 +722,7 @@ async function getLatestVersionLite(
         CAST(is_testing_required AS int) AS requiresTesting,
         verification_method AS verificationMethod,
         created_by AS createdBy
-      FROM requirement_versions
+      FROM requirement_versions${lockHint}
       WHERE requirement_id = @0
       ORDER BY version_number DESC`,
     [requirementId],
@@ -721,6 +731,7 @@ async function getLatestVersionLite(
   const row = rows[0]
   return {
     id: Number(row.id),
+    revisionToken: String(row.revisionToken ?? '').toLowerCase(),
     statusId: Number(row.statusId),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     description: String(row.description ?? ''),
@@ -738,39 +749,45 @@ async function getLatestVersionLite(
   }
 }
 
-function normalizeExpectedEditedAt(value: string | null | undefined) {
-  if (value === undefined) {
-    throw validationError(
-      'Edit operation requires requirement.expectedEditedAt',
-    )
+const GUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function normalizeBaseVersionId(value: number | null | undefined) {
+  if (value == null || !Number.isInteger(value) || value <= 0) {
+    throw validationError('Edit operation requires requirement.baseVersionId', {
+      reason: 'missing_edit_precondition',
+    })
   }
-  if (value === null) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    throw validationError(
-      'Edit operation requires a valid requirement.expectedEditedAt timestamp',
-    )
-  }
-  return date.toISOString()
+  return value
 }
 
-function hasMatchingEditedAt(current: string | null, expected: string | null) {
-  if (current == null || expected == null) {
-    return current == null && expected == null
+function normalizeBaseRevisionToken(value: string | null | undefined) {
+  if (value == null || value.trim() === '') {
+    throw validationError(
+      'Edit operation requires requirement.baseRevisionToken',
+      { reason: 'missing_edit_precondition' },
+    )
   }
-  return new Date(current).getTime() === new Date(expected).getTime()
+  const normalized = value.trim().toLowerCase()
+  if (!GUID_PATTERN.test(normalized)) {
+    throw validationError(
+      'Edit operation requires a valid requirement.baseRevisionToken GUID',
+      { reason: 'invalid_edit_precondition' },
+    )
+  }
+  return normalized
 }
 
 function staleRequirementEditError(
   requirementId: number,
-  expectedEditedAt: string | null,
-  latestEditedAt: string | null,
+  baseVersionId: number,
+  latestVersionId: number,
 ) {
   return conflictError(
     'This requirement was updated after you started editing. Refresh to review the latest version before saving.',
     {
-      expectedEditedAt,
-      latestEditedAt,
+      baseVersionId,
+      latestVersionId,
       reason: 'stale_requirement_edit',
       requirementId,
     },
@@ -786,7 +803,8 @@ export async function editRequirement(
 ): Promise<VersionInsertedRow> {
   const scenarioIds = uniqueIds(data.scenarioIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
-  const expectedEditedAt = normalizeExpectedEditedAt(data.expectedEditedAt)
+  const baseVersionId = normalizeBaseVersionId(data.baseVersionId)
+  const baseRevisionToken = normalizeBaseRevisionToken(data.baseRevisionToken)
   const now = new Date()
   const verificationMethod = data.requiresTesting
     ? (data.verificationMethod ?? null)
@@ -794,12 +812,14 @@ export async function editRequirement(
 
   let result!: VersionInsertedRow
 
-  await db.transaction(async manager => {
+  await db.transaction('SERIALIZABLE', async manager => {
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
 
-    const current = await getLatestVersionLite(tx, requirementId)
+    const current = await getLatestVersionLite(tx, requirementId, {
+      lockForUpdate: true,
+    })
     if (!current) {
       throw notFoundError('No version found for requirement')
     }
@@ -811,12 +831,11 @@ export async function editRequirement(
         'Cannot edit an archived requirement — restore it first',
       )
     }
-    if (!hasMatchingEditedAt(current.editedAt, expectedEditedAt)) {
-      throw staleRequirementEditError(
-        requirementId,
-        data.expectedEditedAt ?? null,
-        current.editedAt,
-      )
+    if (
+      current.id !== baseVersionId ||
+      current.revisionToken !== baseRevisionToken
+    ) {
+      throw staleRequirementEditError(requirementId, baseVersionId, current.id)
     }
 
     if (current.statusId === STATUS_DRAFT) {
@@ -830,13 +849,11 @@ export async function editRequirement(
               risk_level_id = @5,
               is_testing_required = @6,
               verification_method = @7,
-              edited_at = @8
+              edited_at = @8,
+              revision_token = NEWID()
           ${VERSION_OUTPUT}
           WHERE id = @9
-            AND (
-              (@10 IS NULL AND edited_at IS NULL)
-              OR edited_at = CONVERT(datetime2, @10, 127)
-            )`,
+            AND revision_token = CONVERT(uniqueidentifier, @10)`,
         [
           data.description,
           data.acceptanceCriteria ?? null,
@@ -847,15 +864,15 @@ export async function editRequirement(
           data.requiresTesting ? 1 : 0,
           verificationMethod,
           now,
-          current.id,
-          expectedEditedAt,
+          baseVersionId,
+          baseRevisionToken,
         ],
       )) as Array<Record<string, unknown>>
       if (!updateRows[0]) {
         throw staleRequirementEditError(
           requirementId,
-          data.expectedEditedAt ?? null,
-          current.editedAt,
+          baseVersionId,
+          current.id,
         )
       }
       result = mapVersion(updateRows[0] ?? {})
@@ -955,7 +972,9 @@ export async function initiateArchiving(
   const now = new Date()
   await db.query(
     `UPDATE requirement_versions
-      SET requirement_status_id = ${STATUS_REVIEW}, archive_initiated_at = @0
+      SET requirement_status_id = ${STATUS_REVIEW},
+          archive_initiated_at = @0,
+          revision_token = NEWID()
       WHERE id = @1`,
     [now, publishedId],
   )
@@ -991,7 +1010,8 @@ export async function approveArchiving(
       `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_ARCHIVED},
             archived_at = @0,
-            archive_initiated_at = NULL
+            archive_initiated_at = NULL,
+            revision_token = NEWID()
         WHERE id = @1`,
       [now, versionId],
     )
@@ -1018,7 +1038,9 @@ export async function cancelArchiving(
   }
   await db.query(
     `UPDATE requirement_versions
-      SET requirement_status_id = ${STATUS_PUBLISHED}, archive_initiated_at = NULL
+      SET requirement_status_id = ${STATUS_PUBLISHED},
+          archive_initiated_at = NULL,
+          revision_token = NEWID()
       WHERE id = @0`,
     [Number(rows[0].id)],
   )
@@ -1147,7 +1169,9 @@ export async function transitionStatus(
       params.P_published = now
       await tx.query(
         `UPDATE requirement_versions
-          SET requirement_status_id = ${STATUS_ARCHIVED}, archived_at = @0
+          SET requirement_status_id = ${STATUS_ARCHIVED},
+              archived_at = @0,
+              revision_token = NEWID()
           WHERE requirement_id = @1 AND requirement_status_id = ${STATUS_PUBLISHED}`,
         [now, requirementId],
       )
@@ -1185,7 +1209,7 @@ export async function transitionStatus(
     const idParamIndex = positionalValues.length - 1
 
     const updateRows = (await tx.query(
-      `UPDATE requirement_versions SET ${resolvedSets} ${VERSION_OUTPUT} WHERE id = @${idParamIndex}`,
+      `UPDATE requirement_versions SET ${resolvedSets}, revision_token = NEWID() ${VERSION_OUTPUT} WHERE id = @${idParamIndex}`,
       positionalValues,
     )) as Array<Record<string, unknown>>
     if (!updateRows[0]) {
@@ -1311,6 +1335,7 @@ export async function getVersionHistory(
   const rows = (await db.query(
     `SELECT
         version.id AS id,
+        version.revision_token AS revisionToken,
         version.requirement_id AS requirementId,
         version.version_number AS versionNumber,
         version.description AS description,
@@ -1387,6 +1412,7 @@ export async function getVersionHistory(
     const statusRowId = toNum(row.statusRowId)
     return {
       id: versionId,
+      revisionToken: String(row.revisionToken ?? '').toLowerCase(),
       requirementId: Number(row.requirementId),
       versionNumber: Number(row.versionNumber),
       description: String(row.description ?? ''),
@@ -1478,6 +1504,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
   const versionRows = (await db.query(
     `SELECT
         version.id AS id,
+        version.revision_token AS revisionToken,
         version.requirement_id AS requirementId,
         version.version_number AS versionNumber,
         version.description AS description,
@@ -1609,6 +1636,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
     const statusRowId = toNum(row.statusRowId)
     return {
       id: vId,
+      revisionToken: String(row.revisionToken ?? '').toLowerCase(),
       requirementId: Number(row.requirementId),
       versionNumber: Number(row.versionNumber),
       description: String(row.description ?? ''),

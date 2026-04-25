@@ -93,6 +93,7 @@ export interface RequirementRow {
     categoryNameSv: string | null
     description: string | null
     requiresTesting: boolean
+    revisionToken?: string
     riskLevelId: number | null
     riskLevelNameEn: string | null
     riskLevelNameSv: string | null

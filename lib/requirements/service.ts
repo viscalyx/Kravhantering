@@ -121,10 +121,11 @@ export type CatalogKind =
 export interface RequirementMutationInput {
   acceptanceCriteria?: string
   areaId?: number
+  baseRevisionToken?: string | null
+  baseVersionId?: number | null
   categoryId?: number
   createdBy?: string
   description?: string
-  expectedEditedAt?: string | null
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
   requiresTesting?: boolean
@@ -370,6 +371,7 @@ function formatRequirementListItem(
       categoryNameSv: item.categoryNameSv,
       description: item.description,
       id: item.versionId,
+      revisionToken: item.revisionToken,
       requiresTesting: item.requiresTesting,
       riskLevelId: item.riskLevelId,
       riskLevelNameEn: item.riskLevelNameEn,
@@ -430,6 +432,7 @@ function formatRequirementDetail(
       ownerName: version.createdBy ?? null,
       publishedAt: version.publishedAt,
       requiresTesting: version.requiresTesting,
+      revisionToken: version.revisionToken,
       verificationMethod: version.verificationMethod,
       status: version.status,
       statusColor: version.statusColor,
@@ -1318,9 +1321,12 @@ export function createRequirementsService(
                 'Edit operation requires requirement.description',
               )
             }
-            if (payload.expectedEditedAt === undefined) {
+            if (
+              payload.baseVersionId == null ||
+              payload.baseRevisionToken == null
+            ) {
               throw validationError(
-                'Edit operation requires requirement.expectedEditedAt',
+                'Edit operation requires requirement.baseVersionId and requirement.baseRevisionToken',
                 { reason: 'missing_edit_precondition' },
               )
             }
@@ -1331,9 +1337,10 @@ export function createRequirementsService(
             try {
               version = await editRequirement(db, requirementId, {
                 acceptanceCriteria: payload.acceptanceCriteria,
+                baseRevisionToken: payload.baseRevisionToken,
+                baseVersionId: payload.baseVersionId,
                 createdBy: payload.createdBy ?? context.actor.id ?? undefined,
                 description: payload.description,
-                expectedEditedAt: payload.expectedEditedAt,
                 normReferenceIds: payload.normReferenceIds,
                 requirementAreaId: payload.areaId,
                 requirementCategoryId: payload.categoryId,

@@ -46,7 +46,10 @@ export default function EditRequirementClient({
     number[]
   >([])
   const [initialScenarioIds, setInitialScenarioIds] = useState<number[]>([])
-  const [expectedEditedAt, setExpectedEditedAt] = useState<string | null>(null)
+  const [baseRevisionToken, setBaseRevisionToken] = useState<string | null>(
+    null,
+  )
+  const [baseVersionId, setBaseVersionId] = useState<number | null>(null)
   const [uniqueId, setUniqueId] = useState('')
   const [isPublished, setIsPublished] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -54,7 +57,8 @@ export default function EditRequirementClient({
 
   const fetchData = useCallback(async () => {
     setFetchError(null)
-    setExpectedEditedAt(null)
+    setBaseRevisionToken(null)
+    setBaseVersionId(null)
     setIsPublished(false)
     setLoading(true)
 
@@ -86,7 +90,8 @@ export default function EditRequirementClient({
         return
       }
       setIsPublished(latest.status === STATUS_PUBLISHED)
-      setExpectedEditedAt(latest.editedAt)
+      setBaseRevisionToken(latest.revisionToken)
+      setBaseVersionId(latest.id)
       setInitialData({
         areaId: data.area?.id != null ? String(data.area.id) : '',
         categoryId:
@@ -172,7 +177,8 @@ export default function EditRequirementClient({
         )}
         <div className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-6">
           <RequirementForm
-            expectedEditedAt={expectedEditedAt}
+            baseRevisionToken={baseRevisionToken}
+            baseVersionId={baseVersionId}
             initialData={initialData ?? undefined}
             initialNormReferenceIds={initialNormReferenceIds}
             initialScenarioIds={initialScenarioIds}
