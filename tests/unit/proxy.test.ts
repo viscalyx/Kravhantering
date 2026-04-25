@@ -18,17 +18,11 @@ const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
 
 const AUTH_ON_ENV: Record<string, string> = {
-  AUTH_ENABLED: 'true',
   AUTH_OIDC_ISSUER_URL: 'https://idp.example.test/oidc',
   AUTH_OIDC_CLIENT_ID: 'kravhantering-app',
   AUTH_OIDC_CLIENT_SECRET: 'test-secret',
   AUTH_OIDC_REDIRECT_URI: 'http://localhost/api/auth/callback',
   AUTH_OIDC_POST_LOGOUT_REDIRECT_URI: 'http://localhost/',
-  AUTH_SESSION_COOKIE_PASSWORD: COOKIE_PASSWORD,
-}
-
-const AUTH_OFF_ENV: Record<string, string> = {
-  AUTH_ENABLED: 'false',
   AUTH_SESSION_COOKIE_PASSWORD: COOKIE_PASSWORD,
 }
 
@@ -56,27 +50,14 @@ function buildRequest(
   const headers = new Headers()
   if (init.accept) headers.set('accept', init.accept)
   if (init.bearer) headers.set('authorization', `Bearer ${init.bearer}`)
-  // Headers that the legacy `lib/requirements/auth.ts` header-trust path would
-  // honor when AUTH_ENABLED=false. Always inject so the stripping path is
-  // exercised.
+  // Headers an attacker could try to inject. Always present so the stripping
+  // path is exercised on every request.
   headers.set('x-user-id', 'attacker')
   headers.set('x-user-roles', 'Admin')
   return new NextRequest(url, { method: init.method ?? 'GET', headers })
 }
 
 describe('proxy', () => {
-  it('passes through when AUTH_ENABLED=false', async () => {
-    const restore = withEnv(AUTH_OFF_ENV)
-    try {
-      const response = await proxy(
-        buildRequest('http://localhost/sv/requirements'),
-      )
-      expect(response.status).toBe(200)
-    } finally {
-      restore()
-    }
-  })
-
   it('redirects unauthenticated browser GET to /api/auth/login', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
@@ -190,7 +171,7 @@ describe('proxy', () => {
     }
   })
 
-  it('strips inbound x-user-* headers when AUTH_ENABLED=true', async () => {
+  it('strips inbound x-user-* headers', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
       const response = await proxy(buildRequest('http://localhost/api/auth/me'))

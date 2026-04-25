@@ -24,6 +24,7 @@ const desktopChromium = {
 export default defineConfig({
   testDir: './tests/guide',
   outputDir: 'test-results/guide',
+  globalSetup: './tests/integration/global-setup.ts',
   // The guide is a single long-running script — allow 10 minutes
   timeout: 10 * 60 * 1_000,
   fullyParallel: false,
@@ -35,7 +36,8 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    storageState: 'test-results/auth/admin.json',
     trace: 'retain-on-failure',
     screenshot: 'on',
     viewport: { width: 1440, height: 1200 },
@@ -51,7 +53,7 @@ export default defineConfig({
     : [
         {
           command: 'npm run dev',
-          url: 'http://127.0.0.1:3000',
+          url: 'http://localhost:3000',
           reuseExistingServer: true,
           timeout: 120_000,
           env: {

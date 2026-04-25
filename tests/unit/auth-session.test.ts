@@ -6,7 +6,6 @@ const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
 
 const TRACKED_ENV_KEYS = [
-  'AUTH_ENABLED',
   'AUTH_OIDC_CLIENT_ID',
   'AUTH_OIDC_CLIENT_SECRET',
   'AUTH_OIDC_ISSUER_URL',
@@ -34,7 +33,6 @@ function restoreTrackedEnv() {
 
 describe('session helpers', () => {
   beforeEach(() => {
-    env.AUTH_ENABLED = 'true'
     env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
     env.AUTH_OIDC_CLIENT_ID = 'kravhantering-app'
     env.AUTH_OIDC_CLIENT_SECRET = 'secret'

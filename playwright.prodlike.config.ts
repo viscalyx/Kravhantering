@@ -26,7 +26,9 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3001',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
+
+    storageState: 'test-results/auth/admin.json',
 
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -44,15 +46,11 @@ export default defineConfig({
     ? undefined
     : [
         {
-          // Same rationale as playwright.config.ts: integration tests run
-          // with auth disabled. The `:noauth` variant builds and runs the
-          // prod-like server with AUTH_ENABLED=false; because boot validation
-          // refuses that combination under NODE_ENV=production, the script
-          // also sets the opt-in escape hatch
-          // AUTH_ALLOW_DISABLE_IN_PRODUCTION=true. Never use that flag in a
-          // real deployment.
-          command: 'bash -lc "npm run start:prodlike:noauth"',
-          url: 'http://127.0.0.1:3001',
+          // Auth is always on. Boot the prodlike server normally and let the
+          // global setup (`tests/integration/global-setup.ts`) acquire a real
+          // Keycloak session per role. Make sure `npm run idp:up` is running.
+          command: 'bash -lc "npm run start:prodlike"',
+          url: 'http://localhost:3001',
           timeout: 300_000,
           reuseExistingServer: !process.env.CI,
           env: {

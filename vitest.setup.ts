@@ -5,11 +5,23 @@ import { vi } from 'vitest'
 
 ;(process.env as Record<string, string | undefined>).NODE_ENV = 'test'
 
-// Default to AUTH_ENABLED=false in unit tests so route handlers and the
-// request-context helper don't require the full OIDC env-var set. Individual
-// tests that exercise the auth-on path explicitly opt in by setting the env
-// var and calling `resetAuthConfigForTests()`.
-;(process.env as Record<string, string | undefined>).AUTH_ENABLED = 'false'
+// Default OIDC env vars so `getAuthConfig()` succeeds across all tests.
+// Auth-specific tests that assert missing-env failures clear these explicitly.
+{
+  const env = process.env as Record<string, string | undefined>
+  const defaults: Record<string, string> = {
+    AUTH_OIDC_CLIENT_ID: 'test-client',
+    AUTH_OIDC_CLIENT_SECRET: 'test-client-secret',
+    AUTH_OIDC_ISSUER_URL: 'http://localhost:9999/realms/test',
+    AUTH_OIDC_POST_LOGOUT_REDIRECT_URI: 'http://localhost:3000/',
+    AUTH_OIDC_REDIRECT_URI: 'http://localhost:3000/api/auth/callback',
+    AUTH_SESSION_COOKIE_PASSWORD:
+      'test-cookie-password-must-be-at-least-32-characters-long',
+  }
+  for (const [key, value] of Object.entries(defaults)) {
+    if (env[key] === undefined) env[key] = value
+  }
+}
 
 // Mock framer-motion globally — all motion.* elements are handled via Proxy.
 // Individual test files should NOT re-mock framer-motion.

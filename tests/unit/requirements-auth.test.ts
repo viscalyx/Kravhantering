@@ -1,57 +1,38 @@
 import { describe, expect, it } from 'vitest'
 import {
   AllowAllAuthorizationService,
+  attachVerifiedActor,
   createRequestContext,
-  getActorContextFromRequest,
   RoleBasedAuthorizationService,
 } from '@/lib/requirements/auth'
 
-describe('requirements auth', () => {
-  describe('getActorContextFromRequest', () => {
-    it('returns anonymous context when no headers', () => {
-      const req = new Request('http://localhost/test')
-      const ctx = getActorContextFromRequest(req)
-      expect(ctx.id).toBeNull()
-      expect(ctx.isAuthenticated).toBe(false)
-      expect(ctx.source).toBe('anonymous')
-      expect(ctx.roles).toEqual([])
-    })
-
-    it('extracts user from headers', () => {
-      const req = new Request('http://localhost/test', {
-        headers: {
-          'x-user-id': 'user-1',
-          'x-user-roles': 'admin, editor',
-        },
-      })
-      const ctx = getActorContextFromRequest(req)
-      expect(ctx.id).toBe('user-1')
-      expect(ctx.isAuthenticated).toBe(true)
-      expect(ctx.source).toBe('headers')
-      expect(ctx.roles).toEqual(['admin', 'editor'])
-    })
-
-    it('handles empty roles header', () => {
-      const req = new Request('http://localhost/test', {
-        headers: { 'x-user-id': 'user-1', 'x-user-roles': '' },
-      })
-      const ctx = getActorContextFromRequest(req)
-      expect(ctx.roles).toEqual([])
-    })
+function buildAuthedRequest(url: string, init: RequestInit = {}): Request {
+  const req = new Request(url, init)
+  attachVerifiedActor(req, {
+    id: 'user-1',
+    displayName: 'User One',
+    hsaId: null,
+    roles: ['Admin'],
+    source: 'oidc',
+    isAuthenticated: true,
   })
+  return req
+}
 
+describe('requirements auth', () => {
   describe('createRequestContext', () => {
     it('creates context with request ID from header', async () => {
-      const req = new Request('http://localhost/test', {
+      const req = buildAuthedRequest('http://localhost/test', {
         headers: { 'x-request-id': 'req-abc' },
       })
       const ctx = await createRequestContext(req, 'rest')
       expect(ctx.requestId).toBe('req-abc')
       expect(ctx.source).toBe('rest')
+      expect(ctx.actor.isAuthenticated).toBe(true)
     })
 
     it('generates request ID when not provided', async () => {
-      const req = new Request('http://localhost/test')
+      const req = buildAuthedRequest('http://localhost/test')
       const ctx = await createRequestContext(req, 'mcp', 'list_requirements')
       expect(ctx.requestId).toBeTruthy()
       expect(ctx.source).toBe('mcp')
@@ -80,7 +61,7 @@ describe('requirements auth', () => {
               displayName: 'u1',
               hsaId: null,
               roles: ['admin'],
-              source: 'headers',
+              source: 'oidc',
               isAuthenticated: true,
             },
             requestId: 'r1',
@@ -103,7 +84,7 @@ describe('requirements auth', () => {
               displayName: 'u1',
               hsaId: null,
               roles: ['viewer'],
-              source: 'headers',
+              source: 'oidc',
               isAuthenticated: true,
             },
             requestId: 'r1',

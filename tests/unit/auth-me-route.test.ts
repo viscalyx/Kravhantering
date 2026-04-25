@@ -20,19 +20,8 @@ describe('auth me route', () => {
     vi.clearAllMocks()
   })
 
-  it('returns authDisabled responses with no-store caching', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: false })
-
-    const response = await GET()
-    expect(response.headers.get('Cache-Control')).toBe('no-store')
-    await expect(response.json()).resolves.toEqual({
-      authenticated: false,
-      authDisabled: true,
-    })
-  })
-
   it('returns unauthenticated responses with no-store caching', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: true })
+    getAuthConfigMock.mockReturnValue({})
     getSessionMock.mockResolvedValue({})
     isSignedInMock.mockReturnValue(false)
 
@@ -42,7 +31,7 @@ describe('auth me route', () => {
   })
 
   it('returns authenticated responses with no-store caching', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: true })
+    getAuthConfigMock.mockReturnValue({})
     getSessionMock.mockResolvedValue({
       sub: 'user-1',
       hsaId: 'SE2321000032-rev1',

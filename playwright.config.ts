@@ -53,13 +53,35 @@ export default defineConfig({
   ],
   use: {
     /*
-     * Use 127.0.0.1 instead of localhost — WebKit on Linux cannot reliably
-     * resolve localhost in containers / dev-containers.
+     * Use `localhost` (not `127.0.0.1`) so the host matches the OIDC
+     * redirect URI registered in Keycloak (`AUTH_OIDC_REDIRECT_URI=
+     * http://localhost:3000/api/auth/callback`). Cookies are host-scoped:
+     * the iron-session cookie established by global-setup must be sent on
+     * every navigation, which only works when both share the same host.
      */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+
+    /*
+     * Same-origin / CSRF defenses (`lib/auth/csrf.ts`) reject mutating
+     * requests that lack matching `Origin` and `X-Requested-With:
+     * XMLHttpRequest`. Set them on every `request`-fixture call so specs
+     * don't have to remember; they are no-ops on safe (GET/HEAD) methods.
+     */
+    extraHTTPHeaders: {
+      Origin: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
 
     actionTimeout: actionTimeoutMs,
     navigationTimeout: navigationTimeoutMs,
+
+    /*
+     * Auth is mandatory in every build target. Each integration spec runs
+     * with the `admin` Keycloak session seeded by `tests/integration/global-
+     * setup.ts`. Specs that need a different role can override via
+     * `test.use({ storageState: 'test-results/auth/<role>.json' })`.
+     */
+    storageState: 'test-results/auth/admin.json',
 
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -77,15 +99,11 @@ export default defineConfig({
     ? undefined
     : [
         {
-          // Integration tests run with auth disabled. They cover product
-          // behaviour (developer mode, navigation, requirements UI), not the
-          // auth flow itself — that is exercised by dedicated unit tests in
-          // `tests/unit/auth-*.test.ts` against an in-process oidc-provider
-          // mock (`tests/support/oidc-mock.ts`). Running them under
-          // AUTH_ENABLED=true would just bounce every navigation through the
-          // real Keycloak login page and hang.
-          command: 'npm run dev:noauth',
-          url: 'http://127.0.0.1:3000',
+          // Auth is always on. Boot the dev server and let the global setup
+          // (`tests/integration/global-setup.ts`) acquire a real Keycloak
+          // session per role. Make sure `npm run idp:up` is running.
+          command: 'npm run dev',
+          url: 'http://localhost:3000',
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
           env: {

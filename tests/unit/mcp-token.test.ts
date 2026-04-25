@@ -28,18 +28,8 @@ describe('verifyMcpBearerToken', () => {
     resetMcpJwksCacheForTests()
   })
 
-  it('returns null when AUTH_ENABLED=false', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: false })
-    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
-    const result = await verifyMcpBearerToken(
-      new Request('http://x/', { headers: { authorization: 'Bearer x' } }),
-    )
-    expect(result).toBeNull()
-  })
-
-  it('throws McpAuthError when bearer is missing and auth is enabled', async () => {
+  it('throws McpAuthError when bearer is missing', async () => {
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })
@@ -53,7 +43,6 @@ describe('verifyMcpBearerToken', () => {
 
   it('verifies a signed JWT and returns an MCP actor', async () => {
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })
