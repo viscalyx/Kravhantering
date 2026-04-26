@@ -28,7 +28,7 @@ const migrationsRoot = join(process.cwd(), 'typeorm', 'migrations')
  * sorted lexicographically to preserve chronological order.
  */
 const MIGRATION_FILES = readdirSync(migrationsRoot)
-  .filter((file) => /^\d{4}_.*\.mjs$/.test(file))
+  .filter(file => /^\d{4}_.*\.mjs$/.test(file))
   .sort()
 
 /**
