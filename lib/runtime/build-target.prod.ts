@@ -5,9 +5,7 @@
  * compile-time constants — no `process.env` reads — so webpack dead-code
  * elimination removes every dev/escape-hatch branch from the bundle.
  *
- * CRITICAL: never add `process.env` reads to this file. The CI bundle-
- * verification script (`scripts/verify-prod-bundle.mjs`) confirms that
- * forbidden dev tokens do not appear in `.next/server` or `.next/static`.
+ * CRITICAL: never add `process.env` reads to this file.
  *
  * @see lib/runtime/build-target.ts for the full API contract.
  */

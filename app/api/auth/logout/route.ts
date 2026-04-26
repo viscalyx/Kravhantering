@@ -29,6 +29,18 @@ function createPostLogoutResponse(
   return NextResponse.redirect(url, { status: 302 })
 }
 
+/**
+ * GET /api/auth/logout — intentionally **non-destructive**.
+ *
+ * Only POST (which runs `assertSameOriginRequest`) is allowed to terminate
+ * the session. A GET-driven logout would be CSRF-triggerable from any
+ * cross-site `<a href>`, `<img src>`, or 302 redirect, letting a third
+ * party silently sign users out as a denial-of-service. The GET handler
+ * therefore just bounces to the post-logout redirect URI and never calls
+ * `session.destroy()`.
+ *
+ * @see POST handler below for the CSRF-protected destructive path.
+ */
 export async function GET(request: NextRequest) {
   const cfg = getAuthConfig()
   return createLocalRedirect(request, cfg.postLogoutRedirectUri)

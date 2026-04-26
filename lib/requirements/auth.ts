@@ -30,9 +30,9 @@ export interface ActorContext {
   displayName: string
   /**
    * HSA-id when the actor was authenticated and a verified `employeeHsaId`
-   * claim was present. `null` for anonymous, header-trust, or MCP actors
-   * whose token did not carry the claim. MCP service-account tokens carry
-   * the synthetic `mcp-client:<client_id>` value here.
+   * claim was present. `null` for anonymous or MCP actors whose token did
+   * not carry the claim. MCP service-account tokens carry the synthetic
+   * `mcp-client:<client_id>` value here.
    */
   hsaId: string | null
   id: string | null
