@@ -2,12 +2,16 @@
 applyTo: "{docs/**/*.md,README.md,CONTRIBUTING.md,SECURITY.md,CODE_OF_CONDUCT.md,packages/**/*.md}"
 ---
 
-# Markdown Linting
+## Markdown Style Guide
+
+- Do not use `---` to separate sections in Markdown files. Use section headers instead.
+
+## Markdown Linting
 
 Follow markdownlint rules `MD013` (line length) and `MD060`
 (table column style) in all Markdown files.
 
-## MD013 — Line Length
+### MD013 — Line Length
 
 - Wrap prose at ~80 characters on word boundaries.
 - Never break inline code in backticks; break before or after the
@@ -28,7 +32,7 @@ Follow markdownlint rules `MD013` (line length) and `MD060`
 
 - Do not disable MD013 for regular prose or link lines.
 
-## MD060 — Table Column Style
+### MD060 — Table Column Style
 
 - Default to `aligned` style (pipes vertically aligned).
 - Use `compact` style (single space around cell content) when any
