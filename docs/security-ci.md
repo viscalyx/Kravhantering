@@ -12,7 +12,8 @@ Workflow file:
 Each pull request to `main` runs an authenticated **OWASP ZAP baseline**
 (passive) scan against a fresh, ephemeral copy of the application
 running on the GitHub Actions runner. Results are uploaded as workflow
-artifacts and the PR fails on **Medium** or **High** confirmed alerts.
+artifacts and the PR fails on any alert that is not explicitly
+suppressed in the rules file.
 
 ### What the workflow does
 
@@ -57,19 +58,29 @@ artifacts and the PR fails on **Medium** or **High** confirmed alerts.
 
 ### Failure policy
 
-- `cmd_options: -l Medium -I` makes the action fail only when ZAP
-  reports an alert at Medium or High risk. Low and Informational alerts
-  appear in the report but do not block the PR.
-- The starter rule overrides in
-  [.github/zap/rules.prodlike.tsv](../.github/zap/rules.prodlike.tsv)
-  explicitly suppress a small set of rules that always fire on
-  `http://localhost` but are guaranteed to be set correctly by the
-  production reverse proxy (HSTS, CSP, Permissions-Policy, plus two
-  notoriously noisy information-disclosure rules).
+`zap-baseline.py` does not have a built-in "fail on risk ≥ Medium"
+switch — alert handling is **per rule**, not per risk rating. The
+workflow therefore relies on per-rule actions in
+[.github/zap/rules.prodlike.tsv](../.github/zap/rules.prodlike.tsv):
+
+- Default action for any rule that fires is `WARN`, which makes the
+  baseline action exit non-zero and fail the PR.
+- Rules that are pure noise on a localhost CI build are listed as
+  `IGNORE` in `rules.prodlike.tsv` so they do not fail the PR.
+- Rules can be explicitly escalated to `FAIL` (same effect as `WARN`
+  for the build, but communicates intent).
+- We deliberately do **not** pass `-I` to `zap-baseline.py`. Doing so
+  would only fail on rules marked `FAIL`, which would require
+  enumerating every ZAP rule we care about.
+
+If the first scan reports an unexpected alert that turns out to be a
+local-CI artefact, suppress it via `rules.prodlike.tsv` and document
+why in the comment column.
 
 Rule files are named `rules.<scenario>.tsv` so future scan scenarios
-(for example a nightly full scan against a staging deployment) can ship
-their own policy file alongside without disturbing the PR baseline.
+(for example a nightly full scan against a staging deployment) can
+ship their own policy file alongside without disturbing the PR
+baseline.
 
 ### Tuning the rules
 
