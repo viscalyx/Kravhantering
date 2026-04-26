@@ -325,6 +325,7 @@ describe('db-sqlserver-admin.mjs', () => {
     ).toEqual([
       'InitialSqlServerSchema1713720000000',
       'RequirementVersionRevisionToken1713800000000',
+      'ExplicitFkActions1714000000000',
     ])
     expect(runMigrations).toHaveBeenCalled()
     expect(destroy).toHaveBeenCalled()

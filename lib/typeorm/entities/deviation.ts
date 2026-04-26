@@ -68,6 +68,7 @@ export const deviationEntity = new EntitySchema<DeviationEntity>({
       },
       nullable: false,
       onDelete: 'CASCADE',
+      onUpdate: 'NO ACTION',
     },
   },
 })

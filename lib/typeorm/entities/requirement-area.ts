@@ -46,6 +46,7 @@ export const requirementAreaEntity = new EntitySchema<RequirementAreaEntity>({
       },
       nullable: true,
       onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
   },
 })

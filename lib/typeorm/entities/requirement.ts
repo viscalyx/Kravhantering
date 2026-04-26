@@ -44,6 +44,7 @@ export const requirementEntity = new EntitySchema<RequirementEntity>({
       },
       nullable: false,
       onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
   },
 })

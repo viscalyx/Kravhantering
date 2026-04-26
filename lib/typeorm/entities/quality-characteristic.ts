@@ -45,6 +45,7 @@ export const qualityCharacteristicEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       parent: {
         type: 'many-to-one',
@@ -58,6 +59,7 @@ export const qualityCharacteristicEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })

@@ -50,6 +50,7 @@ export const usageScenarioEntity = new EntitySchema<UsageScenarioEntity>({
       },
       nullable: true,
       onDelete: 'NO ACTION',
+      onUpdate: 'NO ACTION',
     },
   },
 })

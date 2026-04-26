@@ -106,6 +106,7 @@ export const requirementVersionEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirementCategory: {
         type: 'many-to-one',
@@ -118,6 +119,7 @@ export const requirementVersionEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirementType: {
         type: 'many-to-one',
@@ -130,6 +132,7 @@ export const requirementVersionEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       qualityCharacteristic: {
         type: 'many-to-one',
@@ -142,6 +145,7 @@ export const requirementVersionEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirementStatus: {
         type: 'many-to-one',
@@ -154,6 +158,7 @@ export const requirementVersionEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       riskLevel: {
         type: 'many-to-one',
@@ -165,6 +170,7 @@ export const requirementVersionEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })

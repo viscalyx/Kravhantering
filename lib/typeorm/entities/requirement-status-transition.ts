@@ -37,6 +37,7 @@ export const requirementStatusTransitionEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       toRequirementStatus: {
         type: 'many-to-one',
@@ -49,6 +50,7 @@ export const requirementStatusTransitionEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })
