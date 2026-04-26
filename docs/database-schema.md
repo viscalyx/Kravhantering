@@ -1330,45 +1330,67 @@ its purpose and the table/column(s) it covers.
 
 ### Named Foreign Key Constraints
 
-Most foreign keys are declared on TypeORM `@ManyToOne` /
-`@JoinColumn` decorators with auto-generated constraint
-names. This is the standard pattern for simple
-single-column FKs with default `NO ACTION` semantics.
+Every foreign key is declared on TypeORM `@ManyToOne` /
+`@JoinColumn` decorators with an explicit
+`foreignKeyConstraintName` and explicit `onDelete` /
+`onUpdate` referential actions. Migration `0001`
+created the constraints, and migration `0003` made
+the `ON DELETE` / `ON UPDATE` clauses explicit on
+every constraint so the SQL emitted by the migration
+matches the entity intent. Default semantics for
+referential actions are `NO ACTION`.
 
-Use the `foreignKeyConstraintName` option on TypeORM
-`@JoinColumn`/`@JoinTable` decorators (or an explicit
-`ALTER TABLE ... ADD CONSTRAINT [fk_<table>_<col>] FOREIGN KEY ...`
-in the migration) when a constraint needs a stable,
-human-readable name — for example composite FKs,
-`ON DELETE CASCADE`, or other non-default referential
-actions.
+The drift guard in
+`tests/unit/entities-migration-fk-actions.test.ts`
+fails if any FK in the migration source does not emit
+both clauses or disagrees with the entity declaration.
 
-The following table lists the constraints that are
-explicitly named:
+The following table lists every named FK constraint:
 
 <!-- markdownlint-disable MD013 -->
-| Constraint Name | Table | Column(s) | References | On Delete |
-| --------------- | ----- | --------- | ---------- | --------- |
-| `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE |
-| `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
-| `fk_package_local_requirements_package_id` | `package_local_requirements` | `package_id` | `requirement_packages.id` | CASCADE |
-| `fk_package_local_requirements_requirement_area_id` | `package_local_requirements` | `requirement_area_id` | `requirement_areas.id` | NO ACTION |
-| `fk_package_local_requirements_requirement_category_id` | `package_local_requirements` | `requirement_category_id` | `requirement_categories.id` | NO ACTION |
-| `fk_package_local_requirements_requirement_type_id` | `package_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION |
-| `fk_package_local_requirements_quality_characteristic_id` | `package_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION |
-| `fk_package_local_requirements_risk_level_id` | `package_local_requirements` | `risk_level_id` | `risk_levels.id` | NO ACTION |
-| `fk_package_local_requirements_package_id_needs_reference_id` | `package_local_requirements` | `(package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
-| `fk_package_local_requirements_package_item_status_id` | `package_local_requirements` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
-| `fk_package_local_requirement_usage_scenarios_package_local_requirement_id` | `package_local_requirement_usage_scenarios` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE |
-| `fk_package_local_requirement_usage_scenarios_usage_scenario_id` | `package_local_requirement_usage_scenarios` | `usage_scenario_id` | `usage_scenarios.id` | NO ACTION |
-| `fk_package_local_requirement_norm_references_package_local_requirement_id` | `package_local_requirement_norm_references` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE |
-| `fk_package_local_requirement_norm_references_norm_reference_id` | `package_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION |
-| `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION |
-| `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | SET NULL |
-| `fk_deviations_package_item_id` | `deviations` | `package_item_id` | `requirement_package_items.id` | CASCADE |
-| `fk_package_local_requirement_deviations_package_local_requirement_id` | `package_local_requirement_deviations` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE |
-| `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE |
-| `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL |
+| Constraint Name | Table | Column(s) | References | On Delete | On Update |
+| --------------- | ----- | --------- | ---------- | --------- | --------- |
+| `fk_requirement_areas_owner_id` | `requirement_areas` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
+| `fk_requirement_packages_package_implementation_type_id` | `requirement_packages` | `package_implementation_type_id` | `package_implementation_types.id` | NO ACTION | NO ACTION |
+| `fk_requirement_packages_package_responsibility_area_id` | `requirement_packages` | `package_responsibility_area_id` | `package_responsibility_areas.id` | NO ACTION | NO ACTION |
+| `fk_requirement_packages_package_lifecycle_status_id` | `requirement_packages` | `package_lifecycle_status_id` | `package_lifecycle_statuses.id` | NO ACTION | NO ACTION |
+| `fk_package_needs_references_package_id` | `package_needs_references` | `package_id` | `requirement_packages.id` | NO ACTION | NO ACTION |
+| `fk_requirement_status_transitions_to_requirement_status_id` | `requirement_status_transitions` | `to_requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |
+| `fk_requirement_status_transitions_from_requirement_status_id` | `requirement_status_transitions` | `from_requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |
+| `fk_quality_characteristics_requirement_type_id` | `quality_characteristics` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
+| `fk_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_package_id` | `package_local_requirements` | `package_id` | `requirement_packages.id` | CASCADE | NO ACTION |
+| `fk_package_local_requirements_package_id_needs_reference_id` | `package_local_requirements` | `(package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_requirement_area_id` | `package_local_requirements` | `requirement_area_id` | `requirement_areas.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_requirement_category_id` | `package_local_requirements` | `requirement_category_id` | `requirement_categories.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_requirement_type_id` | `package_local_requirements` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_quality_characteristic_id` | `package_local_requirements` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_risk_level_id` | `package_local_requirements` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirements_package_item_status_id` | `package_local_requirements` | `package_item_status_id` | `package_item_statuses.id` | SET NULL | NO ACTION |
+| `fk_package_local_requirement_deviations_package_local_requirement_id` | `package_local_requirement_deviations` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE | NO ACTION |
+| `fk_package_local_requirement_norm_references_package_local_requirement_id` | `package_local_requirement_norm_references` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE | NO ACTION |
+| `fk_package_local_requirement_norm_references_norm_reference_id` | `package_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
+| `fk_package_local_requirement_usage_scenarios_package_local_requirement_id` | `package_local_requirement_usage_scenarios` | `package_local_requirement_id` | `package_local_requirements.id` | CASCADE | NO ACTION |
+| `fk_package_local_requirement_usage_scenarios_usage_scenario_id` | `package_local_requirement_usage_scenarios` | `usage_scenario_id` | `usage_scenarios.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_requirement_status_id` | `requirement_versions` | `requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_requirement_type_id` | `requirement_versions` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_requirement_category_id` | `requirement_versions` | `requirement_category_id` | `requirement_categories.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_quality_characteristic_id` | `requirement_versions` | `quality_characteristic_id` | `quality_characteristics.id` | NO ACTION | NO ACTION |
+| `fk_requirement_versions_risk_level_id` | `requirement_versions` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
+| `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE | NO ACTION |
+| `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
+| `fk_requirement_version_usage_scenarios_requirement_version_id` | `requirement_version_usage_scenarios` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
+| `fk_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | `usage_scenarios.id` | NO ACTION | NO ACTION |
+| `fk_requirement_package_items_requirement_package_id` | `requirement_package_items` | `requirement_package_id` | `requirement_packages.id` | NO ACTION | NO ACTION |
+| `fk_requirement_package_items_requirement_package_id_needs_reference_id` | `requirement_package_items` | `(requirement_package_id, needs_reference_id)` | `package_needs_references.(package_id, id)` | NO ACTION | NO ACTION |
+| `fk_requirement_package_items_requirement_id` | `requirement_package_items` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
+| `fk_requirement_package_items_requirement_version_id` | `requirement_package_items` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
+| `fk_requirement_package_items_package_item_status_id` | `requirement_package_items` | `package_item_status_id` | `package_item_statuses.id` | NO ACTION | NO ACTION |
+| `fk_deviations_package_item_id` | `deviations` | `package_item_id` | `requirement_package_items.id` | CASCADE | NO ACTION |
+| `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE | NO ACTION |
+| `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL | NO ACTION |
+| `fk_usage_scenarios_owner_id` | `usage_scenarios` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
