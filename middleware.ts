@@ -6,7 +6,7 @@ import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
 } from '@/lib/auth/session'
-import { USE_DEV_CSP } from '@/lib/runtime/build-target'
+import { USE_DEV_CSP, USE_INSECURE_COOKIE } from '@/lib/runtime/build-target'
 
 const intlMiddleware = createMiddleware(routing)
 
@@ -60,6 +60,26 @@ function ensureRedirectContentType(response: NextResponse): NextResponse {
   if (response.status < 300 || response.status >= 400) return response
   if (response.headers.get('content-type') !== null) return response
   response.headers.set('content-type', 'text/plain; charset=utf-8')
+  return response
+}
+
+// ZAP rule 10010 (Cookie No HttpOnly Flag) flags the NEXT_LOCALE cookie
+// emitted by next-intl, which omits HttpOnly by default and exposes no
+// option to add it (`localeCookie` accepts only a Pick<> that excludes
+// httpOnly). Re-set the cookie with HttpOnly so client JS cannot read it.
+// The cookie is only consumed by next-intl's server-side locale detection.
+// Issue #113.
+function hardenLocaleCookie(response: NextResponse): NextResponse {
+  const existing = response.cookies.get('NEXT_LOCALE')
+  if (!existing) return response
+  response.cookies.set({
+    name: 'NEXT_LOCALE',
+    value: existing.value,
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: !USE_INSECURE_COOKIE,
+  })
   return response
 }
 
@@ -240,7 +260,9 @@ function applyPageHeaders(request: NextRequest): NextResponse {
   applyRequestHeaderOverrides(response, requestHeaders)
   response.headers.set('Content-Security-Policy', csp)
 
-  return ensureRedirectContentType(stripRedirectBody(response))
+  return ensureRedirectContentType(
+    stripRedirectBody(hardenLocaleCookie(response)),
+  )
 }
 
 export default async function middleware(request: NextRequest) {

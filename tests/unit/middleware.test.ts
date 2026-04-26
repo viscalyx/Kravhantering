@@ -110,7 +110,11 @@ describe('middleware', () => {
       expect(response.headers.get('location')).toBe(
         'http://localhost/sv/static/foo.js',
       )
-      expect(response.headers.get('set-cookie')).toContain('NEXT_LOCALE=sv')
+      const setCookie = response.headers.get('set-cookie') ?? ''
+      expect(setCookie).toContain('NEXT_LOCALE=sv')
+      // Issue #113 / ZAP rule 10010: NEXT_LOCALE must carry HttpOnly so
+      // client JS cannot read it. next-intl's default omits the flag.
+      expect(setCookie).toMatch(/HttpOnly/i)
       expect(response.headers.get('content-type')).toBe(
         'text/plain; charset=utf-8',
       )
