@@ -26,16 +26,17 @@ if (isProduction && buildTarget === undefined) {
   )
 }
 
-if (
-  buildTarget !== undefined &&
-  !['dev', 'local-prod', 'prod'].includes(buildTarget)
-) {
+const BUILD_TARGETS = ['dev', 'local-prod', 'prod'] as const
+type BuildTarget = (typeof BUILD_TARGETS)[number]
+const isBuildTarget = (value: string | undefined): value is BuildTarget =>
+  value !== undefined && (BUILD_TARGETS as readonly string[]).includes(value)
+
+if (!isBuildTarget(buildTarget)) {
   throw new Error(
-    `Unknown BUILD_TARGET=${buildTarget}. Valid values: dev, local-prod, prod`,
+    `Unknown BUILD_TARGET=${buildTarget}. Valid values: ${BUILD_TARGETS.join(', ')}`,
   )
 }
-
-const resolvedBuildTarget = buildTarget as 'dev' | 'local-prod' | 'prod'
+const resolvedBuildTarget: BuildTarget = buildTarget
 const buildTargetSuffix =
   resolvedBuildTarget === 'dev' ? '' : `.${resolvedBuildTarget}`
 const buildTargetModulePath = fileURLToPath(
