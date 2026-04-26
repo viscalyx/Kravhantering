@@ -1197,8 +1197,10 @@ arkitekturkrav och säkerhetsinriktning:
 
 - **Fail-closed-konfiguration** — autentisering är
   obligatorisk i alla byggmål.
-  `AUTH_OIDC_ALLOW_INSECURE_ISSUER` är en konstant
-  bunden till byggmålet och endast `true` i `dev`/`local-prod`.
+  `ALLOW_INSECURE_OIDC_ISSUER` (exporterad från
+  `@/lib/runtime/build-target`) är en kompileringskonstant
+  bunden till byggmålet — inte en miljövariabel —
+  och endast `true` i `dev`/`local-prod`.
 - **Separat hemlighetshantering per miljö** —
   klienthemlighet, sessionslösenord och andra
   auth-hemligheter ska tillföras som skyddade
