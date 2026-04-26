@@ -388,7 +388,9 @@
     "tokenverifierare",
     "verifierare",
     "verksamhetswebhooks",
-    "triggerable"
+    "triggerable",
+    "refaktorisering",
+    "kodgenerering"
   ],
   "flagWords": [],
   "ignorePaths": [
