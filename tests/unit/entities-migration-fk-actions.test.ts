@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sqlServerEntities } from '@/lib/typeorm/entities'
@@ -20,13 +20,16 @@ import { sqlServerEntities } from '@/lib/typeorm/entities'
  * implicit on most. Migration 0003 makes both explicit on every FK.
  */
 
-const MIGRATION_FILES = [
-  '0001_initial_sqlserver.mjs',
-  '0002_requirement_version_revision_token.mjs',
-  '0003_explicit_fk_actions.mjs',
-] as const
-
 const migrationsRoot = join(process.cwd(), 'typeorm', 'migrations')
+
+/**
+ * Discover migration files dynamically so the FK drift guard always validates
+ * the on-disk migration history. Filenames must match `NNNN_*.mjs` and are
+ * sorted lexicographically to preserve chronological order.
+ */
+const MIGRATION_FILES = readdirSync(migrationsRoot)
+  .filter(file => /^\d{4}_.*\.mjs$/.test(file))
+  .sort()
 
 /**
  * Extracts only the `UP_STATEMENTS` array body from a migration file. The
@@ -62,7 +65,9 @@ function readUpStatements(file: string): string {
       if (depth === 0) return source.slice(open + 1, i)
     }
   }
-  return source.slice(open + 1)
+  throw new Error(
+    `Migration ${file} has an unterminated '[' starting at index ${open}; the FK drift guard cannot read its UP block.`,
+  )
 }
 
 const migrationSource = MIGRATION_FILES.map(readUpStatements).join('\n')
