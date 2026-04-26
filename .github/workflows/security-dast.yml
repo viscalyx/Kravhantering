@@ -130,7 +130,7 @@ jobs:
           cp .github/zap/rules.prodlike.tsv .zap/rules.tsv
 
       - name: Run OWASP ZAP baseline scan
-        uses: zaproxy/action-baseline@v0.14.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ env.APP_BASE_URL }}/sv
           rules_file_name: .zap/rules.tsv
