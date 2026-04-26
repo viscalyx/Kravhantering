@@ -51,7 +51,8 @@ artifacts and the PR fails on **Medium** or **High** confirmed alerts.
   Docker image (no client-side install on the runner) and emits
   consistent report artifacts.
 - **Tunable per-rule.** ZAP exposes per-rule IGNORE/WARN/FAIL via a
-  `rules.tsv` file checked into the repo, so policy decisions live next
+  `rules.<scenario>.tsv` file checked into the repo, so policy
+  decisions live next
   to the workflow and can be code-reviewed.
 
 ### Failure policy

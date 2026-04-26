@@ -76,12 +76,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p test-results
-          # start:prodlike runs the build then `next start`. The build is
-          # already done above; invoke `next start` directly via dotenv-cli
-          # so the server matches the production boot path used by the
-          # integration tests.
-          nohup npx dotenv -e .env.prodlike -- npx next start \
-            --hostname 0.0.0.0 --port 3001 \
+          # Mirror the `start:prodlike` npm script (build was done in the
+          # previous step). next.config.ts requires NODE_ENV=production +
+          # BUILD_TARGET=local-prod, otherwise it throws on startup.
+          NODE_ENV=production BUILD_TARGET=local-prod \
+            nohup npx dotenv -e .env.prodlike -- \
+            npx next start --hostname 0.0.0.0 --port 3001 \
             > test-results/app.log 2>&1 &
           echo $! > test-results/app.pid
 
