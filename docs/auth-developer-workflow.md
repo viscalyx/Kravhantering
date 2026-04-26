@@ -7,12 +7,14 @@ contract, see [auth-how-it-works.md](./auth-how-it-works.md).
 ## Auth is mandatory in every build target
 
 Authentication is always on. Every request hits the OIDC flow against
-the configured issuer (Keycloak in dev, the real OIDC provider in deployed
-environments). Identity is derived only from the verified iron-session
-cookie (browser flow) or a verified `Authorization: Bearer` JWT (MCP
-flow); the app no longer accepts `x-user-id` / `x-user-roles` request
-headers as a stand-in for a logged-in user, and `proxy.ts` strips both
-headers from every inbound request before any handler runs.
+the configured issuer (Keycloak in dev and the local-prod target — both
+point at the local Keycloak at `http://localhost:8080` — and the real
+OIDC provider in deployed environments). Identity is derived only from
+the verified iron-session cookie (browser flow) or a verified
+`Authorization: Bearer` JWT (MCP flow); the app no longer accepts
+`x-user-id` / `x-user-roles` request headers as a stand-in for a
+logged-in user, and `proxy.ts` strips both headers from every inbound
+request before any handler runs.
 
 If the dev server cannot reach the IdP, requests fail loudly instead of
 falling back to an unauthenticated mode. Bring up Keycloak first with
