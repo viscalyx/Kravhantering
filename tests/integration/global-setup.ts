@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { type FullConfig, request as playwrightRequest } from '@playwright/test'
@@ -9,14 +10,14 @@ import { type FullConfig, request as playwrightRequest } from '@playwright/test'
  */
 export const DEFAULT_INTEGRATION_ROLE = 'admin'
 
-interface RoleSpec {
+export interface RoleSpec {
   filePath: string
   password: string
   role: string
   username: string
 }
 
-const ROLES: ReadonlyArray<RoleSpec> = [
+export const ROLES: ReadonlyArray<RoleSpec> = [
   {
     role: 'admin',
     username: 'ada.admin',
@@ -30,6 +31,22 @@ const ROLES: ReadonlyArray<RoleSpec> = [
     filePath: 'test-results/auth/reviewer.json',
   },
 ]
+
+/**
+ * Returns the file paths from `roles` whose pinned storage-state JSON does
+ * not exist on disk. Exported so unit tests can verify the
+ * `PLAYWRIGHT_SKIP_WEBSERVER` pre-flight without touching real files.
+ *
+ * @param roles role list whose `filePath` entries to probe.
+ * @param fileExists existence-check function (defaults to `fs.existsSync`);
+ *   the seam exists only so tests can stub the filesystem.
+ */
+export function findMissingRoleFiles(
+  roles: ReadonlyArray<RoleSpec> = ROLES,
+  fileExists: (path: string) => boolean = existsSync,
+): string[] {
+  return roles.filter(spec => !fileExists(spec.filePath)).map(s => s.filePath)
+}
 
 function getBaseUrl(config: FullConfig): string {
   const fromEnv = process.env.PLAYWRIGHT_BASE_URL
@@ -126,6 +143,26 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
       '[playwright global-setup] PLAYWRIGHT_SKIP_AUTH_SETUP is set; not seeding storageState. Specs that require auth will fail.',
     )
     return
+  }
+
+  // When `PLAYWRIGHT_SKIP_WEBSERVER` is set, Playwright will not boot a
+  // web server and the contributor is expected to point the suite at an
+  // already-running app (or to reuse cached cookies from a previous run).
+  // Driving a real Keycloak login here would either succeed against a
+  // foreign IdP/app the contributor did not intend or fail with an opaque
+  // ECONNREFUSED. Reuse the pinned storage-state files when they all
+  // exist; otherwise fail fast with an actionable message.
+  if (process.env.PLAYWRIGHT_SKIP_WEBSERVER) {
+    const missing = findMissingRoleFiles()
+    if (missing.length === 0) {
+      console.info(
+        '[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set and all role storageStates already exist — reusing cached cookies; skipping Keycloak login.',
+      )
+      return
+    }
+    throw new Error(
+      `[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set but the following pinned storageState file(s) are missing: ${missing.join(', ')}. Bring up the local IdP (\`npm run idp:up\`) and the app (\`npm run dev\` or \`npm run start:prodlike\`), then run Playwright once without PLAYWRIGHT_SKIP_WEBSERVER so global-setup can seed them — or run the suite normally.`,
+    )
   }
 
   const baseUrl = getBaseUrl(config)
