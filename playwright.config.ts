@@ -35,6 +35,24 @@ const navigationTimeoutMs = readTimeout('PLAYWRIGHT_NAVIGATION_TIMEOUT', 15_000)
  * Playwright configuration for integration tests against the dev server.
  * See https://playwright.dev/docs/test-configuration.
  */
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000'
+
+/**
+ * Same-origin / CSRF defenses (`lib/auth/csrf.ts`) compare the inbound
+ * `Origin` header against the canonical request origin. Derive a canonical
+ * origin string from `baseUrl` so a trailing slash or path on
+ * `PLAYWRIGHT_BASE_URL` cannot leak into the header and cause spurious
+ * CSRF rejections.
+ */
+function deriveOrigin(input: string): string {
+  try {
+    return new URL(input).origin
+  } catch {
+    return 'http://localhost:3000'
+  }
+}
+const originHeader = deriveOrigin(baseUrl)
+
 export default defineConfig({
   testDir: './tests/integration',
   globalSetup: './tests/integration/global-setup.ts',
@@ -68,7 +86,7 @@ export default defineConfig({
      * don't have to remember; they are no-ops on safe (GET/HEAD) methods.
      */
     extraHTTPHeaders: {
-      Origin: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+      Origin: originHeader,
       'X-Requested-With': 'XMLHttpRequest',
     },
 

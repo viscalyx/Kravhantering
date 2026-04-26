@@ -12,6 +12,22 @@ const desktopChromium = {
  * Playwright configuration for integration tests against the built app.
  * See https://playwright.dev/docs/test-configuration.
  */
+const baseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001'
+
+/**
+ * Derive a canonical origin from `baseUrl` so a trailing slash or path on
+ * `PLAYWRIGHT_BASE_URL` cannot leak into the `Origin` header and trigger
+ * spurious CSRF rejections in `lib/auth/csrf.ts`.
+ */
+function deriveOrigin(input: string): string {
+  try {
+    return new URL(input).origin
+  } catch {
+    return 'http://localhost:3001'
+  }
+}
+const originHeader = deriveOrigin(baseUrl)
+
 export default defineConfig({
   testDir: './tests/integration',
   globalSetup: './tests/integration/global-setup.ts',
@@ -35,7 +51,7 @@ export default defineConfig({
      * don't have to remember; they are no-ops on safe (GET/HEAD) methods.
      */
     extraHTTPHeaders: {
-      Origin: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
+      Origin: originHeader,
       'X-Requested-With': 'XMLHttpRequest',
     },
 
