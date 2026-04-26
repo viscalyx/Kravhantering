@@ -28,6 +28,30 @@ function stripUserHeaders(headers: Headers): Headers {
   return headers
 }
 
+// ZAP rule 10044 (Big Redirect Detected) flags 3xx responses with bodies
+// larger than 1024 bytes. next-intl's middleware injects an HTML
+// "redirecting…" stub for legacy clients that ignore the Location header.
+// This app targets modern browsers, which always honor 3xx Location, so
+// the body is unnecessary. Strip it while preserving every original
+// header (Set-Cookie, Vary, x-middleware-*, etc.). Issue #110.
+function stripRedirectBody(response: NextResponse): NextResponse {
+  if (response.status < 300 || response.status >= 400) return response
+  if (response.headers.get('location') === null) return response
+  const stripped = new NextResponse(null, { status: response.status })
+  // Copy every header from the original next-intl response so Set-Cookie,
+  // Vary, x-middleware-* etc. survive the body strip. Skip Content-Type
+  // (and Content-Length) because they describe the discarded body;
+  // ensureRedirectContentType will set the canonical Content-Type.
+  stripped.headers.delete('content-type')
+  stripped.headers.delete('content-length')
+  for (const [key, value] of response.headers) {
+    const lower = key.toLowerCase()
+    if (lower === 'content-type' || lower === 'content-length') continue
+    stripped.headers.set(key, value)
+  }
+  return stripped
+}
+
 // ZAP rule 10019 (Content-Type Header Missing) flags 3xx responses that
 // omit Content-Type. RFC 7231 allows empty redirect bodies, but strict
 // scanners do not differentiate. Set a benign Content-Type on 3xx
@@ -190,7 +214,7 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
     `${ensureLocalePath(pathname)}${search ?? ''}`,
   )
   return ensureRedirectContentType(
-    NextResponse.redirect(loginUrl, { status: 302 }),
+    stripRedirectBody(NextResponse.redirect(loginUrl, { status: 302 })),
   )
 }
 
@@ -216,7 +240,7 @@ function applyPageHeaders(request: NextRequest): NextResponse {
   applyRequestHeaderOverrides(response, requestHeaders)
   response.headers.set('Content-Security-Policy', csp)
 
-  return ensureRedirectContentType(response)
+  return ensureRedirectContentType(stripRedirectBody(response))
 }
 
 export default async function proxy(request: NextRequest) {

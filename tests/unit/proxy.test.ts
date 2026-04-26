@@ -84,19 +84,57 @@ describe('proxy', () => {
     }
   })
 
-  it('sets Content-Type on next-intl 307 locale redirects', async () => {
+  it('strips body and sets Content-Type on next-intl 307 locale redirects', async () => {
     const restore = withEnv(AUTH_ON_ENV)
-    intlMiddlewareMock.mockImplementationOnce(() =>
-      NextResponse.redirect('http://localhost/sv/static/foo.js', 307),
+    intlMiddlewareMock.mockImplementationOnce(
+      () =>
+        new NextResponse('<html><body>Redirecting to /sv…</body></html>', {
+          status: 307,
+          headers: {
+            Location: 'http://localhost/sv/static/foo.js',
+            'Set-Cookie': 'NEXT_LOCALE=sv; Path=/',
+          },
+        }) as unknown as ReturnType<typeof NextResponse.next>,
     )
     try {
       const response = await proxy(
         buildRequest('http://localhost/_next/static/foo.js'),
       )
       expect(response.status).toBe(307)
+      expect(await response.text()).toBe('')
+      expect(response.headers.get('location')).toBe(
+        'http://localhost/sv/static/foo.js',
+      )
+      expect(response.headers.get('set-cookie')).toContain('NEXT_LOCALE=sv')
       expect(response.headers.get('content-type')).toBe(
         'text/plain; charset=utf-8',
       )
+    } finally {
+      restore()
+    }
+  })
+
+  it('preserves arbitrary next-intl response headers on locale redirect', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockImplementationOnce(
+      () =>
+        new NextResponse('<html>stub</html>', {
+          status: 307,
+          headers: {
+            Location: 'http://localhost/sv/page',
+            Vary: 'Accept-Language',
+            'X-Custom': 'preserved',
+          },
+        }) as unknown as ReturnType<typeof NextResponse.next>,
+    )
+    try {
+      const response = await proxy(
+        buildRequest('http://localhost/_next/static/page'),
+      )
+      expect(response.status).toBe(307)
+      expect(await response.text()).toBe('')
+      expect(response.headers.get('vary')).toBe('Accept-Language')
+      expect(response.headers.get('x-custom')).toBe('preserved')
     } finally {
       restore()
     }
