@@ -161,6 +161,50 @@ The compose file does not mount a Keycloak data volume, so recreation
 is non-destructive (the JSON is the source of truth). Wait ~30 s for
 Keycloak to finish booting before signing in.
 
+### Prodlike local client (`kravhantering-local`)
+
+The realm ships a second confidential web client dedicated to the
+`local-prod` build target / `npm run start:prodlike` (port `3001`),
+separate from the `kravhantering-app` client used by `npm run dev` on
+port `3000`. This lets you validate the prod build target against the
+local Keycloak without needing a real OIDC provider.
+
+Source of truth:
+[`dev/keycloak/realm-kravhantering-dev.json`](../dev/keycloak/realm-kravhantering-dev.json)
+(the `kravhantering-local` entry under `clients`).
+
+<!-- markdownlint-disable MD013 -->
+| Field | Value |
+| --- | --- |
+| `clientId` | `kravhantering-local` |
+| `secret` | `local-kc-app-secret` (clearly dev-only — never reuse) |
+| `publicClient` | `false` (confidential web client) |
+| Redirect URIs | `http://localhost:3001/api/auth/callback`, `http://127.0.0.1:3001/api/auth/callback` |
+| `webOrigins` | `http://localhost:3001`, `http://127.0.0.1:3001` |
+| Post-logout redirect URIs | `http://localhost:3001/`, `http://127.0.0.1:3001/` |
+| PKCE | S256 |
+| Claim mappers | `roles` (realm-role array) and `employeeHsaId`, identical to `kravhantering-app` |
+<!-- markdownlint-enable MD013 -->
+
+The values are loaded from
+[`.env.prodlike`](../.env.prodlike) by `npm run build:local-prod` and
+`npm run start:prodlike`:
+
+```dotenv
+AUTH_OIDC_ISSUER_URL=http://localhost:8080/realms/kravhantering-dev
+AUTH_OIDC_CLIENT_ID=kravhantering-local
+AUTH_OIDC_CLIENT_SECRET=local-kc-app-secret
+AUTH_OIDC_REDIRECT_URI=http://localhost:3001/api/auth/callback
+AUTH_OIDC_POST_LOGOUT_REDIRECT_URI=http://localhost:3001/
+AUTH_OIDC_API_AUDIENCE=kravhantering-app
+```
+
+The matching build-target side lives in
+[`lib/runtime/build-target.local-prod.ts`](../lib/runtime/build-target.local-prod.ts).
+Like the dev client, the seeded users above (and the `Reviewer` /
+`Admin` roles + `employeeHsaId` claim) work unchanged because both
+clients live in the same realm and share the same protocol mappers.
+
 ### Roles claim
 
 The realm emits a `roles` claim as a JSON array of strings on both ID and
@@ -225,6 +269,13 @@ AUTH_SESSION_COOKIE_PASSWORD=replace-with-32-bytes-of-randomness-XXXXXXXXXX
 ```
 
 Generate a fresh cookie password with `openssl rand -base64 48`.
+
+These values target the `dev` build target on port `3000`. For the
+`local-prod` build target on port `3001` (`npm run start:prodlike`),
+the values live in [`.env.prodlike`](../.env.prodlike) and point at
+the dedicated `kravhantering-local` Keycloak client described in the
+[Prodlike local client](#prodlike-local-client-kravhantering-local)
+section above.
 
 ## Environment variable reference
 
@@ -363,6 +414,15 @@ Every spec then loads that storageState by default (configured in
 `playwright.config.ts` and `playwright.prodlike.config.ts`). The dedicated
 `tests/integration/auth-login.spec.ts` exercises the full redirect chain
 without the storageState fixture.
+
+When `PLAYWRIGHT_SKIP_WEBSERVER` is set (Playwright will not boot a web
+server, you point the suite at an already-running app), `globalSetup`
+skips the Keycloak login entirely and reuses the cached cookies in
+`test-results/auth/<role>.json`. If any role file is missing it fails
+fast with an explicit message naming the missing file(s); seed the
+cache by running Playwright once normally first (so `globalSetup` can
+log in against the local IdP via `npm run idp:up`) and then re-run with
+`PLAYWRIGHT_SKIP_WEBSERVER=1`.
 
 ## Inspecting tokens
 
