@@ -1103,10 +1103,17 @@ eller *Cursor AI* är väl lämpade för detta arbetsflöde.
 För att AI-agenten ska kunna hantera flerstegiga uppgifter —
 migreringar, nya fält som berör DAL, service, UI, tester och
 dokumentation i ett sammanhängande led — bör modellen ha stöd för
-utökat resonemang. Rekommenderade miniminivåer för AI-modeller i detta
-sammanhang är Claude Opus 4, GPT-5.4 eller Gemini 2.5 Pro (med thinking).
-Dessa modeller har visat sig hantera komplexa kodändringar och resonemang
-över stora kontextfönster.
+utökat resonemang. Rekommenderade miniminivåer beskrivs som
+*förmågor* snarare än specifika versioner, eftersom modellutbudet
+förändras snabbt. Modellen bör erbjuda utökat flerstegigt resonemang
+(extended thinking), stort kontextfönster för att rymma entiteter,
+tester och migrationer samtidigt, robust kodredigering och
+refaktorering över flera filer, deterministisk reproducerbarhet för
+flerstegiga arbetsflöden samt säkerhets- och guardrails-stöd för
+kodgenerering. Vendor-modeller som *Claude Opus 4*, *GPT-5.4* eller
+*Gemini 2.5 Pro* (med thinking) har historiskt uppfyllt dessa krav,
+men valet bör revalideras periodiskt snarare än fixeras vid en
+specifik version.
 
 Gemensamma krav för effektiv AI-agentassistans i detta projekt:
 
