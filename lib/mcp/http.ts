@@ -35,9 +35,7 @@ export async function handleRequirementsMcpRequest(
 
   try {
     const verified = await verifyMcpBearerToken(request)
-    if (verified) {
-      attachVerifiedActor(request, verified.actor)
-    }
+    attachVerifiedActor(request, verified.actor)
   } catch (err) {
     if (err instanceof McpAuthError) {
       return new Response(

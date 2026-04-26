@@ -23,7 +23,7 @@ vi.mock('@/lib/auth/session', () => ({
 describe('requirements auth session failures', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    getAuthConfigMock.mockReturnValue({ enabled: true })
+    getAuthConfigMock.mockReturnValue({})
     assertSameOriginRequestMock.mockReturnValue(undefined)
   })
 

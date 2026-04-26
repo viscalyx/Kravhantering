@@ -22,7 +22,7 @@ function getAttachedActor(request: Request): ActorContext | undefined {
   return ATTACHED_ACTORS.get(request)
 }
 
-export type ActorSource = 'anonymous' | 'headers' | 'oidc' | 'mcp'
+export type ActorSource = 'anonymous' | 'oidc' | 'mcp'
 export type RequestSource = 'rest' | 'mcp'
 
 export interface ActorContext {
@@ -30,9 +30,9 @@ export interface ActorContext {
   displayName: string
   /**
    * HSA-id when the actor was authenticated and a verified `employeeHsaId`
-   * claim was present. `null` for anonymous, header-trust, or MCP actors
-   * whose token did not carry the claim. MCP service-account tokens carry
-   * the synthetic `mcp-client:<client_id>` value here.
+   * claim was present. `null` for anonymous or MCP actors whose token did
+   * not carry the claim. MCP service-account tokens carry the synthetic
+   * `mcp-client:<client_id>` value here.
    */
   hsaId: string | null
   id: string | null
@@ -163,54 +163,24 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
 
 /**
  * Default authorization service used by `createRequirementsService` when no
- * explicit service is provided. The wiring honors `AUTH_ENABLED`: when set to
- * `true` but no role policy has been declared yet, we intentionally return
- * `AllowAllAuthorizationService` so authenticated users can operate while
- * the role catalogue / policy is defined in a follow-up workstream (out of
- * scope for the initial auth rollout).
- *
- * Once policies are declared, replace the allow-all fallback with a real
- * `RoleBasedAuthorizationService({ ... })`.
+ * explicit service is provided. While the role catalogue / policy is being
+ * defined, we intentionally return `AllowAllAuthorizationService` so
+ * authenticated users can operate. Replace with a real
+ * `RoleBasedAuthorizationService({ ... })` once policies are declared.
  */
 export function createDefaultAuthorizationService(): AuthorizationService {
   return new AllowAllAuthorizationService()
 }
 
-export function getActorContextFromRequest(request: Request): ActorContext {
-  // Synchronous header-based path. When AUTH_ENABLED=true this path is not
-  // trusted — the session-based helper below is used instead. We still look
-  // at headers here so tests and the AUTH_ENABLED=false opt-out continue to
-  // work without async plumbing.
-  const actorId = request.headers.get('x-user-id')
-  const rawRoles = request.headers.get('x-user-roles')
-
-  return {
-    id: actorId,
-    displayName: actorId ?? '',
-    hsaId: null,
-    roles: rawRoles
-      ? rawRoles
-          .split(',')
-          .map(role => role.trim())
-          .filter(Boolean)
-      : [],
-    source: actorId ? 'headers' : 'anonymous',
-    isAuthenticated: Boolean(actorId),
-  }
-}
-
-async function getActorContextFromSessionOrHeaders(
+async function getActorContextFromSession(
   request: Request,
 ): Promise<ActorContext> {
   const attached = getAttachedActor(request)
   if (attached) return attached
 
-  const cfg = getAuthConfig()
-  if (!cfg.enabled) {
-    // Legacy dev/opt-out path — header trust is only honored when
-    // AUTH_ENABLED=false. Production refuses this configuration at boot.
-    return getActorContextFromRequest(request)
-  }
+  // Auth is mandatory — calling getAuthConfig() ensures required env vars
+  // are present and throws on misconfiguration.
+  getAuthConfig()
 
   assertSameOriginRequest(request)
 
@@ -243,7 +213,7 @@ export async function createRequestContext(
   toolName?: string,
 ): Promise<RequestContext> {
   return {
-    actor: await getActorContextFromSessionOrHeaders(request),
+    actor: await getActorContextFromSession(request),
     requestId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
     source,
     toolName,

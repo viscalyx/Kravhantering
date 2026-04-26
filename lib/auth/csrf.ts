@@ -59,7 +59,7 @@ function firstForwardedValue(value: string | null): string | null {
 
 function resolveExpectedOrigin(request: Request): string {
   const cfg = getAuthConfig()
-  const configuredOrigin = cfg.enabled ? originFromUrl(cfg.redirectUri) : null
+  const configuredOrigin = originFromUrl(cfg.redirectUri)
   if (configuredOrigin) {
     return configuredOrigin
   }

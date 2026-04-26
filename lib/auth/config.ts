@@ -1,7 +1,9 @@
 /**
  * Centralized auth configuration. Reads env vars, validates them, and exposes
- * a typed `authConfig`. Boot-time guard: when `AUTH_ENABLED=false` and
- * `NODE_ENV=production`, this module throws — fail-closed.
+ * a typed `authConfig`.
+ *
+ * Authentication is mandatory in every build target.
+ * Boot fails closed when required OIDC env vars are missing.
  *
  * See `docs/auth-how-it-works.md` and `docs/auth-developer-workflow.md`
  * for the committed env-var contract and deployment expectations.
@@ -53,21 +55,19 @@ function readNumber(name: string, defaultValue: number): number {
 export interface AuthConfig {
   /** Audience expected on access tokens (defaults to clientId). */
   apiAudience: string
-  /** Client id at the IdP. Required when enabled. */
+  /** Client id at the IdP. */
   clientId: string
-  /** Client secret at the IdP. Required when enabled. */
+  /** Client secret at the IdP. */
   clientSecret: string
   /** Iron-session cookie name. */
   cookieName: string
   /** Iron-session encryption password (≥32 characters, not bytes). */
   cookiePassword: string
-  /** Master switch. Defaults to true; explicit false rejected in production. */
-  enabled: boolean
-  /** OIDC discovery base URL (issuer). Required when enabled. */
+  /** OIDC discovery base URL (issuer). */
   issuerUrl: string
   /** Absolute URL the IdP redirects back to after end-session. */
   postLogoutRedirectUri: string
-  /** Absolute URL the IdP redirects back to. Required when enabled. */
+  /** Absolute URL the IdP redirects back to. */
   redirectUri: string
   /** Name of the claim that carries the role list. */
   rolesClaim: string
@@ -86,87 +86,9 @@ export class AuthConfigError extends Error {
   }
 }
 
-function collectPlaceholderViolations(values: {
-  clientId: string
-  clientSecret: string
-  cookiePassword: string
-}): string[] {
-  const violations: string[] = []
-
-  if (values.clientId === 'kravhantering-app') {
-    violations.push(
-      'AUTH_OIDC_CLIENT_ID must not use the local dev app id `kravhantering-app`.',
-    )
-  }
-  if (values.clientSecret.toLowerCase().startsWith('dev-only')) {
-    violations.push(
-      'AUTH_OIDC_CLIENT_SECRET must not use a dev-only placeholder secret.',
-    )
-  }
-
-  const normalizedCookiePassword = values.cookiePassword.toLowerCase()
-  if (
-    normalizedCookiePassword.includes('prodlike-only') ||
-    normalizedCookiePassword.startsWith('replace-with-')
-  ) {
-    violations.push(
-      'AUTH_SESSION_COOKIE_PASSWORD must not use a committed placeholder value.',
-    )
-  }
-
-  return violations
-}
-
 let cached: AuthConfig | undefined
 
 function loadAuthConfig(): AuthConfig {
-  const enabled = parseBooleanFlag(process.env.AUTH_ENABLED, true)
-  const isProduction = process.env.NODE_ENV === 'production'
-  // Opt-in escape hatch for `npm run start:prodlike:noauth` — local
-  // prod-like validation that still wants the dev-mode bypass. Never set
-  // this in a real deployment; the app logs a loud warning when it kicks
-  // in and the production-mode strict-check is the actual safety net.
-  const allowDisableInProduction = parseBooleanFlag(
-    process.env.AUTH_ALLOW_DISABLE_IN_PRODUCTION,
-    false,
-  )
-
-  if (!enabled && isProduction && !allowDisableInProduction) {
-    throw new AuthConfigError(
-      'AUTH_ENABLED=false is rejected in production. Refusing to boot.',
-    )
-  }
-
-  if (!enabled) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      '[auth] AUTH_ENABLED=false — running without authentication. Do not use in production.',
-    )
-    if (isProduction && allowDisableInProduction) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        '[auth] AUTH_ALLOW_DISABLE_IN_PRODUCTION=true: NODE_ENV=production without auth. ' +
-          'This must only be used for local prod-like integration tests.',
-      )
-    }
-    // Return a stub config; callers must check `enabled` before using OIDC fields.
-    return {
-      enabled: false,
-      issuerUrl: '',
-      clientId: '',
-      clientSecret: '',
-      redirectUri: '',
-      postLogoutRedirectUri: '',
-      scopes: 'openid profile email',
-      rolesClaim: 'roles',
-      apiAudience: '',
-      cookieName: 'kravhantering_session',
-      cookiePassword: '',
-      sessionTtlSeconds: 28_800,
-      trustProxy: parseBooleanFlag(process.env.AUTH_TRUST_PROXY, true),
-    }
-  }
-
   const issuerUrl = readString('AUTH_OIDC_ISSUER_URL')
   const clientId = readString('AUTH_OIDC_CLIENT_ID')
   const clientSecret = readString('AUTH_OIDC_CLIENT_SECRET')
@@ -184,7 +106,7 @@ function loadAuthConfig(): AuthConfig {
 
   if (missing.length > 0) {
     throw new AuthConfigError(
-      `AUTH_ENABLED=true but missing required env vars: ${missing.join(', ')}`,
+      `Missing required auth env vars: ${missing.join(', ')}`,
     )
   }
 
@@ -194,22 +116,7 @@ function loadAuthConfig(): AuthConfig {
     )
   }
 
-  if (isProduction) {
-    const placeholderViolations = collectPlaceholderViolations({
-      clientId: clientId as string,
-      clientSecret: clientSecret as string,
-      cookiePassword: cookiePassword as string,
-    })
-    if (placeholderViolations.length > 0) {
-      throw new AuthConfigError(
-        'Refusing to boot with placeholder auth configuration in production: ' +
-          placeholderViolations.join(' '),
-      )
-    }
-  }
-
   return {
-    enabled: true,
     issuerUrl: issuerUrl as string,
     clientId: clientId as string,
     clientSecret: clientSecret as string,

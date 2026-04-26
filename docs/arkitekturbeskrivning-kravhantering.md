@@ -838,7 +838,7 @@ Container deployment / ingress
 | --- | --- | --- |
 | `DATABASE_URL` | URL / anslutningssträng | SQL Server-anslutningssträng (mssql://) |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Sträng | Nyckel för server actions i flerinstansmiljöer |
-| `AUTH_*`, `NEXT_PUBLIC_AUTH_ENABLED` | Miljövariabler | OIDC-, sessions- och proxykontrakt för integrerad autentisering |
+| `AUTH_*` | Miljövariabler | OIDC-, sessions- och proxykontrakt för integrerad autentisering |
 | `OPENROUTER_API_KEY` | Sträng | AI-integration för kravgenerering |
 <!-- markdownlint-enable MD013 -->
 
@@ -1137,18 +1137,16 @@ informationssäkerhetsåtgärder i nuvarande version:
   krypterad `iron-session`-cookie bär verifierad
   identitet, roller och utgångstid. Ingen
   serversides sessionslagring krävs.
-- **MCP-tokenvalidering** — `/api/mcp` skyddas med
-  Bearer-token när autentisering är aktiv. JWT:n
-  verifieras mot leverantörens JWKS med kontroll av
-  signatur, issuer, audience och `employeeHsaId`
-  innan någon verktygskörning tillåts.
+- **MCP-tokenvalidering** — `/api/mcp` skyddas alltid med
+  Bearer-token. JWT:n verifieras mot leverantörens JWKS
+  med kontroll av signatur, issuer, audience och
+  `employeeHsaId` innan någon verktygskörning tillåts.
 - **CSRF-skydd för cookie-baserade mutationer** —
   muterande anrop måste vara same-origin och bära
   `X-Requested-With: XMLHttpRequest`.
-- **Header-härdning i proxy** — `proxy.ts` tar bort
-  inkommande `x-user-id` och `x-user-roles` när
-  autentisering är aktiv, så att äldre header-trust
-  inte kan missbrukas.
+- **Header-härdning i proxy** — `proxy.ts` tar alltid
+  bort inkommande `x-user-id` och `x-user-roles`.
+  Den äldre header-trust-banan har avlägsnats.
 - **Avvisning av ogiltiga sessioner** — Trasiga eller
   manipulerade sessionscookies leder till att
   förfrågan behandlas som utloggad och loggas som
@@ -1197,10 +1195,12 @@ informationssäkerhetsåtgärder i nuvarande version:
 För produktionsdrift bör följande betraktas som
 arkitekturkrav och säkerhetsinriktning:
 
-- **Fail-closed-konfiguration** — `AUTH_ENABLED=false`
-  och `AUTH_OIDC_ALLOW_INSECURE_ISSUER=true` är
-  utvecklingshjälpmedel och ska inte användas i en
-  verklig driftmiljö.
+- **Fail-closed-konfiguration** — autentisering är
+  obligatorisk i alla byggmål.
+  `ALLOW_INSECURE_OIDC_ISSUER` (exporterad från
+  `@/lib/runtime/build-target`) är en kompileringskonstant
+  bunden till byggmålet — inte en miljövariabel —
+  och endast `true` i `dev`/`local-prod`.
 - **Separat hemlighetshantering per miljö** —
   klienthemlighet, sessionslösenord och andra
   auth-hemligheter ska tillföras som skyddade

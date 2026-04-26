@@ -34,12 +34,6 @@ function sanitizeReturnTo(raw: string | null): string {
 
 export async function GET(request: NextRequest) {
   const cfg = getAuthConfig()
-  if (!cfg.enabled) {
-    return NextResponse.json(
-      { error: 'Authentication is disabled.' },
-      { status: 404 },
-    )
-  }
 
   const url = new URL(request.url)
   const returnTo = sanitizeReturnTo(url.searchParams.get('returnTo'))

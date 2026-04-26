@@ -73,7 +73,6 @@ const SUCCESS_CLAIMS = {
 }
 
 function mockAuthEnv() {
-  process.env.AUTH_ENABLED = 'true'
   process.env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
   process.env.AUTH_OIDC_CLIENT_ID = 'kravhantering-app'
   process.env.AUTH_OIDC_CLIENT_SECRET = 'secret'

@@ -189,7 +189,7 @@ function makeContext() {
       hsaId: null,
       isAuthenticated: true,
       roles: ['Admin'],
-      source: 'headers' as const,
+      source: 'oidc' as const,
     },
     requestId: 'req-1',
     source: 'rest' as const,

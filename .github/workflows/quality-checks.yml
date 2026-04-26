@@ -46,6 +46,8 @@ jobs:
       - name: Run Python type check
         run: npm run lint:py
 
+      # Must use the action to get the executable as it is not installed, and have
+      # not a secure download URL to fetch it from.
       - name: Run dotenv-linter root check
         uses: dotenv-linter/action-dotenv-linter@v3
         with:
@@ -53,6 +55,8 @@ jobs:
           filter_mode: nofilter
           fail_level: any
 
+      # Must use the action to get the executable as it is not installed, and have
+      # not a secure download URL to fetch it from.
       - name: Run dotenv-linter devcontainer check
         uses: dotenv-linter/action-dotenv-linter@v3
         with:
@@ -100,7 +104,8 @@ jobs:
               { name: 'Markdown Lint', command: 'npm run lint:md' },
               { name: 'Type Check', command: 'npm run type-check' },
               { name: 'Python Type Check', command: 'npm run lint:py' },
-              { name: 'dotenv-linter', command: 'npm run dotenv:check' }
+              { name: 'dotenv-linter', command: 'npm run dotenv:check' },
+              { name: 'Prod build-target contract', command: 'npm run verify:prod-bundle' }
             ];
 
             let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';

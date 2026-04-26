@@ -1,19 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getAuthConfig, resetAuthConfigForTests } from '@/lib/auth/config'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import {
+  AuthConfigError,
+  getAuthConfig,
+  resetAuthConfigForTests,
+} from '@/lib/auth/config'
 
 const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
 
 const TRACKED_ENV_KEYS = [
-  'AUTH_ALLOW_DISABLE_IN_PRODUCTION',
-  'AUTH_ENABLED',
   'AUTH_OIDC_CLIENT_ID',
   'AUTH_OIDC_CLIENT_SECRET',
   'AUTH_OIDC_ISSUER_URL',
   'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI',
   'AUTH_OIDC_REDIRECT_URI',
   'AUTH_SESSION_COOKIE_PASSWORD',
-  'NODE_ENV',
 ] as const
 
 const env = process.env as Record<string, string | undefined>
@@ -33,8 +34,6 @@ function restoreTrackedEnv() {
 }
 
 function setBaseAuthEnv() {
-  env.AUTH_ENABLED = 'true'
-  delete env.AUTH_ALLOW_DISABLE_IN_PRODUCTION
   env.AUTH_OIDC_ISSUER_URL = 'https://issuer.example.com'
   env.AUTH_OIDC_CLIENT_ID = 'kravhantering-app-prod'
   env.AUTH_OIDC_CLIENT_SECRET = 'prod-secret-value'
@@ -44,49 +43,32 @@ function setBaseAuthEnv() {
 }
 
 describe('auth config', () => {
-  let warnSpy: ReturnType<typeof vi.spyOn>
-
   beforeEach(() => {
-    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     setBaseAuthEnv()
     resetAuthConfigForTests()
   })
 
   afterEach(() => {
-    warnSpy.mockRestore()
     restoreTrackedEnv()
     resetAuthConfigForTests()
   })
 
-  it('accepts truthy AUTH_ALLOW_DISABLE_IN_PRODUCTION values', () => {
-    env.NODE_ENV = 'production'
-    env.AUTH_ENABLED = 'false'
-    env.AUTH_ALLOW_DISABLE_IN_PRODUCTION = 'yes'
-    resetAuthConfigForTests()
-
-    expect(getAuthConfig().enabled).toBe(false)
+  it('loads a fully-populated config from env vars', () => {
+    const cfg = getAuthConfig()
+    expect(cfg.issuerUrl).toBe('https://issuer.example.com')
+    expect(cfg.clientId).toBe('kravhantering-app-prod')
+    expect(cfg.cookiePassword.length).toBeGreaterThanOrEqual(32)
   })
 
-  it('still rejects AUTH_ENABLED=false in production without the escape hatch', () => {
-    env.NODE_ENV = 'production'
-    env.AUTH_ENABLED = 'false'
+  it('throws AuthConfigError when a required env var is missing', () => {
+    delete env.AUTH_OIDC_ISSUER_URL
     resetAuthConfigForTests()
-
-    expect(() => getAuthConfig()).toThrow(
-      'AUTH_ENABLED=false is rejected in production. Refusing to boot.',
-    )
+    expect(() => getAuthConfig()).toThrow(AuthConfigError)
   })
 
-  it('rejects placeholder auth values in production', () => {
-    env.NODE_ENV = 'production'
-    env.AUTH_OIDC_CLIENT_ID = 'kravhantering-app'
-    env.AUTH_OIDC_CLIENT_SECRET = 'dev-only-app-secret'
-    env.AUTH_SESSION_COOKIE_PASSWORD =
-      'prodlike-only-cookie-password-not-for-production-32chars'
+  it('throws when cookie password is shorter than 32 chars', () => {
+    env.AUTH_SESSION_COOKIE_PASSWORD = 'too-short'
     resetAuthConfigForTests()
-
-    expect(() => getAuthConfig()).toThrow(
-      /placeholder auth configuration in production/,
-    )
+    expect(() => getAuthConfig()).toThrow(/at least 32 characters/)
   })
 })

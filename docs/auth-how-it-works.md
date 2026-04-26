@@ -25,7 +25,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 
 ## Current auth architecture in the app
 
-- [`proxy.ts`](../proxy.ts) is the front door. When `AUTH_ENABLED=true`, it:
+- [`proxy.ts`](../proxy.ts) is the front door. Auth is always on, so it:
   allows public paths, redirects unauthenticated browser page requests to
   `/api/auth/login`, returns `401` for unauthenticated API requests, and
   requires a Bearer header to be present for `/api/mcp`.
@@ -114,10 +114,9 @@ sequenceDiagram
 
 ### Session and logout flow
 
-- [`components/AuthMenu.tsx`](../components/AuthMenu.tsx) uses
-  `NEXT_PUBLIC_AUTH_ENABLED` as a client-side gate. When auth is enabled it
-  calls `/api/auth/me` once on mount to render the signed-in user and aborts
-  that request if the menu unmounts before the response settles.
+- [`components/AuthMenu.tsx`](../components/AuthMenu.tsx) calls `/api/auth/me`
+  once on mount to render the signed-in user and aborts that request if the
+  menu unmounts before the response settles.
 - `/api/auth/me` returns:
   `sub`, `hsaId`, `givenName`, `familyName`, `name`, `email?`, `roles`, and
   `expiresAt`. It never returns the raw ID token or raw access token.
@@ -189,9 +188,12 @@ sequenceDiagram
 
 ### Security controls and audit events
 
-- When auth is enabled, `proxy.ts` strips inbound `x-user-id` and
-  `x-user-roles` headers so callers cannot impersonate a user via legacy
-  header trust.
+- Identity is derived only from the verified iron-session cookie (browser
+  flow) or a verified `Authorization: Bearer` JWT (MCP flow). The app does
+  not accept `x-user-id` or `x-user-roles` request headers as a stand-in
+  for a logged-in user, and `proxy.ts` strips both headers from every
+  inbound request before any handler runs so a caller cannot use them to
+  impersonate a user.
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
@@ -280,7 +282,6 @@ flowchart LR
   `AUTH_SESSION_COOKIE_PASSWORD`.
 - Provide the remaining auth settings through non-secret environment
   configuration:
-  `AUTH_ENABLED=true`, `NEXT_PUBLIC_AUTH_ENABLED=true`,
   `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
@@ -294,10 +295,20 @@ flowchart LR
 - Allow the application instances to reach the IdP over `443`.
 - Pre-register the exact redirect URI and post-logout URI for every
   environment. Public hostname changes require an IdP update as well.
-- Keep the production posture fail-closed:
-  `AUTH_ENABLED` must not be set to `false`, and the prodlike escape hatches
-  `AUTH_ALLOW_DISABLE_IN_PRODUCTION` and `AUTH_OIDC_ALLOW_INSECURE_ISSUER`
-  must remain unset or `false`.
+- Auth is mandatory in every build target. The insecure-issuer allowance
+  is now a build-target constant that is `true` only for `dev` and `local-prod`.
+  The `local-prod` target (booted via `npm run start:prodlike` on port
+  `3001`) authenticates against a dedicated dev-only Keycloak client
+  (`kravhantering-local`) wired up in [`.env.prodlike`](../.env.prodlike);
+  see the
+  [Prodlike local client](./auth-developer-workflow.md#prodlike-local-client-kravhantering-local)
+  section in the developer workflow for the full client/redirect/secret
+  contract. These auth-related build-target constants (including the
+  insecure-issuer allowance) are baked into the bundle when the build target is
+  selected, so changing them requires rebuilding for that target (for example
+  rebuilding the `local-prod` bundle that backs `npm run start:prodlike`) — they
+  are not runtime environment variables that can be toggled on a deployed
+  instance.
 - Keep the session model stateless. The app expects an encrypted cookie-based
   session, not a server-side session store, and it does not require sticky
   sessions between replicas.

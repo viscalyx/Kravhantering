@@ -3,9 +3,48 @@ import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+
+// ---------------------------------------------------------------------------
+// Build target — controls which lib/runtime/build-target.*.ts is aliased in.
+// ---------------------------------------------------------------------------
+const isProduction = process.env.NODE_ENV === 'production'
+// Treat empty / whitespace-only BUILD_TARGET as unset so the validation below
+// catches it instead of silently producing `lib/runtime/build-target..ts`.
+const rawBuildTarget = process.env.BUILD_TARGET?.trim()
+const buildTarget =
+  rawBuildTarget && rawBuildTarget.length > 0
+    ? rawBuildTarget
+    : isProduction
+      ? undefined
+      : 'dev'
+
+if (isProduction && buildTarget === undefined) {
+  throw new Error(
+    'BUILD_TARGET must be set when NODE_ENV=production. ' +
+      "Use 'prod' for real deployments or 'local-prod' for local prodlike runs. " +
+      'Example: BUILD_TARGET=prod npm run build',
+  )
+}
+
+const BUILD_TARGETS = ['dev', 'local-prod', 'prod'] as const
+type BuildTarget = (typeof BUILD_TARGETS)[number]
+const isBuildTarget = (value: string | undefined): value is BuildTarget =>
+  value !== undefined && (BUILD_TARGETS as readonly string[]).includes(value)
+
+if (!isBuildTarget(buildTarget)) {
+  throw new Error(
+    `Unknown BUILD_TARGET=${buildTarget}. Valid values: ${BUILD_TARGETS.join(', ')}`,
+  )
+}
+const resolvedBuildTarget: BuildTarget = buildTarget
+const buildTargetSuffix =
+  resolvedBuildTarget === 'dev' ? '' : `.${resolvedBuildTarget}`
+const buildTargetModulePath = fileURLToPath(
+  new URL(`./lib/runtime/build-target${buildTargetSuffix}.ts`, import.meta.url),
+)
+
 const enableDeveloperMode =
-  process.env.ENABLE_DEVELOPER_MODE === 'true' ||
-  process.env.NODE_ENV === 'development'
+  process.env.ENABLE_DEVELOPER_MODE === 'true' || resolvedBuildTarget === 'dev'
 const developerModeCoreNoopPath = fileURLToPath(
   new URL('./packages/developer-mode-core/src/noop.ts', import.meta.url),
 )
@@ -25,7 +64,7 @@ const nextConfig: NextConfig = {
   ],
   compiler: {
     removeConsole:
-      process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
+      resolvedBuildTarget !== 'dev' ? { exclude: ['error'] } : false,
   },
   images: {
     formats: ['image/webp', 'image/avif'],
@@ -33,6 +72,13 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['better-sqlite3', 'mermaid'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
   webpack(config) {
+    // Build-target module swap: alias @/lib/runtime/build-target to the
+    // concrete implementation for this build target. Applied for both server
+    // and client bundles so production builds are uniformly frozen.
+    if (resolvedBuildTarget !== 'dev') {
+      config.resolve.alias['@/lib/runtime/build-target'] = buildTargetModulePath
+    }
+
     if (!enableDeveloperMode) {
       config.resolve.alias['@viscalyx/developer-mode-core'] =
         developerModeCoreNoopPath

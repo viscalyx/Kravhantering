@@ -23,6 +23,21 @@ vi.mock('@/lib/requirements/service', async () => {
   }
 })
 
+vi.mock('@/lib/auth/mcp-token', () => ({
+  McpAuthError: class McpAuthError extends Error {},
+  verifyMcpBearerToken: vi.fn(async () => ({
+    actor: {
+      id: 'mcp-test-actor',
+      displayName: 'MCP Test Actor',
+      hsaId: 'mcp-client:tests',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'mcp' as const,
+    },
+    expiresAt: null,
+  })),
+}))
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'

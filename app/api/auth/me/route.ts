@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { getAuthConfig } from '@/lib/auth/config'
 import { getSession, isSignedIn } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
@@ -15,15 +14,8 @@ export const dynamic = 'force-dynamic'
  * Never returns the raw id/access tokens.
  */
 export async function GET() {
-  const cfg = getAuthConfig()
   const headers = {
     'Cache-Control': 'no-store',
-  }
-  if (!cfg.enabled) {
-    return NextResponse.json(
-      { authenticated: false, authDisabled: true },
-      { headers, status: 200 },
-    )
   }
 
   const session = await getSession()

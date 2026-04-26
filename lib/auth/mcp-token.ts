@@ -43,16 +43,13 @@ export class McpAuthError extends Error {
 /**
  * Verifies a Bearer JWT on an incoming MCP request.
  *
- * Returns `null` when authentication is disabled (opt-out dev mode) so the
- * caller can continue with legacy header-trust behaviour. Throws
- * `McpAuthError` when a token is missing or invalid.
+ * Throws `McpAuthError` when a token is missing or invalid.
  */
 export async function verifyMcpBearerToken(
   request: Request,
-): Promise<VerifiedMcpToken | null> {
+): Promise<VerifiedMcpToken> {
   const { getAuthConfig } = await import('@/lib/auth/config')
   const cfg = getAuthConfig()
-  if (!cfg.enabled) return null
 
   const header = request.headers.get('authorization') ?? ''
   const match = /^Bearer\s+(\S+)$/i.exec(header)

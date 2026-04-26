@@ -47,6 +47,7 @@ import {
   DEVIATED_PACKAGE_ITEM_STATUS_ID,
 } from '@/lib/package-item-status-constants'
 import {
+  attachVerifiedActor,
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
@@ -265,10 +266,16 @@ function appDb(): SqlServerDatabase {
 }
 
 function makeContext(headers?: HeadersInit): Promise<RequestContext> {
-  return createRequestContext(
-    new Request('https://example.test', { headers }),
-    'rest',
-  )
+  const request = new Request('https://example.test', { headers })
+  attachVerifiedActor(request, {
+    id: 'functional-test-actor',
+    displayName: 'Functional Test Actor',
+    hsaId: 'SE2321000032-functional1',
+    roles: ['Admin'],
+    source: 'oidc',
+    isAuthenticated: true,
+  })
+  return createRequestContext(request, 'rest')
 }
 
 async function createArea(

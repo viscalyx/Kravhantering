@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const getAuthConfigMock = vi.fn()
 const getSessionMock = vi.fn()
 const isSignedInMock = vi.fn()
-
-vi.mock('@/lib/auth/config', () => ({
-  getAuthConfig: () => getAuthConfigMock(),
-}))
 
 vi.mock('@/lib/auth/session', () => ({
   getSession: () => getSessionMock(),
@@ -20,19 +15,7 @@ describe('auth me route', () => {
     vi.clearAllMocks()
   })
 
-  it('returns authDisabled responses with no-store caching', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: false })
-
-    const response = await GET()
-    expect(response.headers.get('Cache-Control')).toBe('no-store')
-    await expect(response.json()).resolves.toEqual({
-      authenticated: false,
-      authDisabled: true,
-    })
-  })
-
   it('returns unauthenticated responses with no-store caching', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: true })
     getSessionMock.mockResolvedValue({})
     isSignedInMock.mockReturnValue(false)
 
@@ -42,7 +25,6 @@ describe('auth me route', () => {
   })
 
   it('returns authenticated responses with no-store caching', async () => {
-    getAuthConfigMock.mockReturnValue({ enabled: true })
     getSessionMock.mockResolvedValue({
       sub: 'user-1',
       hsaId: 'SE2321000032-rev1',
