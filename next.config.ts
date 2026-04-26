@@ -140,6 +140,15 @@ const nextConfig: NextConfig = {
             value: 'same-origin',
           },
           {
+            key: 'Cross-Origin-Embedder-Policy',
+            // `credentialless` satisfies ZAP rule 90004 without requiring
+            // every embedded resource to advertise CORP (as `require-corp`
+            // would). All current sources are same-origin, so the
+            // credential-stripping behaviour for any future cross-origin
+            // no-cors load has no effect on the app today. Issue #112.
+            value: 'credentialless',
+          },
+          {
             key: 'Cross-Origin-Resource-Policy',
             value: 'same-origin',
           },

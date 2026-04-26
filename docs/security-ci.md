@@ -148,11 +148,14 @@ Current static headers and rationale:
 - `Cross-Origin-Resource-Policy: same-origin` — blocks no-cors
   cross-origin embedding of our resources. The app does not expose
   embeddable assets to other origins.
-- **COEP intentionally omitted.** `Cross-Origin-Embedder-Policy:
-  require-corp` would force every embedded resource (including any
-  future third-party CDN) to advertise CORP. The app does not need
-  cross-origin isolation (no `SharedArrayBuffer`, no high-resolution
-  timers), so the trade-off is not worth taking.
+- `Cross-Origin-Embedder-Policy: credentialless` — required to silence
+  ZAP rule `90004`, which checks for the COEP header by name. The
+  `credentialless` value satisfies the rule without forcing every
+  embedded resource to advertise CORP (as `require-corp` would). All
+  current sources are same-origin, so the credential-stripping behaviour
+  for any future cross-origin no-cors load has no effect on the app
+  today, and we still avoid opting into full cross-origin isolation
+  (no `SharedArrayBuffer`, no high-resolution timers needed).
 - `Permissions-Policy: …=()` — denies every powerful browser feature
   the app does not use.
 
