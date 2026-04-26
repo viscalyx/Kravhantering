@@ -201,5 +201,5 @@ The recommended path when active scanning becomes worthwhile:
   default in [lib/auth/config.ts](../lib/auth/config.ts)) is unchanged.
   If that default ever changes, update the workflow's `env:` block
   accordingly.
-- `zaproxy/action-baseline@v0.14.0` is pinned. Bumps should land in
+- `zaproxy/action-baseline@v0.15.0` is pinned. Bumps should land in
   their own PR and re-run the scan to compare report deltas.
