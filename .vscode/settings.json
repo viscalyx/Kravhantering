@@ -3,6 +3,15 @@
   "[markdown]": {
     "editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
   },
+  "[tsv]": {
+    // TSV files (e.g. .github/zap/rules.*.tsv) require literal tab
+    // characters between fields. Force tabs and skip trim-on-save so
+    // VS Code's global indent settings do not corrupt the columns.
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
+    "files.trimTrailingWhitespace": false
+  },
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,
 

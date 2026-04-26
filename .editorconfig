@@ -19,3 +19,11 @@ indent_size = 4
 
 [Makefile]
 indent_style = tab
+
+# TSV files are tab-delimited by definition. ZAP rules files
+# (.github/zap/rules.*.tsv) and any other .tsv we ship rely on real
+# tab characters between columns, so editors must not auto-convert
+# them to spaces or trim trailing tabs.
+[*.tsv]
+indent_style = tab
+trim_trailing_whitespace = false
