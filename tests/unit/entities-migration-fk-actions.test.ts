@@ -37,10 +37,23 @@ const migrationsRoot = join(process.cwd(), 'typeorm', 'migrations')
 function readUpStatements(file: string): string {
   const source = readFileSync(join(migrationsRoot, file), 'utf8')
   const start = source.indexOf('const UP_STATEMENTS')
-  if (start === -1) return ''
+  if (start === -1) {
+    throw new Error(
+      `Migration ${file} is missing the 'const UP_STATEMENTS' marker; the FK drift guard cannot read its UP block.`,
+    )
+  }
   const open = source.indexOf('[', start)
-  if (open === -1) return ''
+  if (open === -1) {
+    throw new Error(
+      `Migration ${file} declares 'const UP_STATEMENTS' but no opening '[' was found; the FK drift guard cannot read its UP block.`,
+    )
+  }
   let depth = 0
+  // Bracket-depth scan assumes SQL Server delimited identifiers ([name]) are
+  // always balanced. It counts every '[' and ']' in the source — including any
+  // inside SQL string literals — so an embedded literal ']' would prematurely
+  // terminate the scan and truncate UP_STATEMENTS. None of the current
+  // migrations contain such a literal; keep this in mind before adding one.
   for (let i = open; i < source.length; i += 1) {
     const ch = source[i]
     if (ch === '[') depth += 1
