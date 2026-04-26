@@ -297,6 +297,13 @@ flowchart LR
   environment. Public hostname changes require an IdP update as well.
 - Auth is mandatory in every build target. The insecure-issuer allowance
   is now a build-target constant that is `true` only for `dev` and `local-prod`.
+  The `local-prod` target (booted via `npm run start:prodlike` on port
+  `3001`) authenticates against a dedicated dev-only Keycloak client
+  (`kravhantering-local`) wired up in [`.env.prodlike`](../.env.prodlike);
+  see the
+  [Prodlike local client](./auth-developer-workflow.md#prodlike-local-client-kravhantering-local)
+  section in the developer workflow for the full client/redirect/secret
+  contract.
 - Keep the session model stateless. The app expects an encrypted cookie-based
   session, not a server-side session store, and it does not require sticky
   sessions between replicas.
