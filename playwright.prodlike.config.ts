@@ -28,6 +28,17 @@ export default defineConfig({
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
 
+    /*
+     * Same-origin / CSRF defenses (`lib/auth/csrf.ts`) reject mutating
+     * requests that lack matching `Origin` and `X-Requested-With:
+     * XMLHttpRequest`. Set them on every `request`-fixture call so specs
+     * don't have to remember; they are no-ops on safe (GET/HEAD) methods.
+     */
+    extraHTTPHeaders: {
+      Origin: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
+      'X-Requested-With': 'XMLHttpRequest',
+    },
+
     storageState: 'test-results/auth/admin.json',
 
     trace: 'on-first-retry',
