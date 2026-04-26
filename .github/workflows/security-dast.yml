@@ -135,18 +135,21 @@ jobs:
           rules_file_name: .zap/rules.tsv
           allow_issue_writing: false
           fail_action: true
-          # -l Medium  : only Medium and High alerts cause failure.
-          # -I         : do not fail on plain warnings (lets rules.tsv
-          #              decide).
-          # -j         : run the AJAX spider in addition to the traditional
-          #              spider so client-rendered routes are reachable.
-          # -m 5 -T 10 : 5 minute spider, 10 minute total timeout.
-          # -z ...     : ZAP `replacer` add-on injects the iron-session
-          #              cookie on every outgoing request so authenticated
-          #              pages are scanned.
+          # zap-baseline.py exit policy:
+          #   * Default: any unsuppressed alert (WARN action) fails.
+          #   * Per-rule overrides live in .zap/rules.tsv (IGNORE for
+          #     known-noisy/local-only rules, FAIL to escalate).
+          #   * -I would suppress WARN failures entirely; we do NOT pass
+          #     it because that would only fail on rules explicitly
+          #     marked FAIL, which requires enumerating every rule.
+          # Other flags:
+          #   -j         : also run the AJAX spider so client-rendered
+          #                routes are reachable.
+          #   -m 5 -T 10 : 5 minute spider, 10 minute total timeout.
+          #   -z ...     : ZAP `replacer` add-on injects the iron-session
+          #                cookie on every outgoing request so
+          #                authenticated pages are scanned.
           cmd_options: >-
-            -l Medium
-            -I
             -j
             -m 5
             -T 10
