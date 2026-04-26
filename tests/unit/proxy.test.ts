@@ -177,6 +177,26 @@ describe('proxy', () => {
     }
   })
 
+  it('passes through /sitemap.xml without auth', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(buildRequest('http://localhost/sitemap.xml'))
+      expect(response.status).toBe(200)
+    } finally {
+      restore()
+    }
+  })
+
+  it('passes through /robots.txt without auth', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await proxy(buildRequest('http://localhost/robots.txt'))
+      expect(response.status).toBe(200)
+    } finally {
+      restore()
+    }
+  })
+
   it('requires auth for dotted api paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {

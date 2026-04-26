@@ -114,6 +114,7 @@ const ALLOWED_UNAUTH_EXACT = new Set([
   '/api/ready',
   '/favicon.ico',
   '/robots.txt',
+  '/sitemap.xml',
 ])
 
 function isAllowedWithoutAuth(pathname: string): boolean {

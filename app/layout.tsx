@@ -5,6 +5,17 @@ import '@/app/globals.css'
 import ThemeRootSync from '@/components/ThemeRootSync'
 import { getRequestNonce, THEME_STORAGE_KEY } from '@/lib/theme'
 
+// Configured per-environment via `.env*` (see .env.example). Required at
+// module load time — we deliberately do not provide a fallback so that a
+// missing value fails loudly at build/boot rather than silently emitting
+// wrong absolute URLs in metadata.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+if (!SITE_URL) {
+  throw new Error(
+    'NEXT_PUBLIC_SITE_URL is not set. Add it to your .env file (see .env.example).',
+  )
+}
+
 export const metadata: Metadata = {
   title: {
     default: 'Kravhantering',
@@ -12,14 +23,14 @@ export const metadata: Metadata = {
   },
   description:
     'En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess',
-  metadataBase: new URL('https://kravhantering.viscalyx.org'),
+  metadataBase: new URL(SITE_URL),
   icons: {
     icon: '/logo-small.png',
   },
   openGraph: {
     type: 'website',
     locale: 'sv_SE',
-    url: 'https://kravhantering.viscalyx.org',
+    url: SITE_URL,
     siteName: 'Kravhantering',
     title: 'Kravhantering',
     description:
@@ -31,10 +42,12 @@ export const metadata: Metadata = {
     description:
       'En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess',
   },
+  // The app is internal/auth-gated. Disallow indexing site-wide; aligned
+  // with `app/robots.ts` (issue #108).
   robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
   },
 }
 
