@@ -69,9 +69,15 @@ async function loginAndSaveStorageState(
   }
   const loginHtml = await loginPage.text()
 
-  const actionMatch = loginHtml.match(
-    /<form[^>]*id="kc-form-login"[^>]*action="([^"]+)"/i,
+  // Match the Keycloak login form's `action` attribute regardless of
+  // whether `id` appears before or after `action` on the <form> tag.
+  // We require an `id="kc-form-login"` attribute somewhere on the same
+  // tag plus an `action="..."` attribute, in either order.
+  const formTagMatch = loginHtml.match(
+    /<form\b[^>]*\bid="kc-form-login"[^>]*>/i,
   )
+  const formTag = formTagMatch?.[0]
+  const actionMatch = formTag?.match(/\baction="([^"]+)"/i)
   if (!actionMatch) {
     throw new Error(
       `Could not locate Keycloak login form in response from ${loginPage.url()}`,
@@ -126,7 +132,7 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   for (const spec of ROLES) {
     try {
       await loginAndSaveStorageState(baseUrl, spec)
-      console.warn(
+      console.info(
         `[playwright global-setup] Stored ${spec.role} session at ${spec.filePath}`,
       )
     } catch (err) {

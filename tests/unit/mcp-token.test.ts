@@ -82,7 +82,6 @@ describe('verifyMcpBearerToken', () => {
 
   it('accepts a real HSA-id in employeeHsaId', async () => {
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })
@@ -105,7 +104,6 @@ describe('verifyMcpBearerToken', () => {
 
   it('rejects when employeeHsaId is missing', async () => {
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })
@@ -131,7 +129,6 @@ describe('verifyMcpBearerToken', () => {
 
   it('rejects when employeeHsaId is malformed (and not synthetic)', async () => {
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })
@@ -161,7 +158,6 @@ describe('verifyMcpBearerToken', () => {
 
   it('wraps verification failures in McpAuthError(401)', async () => {
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })
@@ -190,7 +186,6 @@ describe('verifyMcpBearerToken security audit events', () => {
     createRemoteJWKSetMock.mockReset()
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     getAuthConfigMock.mockReturnValue({
-      enabled: true,
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
     })

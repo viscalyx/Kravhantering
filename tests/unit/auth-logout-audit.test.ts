@@ -148,6 +148,10 @@ describe('auth logout security audit events', () => {
   })
 
   it('keeps GET non-destructive and redirects locally', async () => {
+    // GET must not destroy the session: the POST handler is the only
+    // CSRF-protected (`assertSameOriginRequest`) path that may terminate
+    // a session. A destructive GET would be CSRF-triggerable from any
+    // cross-site link or redirect, enabling silent forced-logout DoS.
     const destroy = vi.fn()
     getSessionMock.mockResolvedValue({ destroy, sub: 'user-1' })
     const { GET } = await importRoute()
