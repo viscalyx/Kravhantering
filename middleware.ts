@@ -187,6 +187,33 @@ function isApiPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/')
 }
 
+// Locale roots (`/sv`, `/en`) only exist to redirect to `/<locale>/requirements`.
+// The original implementation lived in `app/[locale]/page.tsx` as a Server
+// Component `redirect('/requirements')`, but Server-Component redirects emit a
+// ~83 KB `__next_error__` HTML scaffold AFTER middleware runs, which trips ZAP
+// rule 10044 (Big Redirect, body > 1024 bytes) on /sv and /en. Doing the
+// redirect here keeps it inside the middleware response pipeline, so
+// `stripRedirectBody` and `ensureRedirectContentType` can sanitize it. Issue
+// #110.
+function isLocaleRootPath(pathname: string): boolean {
+  const trimmed =
+    pathname.length > 1 && pathname.endsWith('/')
+      ? pathname.slice(0, -1)
+      : pathname
+  if (!trimmed.startsWith('/')) return false
+  const segment = trimmed.slice(1)
+  return (LOCALES as readonly string[]).includes(segment)
+}
+
+function redirectLocaleRootToRequirements(request: NextRequest): NextResponse {
+  const { pathname, search } = request.nextUrl
+  const locale = pathname.replace(/\/+$/, '').slice(1)
+  const target = new URL(`/${locale}/requirements${search ?? ''}`, request.url)
+  return ensureRedirectContentType(
+    stripRedirectBody(NextResponse.redirect(target, { status: 307 })),
+  )
+}
+
 async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   const { pathname, search } = request.nextUrl
 
@@ -268,6 +295,10 @@ function applyPageHeaders(request: NextRequest): NextResponse {
 export default async function middleware(request: NextRequest) {
   const authResponse = await enforceAuth(request)
   if (authResponse) return authResponse
+
+  if (isLocaleRootPath(request.nextUrl.pathname)) {
+    return redirectLocaleRootToRequirements(request)
+  }
 
   if (isApiPath(request.nextUrl.pathname)) {
     const cleaned = stripUserHeaders(new Headers(request.headers))

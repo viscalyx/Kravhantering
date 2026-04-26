@@ -322,7 +322,7 @@ Current behavior:
   source only: the iron-session cookie for browser/REST callers, or a
   verified `Authorization: Bearer` JWT for MCP callers. Auth is mandatory,
   and the app does not accept `x-user-id` or `x-user-roles` request
-  headers as a stand-in for a logged-in user; `proxy.ts` strips both
+  headers as a stand-in for a logged-in user; `middleware.ts` strips both
   headers from every inbound request before any handler runs.
 - The MCP HTTP route additionally verifies a Bearer JWT against the IdP's
   JWKS (Phase 5a). The verified actor is attached to the in-flight
