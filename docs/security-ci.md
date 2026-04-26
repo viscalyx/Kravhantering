@@ -52,9 +52,8 @@ suppressed in the rules file.
   Docker image (no client-side install on the runner) and emits
   consistent report artifacts.
 - **Tunable per-rule.** ZAP exposes per-rule IGNORE/WARN/FAIL via a
-  `rules.<scenario>.tsv` file checked into the repo, so policy
-  decisions live next
-  to the workflow and can be code-reviewed.
+  `rules.<scenario>.tsv` file checked into the repo, so policy decisions
+  live next to the workflow and can be code-reviewed.
 
 ### Failure policy
 

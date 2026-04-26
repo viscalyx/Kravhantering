@@ -1169,7 +1169,7 @@ varje enskild mekanism.
 │   Säkerhetsaudit              OIDC-identitetstjänst          │
 │                                                              │
 │  [Application Component]                                     │
-│   middleware.ts + lib/auth/* + RequirementsService                │
+│   middleware.ts + lib/auth/* + RequirementsService           │
 └──────────────────────────────────────────────────────────────┘
          │ skyddas av / driftas på
          ▼

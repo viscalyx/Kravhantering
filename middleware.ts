@@ -47,6 +47,13 @@ function stripRedirectBody(response: NextResponse): NextResponse {
   for (const [key, value] of response.headers) {
     const lower = key.toLowerCase()
     if (lower === 'content-type' || lower === 'content-length') continue
+    // Set-Cookie may legitimately appear multiple times. The Headers
+    // iterator yields each Set-Cookie value as a separate entry, so use
+    // append to preserve every cookie instead of overwriting.
+    if (lower === 'set-cookie') {
+      stripped.headers.append(key, value)
+      continue
+    }
     stripped.headers.set(key, value)
   }
   return stripped

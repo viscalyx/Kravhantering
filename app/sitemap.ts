@@ -13,7 +13,9 @@ function getSiteUrl(): string {
       'NEXT_PUBLIC_SITE_URL is not set. Add it to your .env file (see .env.example).',
     )
   }
-  return value
+  // Strip a trailing slash so callers can safely concatenate `/<path>`
+  // without producing accidental `//` segments.
+  return value.replace(/\/+$/, '')
 }
 
 /**

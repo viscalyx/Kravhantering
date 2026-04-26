@@ -177,12 +177,13 @@ jobs:
           script: |
             const fs = require('fs');
             const path = 'test-results/app.log';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             let body;
             if (!fs.existsSync(path)) {
               body = [
                 '### ❌ Security DAST failed',
                 '',
-                `No \`${path}\` was produced — the failure happened before the prodlike server started. Inspect the [workflow run](${context.payload.pull_request.html_url ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` : ''}) for details.`,
+                `No \`${path}\` was produced — the failure happened before the prodlike server started. Inspect the [workflow run](${runUrl}) for details.`,
               ].join('\n');
             } else {
               const allLines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
@@ -200,7 +201,6 @@ jobs:
                 logBlock = logBlock.slice(-MAX_CHARS);
                 logBlock = `… (truncated to last ${MAX_CHARS} characters)\n${logBlock}`;
               }
-              const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
               body = [
                 '### ❌ Security DAST failed',
                 '',

@@ -19,13 +19,16 @@ import {
  * route locale via `useLocale()`.
  */
 export default function LocaleStorageSync() {
-  const locale = useLocale() as AppLocale
+  const rawLocale = useLocale()
+  const locale: AppLocale | null = isAppLocale(rawLocale) ? rawLocale : null
   const router = useRouter()
   const pathname = usePathname()
 
   // Keep localStorage in sync with the URL (covers direct navigation that
-  // bypasses the LanguageSwitcher button).
+  // bypasses the LanguageSwitcher button). Skip writes when the active
+  // locale is not part of AppLocale so localStorage never holds garbage.
   useEffect(() => {
+    if (locale === null) return
     writeStoredLocale(locale)
   }, [locale])
 

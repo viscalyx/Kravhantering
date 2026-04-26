@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { readStoredLocale } from '@/lib/locale-preference'
+import { type AppLocale, readStoredLocale } from '@/lib/locale-preference'
 
 /**
  * Renders nothing visible. On mount, reads the user's stored locale
@@ -14,11 +14,11 @@ import { readStoredLocale } from '@/lib/locale-preference'
  * `NextIntlClientProvider`, which only exists inside the `[locale]`
  * segment.
  */
-export default function RootLocaleRedirect({
-  defaultLocale,
-}: {
-  defaultLocale: 'sv' | 'en'
-}) {
+interface ComponentProps {
+  defaultLocale: AppLocale
+}
+
+export default function RootLocaleRedirect({ defaultLocale }: ComponentProps) {
   const router = useRouter()
 
   useEffect(() => {
