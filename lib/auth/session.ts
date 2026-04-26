@@ -189,7 +189,7 @@ export interface SessionDiagnostics {
  * reports whether a session cookie was present-but-invalid. `iron-session`
  * silently returns an empty session on decrypt/expiry/tamper failures, so
  * detection is "cookie present in request but resulting session has no
- * `sub`". Used by `proxy.ts` to emit the `auth.session.rejected`
+ * `sub`". Used by `middleware.ts` to emit the `auth.session.rejected`
  * security audit event without changing the public read API.
  */
 export async function getSessionFromRequestWithDiagnostics(

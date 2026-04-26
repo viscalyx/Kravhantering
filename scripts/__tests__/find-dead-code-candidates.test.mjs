@@ -122,6 +122,23 @@ describe('find_dead_code_candidates.py', () => {
     expect(JSON.parse(result.stdout)).toEqual([])
   })
 
+  it('treats root-level Next middleware entry imports as live', () => {
+    const dir = makeTempDir()
+
+    writeFile(
+      path.join(dir, 'app', 'page.tsx'),
+      'export default function Page() { return null }\n',
+    )
+    writeFile(path.join(dir, 'middleware.ts'), "import './lib/live.ts'\n")
+    writeFile(path.join(dir, 'lib', 'live.ts'), 'export const live = true\n')
+
+    const result = runHelperScript(dir)
+
+    expect(result.status).toBe(0)
+    expect(result.stderr).toBe('')
+    expect(JSON.parse(result.stdout)).toEqual([])
+  })
+
   it('treats root-level Next proxy entry imports as live', () => {
     const dir = makeTempDir()
 

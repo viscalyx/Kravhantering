@@ -2,16 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'
 
 // next-intl's middleware module imports `next/server` via a path that the
-// Vitest ESM resolver cannot follow. Replace it with a no-op pass-through —
-// this test exercises proxy.ts's auth gating and header stripping, not
-// locale rewriting. `@/i18n/routing` is also mocked because it pulls in
-// next-intl's React navigation helpers that fail to resolve under Vitest.
+// Vitest ESM resolver cannot follow. Replace it with a pass-through that
+// the individual tests can override per-call via `intlMiddlewareMock`.
+// `@/i18n/routing` is also mocked because it pulls in next-intl's React
+// navigation helpers that fail to resolve under Vitest.
+const { intlMiddlewareMock } = vi.hoisted(() => ({
+  intlMiddlewareMock: vi.fn(() => NextResponse.next()),
+}))
 vi.mock('next-intl/middleware', () => ({
-  default: () => () => NextResponse.next(),
+  default: () => intlMiddlewareMock,
 }))
 vi.mock('@/i18n/routing', () => ({ routing: {} }))
 
-const { config, default: proxy } = await import('@/proxy')
+// Source file is `middleware.ts` (not `proxy.ts`) because Next.js 16.2.4
+// emits a chunk for `proxy.ts` but never registers it in
+// `middleware-manifest.json`, so the matcher never runs at runtime. The
+// exported function is still semantically a Next 16 "proxy" — only the
+// filename is the legacy name. See docs/security-ci.md.
+const { config, default: middleware } = await import('@/middleware')
 const { resetAuthConfigForTests } = await import('@/lib/auth/config')
 
 const COOKIE_PASSWORD =
@@ -57,11 +65,11 @@ function buildRequest(
   return new NextRequest(url, { method: init.method ?? 'GET', headers })
 }
 
-describe('proxy', () => {
+describe('middleware', () => {
   it('redirects unauthenticated browser GET to /api/auth/login', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(
+      const response = await middleware(
         buildRequest('http://localhost/sv/requirements', {
           accept: 'text/html',
         }),
@@ -72,6 +80,90 @@ describe('proxy', () => {
       expect(location).toContain(
         `returnTo=${encodeURIComponent('/sv/requirements')}`,
       )
+      // ZAP rule 10019: 3xx responses must carry a Content-Type. Issue #111.
+      expect(response.headers.get('content-type')).toBe(
+        'text/plain; charset=utf-8',
+      )
+    } finally {
+      restore()
+    }
+  })
+
+  it('strips body and sets Content-Type on next-intl 307 locale redirects', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockImplementationOnce(
+      () =>
+        new NextResponse('<html><body>Redirecting to /sv…</body></html>', {
+          status: 307,
+          headers: {
+            Location: 'http://localhost/sv/static/foo.js',
+            'Set-Cookie': 'NEXT_LOCALE=sv; Path=/',
+          },
+        }) as unknown as ReturnType<typeof NextResponse.next>,
+    )
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/_next/static/foo.js'),
+      )
+      expect(response.status).toBe(307)
+      expect(await response.text()).toBe('')
+      expect(response.headers.get('location')).toBe(
+        'http://localhost/sv/static/foo.js',
+      )
+      const setCookie = response.headers.get('set-cookie') ?? ''
+      expect(setCookie).toContain('NEXT_LOCALE=sv')
+      // Issue #113 / ZAP rule 10010: NEXT_LOCALE must carry HttpOnly so
+      // client JS cannot read it. next-intl's default omits the flag.
+      expect(setCookie).toMatch(/HttpOnly/i)
+      expect(response.headers.get('content-type')).toBe(
+        'text/plain; charset=utf-8',
+      )
+    } finally {
+      restore()
+    }
+  })
+
+  it('preserves arbitrary next-intl response headers on locale redirect', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockImplementationOnce(
+      () =>
+        new NextResponse('<html>stub</html>', {
+          status: 307,
+          headers: {
+            Location: 'http://localhost/sv/page',
+            Vary: 'Accept-Language',
+            'X-Custom': 'preserved',
+          },
+        }) as unknown as ReturnType<typeof NextResponse.next>,
+    )
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/_next/static/page'),
+      )
+      expect(response.status).toBe(307)
+      expect(await response.text()).toBe('')
+      expect(response.headers.get('vary')).toBe('Accept-Language')
+      expect(response.headers.get('x-custom')).toBe('preserved')
+    } finally {
+      restore()
+    }
+  })
+
+  it('does not overwrite Content-Type on 200 page responses', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockImplementationOnce(() => {
+      const r = NextResponse.next()
+      r.headers.set('content-type', 'text/html; charset=utf-8')
+      return r
+    })
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/_next/static/foo.js'),
+      )
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe(
+        'text/html; charset=utf-8',
+      )
     } finally {
       restore()
     }
@@ -80,7 +172,7 @@ describe('proxy', () => {
   it('prepends the default locale to returnTo for unprefixed paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(
+      const response = await middleware(
         buildRequest('http://localhost/requirements', {
           accept: 'text/html',
         }),
@@ -98,7 +190,7 @@ describe('proxy', () => {
   it('returns 401 JSON for non-HTML unauthenticated requests', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(
+      const response = await middleware(
         buildRequest('http://localhost/api/owners', { method: 'POST' }),
       )
       expect(response.status).toBe(401)
@@ -113,7 +205,7 @@ describe('proxy', () => {
   it('passes through public allow-list paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(
+      const response = await middleware(
         buildRequest('http://localhost/api/auth/login'),
       )
       expect(response.status).toBe(200)
@@ -125,7 +217,33 @@ describe('proxy', () => {
   it('passes through exact public health routes', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(buildRequest('http://localhost/api/health'))
+      const response = await middleware(
+        buildRequest('http://localhost/api/health'),
+      )
+      expect(response.status).toBe(200)
+    } finally {
+      restore()
+    }
+  })
+
+  it('passes through /sitemap.xml without auth', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/sitemap.xml'),
+      )
+      expect(response.status).toBe(200)
+    } finally {
+      restore()
+    }
+  })
+
+  it('passes through /robots.txt without auth', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/robots.txt'),
+      )
       expect(response.status).toBe(200)
     } finally {
       restore()
@@ -135,7 +253,7 @@ describe('proxy', () => {
   it('requires auth for dotted api paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(
+      const response = await middleware(
         buildRequest('http://localhost/api/files/report.json', {
           method: 'POST',
         }),
@@ -153,13 +271,13 @@ describe('proxy', () => {
   it('requires Authorization: Bearer for /api/mcp', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const without = await proxy(
+      const without = await middleware(
         buildRequest('http://localhost/api/mcp', { method: 'POST' }),
       )
       expect(without.status).toBe(401)
       expect(without.headers.get('www-authenticate')).toBe('Bearer')
 
-      const withBearer = await proxy(
+      const withBearer = await middleware(
         buildRequest('http://localhost/api/mcp', {
           method: 'POST',
           bearer: 'token-value',
@@ -174,7 +292,9 @@ describe('proxy', () => {
   it('strips inbound x-user-* headers', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
-      const response = await proxy(buildRequest('http://localhost/api/auth/me'))
+      const response = await middleware(
+        buildRequest('http://localhost/api/auth/me'),
+      )
       const overrides = (
         response.headers.get('x-middleware-override-headers') ?? ''
       ).split(',')

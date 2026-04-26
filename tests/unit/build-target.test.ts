@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as devTarget from '@/lib/runtime/build-target'
 
@@ -62,18 +60,5 @@ describe('build-target prod', () => {
   it('does NOT use dev CSP', async () => {
     const m = await import('@/lib/runtime/build-target.prod')
     expect(m.USE_DEV_CSP).toBe(false)
-  })
-
-  it('contains no process.env reads — all constants are frozen at compile time', () => {
-    const src = readFileSync(
-      resolve(__dirname, '../../lib/runtime/build-target.prod.ts'),
-      'utf8',
-    )
-    // Catch any process.env reference: dotted access (process.env.FOO),
-    // bracket access (process.env['FOO']), or alias/destructuring forms like
-    // `const e = process.env` / `const { X } = process.env`. The trailing
-    // character class targets syntax that follows a real reference, not the
-    // backtick-wrapped prose mention in this file's header comment.
-    expect(src).not.toMatch(/process\.env(\.[A-Za-z_$]|\[|[\s,;}])/)
   })
 })

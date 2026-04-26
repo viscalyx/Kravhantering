@@ -42,6 +42,10 @@ const buildTargetSuffix =
 const buildTargetModulePath = fileURLToPath(
   new URL(`./lib/runtime/build-target${buildTargetSuffix}.ts`, import.meta.url),
 )
+// Turbopack's `resolveAlias` interprets a leading `/` as project-root-
+// relative, so absolute paths like `/workspace/...` get resolved against
+// the project root and 404. Use a project-relative path with `./` prefix.
+const buildTargetModulePathRelative = `./lib/runtime/build-target${buildTargetSuffix}.ts`
 
 const enableDeveloperMode =
   process.env.ENABLE_DEVELOPER_MODE === 'true' || resolvedBuildTarget === 'dev'
@@ -51,6 +55,10 @@ const developerModeCoreNoopPath = fileURLToPath(
 const developerModeReactNoopPath = fileURLToPath(
   new URL('./packages/developer-mode-react/src/noop.tsx', import.meta.url),
 )
+const developerModeCoreNoopPathRelative =
+  './packages/developer-mode-core/src/noop.ts'
+const developerModeReactNoopPathRelative =
+  './packages/developer-mode-react/src/noop.tsx'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -71,10 +79,32 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ['better-sqlite3', 'mermaid'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
+  // Turbopack-equivalent of the webpack alias block below. Next.js 16
+  // uses Turbopack for `next build`, so the `webpack(config)` hook is
+  // silently ignored — the aliases must also be declared here for
+  // production builds to swap in the right `build-target.*.ts` and the
+  // developer-mode no-op modules. Keep both blocks in sync.
+  turbopack: {
+    resolveAlias: {
+      ...(resolvedBuildTarget !== 'dev'
+        ? { '@/lib/runtime/build-target': buildTargetModulePathRelative }
+        : {}),
+      ...(!enableDeveloperMode
+        ? {
+            '@viscalyx/developer-mode-core': developerModeCoreNoopPathRelative,
+            '@viscalyx/developer-mode-react':
+              developerModeReactNoopPathRelative,
+          }
+        : {}),
+    },
+  },
   webpack(config) {
     // Build-target module swap: alias @/lib/runtime/build-target to the
     // concrete implementation for this build target. Applied for both server
     // and client bundles so production builds are uniformly frozen.
+    // (Webpack is no longer used by `next build` in Next 16 — it is the
+    // Turbopack alias above that takes effect — but this stays in place for
+    // any tooling that still drives a webpack build.)
     if (resolvedBuildTarget !== 'dev') {
       config.resolve.alias['@/lib/runtime/build-target'] = buildTargetModulePath
     }
@@ -88,7 +118,7 @@ const nextConfig: NextConfig = {
 
     return config
   },
-  // CSP is set per-request in proxy.ts (nonce-based).
+  // CSP is set per-request in middleware.ts (nonce-based).
   // Only static security headers are defined here.
   async headers() {
     return [
@@ -104,6 +134,23 @@ const nextConfig: NextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          {
+            key: 'Cross-Origin-Embedder-Policy',
+            // `credentialless` satisfies ZAP rule 90004 without requiring
+            // every embedded resource to advertise CORP (as `require-corp`
+            // would). All current sources are same-origin, so the
+            // credential-stripping behaviour for any future cross-origin
+            // no-cors load has no effect on the app today. Issue #112.
+            value: 'credentialless',
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin',
           },
           {
             key: 'Permissions-Policy',

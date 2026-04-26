@@ -1,13 +1,20 @@
 import type { Metadata } from 'next'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { ThemeProvider } from 'next-themes'
 import '@/app/globals.css'
 import ThemeRootSync from '@/components/ThemeRootSync'
-import {
-  getRequestNonce,
-  getServerThemeRootAttributes,
-  THEME_STORAGE_KEY,
-} from '@/lib/theme'
+import { getRequestNonce, THEME_STORAGE_KEY } from '@/lib/theme'
+
+// Configured per-environment via `.env*` (see .env.example). Required at
+// module load time — we deliberately do not provide a fallback so that a
+// missing value fails loudly at build/boot rather than silently emitting
+// wrong absolute URLs in metadata.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
+if (!SITE_URL) {
+  throw new Error(
+    'NEXT_PUBLIC_SITE_URL is not set. Add it to your .env file (see .env.example).',
+  )
+}
 
 export const metadata: Metadata = {
   title: {
@@ -16,14 +23,14 @@ export const metadata: Metadata = {
   },
   description:
     'En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess',
-  metadataBase: new URL('https://kravhantering.viscalyx.org'),
+  metadataBase: new URL(SITE_URL),
   icons: {
     icon: '/logo-small.png',
   },
   openGraph: {
     type: 'website',
     locale: 'sv_SE',
-    url: 'https://kravhantering.viscalyx.org',
+    url: SITE_URL,
     siteName: 'Kravhantering',
     title: 'Kravhantering',
     description:
@@ -35,10 +42,12 @@ export const metadata: Metadata = {
     description:
       'En webbapplikation för kravhantering som stödjer företagets kravmodell och kravprocess',
   },
+  // The app is internal/auth-gated. Disallow indexing site-wide; aligned
+  // with `app/robots.ts` (issue #108).
   robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true },
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
   },
 }
 
@@ -47,23 +56,14 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [cookieStore, headersList] = await Promise.all([cookies(), headers()])
+  const headersList = await headers()
   const nonce = getRequestNonce([
     headersList.get('x-nonce'),
     headersList.get('x-middleware-request-x-nonce'),
   ])
-  const themeAttributes = getServerThemeRootAttributes(
-    cookieStore.get(THEME_STORAGE_KEY)?.value,
-  )
 
   return (
-    <html
-      className={themeAttributes.className}
-      data-scroll-behavior="smooth"
-      lang="sv"
-      style={themeAttributes.style}
-      suppressHydrationWarning
-    >
+    <html data-scroll-behavior="smooth" lang="sv" suppressHydrationWarning>
       <head>
         <meta content="light dark" name="color-scheme" />
       </head>

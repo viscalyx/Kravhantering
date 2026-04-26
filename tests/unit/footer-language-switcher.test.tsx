@@ -29,6 +29,7 @@ describe('Footer', () => {
 describe('LanguageSwitcher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
   })
 
   it('renders switch button', () => {
@@ -37,10 +38,11 @@ describe('LanguageSwitcher', () => {
     expect(btn).toBeInTheDocument()
   })
 
-  it('calls router.replace on click with other locale', () => {
+  it('calls router.replace on click with other locale and persists choice', () => {
     render(<LanguageSwitcher />)
     const btn = screen.getByRole('button', { name: 'switchTo' })
     fireEvent.click(btn)
     expect(mockReplace).toHaveBeenCalledWith('/requirements', { locale: 'sv' })
+    expect(window.localStorage.getItem('locale')).toBe('sv')
   })
 })

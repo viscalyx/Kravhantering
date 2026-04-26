@@ -29,17 +29,12 @@ describe('ThemeRootSync', () => {
   beforeEach(() => {
     themeState.resolvedTheme = 'dark'
     themeState.theme = 'dark'
-    Object.defineProperty(document, 'cookie', {
-      configurable: true,
-      value: '',
-      writable: true,
-    })
     document.documentElement.className = ''
     document.documentElement.style.backgroundColor = ''
     document.documentElement.style.colorScheme = ''
   })
 
-  it('applies the resolved dark theme to the document root and cookie', () => {
+  it('applies the resolved dark theme to the document root', () => {
     render(<ThemeRootSync />)
 
     expect(document.documentElement.classList.contains(THEME_DARK_CLASS)).toBe(
@@ -49,10 +44,10 @@ describe('ThemeRootSync', () => {
     expect(document.documentElement.style.backgroundColor).toBe(
       toDomColor(THEME_DARK_BACKGROUND),
     )
-    expect(document.cookie).toContain('theme=dark')
+    expect(document.cookie).toBe('')
   })
 
-  it('keeps system preference in the cookie while applying the resolved theme', () => {
+  it('applies the resolved light theme to the document root', () => {
     themeState.resolvedTheme = 'light'
     themeState.theme = 'system'
 
@@ -65,6 +60,6 @@ describe('ThemeRootSync', () => {
     expect(document.documentElement.style.backgroundColor).toBe(
       toDomColor(THEME_LIGHT_BACKGROUND),
     )
-    expect(document.cookie).toContain('theme=system')
+    expect(document.cookie).toBe('')
   })
 })

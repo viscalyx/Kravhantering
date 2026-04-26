@@ -32,8 +32,10 @@ jobs:
         env:
           # Treat warnings as errors during build
           CI: true
-          # Codecov token
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          # Required by app/layout.tsx and app/sitemap.ts at build-time
+          # page-data collection. Use a placeholder for CI builds; real
+          # value is provided per-environment at deploy time.
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
       - name: Check build output
         run: |

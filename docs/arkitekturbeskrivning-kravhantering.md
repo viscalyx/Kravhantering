@@ -736,7 +736,7 @@ mönster:
 1. **Presentationslager** — React-komponenter
    (`components/`) och sidokomponenter (`app/`).
 2. **Autentiserings- och säkerhetslager** —
-   `proxy.ts`, `app/api/auth/*`, `lib/auth/*` och
+   `middleware.ts`, `app/api/auth/*`, `lib/auth/*` och
    auth-delen av `app/api/mcp/route.ts` hanterar
    inloggning, sessioner, tokenvalidering, CSRF och
    säkerhetsloggning.
@@ -977,7 +977,7 @@ ut i tjänstelagret.
   genererar ett unikt nonce (16 slumpmässiga bytes,
   base64-kodat) för inline-skript. Produktions-CSP
   kräver nonce för alla skript.
-- **Proxy** — `proxy.ts` hanterar CSP och
+- **Middleware** — `middleware.ts` hanterar CSP och
   i18n-routing, omdirigering till inloggning för
   webbförfrågningar, `401` för otillåtna API-anrop och
   borttagning av äldre `x-user-*`-headers när
@@ -1169,7 +1169,7 @@ varje enskild mekanism.
 │   Säkerhetsaudit              OIDC-identitetstjänst          │
 │                                                              │
 │  [Application Component]                                     │
-│   proxy.ts + lib/auth/* + RequirementsService                │
+│   middleware.ts + lib/auth/* + RequirementsService           │
 └──────────────────────────────────────────────────────────────┘
          │ skyddas av / driftas på
          ▼
@@ -1224,7 +1224,7 @@ informationssäkerhetsåtgärder i nuvarande version:
 - **CSRF-skydd för cookie-baserade mutationer** —
   muterande anrop måste vara same-origin och bära
   `X-Requested-With: XMLHttpRequest`.
-- **Header-härdning i proxy** — `proxy.ts` tar alltid
+- **Header-härdning i middleware** — `middleware.ts` tar alltid
   bort inkommande `x-user-id` och `x-user-roles`.
   Den äldre header-trust-banan har avlägsnats.
 - **Avvisning av ogiltiga sessioner** — Trasiga eller

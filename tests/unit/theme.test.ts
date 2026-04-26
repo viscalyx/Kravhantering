@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyResolvedThemeToRoot,
-  createThemeCookie,
   getRequestNonce,
-  getServerThemeRootAttributes,
   normalizeThemePreference,
   resolveThemePreference,
   THEME_DARK_BACKGROUND,
@@ -40,17 +38,6 @@ describe('theme utilities', () => {
     expect(resolveThemePreference('system', false)).toBe('light')
   })
 
-  it('returns dark root attributes for a dark cookie preference', () => {
-    expect(getServerThemeRootAttributes('dark')).toEqual({
-      className: THEME_DARK_CLASS,
-      style: {
-        backgroundColor: THEME_DARK_BACKGROUND,
-        colorScheme: 'dark',
-      },
-    })
-    expect(getServerThemeRootAttributes('system')).toEqual({})
-  })
-
   it('applies the resolved theme styles to the document root', () => {
     document.documentElement.className = ''
     document.documentElement.style.backgroundColor = ''
@@ -75,10 +62,5 @@ describe('theme utilities', () => {
     expect(document.documentElement.style.backgroundColor).toBe(
       toDomColor(THEME_DARK_BACKGROUND),
     )
-  })
-
-  it('creates a persistent theme cookie string', () => {
-    expect(createThemeCookie('system')).toContain('theme=system')
-    expect(createThemeCookie('system')).toContain('Max-Age=31536000')
   })
 })
