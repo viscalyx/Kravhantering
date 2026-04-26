@@ -1,7 +1,7 @@
 # OWASP ZAP baseline rule overrides for the PR DAST workflow.
 #
 # Format: <ruleId>\t<action>\t<comment>
-#   action: IGNORE | WARN | FAIL
+#   action: IGNORE | WARN | FAIL | PASS | INFO
 #
 # Why these rules are suppressed:
 #   The scan target is http://localhost:3001 inside an ephemeral CI runner.
