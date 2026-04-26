@@ -4,6 +4,7 @@ import { Globe } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { usePathname, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { writeStoredLocale } from '@/lib/locale-preference'
 
 export default function LanguageSwitcher() {
   const t = useTranslations('language')
@@ -14,6 +15,7 @@ export default function LanguageSwitcher() {
   const otherLocale = locale === 'sv' ? 'en' : 'sv'
 
   const switchLocale = () => {
+    writeStoredLocale(otherLocale)
     router.replace(pathname, { locale: otherLocale })
   }
 

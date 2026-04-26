@@ -2,14 +2,10 @@
 
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
-import {
-  applyResolvedThemeToRoot,
-  normalizeThemePreference,
-  persistThemePreference,
-} from '@/lib/theme'
+import { applyResolvedThemeToRoot } from '@/lib/theme'
 
 export default function ThemeRootSync() {
-  const { resolvedTheme, theme } = useTheme()
+  const { resolvedTheme } = useTheme()
 
   useEffect(() => {
     if (resolvedTheme !== 'dark' && resolvedTheme !== 'light') {
@@ -17,8 +13,7 @@ export default function ThemeRootSync() {
     }
 
     applyResolvedThemeToRoot(document.documentElement, resolvedTheme)
-    persistThemePreference(normalizeThemePreference(theme))
-  }, [resolvedTheme, theme])
+  }, [resolvedTheme])
 
   return null
 }

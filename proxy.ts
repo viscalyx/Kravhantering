@@ -181,7 +181,14 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
 }
 
 function applyPageHeaders(request: NextRequest): NextResponse {
-  const response = intlMiddleware(request)
+  // The unlocalized root page (`app/page.tsx`) renders a client-side
+  // <RootLocaleRedirect> that picks the locale from localStorage. Skip
+  // next-intl's middleware here so it does not 307 `/` to `/<defaultLocale>`
+  // before the root page can run.
+  const response =
+    request.nextUrl.pathname === '/'
+      ? NextResponse.next()
+      : intlMiddleware(request)
 
   const nonceBytes = new Uint8Array(16)
   crypto.getRandomValues(nonceBytes)

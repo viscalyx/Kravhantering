@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation'
+import RootLocaleRedirect from '@/components/RootLocaleRedirect'
+import { routing } from '@/i18n/routing'
 
 export default function RootPage() {
-  redirect('/sv/requirements')
+  return <RootLocaleRedirect defaultLocale={routing.defaultLocale} />
 }
