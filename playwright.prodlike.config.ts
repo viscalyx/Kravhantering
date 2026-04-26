@@ -30,6 +30,12 @@ const originHeader = deriveOrigin(baseUrl)
 
 export default defineConfig({
   testDir: './tests/integration',
+  // Developer Mode is aliased to no-op entrypoints in non-dev builds (see
+  // `enableDeveloperMode` in next.config.ts), so the overlay badge/chip/toast
+  // surfaces those specs assert on are intentionally absent in prodlike. Skip
+  // the spec here instead of forcing ENABLE_DEVELOPER_MODE=true on the
+  // prodlike build, which is meant to mirror real production.
+  testIgnore: ['**/developer-mode-overlay.spec.ts'],
   globalSetup: './tests/integration/global-setup.ts',
   outputDir: 'test-results/prodlike',
   fullyParallel: true,
