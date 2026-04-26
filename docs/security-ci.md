@@ -117,6 +117,37 @@ The application log captured during the scan is uploaded separately as
 **`dast-app-log`** and is the first thing to inspect when ZAP cannot
 reach the app.
 
+## Static security headers
+
+Static (per-response, non-nonce) security headers are set in the
+`headers()` block of [next.config.ts](../next.config.ts) and apply to
+every route. CSP is intentionally **not** set there — it carries a
+per-request nonce and is set in [proxy.ts](../proxy.ts) instead.
+
+Current static headers and rationale:
+
+- `X-Frame-Options: DENY` — clickjacking defense for legacy clients
+  that ignore CSP `frame-ancestors`.
+- `X-Content-Type-Options: nosniff` — disable MIME sniffing.
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+  — applied in production; the prodlike CI runner serves over plain
+  HTTP and ZAP rule `10035` is suppressed accordingly.
+- `Referrer-Policy: strict-origin-when-cross-origin` — minimal
+  referrer leakage on outbound navigation.
+- `Cross-Origin-Opener-Policy: same-origin` — isolates the top-level
+  browsing context (resolves ZAP `90004`, issue #112). The app does
+  not open cross-origin popups; OIDC sign-in is a top-level redirect.
+- `Cross-Origin-Resource-Policy: same-origin` — blocks no-cors
+  cross-origin embedding of our resources. The app does not expose
+  embeddable assets to other origins.
+- **COEP intentionally omitted.** `Cross-Origin-Embedder-Policy:
+  require-corp` would force every embedded resource (including any
+  future third-party CDN) to advertise CORP. The app does not need
+  cross-origin isolation (no `SharedArrayBuffer`, no high-resolution
+  timers), so the trade-off is not worth taking.
+- `Permissions-Policy: …=()` — denies every powerful browser feature
+  the app does not use.
+
 ## Out of scope (for the PR workflow)
 
 - **Active scanning** (`zap-full-scan`, fuzzers, payload mutation).
