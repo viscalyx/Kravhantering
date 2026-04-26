@@ -14,6 +14,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   zap-baseline:
@@ -168,6 +169,60 @@ jobs:
           path: test-results/app.log
           retention-days: 14
           if-no-files-found: warn
+
+      - name: Comment on PR with app log on failure
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'test-results/app.log';
+            let body;
+            if (!fs.existsSync(path)) {
+              body = [
+                '### ❌ Security DAST failed',
+                '',
+                `No \`${path}\` was produced — the failure happened before the prodlike server started. Inspect the [workflow run](${context.payload.pull_request.html_url ? `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}` : ''}) for details.`,
+              ].join('\n');
+            } else {
+              const allLines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
+              const TAIL = 200;
+              const tail = allLines.slice(-TAIL);
+              const truncatedNote =
+                allLines.length > TAIL
+                  ? `_Showing last ${TAIL} of ${allLines.length} lines._`
+                  : `_Full log (${allLines.length} lines)._`;
+              // GitHub comment hard limit is 65,536 chars; cap the code
+              // block so the comment never exceeds it.
+              const MAX_CHARS = 60000;
+              let logBlock = tail.join('\n');
+              if (logBlock.length > MAX_CHARS) {
+                logBlock = logBlock.slice(-MAX_CHARS);
+                logBlock = `… (truncated to last ${MAX_CHARS} characters)\n${logBlock}`;
+              }
+              const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+              body = [
+                '### ❌ Security DAST failed',
+                '',
+                `Workflow run: ${runUrl}`,
+                '',
+                truncatedNote,
+                '',
+                '<details><summary>app.log</summary>',
+                '',
+                '```',
+                logBlock,
+                '```',
+                '',
+                '</details>',
+              ].join('\n');
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
 
       - name: Stop prodlike app
         if: always()
