@@ -303,7 +303,12 @@ flowchart LR
   see the
   [Prodlike local client](./auth-developer-workflow.md#prodlike-local-client-kravhantering-local)
   section in the developer workflow for the full client/redirect/secret
-  contract.
+  contract. These auth-related build-target constants (including the
+  insecure-issuer allowance) are baked into the bundle when the build target is
+  selected, so changing them requires rebuilding for that target (for example
+  rebuilding the `local-prod` bundle that backs `npm run start:prodlike`) — they
+  are not runtime environment variables that can be toggled on a deployed
+  instance.
 - Keep the session model stateless. The app expects an encrypted cookie-based
   session, not a server-side session store, and it does not require sticky
   sessions between replicas.
