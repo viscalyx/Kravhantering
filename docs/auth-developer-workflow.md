@@ -13,7 +13,7 @@ OIDC provider in deployed environments). Identity is derived only from
 the verified iron-session cookie (browser flow) or a verified
 `Authorization: Bearer` JWT (MCP flow); the app no longer accepts
 `x-user-id` / `x-user-roles` request headers as a stand-in for a
-logged-in user, and `proxy.ts` strips both headers from every inbound
+logged-in user, and `middleware.ts` strips both headers from every inbound
 request before any handler runs.
 
 If the dev server cannot reach the IdP, requests fail loudly instead of

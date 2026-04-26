@@ -122,7 +122,15 @@ reach the app.
 Static (per-response, non-nonce) security headers are set in the
 `headers()` block of [next.config.ts](../next.config.ts) and apply to
 every route. CSP is intentionally **not** set there — it carries a
-per-request nonce and is set in [proxy.ts](../proxy.ts) instead.
+per-request nonce and is set in [middleware.ts](../middleware.ts) instead.
+
+> **Filename note.** Next.js 16 renamed the entry-gate convention to
+> `proxy.ts`, but Next 16.2.4 emits the chunk for `proxy.ts` without
+> registering it in `.next/server/middleware-manifest.json`, so the
+> matcher never runs at runtime. Renaming the file back to
+> `middleware.ts` (the still-supported legacy name) populates the
+> manifest and restores execution. Revisit when a future Next release
+> fixes `proxy.ts` registration; the file content is identical.
 
 Current static headers and rationale:
 

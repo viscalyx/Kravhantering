@@ -14,7 +14,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 ## Reading guide
 
 - **Implemented now** means the behavior is backed by the current code in
-  `proxy.ts`, `app/api/auth/*`, `lib/auth/*`, `lib/mcp/http.ts`, and the
+  `middleware.ts`, `app/api/auth/*`, `lib/auth/*`, `lib/mcp/http.ts`, and the
   auth-focused tests.
 - **Required for production** means this is the intended deployment contract.
   Some of it is already reflected in config and docs, but it should still be
@@ -25,7 +25,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 
 ## Current auth architecture in the app
 
-- [`proxy.ts`](../proxy.ts) is the front door. Auth is always on, so it:
+- [`middleware.ts`](../middleware.ts) is the front door. Auth is always on, so it:
   allows public paths, redirects unauthenticated browser page requests to
   `/api/auth/login`, returns `401` for unauthenticated API requests, and
   requires a Bearer header to be present for `/api/mcp`.
@@ -53,7 +53,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 ```mermaid
 sequenceDiagram
     actor Browser
-    participant Proxy as proxy.ts
+    participant Proxy as middleware.ts
     participant Login as /api/auth/login
     participant LoginState as login-state cookie
     participant IdP as OIDC Identity Provider<br/>(Keycloak in local dev)
@@ -90,7 +90,7 @@ sequenceDiagram
 ```
 <!-- markdownlint-enable MD013 -->
 
-- The redirect into `/api/auth/login` is usually triggered by `proxy.ts`, not
+- The redirect into `/api/auth/login` is usually triggered by `middleware.ts`, not
   by the page itself.
 - The login-state cookie is separate from the main session cookie and has a
   much shorter lifetime. Its only job is to carry the PKCE verifier, `state`,
@@ -132,7 +132,7 @@ sequenceDiagram
 - `GET /api/auth/logout` is intentionally non-destructive. It only redirects
   locally and does not clear the session.
 - If a session cookie is present but invalid or unreadable,
-  `proxy.ts` records `auth.session.rejected` and treats the request as signed
+  `middleware.ts` records `auth.session.rejected` and treats the request as signed
   out.
 
 ### MCP bearer-token flow
@@ -141,7 +141,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Proxy as proxy.ts
+    participant Proxy as middleware.ts
     participant Route as /api/mcp
     participant Verify as verifyMcpBearerToken()
     participant JWKS as JWKS endpoint
@@ -171,7 +171,7 @@ sequenceDiagram
 ```
 <!-- markdownlint-enable MD013 -->
 
-- `proxy.ts` only checks that a Bearer token is present for `/api/mcp`.
+- `middleware.ts` only checks that a Bearer token is present for `/api/mcp`.
   Cryptographic verification is done later in
   [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
 - `verifyMcpBearerToken()` derives the JWKS URL directly from the issuer as
@@ -191,13 +191,13 @@ sequenceDiagram
 - Identity is derived only from the verified iron-session cookie (browser
   flow) or a verified `Authorization: Bearer` JWT (MCP flow). The app does
   not accept `x-user-id` or `x-user-roles` request headers as a stand-in
-  for a logged-in user, and `proxy.ts` strips both headers from every
+  for a logged-in user, and `middleware.ts` strips both headers from every
   inbound request before any handler runs so a caller cannot use them to
   impersonate a user.
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
-- Page responses get a per-request CSP nonce from `proxy.ts`.
+- Page responses get a per-request CSP nonce from `middleware.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,

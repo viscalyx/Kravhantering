@@ -14,7 +14,12 @@ vi.mock('next-intl/middleware', () => ({
 }))
 vi.mock('@/i18n/routing', () => ({ routing: {} }))
 
-const { config, default: proxy } = await import('@/proxy')
+// Source file is `middleware.ts` (not `proxy.ts`) because Next.js 16.2.4
+// emits a chunk for `proxy.ts` but never registers it in
+// `middleware-manifest.json`, so the matcher never runs at runtime. The
+// exported function is still semantically a Next 16 "proxy" — only the
+// filename is the legacy name. See docs/security-ci.md.
+const { config, default: proxy } = await import('@/middleware')
 const { resetAuthConfigForTests } = await import('@/lib/auth/config')
 
 const COOKIE_PASSWORD =

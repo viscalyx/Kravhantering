@@ -1,5 +1,5 @@
 ---
-applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,proxy.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/auth-how-it-works.md,docs/auth-developer-workflow.md}"
+applyTo: "{app/api/auth/**/*.ts,app/api/mcp/route.ts,components/AuthMenu.tsx,lib/auth/**/*.ts,lib/mcp/http.ts,lib/requirements/auth.ts,middleware.ts,tests/support/oidc-mock.ts,dev/keycloak/realm-kravhantering-dev.json,docs/auth-how-it-works.md,docs/auth-developer-workflow.md}"
 ---
 
 # Auth Docs

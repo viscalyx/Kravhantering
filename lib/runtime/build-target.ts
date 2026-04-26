@@ -4,8 +4,8 @@
  * This file is the canonical import for build-time constants:
  *   import { USE_INSECURE_COOKIE, ... } from '@/lib/runtime/build-target'
  *
- * Webpack (next.config.ts) aliases this path to the concrete implementation
- * that matches the BUILD_TARGET env var at build time:
+ * Webpack and Turbopack (next.config.ts) alias this path to the concrete
+ * implementation that matches the BUILD_TARGET env var at build time:
  *   - BUILD_TARGET=dev          → build-target.ts (this file)
  *   - BUILD_TARGET=local-prod   → build-target.local-prod.ts
  *   - BUILD_TARGET=prod         → build-target.prod.ts
