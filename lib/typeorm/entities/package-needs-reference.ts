@@ -45,6 +45,7 @@ export const packageNeedsReferenceEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })

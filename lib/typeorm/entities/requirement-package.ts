@@ -68,6 +68,7 @@ export const requirementPackageEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       packageImplementationType: {
         type: 'many-to-one',
@@ -80,6 +81,7 @@ export const requirementPackageEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       packageLifecycleStatus: {
         type: 'many-to-one',
@@ -92,6 +94,7 @@ export const requirementPackageEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })

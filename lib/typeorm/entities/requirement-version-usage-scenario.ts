@@ -43,6 +43,7 @@ export const requirementVersionUsageScenarioEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       usageScenario: {
         type: 'many-to-one',
@@ -55,6 +56,7 @@ export const requirementVersionUsageScenarioEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })

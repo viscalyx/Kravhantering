@@ -80,6 +80,7 @@ export const requirementPackageItemEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirement: {
         type: 'many-to-one',
@@ -92,6 +93,7 @@ export const requirementPackageItemEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirementVersion: {
         type: 'many-to-one',
@@ -104,6 +106,7 @@ export const requirementPackageItemEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       needsReference: {
         type: 'many-to-one',
@@ -122,6 +125,7 @@ export const requirementPackageItemEntity =
         ],
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       packageItemStatus: {
         type: 'many-to-one',
@@ -134,6 +138,7 @@ export const requirementPackageItemEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })

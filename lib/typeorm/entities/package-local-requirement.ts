@@ -110,6 +110,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'NO ACTION',
       },
       requirementArea: {
         type: 'many-to-one',
@@ -122,6 +123,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirementCategory: {
         type: 'many-to-one',
@@ -134,6 +136,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       requirementType: {
         type: 'many-to-one',
@@ -146,6 +149,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       qualityCharacteristic: {
         type: 'many-to-one',
@@ -158,6 +162,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       riskLevel: {
         type: 'many-to-one',
@@ -170,6 +175,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       needsReference: {
         type: 'many-to-one',
@@ -188,6 +194,7 @@ export const packageLocalRequirementEntity =
         ],
         nullable: true,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
       packageItemStatus: {
         type: 'many-to-one',
@@ -200,6 +207,7 @@ export const packageLocalRequirementEntity =
         },
         nullable: true,
         onDelete: 'SET NULL',
+        onUpdate: 'NO ACTION',
       },
     },
   })

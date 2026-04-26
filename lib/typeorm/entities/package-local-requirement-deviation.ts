@@ -73,6 +73,7 @@ export const packageLocalRequirementDeviationEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'NO ACTION',
       },
     },
   })

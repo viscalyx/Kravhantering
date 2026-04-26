@@ -84,6 +84,7 @@ export const improvementSuggestionEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'NO ACTION',
       },
       requirementVersion: {
         type: 'many-to-one',
@@ -96,6 +97,7 @@ export const improvementSuggestionEntity =
         },
         nullable: true,
         onDelete: 'SET NULL',
+        onUpdate: 'NO ACTION',
       },
     },
   })

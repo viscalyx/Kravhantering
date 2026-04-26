@@ -43,6 +43,7 @@ export const requirementVersionNormReferenceEntity =
         },
         nullable: false,
         onDelete: 'CASCADE',
+        onUpdate: 'NO ACTION',
       },
       normReference: {
         type: 'many-to-one',
@@ -55,6 +56,7 @@ export const requirementVersionNormReferenceEntity =
         },
         nullable: false,
         onDelete: 'NO ACTION',
+        onUpdate: 'NO ACTION',
       },
     },
   })
