@@ -243,7 +243,7 @@ function applyPageHeaders(request: NextRequest): NextResponse {
   return ensureRedirectContentType(stripRedirectBody(response))
 }
 
-export default async function proxy(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const authResponse = await enforceAuth(request)
   if (authResponse) return authResponse
 

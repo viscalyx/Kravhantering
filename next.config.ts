@@ -92,7 +92,8 @@ const nextConfig: NextConfig = {
       ...(!enableDeveloperMode
         ? {
             '@viscalyx/developer-mode-core': developerModeCoreNoopPathRelative,
-            '@viscalyx/developer-mode-react': developerModeReactNoopPathRelative,
+            '@viscalyx/developer-mode-react':
+              developerModeReactNoopPathRelative,
           }
         : {}),
     },

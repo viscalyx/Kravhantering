@@ -53,7 +53,7 @@ It is intentionally not a replacement for the more detailed workflow docs:
 ```mermaid
 sequenceDiagram
     actor Browser
-    participant Proxy as middleware.ts
+    participant Middleware as middleware.ts
     participant Login as /api/auth/login
     participant LoginState as login-state cookie
     participant IdP as OIDC Identity Provider<br/>(Keycloak in local dev)
@@ -61,8 +61,8 @@ sequenceDiagram
     participant Session as main session cookie
     participant Audit as security-audit log
 
-    Browser->>Proxy: GET /sv/... (no session)
-    Proxy-->>Browser: 302 /api/auth/login?returnTo=/sv/...
+    Browser->>Middleware: GET /sv/... (no session)
+    Middleware-->>Browser: 302 /api/auth/login?returnTo=/sv/...
 
     Browser->>Login: GET /api/auth/login?returnTo=...
     Login->>Login: Generate PKCE verifier/challenge, state, nonce
@@ -141,7 +141,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Proxy as middleware.ts
+    participant Middleware as middleware.ts
     participant Route as /api/mcp
     participant Verify as verifyMcpBearerToken()
     participant JWKS as JWKS endpoint
@@ -149,9 +149,9 @@ sequenceDiagram
     participant Attach as attachVerifiedActor()
     participant Handler as MCP JSON-RPC handler
 
-    Client->>Proxy: POST /api/mcp with Authorization Bearer JWT
-    Proxy->>Proxy: Require Bearer header to be present
-    Proxy->>Route: Forward request
+    Client->>Middleware: POST /api/mcp with Authorization Bearer JWT
+    Middleware->>Middleware: Require Bearer header to be present
+    Middleware->>Route: Forward request
     Route->>Verify: verifyMcpBearerToken(request)
     Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
     JWKS-->>Verify: JWK set
@@ -164,7 +164,7 @@ sequenceDiagram
     Handler-->>Client: JSON-RPC response
 
     alt Missing or invalid token
-        Proxy-->>Client: 401 if Authorization header is missing
+        Middleware-->>Client: 401 if Authorization header is missing
         Verify->>Audit: auth.token.rejected
         Route-->>Client: 401 + WWW-Authenticate: Bearer
     end
