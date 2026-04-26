@@ -64,7 +64,7 @@ jobs:
               echo "Keycloak is ready."
               exit 0
             fi
-            echo "Attempt $i/30 – not ready yet, retrying in 5s..."
+            echo "Attempt $i/30 - not ready yet, retrying in 5s..."
             sleep 5
           done
           echo "Keycloak did not become ready in time."
@@ -94,7 +94,7 @@ jobs:
               echo "App is healthy."
               exit 0
             fi
-            echo "Attempt $i/60 – /api/health not ready yet, retrying in 2s..."
+            echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
             sleep 2
           done
           echo "App did not become healthy in time. Last 200 lines of app.log:"
