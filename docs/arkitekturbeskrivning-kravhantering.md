@@ -1112,7 +1112,7 @@ refaktorering över flera filer, deterministisk reproducerbarhet för
 flerstegiga arbetsflöden samt säkerhets- och guardrails-stöd för
 kodgenerering. Vendor-modeller som *Claude Opus 4*, *GPT-5.4* eller
 *Gemini 2.5 Pro* (med thinking) har historiskt uppfyllt dessa krav,
-men valet bör revalideras periodiskt snarare än fixeras vid en
+men valet bör utvärderas periodiskt snarare än fixeras vid en
 specifik version.
 
 Gemensamma krav för effektiv AI-agentassistans i detta projekt:
