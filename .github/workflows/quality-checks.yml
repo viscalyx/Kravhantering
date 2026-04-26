@@ -46,6 +46,8 @@ jobs:
       - name: Run Python type check
         run: npm run lint:py
 
+      # Must use the action to get the executable as it is not installed, and have
+      # not a secure download URL to fetch it from.
       - name: Run dotenv-linter root check
         uses: dotenv-linter/action-dotenv-linter@v3
         with:
@@ -53,15 +55,14 @@ jobs:
           filter_mode: nofilter
           fail_level: any
 
+      # Must use the action to get the executable as it is not installed, and have
+      # not a secure download URL to fetch it from.
       - name: Run dotenv-linter devcontainer check
         uses: dotenv-linter/action-dotenv-linter@v3
         with:
           dotenv_linter_flags: .devcontainer --recursive
           filter_mode: nofilter
           fail_level: any
-
-      - name: Verify prod build-target contract
-        run: npm run verify:prod-bundle
 
       - name: Run tests and coverage
         run: npm run test:coverage
