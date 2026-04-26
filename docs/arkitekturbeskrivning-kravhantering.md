@@ -4,6 +4,68 @@
 <!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravpakethantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Paketvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
 <!-- markdownlint-enable MD013 -->
 
+## Innehållsförteckning
+
+- [Inledning](#inledning)
+- [1. Översiktsperspektiv](#1-översiktsperspektiv)
+  - [Sammanfattning](#sammanfattning)
+  - [Nyckelkomponenter](#nyckelkomponenter)
+  - [ArchiMate — Översikt (ASCII)](#archimate--översikt-ascii)
+- [2. Verksamhetsprocessperspektiv](#2-verksamhetsprocessperspektiv)
+  - [Kravlivscykeln](#kravlivscykeln)
+  - [Tvåstegs arkivering](#tvåstegs-arkivering)
+  - [Versionshantering](#versionshantering)
+  - [Aktörer och roller](#aktörer-och-roller)
+  - [Kravpakethantering](#kravpakethantering)
+  - [Avsteghantering](#avsteghantering)
+  - [Förbättringsförslag](#förbättringsförslag)
+  - [Rapportprocesser](#rapportprocesser)
+  - [ArchiMate — Verksamhetsprocess (ASCII)](#archimate--verksamhetsprocess-ascii)
+- [3. Applikationsanvändningsperspektiv](#3-applikationsanvändningsperspektiv)
+  - [Hur applikationen används](#hur-applikationen-används)
+  - [Kravkatalogen — listvyn](#kravkatalogen--listvyn)
+  - [Detaljvyn](#detaljvyn)
+  - [Paketvyn](#paketvyn)
+  - [Administrationscenter](#administrationscenter)
+  - [Export och rapporter](#export-och-rapporter)
+  - [Språkväxling](#språkväxling)
+- [4. Applikationssambandsperspektiv](#4-applikationssambandsperspektiv)
+  - [Informationsflöden](#informationsflöden)
+  - [MCP-integration (AI-agenter)](#mcp-integration-ai-agenter)
+  - [OIDC-integration (identitet)](#oidc-integration-identitet)
+  - [Nuvarande integrationslandskap](#nuvarande-integrationslandskap)
+  - [ArchiMate — Applikationssamband (ASCII)](#archimate--applikationssamband-ascii)
+- [5. Applikationsstrukturperspektiv](#5-applikationsstrukturperspektiv)
+  - [Katalogstruktur](#katalogstruktur)
+  - [Skiktad arkitektur](#skiktad-arkitektur)
+  - [Datamodell — kärnrelationer](#datamodell--kärnrelationer)
+  - [Taxonomi och tvåspråkig design](#taxonomi-och-tvåspråkig-design)
+  - [Effektiv status (beräknas vid fråga)](#effektiv-status-beräknas-vid-fråga)
+- [6. Infrastrukturanvändningsperspektiv](#6-infrastrukturanvändningsperspektiv)
+  - [Driftplattform](#driftplattform)
+  - [Byggkedja](#byggkedja)
+  - [Konfiguration](#konfiguration)
+  - [Miljöbindningar](#miljöbindningar)
+- [7. Identitets- och behörighetshanteringsperspektiv](#7-identitets--och-behörighetshanteringsperspektiv)
+  - [Nuläge](#nuläge)
+  - [Befintliga säkerhetsmekanismer](#befintliga-säkerhetsmekanismer)
+  - [Mållägesriktning för behörighetsstyrning](#mållägesriktning-för-behörighetsstyrning)
+- [8. Utvecklings- och testperspektiv](#8-utvecklings--och-testperspektiv)
+  - [Utvecklingsmiljö](#utvecklingsmiljö)
+  - [Testramverk](#testramverk)
+  - [Testkörning](#testkörning)
+  - [Lokal databashantering](#lokal-databashantering)
+  - [Kodkvalitetsprinciper](#kodkvalitetsprinciper)
+  - [AI-stödd vidareutveckling](#ai-stödd-vidareutveckling)
+- [9. Informationssäkerhetsperspektiv](#9-informationssäkerhetsperspektiv)
+  - [ArchiMate — Informationssäkerhet (ASCII)](#archimate--informationssäkerhet-ascii)
+  - [Nuvarande säkerhetsåtgärder](#nuvarande-säkerhetsåtgärder)
+  - [Krav och vidare säkerhetsinriktning för produktion](#krav-och-vidare-säkerhetsinriktning-för-produktion)
+- [10. Infrastruktur- och nätperspektiv](#10-infrastruktur--och-nätperspektiv)
+  - [Plattformskrav](#plattformskrav)
+  - [Plattformsalternativ](#plattformsalternativ)
+- [Exkluderade perspektiv](#exkluderade-perspektiv)
+
 ## Inledning
 
 Denna arkitekturbeskrivning dokumenterar lösningen
@@ -30,8 +92,6 @@ respektive avsnitt.
 - Mermaid-diagram renderas i GitHub-markdown.
 - ArchiMate-modeller presenteras i ASCII-notation och
   är avsedda att ersättas med verktygsexport.
-
----
 
 ## 1. Översiktsperspektiv
 
@@ -156,8 +216,6 @@ graph TB
 │   lastbalanserare                                       │
 └─────────────────────────────────────────────────────────┘
 ```
-
----
 
 ## 2. Verksamhetsprocessperspektiv
 
@@ -401,8 +459,6 @@ gransknings- och beslutsprocesserna:
   └────────────┘ └───────────┘ └────────────┘ └─────────┘
 ```
 
----
-
 ## 3. Applikationsanvändningsperspektiv
 
 <!-- markdownlint-disable MD013 -->
@@ -500,8 +556,6 @@ applikationen: navigation, etiketter, kravmetadata
 i listor och detaljvyer, rapportrubriker och
 CSV-kolumnnamn. Språket styrs via URL-prefix
 (`/sv/...` eller `/en/...`) och next-intl-middleware.
-
----
 
 ## 4. Applikationssambandsperspektiv
 
@@ -627,8 +681,6 @@ Webbläsaren initierar autentiseringsbegäran och tar emot
 svaret via applikationens callback, medan applikationsgränsen
 ansvarar för tokenutbyte, JWKS-/nyckelhämtning och logout mot
 identitetsleverantören.
-
----
 
 ## 5. Applikationsstrukturperspektiv
 
@@ -768,8 +820,6 @@ statusar beräknas en *effektiv status* vid
 listningsfrågor enligt prioritetsordning:
 Publicerad > Arkiverad > Granskning > Utkast.
 
----
-
 ## 6. Infrastrukturanvändningsperspektiv
 
 <!-- markdownlint-disable MD013 -->
@@ -841,8 +891,6 @@ Container deployment / ingress
 | `AUTH_*` | Miljövariabler | OIDC-, sessions- och proxykontrakt för integrerad autentisering |
 | `OPENROUTER_API_KEY` | Sträng | AI-integration för kravgenerering |
 <!-- markdownlint-enable MD013 -->
-
----
 
 ## 7. Identitets- och behörighetshanteringsperspektiv
 
@@ -962,8 +1010,6 @@ behörighetsstyrning i affärslagret.
   vilket skapar en naturlig grund för central
   övervakning och uppföljning i produktion.
 
----
-
 ## 8. Utvecklings- och testperspektiv
 
 <!-- markdownlint-disable MD013 -->
@@ -1046,7 +1092,34 @@ kravområden med fullständig versionshistorik.
 - **Kodtäckning** — V8-baserad med rapportering i
   text, JSON, HTML, LCOV (Codecov-kompatibel).
 
----
+### AI-stödd vidareutveckling
+
+Vidareutveckling och förändringar i kravhanteringssystemet sker
+fördelaktigt med stöd av en AI-agent som assisterar med kodgenerering,
+testskrivning, refaktorisering och arkitekturbeslut. Verktyg som
+*Visual Studio Code* tillsammans med *GitHub Copilot* (agentläge)
+eller *Cursor AI* är väl lämpade för detta arbetsflöde.
+
+För att AI-agenten ska kunna hantera flerstegiga uppgifter —
+migreringar, nya fält som berör DAL, service, UI, tester och
+dokumentation i ett sammanhängande led — bör modellen ha stöd för
+utökat resonemang. Rekommenderade miniminivåer för AI-modeller i detta
+sammanhang är Claude Opus 4, GPT-5.4 eller Gemini 2.5 Pro (med thinking).
+Dessa modeller har visat sig hantera komplexa kodändringar och resonemang
+över stora kontextfönster.
+
+Gemensamma krav för effektiv AI-agentassistans i detta projekt:
+
+- **Stort kontextfönster** — minst 128 k tokens för att rymma
+  entiteter, tester, migrations- och seed-filer samtidigt.
+- **Reasoning/extended thinking** — möjliggör att agenten kan
+  resonera om beroenden och konsekvenser innan den skriver kod.
+- **Agentläge med verktygsanrop** — agenten behöver kunna läsa
+  filer, köra terminalkommandon och iterera på fel utan manuell
+  styrning.
+- **Instruktioner** — projektets `.github/copilot-instructions.md`
+  och `.github/instructions/*.md` är avsedda att läsas av AI-agenten
+  och utgör kontraktet för alla ändringar.
 
 ## 9. Informationssäkerhetsperspektiv
 
@@ -1215,8 +1288,6 @@ arkitekturkrav och säkerhetsinriktning:
   av policystyrd auktorisering så att skrivåtgärder
   kan nekas konsekvent för både REST och MCP.
 
----
-
 <!-- markdownlint-disable MD013 -->
 <!-- cSpell:words driftplattformar plattformskrav begärandeloggning Självhostad -->
 <!-- markdownlint-enable MD013 -->
@@ -1337,8 +1408,6 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 > PostgreSQL) skulle väljas krävs ett separat migrationsprojekt för
 > dialekt, schema och driftsansvar innan plattformen kan betraktas som
 > kompatibel.
-
----
 
 ## Exkluderade perspektiv
 
