@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'
 
 // next-intl's middleware module imports `next/server` via a path that the
-// Vitest ESM resolver cannot follow. Replace it with a no-op pass-through —
-// this test exercises proxy.ts's auth gating and header stripping, not
-// locale rewriting. `@/i18n/routing` is also mocked because it pulls in
-// next-intl's React navigation helpers that fail to resolve under Vitest.
+// Vitest ESM resolver cannot follow. Replace it with a pass-through that
+// the individual tests can override per-call via `intlMiddlewareMock`.
+// `@/i18n/routing` is also mocked because it pulls in next-intl's React
+// navigation helpers that fail to resolve under Vitest.
+const { intlMiddlewareMock } = vi.hoisted(() => ({
+  intlMiddlewareMock: vi.fn(() => NextResponse.next()),
+}))
 vi.mock('next-intl/middleware', () => ({
-  default: () => () => NextResponse.next(),
+  default: () => intlMiddlewareMock,
 }))
 vi.mock('@/i18n/routing', () => ({ routing: {} }))
 
@@ -71,6 +74,48 @@ describe('proxy', () => {
       expect(location).toContain('/api/auth/login')
       expect(location).toContain(
         `returnTo=${encodeURIComponent('/sv/requirements')}`,
+      )
+      // ZAP rule 10019: 3xx responses must carry a Content-Type. Issue #111.
+      expect(response.headers.get('content-type')).toBe(
+        'text/plain; charset=utf-8',
+      )
+    } finally {
+      restore()
+    }
+  })
+
+  it('sets Content-Type on next-intl 307 locale redirects', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockImplementationOnce(() =>
+      NextResponse.redirect('http://localhost/sv/static/foo.js', 307),
+    )
+    try {
+      const response = await proxy(
+        buildRequest('http://localhost/_next/static/foo.js'),
+      )
+      expect(response.status).toBe(307)
+      expect(response.headers.get('content-type')).toBe(
+        'text/plain; charset=utf-8',
+      )
+    } finally {
+      restore()
+    }
+  })
+
+  it('does not overwrite Content-Type on 200 page responses', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    intlMiddlewareMock.mockImplementationOnce(() => {
+      const r = NextResponse.next()
+      r.headers.set('content-type', 'text/html; charset=utf-8')
+      return r
+    })
+    try {
+      const response = await proxy(
+        buildRequest('http://localhost/_next/static/foo.js'),
+      )
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-type')).toBe(
+        'text/html; charset=utf-8',
       )
     } finally {
       restore()

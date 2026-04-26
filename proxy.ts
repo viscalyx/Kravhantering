@@ -28,6 +28,17 @@ function stripUserHeaders(headers: Headers): Headers {
   return headers
 }
 
+// ZAP rule 10019 (Content-Type Header Missing) flags 3xx responses that
+// omit Content-Type. RFC 7231 allows empty redirect bodies, but strict
+// scanners do not differentiate. Set a benign Content-Type on 3xx
+// responses unless something else has already set one. Issue #111.
+function ensureRedirectContentType(response: NextResponse): NextResponse {
+  if (response.status < 300 || response.status >= 400) return response
+  if (response.headers.get('content-type') !== null) return response
+  response.headers.set('content-type', 'text/plain; charset=utf-8')
+  return response
+}
+
 function ensureLocalePath(pathname: string): string {
   if (pathname.startsWith('/api/')) return pathname
   const first = pathname.split('/')[1]
@@ -177,7 +188,9 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
     'returnTo',
     `${ensureLocalePath(pathname)}${search ?? ''}`,
   )
-  return NextResponse.redirect(loginUrl, { status: 302 })
+  return ensureRedirectContentType(
+    NextResponse.redirect(loginUrl, { status: 302 }),
+  )
 }
 
 function applyPageHeaders(request: NextRequest): NextResponse {
@@ -202,7 +215,7 @@ function applyPageHeaders(request: NextRequest): NextResponse {
   applyRequestHeaderOverrides(response, requestHeaders)
   response.headers.set('Content-Security-Policy', csp)
 
-  return response
+  return ensureRedirectContentType(response)
 }
 
 export default async function proxy(request: NextRequest) {
