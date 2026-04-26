@@ -1,0 +1,182 @@
+name: Security DAST
+
+# PR-level dynamic application security test using OWASP ZAP baseline
+# (passive scanning) against an authenticated session. See
+# docs/security-ci.md for the full design and tuning guide.
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  zap-baseline:
+    name: ZAP baseline (authenticated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      APP_BASE_URL: http://localhost:3001
+      KEYCLOAK_USERNAME: ada.admin
+      KEYCLOAK_PASSWORD: devpass
+      AUTH_SESSION_COOKIE_NAME: kravhantering_session
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Clean server and database state
+        run: npm run clean:all
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Setup local SQL Server database
+        run: npm run db:setup
+
+      - name: Start local IdP service
+        run: npm run idp:up
+
+      - name: Wait for IdP to be ready
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 – not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time."
+          exit 1
+
+      - name: Build prodlike app
+        run: npm run build:local-prod
+
+      - name: Start prodlike app
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          # start:prodlike runs the build then `next start`. The build is
+          # already done above; invoke `next start` directly via dotenv-cli
+          # so the server matches the production boot path used by the
+          # integration tests.
+          nohup npx dotenv -e .env.prodlike -- npx next start \
+            --hostname 0.0.0.0 --port 3001 \
+            > test-results/app.log 2>&1 &
+          echo $! > test-results/app.pid
+
+      - name: Wait for app health endpoint
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
+              echo "App is healthy."
+              exit 0
+            fi
+            echo "Attempt $i/60 – /api/health not ready yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "App did not become healthy in time. Last 200 lines of app.log:"
+          tail -n 200 test-results/app.log || true
+          exit 1
+
+      - name: Acquire authenticated session cookie
+        id: session
+        run: |
+          set -euo pipefail
+          COOKIE="$(node scripts/security/get-session-cookie.mjs "${KEYCLOAK_USERNAME}")"
+          if [ -z "${COOKIE}" ]; then
+            echo "Empty cookie returned from helper" >&2
+            exit 1
+          fi
+          # Mask the cookie value in workflow logs.
+          echo "::add-mask::${COOKIE}"
+          # Make available to subsequent steps without ever echoing the value.
+          {
+            echo "cookie<<COOKIE_EOF"
+            echo "${COOKIE}"
+            echo "COOKIE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Stage ZAP rules file for the scenario
+        run: |
+          set -euo pipefail
+          mkdir -p .zap
+          # The scan target is the prodlike build, so use the prodlike rule
+          # set. Add a sibling rules.<scenario>.tsv when introducing more
+          # scan scenarios (e.g. nightly full scan against staging) and
+          # select it here per workflow.
+          cp .github/zap/rules.prodlike.tsv .zap/rules.tsv
+
+      - name: Run OWASP ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: ${{ env.APP_BASE_URL }}/sv
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: true
+          # -l Medium  : only Medium and High alerts cause failure.
+          # -I         : do not fail on plain warnings (lets rules.tsv
+          #              decide).
+          # -j         : run the AJAX spider in addition to the traditional
+          #              spider so client-rendered routes are reachable.
+          # -m 5 -T 10 : 5 minute spider, 10 minute total timeout.
+          # -z ...     : ZAP `replacer` add-on injects the iron-session
+          #              cookie on every outgoing request so authenticated
+          #              pages are scanned.
+          cmd_options: >-
+            -l Medium
+            -I
+            -j
+            -m 5
+            -T 10
+            -z "-config replacer.full_list(0).description=session-cookie
+                -config replacer.full_list(0).enabled=true
+                -config replacer.full_list(0).matchtype=REQ_HEADER
+                -config replacer.full_list(0).matchstr=Cookie
+                -config replacer.full_list(0).regex=false
+                -config replacer.full_list(0).replacement=${{ steps.session.outputs.cookie }}"
+
+      - name: Upload app log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dast-app-log
+          path: test-results/app.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Stop prodlike app
+        if: always()
+        run: |
+          if [ -f test-results/app.pid ]; then
+            kill "$(cat test-results/app.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop IdP service
+        if: always()
+        run: npm run idp:down || true
+
+      - name: Stop database service
+        if: always()
+        run: npm run db:down || true

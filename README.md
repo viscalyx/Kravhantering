@@ -245,6 +245,13 @@ requirement column defaults to load successfully. If `DATABASE_URL` points to
 an unavailable or uninitialized database, `npm run build` and
 `npm run start:prodlike` will fail instead of falling back to shipped defaults.
 
+## Security CI
+
+Each pull request to `main` runs an authenticated OWASP ZAP baseline
+scan against a disposable copy of the application. See
+[docs/security-ci.md](docs/security-ci.md) for the workflow design,
+failure policy, and tuning instructions.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup,
