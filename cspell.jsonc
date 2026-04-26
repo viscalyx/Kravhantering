@@ -387,7 +387,8 @@
     "sandboxed",
     "tokenverifierare",
     "verifierare",
-    "verksamhetswebhooks"
+    "verksamhetswebhooks",
+    "triggerable"
   ],
   "flagWords": [],
   "ignorePaths": [
