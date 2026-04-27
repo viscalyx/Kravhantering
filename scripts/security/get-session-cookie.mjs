@@ -19,7 +19,9 @@
  * new npm dependency.
  */
 
+import { resolve } from 'node:path'
 import { argv, env, exit, stderr, stdout } from 'node:process'
+import { fileURLToPath } from 'node:url'
 
 const APP_BASE_URL = (env.APP_BASE_URL ?? 'http://localhost:3001').replace(
   /\/$/,
@@ -33,11 +35,6 @@ const MAX_REDIRECTS = 10
 function fail(message) {
   stderr.write(`[get-session-cookie] ${message}\n`)
   exit(1)
-}
-
-const username = argv[2]
-if (!username) {
-  fail('Missing required argument: <username>')
 }
 
 /**
@@ -135,17 +132,21 @@ async function followingRedirects(
   )
 }
 
-function decodeHtmlEntities(value) {
+export function decodeHtmlEntities(value) {
   return value
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#x2F;/g, '/')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
 }
 
 async function main() {
+  const username = argv[2]
+  if (!username) {
+    fail('Missing required argument: <username>')
+  }
   // 1. Trigger the OIDC login. /api/auth/login 302s to Keycloak /authorize,
   //    which renders the username/password form.
   const { response: loginPage, finalUrl: loginPageUrl } =
@@ -208,6 +209,11 @@ async function main() {
   stdout.write(`${SESSION_COOKIE_NAME}=${sessionValue}\n`)
 }
 
-main().catch(err => {
-  fail(err instanceof Error ? (err.stack ?? err.message) : String(err))
-})
+const isMainEntry =
+  argv[1] != null && resolve(argv[1]) === fileURLToPath(import.meta.url)
+
+if (isMainEntry) {
+  main().catch(err => {
+    fail(err instanceof Error ? (err.stack ?? err.message) : String(err))
+  })
+}

@@ -129,12 +129,12 @@ async function loginAndSaveStorageState(
 
 function decodeHtmlEntities(value: string): string {
   return value
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#x2F;/g, '/')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
 }
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
