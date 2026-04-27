@@ -40,7 +40,7 @@ services:
     init: true
 
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: mcr.microsoft.com/mssql/server:2025-latest
     env_file:
     - path: .env
       required: false
