@@ -5,6 +5,8 @@
 <!-- cSpell:ignore Keycloaks företagsproxy npmjs blobbar rhsm Tidssync -->
 <!-- cSpell:ignore relabelar mounten termering proxa setsebool -->
 <!-- cSpell:ignore gitignoreras realmen Realmfilen Quadlet -->
+<!-- cSpell:ignore newkey keyout noout certreq utfärdning certutil -->
+<!-- cSpell:ignore fullchain fullkedje showcerts certmonger -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -165,7 +167,7 @@ Ingen utgående SMTP, ingen direkt DB-trafik externt.
 | - | - | - | - |
 | 22/tcp | SSH | Admin-nät / VPN | Drift och deployment. Begränsa med firewalld-zon. |
 | 443/tcp | HTTPS | Användar-nät | Reverse proxy → Next.js `3001` och Keycloak. |
-| 80/tcp | HTTP | Användar-nät | **Endast** ACME/HTTP-01 för Let's Encrypt + redirect → 443. Stäng om ni använder DNS-01 eller en intern PKI. |
+| 80/tcp | HTTP | Användar-nät | Stäng om certifikatet utfärdas av intern Windows Server-PKI (se avsnitt 8.1). Öppna endast vid ACME/HTTP-01 mot publik CA. |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -304,6 +306,196 @@ Alternativ: använd **Caddy** för automatisk Let's Encrypt-hantering,
 eller kör nginx i en rootless container med
 `net.ipv4.ip_unprivileged_port_start=443` satt via `sysctl`. För en
 PoC är det enklast att låta `nginx` köra som system-tjänst.
+
+### 8.1 TLS-certifikat från intern Windows Server PKI
+
+Eftersom PoC:n endast är åtkomlig på det interna nätverket utfärdas
+servercertifikatet lämpligen av företagets befintliga **Active
+Directory Certificate Services (AD CS)**. Klienterna har redan
+företagets root-/utfärdande CA i sitt trust store, så ingen extern CA
+behövs.
+
+Flödet är:
+
+1. **På RHEL** — generera privat nyckel + Certificate Signing Request
+   (CSR).
+2. **På Windows-CA:n** — utfärda ett certifikat baserat på CSR:en.
+3. **På RHEL** — placera nyckel + utfärdat certifikat (inkl.
+   CA-kedjan) där `nginx` förväntar sig dem.
+
+#### Steg 1: Skapa nyckel och CSR på RHEL
+
+Kör som `root` (eller via `sudo`) eftersom filerna ska läggas under
+`/etc/pki`. Privatnyckeln lämnar **aldrig** servern.
+
+```bash
+sudo install -d -m 0755 /etc/pki/tls/private /etc/pki/tls/certs
+sudo install -d -m 0700 /etc/pki/tls/csr
+
+# OpenSSL-konfiguration med Subject Alternative Names (SAN).
+# AD CS ignorerar SAN i CSR:en om mallen inte tillåter det — se steg 2.
+sudo tee /etc/pki/tls/csr/kravhantering.cnf >/dev/null <<'EOF'
+[ req ]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+req_extensions     = req_ext
+
+[ dn ]
+C  = SE
+ST = Stockholm
+L  = Stockholm
+O  = Viscalyx
+OU = Kravhantering PoC
+CN = kravhantering.poc.intern.example.com
+
+[ req_ext ]
+subjectAltName = @alt_names
+keyUsage       = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+[ alt_names ]
+DNS.1 = kravhantering.poc.intern.example.com
+DNS.2 = kravhantering-poc
+EOF
+
+sudo openssl req -new -newkey rsa:2048 -nodes \
+    -keyout /etc/pki/tls/private/kravhantering.key \
+    -out    /etc/pki/tls/csr/kravhantering.csr \
+    -config /etc/pki/tls/csr/kravhantering.cnf
+
+sudo chmod 0600 /etc/pki/tls/private/kravhantering.key
+sudo chown root:root /etc/pki/tls/private/kravhantering.key
+```
+
+Kontrollera CSR:en innan den skickas:
+
+```bash
+openssl req -in /etc/pki/tls/csr/kravhantering.csr -noout -text \
+  | grep -E 'Subject:|DNS:|Signature Algorithm'
+```
+
+Kopiera `kravhantering.csr` till en Windows-administratörsarbetsplats
+(via SCP/WinSCP eller `scp` från admin-klienten). CSR:en innehåller
+ingen hemlighet och behöver inte krypteras vid överföring.
+
+#### Steg 2: Utfärda certifikatet via Windows Server PKI
+
+Det rekommenderade verktyget är `certreq.exe` från en Windows-klient
+som har nätverksrätt mot CA:n. PoC:n behöver en mall som tillåter
+CSR-baserad utfärdning (`Web Server`-mallen, eller en kopia av den
+där `Subject Alternative Name = supplied in request` är aktiverat).
+Be PKI-teamet om mallnamnet — exemplet använder `WebServer`.
+
+På Windows (PowerShell, kör som en användare med "Enroll"-rätt på
+mallen):
+
+```powershell
+# Lista tillgängliga CA:er och hitta CA-config-strängen
+certutil -config - -ping
+
+# Skicka CSR:en och hämta tillbaka certifikatet
+certreq.exe -submit `
+    -config "ca01.intern.example.com\Intern Issuing CA" `
+    -attrib "CertificateTemplate:WebServer" `
+    .\kravhantering.csr `
+    .\kravhantering.cer
+```
+
+Om CA-policyn kräver manuellt godkännande returnerar `certreq` ett
+RequestId. Hämta certifikatet när det är godkänt:
+
+```powershell
+certreq.exe -retrieve `
+    -config "ca01.intern.example.com\Intern Issuing CA" `
+    <RequestId> .\kravhantering.cer
+```
+
+Hämta också hela kedjan (utfärdande CA + ev. mellanliggande +
+root-CA) som en `.p7b`:
+
+```powershell
+certutil -config "ca01.intern.example.com\Intern Issuing CA" `
+    -ca.chain .\kravhantering-chain.p7b
+```
+
+#### Steg 3: Konvertera och installera på RHEL
+
+Windows-CA:n returnerar oftast certifikatet som **DER** (`.cer`) eller
+**PKCS#7** (`.p7b`). nginx på RHEL behöver **PEM**. Konvertera på
+RHEL efter att filerna kopierats över:
+
+```bash
+# Om kravhantering.cer är DER-kodat → PEM
+sudo openssl x509 -inform DER \
+    -in  /tmp/kravhantering.cer \
+    -out /etc/pki/tls/certs/kravhantering.crt
+
+# Om filen redan är Base64/PEM (börjar med -----BEGIN CERTIFICATE-----)
+# räcker det att kopiera den:
+# sudo install -m 0644 /tmp/kravhantering.cer \
+#     /etc/pki/tls/certs/kravhantering.crt
+
+# Plocka ut alla CA-certifikat ur PKCS#7-kedjan till PEM
+sudo openssl pkcs7 -inform DER \
+    -in  /tmp/kravhantering-chain.p7b \
+    -print_certs \
+    -out /etc/pki/tls/certs/kravhantering-chain.pem
+```
+
+nginx vill ha **server-cert + utfärdande CA + ev. mellanliggande** i
+*samma* fil (root-CA:n behövs inte och bör utelämnas). Bygg kedjan
+och sätt rätt rättigheter:
+
+```bash
+sudo bash -c 'cat /etc/pki/tls/certs/kravhantering.crt \
+                  /etc/pki/tls/certs/kravhantering-chain.pem \
+                  > /etc/pki/tls/certs/kravhantering-fullchain.crt'
+sudo chmod 0644 /etc/pki/tls/certs/kravhantering-fullchain.crt
+```
+
+Granska resultatet:
+
+```bash
+openssl x509 -in /etc/pki/tls/certs/kravhantering-fullchain.crt \
+    -noout -subject -issuer -dates
+openssl verify -CAfile /etc/pki/tls/certs/kravhantering-chain.pem \
+    /etc/pki/tls/certs/kravhantering.crt
+```
+
+Uppdatera `nginx`-konfigurationen i avsnitt 8 så att
+`ssl_certificate` pekar på fullkedje-filen:
+
+```nginx
+    ssl_certificate     /etc/pki/tls/certs/kravhantering-fullchain.crt;
+    ssl_certificate_key /etc/pki/tls/private/kravhantering.key;
+```
+
+Lägg även till företagets root-CA i RHEL:s system-trust så att
+utgående anrop (t.ex. SQL Server-TDS över TLS, om databasen flyttas
+till en intern instans) litar på interna certifikat:
+
+```bash
+sudo cp /tmp/intern-root-ca.crt /etc/pki/ca-trust/source/anchors/
+sudo update-ca-trust extract
+```
+
+Ladda om nginx och verifiera handskakningen från en intern klient:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+
+# Från en annan dator i det interna nätet:
+openssl s_client -connect kravhantering.poc.intern.example.com:443 \
+    -servername kravhantering.poc.intern.example.com \
+    -showcerts </dev/null
+```
+
+Förnyelse: AD CS-certifikat har vanligtvis 1–2 års giltighet. Sätt en
+påminnelse (eller använd `certmonger` med en lämplig CA-helper) och
+upprepa stegen ovan när det är dags. Privatnyckeln kan återanvändas
+vid förnyelse om policyn tillåter — annars generera en ny.
 
 ## 9. Justeringar i `.env.prodlike`
 
