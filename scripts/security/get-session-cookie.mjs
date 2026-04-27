@@ -137,12 +137,12 @@ async function followingRedirects(
 
 function decodeHtmlEntities(value) {
   return value
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#x2F;/g, '/')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
 }
 
 async function main() {
