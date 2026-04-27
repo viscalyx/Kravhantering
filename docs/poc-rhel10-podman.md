@@ -7,6 +7,11 @@
 <!-- cSpell:ignore gitignoreras realmen Realmfilen Quadlet -->
 <!-- cSpell:ignore newkey keyout noout certreq utfärdning certutil -->
 <!-- cSpell:ignore fullchain fullkedje showcerts certmonger -->
+<!-- cSpell:ignore Paravirtual virtio Paravirtuell hypervisorn hypervisorns -->
+<!-- cSpell:ignore Virt fcopy hypervkvpd hypervvssd hypervfcopyd -->
+<!-- cSpell:ignore chrony chronyd chronyc peera refclock dubbelsynk -->
+<!-- cSpell:ignore zswap hugepage deduplicerar firstboot diskerna flushar -->
+<!-- cSpell:ignore Nutanix UEFI -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -49,6 +54,136 @@ Se även:
 
 `/var/lib/containers` (rootless: `~/.local/share/containers`) bör ha
 minst 20 GiB ledigt för images och volymer.
+
+### 1.1 Extra steg om RHEL 10 körs som virtuell maskin
+
+PoC:n fungerar lika bra på en VM som på fysisk hårdvara, men en
+virtualiserad RHEL 10 behöver några extra detaljer för att rootless
+Podman, SQL Server och OIDC-tokens ska bete sig stabilt. Stegen är
+generella — använd hypervisorns motsvarande funktion (VMware vSphere,
+Hyper-V, KVM/oVirt, Proxmox, Nutanix, Azure/AWS/GCP m.fl.).
+
+#### VM-konfiguration (i hypervisorn)
+
+<!-- markdownlint-disable MD013 -->
+
+| Inställning | Rekommendation | Varför |
+| - | - | - |
+| Firmware | UEFI + Secure Boot | RHEL 10 stödjer Secure Boot fullt ut; matchar fysisk profil. |
+| vCPU | 4 vCPU, exponera `host`-CPU-modell (KVM: `--cpu host-passthrough`, VMware: "Expose hardware-assisted virtualization") | Krävs för SQL Server-prestanda och nested-virt om du vill köra Podman-machine. |
+| RAM | 8 GiB, **inga ballooning-aggressiva** policies | SQL Server reagerar dåligt på minne som plötsligt försvinner. Reservera/garantera om hypervisorn stödjer det. |
+| Disk | Thick-provisioned eller `discard=unmap`/`virtio-scsi` med TRIM | Container- och SQL-filer skapar/raderar mycket data; TRIM håller den glesa disken liten. |
+| Diskcontroller | `virtio-scsi` (KVM) eller "Paravirtual" (VMware) | Märkbart bättre I/O än emulerad SATA/IDE för SQL Server. |
+| NIC | `virtio-net` (KVM) eller "VMXNET3" (VMware) | Paravirtuell NIC krävs för full throughput till reverse proxy. |
+| Klocka | Synkad mot hypervisorn **och** extern NTP | OIDC-tokens (Keycloak) underkänns vid drift > 60 s. |
+| Snapshots | Acceptabelt för bygg/återställning, men **stäng av** under last | Snapshots med körande SQL Server kan ge inkonsistent state vid återställning. |
+
+<!-- markdownlint-enable MD013 -->
+
+Aktivera **nested virtualization** i hypervisorn endast om du behöver
+köra `podman machine` eller andra inre VM:ar — Podman på RHEL 10 kör
+containrar direkt på värdens kärna och behöver det inte.
+
+#### Gäst-tillägg och drivrutiner i RHEL
+
+Installera lämpligt gäst-paket så att tid, balloon, snabb shutdown
+och (för VMware) delade mappar fungerar:
+
+```bash
+# KVM / QEMU / Proxmox / OpenStack / oVirt
+sudo dnf install -y qemu-guest-agent
+sudo systemctl enable --now qemu-guest-agent
+
+# VMware vSphere / Workstation / Fusion
+sudo dnf install -y open-vm-tools
+sudo systemctl enable --now vmtoolsd
+
+# Hyper-V (RHEL 10 har hv_* drivrutinerna inbyggda i kärnan,
+# men hyperv-daemons ger KVP/VSS/fcopy)
+sudo dnf install -y hyperv-daemons
+sudo systemctl enable --now hypervkvpd hypervvssd hypervfcopyd
+```
+
+Cloud-VM:ar (Azure/AWS/GCP) använder en RHEL-image som redan har
+`cloud-init` och rätt agenter — verifiera bara med
+`systemctl status cloud-init` och hoppa över ovanstående.
+
+#### Tidssynkronisering
+
+`chronyd` ingår i RHEL 10:s minimal-installation. På en VM bör den
+peera mot **både** hypervisorn (om den exponerar PTP/PHC) och en
+extern NTP, annars riskerar Keycloak att underkänna tokens efter
+suspend/resume:
+
+```bash
+sudo dnf install -y chrony
+# Lägg till hypervisorns klocka om enheten finns:
+test -e /dev/ptp_kvm && echo 'refclock PHC /dev/ptp_kvm poll 2' \
+    | sudo tee -a /etc/chrony.conf
+sudo systemctl enable --now chronyd
+chronyc sources -v
+```
+
+Aktivera dessutom hypervisorns "sync time with host" — men låt
+`chronyd` styra; dubbelsynk utan en koordinerande tjänst kan ge
+hopp i klockan.
+
+#### Lagring, swap och I/O
+
+- Använd **XFS** (RHEL 10:s standard) på en separat virtuell disk
+  för `/var/lib/containers` och databaslagringen. Det gör det enkelt
+  att utöka eller flytta utan att röra `/`.
+- Sätt `discard` (eller kör `fstrim.timer`) så att raderade lager i
+  Podman frigör utrymme på det underliggande datalagret:
+
+  ```bash
+  sudo systemctl enable --now fstrim.timer
+  ```
+
+- Behåll en blygsam swap (1–2 GiB) — en VM utan swap blir
+  oförutsägbar när SQL Server toppar.
+- Stäng av **`zswap`/transparent hugepage defrag** endast om
+  hypervisorn redan deduplicerar minne (VMware TPS, KSM); annars
+  kan defaults stå kvar.
+
+#### Nätverk i en virtualiserad miljö
+
+- Lägg VM:ens NIC i **samma VLAN/segment som de interna
+  användarna**, inte i ett DMZ — PoC:n är intern (se avsnitt 5.2 och
+  8.1).
+- Stäng av hypervisorns NAT/portforward för PoC-VM:en. Allt som ska
+  vara nåbart styrs av `firewalld` inne i gästen (avsnitt 6).
+- Om hypervisorn har en egen brandvägg / Security Group (Azure NSG,
+  AWS SG, vSphere DFW), spegla regelmängden från avsnitt 6 där:
+  endast `22/tcp` från admin-nätet och `443/tcp` från användar-nätet.
+- Behåll ett **statiskt IP eller DHCP-reservation** så att
+  certifikatets SAN och Keycloaks redirect-URI:er fortsätter peka
+  rätt efter en omstart.
+
+#### Cloud-init / template-härdning
+
+Bygger ni VM:en från en gyllene mall (template) eller via cloud-init:
+
+- Regenerera SSH-host-nycklar och `machine-id` vid första boot
+  (`/etc/machine-id` tom + `systemd-firstboot`), annars får alla
+  klonade VM:ar samma identitet.
+- Sätt unikt hostname **innan** `npm run db:setup` körs — SQL
+  Servers SPN och Keycloaks `iss` bygger på det.
+- Roterar molnleverantören diskerna får ni en ny disk-UUID; håll
+  `/etc/fstab` på `UUID=`-form (RHEL:s default) så att uppstart inte
+  hänger.
+
+#### Backup och återställning
+
+För en PoC räcker **applikationsnivå-backup**:
+
+- Snapshot på den vilande VM:en (gärna i quiesced läge via
+  `qemu-guest-agent`/VMware Tools så att SQL Server flushar bufferten).
+- Eller: `podman volume export` av SQL- och Keycloak-volymerna +
+  kopia av `.env.prodlike.local` och nginx-cert-katalogen.
+
+Återställning på samma VM kräver inga extra steg utöver det som
+beskrivs i avsnitt 10.
 
 ## 2. Paket som måste installeras
 
