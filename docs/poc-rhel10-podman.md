@@ -70,7 +70,7 @@ Hyper-V, KVM/oVirt, Proxmox, Nutanix, Azure/AWS/GCP m.fl.).
 | Inställning | Rekommendation | Varför |
 | - | - | - |
 | Firmware | UEFI + Secure Boot | RHEL 10 stödjer Secure Boot fullt ut; matchar fysisk profil. |
-| vCPU | 4 vCPU, exponera `host`-CPU-modell (KVM: `--cpu host-passthrough`, VMware: "Expose hardware-assisted virtualization") | Krävs för SQL Server-prestanda och nested-virt om du vill köra Podman-machine. |
+| vCPU | 4 vCPU, exponera `host`-CPU-modell (KVM: `--cpu host-passthrough`, VMware: matcha gästens CPU mot värden) | Krävs för SQL Server-prestanda. Nested virtualization behövs **inte** — Podman på RHEL 10 kör containrar direkt på värdens kärna utan `podman machine`. |
 | RAM | 8 GiB, **inga ballooning-aggressiva** policies | SQL Server reagerar dåligt på minne som plötsligt försvinner. Reservera/garantera om hypervisorn stödjer det. |
 | Disk | Thick-provisioned eller `discard=unmap`/`virtio-scsi` med TRIM | Container- och SQL-filer skapar/raderar mycket data; TRIM håller den glesa disken liten. |
 | Diskcontroller | `virtio-scsi` (KVM) eller "Paravirtual" (VMware) | Märkbart bättre I/O än emulerad SATA/IDE för SQL Server. |
@@ -79,10 +79,6 @@ Hyper-V, KVM/oVirt, Proxmox, Nutanix, Azure/AWS/GCP m.fl.).
 | Snapshots | Acceptabelt för bygg/återställning, men **stäng av** under last | Snapshots med körande SQL Server kan ge inkonsistent state vid återställning. |
 
 <!-- markdownlint-enable MD013 -->
-
-Aktivera **nested virtualization** i hypervisorn endast om du behöver
-köra `podman machine` eller andra inre VM:ar — Podman på RHEL 10 kör
-containrar direkt på värdens kärna och behöver det inte.
 
 #### Gäst-tillägg och drivrutiner i RHEL
 
