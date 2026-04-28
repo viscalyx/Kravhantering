@@ -13,7 +13,7 @@
 <!-- cSpell:ignore timedatectl timesyncd ntpd -->
 <!-- cSpell:ignore zswap hugepage deduplicerar firstboot diskerna flushar -->
 <!-- cSpell:ignore Nutanix UEFI -->
-<!-- cSpell:ignore subkommandot -->
+<!-- cSpell:ignore subkommandot versionerade -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -322,19 +322,23 @@ BaseOS/AppStream:
   > [2.3 Importera Red Hats GPG-nycklar](#23-importera-red-hats-gpg-nycklar)
   > och kör sedan installationen igen.
 
-Node.js 24 (krav från `package.json`/`.nvmrc`) installeras enklast via
-`nodejs:24`-modulen eller NodeSource:
+Node.js 24 (krav från `package.json`/`.nvmrc`) installeras via de
+versionerade RPM:erna `nodejs24` / `nodejs24-npm` i AppStream:
 
 ```bash
-sudo dnf module enable -y nodejs:24
-sudo dnf install -y nodejs
+sudo dnf install -y nodejs24 nodejs24-npm
 node --version   # ska visa v24.x
 npm --version
 ```
 
-Om `nodejs:24` inte finns i din kanal, använd NodeSource RPM-repot
-eller [`nvm`](https://github.com/nvm-sh/nvm) installerat under
-PoC-användaren (rekommenderat för låg-privilegierad körning).
+> **Obs:** Det tidigare `dnf module enable nodejs:24` + `dnf install nodejs`-flödet
+> är **deprecated** på RHEL 10 — DNF-moduler (AppStream-strömmar) har tagits bort
+> och ersatts av versionerade paketnamn (`nodejs22`, `nodejs24`, …).
+
+Om `nodejs24` inte finns i din kanal (t.ex. på en arkitektur där det inte
+levereras), använd NodeSource RPM-repot eller
+[`nvm`](https://github.com/nvm-sh/nvm) installerat under PoC-användaren
+(rekommenderat för låg-privilegierad körning).
 
 Verktyg som **inte** behöver installeras på värden — de körs i
 containrar:
