@@ -13,7 +13,7 @@
 <!-- cSpell:ignore timedatectl timesyncd ntpd -->
 <!-- cSpell:ignore zswap hugepage deduplicerar firstboot diskerna flushar -->
 <!-- cSpell:ignore Nutanix UEFI -->
-<!-- cSpell:ignore subkommandot nätverksplugins Netavark Aardvark -->
+<!-- cSpell:ignore subkommandot -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -289,8 +289,8 @@ sudo dnf install -y \
   python3-pip
 ```
 
-På RHEL 10 finns **inte** `podman-compose` eller `podman-plugins` som
-RPM-paket i BaseOS/AppStream:
+På RHEL 10 finns **inte** `podman-compose` som RPM-paket i
+BaseOS/AppStream:
 
 - `podman-compose` installeras istället via pip. Kör som PoC-användaren
   (eller den användare som ska köra `podman compose`):
@@ -304,11 +304,6 @@ RPM-paket i BaseOS/AppStream:
   `podman compose` (subkommandot, utan bindestreck) i Podman 5 letar
   upp `podman-compose`-binären automatiskt och översätter
   `docker-compose.*.yml`-filerna i repot.
-
-- `podman-plugins` (CNI-nätverksplugins) **behövs inte** på RHEL 10 —
-  Podman 5 använder Netavark/Aardvark som standard-nätverksstack och
-  CNI-plugins är borttagna. Inga extra paket krävs för att containrarna
-  ska få nätverk eller intern DNS-uppslagning sinsemellan.
 
 - `podman-docker` (valfritt) installerar en `docker`-shim som mappar
   `docker …` till `podman …` och lägger upp en `/var/run/docker.sock`-
