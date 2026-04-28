@@ -1,6 +1,7 @@
 # PoC på RHEL 10 med Podman
 
 <!-- cSpell:ignore oprivilegierad Firewalld firewalld policycoreutils -->
+<!-- cSpell:ignore autostartad -->
 <!-- cSpell:ignore repon repot subuid subgid subuids subgids usermod -->
 <!-- cSpell:ignore Keycloaks företagsproxy npmjs blobbar rhsm Tidssync -->
 <!-- cSpell:ignore relabelar mounten termering proxa setsebool -->
@@ -573,14 +574,58 @@ nåbara utifrån. Containrarna binds till loopback i avsnitt 7.
 
 ## 6. Firewalld — minimal regelmängd
 
-Aktivera och starta firewalld:
+### 6.1 Verifiera om firewalld redan är aktiverad
+
+Innan `firewalld` aktiveras, kontrollera om tjänsten redan är installerad,
+startad och autostartad. Då slipper du köra om steg som redan är på plats.
+
+```bash
+# Är paketet installerat?
+rpm -q firewalld || echo "firewalld är inte installerat"
+
+# Startar tjänsten automatiskt vid boot?
+systemctl is-enabled firewalld
+
+# Kör tjänsten just nu?
+systemctl is-active firewalld
+```
+
+Tolkning:
+
+- `enabled` = startar automatiskt vid boot, `disabled` = startar inte
+  automatiskt vid boot.
+- `active` = kör just nu, `inactive` = kör inte just nu.
+
+Om `firewalld` redan är både `enabled` och `active` kan kommandot nedan
+hoppas över. Annars aktivera och starta:
 
 ```bash
 sudo systemctl enable --now firewalld
 ```
 
+### 6.2 Verifiera befintlig firewalld-konfiguration
+
+Innan nya regler läggs till, lista vad som redan är konfigurerat så att
+inga steg upprepas i onödan:
+
+```bash
+# Default-zon och aktiva zoner
+sudo firewall-cmd --get-default-zone
+sudo firewall-cmd --get-active-zones
+
+# Komplett dump av aktuell zon (interface, services, ports, rich-rules)
+sudo firewall-cmd --zone=public --list-all
+```
+
+Jämför utdata med stegen nedan och kör bara de `firewall-cmd`-rader vars
+service / interface / rich-rule **inte** redan finns med i `--list-all`.
+Om allt redan stämmer kan hela 6.3 hoppas över.
+
+### 6.3 Lägg till regler
+
 Lägg det publika gränssnittet i en restriktiv zon (`public` är default)
-och tillåt bara nödvändiga tjänster. Allt annat blockeras implicit.
+och tillåt bara nödvändiga tjänster. Allt annat blockeras implicit. Kör
+endast de rader vars motsvarande regel saknas enligt 6.2.
 
 ```bash
 # Anta att eth0 är det publika nic:et
@@ -597,13 +642,20 @@ sudo firewall-cmd --zone=public --add-service=http  --permanent
 sudo firewall-cmd --reload
 ```
 
-För extra åtstramning av SSH:
+För extra åtstramning av SSH (kontrollera först att en motsvarande
+rich-rule inte redan finns enligt 6.2):
 
 ```bash
 sudo firewall-cmd --permanent --zone=public --remove-service=ssh
 sudo firewall-cmd --permanent --zone=public --add-rich-rule=\
 'rule family=ipv4 source address=10.20.0.0/24 service name=ssh accept'
 sudo firewall-cmd --reload
+```
+
+Verifiera slutresultatet:
+
+```bash
+sudo firewall-cmd --zone=public --list-all
 ```
 
 Notera: eftersom Podman körs **rootless** och alla tjänsteportar binds
