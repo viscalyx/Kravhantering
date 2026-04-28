@@ -612,7 +612,6 @@ Ingen utgående SMTP, ingen direkt DB-trafik externt.
 | - | - | - | - |
 | 22/tcp | SSH | Admin-nät / VPN | Drift och deployment. Begränsa med firewalld-zon. |
 | 443/tcp | HTTPS | Användar-nät | Reverse proxy → Next.js `3001` och Keycloak. |
-| 80/tcp | HTTP | Användar-nät | Stäng om certifikatet utfärdas av intern Windows Server-PKI (se avsnitt 8.1). Öppna endast vid ACME/HTTP-01 mot publik CA. |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -686,9 +685,10 @@ sudo firewall-cmd --zone=public --change-interface=eth0 --permanent
 # Behåll SSH (gärna begränsat till admin-nätet via en rich rule)
 sudo firewall-cmd --zone=public --add-service=ssh --permanent
 
-# Publik HTTPS (och valfritt HTTP för ACME-redirect)
+# Publik HTTPS (port 80/HTTP behövs inte — PoC:n är intern och
+# certifikatet kommer från intern Windows Server-PKI enligt 8.1,
+# inte via ACME/HTTP-01)
 sudo firewall-cmd --zone=public --add-service=https --permanent
-sudo firewall-cmd --zone=public --add-service=http  --permanent
 
 # Aktivera reglerna
 sudo firewall-cmd --reload
@@ -1109,8 +1109,7 @@ Eftersom `loginctl enable-linger` är satt (avsnitt 3) körs dessa
 - Ingen rot-process binder applikationsportar.
 - Containrar är osynliga utifrån; bara nginx på `443` är publik.
 - SELinux är `enforcing` och bind-mounts är märkta korrekt.
-- Firewalld släpper bara igenom SSH (helst nät-begränsad), HTTPS och
-  ev. HTTP för ACME.
+- Firewalld släpper bara igenom SSH (helst nät-begränsad) och HTTPS.
 - PoC-användaren saknar `sudo`-rättigheter helt; drift sker via
   separat admin-konto.
 
