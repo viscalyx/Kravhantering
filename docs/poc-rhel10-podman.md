@@ -275,6 +275,8 @@ sudo dnf repolist
 
 ### 2.2 Installera baspaketen
 
+<!-- cspell:ignore modulström filkonflikter -->
+
 Installera som `root` (eller via Ansible/Satellite) **innan** PoC-
 användaren tar över:
 
@@ -323,7 +325,32 @@ BaseOS/AppStream:
   > och kör sedan installationen igen.
 
 Node.js 24 (krav från `package.json`/`.nvmrc`) installeras via de
-versionerade RPM:erna `nodejs24` / `nodejs24-npm` i AppStream:
+versionerade RPM:erna `nodejs24` / `nodejs24-npm` i AppStream.
+
+Om en äldre Node.js/npm redan finns installerad på värden (t.ex. den
+icke-versionerade `nodejs`-RPM:en eller en tidigare modulström som
+`nodejs:18` / `nodejs:20`) ska den avinstalleras först — annars kan
+`/usr/bin/node` och `/usr/bin/npm` peka på fel version eller orsaka
+filkonflikter när `nodejs24` läggs till. Kontrollera och städa bort:
+
+```bash
+# Visa installerade Node-/npm-paket
+rpm -qa | grep -E '^(nodejs|npm)'
+
+# Visa aktuella binärer/versioner (om några)
+command -v node && node --version || echo "node saknas"
+command -v npm  && npm  --version || echo "npm saknas"
+
+# Avinstallera den icke-versionerade nodejs/npm samt övriga nodejs-paket
+# (hoppa över raden om kommandona ovan inte returnerade några paket)
+sudo dnf remove -y nodejs npm nodejs-full-i18n nodejs-libs nodejs-docs
+
+# Om en äldre modulström är aktiverad (gäller RHEL <10 eller uppgraderade
+# system), nollställ den så att den inte återinstallerar fel version:
+sudo dnf module reset -y nodejs 2>/dev/null || true
+```
+
+Installera sedan Node.js 24:
 
 ```bash
 sudo dnf install -y nodejs24 nodejs24-npm
@@ -343,7 +370,9 @@ levereras), använd NodeSource RPM-repot eller
 Verktyg som **inte** behöver installeras på värden — de körs i
 containrar:
 
-- Microsoft SQL Server (image `mcr.microsoft.com/mssql/server:2022-latest`)
+- Microsoft SQL Server (image enligt `image:`-raden i
+  `docker-compose.sqlserver.yml` — versionen kan uppdateras separat och
+  ska inte hårdkodas här)
 - `sqlcmd` används från host-sidan av `npm run db:*`-skripten via
   containern, men om du vill köra ad-hoc-queries direkt på värden går
   det att lägga till `mssql-tools18` från Microsofts repo (frivilligt).
