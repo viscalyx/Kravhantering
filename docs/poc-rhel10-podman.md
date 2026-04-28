@@ -2,7 +2,7 @@
 
 <!-- cSpell:ignore oprivilegierad Firewalld firewalld policycoreutils -->
 <!-- cSpell:ignore autostartad -->
-<!-- cSpell:ignore repon repot subuid subgid subuids subgids usermod -->
+<!-- cSpell:ignore repon repot repots subuid subgid subuids subgids usermod -->
 <!-- cSpell:ignore Keycloaks företagsproxy npmjs blobbar rhsm Tidssync -->
 <!-- cSpell:ignore relabelar mounten termering proxa setsebool -->
 <!-- cSpell:ignore gitignoreras realmen Realmfilen Quadlet -->
@@ -470,8 +470,9 @@ arbetet enligt följande:
     `/etc/pki/tls/`.
 - **Kör som `kravhantering`** (växla först enligt
   [3.1](#31-byta-till-kravhantering-användaren)):
-  - [7. Bind containerportar till loopback](#7-bind-containerportar-till-loopback)
-    — `docker-compose.*.override.yml` läggs i användarens projektkatalog.
+  - [7. Klona repot och bind containerportar till loopback](#7-klona-repot-och-bind-containerportar-till-loopback)
+    — `git clone` och `docker-compose.*.override.yml` läggs i
+    användarens hemkatalog.
   - CSR-/nyckelgenereringen (`openssl req …`) i 8.1 — den privata
     nyckeln ska ägas av `kravhantering`, inte av root.
   - [9. Justeringar i `.env.prodlike`](#9-justeringar-i-envprodlike).
@@ -771,17 +772,44 @@ Notera: eftersom Podman körs **rootless** och alla tjänsteportar binds
 till `127.0.0.1` behövs **inga** firewalld-undantag för `1433`, `8080`
 eller `3001`. Det är hela poängen med den låg-privilegierade designen.
 
-## 7. Bind containerportar till loopback
+## 7. Klona repot och bind containerportar till loopback
 
 > **Användare:** Kör som `kravhantering` (växla först enligt
-> [3.1](#31-byta-till-kravhantering-användaren)). Override-filerna
-> läggs i användarens projektkatalog och läses av rootless
-> `podman compose`.
+> [3.1](#31-byta-till-kravhantering-användaren)). Repot, override-filerna
+> och `npm`-cachen läggs under `/home/kravhantering/` och läses av
+> rootless `podman compose` och `npm`. Inga steg i detta avsnitt kräver
+> `sudo`.
+
+### 7.1 Klona projektet i `kravhantering`-användarens hemkatalog
+
+Resterande avsnitt (7.2, 9, 10, 11) utgår från att Kravhantering-repot
+ligger under `/home/kravhantering/Kravhantering/`. Klona det därför
+**innan** override-filerna i 7.2 skapas, eftersom de ska ligga bredvid
+`docker-compose.idp.yml` och `docker-compose.sqlserver.yml` i repot.
+
+```bash
+cd ~
+git clone https://github.com/viscalyx/Kravhantering.git
+cd Kravhantering
+```
+
+Verifiera att compose-filerna finns på plats (övriga avsnitt refererar
+till dem med relativa sökvägar):
+
+```bash
+ls docker-compose.idp.yml docker-compose.sqlserver.yml
+```
+
+`npm ci` körs först i avsnitt 10 — då har `.env.prodlike.local`
+(avsnitt 9) hunnit skapas och containrarna i 10 startats först.
+
+### 7.2 Lägg till loopback-overrides
 
 Compose-filerna i repot binder portarna till alla interface som
 standard (`"8080:8080"`, `"1433:1433"`). För PoC:n ska de bindas
 endast till `127.0.0.1`. Lös detta utan att ändra de checkade-in
-filerna med en lokal override per Compose-fil:
+filerna med en lokal override per Compose-fil i repots rotkatalog
+(`~/Kravhantering/`):
 
 `docker-compose.idp.override.yml`:
 
@@ -1105,12 +1133,12 @@ Realmfilen läses in vid varje containerstart.
 > compose`, `npm ci` och `npm run start:prodlike` ska alla köras av
 > PoC-användaren — inte med `sudo`.
 
-Som `kravhantering`-användaren:
+Som `kravhantering`-användaren, från repots rotkatalog
+(`~/Kravhantering/`, klonad i [7.1](#71-klona-projektet-i-kravhantering-användarens-hemkatalog)):
 
 ```bash
-# 1. Klona repo + installera beroenden
-git clone https://github.com/viscalyx/Kravhantering.git
-cd Kravhantering
+# 1. Installera beroenden
+cd ~/Kravhantering
 npm ci
 
 # 2. Förbered env-filer
