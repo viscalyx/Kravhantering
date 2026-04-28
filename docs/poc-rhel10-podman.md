@@ -771,22 +771,14 @@ checklista när beställningar skickas till respektive team.
 - **Förnyelserutin** och kontaktväg för nytt certifikat innan utgång
   (ev. `certmonger`-integration om PKI:n stödjer det).
 
-### 13.4 Beställs hos identitets-/Keycloak-drift (om Keycloak-instansen ska delas)
-
-- Om PoC:n ska använda en **befintlig** Keycloak istället för den
-  containeriserade i `docker-compose.idp.yml`: en realm,
-  klient-ID/secret samt registrerade redirect-URI:er som matchar
-  `NEXT_PUBLIC_SITE_URL` (avsnitt 9). Annars hanteras detta internt i
-  PoC:n av applikationsdrift.
-
-### 13.5 Beställs hos informationssäkerhet / katalog
+### 13.4 Beställs hos informationssäkerhet / katalog
 
 - **Admin-konto** (separat från PoC-användaren `kravhantering`) med
   SSH-nyckel utlagd för drift och patchning av servern.
 - Eventuell **logg-/SIEM-integration** (journald-forwarding, syslog)
   enligt organisationens krav.
 
-### 13.6 Hanteras av rollen applikationsdrift själv
+### 13.5 Hanteras av rollen applikationsdrift själv
 
 På den levererade RHEL 10-VM:en utför applikationsdrift allt övrigt i
 detta dokument:
