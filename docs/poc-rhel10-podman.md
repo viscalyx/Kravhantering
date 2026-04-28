@@ -857,7 +857,8 @@ Exempel `/etc/nginx/conf.d/kravhantering.conf`:
 
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name kravhantering.poc.example.com;
 
     ssl_certificate     /etc/pki/tls/certs/kravhantering.crt;
@@ -892,11 +893,10 @@ SELinux: tillåt nginx att proxa till loopback-portar:
 sudo setsebool -P httpd_can_network_connect 1
 ```
 
-Aktivera nginx-tjänsten:
-
-```bash
-sudo systemctl enable --now nginx
-```
+> **Aktivera inte `nginx` ännu.** Tjänsten startas först i avsnitt 8.1
+> när TLS-certifikatet (`/etc/pki/tls/certs/kravhantering.crt` och
+> motsvarande nyckel) finns på plats — annars vägrar `nginx` att
+> starta eftersom `ssl_certificate`-sökvägen inte går att läsa.
 
 Alternativ: använd **Caddy** för automatisk Let's Encrypt-hantering,
 eller kör nginx i en rootless container med
@@ -909,7 +909,7 @@ PoC är det enklast att låta `nginx` köra som system-tjänst.
 > Steg 1 körs som ditt admin-konto med `sudo` (filer hamnar under
 > `/etc/pki/tls/`), Steg 2 körs på en Windows-administratörsklient,
 > och Steg 3 (konvertering, fullchain-bygge, `update-ca-trust`,
-> `nginx -t`/`reload`) körs som ditt admin-konto med `sudo`.
+> `nginx -t`/`enable --now`/`reload`) körs som ditt admin-konto med `sudo`.
 
 Eftersom PoC:n endast är åtkomlig på det interna nätverket utfärdas
 servercertifikatet lämpligen av företagets befintliga **Active
@@ -1083,10 +1083,18 @@ sudo cp /tmp/intern-root-ca.crt /etc/pki/ca-trust/source/anchors/
 sudo update-ca-trust extract
 ```
 
-Ladda om nginx och verifiera handskakningen från en intern klient:
+Ladda om nginx och verifiera handskakningen från en intern klient.
+Vid första installationen är `nginx`-tjänsten inte aktiv ännu (se
+noten i avsnitt 8) — då används `enable --now` istället för `reload`:
 
 ```bash
-sudo nginx -t && sudo systemctl reload nginx
+sudo nginx -t
+
+# Första gången (tjänsten är inte aktiv ännu):
+sudo systemctl enable --now nginx
+
+# Vid efterföljande certifikatsbyten/förnyelse:
+sudo systemctl reload nginx
 
 # Från en annan dator i det interna nätet:
 openssl s_client -connect kravhantering.poc.intern.example.com:443 \
