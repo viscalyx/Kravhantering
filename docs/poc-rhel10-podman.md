@@ -86,6 +86,14 @@ Hyper-V, KVM/oVirt, Proxmox, Nutanix, Azure/AWS/GCP m.fl.).
 Installera lämpligt gäst-paket så att tid, balloon, snabb shutdown
 och (för VMware) delade mappar fungerar:
 
+> **Obs:** Om något av nedanstående `dnf install`-kommandon
+> misslyckas med felmeddelandet
+> `Error: There are no enabled repositories in "/etc/yum.repos.d", …`,
+> är värden inte registrerad mot RHSM eller saknar aktiverade
+> BaseOS/AppStream-repon. Följ avsnitt
+> [2.1 Aktivera RHSM-repon (BaseOS + AppStream)](#21-aktivera-rhsm-repon-baseos--appstream)
+> först och kör sedan kommandot igen.
+
 ```bash
 # KVM / QEMU / Proxmox / OpenStack / oVirt
 sudo dnf install -y qemu-guest-agent
