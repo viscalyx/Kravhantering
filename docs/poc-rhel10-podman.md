@@ -711,3 +711,94 @@ Eftersom `loginctl enable-linger` är satt (avsnitt 3) körs dessa
   ev. HTTP för ACME.
 - PoC-användaren saknar `sudo`-rättigheter helt; drift sker via
   separat admin-konto.
+
+## 13. Beställningar till andra roller
+
+Det här avsnittet sammanfattar vad rollen **applikationsdrift** själv
+gör inne på RHEL 10-servern och vad samma roll behöver **beställa** av
+andra driftroller innan PoC:n kan tas i drift. Använd det som
+checklista när beställningar skickas till respektive team.
+
+### 13.1 Beställs hos serverdrift / virtualiseringsdrift
+
+- **RHEL 10-virtuell maskin** enligt sizing i avsnitt 1: 4 vCPU
+  (host-passthrough/CPU-modell matchad mot värd, **ingen** nested
+  virtualization krävs), 8 GiB RAM med **reservation** (ingen
+  aggressiv ballooning), 40 GiB tunn/tjock disk på paravirtuell
+  controller (t.ex. `virtio-scsi`), UEFI + Secure Boot.
+- **Operativsystem**: RHEL 10 minimal-installation, registrerad mot
+  Red Hat Subscription Management med rätt entitlements (BaseOS +
+  AppStream).
+- **Gästverktyg/agenter** förinstallerade enligt avsnitt 1.1
+  (`qemu-guest-agent`, `open-vm-tools` eller `hyperv-daemons`
+  beroende på hypervisor) samt aktiverad host/guest-tidssynkning
+  (`/dev/ptp_kvm` om KVM).
+- **Backup/snapshot-policy** för VM:en (helst quiesced snapshot via
+  guest agent) och dokumenterad återläsningsrutin.
+- **Konsol-/OOB-åtkomst** (hypervisorns konsol eller motsvarande
+  out-of-band-hantering) för felsökning när SSH inte räcker.
+- **Patch-/uppdateringsfönster** och ansvar för OS-patchning utanför
+  applikationsstacken om det inte ligger på applikationsdrift.
+
+### 13.2 Beställs hos nätverksdrift
+
+- **Statisk IPv4-adress** eller DHCP-reservation på det interna
+  VLAN:et (avsnitt 1.1) — viktigt så att certifikatets SAN och DNS
+  fortsätter matcha.
+- **Internt DNS A-/PTR-record** för t.ex.
+  `kravhantering.poc.example.com` → VM:ens IP (forward + reverse).
+- **Brandväggsregler in mot servern** (perimeter-/segment-FW utöver
+  värdens firewalld):
+  - `tcp/443` från det interna användar-/klientnätet.
+  - `tcp/22` endast från admin-/hopp-värdnät.
+  - **Inga** öppningar för `1433`, `3001`, `8080` eller `80`.
+- **Utgående trafik** (proxy- eller FW-whitelist) till destinationerna
+  i avsnitt 5.1: `registry.npmjs.org`, `github.com` /
+  `objects.githubusercontent.com`, `mcr.microsoft.com` (+
+  `*.data.mcr.microsoft.com`), `quay.io`,
+  `registry.access.redhat.com`, `subscription.rhsm.redhat.com`,
+  `cdn.redhat.com`, samt DNS (`53/udp`) och NTP (`123/udp`) mot
+  godkända interna tjänster.
+- **Intern NTP-källa** om miljön inte tillåter publika pool-servrar.
+
+### 13.3 Beställs hos PKI-/AD CS-drift
+
+- **Servercertifikat** från intern Windows Server PKI (avsnitt 8.1)
+  utfärdat på en `WebServer`-baserad mall, baserat på CSR genererad
+  på RHEL-servern (privat nyckel lämnar **aldrig** servern).
+- Certifikatet levereras som **PKCS#7-kedja (`.p7b`)** eller separata
+  DER/PEM-filer inkl. utfärdande CA och root-CA.
+- **Förnyelserutin** och kontaktväg för nytt certifikat innan utgång
+  (ev. `certmonger`-integration om PKI:n stödjer det).
+
+### 13.4 Beställs hos identitets-/Keycloak-drift (om Keycloak-instansen ska delas)
+
+- Om PoC:n ska använda en **befintlig** Keycloak istället för den
+  containeriserade i `docker-compose.idp.yml`: en realm,
+  klient-ID/secret samt registrerade redirect-URI:er som matchar
+  `NEXT_PUBLIC_SITE_URL` (avsnitt 9). Annars hanteras detta internt i
+  PoC:n av applikationsdrift.
+
+### 13.5 Beställs hos informationssäkerhet / katalog
+
+- **Admin-konto** (separat från PoC-användaren `kravhantering`) med
+  SSH-nyckel utlagd för drift och patchning av servern.
+- Eventuell **logg-/SIEM-integration** (journald-forwarding, syslog)
+  enligt organisationens krav.
+
+### 13.6 Hanteras av rollen applikationsdrift själv
+
+På den levererade RHEL 10-VM:en utför applikationsdrift allt övrigt i
+detta dokument:
+
+- Paketinstallation (`dnf`), Node.js 24, firewalld-regler på värden
+  (avsnitt 5/6), SELinux-bools och relabel (avsnitt 4).
+- PoC-användaren `kravhantering` + `subuid`/`subgid` +
+  `loginctl enable-linger` (avsnitt 3).
+- CSR-generering, inläggning av utfärdat cert + chain, samt trust
+  av intern root-CA via `update-ca-trust` (avsnitt 8.1).
+- Compose-overrides, `podman compose up -d`, databasmigrering/seed
+  och start av appen via `npm run start:prodlike` (avsnitt 7, 10).
+- nginx-konfiguration som reverse proxy mot `127.0.0.1:3001` /
+  `127.0.0.1:8080` (avsnitt 8) och valfria Quadlet-tjänster för
+  persistens (avsnitt 11).
