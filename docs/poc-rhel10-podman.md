@@ -16,6 +16,7 @@
 <!-- cSpell:ignore Nutanix UEFI -->
 <!-- cSpell:ignore subkommandot versionerade -->
 <!-- cSpell:ignore subnät subnätet pkill -->
+<!-- cSpell:ignore servercert konfig konfigfilen extfile Acreateserial -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -917,6 +918,15 @@ Directory Certificate Services (AD CS)**. Klienterna har redan
 företagets root-/utfärdande CA i sitt trust store, så ingen extern CA
 behövs.
 
+> **Alternativ för lokal test:** om du kör PoC:n på en lab-maskin
+> utan tillgång till AD CS kan du istället skapa ett **self-signed**
+> certifikat (egen lokal root-CA + servercert signerat av den) — se
+> [Appendix A: Self-signed certifikat för lokal test](#appendix-a-self-signed-certifikat-för-lokal-test).
+> Det resulterar i samma filer i `/etc/pki/tls/`, så avsnitt 8 och
+> resten av 8.1 (nginx-konfig, `update-ca-trust`, verifiering) gäller
+> oförändrat. Använd **inte** self-signed cert i en delad miljö —
+> bara på en enskild lab-värd där du själv kontrollerar klienterna.
+
 Flödet är:
 
 1. **På RHEL** — generera privat nyckel + Certificate Signing Request
@@ -1288,3 +1298,131 @@ detta dokument:
 - nginx-konfiguration som reverse proxy mot `127.0.0.1:3001` /
   `127.0.0.1:8080` (avsnitt 8) och valfria Quadlet-tjänster för
   persistens (avsnitt 11).
+
+## Appendix A: Self-signed certifikat för lokal test
+
+> **Användare:** Kör som ditt admin-konto med `sudo` (filer hamnar
+> under `/etc/pki/tls/` och `/etc/pki/ca-trust/source/anchors/`).
+> Kommandona ersätter Steg 1 + Steg 2 i [8.1](#81-tls-certifikat-från-intern-windows-server-pki).
+> Steg 3 (fullchain-bygge, nginx-konfig, `update-ca-trust`,
+> `nginx -t`/`enable --now`/`reload`) körs sedan oförändrat.
+
+Om du sätter upp PoC:n på en isolerad lab-värd utan tillgång till
+AD CS kan du istället signera servercertifikatet med en **lokalt
+genererad root-CA**. Resultatet blir samma filer i `/etc/pki/tls/`
+som i 8.1, så resten av guiden (nginx-konfig, `update-ca-trust`,
+`https://`-verifiering) fungerar utan ändringar.
+
+> **Säkerhetsnot:** self-signed cert ska bara användas i en lab-/
+> testmiljö där du själv kontrollerar både värden och klienterna.
+> Den lokala root-CA:ns privata nyckel (`local-root-ca.key`) ger
+> möjlighet att utfärda certifikat för **vilka** intern-namn som
+> helst — låt den aldrig lämna labb-värden, och radera den när
+> PoC:n är avvecklad.
+
+### A.1 Skapa en lokal root-CA (engångssteg per lab-värd)
+
+```bash
+sudo install -d -m 0755 /etc/pki/tls/certs
+sudo install -d -m 0700 /etc/pki/tls/private /etc/pki/tls/csr
+
+# Privat nyckel för den lokala root-CA:n (10 års giltighet räcker
+# gott och väl för en PoC).
+sudo openssl genrsa -out /etc/pki/tls/private/local-root-ca.key 4096
+sudo chmod 0600 /etc/pki/tls/private/local-root-ca.key
+
+# Self-signed root-cert. CN/O sätts så att det är lätt att känna
+# igen i klienternas trust store.
+sudo openssl req -x509 -new -nodes -sha256 -days 3650 \
+    -key  /etc/pki/tls/private/local-root-ca.key \
+    -out  /etc/pki/tls/certs/local-root-ca.crt \
+    -subj "/C=SE/O=Viscalyx/OU=Kravhantering PoC Lab/CN=Kravhantering Lab Root CA"
+```
+
+### A.2 Skapa nyckel + CSR för servern
+
+Återanvänd samma OpenSSL-konfig som i [8.1 Steg 1](#steg-1-skapa-nyckel-och-csr-på-rhel)
+(`/etc/pki/tls/csr/kravhantering.cnf` med `subjectAltName`,
+`keyUsage` och `extendedKeyUsage = serverAuth`). Skapa sedan
+servernyckeln och CSR:en på samma sätt:
+
+```bash
+sudo openssl req -new -newkey rsa:2048 -nodes \
+    -keyout /etc/pki/tls/private/kravhantering.key \
+    -out    /etc/pki/tls/csr/kravhantering.csr \
+    -config /etc/pki/tls/csr/kravhantering.cnf
+
+sudo chmod 0600 /etc/pki/tls/private/kravhantering.key
+sudo chown root:root /etc/pki/tls/private/kravhantering.key
+```
+
+### A.3 Signera CSR:en med den lokala root-CA:n
+
+SAN måste kopieras från CSR:en till det utfärdade certifikatet — det
+sker via `-extfile`/`-extensions` som pekar på samma `req_ext`-block
+i konfigfilen.
+
+```bash
+sudo openssl x509 -req -sha256 -days 825 \
+    -in  /etc/pki/tls/csr/kravhantering.csr \
+    -CA  /etc/pki/tls/certs/local-root-ca.crt \
+    -CAkey /etc/pki/tls/private/local-root-ca.key \
+    -CAcreateserial \
+    -extfile /etc/pki/tls/csr/kravhantering.cnf \
+    -extensions req_ext \
+    -out /etc/pki/tls/certs/kravhantering.crt
+
+sudo chmod 0644 /etc/pki/tls/certs/kravhantering.crt
+```
+
+> 825 dagar är max-giltighet som de flesta moderna klienter (inkl.
+> webbläsare baserade på Apple/Mozilla/Chromium-policyn) accepterar
+> för servercertifikat — håll dig under den gränsen även för
+> self-signed cert i lab.
+
+Verifiera att SAN finns med och att signaturen går att följa:
+
+```bash
+openssl x509 -in /etc/pki/tls/certs/kravhantering.crt \
+    -noout -subject -issuer -dates -ext subjectAltName
+openssl verify -CAfile /etc/pki/tls/certs/local-root-ca.crt \
+    /etc/pki/tls/certs/kravhantering.crt
+```
+
+### A.4 Bygg fullchain och fortsätt med 8.1 Steg 3
+
+För self-signed-fallet är "kedjan" bara den lokala root-CA:n. Bygg
+fullchain-filen som nginx förväntar sig och hoppa sedan tillbaka in
+i [8.1 Steg 3](#steg-3-konvertera-och-installera-på-rhel) från och
+med nginx-konfigurationen:
+
+```bash
+sudo bash -c 'cat /etc/pki/tls/certs/kravhantering.crt \
+                  /etc/pki/tls/certs/local-root-ca.crt \
+                  > /etc/pki/tls/certs/kravhantering-fullchain.crt'
+sudo chmod 0644 /etc/pki/tls/certs/kravhantering-fullchain.crt
+
+# Lägg den lokala root-CA:n i RHEL:s system-trust så att lokala
+# verktyg (curl, openssl, nodejs) litar på certifikatet.
+sudo cp /etc/pki/tls/certs/local-root-ca.crt \
+    /etc/pki/ca-trust/source/anchors/
+sudo update-ca-trust extract
+```
+
+### A.5 Förtroende på klientmaskinerna
+
+Webbläsare och OS som ansluter till `https://kravhantering.poc.…`
+kommer att varna tills du importerar `local-root-ca.crt` (filen
+under `/etc/pki/tls/certs/`) i deras trust store:
+
+- **Windows:** dubbelklicka på `.crt`-filen → *Install Certificate*
+  → *Local Machine* → *Trusted Root Certification Authorities*.
+- **macOS:** dubbelklicka → *Keychain Access* → *System* → markera
+  certifikatet → *Get Info* → *Trust* → *Always Trust*.
+- **Linux:** kopiera filen till `/etc/pki/ca-trust/source/anchors/`
+  (RHEL/Fedora) eller `/usr/local/share/ca-certificates/` (Debian/
+  Ubuntu) och kör `update-ca-trust extract` respektive
+  `update-ca-certificates`.
+- **Firefox** (alla OS) använder eget trust store: *Settings* →
+  *Privacy & Security* → *Certificates* → *View Certificates* →
+  *Authorities* → *Import…*.
