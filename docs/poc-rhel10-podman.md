@@ -60,6 +60,10 @@ minst 20 GiB ledigt för images och volymer.
 
 ### 1.1 Extra steg om RHEL 10 körs som virtuell maskin
 
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. Stegen kräver root-rättigheter (`dnf install`,
+> `systemctl enable`, redigering av `/etc/chrony.conf`).
+
 PoC:n fungerar lika bra på en VM som på fysisk hårdvara, men en
 virtualiserad RHEL 10 behöver några extra detaljer för att rootless
 Podman, SQL Server och OIDC-tokens ska bete sig stabilt. Stegen är
@@ -236,6 +240,9 @@ beskrivs i avsnitt 10.
 
 <!-- cspell:ignore repona baseos appstream rpms repolist -->
 
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. `subscription-manager` och `dnf` kräver root.
+
 Innan något `dnf install`-kommando körs måste värden vara registrerad
 mot Red Hat Subscription Management och ha minst **BaseOS** och
 **AppStream** aktiverade. Annars misslyckas installationen med t.ex.:
@@ -278,6 +285,10 @@ sudo dnf repolist
 
 <!-- cspell:ignore filkonflikter restorecon -->
 <!-- cspell:ignore dittadminkonto -->
+
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. `dnf install`/`dnf remove` kräver root. (Användaren
+> `kravhantering` skapas först i avsnitt 3.)
 
 Installera som `root` (eller via Ansible/Satellite) **innan** PoC-
 användaren tar över:
@@ -375,6 +386,9 @@ containrar:
 
 <!-- cspell:ignore rpmkeys keyring pubkey nyckelfilerna -->
 
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. `dnf update` och `rpmkeys --import` kräver root.
+
 Vissa paket på RHEL 10 är signerade med en nyare Red Hat-releasenyckel
 (t.ex. `Red Hat, Inc. (release key 4)`, fingerprint slutar på
 `05707a62`). Om denna nyckel saknas i RPM:s keyring avbryts
@@ -407,6 +421,11 @@ RHSM-repona enligt [2.1](#21-aktivera-rhsm-repon-baseos--appstream)
 är aktiva.
 
 ## 3. Dedikerad PoC-användare (rootless Podman)
+
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. `useradd`, `passwd`, `usermod` och `loginctl` kräver root.
+> Användaren `kravhantering` skapas i detta avsnitt och tar över i
+> avsnitten 7, 9, 10 och 11.
 
 Skapa en oprivilegierad systemanvändare som äger applikation och
 containrar. Den ska inte vara `wheel`/`sudoers`.
@@ -542,6 +561,9 @@ för persistenta `systemd --user`-tjänster eller automation).
 
 ## 4. SELinux
 
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. `setsebool -P` och övriga policy-kommandon kräver root.
+
 RHEL 10 har SELinux i `enforcing` som standard — **behåll det**.
 
 - `container-selinux` (installerat ovan) ger Podman rätt policy.
@@ -598,6 +620,11 @@ Ingen utgående SMTP, ingen direkt DB-trafik externt.
 nåbara utifrån. Containrarna binds till loopback i avsnitt 7.
 
 ## 6. Firewalld — minimal regelmängd
+
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. `systemctl` och `firewall-cmd --permanent` kräver root.
+> Verifierings­kommandon (`systemctl is-enabled`, `firewall-cmd
+> --list-all`) går att köra utan `sudo`.
 
 ### 6.1 Verifiera om firewalld redan är aktiverad
 
@@ -689,6 +716,11 @@ eller `3001`. Det är hela poängen med den låg-privilegierade designen.
 
 ## 7. Bind containerportar till loopback
 
+> **Användare:** Kör som `kravhantering` (växla först enligt
+> [3.1](#31-byta-till-kravhantering-användaren)). Override-filerna
+> läggs i användarens projektkatalog och läses av rootless
+> `podman compose`.
+
 Compose-filerna i repot binder portarna till alla interface som
 standard (`"8080:8080"`, `"1433:1433"`). För PoC:n ska de bindas
 endast till `127.0.0.1`. Lös detta utan att ändra de checkade-in
@@ -719,6 +751,11 @@ ligger bredvid huvudfilen. `:Z` SELinux-relabelar bind-mounten så att
 containern får läsa `realm-kravhantering-dev.json`.
 
 ## 8. Reverse proxy som låg-privilegierad TLS-termering
+
+> **Användare:** Kör som ditt admin-konto (`<dittadminkonto>`) med
+> `sudo`. nginx, `setsebool -P` och `systemctl enable --now nginx`
+> kräver root. (CSR-/nyckelgenereringen i 8.1 körs däremot som
+> `kravhantering` — se användarrutan i det avsnittet.)
 
 Next.js startas av `npm run start:prodlike` som lyssnar på
 `0.0.0.0:3001`. För PoC:n ska den bindningen ändras till loopback
@@ -782,6 +819,12 @@ eller kör nginx i en rootless container med
 PoC är det enklast att låta `nginx` köra som system-tjänst.
 
 ### 8.1 TLS-certifikat från intern Windows Server PKI
+
+> **Användare:** Blandat — varje delsteg nedan anger användare:
+> Steg 1 körs som ditt admin-konto med `sudo` (filer hamnar under
+> `/etc/pki/tls/`), Steg 2 körs på en Windows-administratörsklient,
+> och Steg 3 (konvertering, fullchain-bygge, `update-ca-trust`,
+> `nginx -t`/`reload`) körs som ditt admin-konto med `sudo`.
 
 Eftersom PoC:n endast är åtkomlig på det interna nätverket utfärdas
 servercertifikatet lämpligen av företagets befintliga **Active
@@ -973,6 +1016,11 @@ vid förnyelse om policyn tillåter — annars generera en ny.
 
 ## 9. Justeringar i `.env.prodlike`
 
+> **Användare:** Kör som `kravhantering` (växla först enligt
+> [3.1](#31-byta-till-kravhantering-användaren)). `.env.prodlike.local`
+> ligger i användarens projektkatalog och läses av `npm run
+> start:prodlike` i nästa avsnitt.
+
 Standard-`.env.prodlike` pekar på `localhost:3001` och
 `localhost:8080`. För PoC:n måste alla URL:er bytas till PoC-värdens
 publika namn (det som certifikatet utfärdats för). Skapa
@@ -994,6 +1042,11 @@ anpassad realm för PoC:n så att de matchar de publika URL:erna.
 Realmfilen läses in vid varje containerstart.
 
 ## 10. Starta PoC:n
+
+> **Användare:** Kör som `kravhantering` (växla först enligt
+> [3.1](#31-byta-till-kravhantering-användaren)). Rootless `podman
+> compose`, `npm ci` och `npm run start:prodlike` ska alla köras av
+> PoC-användaren — inte med `sudo`.
 
 Som `kravhantering`-användaren:
 
@@ -1028,6 +1081,12 @@ och att `curl -v telnet://<publik-ip>:1433` och `:8080` ger
 *connection refused*.
 
 ## 11. Persistens efter omstart (frivilligt men rekommenderat)
+
+> **Användare:** Kör som `kravhantering` (växla först enligt
+> [3.1](#31-byta-till-kravhantering-användaren)). Quadlet-units läggs
+> under `~/.config/containers/systemd/` och hanteras med
+> `systemctl --user` — alltså utan `sudo`. `loginctl enable-linger`
+> är redan satt i avsnitt 3 av admin-kontot.
 
 För att containrar och Next.js-processen ska starta om efter
 serverns omstart, generera systemd-användartjänster (Quadlet är det
