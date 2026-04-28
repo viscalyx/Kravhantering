@@ -275,7 +275,7 @@ sudo dnf repolist
 
 ### 2.2 Installera baspaketen
 
-<!-- cspell:ignore modulström filkonflikter -->
+<!-- cspell:ignore filkonflikter johlju restorecon -->
 
 Installera som `root` (eller via Ansible/Satellite) **innan** PoC-
 användaren tar över:
@@ -328,10 +328,10 @@ Node.js 24 (krav från `package.json`/`.nvmrc`) installeras via de
 versionerade RPM:erna `nodejs24` / `nodejs24-npm` i AppStream.
 
 Om en äldre Node.js/npm redan finns installerad på värden (t.ex. den
-icke-versionerade `nodejs`-RPM:en eller en tidigare modulström som
-`nodejs:18` / `nodejs:20`) ska den avinstalleras först — annars kan
-`/usr/bin/node` och `/usr/bin/npm` peka på fel version eller orsaka
-filkonflikter när `nodejs24` läggs till. Kontrollera och städa bort:
+icke-versionerade `nodejs`-RPM:en) ska den avinstalleras först —
+annars kan `/usr/bin/node` och `/usr/bin/npm` peka på fel version
+eller orsaka filkonflikter när `nodejs24` läggs till. Kontrollera och
+städa bort:
 
 ```bash
 # Visa installerade Node-/npm-paket
@@ -344,10 +344,6 @@ command -v npm  && npm  --version || echo "npm saknas"
 # Avinstallera den icke-versionerade nodejs/npm samt övriga nodejs-paket
 # (hoppa över raden om kommandona ovan inte returnerade några paket)
 sudo dnf remove -y nodejs npm nodejs-full-i18n nodejs-libs nodejs-docs
-
-# Om en äldre modulström är aktiverad (gäller RHEL <10 eller uppgraderade
-# system), nollställ den så att den inte återinstallerar fel version:
-sudo dnf module reset -y nodejs 2>/dev/null || true
 ```
 
 Installera sedan Node.js 24:
@@ -357,10 +353,6 @@ sudo dnf install -y nodejs24 nodejs24-npm
 node --version   # ska visa v24.x
 npm --version
 ```
-
-> **Obs:** Det tidigare `dnf module enable nodejs:24` + `dnf install nodejs`-flödet
-> är **deprecated** på RHEL 10 — DNF-moduler (AppStream-strömmar) har tagits bort
-> och ersatts av versionerade paketnamn (`nodejs22`, `nodejs24`, …).
 
 Om `nodejs24` inte finns i din kanal (t.ex. på en arkitektur där det inte
 levereras), använd NodeSource RPM-repot eller
@@ -440,7 +432,86 @@ sudo loginctl enable-linger kravhantering
 ```
 
 All vidare konfiguration i denna guide körs som `kravhantering` om
-inget annat anges.
+inget annat anges — se
+[3.1](#31-byta-till-kravhantering-användaren) för hur du växlar till
+användaren från ditt admin-konto.
+
+### 3.1 Byta till kravhantering-användaren
+
+Eftersom `kravhantering`-kontot har låst lösenord (`passwd -l` ovan)
+måste du växla till det antingen från ditt admin-konto via `sudo` eller
+genom att logga in direkt med en SSH-nyckel.
+
+#### Alternativ 1: Växla till `kravhantering` med `sudo`
+
+Använd när du redan är inloggad som ditt admin-konto (t.ex. `johlju`)
+på servern.
+
+```bash
+ssh johlju@servernamn
+sudo -iu kravhantering
+```
+
+Verifiera att du är rätt användare i rätt hemkatalog:
+
+```bash
+whoami   # ska skriva ut: kravhantering
+pwd      # ska skriva ut: /home/kravhantering
+```
+
+Kör därefter guidens kommandon. Återgå till ditt vanliga konto med:
+
+```bash
+exit
+```
+
+#### Alternativ 2: Logga in som `kravhantering` via SSH-nyckel
+
+Använd när du vill kunna logga in direkt som `kravhantering` (t.ex.
+för persistenta `systemd --user`-tjänster eller automation).
+
+1. **Skapa nyckelpar på din lokala dator** (utanför servern):
+
+   ```bash
+   ssh-keygen -t ed25519 -C "kravhantering" \
+     -f ~/.ssh/kravhantering_ed25519
+   ```
+
+2. **Kopiera den publika nyckeln** — visa och kopiera hela raden:
+
+   ```bash
+   cat ~/.ssh/kravhantering_ed25519.pub
+   ```
+
+3. **Lägg in nyckeln på servern**. Logga in som ditt admin-konto och:
+
+   ```bash
+   sudo install -d -o kravhantering -g kravhantering -m 700 \
+     /home/kravhantering/.ssh
+   sudo -u kravhantering tee -a /home/kravhantering/.ssh/authorized_keys \
+     >/dev/null <<'EOF'
+   ssh-ed25519 AAAA...din-publika-nyckel... kravhantering
+   EOF
+   sudo chmod 600 /home/kravhantering/.ssh/authorized_keys
+   sudo restorecon -Rv /home/kravhantering/.ssh
+   ```
+
+   `restorecon` återställer SELinux-kontexten på `.ssh`-katalogen så
+   att `sshd` får läsa `authorized_keys` (annars nekas inloggningen
+   tyst i `enforcing`-läge).
+
+4. **Logga in från din lokala dator**:
+
+   ```bash
+   ssh -i ~/.ssh/kravhantering_ed25519 kravhantering@servernamn
+   ```
+
+   Verifiera:
+
+   ```bash
+   whoami   # ska skriva ut: kravhantering
+   pwd      # ska skriva ut: /home/kravhantering
+   ```
 
 ## 4. SELinux
 
