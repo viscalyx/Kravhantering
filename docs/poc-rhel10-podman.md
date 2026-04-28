@@ -315,6 +315,13 @@ BaseOS/AppStream:
   sudo dnf install -y podman-docker   # frivilligt
   ```
 
+  > **Obs:** Vissa paket (t.ex. `podman-docker`) är signerade med en
+  > nyare Red Hat-nyckel som inte finns i basinstallationen. Om
+  > `dnf install` avbryts med ett GPG-/nyckelfel om
+  > `Red Hat, Inc. (release key 4)`, följ avsnitt
+  > [2.3 Importera Red Hats GPG-nycklar](#23-importera-red-hats-gpg-nycklar)
+  > och kör sedan installationen igen.
+
 Node.js 24 (krav från `package.json`/`.nvmrc`) installeras enklast via
 `nodejs:24`-modulen eller NodeSource:
 
@@ -336,6 +343,41 @@ containrar:
 - `sqlcmd` används från host-sidan av `npm run db:*`-skripten via
   containern, men om du vill köra ad-hoc-queries direkt på värden går
   det att lägga till `mssql-tools18` från Microsofts repo (frivilligt).
+
+### 2.3 Importera Red Hats GPG-nycklar
+
+<!-- cspell:ignore rpmkeys keyring pubkey nyckelfilerna -->
+
+Vissa paket på RHEL 10 är signerade med en nyare Red Hat-releasenyckel
+(t.ex. `Red Hat, Inc. (release key 4)`, fingerprint slutar på
+`05707a62`). Om denna nyckel saknas i RPM:s keyring avbryts
+installationen med ett GPG-/nyckelfel — exempelvis vid
+`sudo dnf install -y podman-docker`.
+
+Uppdatera `redhat-release` (som levererar nyckelfilerna under
+`/etc/pki/rpm-gpg/`), importera nycklarna till RPM:s keyring och
+verifiera att rätt nyckel finns:
+
+```bash
+# 1. Uppdatera Red Hats release-/nyckelpaket
+sudo dnf update -y redhat-release
+
+# 2. Importera Red Hats GPG-/PQC-nycklar till RPM:s keyring
+sudo rpmkeys --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+# 3. Verifiera att release key 4 finns importerad
+rpm -q gpg-pubkey --qf '%{VERSION}-%{RELEASE}  %{SUMMARY}\n' \
+  | grep 05707a62
+
+# 4. Kör installationen igen
+sudo dnf install -y podman-docker
+```
+
+Steg 3 ska skriva ut en rad som innehåller
+`Red Hat, Inc. (release key 4)`. Är raden tom saknas nyckeln
+fortfarande — kontrollera att `redhat-release` är uppdaterat och att
+RHSM-repona enligt [2.1](#21-aktivera-rhsm-repon-baseos--appstream)
+är aktiva.
 
 ## 3. Dedikerad PoC-användare (rootless Podman)
 
