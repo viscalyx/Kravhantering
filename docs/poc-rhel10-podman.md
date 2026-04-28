@@ -183,6 +183,50 @@ beskrivs i avsnitt 10.
 
 ## 2. Paket som måste installeras
 
+### 2.1 Aktivera RHSM-repon (BaseOS + AppStream)
+
+<!-- cspell:ignore repona baseos appstream rpms repolist -->
+
+Innan något `dnf install`-kommando körs måste värden vara registrerad
+mot Red Hat Subscription Management och ha minst **BaseOS** och
+**AppStream** aktiverade. Annars misslyckas installationen med t.ex.:
+
+<!-- markdownlint-disable MD013 -->
+
+```console
+$ sudo dnf install -y qemu-guest-agent
+Updating Subscription Management repositories.
+Error: There are no enabled repositories in "/etc/yum.repos.d", "/etc/yum/repos.d", "/etc/distro.repos.d".
+```
+
+<!-- markdownlint-enable MD013 -->
+
+Registrera VM:en (om det inte redan gjorts av serverdrift) och aktivera
+repona:
+
+```bash
+# Registrera mot RHSM (hoppa över om redan registrerad)
+sudo subscription-manager register
+sudo subscription-manager refresh
+
+# Aktivera de två huvud-repon som behövs på RHEL 10 x86_64
+sudo subscription-manager repos \
+  --enable=rhel-10-for-x86_64-baseos-rpms \
+  --enable=rhel-10-for-x86_64-appstream-rpms
+
+sudo dnf clean all
+sudo dnf repolist
+```
+
+`dnf repolist` ska nu visa både `rhel-10-for-x86_64-baseos-rpms` och
+`rhel-10-for-x86_64-appstream-rpms` som aktiva. Kör därefter om
+`dnf install`-kommandot som tidigare felade.
+
+> Notera: På andra arkitekturer (t.ex. `aarch64`, `s390x`, `ppc64le`)
+> byter du `x86_64` mot motsvarande arkitektur i repo-namnen.
+
+### 2.2 Installera baspaketen
+
 Installera som `root` (eller via Ansible/Satellite) **innan** PoC-
 användaren tar över:
 
