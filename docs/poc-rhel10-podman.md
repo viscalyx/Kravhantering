@@ -10,6 +10,7 @@
 <!-- cSpell:ignore Paravirtual virtio Paravirtuell hypervisorn hypervisorns -->
 <!-- cSpell:ignore Virt fcopy hypervkvpd hypervvssd hypervfcopyd -->
 <!-- cSpell:ignore chrony chronyd chronyc peera refclock dubbelsynk -->
+<!-- cSpell:ignore timedatectl timesyncd ntpd -->
 <!-- cSpell:ignore zswap hugepage deduplicerar firstboot diskerna flushar -->
 <!-- cSpell:ignore Nutanix UEFI -->
 
@@ -109,7 +110,45 @@ Cloud-VM:ar (Azure/AWS/GCP) använder en RHEL-image som redan har
 `chronyd` ingår i RHEL 10:s minimal-installation. På en VM bör den
 peera mot **både** hypervisorn (om den exponerar PTP/PHC) och en
 extern NTP, annars riskerar Keycloak att underkänna tokens efter
-suspend/resume:
+suspend/resume.
+
+**Verifiera först nuläget** så att du inte installerar något som
+redan körs eller råkar köra två konkurrerande tidstjänster
+parallellt:
+
+```bash
+# Övergripande status (visar bl.a. NTP-tjänst och synk-status)
+timedatectl status
+
+# Kollar om chronyd redan kör och visar källor i så fall
+if systemctl is-active --quiet chronyd; then
+    echo "chronyd is already running"
+    chronyc tracking
+    chronyc sources -v
+else
+    echo "chronyd is not running"
+fi
+
+# Är paketet ens installerat?
+rpm -q chrony || echo "chrony is not installed"
+
+# Visar konfigurerade tidskällor (server/pool/peer/refclock)
+grep -E '^(server|pool|peer|refclock)' /etc/chrony.conf 2>/dev/null \
+    || echo "No chrony sources found or /etc/chrony.conf does not exist"
+
+# Säkerställ att inte en annan tidstjänst redan kör — bara en av
+# dessa får vara aktiv åt gången
+systemctl status chronyd --no-pager
+systemctl status systemd-timesyncd --no-pager
+systemctl status ntpd --no-pager
+```
+
+Om `systemd-timesyncd` eller `ntpd` redan är aktiv, stäng av den
+innan du aktiverar `chronyd` (`sudo systemctl disable --now
+systemd-timesyncd` respektive `ntpd`). Om `chronyd` redan är aktiv
+och pekar mot en intern NTP-källa enligt avsnitt 13.2 räcker det att
+lägga till `refclock`-raden nedan vid behov — hoppa annars över
+installationssteget.
 
 ```bash
 sudo dnf install -y chrony
