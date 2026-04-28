@@ -275,7 +275,8 @@ sudo dnf repolist
 
 ### 2.2 Installera baspaketen
 
-<!-- cspell:ignore filkonflikter johlju restorecon -->
+<!-- cspell:ignore filkonflikter restorecon -->
+<!-- cspell:ignore dittadminkonto -->
 
 Installera som `root` (eller via Ansible/Satellite) **innan** PoC-
 användaren tar över:
@@ -444,11 +445,11 @@ genom att logga in direkt med en SSH-nyckel.
 
 #### Alternativ 1: Växla till `kravhantering` med `sudo`
 
-Använd när du redan är inloggad som ditt admin-konto (t.ex. `johlju`)
-på servern.
+Använd när du redan är inloggad som ditt eget admin-konto på servern.
+Ersätt `<dittadminkonto>` nedan med ditt personliga användarnamn.
 
 ```bash
-ssh johlju@servernamn
+ssh <dittadminkonto>@servernamn
 sudo -iu kravhantering
 ```
 
