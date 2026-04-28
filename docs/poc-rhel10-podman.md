@@ -15,6 +15,7 @@
 <!-- cSpell:ignore zswap hugepage deduplicerar firstboot diskerna flushar -->
 <!-- cSpell:ignore Nutanix UEFI -->
 <!-- cSpell:ignore subkommandot versionerade -->
+<!-- cSpell:ignore subnät subnätet pkill -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -695,13 +696,69 @@ sudo firewall-cmd --reload
 ```
 
 För extra åtstramning av SSH (kontrollera först att en motsvarande
-rich-rule inte redan finns enligt 6.2):
+rich-rule inte redan finns enligt 6.2).
+
+> **Varning:** Att ta bort `ssh`-tjänsten och köra `firewall-cmd --reload`
+> i fel ordning kan låsa ute den pågående SSH-sessionen. Följ sekvensen
+> nedan, som lägger till den smala allow-regeln **först** (både i runtime
+> och permanent), verifierar den, och tar bort den breda `ssh`-tjänsten
+> **sist** — utan en mellanliggande `--reload`.
+
+Kontrollera först vilken IP din SSH-session kommer ifrån — den måste
+ligga i admin-nätet (här `10.20.0.0/24`, justera till ert verkliga
+admin-subnät enligt [13.2](#132-beställs-hos-nätverksdrift)):
 
 ```bash
-sudo firewall-cmd --permanent --zone=public --remove-service=ssh
+echo "$SSH_CLIENT"
+```
+
+Första fältet ska matcha admin-subnätet, t.ex. `10.20.0.42 ...`.
+
+Lägg sedan eventuellt en rollback-timer som återställer den breda
+`ssh`-tjänsten efter 2 minuter om något går fel — kör som admin i en
+parallell session, **innan** ändringarna börjar:
+
+```bash
+sudo bash -c 'sleep 120; \
+  firewall-cmd --permanent --zone=public --add-service=ssh; \
+  firewall-cmd --reload' &
+```
+
+Genomför sedan ändringen i denna säkra ordning:
+
+```bash
+# 1. Lägg till den smala SSH-allow-regeln i runtime
+sudo firewall-cmd --zone=public --add-rich-rule=\
+'rule family=ipv4 source address=10.20.0.0/24 service name=ssh accept'
+
+# 2. Lägg till samma regel permanent
 sudo firewall-cmd --permanent --zone=public --add-rich-rule=\
 'rule family=ipv4 source address=10.20.0.0/24 service name=ssh accept'
+
+# 3. Bekräfta att regeln är aktiv i runtime
+sudo firewall-cmd --zone=public --list-rich-rules
+
+# 4. Ta bort den breda ssh-tjänsten från runtime
+sudo firewall-cmd --zone=public --remove-service=ssh
+
+# 5. Ta bort den breda ssh-tjänsten permanent
+sudo firewall-cmd --permanent --zone=public --remove-service=ssh
+```
+
+Stäng **inte** den befintliga SSH-sessionen ännu. Öppna en andra
+SSH-session från en annan terminal i samma admin-subnät och bekräfta att
+inloggning fungerar. Först därefter:
+
+```bash
 sudo firewall-cmd --reload
+```
+
+Testa en ny SSH-inloggning igen. Om allt fungerar, avbryt
+rollback-jobbet (om du startade ett):
+
+```bash
+jobs
+sudo pkill -f 'sleep 120;.*add-service=ssh'
 ```
 
 Verifiera slutresultatet:
