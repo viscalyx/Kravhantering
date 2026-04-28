@@ -433,10 +433,35 @@ Tillåt att användartjänster fortsätter köra efter utloggning
 sudo loginctl enable-linger kravhantering
 ```
 
-All vidare konfiguration i denna guide körs som `kravhantering` om
-inget annat anges — se
-[3.1](#31-byta-till-kravhantering-användaren) för hur du växlar till
-användaren från ditt admin-konto.
+Växla **inte** till `kravhantering` direkt efter detta steg. Eftersom
+kontot är skapat utan lösenord (`passwd -l` ovan) kan det inte köra
+`sudo`, och flera kommande avsnitt kräver root-rättigheter. Fördela
+arbetet enligt följande:
+
+- **Kör som ditt admin-konto med `sudo`** (inte som `kravhantering`):
+  - [4. SELinux](#4-selinux) — eventuella `setsebool`/policy-ändringar.
+  - [6. Firewalld — minimal regelmängd](#6-firewalld--minimal-regelmängd).
+  - [8. Reverse proxy …](#8-reverse-proxy-som-låg-privilegierad-tls-termering)
+    — installation och konfiguration av nginx samt
+    `setsebool -P httpd_can_network_connect 1`.
+  - I [8.1 TLS-certifikat …](#81-tls-certifikat-från-intern-windows-server-pki)
+    de steg som installerar/uppdaterar systemets cert-trust
+    (`update-ca-trust`) och som lägger certifikat/nyckel under
+    `/etc/pki/tls/`.
+- **Kör som `kravhantering`** (växla först enligt
+  [3.1](#31-byta-till-kravhantering-användaren)):
+  - [7. Bind containerportar till loopback](#7-bind-containerportar-till-loopback)
+    — `docker-compose.*.override.yml` läggs i användarens projektkatalog.
+  - CSR-/nyckelgenereringen (`openssl req …`) i 8.1 — den privata
+    nyckeln ska ägas av `kravhantering`, inte av root.
+  - [9. Justeringar i `.env.prodlike`](#9-justeringar-i-envprodlike).
+  - Avsnitt 10 "Starta PoC:n" (`podman compose …`,
+    `npm run start:prodlike`).
+  - [11. Persistens efter omstart …](#11-persistens-efter-omstart-frivilligt-men-rekommenderat)
+    — `systemd --user`-units (Quadlet) som ägs av användaren.
+
+Se [3.1](#31-byta-till-kravhantering-användaren) för hur du växlar till
+`kravhantering` från ditt admin-konto när du når ett sådant avsnitt.
 
 ### 3.1 Byta till kravhantering-användaren
 
