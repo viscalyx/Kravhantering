@@ -64,7 +64,7 @@ Se även:
   - [6.3 Lägg till regler](#63-lägg-till-regler)
 - [7. Klona repot och bind containerportar till loopback](#7-klona-repot-och-bind-containerportar-till-loopback)
   - [7.1 Klona projektet i `kravhantering`-användarens hemkatalog](#71-klona-projektet-i-kravhantering-användarens-hemkatalog)
-  - [7.2 Lägg till loopback-overrides](#72-lägg-till-loopback-overrides)
+  - [7.2 Bind containerportar till loopback](#72-bind-containerportar-till-loopback)
 - [8. Reverse proxy som låg-privilegierad TLS-termering](#8-reverse-proxy-som-låg-privilegierad-tls-termering)
   - [8.1 TLS-certifikat från intern Windows Server PKI](#81-tls-certifikat-från-intern-windows-server-pki)
 - [9. Justeringar i `.env.prodlike`](#9-justeringar-i-envprodlike)
@@ -540,7 +540,8 @@ arbetet enligt följande:
 - **Kör som `kravhantering`** (växla först enligt
   [3.1](#31-byta-till-kravhantering-användaren)):
   - [7. Klona repot och bind containerportar till loopback](#7-klona-repot-och-bind-containerportar-till-loopback)
-    — `git clone` och `docker-compose.*.override.yml` läggs i
+    — `git clone`, `docker-compose.idp.override.yml` och
+    `.env.{sqlserver,idp,prodlike.local}` läggs i
     användarens hemkatalog.
   - CSR-/nyckelgenereringen (`openssl req …`) i 8.1 — den privata
     nyckeln ska ägas av `kravhantering`, inte av root.
@@ -853,8 +854,8 @@ eller `3001`. Det är hela poängen med den låg-privilegierade designen.
 
 Resterande avsnitt (7.2, 9, 10, 11) utgår från att Kravhantering-repot
 ligger under `/home/kravhantering/Kravhantering/`. Klona det därför
-**innan** override-filerna i 7.2 skapas, eftersom de ska ligga bredvid
-`docker-compose.idp.yml` och `docker-compose.sqlserver.yml` i repot.
+**innan** override-filen i 7.2 skapas, eftersom den ska ligga bredvid
+`docker-compose.idp.yml` i repot.
 
 ```bash
 cd ~
@@ -893,37 +894,61 @@ podman compose version
 `npm ci` körs först i avsnitt 10 — då har `.env.prodlike.local`
 (avsnitt 9) hunnit skapas och containrarna i 10 startats först.
 
-### 7.2 Lägg till loopback-overrides
+### 7.2 Bind containerportar till loopback
 
 Compose-filerna i repot binder portarna till alla interface som
 standard (`"8080:8080"`, `"1433:1433"`). För PoC:n ska de bindas
-endast till `127.0.0.1`. Lös detta utan att ändra de checkade-in
-filerna med en lokal override per Compose-fil i repots rotkatalog
-(`~/Kravhantering/`):
+endast till `127.0.0.1`.
 
-`docker-compose.idp.override.yml`:
+> **Varför inte en `ports:`-override?** I Compose är `ports:` en lista
+> som **slås ihop additivt** mellan filerna i stället för att skrivas
+> över. En lokal `docker-compose.*.override.yml` med `"127.0.0.1:1433:1433"`
+> resulterar därför i att både den ursprungliga `1433:1433`-mappningen
+> och loopback-mappningen försöker bindas, vilket gör att containern
+> failar med *port already in use*. Använd i stället de
+> `*_HOST_PORT`-variabler som baskonfigurationen redan stödjer — de
+> är interpolation-variabler, inte listor, och **ersätts** rent när
+> de sätts.
+
+Bas-filerna binder porten via
+`${SQLSERVER_HOST_PORT:-1433}:1433` respektive
+`${KEYCLOAK_HOST_PORT:-8080}:8080`. Sätter du variabeln till
+`127.0.0.1:1433` expanderas mappningen till `127.0.0.1:1433:1433`,
+vilket är exakt den loopback-bindning som behövs.
+
+Lägg därför till följande rad sist i `~/Kravhantering/.env.sqlserver`
+(filen kopieras från `.env.sqlserver.example` i avsnitt 10):
+
+```env
+SQLSERVER_HOST_PORT=127.0.0.1:1433
+```
+
+För `idp` finns ingen motsvarande `--env-file` i
+`docker-compose.idp.yml`, så skapa en separat `.env.idp` i repots
+rot (`~/Kravhantering/`) och peka på den med `--env-file` i
+avsnitt 10:
+
+```env
+KEYCLOAK_HOST_PORT=127.0.0.1:8080
+```
+
+För SELinux behöver bind-mounten i `docker-compose.idp.yml`
+relabel-flaggan `Z`. Det är en **map-värdes**-override (samma
+volume-target ersätts) och kan därför läggas i en lokal
+`docker-compose.idp.override.yml` i `~/Kravhantering/`:
 
 ```yaml
 services:
   idp:
-    ports:
-      - "127.0.0.1:8080:8080"
     volumes:
       - ./dev/keycloak:/opt/keycloak/data/import:ro,Z
 ```
 
-`docker-compose.sqlserver.override.yml`:
-
-```yaml
-services:
-  db:
-    ports:
-      - "127.0.0.1:1433:1433"
-```
-
-Podman Compose plockar upp `*.override.yml` automatiskt om filerna
-ligger bredvid huvudfilen. `:Z` SELinux-relabelar bind-mounten så att
-containern får läsa `realm-kravhantering-dev.json`.
+Podman Compose plockar upp `docker-compose.idp.override.yml`
+automatiskt om filen ligger bredvid huvudfilen. `:Z` SELinux-relabelar
+bind-mounten så att containern får läsa `realm-kravhantering-dev.json`.
+Någon `docker-compose.sqlserver.override.yml` behövs **inte**, eftersom
+loopback-bindningen för `db` styrs helt via `SQLSERVER_HOST_PORT`.
 
 ## 8. Reverse proxy som låg-privilegierad TLS-termering
 
@@ -1333,15 +1358,16 @@ npm ci
 
 # 2. Förbered env-filer
 cp .env.sqlserver.example .env.sqlserver
-$EDITOR .env.sqlserver           # sätt MSSQL_SA_PASSWORD
+$EDITOR .env.sqlserver           # MSSQL_SA_PASSWORD + SQLSERVER_HOST_PORT (se 7.2)
+$EDITOR .env.idp                 # KEYCLOAK_HOST_PORT=127.0.0.1:8080 (se 7.2)
 $EDITOR .env.prodlike.local      # se avsnitt 9
 
 # 3. Starta SQL Server och Keycloak (Podman tar docker-compose-syntax)
 podman compose -f docker-compose.sqlserver.yml \
-               -f docker-compose.sqlserver.override.yml \
                --env-file .env.sqlserver up -d
 podman compose -f docker-compose.idp.yml \
-               -f docker-compose.idp.override.yml up -d
+               -f docker-compose.idp.override.yml \
+               --env-file .env.idp up -d
 
 # 4. Migrera + seed:a databasen
 npm run db:wait
