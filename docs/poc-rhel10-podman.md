@@ -1277,6 +1277,22 @@ MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 > webbläsaren till `http://localhost:8080/...` vid inloggning, vilket
 > ger `ERR_CONNECTION_REFUSED` på en PoC-värd där `8080` inte är
 > exponerat.
+>
+> **Alternativ: lägg på `.env.prodlike.local` med `dotenv-cli`.**
+> `dotenv-cli` (binären `dotenv` / `npx dotenv`) finns redan som
+> dev-beroende i `package.json` och installeras automatiskt av
+> `npm ci` i avsnitt 10 — inget extra `npm install` behövs. Eftersom
+> `dotenv-cli` inte skriver över redan satta variabler kan du i stället
+> för `set -a; . ./.env.prodlike.local; set +a` köra:
+>
+> ```bash
+> npx dotenv -e .env.prodlike.local -- npm run start:prodlike
+> ```
+>
+> Det yttre `dotenv -e .env.prodlike.local` laddar PoC-värdena
+> först, och det inre `dotenv -e .env.prodlike` (som ligger i
+> `start:prodlike`-skriptet) lämnar dem orörda. Effekten blir
+> identisk med `set -a`-varianten ovan; välj den variant du föredrar.
 
 Kom ihåg att också uppdatera **redirect-URI:erna i Keycloak-realmen**
 (`dev/keycloak/realm-kravhantering-dev.json`) så att de matchar de
@@ -1412,6 +1428,13 @@ set +a
 echo "AUTH_OIDC_ISSUER_URL=$AUTH_OIDC_ISSUER_URL"
 
 npm run start:prodlike
+
+# Alternativ till `set -a` + `npm run start:prodlike` ovan: använd
+# dotenv-cli (redan installerat av `npm ci` ovan) för att lägga
+# .env.prodlike.local ovanpå .env.prodlike. Effekten är densamma —
+# välj en av varianterna.
+#
+#   npx dotenv -e .env.prodlike.local -- npm run start:prodlike
 ```
 
 Verifiera utifrån att `https://kravhantering.poc.example.com` svarar,
