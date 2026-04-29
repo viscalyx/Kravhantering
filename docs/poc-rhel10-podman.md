@@ -1253,6 +1253,31 @@ AUTH_SESSION_COOKIE_PASSWORD=<openssl rand -base64 48>
 MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 ```
 
+> **Viktigt — `.env.prodlike.local` läses inte automatiskt av `npm
+> run start:prodlike`.** Skriptet laddar bara `.env.prodlike` via
+> `dotenv -e` (se `package.json` → `start:prodlike` /
+> `build:local-prod`). `dotenv-cli` skriver dessutom **inte** över
+> variabler som redan finns i processens miljö, så lösningen är att
+> först exportera innehållet i `.env.prodlike.local` till skalet och
+> sedan köra `npm run start:prodlike` — då vinner de exporterade
+> värdena över `.env.prodlike`. Det körs i avsnitt
+> [10. Starta PoC:n](#10-starta-poc) med:
+>
+> ```bash
+> set -a
+> . ./.env.prodlike.local
+> set +a
+> npm run start:prodlike
+> ```
+>
+> Bekräfta att override:n slog igenom med `echo
+> "$AUTH_OIDC_ISSUER_URL"` — den ska visa
+> `https://kravhantering.poc.example.com/auth/realms/kravhantering-dev`,
+> inte `http://localhost:8080/...`. Annars omdirigerar applikationen
+> webbläsaren till `http://localhost:8080/...` vid inloggning, vilket
+> ger `ERR_CONNECTION_REFUSED` på en PoC-värd där `8080` inte är
+> exponerat.
+
 Kom ihåg att också uppdatera **redirect-URI:erna i Keycloak-realmen**
 (`dev/keycloak/realm-kravhantering-dev.json`) så att de matchar de
 publika URL:erna. Filen monteras read-only in i `idp`-containern (se
@@ -1374,6 +1399,18 @@ npm run db:wait
 npm run db:setup
 
 # 5. Bygg och starta applikationen
+#    Ladda först .env.prodlike.local i skalet — npm run start:prodlike
+#    läser bara .env.prodlike via dotenv -e, och dotenv-cli skriver
+#    inte över variabler som redan finns i processens miljö. Genom att
+#    exportera .env.prodlike.local först vinner PoC-URL:erna i
+#    avsnitt 9 över localhost-värdena i .env.prodlike.
+set -a
+. ./.env.prodlike.local
+set +a
+
+# Snabbverifiering — ska peka på https://<POC_HOST>/auth/..., inte localhost:8080
+echo "AUTH_OIDC_ISSUER_URL=$AUTH_OIDC_ISSUER_URL"
+
 npm run start:prodlike
 ```
 
