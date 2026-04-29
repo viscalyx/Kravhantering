@@ -1140,9 +1140,70 @@ MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 ```
 
 Kom ihåg att också uppdatera **redirect-URI:erna i Keycloak-realmen**
-(`dev/keycloak/realm-kravhantering-dev.json`) eller importera en
-anpassad realm för PoC:n så att de matchar de publika URL:erna.
-Realmfilen läses in vid varje containerstart.
+(`dev/keycloak/realm-kravhantering-dev.json`) så att de matchar de
+publika URL:erna. Filen monteras read-only in i `idp`-containern (se
+`docker-compose.idp.yml`) och importeras om vid varje containerstart,
+så ändringar i JSON slår igenom efter en `podman compose ... restart
+idp`.
+
+Klienten som körs av `npm run start:prodlike` heter
+`kravhantering-local` och har som standard följande fält pekande mot
+`http://localhost:3001` / `http://127.0.0.1:3001`:
+
+- `clients[].redirectUris` — t.ex. `http://localhost:3001/api/auth/callback`
+- `clients[].webOrigins` — t.ex. `http://localhost:3001`
+- `clients[].attributes."post.logout.redirect.uris"` —
+  `##`-separerad lista, t.ex. `http://localhost:3001/##http://127.0.0.1:3001/`
+
+För PoC:n ska samtliga ovan ersättas av en enda PoC-URL (samma DNS-namn
+som certifikatet i 8.1 utfärdats för). Sätt först miljövariabeln
+`POC_HOST` och kör sedan en `jq`-uppdatering på plats — det hanterar
+både listorna och `##`-strängen utan att du behöver redigera JSON för
+hand:
+
+```bash
+# Som kravhantering, i ~/Kravhantering/
+sudo dnf install -y jq    # om jq saknas; körs som ditt admin-konto
+
+export POC_HOST="kravhantering.poc.example.com"
+REALM=dev/keycloak/realm-kravhantering-dev.json
+
+cp "$REALM" "$REALM.bak"
+
+jq --arg base "https://$POC_HOST" '
+  (.clients[] | select(.clientId=="kravhantering-local"))
+    |= ( .redirectUris = [ $base + "/api/auth/callback" ]
+       | .webOrigins   = [ $base ]
+       | .attributes."post.logout.redirect.uris" = ($base + "/")
+       )
+' "$REALM.bak" > "$REALM"
+
+# Verifiera att ingen localhost-/127.0.0.1-URL finns kvar för
+# kravhantering-local
+jq '.clients[] | select(.clientId=="kravhantering-local")
+     | {redirectUris, webOrigins,
+        postLogout: .attributes."post.logout.redirect.uris"}' "$REALM"
+```
+
+Förväntat resultat (med `POC_HOST=kravhantering.poc.example.com`):
+
+```json
+{
+  "redirectUris": ["https://kravhantering.poc.example.com/api/auth/callback"],
+  "webOrigins": ["https://kravhantering.poc.example.com"],
+  "postLogout": "https://kravhantering.poc.example.com/"
+}
+```
+
+Den andra klienten i realmen, `kravhantering-app`, används av
+dev-servern på port 3000/3001 och behöver inte ändras för PoC:n
+— `start:prodlike` använder bara `kravhantering-local`.
+
+Starta om `idp`-containern så att den nya realmen importeras:
+
+```bash
+podman compose -f docker-compose.idp.yml restart idp
+```
 
 ## 10. Starta PoC:n
 
