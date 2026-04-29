@@ -1182,9 +1182,12 @@ MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 Kom ihåg att också uppdatera **redirect-URI:erna i Keycloak-realmen**
 (`dev/keycloak/realm-kravhantering-dev.json`) så att de matchar de
 publika URL:erna. Filen monteras read-only in i `idp`-containern (se
-`docker-compose.idp.yml`) och importeras om vid varje containerstart,
-så ändringar i JSON slår igenom efter en `podman compose ... restart
-idp`.
+`docker-compose.idp.yml`) och importeras vid containerstart, så
+ändringarna här plockas upp automatiskt när `idp`-containern startas
+första gången i [10. Starta PoC:n](#10-starta-poc). Om `idp` redan har
+startats (t.ex. vid en senare justering av JSON-filen) krävs en
+`podman compose -f docker-compose.idp.yml restart idp` för att den nya
+realmen ska läsas in.
 
 Klienten som körs av `npm run start:prodlike` heter
 `kravhantering-local` och har som standard följande fält pekande mot
@@ -1239,7 +1242,10 @@ Den andra klienten i realmen, `kravhantering-app`, används av
 dev-servern på port 3000/3001 och behöver inte ändras för PoC:n
 — `start:prodlike` använder bara `kravhantering-local`.
 
-Starta om `idp`-containern så att den nya realmen importeras:
+Den uppdaterade JSON-filen läses in när `idp`-containern startas första
+gången i [10. Starta PoC:n](#10-starta-poc) — ingen `restart` behövs i
+det här läget. Om du justerar realmen efteråt (när `idp` redan körs),
+kör då:
 
 ```bash
 podman compose -f docker-compose.idp.yml restart idp
