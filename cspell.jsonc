@@ -403,7 +403,9 @@
     "refaktorisering",
     "refaktorering",
     "kodredigering",
-    "kodgenerering"
+    "kodgenerering",
+    "xforwarded",
+    "proxyn"
   ],
   "flagWords": [],
   "ignorePaths": [

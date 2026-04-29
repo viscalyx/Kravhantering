@@ -930,16 +930,34 @@ avsnitt 10:
 
 ```env
 KEYCLOAK_HOST_PORT=127.0.0.1:8080
+KC_HOSTNAME=https://kravhantering.poc.example.com/auth
 ```
 
+`KC_HOSTNAME` måste matcha **exakt** den publika bas-URL som
+nginx i avsnitt 8 exponerar Keycloak under (samma DNS-namn som
+TLS-certifikatet i 8.1 utfärdats för, plus `/auth`-prefixet).
+Utan denna inställning beräknar Keycloak sin `issuer` utifrån
+det interna `Host`/sökvägs-värde som containern ser
+(`http://127.0.0.1:8080/realms/...`), och Next.js kastar då
+`discovered metadata issuer does not match the expected issuer`
+vid första inloggningen eftersom det värdet inte stämmer med
+`AUTH_OIDC_ISSUER_URL` i avsnitt 9. Se även avsnitt 8 för de
+nginx-`proxy_set_header`-rader som `KC_PROXY_HEADERS=xforwarded`
+i override:n nedan kräver för att fungera.
+
 För SELinux behöver bind-mounten i `docker-compose.idp.yml`
-relabel-flaggan `Z`. Det är en **map-värdes**-override (samma
-volume-target ersätts) och kan därför läggas i en lokal
-`docker-compose.idp.override.yml` i `~/Kravhantering/`:
+relabel-flaggan `Z`, och Keycloak måste få veta sin publika
+bas-URL plus att TLS termineras av en uppströms reverse proxy.
+Båda läggs i en lokal `docker-compose.idp.override.yml` i
+`~/Kravhantering/`:
 
 ```yaml
 services:
   idp:
+    environment:
+      KC_HOSTNAME: ${KC_HOSTNAME}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
     volumes:
       - ./dev/keycloak:/opt/keycloak/data/import:ro,Z
 ```
@@ -947,8 +965,17 @@ services:
 Podman Compose plockar upp `docker-compose.idp.override.yml`
 automatiskt om filen ligger bredvid huvudfilen. `:Z` SELinux-relabelar
 bind-mounten så att containern får läsa `realm-kravhantering-dev.json`.
-Någon `docker-compose.sqlserver.override.yml` behövs **inte**, eftersom
-loopback-bindningen för `db` styrs helt via `SQLSERVER_HOST_PORT`.
+`KC_HOSTNAME` (interpoleras från `.env.idp` när compose anropas med
+`--env-file .env.idp` i avsnitt 10) säger åt Keycloak att annonsera
+`https://<POC_HOST>/auth` som sin publika bas-URL i
+`/.well-known/openid-configuration` (`issuer`, `authorization_endpoint`,
+…). `KC_PROXY_HEADERS=xforwarded` får Keycloak att lita på
+`X-Forwarded-Proto: https` från nginx (utan den genererar Keycloak
+`http://`-URL:er trots TLS-termering på 443), och `KC_HTTP_ENABLED=true`
+behövs eftersom Keycloak själv pratar plain HTTP på `127.0.0.1:8080`
+bakom proxyn. Någon `docker-compose.sqlserver.override.yml` behövs
+**inte**, eftersom loopback-bindningen för `db` styrs helt via
+`SQLSERVER_HOST_PORT`.
 
 ## 8. Reverse proxy som låg-privilegierad TLS-termering
 
@@ -1400,7 +1427,7 @@ npm ci
 # 2. Förbered env-filer
 cp .env.sqlserver.example .env.sqlserver
 $EDITOR .env.sqlserver           # MSSQL_SA_PASSWORD + SQLSERVER_HOST_PORT (se 7.2)
-$EDITOR .env.idp                 # KEYCLOAK_HOST_PORT=127.0.0.1:8080 (se 7.2)
+$EDITOR .env.idp                 # KEYCLOAK_HOST_PORT + KC_HOSTNAME (se 7.2)
 $EDITOR .env.prodlike.local      # se avsnitt 9
 
 # 3. Starta SQL Server och Keycloak (Podman tar docker-compose-syntax)
