@@ -406,8 +406,31 @@ Installera sedan Node.js 24:
 
 ```bash
 sudo dnf install -y nodejs24 nodejs24-npm
-node --version   # ska visa v24.x
-npm --version
+```
+
+`nodejs24`-paketet installerar binärerna som `node-24`, `npm-24` och
+`npx-24` under `/usr/bin/`. För att de oversionerade kommandona `node`,
+`npm` och `npx` ska peka på version 24 måste de registreras och väljas
+via `alternatives`:
+
+<!-- cspell:ignore alternatives oversionerade -->
+
+```bash
+sudo alternatives --install /usr/bin/node node /usr/bin/node-24 2400
+sudo alternatives --install /usr/bin/npm  npm  /usr/bin/npm-24  2400
+sudo alternatives --install /usr/bin/npx  npx  /usr/bin/npx-24  2400
+
+sudo alternatives --set node /usr/bin/node-24
+sudo alternatives --set npm  /usr/bin/npm-24
+sudo alternatives --set npx  /usr/bin/npx-24
+
+# Töm bash-kommandocachen så att den nya sökvägen plockas upp
+# i samma session
+hash -r
+
+node --version   # ska visa v24.x, t.ex. v24.14.1
+npm --version    # ska visa 11.x, t.ex. 11.11.0
+npx --version    # ska visa samma version som npm
 ```
 
 Om `nodejs24` inte finns i din kanal (t.ex. på en arkitektur där det inte
