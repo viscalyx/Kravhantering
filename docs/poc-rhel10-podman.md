@@ -70,6 +70,8 @@ Se även:
 - [9. Justeringar i `.env.prodlike`](#9-justeringar-i-envprodlike)
 - [10. Starta PoC:n](#10-starta-poc)
 - [11. Persistens efter omstart (frivilligt men rekommenderat)](#11-persistens-efter-omstart-frivilligt-men-rekommenderat)
+  - [11.1 Kör Next.js-appen som en systemd user-tjänst](#111-kör-nextjs-appen-som-en-systemd-user-tjänst)
+  - [11.2 Containrar (db, idp) via Quadlet](#112-containrar-db-idp-via-quadlet)
 - [12. Sammanfattning av låg-privilegierings-vinster](#12-sammanfattning-av-låg-privilegierings-vinster)
 - [13. Beställningar till andra roller](#13-beställningar-till-andra-roller)
   - [13.1 Beställs hos serverdrift / virtualiseringsdrift](#131-beställs-hos-serverdrift--virtualiseringsdrift)
@@ -1471,26 +1473,97 @@ och att `curl -v telnet://<publik-ip>:1433` och `:8080` ger
 ## 11. Persistens efter omstart (frivilligt men rekommenderat)
 
 > **Användare:** Kör som `kravhantering` (växla först enligt
-> [3.1](#31-byta-till-kravhantering-användaren)). Quadlet-units läggs
-> under `~/.config/containers/systemd/` och hanteras med
+> [3.1](#31-byta-till-kravhantering-användaren)). Användartjänster
+> läggs under `~/.config/systemd/user/` (vanliga `.service`-filer) eller
+> `~/.config/containers/systemd/` (Quadlet) och hanteras med
 > `systemctl --user` — alltså utan `sudo`. `loginctl enable-linger`
-> är redan satt i avsnitt 3 av admin-kontot.
+> är redan satt i avsnitt 3 av admin-kontot, vilket gör att tjänsterna
+> körs även när ingen användare är inloggad via SSH.
 
-För att containrar och Next.js-processen ska starta om efter
-serverns omstart, generera systemd-användartjänster (Quadlet är det
-moderna alternativet i RHEL 10):
+### 11.1 Kör Next.js-appen som en systemd user-tjänst
+
+Verifiera först att linger är aktiverat för `kravhantering` (det
+sattes i avsnitt 3); annars stoppas tjänsten när SSH-sessionen
+avslutas:
+
+```bash
+loginctl show-user kravhantering -p Linger
+# Förväntat: Linger=yes
+```
+
+Skapa unit-filen
+`~/.config/systemd/user/kravhantering-app.service`. Den kör samma
+`npx dotenv -e .env.prodlike.local -- npm run start:prodlike`-rad som
+i avsnitt 10, men under systemd så att processen lever vidare när
+SSH-sessionen avslutas och startas om automatiskt vid serverns
+omstart (förutsatt att linger är aktivt):
+
+```ini
+[Unit]
+Description=Kravhantering Next.js (prodlike PoC)
+# Vänta in nät och de rootless containrar som appen pratar med.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Kravhantering
+# /usr/bin krävs för npx/node (alternatives → node-24, se 2.2),
+# %h/.local/bin krävs för podman-compose (se 7.1).
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# dotenv-cli (devDependency, installeras av `npm ci` i avsnitt 10)
+# lägger .env.prodlike.local ovanpå .env.prodlike — exakt samma
+# layering som det manuella start-kommandot i avsnitt 10.
+ExecStart=/usr/bin/npx dotenv -e .env.prodlike.local -- npm run start:prodlike
+Restart=on-failure
+RestartSec=5
+# Förläng om appen behöver längre tid för första bygget.
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
+```
+
+Aktivera och starta tjänsten:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now kravhantering-app.service
+
+# Verifiera
+systemctl --user status kravhantering-app.service
+journalctl --user -u kravhantering-app.service -f
+```
+
+`enable --now` startar tjänsten direkt och säkerställer att den
+startas automatiskt vid serverns omstart. Eftersom linger är aktivt
+körs tjänsten även när `kravhantering` inte är inloggad — du kan
+logga ut SSH-sessionen och appen fortsätter köra.
+
+För att stoppa eller starta om appen utan att logga in som root:
+
+```bash
+systemctl --user restart kravhantering-app.service
+systemctl --user stop    kravhantering-app.service
+```
+
+### 11.2 Containrar (db, idp) via Quadlet
+
+För att även SQL Server- och Keycloak-containrarna ska starta
+automatiskt vid omstart, lägg motsvarande Quadlet-units (det moderna
+alternativet i RHEL 10) under `~/.config/containers/systemd/`:
 
 ```bash
 mkdir -p ~/.config/containers/systemd
-# Lägg .container/.kube-filer för db, idp och en .service för Next.js
+# Lägg .container/.kube-filer för db och idp här.
 systemctl --user daemon-reload
 systemctl --user enable --now kravhantering-db.service
 systemctl --user enable --now kravhantering-idp.service
-systemctl --user enable --now kravhantering-app.service
 ```
 
-Eftersom `loginctl enable-linger` är satt (avsnitt 3) körs dessa
-även när ingen är inloggad.
+Lägg `After=kravhantering-db.service kravhantering-idp.service` (och
+matchande `Wants=`) i `kravhantering-app.service` om du vill att
+appen ska vänta in containrarna vid boot.
 
 ## 12. Sammanfattning av låg-privilegierings-vinster
 

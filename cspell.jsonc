@@ -19,6 +19,7 @@
     "focusable",
     "healthcheck",
     "HSTS",
+    "journalctl",
     "matchstr",
     "matchtype",
     "nohup",
