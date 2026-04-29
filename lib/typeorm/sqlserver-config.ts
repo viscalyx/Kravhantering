@@ -66,6 +66,41 @@ function isSqlServerUrl(value: string): boolean {
   return value.startsWith('mssql://') || value.startsWith('sqlserver://')
 }
 
+/**
+ * Returns true when the given hostname is an IPv4 or IPv6 literal.
+ * Implemented with regex so this module remains safe to evaluate in the
+ * browser bundle (no `node:net` import).  RFC 6066 forbids IP addresses as
+ * TLS SNI values; tedious otherwise emits Node's DEP0123 warning.
+ */
+function isIpLiteral(hostname: string): boolean {
+  if (!hostname) {
+    return false
+  }
+  // IPv4 dotted-quad
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+    return true
+  }
+  // IPv6 (including bracketed and zone-id forms).  The URL parser strips
+  // brackets, but be defensive in case the raw env value still includes them.
+  const stripped = hostname.replace(/^\[/, '').replace(/\]$/, '')
+  return stripped.includes(':')
+}
+
+function isIpHost(env: SqlServerRuntimeEnv, urlString?: string): boolean {
+  const host = env.DB_HOST?.trim()
+  if (host) {
+    return isIpLiteral(host)
+  }
+  if (urlString) {
+    try {
+      return isIpLiteral(new URL(urlString).hostname)
+    } catch {
+      return false
+    }
+  }
+  return false
+}
+
 function getExplicitSqlServerDatabaseUrl(
   env: SqlServerRuntimeEnv = process.env,
   readonly = false,
@@ -177,6 +212,16 @@ export function buildSqlServerDataSourceOptions(
         env.DB_TRUST_SERVER_CERTIFICATE,
         false,
       ),
+      // When the host is an IP address, override the TLS SNI servername so
+      // tedious does not pass the IP literal to `tls.connect`.  RFC 6066
+      // forbids IP addresses as SNI values, and Node.js otherwise emits
+      // DEP0123.  Tedious uses a truthy-check on `serverName`, so an empty
+      // string is not enough — we substitute "localhost", which is safe
+      // because `trustServerCertificate` is required for IP-based dev/test
+      // connections anyway.
+      ...(isIpHost(env, url)
+        ? ({ serverName: 'localhost' } as Record<string, unknown>)
+        : {}),
     },
   }
 }
