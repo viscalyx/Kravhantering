@@ -870,6 +870,9 @@ describe('RequirementDetailClient', () => {
 
   it('renders the empty modal state when the requirement request fails', async () => {
     const onClose = vi.fn()
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
 
     vi.stubGlobal(
       'fetch',
@@ -882,6 +885,29 @@ describe('RequirementDetailClient', () => {
 
     fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('renders the empty modal state when the requirement request rejects', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('Network down')
+      }),
+    )
+
+    renderSubject({ onClose: vi.fn() })
+
+    expect(await screen.findByText('No results')).toBeInTheDocument()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 
   it('closes the full-page detail modal when Escape is pressed inside it', async () => {
@@ -1021,6 +1047,38 @@ describe('RequirementDetailClient', () => {
       'title',
       'requirement.restoreBlockedByPendingWork',
     )
+  })
+
+  it('allows editing published content when pending work is not above the published version', async () => {
+    const requirement = makeRequirement([
+      makeVersion(3, {
+        description: 'Published description',
+        publishedAt: '2026-03-03',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+      makeVersion(2, {
+        description: 'Older draft description',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject()
+
+    expect(await screen.findByText('Published description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/requirements/REQ-123/edit',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Edit' }),
+    ).not.toBeInTheDocument()
   })
 
   it('initiates archiving review and stays on page after confirmation', async () => {
@@ -1629,6 +1687,24 @@ describe('RequirementDetailClient', () => {
     )
 
     await userEvent.click(addToPackageButton)
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'package.addToPackage',
+    })
+    expect(dialog).toHaveAttribute(
+      'aria-labelledby',
+      'add-to-package-dialog-title',
+    )
+    const heading = screen.getByRole('heading', {
+      name: 'package.addToPackage',
+    })
+    expect(heading).toHaveAttribute('id', 'add-to-package-dialog-title')
+    const panel = dialog.querySelector('[role="document"]')
+    if (!panel) {
+      throw new Error('Expected add-to-package dialog document panel')
+    }
+    expect(panel).toHaveClass('max-h-[calc(100vh-2rem)]')
+    expect(panel).toHaveClass('overflow-y-auto')
 
     expect(
       await screen.findByRole('button', {

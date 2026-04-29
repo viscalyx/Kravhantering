@@ -829,7 +829,7 @@ export default function RequirementDetailClient({
                   />
                 )}
 
-              {isPackageItemContext ? (
+              {isPackageItemContext && packageItemId != null && packageSlug ? (
                 <PackageDeviationRail
                   detailContext={detailContext}
                   locale={locale}

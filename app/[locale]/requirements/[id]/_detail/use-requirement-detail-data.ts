@@ -27,17 +27,39 @@ export function useRequirementDetailData({
 
   const refreshRequirement = useCallback(async () => {
     if (!hasDataRef.current) setLoading(true)
-    const res = await apiFetch(`/api/requirements/${requirementId}`)
-    if (res.ok) {
+    try {
+      const res = await apiFetch(`/api/requirements/${requirementId}`)
+      if (!res.ok) {
+        console.error(
+          'Failed to load requirement detail:',
+          res.statusText || res.status,
+        )
+        setRequirement(null)
+        return
+      }
       setRequirement((await res.json()) as RequirementDetailResponse)
       hasDataRef.current = true
+    } catch (error) {
+      console.error('Failed to load requirement detail:', error)
+      setRequirement(null)
+      hasDataRef.current = false
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [requirementId])
 
   const fetchTransitions = useCallback(async (statusId: number) => {
-    const res = await apiFetch('/api/requirement-statuses')
-    if (res.ok) {
+    try {
+      const res = await apiFetch('/api/requirement-statuses')
+      if (!res.ok) {
+        console.error(
+          'Failed to load requirement statuses:',
+          res.statusText || res.status,
+        )
+        setStatuses([])
+        setTransitions([])
+        return
+      }
       const data = (await res.json()) as {
         statuses?: StatusInfo[]
         transitions?: { fromStatus: StatusInfo; toStatus: StatusInfo }[]
@@ -47,6 +69,10 @@ export function useRequirementDetailData({
         .filter(transition => transition.fromStatus.id === statusId)
         .map(transition => transition.toStatus)
       setTransitions(allowed)
+    } catch (error) {
+      console.error('Failed to load requirement statuses:', error)
+      setStatuses([])
+      setTransitions([])
     }
   }, [])
 
@@ -58,6 +84,8 @@ export function useRequirementDetailData({
   useEffect(() => {
     if (latestStatusId !== null) {
       void fetchTransitions(latestStatusId)
+    } else {
+      setTransitions([])
     }
   }, [latestStatusId, fetchTransitions])
 

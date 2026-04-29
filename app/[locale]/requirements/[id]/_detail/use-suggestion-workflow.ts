@@ -123,15 +123,28 @@ export function useSuggestionWorkflow({
       init?: RequestInit,
       errorMessage?: string,
     ): Promise<boolean> => {
-      const res = await apiFetch(input, init)
-      if (!res.ok) {
-        const details = await readResponseMessage(res)
-        console.error('Suggestion mutation failed:', details ?? res.statusText)
-        setSuggestionError(errorMessage ?? details ?? res.statusText)
+      try {
+        const res = await apiFetch(input, init)
+        if (!res.ok) {
+          const details = await readResponseMessage(res)
+          console.error(
+            'Suggestion mutation failed:',
+            details ?? res.statusText,
+          )
+          setSuggestionError(errorMessage ?? details ?? res.statusText)
+          return false
+        }
+        await Promise.all([fetchSuggestions(), onChange?.()])
+        return true
+      } catch (caughtError) {
+        console.error('Suggestion mutation failed:', caughtError)
+        const details =
+          caughtError instanceof Error
+            ? caughtError.message
+            : String(caughtError)
+        setSuggestionError(errorMessage ?? details)
         return false
       }
-      await Promise.all([fetchSuggestions(), onChange?.()])
-      return true
     },
     [fetchSuggestions, onChange],
   )

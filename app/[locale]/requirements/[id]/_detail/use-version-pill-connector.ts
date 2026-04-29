@@ -17,9 +17,12 @@ export function useVersionPillConnector(
   const versionHistoryRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const cardEl = cardRef.current
+    const versionHistoryEl = versionHistoryRef.current
+
     function measure() {
-      const card = cardRef.current
-      const versionHistory = versionHistoryRef.current
+      const card = cardEl
+      const versionHistory = versionHistoryEl
       if (!card || !versionHistory || selectedVersionNumber === null) {
         setTriangleLeft(null)
         return
@@ -59,10 +62,10 @@ export function useVersionPillConnector(
           ? firstPill.getBoundingClientRect().top
           : 0
         for (const pill of allPills) {
-          const pillRect = pill.getBoundingClientRect()
-          if (Math.abs(pillRect.top - firstPillTop) > 4) continue
-          const pillLeft = pillRect.left - cardRect.left
-          const pillRight = pillLeft + pillRect.width
+          const pillItemRect = pill.getBoundingClientRect()
+          if (Math.abs(pillItemRect.top - firstPillTop) > 4) continue
+          const pillLeft = pillItemRect.left - cardRect.left
+          const pillRight = pillLeft + pillItemRect.width
           if (left >= pillLeft - 2 && left <= pillRight + 2) {
             const needed = left + 5 - pillLeft
             if (needed > 0) {
@@ -93,19 +96,19 @@ export function useVersionPillConnector(
       measure()
     }
     const resizeObserver = new ResizeObserver(handleResizeObserver)
-    if (versionHistoryRef.current) {
-      resizeObserver.observe(versionHistoryRef.current)
+    if (versionHistoryEl) {
+      resizeObserver.observe(versionHistoryEl)
     }
-    if (cardRef.current) {
-      resizeObserver.observe(cardRef.current)
+    if (cardEl) {
+      resizeObserver.observe(cardEl)
     }
 
     const handleMutationObserver: MutationCallback = () => {
       measure()
     }
     const mutationObserver = new MutationObserver(handleMutationObserver)
-    if (versionHistoryRef.current) {
-      mutationObserver.observe(versionHistoryRef.current, {
+    if (versionHistoryEl) {
+      mutationObserver.observe(versionHistoryEl, {
         childList: true,
         subtree: true,
       })
@@ -115,8 +118,8 @@ export function useVersionPillConnector(
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       window.removeEventListener('resize', measure)
-      if (versionHistoryRef.current) {
-        const pills = versionHistoryRef.current.querySelectorAll(
+      if (versionHistoryEl) {
+        const pills = versionHistoryEl.querySelectorAll(
           '[data-version-number]',
         ) as NodeListOf<HTMLElement>
         for (const pill of pills) {

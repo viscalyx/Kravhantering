@@ -20,6 +20,7 @@ export default function AddToPackageDialog({
   const tc = useTranslations('common')
   const tp = useTranslations('package')
   const { state } = dialog
+  const titleId = 'add-to-package-dialog-title'
 
   const helpButton = (field: string, label: string) => (
     <button
@@ -49,6 +50,7 @@ export default function AddToPackageDialog({
       {state.isOpen ? (
         <motion.div
           animate={{ opacity: 1 }}
+          aria-labelledby={titleId}
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
           exit={{ opacity: 0 }}
@@ -64,7 +66,7 @@ export default function AddToPackageDialog({
         >
           <motion.div
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
+            className="max-h-[calc(100vh-2rem)] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
             exit={{ opacity: 0, scale: 0.96 }}
             initial={{ opacity: 0, scale: 0.96 }}
             onClick={event => event.stopPropagation()}
@@ -73,7 +75,10 @@ export default function AddToPackageDialog({
             transition={{ duration: 0.16, ease: 'easeOut' }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+              <h2
+                className="text-lg font-semibold text-secondary-900 dark:text-secondary-100"
+                id={titleId}
+              >
                 {tp('addToPackage')}
               </h2>
               <button

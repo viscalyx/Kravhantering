@@ -10,8 +10,8 @@ import type { UseDeviationWorkflowResult } from './use-deviation-workflow'
 interface PackageDeviationRailProps {
   detailContext?: string
   locale: string
-  packageItemId?: number
-  packageSlug?: string
+  packageItemId: number
+  packageSlug: string
   requirementId: number | string
   riskLevel: { color: string; name: string | null } | null
   workflow: UseDeviationWorkflowResult
@@ -70,7 +70,7 @@ export default function PackageDeviationRail({
           <button
             className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/60 hover:bg-red-50 dark:hover:bg-red-950/20 min-h-[44px] min-w-[44px]"
             disabled={workflow.deviationSaving}
-            onClick={() => void workflow.handleDeleteDeviation()}
+            onClick={event => void workflow.handleDeleteDeviation(event)}
             type="button"
           >
             <Trash2 aria-hidden="true" className="h-4 w-4" />
@@ -90,7 +90,7 @@ export default function PackageDeviationRail({
           <button
             className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center"
             disabled={workflow.deviationSaving}
-            onClick={() => void workflow.handleRevertToDraft()}
+            onClick={event => void workflow.handleRevertToDraft(event)}
             type="button"
           >
             {td('revertToDraft')}

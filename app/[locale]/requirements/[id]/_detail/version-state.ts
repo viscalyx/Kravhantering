@@ -81,15 +81,19 @@ export function getRequirementVersionState(
     requirement.versions.some(version => version.archiveInitiatedAt != null) ||
     latestStatusForActions === STATUS_ARCHIVED
 
-  const hasPendingWork = requirement.versions.some(
+  const pendingVersions = requirement.versions.filter(
     version =>
       version.status === STATUS_DRAFT || version.status === STATUS_REVIEW,
   )
+  const hasPendingWork = pendingVersions.length > 0
   const publishedVersion = requirement.versions.find(
     version => version.status === STATUS_PUBLISHED,
   )
   const hasPendingWorkAbovePublished =
-    publishedVersion != null && hasPendingWork
+    publishedVersion != null &&
+    pendingVersions.some(
+      version => version.versionNumber > publishedVersion.versionNumber,
+    )
 
   const displayVersion =
     requirement.versions.find(version => version.status === STATUS_PUBLISHED) ??

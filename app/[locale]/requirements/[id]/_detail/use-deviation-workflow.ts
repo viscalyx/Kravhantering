@@ -1,4 +1,5 @@
 import { useTranslations } from 'next-intl'
+import type { MouseEvent } from 'react'
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -48,7 +49,9 @@ export interface UseDeviationWorkflowResult {
     motivation: string,
     createdBy: string,
   ) => Promise<void>
-  handleDeleteDeviation: () => Promise<void>
+  handleDeleteDeviation: (
+    event?: MouseEvent<HTMLButtonElement>,
+  ) => Promise<void>
   handleEditDeviation: (motivation: string, createdBy: string) => Promise<void>
   handleRecordDecision: (
     decision: 1 | 2,
@@ -56,7 +59,7 @@ export interface UseDeviationWorkflowResult {
     decidedBy: string,
   ) => Promise<void>
   handleRequestReview: () => Promise<void>
-  handleRevertToDraft: () => Promise<void>
+  handleRevertToDraft: (event?: MouseEvent<HTMLButtonElement>) => Promise<void>
   latestDeviation: DeviationData | null
   openCreateDialog: () => void
   openDecisionDialog: () => void
@@ -154,6 +157,8 @@ export function useDeviationWorkflow({
         } else {
           setDeviationError(deviationSaveFailed)
         }
+      } catch {
+        setDeviationError(deviationSaveFailed)
       } finally {
         setDeviationSaving(false)
       }
@@ -177,6 +182,8 @@ export function useDeviationWorkflow({
         } else {
           setDeviationError(deviationSaveFailed)
         }
+      } catch {
+        setDeviationError(deviationSaveFailed)
       } finally {
         setDeviationSaving(false)
       }
@@ -184,29 +191,36 @@ export function useDeviationWorkflow({
     [latestDeviation, fetchDeviations, deviationSaveFailed, closeDialog],
   )
 
-  const handleDeleteDeviation = useCallback(async () => {
-    if (!latestDeviation) return
-    const confirmed = await confirm({
-      message: td('deleteDeviationConfirm'),
-      title: td('deleteDeviationConfirmTitle'),
-      variant: 'danger',
-      icon: 'caution',
-    })
-    if (!confirmed) return
-    setDeviationSaving(true)
-    try {
-      const res = await apiFetch(`/api/deviations/${latestDeviation.id}`, {
-        method: 'DELETE',
+  const handleDeleteDeviation = useCallback(
+    async (event?: MouseEvent<HTMLButtonElement>) => {
+      if (!latestDeviation) return
+      const anchorEl = event?.currentTarget
+      const confirmed = await confirm({
+        message: td('deleteDeviationConfirm'),
+        title: td('deleteDeviationConfirmTitle'),
+        variant: 'danger',
+        icon: 'caution',
+        anchorEl,
       })
-      if (res.ok) {
-        await fetchDeviations()
-      } else {
+      if (!confirmed) return
+      setDeviationSaving(true)
+      try {
+        const res = await apiFetch(`/api/deviations/${latestDeviation.id}`, {
+          method: 'DELETE',
+        })
+        if (res.ok) {
+          await fetchDeviations()
+        } else {
+          setDeviationError(deviationDeleteFailed)
+        }
+      } catch {
         setDeviationError(deviationDeleteFailed)
+      } finally {
+        setDeviationSaving(false)
       }
-    } finally {
-      setDeviationSaving(false)
-    }
-  }, [latestDeviation, fetchDeviations, confirm, td, deviationDeleteFailed])
+    },
+    [latestDeviation, fetchDeviations, confirm, td, deviationDeleteFailed],
+  )
 
   const handleRequestReview = useCallback(async () => {
     if (!latestDeviation) return
@@ -221,35 +235,44 @@ export function useDeviationWorkflow({
       } else {
         setDeviationError(deviationReviewFailed)
       }
+    } catch {
+      setDeviationError(deviationReviewFailed)
     } finally {
       setDeviationSaving(false)
     }
   }, [latestDeviation, fetchDeviations, deviationReviewFailed])
 
-  const handleRevertToDraft = useCallback(async () => {
-    if (!latestDeviation) return
-    const confirmed = await confirm({
-      message: td('revertToDraftConfirm'),
-      title: td('revertToDraftConfirmTitle'),
-      variant: 'default',
-      icon: 'warning',
-    })
-    if (!confirmed) return
-    setDeviationSaving(true)
-    try {
-      const res = await apiFetch(
-        `/api/deviations/${latestDeviation.id}/revert-to-draft`,
-        { method: 'POST' },
-      )
-      if (res.ok) {
-        await fetchDeviations()
-      } else {
+  const handleRevertToDraft = useCallback(
+    async (event?: MouseEvent<HTMLButtonElement>) => {
+      if (!latestDeviation) return
+      const anchorEl = event?.currentTarget
+      const confirmed = await confirm({
+        message: td('revertToDraftConfirm'),
+        title: td('revertToDraftConfirmTitle'),
+        variant: 'default',
+        icon: 'warning',
+        anchorEl,
+      })
+      if (!confirmed) return
+      setDeviationSaving(true)
+      try {
+        const res = await apiFetch(
+          `/api/deviations/${latestDeviation.id}/revert-to-draft`,
+          { method: 'POST' },
+        )
+        if (res.ok) {
+          await fetchDeviations()
+        } else {
+          setDeviationError(deviationRevertFailed)
+        }
+      } catch {
         setDeviationError(deviationRevertFailed)
+      } finally {
+        setDeviationSaving(false)
       }
-    } finally {
-      setDeviationSaving(false)
-    }
-  }, [latestDeviation, fetchDeviations, confirm, td, deviationRevertFailed])
+    },
+    [latestDeviation, fetchDeviations, confirm, td, deviationRevertFailed],
+  )
 
   const handleRecordDecision = useCallback(
     async (decision: 1 | 2, motivation: string, decidedBy: string) => {
@@ -274,6 +297,8 @@ export function useDeviationWorkflow({
         } else {
           setDeviationError(deviationDecisionFailed)
         }
+      } catch {
+        setDeviationError(deviationDecisionFailed)
       } finally {
         setDeviationSaving(false)
       }

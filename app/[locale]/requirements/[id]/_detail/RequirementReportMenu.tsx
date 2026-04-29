@@ -6,27 +6,29 @@ import { useEffect, useRef, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { type DeviationStep, STATUS_REVIEW } from './types'
 
-interface RequirementReportMenuProps {
+interface RequirementReportMenuBaseProps {
   currentStatusId: number
   detailContext?: string
-  deviationStep?: DeviationStep | null
   locale: string
-  packageItemId?: number
-  packageSlug?: string
   requirementId: number | string
-  variant: 'package' | 'standalone'
 }
 
-export default function RequirementReportMenu({
-  currentStatusId,
-  detailContext,
-  deviationStep,
-  locale,
-  packageItemId,
-  packageSlug,
-  requirementId,
-  variant,
-}: RequirementReportMenuProps) {
+type RequirementReportMenuProps =
+  | (RequirementReportMenuBaseProps & {
+      deviationStep: DeviationStep | null
+      packageItemId: number
+      packageSlug: string
+      variant: 'package'
+    })
+  | (RequirementReportMenuBaseProps & {
+      variant: 'standalone'
+    })
+
+export default function RequirementReportMenu(
+  props: RequirementReportMenuProps,
+) {
+  const { currentStatusId, detailContext, locale, requirementId, variant } =
+    props
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
@@ -47,7 +49,7 @@ export default function RequirementReportMenu({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showReportMenu])
 
-  if (variant === 'package' && deviationStep === 'draft') {
+  if (variant === 'package' && props.deviationStep === 'draft') {
     return null
   }
 
@@ -81,13 +83,13 @@ export default function RequirementReportMenu({
       {showReportMenu && (
         <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
           {variant === 'package' ? (
-            deviationStep === 'review_requested' ? (
+            props.deviationStep === 'review_requested' ? (
               <>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   onClick={() =>
                     openReport(
-                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
+                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${props.packageSlug}&item=${props.packageItemId}`,
                     )
                   }
                   type="button"
@@ -99,7 +101,7 @@ export default function RequirementReportMenu({
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
                   onClick={() =>
                     openReport(
-                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${packageSlug}&item=${packageItemId}`,
+                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${props.packageSlug}&item=${props.packageItemId}`,
                     )
                   }
                   type="button"

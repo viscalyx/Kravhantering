@@ -109,7 +109,10 @@ export default function RequirementActionRail({
   const tp = useTranslations('package')
   const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
   const [showShareMenu, setShowShareMenu] = useState(false)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shareMenuRef = useRef<HTMLDivElement>(null)
+  const restoreDisabled =
+    hasPendingWork || selectedVersionNumberForRestore == null
 
   useEffect(() => {
     if (!showShareMenu) return
@@ -124,6 +127,15 @@ export default function RequirementActionRail({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showShareMenu])
+
+  useEffect(
+    () => () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    },
+    [],
+  )
 
   const handleShare = async (mode: 'inline' | 'page') => {
     const url = new URL(window.location.href)
@@ -143,7 +155,13 @@ export default function RequirementActionRail({
       setCopied(null)
     }
     setShowShareMenu(false)
-    setTimeout(() => setCopied(null), 2000)
+    if (copyTimeoutRef.current) {
+      clearTimeout(copyTimeoutRef.current)
+    }
+    copyTimeoutRef.current = setTimeout(() => {
+      setCopied(null)
+      copyTimeoutRef.current = null
+    }, 2000)
   }
 
   return (
@@ -236,20 +254,21 @@ export default function RequirementActionRail({
       {isViewingHistory ? (
         <>
           <button
-            className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
+            className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${restoreDisabled ? ' opacity-60 cursor-not-allowed' : ''}`}
             {...devMarker({
               context: detailContext,
               name: 'detail action',
               priority: 360,
               value: 'restore version',
             })}
-            disabled={hasPendingWork}
-            onClick={event =>
+            disabled={restoreDisabled}
+            onClick={event => {
+              if (selectedVersionNumberForRestore == null) return
               void onRestore(
-                selectedVersionNumberForRestore ?? 0,
+                selectedVersionNumberForRestore,
                 event.currentTarget,
               )
-            }
+            }}
             title={
               hasPendingWork ? t('restoreBlockedByPendingWork') : undefined
             }
@@ -427,20 +446,18 @@ export default function RequirementActionRail({
         )
       ) : (
         <button
-          className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${hasPendingWork ? ' opacity-60 cursor-not-allowed' : ''}`}
+          className={`btn-secondary inline-flex items-center gap-1.5 w-full justify-center${restoreDisabled ? ' opacity-60 cursor-not-allowed' : ''}`}
           {...devMarker({
             context: detailContext,
             name: 'detail action',
             priority: 360,
             value: 'restore version',
           })}
-          disabled={hasPendingWork}
-          onClick={event =>
-            void onRestore(
-              selectedVersionNumberForRestore ?? 0,
-              event.currentTarget,
-            )
-          }
+          disabled={restoreDisabled}
+          onClick={event => {
+            if (selectedVersionNumberForRestore == null) return
+            void onRestore(selectedVersionNumberForRestore, event.currentTarget)
+          }}
           title={hasPendingWork ? t('restoreBlockedByPendingWork') : undefined}
           type="button"
         >
