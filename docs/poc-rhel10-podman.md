@@ -1670,6 +1670,30 @@ RestartSec=5
 WantedBy=default.target
 ```
 
+Stoppa först de compose-startade containrarna (om du körde `podman
+compose ... up -d` i avsnitt 10) så att inte två kopior konkurrerar
+om port `1433`/`8080` eller volymen `sqlserver-db-data`. Volymerna är
+namngivna och ligger kvar — Quadlet-versionen återanvänder samma
+data:
+
+```bash
+cd ~/Kravhantering
+
+podman compose \
+  --env-file .env.sqlserver \
+  -f docker-compose.sqlserver.yml \
+  down
+
+podman compose \
+  --env-file .env.idp \
+  -f docker-compose.idp.yml \
+  -f docker-compose.idp.override.yml \
+  down
+
+# Verifiera att inga db/idp-containrar är kvar:
+podman ps
+```
+
 Aktivera och starta tjänsterna (Quadlet genererar
 `kravhantering-db.service` / `kravhantering-idp.service` automatiskt
 vid `daemon-reload`):
@@ -1683,6 +1707,28 @@ systemctl --user start kravhantering-idp.service
 systemctl --user status kravhantering-db.service kravhantering-idp.service
 podman ps
 ```
+
+Om `db`-containern startas mot en tom volym (t.ex. första gången
+Quadlet-versionen körs, eller om du körde `podman compose ... down -v`
+i föregående steg och därmed tog bort `sqlserver-db-data`) måste
+schemat och seed-datat läggas in igen — annars finns inte
+`Kravhantering`-databasen som applikationen ansluter till. Kör
+samma migrerings-/seed-steg som i avsnitt 10 (steg 4):
+
+```bash
+cd ~/Kravhantering
+
+# Vänta in att SQL Server svarar (Quadlet-healthcheck:en säkerställer
+# att containern är "healthy", men db:wait gör en TCP/login-koll också).
+npm run db:wait
+
+# Skapar databasen, kör migreringar och seed:ar.
+npm run db:setup
+```
+
+Volymen `sqlserver-db-data` är namngiven, så datat ligger kvar mellan
+omstarter — `db:wait` + `db:setup` behöver bara köras igen om volymen
+tagits bort eller om nya migreringar tillkommit.
 
 `[Install] WantedBy=default.target` i `.container`-filen gör att
 Quadlet startar dem automatiskt vid kommande `systemd --user`-start
