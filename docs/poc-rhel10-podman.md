@@ -350,14 +350,18 @@ sudo dnf install -y \
 På RHEL 10 finns **inte** `podman-compose` som RPM-paket i
 BaseOS/AppStream:
 
-- `podman-compose` installeras istället via pip. Kör som PoC-användaren
-  (eller den användare som ska köra `podman compose`):
-
-  ```bash
-  python3 -m pip install --user podman-compose
-  # Lägg till ~/.local/bin i PATH om det inte redan är gjort
-  echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-  ```
+- `podman-compose` installeras istället via `pip` med flaggan `--user`,
+  vilket gör att binären hamnar under `~/.local/bin/` för **just den
+  användare som körde kommandot**. Eftersom containrarna körs rootless
+  som `kravhantering` måste `podman-compose` installeras **för
+  `kravhantering`-användaren** — en `pip install --user` som körs av ditt
+  admin-konto hjälper inte `kravhantering`. Själva installationen sker
+  därför som `kravhantering` i avsnitt
+  [7.1](#71-klona-projektet-i-kravhantering-användarens-hemkatalog), när
+  `kravhantering`-användaren redan finns och du har växlat över till den
+  enligt [3.1](#31-byta-till-kravhantering-användaren). Det räcker här
+  med att system-paketet `python3-pip` redan finns på värden (det
+  installerades med `dnf install` ovan).
 
   `podman compose` (subkommandot, utan bindestreck) i Podman 5 letar
   upp `podman-compose`-binären automatiskt och översätter
@@ -863,6 +867,27 @@ till dem med relativa sökvägar):
 
 ```bash
 ls docker-compose.idp.yml docker-compose.sqlserver.yml
+```
+
+Installera även `podman-compose` för `kravhantering`-användaren — det
+är en `pip install --user`-installation som hamnar under
+`~/.local/bin/` och därför **måste köras av `kravhantering`** (en
+installation gjord av ditt admin-konto är inte tillgänglig här). Lägg
+samtidigt till `~/.local/bin` på `PATH` så att `podman compose` hittar
+binären:
+
+```bash
+python3 -m pip install --user podman-compose
+
+# Lägg till ~/.local/bin på PATH för framtida login-shells och i den
+# nuvarande sessionen
+grep -qxF 'export PATH="$HOME/.local/bin:$PATH"' ~/.bashrc \
+  || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+export PATH="$HOME/.local/bin:$PATH"
+
+# Verifiera att binären hittas och att Podman-subkommandot plockar upp den
+command -v podman-compose
+podman compose version
 ```
 
 `npm ci` körs först i avsnitt 10 — då har `.env.prodlike.local`
