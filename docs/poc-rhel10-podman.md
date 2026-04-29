@@ -17,6 +17,7 @@
 <!-- cSpell:ignore subkommandot versionerade -->
 <!-- cSpell:ignore subnät subnätet pkill -->
 <!-- cSpell:ignore servercert konfig konfigfilen extfile Acreateserial -->
+<!-- cSpell:ignore mappern tokenvalideringen committade -->
 
 Denna sida beskriver vilka förutsättningar som måste finnas på en
 **Red Hat Enterprise Linux 10**-server för att köra en enkel
@@ -1241,6 +1242,22 @@ Förväntat resultat (med `POC_HOST=kravhantering.poc.example.com`):
 Den andra klienten i realmen, `kravhantering-app`, används av
 dev-servern på port 3000/3001 och behöver inte ändras för PoC:n
 — `start:prodlike` använder bara `kravhantering-local`.
+
+**MCP-klienten (`kravhantering-mcp`) fungerar i prodlike utan
+extra åtgärder.** Den är en service-account-klient
+(`client_credentials`) utan redirect-URI:er, så den är inte beroende
+av PoC-värdnamnet. Audience-mappern på `kravhantering-mcp` sätter
+`aud=kravhantering-app` på MCP-tokens, och `.env.prodlike` sätter
+`AUTH_OIDC_API_AUDIENCE=kravhantering-app` så att tokenvalideringen i
+[`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts) accepterar dem
+även när inloggade användare går via `kravhantering-local`. Externa
+MCP-klienter hämtar token från `${AUTH_OIDC_ISSUER_URL}/protocol/openid-connect/token`
+med `client_id=kravhantering-mcp` och secret från realmen — secret-värdet
+`dev-only-mcp-secret` i den committade realmen ska bytas mot ett
+genererat värde innan PoC:n exponeras för riktiga MCP-klienter (sätt
+nytt `secret` på `kravhantering-mcp`-klienten i
+`dev/keycloak/realm-kravhantering-dev.json` med samma `jq`-mönster
+som ovan, t.ex. `... | .secret = "<nytt-värde>"`).
 
 Den uppdaterade JSON-filen läses in när `idp`-containern startas första
 gången i [10. Starta PoC:n](#10-starta-poc) — ingen `restart` behövs i
