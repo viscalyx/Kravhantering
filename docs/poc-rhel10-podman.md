@@ -1491,12 +1491,18 @@ loginctl show-user kravhantering -p Linger
 # Förväntat: Linger=yes
 ```
 
-Skapa unit-filen
-`~/.config/systemd/user/kravhantering-app.service`. Den kör samma
-`npx dotenv -e .env.prodlike.local -- npm run start:prodlike`-rad som
-i avsnitt 10, men under systemd så att processen lever vidare när
+Skapa katalogen för user-units (finns inte som standard) och därefter
+unit-filen `~/.config/systemd/user/kravhantering-app.service`. Den kör
+samma `npx dotenv -e .env.prodlike.local -- npm run start:prodlike`-rad
+som i avsnitt 10, men under systemd så att processen lever vidare när
 SSH-sessionen avslutas och startas om automatiskt vid serverns
 omstart (förutsatt att linger är aktivt):
+
+```bash
+mkdir --parents ~/.config/systemd/user
+# Skapa sedan filen, t.ex. med:
+# vi ~/.config/systemd/user/kravhantering-app.service
+```
 
 ```ini
 [Unit]
@@ -1535,6 +1541,30 @@ systemctl --user status kravhantering-app.service
 journalctl --user -u kravhantering-app.service -f
 ```
 
+> **Notis (loggar):** Om `journalctl --user -u kravhantering-app.service`
+> svarar med `No journal files were opened due to insufficient
+> permissions` (som `kravhantering`) eller `No journal files were found`
+> (som admin), saknar värden persistent journal-lagring för
+> user-tjänster — RHEL 10:s standard är volatil lagring i
+> `/run/log/journal/`, som bara är läsbar för `root` och medlemmar i
+> `systemd-journal`/`adm`/`wheel`. Aktivera persistent lagring **en
+> gång** som admin (kör som `sudo`-användaren från avsnitt 3, **inte**
+> som `kravhantering`):
+>
+> ```bash
+> sudo mkdir -p /var/log/journal
+> sudo systemd-tmpfiles --create --prefix /var/log/journal
+> sudo systemctl restart systemd-journald
+> ```
+>
+> När `kravhantering`-tjänsten skrivit nya rader efter detta fungerar
+> `journalctl --user -u kravhantering-app.service -f` direkt som
+> `kravhantering`. Som alternativ kan du följa stdout/stderr live med
+> `systemctl --user status kravhantering-app.service` (visar de senaste
+> raderna) eller lägga till `kravhantering` i `systemd-journal`-gruppen
+> (`sudo usermod -aG systemd-journal kravhantering` följt av ny
+> SSH-session) om du vill behålla volatil lagring.
+
 `enable --now` startar tjänsten direkt och säkerställer att den
 startas automatiskt vid serverns omstart. Eftersom linger är aktivt
 körs tjänsten även när `kravhantering` inte är inloggad — du kan
@@ -1551,19 +1581,128 @@ systemctl --user stop    kravhantering-app.service
 
 För att även SQL Server- och Keycloak-containrarna ska starta
 automatiskt vid omstart, lägg motsvarande Quadlet-units (det moderna
-alternativet i RHEL 10) under `~/.config/containers/systemd/`:
+alternativet i RHEL 10) under `~/.config/containers/systemd/`. Quadlet
+genererar då en `kravhantering-db.service` respektive
+`kravhantering-idp.service` per `.container`-fil och tar hand om att
+containrarna startas tillsammans med användarens systemd-instans
+(linger från avsnitt 3 håller den igång även när `kravhantering` inte
+är inloggad).
+
+> **Notis:** Quadlet-units **ersätter** `podman compose ... up -d` för
+> `db` och `idp` i avsnitt 10. Stoppa de compose-startade containrarna
+> först (`podman compose -f docker-compose.sqlserver.yml --env-file
+> .env.sqlserver down` respektive motsvarande för `idp`) så att inte
+> två kopior konkurrerar om port `1433`/`8080` eller volymen
+> `sqlserver-db-data`. Volymen är namngiven så datat ligger kvar och
+> återanvänds av Quadlet-versionen.
+
+Skapa katalogen och lägg in en fil per container:
 
 ```bash
-mkdir -p ~/.config/containers/systemd
-# Lägg .container/.kube-filer för db och idp här.
-systemctl --user daemon-reload
-systemctl --user enable --now kravhantering-db.service
-systemctl --user enable --now kravhantering-idp.service
+mkdir --parents ~/.config/containers/systemd
 ```
 
-Lägg `After=kravhantering-db.service kravhantering-idp.service` (och
-matchande `Wants=`) i `kravhantering-app.service` om du vill att
-appen ska vänta in containrarna vid boot.
+`~/.config/containers/systemd/kravhantering-db.container`:
+
+```ini
+[Unit]
+Description=Kravhantering SQL Server (prodlike PoC)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=kravhantering-db
+Image=mcr.microsoft.com/mssql/server:2022-latest
+# Loopback-bind: bara nginx/appen (lokalt) ska nå 1433.
+PublishPort=127.0.0.1:1433:1433
+# MSSQL_SA_PASSWORD läses från samma fil som compose använde i 7.2/10.
+EnvironmentFile=%h/Kravhantering/.env.sqlserver
+Environment=ACCEPT_EULA=Y
+Environment=MSSQL_PID=Developer
+# Namngiven podman-volym; Quadlet skapar den vid första start och
+# återanvänder eventuell befintlig "sqlserver-db-data" från compose.
+Volume=sqlserver-db-data:/var/opt/mssql
+HealthCmd=/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa \
+  -P "$MSSQL_SA_PASSWORD" -C -Q "SELECT 1"
+HealthInterval=5s
+HealthRetries=20
+HealthStartPeriod=10s
+HealthTimeout=5s
+
+[Service]
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+`~/.config/containers/systemd/kravhantering-idp.container`:
+
+```ini
+[Unit]
+Description=Kravhantering Keycloak IdP (prodlike PoC)
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=kravhantering-idp
+Image=quay.io/keycloak/keycloak:26.0
+# Loopback-bind: bara nginx (lokalt) ska nå 8080; allt utifrån
+# går via https://<POC_HOST>/auth/.
+PublishPort=127.0.0.1:8080:8080
+# KC_HOSTNAME läses från samma fil som compose använde i 7.2/10.
+EnvironmentFile=%h/Kravhantering/.env.idp
+Environment=KEYCLOAK_ADMIN=admin
+Environment=KEYCLOAK_ADMIN_PASSWORD=admin
+Environment=KC_HTTP_ENABLED=true
+Environment=KC_PROXY_HEADERS=xforwarded
+# Realm-import: samma bind-mount som docker-compose.idp.override.yml,
+# inkl. SELinux-relabel (:Z).
+Volume=%h/Kravhantering/dev/keycloak:/opt/keycloak/data/import:ro,Z
+Exec=start-dev --import-realm --http-port=8080
+
+[Service]
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+Aktivera och starta tjänsterna (Quadlet genererar
+`kravhantering-db.service` / `kravhantering-idp.service` automatiskt
+vid `daemon-reload`):
+
+```bash
+systemctl --user daemon-reload
+systemctl --user start kravhantering-db.service
+systemctl --user start kravhantering-idp.service
+
+# Verifiera (samma loggar som via journalctl-noten i 11.1):
+systemctl --user status kravhantering-db.service kravhantering-idp.service
+podman ps
+```
+
+`[Install] WantedBy=default.target` i `.container`-filen gör att
+Quadlet startar dem automatiskt vid kommande `systemd --user`-start
+(dvs. vid serverns omstart, tack vare linger). Något separat
+`systemctl --user enable` behövs **inte** — Quadlet-genererade
+units ligger i en transient katalog och hanteras via filerna i
+`~/.config/containers/systemd/`.
+
+Lägg sedan `After=kravhantering-db.service kravhantering-idp.service`
+(och matchande `Wants=`) i `kravhantering-app.service` (avsnitt 11.1)
+om du vill att appen ska vänta in containrarna vid boot:
+
+```ini
+[Unit]
+After=network-online.target kravhantering-db.service kravhantering-idp.service
+Wants=network-online.target kravhantering-db.service kravhantering-idp.service
+```
+
+Följ upp med `systemctl --user daemon-reload` och `systemctl --user
+restart kravhantering-app.service`.
 
 ## 12. Sammanfattning av låg-privilegierings-vinster
 
