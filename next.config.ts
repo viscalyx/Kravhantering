@@ -49,16 +49,13 @@ const buildTargetModulePathRelative = `./lib/runtime/build-target${buildTargetSu
 
 const enableDeveloperMode =
   process.env.ENABLE_DEVELOPER_MODE === 'true' || resolvedBuildTarget === 'dev'
-const developerModeCoreNoopPath = fileURLToPath(
-  new URL('./packages/developer-mode-core/src/noop.ts', import.meta.url),
-)
-const developerModeReactNoopPath = fileURLToPath(
-  new URL('./packages/developer-mode-react/src/noop.tsx', import.meta.url),
-)
-const developerModeCoreNoopPathRelative =
-  './packages/developer-mode-core/src/noop.ts'
-const developerModeReactNoopPathRelative =
-  './packages/developer-mode-react/src/noop.tsx'
+// Swap the developer-mode packages for their `/noop` subpath exports when
+// developer mode is disabled. Both Turbopack and webpack accept a package
+// specifier as the alias value, so the same string works for both bundlers
+// and resolves to the published `dist/noop.js` via the package's `exports`
+// map. Keep the two alias blocks below in sync.
+const developerModeCoreNoopSpecifier = '@viscalyx/developer-mode-core/noop'
+const developerModeReactNoopSpecifier = '@viscalyx/developer-mode-react/noop'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -91,9 +88,8 @@ const nextConfig: NextConfig = {
         : {}),
       ...(!enableDeveloperMode
         ? {
-            '@viscalyx/developer-mode-core': developerModeCoreNoopPathRelative,
-            '@viscalyx/developer-mode-react':
-              developerModeReactNoopPathRelative,
+            '@viscalyx/developer-mode-core': developerModeCoreNoopSpecifier,
+            '@viscalyx/developer-mode-react': developerModeReactNoopSpecifier,
           }
         : {}),
     },
@@ -111,9 +107,9 @@ const nextConfig: NextConfig = {
 
     if (!enableDeveloperMode) {
       config.resolve.alias['@viscalyx/developer-mode-core'] =
-        developerModeCoreNoopPath
+        developerModeCoreNoopSpecifier
       config.resolve.alias['@viscalyx/developer-mode-react'] =
-        developerModeReactNoopPath
+        developerModeReactNoopSpecifier
     }
 
     return config

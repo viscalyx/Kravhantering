@@ -1,63 +1,47 @@
 # Developer Mode extraction — final report
 
-> **Status:** Phases 1, 2, 3, and 5 are complete. **Phase 4 is
-> deferred and requires action in the new
+> **Status:** All five phases are complete. The new
 > [`viscalyx/developer-mode`](https://github.com/viscalyx/developer-mode)
-> repository before it can land here.** See the
-> [Handoff to `viscalyx/developer-mode`](#handoff-to-viscalyxdeveloper-mode)
-> section first.
+> repository owns the source and publishes the packages, and this
+> PR completes Phase 4 by consuming the published versions
+> (`@viscalyx/developer-mode-core@^0.2.1` and
+> `@viscalyx/developer-mode-react@^0.1.2`) from npm.
 
 This document records what was done to extract
 `@viscalyx/developer-mode-core` and `@viscalyx/developer-mode-react`
 out of `viscalyx/Kravhantering` into a standalone repository, and
-what still needs to happen to finish the migration.
+how the migration was finished.
 
-## Handoff to `viscalyx/developer-mode`
+## Handoff to `viscalyx/developer-mode` (closed out)
 
-The new repository has the source, tooling, CI workflows, and AI
+The new repository owns the source, tooling, CI workflows, and AI
 artifacts on its `main` branch (pushed via `git subtree split`).
-Before Kravhantering can finish Phase 4, the following must happen
-in the new repo:
+All handoff steps that were originally listed here have been
+completed:
 
-1. **Configure the `NPM_TOKEN` repository secret.** It must be an
-   automation token with publish rights to the `@viscalyx` scope.
-   `release.yml` will fail without it.
-2. **Add `@johlju` as a code owner** (already enforced by the
-   committed `.github/CODEOWNERS`) and confirm branch protection on
-   `main` requires the `CI / check` and `CI / changeset` jobs.
-3. **Add the first changeset.** Open a PR (or commit directly to
-   `main` and open a follow-up) that runs `npx changeset` and
-   selects both packages with a `minor` bump and a summary like
-   *"Initial public release of `@viscalyx/developer-mode-core` and
-   `@viscalyx/developer-mode-react`."* The committed `package.json`
-   files are already at `0.1.0`; the changeset mechanism will
-   either keep them at `0.1.0` (if the bump is decoded as the
-   initial release) or bump them — either is fine for the first
-   publish, just record the actual published version when reporting
-   back.
-4. **Merge the resulting "Version Packages" PR** that
-   `changesets/action` opens. The next push to `main` will then
-   run `npm run release` and publish both packages to npm with
+1. **`package-lock.json` generated and committed** in the new repo
+   so `actions/setup-node@v4` (`cache: npm`) and `npm ci` find a
+   lockfile.
+2. **`NPM_TOKEN` secret configured** with publish rights to the
+   `@viscalyx` scope; `release.yml` runs successfully.
+3. **`@johlju` is the code owner** (committed `.github/CODEOWNERS`);
+   branch protection on `main` requires the `CI / check` and
+   `CI / changeset` jobs.
+4. **First changeset added and "Version Packages" PR merged**, then
+   `changesets/action` published both packages to npm with
    `access: "public"`.
-5. **Verify on npm**:
+5. **Verified on npm**:
 
    ```bash
-   npm view @viscalyx/developer-mode-core version
-   npm view @viscalyx/developer-mode-react version
+   npm view @viscalyx/developer-mode-core version   # → 0.2.1
+   npm view @viscalyx/developer-mode-react version  # → 0.1.2
    ```
 
-6. **Notify Kravhantering** (or open a PR there) so Phase 4 can be
-   completed with the actual published version. The Kravhantering
-   PR will need to:
-   - Replace the `file:packages/...` entries in the root
-     `package.json` with the published semver range
-     (e.g. `"^0.1.0"`).
-   - Delete `packages/developer-mode-core/` and
-     `packages/developer-mode-react/` from Kravhantering.
-   - Remove the `@viscalyx/developer-mode-*` `paths` aliases from
-     Kravhantering's root `tsconfig.json`.
-   - Re-run `npm install`, `npm run check`, and the build to
-     confirm nothing else referenced the in-repo workspaces.
+   `@viscalyx/developer-mode-react@0.1.2` runtime-depends on
+   `@viscalyx/developer-mode-core@^0.2.1`.
+6. **Kravhantering Phase 4** is finished in this PR — see the
+   [Phase 4 section](#phase-4--kravhantering-consumes-published-packages-)
+   below.
 
 ### Optional follow-ups in the new repo
 
@@ -71,14 +55,17 @@ in the new repo:
 
 ## What was extracted
 
-Two packages, both ESM-only, version `0.1.0`, targeting Node ≥ 22:
+Two packages, both ESM-only, targeting Node ≥ 22. Initial publish
+was `0.1.x`; the current published versions are
+`@viscalyx/developer-mode-core@0.2.1` and
+`@viscalyx/developer-mode-react@0.1.2`.
 
 <!-- markdownlint-disable MD013 -->
 
 | Package | Description |
 | --- | --- |
 | `@viscalyx/developer-mode-core` | Framework-agnostic helpers, marker functions, label-derivation pipeline, copy-text and chip-label formatters. No React dependency. |
-| `@viscalyx/developer-mode-react` | React 19 provider + overlay built on the core. `react`/`react-dom` are peer deps. Depends on `@viscalyx/developer-mode-core ^0.1.0`. |
+| `@viscalyx/developer-mode-react` | React 19 provider + overlay built on the core. `react`/`react-dom` are peer deps. Depends on `@viscalyx/developer-mode-core ^0.2.1`. |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -155,13 +142,47 @@ git push git@github.com:viscalyx/developer-mode.git devmode-main:main
 103 objects, 62.50 KiB. The new repo now has the full extraction
 on its `main` branch.
 
-### Phase 4 — Kravhantering consumes published packages ⏸ deferred
+### Phase 4 — Kravhantering consumes published packages ✅
 
-Cannot complete until the new repo publishes `0.1.0` to npm. Both
-package names currently 404 on the registry. See
-[Handoff to `viscalyx/developer-mode`](#handoff-to-viscalyxdeveloper-mode)
-for the steps that unblock this phase, and the bullet list there
-for the changes Kravhantering will need to make.
+Done in this PR. Both packages are now installed from npm:
+
+- `@viscalyx/developer-mode-core@^0.2.1`
+- `@viscalyx/developer-mode-react@^0.1.2` (peer-depends on
+  `react`/`react-dom` `^19.0.0`, runtime-depends on
+  `@viscalyx/developer-mode-core@^0.2.1`)
+
+Concrete changes applied:
+
+- `package.json` — replaced `file:packages/...` entries with the
+  published semver ranges above.
+- `tsconfig.json` — removed the `@viscalyx/developer-mode-core` and
+  `@viscalyx/developer-mode-react` entries from `paths`.
+- `vitest.config.ts` — removed the two source-tree aliases; tests
+  now resolve the packages from `node_modules` like any other
+  dependency.
+- `next.config.ts` — kept the developer-mode no-op swap, but
+  switched both the Turbopack `resolveAlias` and the legacy
+  webpack `config.resolve.alias` blocks to alias each package to
+  its published `/noop` subpath export
+  (`@viscalyx/developer-mode-core/noop`,
+  `@viscalyx/developer-mode-react/noop`) instead of the deleted
+  in-repo source files.
+- Deleted `packages/developer-mode-core/`,
+  `packages/developer-mode-react/`, and the now-empty `packages/`
+  directory.
+
+Verified locally with the new lockfile:
+
+- `npm install` — resolves cleanly, two packages changed.
+- `npm run type-check` — passes.
+- `npm run lint` — passes (no errors).
+- `npm run lint:md` — passes.
+- `npm run test` — 1558 passed / 10 skipped, including
+  `tests/unit/developer-mode.test.ts`, which now imports from the
+  published `@viscalyx/developer-mode-core`.
+- `BUILD_TARGET=prod NEXT_PUBLIC_SITE_URL=… npm run build` —
+  Turbopack production build succeeds with the no-op swap
+  pointing at the published `/noop` exports.
 
 ### Phase 5 — delete `extracted/developer-mode/` from Kravhantering ✅
 
@@ -202,17 +223,23 @@ the record:
 
 ## Files changed in Kravhantering after the extraction
 
-- `extracted/developer-mode/**` — deleted.
+- `extracted/developer-mode/**` — deleted in Phase 5.
 - `.biomeignore`, `cspell.jsonc`, `.markdownlint-cli2.jsonc`,
-  `tsconfig.json`, `vitest.config.ts` — reverted the temporary
-  isolation entries that pointed at `extracted/`.
+  `tsconfig.json`, `vitest.config.ts` — Phase 5 reverted the
+  temporary isolation entries that pointed at `extracted/`.
+- `packages/developer-mode-core/`,
+  `packages/developer-mode-react/`, and the now-empty `packages/`
+  directory — deleted in Phase 4.
+- `package.json` — Phase 4 swapped the `file:packages/...` entries
+  for the published semver ranges.
+- `tsconfig.json`, `vitest.config.ts`, `next.config.ts` — Phase 4
+  removed the in-repo source aliases and updated the
+  developer-mode no-op swap to point at the packages' `/noop`
+  subpath exports.
 - `docs/developer-mode-extraction-report.md` — this report.
 
-The `packages/developer-mode-core/` and
-`packages/developer-mode-react/` workspaces and the
-`@viscalyx/developer-mode-*` consumers (`components/DeveloperModeProvider.tsx`,
-`lib/developer-mode-markers.ts`, `tests/unit/developer-mode.test.ts`,
-the `paths` aliases in `tsconfig.json`, the entries in `next.config.ts`
-and `vitest.config.ts`) are **intentionally left in place** —
-they will be removed in the Phase 4 PR once the published
-packages exist on npm.
+The `@viscalyx/developer-mode-*` consumers
+(`components/DeveloperModeProvider.tsx`,
+`lib/developer-mode-markers.ts`, `tests/unit/developer-mode.test.ts`)
+are unchanged at the call site — they now resolve to the published
+packages from `node_modules` instead of the in-repo workspaces.
