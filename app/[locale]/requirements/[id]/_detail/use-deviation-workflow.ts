@@ -108,13 +108,14 @@ export function useDeviationWorkflow({
   const deviationDecisionFailed = td('decisionFailed')
 
   const fetchDeviations = useCallback(async () => {
+    setDeviations([])
+    setDeviationError(null)
     if (!packageItemId) return
     try {
       const res = await apiFetch(
         `/api/package-item-deviations/${packageItemId}`,
       )
       if (res.ok) {
-        setDeviationError(null)
         const data = (await res.json()) as { deviations: DeviationData[] }
         setDeviations(data.deviations)
       } else {

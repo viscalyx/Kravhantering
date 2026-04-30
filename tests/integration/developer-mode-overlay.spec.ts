@@ -83,6 +83,38 @@ for (const viewport of viewports) {
       ).toBeVisible()
     })
 
+    test('exposes package report controls in developer mode', async ({
+      page,
+    }) => {
+      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+
+      const itemPanel = page.locator('[data-package-detail-list-panel="items"]')
+      await expect(itemPanel).toBeVisible()
+      await itemPanel.locator('tbody tr').first().click()
+
+      const expandedDetail = itemPanel
+        .locator('[data-expanded-detail-cell="true"]')
+        .first()
+      await expect(expandedDetail).toBeVisible()
+
+      const packageReportButton = expandedDetail
+        .locator(
+          '[data-developer-mode-name="report print button"][data-developer-mode-value="package reports"]',
+        )
+        .first()
+      await packageReportButton.scrollIntoViewIfNeeded()
+      await expect(packageReportButton).toBeVisible()
+
+      await packageReportButton.focus()
+      await page.keyboard.press('Control+Alt+Shift+H')
+      await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
+
+      await packageReportButton.hover()
+      const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
+      await expect(chip).toBeVisible()
+      await expect(chip).toContainText('report print button: package reports')
+    })
+
     test('keeps sticky table headers referenceable in developer mode', async ({
       page,
     }) => {

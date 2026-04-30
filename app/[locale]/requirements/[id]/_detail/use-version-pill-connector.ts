@@ -25,6 +25,7 @@ export function useVersionPillConnector(
       const versionHistory = versionHistoryEl
       if (!card || !versionHistory || selectedVersionNumber === null) {
         setTriangleLeft(null)
+        setConnectorHeight(null)
         return
       }
 
@@ -40,6 +41,7 @@ export function useVersionPillConnector(
       ) as HTMLElement | null
       if (!selectedPill) {
         setTriangleLeft(null)
+        setConnectorHeight(null)
         return
       }
 

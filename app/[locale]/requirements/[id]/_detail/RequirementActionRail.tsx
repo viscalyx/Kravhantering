@@ -36,6 +36,7 @@ interface RequirementActionRailProps {
   isViewingHistory: boolean
   isViewingLatest: boolean
   latestStatusForActions: number
+  latestVersionNumber?: number
   locale: string
   onApproveArchiving: (
     event?: ReactMouseEvent<HTMLButtonElement>,
@@ -89,6 +90,7 @@ export default function RequirementActionRail({
   isViewingHistory,
   isViewingLatest,
   latestStatusForActions,
+  latestVersionNumber,
   locale,
   onApproveArchiving,
   onArchive,
@@ -113,6 +115,7 @@ export default function RequirementActionRail({
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const restoreDisabled =
     hasPendingWork || selectedVersionNumberForRestore == null
+  const backToLatestVersionNumber = displayVersionNumber ?? latestVersionNumber
 
   useEffect(() => {
     if (!showShareMenu) return
@@ -285,7 +288,11 @@ export default function RequirementActionRail({
               priority: 360,
               value: 'back to latest',
             })}
-            onClick={() => onVersionSelect(displayVersionNumber ?? 1)}
+            disabled={backToLatestVersionNumber == null}
+            onClick={() => {
+              if (backToLatestVersionNumber == null) return
+              onVersionSelect(backToLatestVersionNumber)
+            }}
             type="button"
           >
             {t('backToLatest')}

@@ -853,6 +853,7 @@ export default function RequirementDetailClient({
                   isViewingHistory={isViewingHistory}
                   isViewingLatest={isViewingLatest}
                   latestStatusForActions={latestStatusForActions}
+                  latestVersionNumber={latest?.versionNumber}
                   locale={locale}
                   onApproveArchiving={handleApproveArchiving}
                   onArchive={handleArchive}

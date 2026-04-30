@@ -66,7 +66,12 @@ export default function RequirementReportMenu(
           priority: 290,
           value: 'reports',
         })
-      : {}
+      : devMarker({
+          context: detailContext,
+          name: 'report print button',
+          priority: 290,
+          value: 'package reports',
+        })
 
   return (
     <div className="relative" ref={reportMenuRef}>
@@ -87,6 +92,12 @@ export default function RequirementReportMenu(
               <>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 295,
+                    value: 'print deviation review',
+                  })}
                   onClick={() =>
                     openReport(
                       `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${props.packageSlug}&item=${props.packageItemId}`,
@@ -99,6 +110,12 @@ export default function RequirementReportMenu(
                 </button>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 296,
+                    value: 'download deviation review pdf',
+                  })}
                   onClick={() =>
                     openReport(
                       `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${props.packageSlug}&item=${props.packageItemId}`,
@@ -114,6 +131,12 @@ export default function RequirementReportMenu(
               <>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 295,
+                    value: 'print history',
+                  })}
                   onClick={() =>
                     openReport(
                       `/${locale}/requirements/reports/print/history/${requirementId}`,
@@ -126,6 +149,12 @@ export default function RequirementReportMenu(
                 </button>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 296,
+                    value: 'download history pdf',
+                  })}
                   onClick={() =>
                     openReport(
                       `/${locale}/requirements/reports/pdf/history/${requirementId}`,
@@ -139,6 +168,12 @@ export default function RequirementReportMenu(
                 <div className="border-t border-secondary-200 dark:border-secondary-700 my-1" />
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 299,
+                    value: 'print suggestion history',
+                  })}
                   onClick={() =>
                     openReport(
                       `/${locale}/requirements/reports/print/suggestion-history/${requirementId}`,
@@ -151,6 +186,12 @@ export default function RequirementReportMenu(
                 </button>
                 <button
                   className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+                  {...devMarker({
+                    context: detailContext,
+                    name: 'report option',
+                    priority: 300,
+                    value: 'download suggestion history pdf',
+                  })}
                   onClick={() =>
                     openReport(
                       `/${locale}/requirements/reports/pdf/suggestion-history/${requirementId}`,

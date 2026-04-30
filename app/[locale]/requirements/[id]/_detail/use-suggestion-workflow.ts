@@ -97,12 +97,13 @@ export function useSuggestionWorkflow({
   const suggestionResolutionFailed = tf('resolutionFailed')
 
   const fetchSuggestions = useCallback(async () => {
+    setSuggestionItems([])
+    setSuggestionError(null)
     try {
       const res = await apiFetch(
         `/api/requirement-suggestions/${requirementId}`,
       )
       if (res.ok) {
-        setSuggestionError(null)
         const data = (await res.json()) as { suggestions: SuggestionData[] }
         setSuggestionItems(data.suggestions)
       } else {
