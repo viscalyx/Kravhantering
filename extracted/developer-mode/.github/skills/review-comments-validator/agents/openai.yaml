@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review Comments Validator"
+  short_description: "Validate findings and defer large features"
+  default_prompt: "Use $review-comments-validator to verify each review finding against current code, fix only valid ones, and put oversized feature improvements into a planning or GitHub issue table."

@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a new export, prop, or behaviour
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target package
+      options:
+        - "@viscalyx/developer-mode-core"
+        - "@viscalyx/developer-mode-react"
+        - Both / new package
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: Sketch the export, prop, or function signature you'd add.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

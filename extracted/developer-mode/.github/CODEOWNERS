@@ -1,0 +1,5 @@
+# Code owners for viscalyx/developer-mode.
+# Each line follows the standard CODEOWNERS syntax.
+#
+# Default reviewer for everything in the repo.
+* @johlju

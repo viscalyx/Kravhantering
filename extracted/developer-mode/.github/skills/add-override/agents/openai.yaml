@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Override"
+  short_description: "Add npm override and rationale in package.json"
+  default_prompt: "Use $add-override to add or update a package override in package.json, add a matching //overrides reason, and ask for missing rationale if context is insufficient."

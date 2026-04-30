@@ -431,7 +431,8 @@
     "pnpm-lock.yaml",
     "tsconfig.tsbuildinfo",
     ".cspell.json",
-    ".cspell.jsonc"
+    ".cspell.jsonc",
+    "extracted/**"
   ],
   "ignoreRegExpList": [],
   "overrides": [
