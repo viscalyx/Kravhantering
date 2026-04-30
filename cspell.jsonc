@@ -403,7 +403,11 @@
     "refaktorisering",
     "refaktorering",
     "kodredigering",
-    "kodgenerering"
+    "kodgenerering",
+    "johlju",
+    "biomeignore",
+    "coderabbit",
+    "devmode"
   ],
   "flagWords": [],
   "ignorePaths": [
@@ -431,8 +435,7 @@
     "pnpm-lock.yaml",
     "tsconfig.tsbuildinfo",
     ".cspell.json",
-    ".cspell.jsonc",
-    "extracted/**"
+    ".cspell.jsonc"
   ],
   "ignoreRegExpList": [],
   "overrides": [

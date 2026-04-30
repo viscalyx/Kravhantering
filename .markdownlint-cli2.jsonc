@@ -13,7 +13,6 @@
     "!.github/skills/**",
     "!.github/ISSUE_TEMPLATE/**",
     "!.github/pull_request_template.md",
-    "!extracted/**",
     "!.next/**",
     "!.open-next/**",
     "!.wrangler/**",

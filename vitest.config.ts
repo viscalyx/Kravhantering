@@ -15,15 +15,12 @@ export default defineConfig({
     // Test file patterns (equivalent to Jest's testMatch)
     include: ['**/*.{spec,test}.{ts,tsx,js,jsx,mjs}'],
 
-    // Exclude Playwright integration tests, guide tests, .git, and the
-    // staged extracted/developer-mode/ sub-project (it has its own
-    // independent Vitest setup).
+    // Exclude Playwright integration tests, guide tests, and .git directory
     exclude: [
       '**/tests/integration/**',
       '**/tests/guide/**',
       '**/node_modules/**',
       '.git/**',
-      'extracted/**',
     ],
 
     reporters: [
