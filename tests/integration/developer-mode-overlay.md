@@ -6,8 +6,8 @@
 This suite verifies the developer-mode overlay feature: the keyboard shortcut
 that activates it, the hover chip that appears over annotated elements, the
 clipboard copy behaviour, and the persistence of developer mode across client-
-side navigation. It also confirms that sticky table headers remain annotated
-and referenceable after the user has scrolled down.
+side navigation. It also confirms that package-context report controls and
+sticky table headers remain annotated and referenceable.
 
 ## Overview Flowchart
 
@@ -23,11 +23,15 @@ flowchart TD
     C -- navigation --> I[Activate developer mode on /sv/requirements]
     I --> J[Navigate to /sv/admin]
     J --> K[Assert badge and chip survive navigation]
-    C -- sticky header --> L[Expand INT0001 and scroll down]
+    C -- package reports --> L[Open package detail and expand package item]
     L --> M[Activate developer mode]
-    M --> N[Hover sticky column header]
-    N --> O[Click chip — copy reference]
-    O --> P[Assert toast content]
+    M --> N[Hover package report control]
+    N --> O[Assert package report chip]
+    C -- sticky header --> P[Expand INT0001 and scroll down]
+    P --> Q[Activate developer mode]
+    Q --> R[Hover sticky column header]
+    R --> S[Click chip — copy reference]
+    S --> T[Assert toast content]
 ```
 
 ## Test Setup
@@ -126,6 +130,25 @@ sequenceDiagram
     U->>O: Hover edge tab
     Note over O: ✓ Chip visible on admin page
 ```
+
+## exposes package report controls in developer mode
+
+### Purpose: Package Report Reference
+
+Verifies that the report trigger inside a package-context inline requirement
+detail has a curated Developer Mode marker instead of relying on fallback
+scanning.
+
+### Step-by-Step Flow: Package Report Reference
+
+1. Navigate to `/sv/requirement-packages/ETJANSTPLATT`.
+2. Locate the package item table panel.
+3. Expand the first package item row.
+4. Find the package report trigger marked as
+   `data-developer-mode-value="package reports"`.
+5. Focus that trigger and activate Developer Mode.
+6. Hover over the package report trigger.
+7. Assert the chip contains `"report print button: package reports"`.
 
 ## keeps sticky table headers referenceable in developer mode
 

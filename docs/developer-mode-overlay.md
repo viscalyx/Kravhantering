@@ -117,6 +117,12 @@ The emitted attributes are:
 - Package-local inline details now also use the same outer inset as the
   catalog inline detail surface; this is a layout-only alignment change and
   does not add any new developer-mode markers.
+- Package-context catalog requirement details expose the package report trigger
+  as `report print button: package reports`. Its package menu entries use
+  `report option` values `print history`, `download history pdf`,
+  `print suggestion history`, `download suggestion history pdf`,
+  `print deviation review`, and `download deviation review pdf` when those
+  report paths are available.
 - Package-context catalog requirement details may expose the extra
   `detail section` values `needs reference` and `package item status` when the
   requirement is opened from `Krav i kravpaket`.

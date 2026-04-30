@@ -359,11 +359,37 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
+type RequirementDetailTestDeviation = {
+  createdAt: string
+  createdBy: string | null
+  decidedAt: string | null
+  decidedBy: string | null
+  decision: number | null
+  decisionMotivation: string | null
+  id: number
+  isReviewRequested: number
+  motivation: string
+}
+
+type RequirementDetailTestSuggestion = {
+  content: string
+  createdAt: string
+  createdBy: string | null
+  id: number
+  isReviewRequested: number
+  requirementVersionId: number | null
+  resolution: number | null
+  resolutionMotivation: string | null
+  resolvedAt: string | null
+  resolvedBy: string | null
+}
+
 function setupFetch({
   addToPackageHandler,
   archiveHandler,
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
+  deviations = [],
   initialRequirement,
   needsReferencesHandler,
   packageItemDetail,
@@ -372,6 +398,7 @@ function setupFetch({
   reactivateNextRequirement,
   restoreHandler,
   restoreNextRequirement,
+  suggestions = [],
   transitionNextRequirement,
 }: {
   addToPackageHandler?: (
@@ -381,6 +408,7 @@ function setupFetch({
   archiveHandler?: (init?: RequestInit) => Promise<Response> | Response
   deleteDraftNextRequirement?: ReturnType<typeof makeRequirement>
   deleteDraftResponse?: { deleted?: string }
+  deviations?: RequirementDetailTestDeviation[]
   initialRequirement: ReturnType<typeof makeRequirement>
   needsReferencesHandler?: (
     packageId: string,
@@ -400,6 +428,7 @@ function setupFetch({
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreHandler?: (init?: RequestInit) => Promise<Response> | Response
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
+  suggestions?: RequirementDetailTestSuggestion[]
   transitionNextRequirement?: ReturnType<typeof makeRequirement>
 }) {
   let currentRequirement = structuredClone(initialRequirement)
@@ -510,6 +539,13 @@ function setupFetch({
         )
       }
 
+      const packageItemDeviationsMatch = url.match(
+        /^\/api\/package-item-deviations\/(\d+)$/,
+      )
+      if (method === 'GET' && packageItemDeviationsMatch) {
+        return response({ deviations })
+      }
+
       const addToPackageMatch = url.match(
         /^\/api\/requirement-packages\/([^/]+)\/items$/,
       )
@@ -524,7 +560,7 @@ function setupFetch({
         url === `/api/requirement-suggestions/${currentRequirement.id}` &&
         method === 'GET'
       ) {
-        return response({ suggestions: [] })
+        return response({ suggestions })
       }
 
       throw new Error(`Unhandled fetch: ${method} ${url}`)
@@ -834,6 +870,9 @@ describe('RequirementDetailClient', () => {
 
   it('renders the empty modal state when the requirement request fails', async () => {
     const onClose = vi.fn()
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
 
     vi.stubGlobal(
       'fetch',
@@ -846,6 +885,29 @@ describe('RequirementDetailClient', () => {
 
     fireEvent.click(screen.getByRole('dialog'))
     expect(onClose).toHaveBeenCalledOnce()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
+  })
+
+  it('renders the empty modal state when the requirement request rejects', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('Network down')
+      }),
+    )
+
+    renderSubject({ onClose: vi.fn() })
+
+    expect(await screen.findByText('No results')).toBeInTheDocument()
+    expect(consoleErrorSpy).toHaveBeenCalled()
+
+    consoleErrorSpy.mockRestore()
   })
 
   it('closes the full-page detail modal when Escape is pressed inside it', async () => {
@@ -975,7 +1037,7 @@ describe('RequirementDetailClient', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Back to latest' }),
     )
-    expect(screen.getByText('Published description')).toBeInTheDocument()
+    expect(screen.getByText('Draft description')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'v1' }))
     // Restore is disabled when there's a pending draft version
@@ -985,6 +1047,38 @@ describe('RequirementDetailClient', () => {
       'title',
       'requirement.restoreBlockedByPendingWork',
     )
+  })
+
+  it('allows editing published content when pending work is not above the published version', async () => {
+    const requirement = makeRequirement([
+      makeVersion(3, {
+        description: 'Published description',
+        publishedAt: '2026-03-03',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+      makeVersion(2, {
+        description: 'Older draft description',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject()
+
+    expect(await screen.findByText('Published description')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute(
+      'href',
+      '/requirements/REQ-123/edit',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Edit' }),
+    ).not.toBeInTheDocument()
   })
 
   it('initiates archiving review and stays on page after confirmation', async () => {
@@ -1422,6 +1516,144 @@ describe('RequirementDetailClient', () => {
     )
   })
 
+  it('opens standalone report URLs with the locale prefix', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Reportable requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({ initialRequirement: requirement })
+    renderSubject()
+
+    await screen.findByText('Reportable requirement')
+    await userEvent.click(screen.getByRole('button', { name: 'common.print' }))
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'requirement.printHistoryReport',
+      }),
+    )
+
+    expect(openSpy).toHaveBeenCalledWith(
+      '/sv/requirements/reports/print/history/123',
+      '_blank',
+    )
+  })
+
+  it('opens package-context deviation review report URLs', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const requirement = makeRequirement([
+      makeVersion(1, {
+        description: 'Published package requirement',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      deviations: [
+        {
+          createdAt: '2026-03-01',
+          createdBy: 'Deviation Owner',
+          decidedAt: null,
+          decidedBy: null,
+          decision: null,
+          decisionMotivation: null,
+          id: 41,
+          isReviewRequested: 1,
+          motivation: 'Deviation under review',
+        },
+      ],
+      initialRequirement: requirement,
+    })
+    renderSubject({
+      inline: true,
+      packageItemId: 31,
+      packageSlug: 'ETJANSTPLATT',
+    })
+
+    await screen.findByText('Deviation under review')
+    await userEvent.click(screen.getByRole('button', { name: 'common.print' }))
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: 'deviation.printDeviationReviewReport',
+      }),
+    )
+
+    expect(openSpy).toHaveBeenCalledWith(
+      '/sv/requirements/reports/print/deviation-review/123?pkg=ETJANSTPLATT&item=31',
+      '_blank',
+    )
+  })
+
+  it('filters improvement suggestions to the selected requirement version', async () => {
+    const requirement = makeRequirement([
+      makeVersion(2, {
+        description: 'Draft description',
+        status: 1,
+        statusColor: '#3b82f6',
+        statusNameEn: 'Draft',
+        statusNameSv: 'Utkast',
+      }),
+      makeVersion(1, {
+        description: 'Published description',
+        publishedAt: '2026-03-01',
+        status: 3,
+        statusColor: '#22c55e',
+        statusNameEn: 'Published',
+        statusNameSv: 'Publicerad',
+      }),
+    ])
+
+    setupFetch({
+      initialRequirement: requirement,
+      suggestions: [
+        {
+          content: 'Published suggestion',
+          createdAt: '2026-03-02',
+          createdBy: 'Reviewer',
+          id: 11,
+          isReviewRequested: 0,
+          requirementVersionId: 1,
+          resolution: null,
+          resolutionMotivation: null,
+          resolvedAt: null,
+          resolvedBy: null,
+        },
+        {
+          content: 'Draft suggestion',
+          createdAt: '2026-03-03',
+          createdBy: 'Reviewer',
+          id: 12,
+          isReviewRequested: 0,
+          requirementVersionId: 2,
+          resolution: null,
+          resolutionMotivation: null,
+          resolvedAt: null,
+          resolvedBy: null,
+        },
+      ],
+    })
+    renderSubject()
+
+    expect(await screen.findByText('Published suggestion')).toBeInTheDocument()
+    expect(screen.queryByText('Draft suggestion')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'v2' }))
+
+    expect(await screen.findByText('Draft suggestion')).toBeInTheDocument()
+    expect(screen.queryByText('Published suggestion')).toBeNull()
+  })
+
   it('shows help affordances in the add-to-package dialog', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
@@ -1455,6 +1687,24 @@ describe('RequirementDetailClient', () => {
     )
 
     await userEvent.click(addToPackageButton)
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'package.addToPackage',
+    })
+    expect(dialog).toHaveAttribute(
+      'aria-labelledby',
+      'add-to-package-dialog-title',
+    )
+    const heading = screen.getByRole('heading', {
+      name: 'package.addToPackage',
+    })
+    expect(heading).toHaveAttribute('id', 'add-to-package-dialog-title')
+    const panel = dialog.querySelector('[role="document"]')
+    if (!panel) {
+      throw new Error('Expected add-to-package dialog document panel')
+    }
+    expect(panel).toHaveClass('max-h-[calc(100vh-2rem)]')
+    expect(panel).toHaveClass('overflow-y-auto')
 
     expect(
       await screen.findByRole('button', {
