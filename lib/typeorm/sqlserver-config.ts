@@ -1,4 +1,3 @@
-import { isIP } from 'node:net'
 import type { DataSource, DataSourceOptions } from 'typeorm'
 import { DataSource as TypeOrmDataSource } from 'typeorm'
 
@@ -69,18 +68,23 @@ function isSqlServerUrl(value: string): boolean {
 
 /**
  * Returns true when the given hostname is an IPv4 or IPv6 literal.
- * Delegates to Node's built-in `net.isIP`, which correctly handles IPv6
- * shorthand, embedded IPv4, and zone identifiers.  RFC 6066 forbids IP
- * addresses as TLS SNI values; tedious otherwise emits Node's DEP0123 warning.
+ * Implemented with regex / character checks so this module remains safe
+ * to evaluate in non-Node bundles (browser, Next.js Edge runtime). RFC
+ * 6066 forbids IP addresses as TLS SNI values; tedious otherwise emits
+ * Node's DEP0123 warning.
  */
 function isIpLiteral(hostname: string): boolean {
   if (!hostname) {
     return false
   }
-  // The URL parser strips brackets from IPv6 hostnames, but be
-  // defensive in case the raw env value still includes them.
+  // IPv4 dotted-quad
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+    return true
+  }
+  // IPv6 (including bracketed and zone-id forms). The URL parser strips
+  // brackets, but be defensive in case the raw env value still includes them.
   const stripped = hostname.replace(/^\[/, '').replace(/\]$/, '')
-  return isIP(stripped) !== 0
+  return stripped.includes(':')
 }
 
 function isIpHost(urlString: string): boolean {
