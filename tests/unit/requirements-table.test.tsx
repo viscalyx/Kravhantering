@@ -88,6 +88,14 @@ describe('RequirementsTable', () => {
         unobserve() {}
       },
     )
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      (callback: FrameRequestCallback): number => {
+        callback(performance.now())
+        return 0
+      },
+    )
+    vi.stubGlobal('cancelAnimationFrame', () => {})
   })
 
   afterEach(() => {
