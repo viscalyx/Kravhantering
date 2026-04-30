@@ -1,0 +1,47 @@
+{
+  "name": "@viscalyx/developer-mode-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for @viscalyx/developer-mode-core and @viscalyx/developer-mode-react",
+  "license": "MIT",
+  "author": "Viscalyx",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check --error-on-warnings --assist-enabled=false --formatter-enabled=false .",
+    "lint:fix": "biome check --write --assist-enabled=false --formatter-enabled=false .",
+    "format": "biome check --write --linter-enabled=false .",
+    "format:check": "biome check --linter-enabled=false --max-diagnostics=none .",
+    "type-check": "tsc -b",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:md:fix": "markdownlint-cli2 --fix \"**/*.md\"",
+    "check": "npm run type-check && npm run format:check && npm run lint && npm run lint:md && npm run build && npm run test",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "npm run build && changeset publish"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.9",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "happy-dom": "^20.8.9",
+    "markdownlint-cli2": "^0.15.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsdown": "^0.7.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.9"
+  }
+}

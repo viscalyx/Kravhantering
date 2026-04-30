@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true,
+    "tsBuildInfoFile": "./.tsbuildinfo",
+    "noEmit": true
+  },
+  "references": [{ "path": "../developer-mode-core" }],
+  "include": ["src/**/*", "tests/**/*", "tsdown.config.ts"]
+}

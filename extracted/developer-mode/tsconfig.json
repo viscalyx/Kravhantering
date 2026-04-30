@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/developer-mode-core" },
+    { "path": "./packages/developer-mode-react" }
+  ]
+}

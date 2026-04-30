@@ -1,0 +1,59 @@
+{
+  "name": "@viscalyx/developer-mode-react",
+  "version": "0.1.0",
+  "description": "React 19 overlay and provider for developer mode",
+  "license": "MIT",
+  "author": "Viscalyx",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./noop": {
+      "types": "./dist/noop.d.ts",
+      "import": "./dist/noop.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "type-check": "tsc -b",
+    "clean": "rimraf dist *.tsbuildinfo"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/viscalyx/developer-mode.git",
+    "directory": "packages/developer-mode-react"
+  },
+  "homepage": "https://github.com/viscalyx/developer-mode/tree/main/packages/developer-mode-react#readme",
+  "bugs": {
+    "url": "https://github.com/viscalyx/developer-mode/issues"
+  },
+  "keywords": [
+    "developer-mode",
+    "react",
+    "react-19",
+    "overlay",
+    "debugging"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@viscalyx/developer-mode-core": "^0.1.0"
+  }
+}
