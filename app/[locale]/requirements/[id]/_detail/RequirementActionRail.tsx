@@ -214,9 +214,9 @@ export default function RequirementActionRail({
           {copied ? tc('copied') : tc('share')}
         </button>
         {showShareMenu && (
-          <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
+          <div className="absolute right-0 z-20 mt-1 w-full max-w-xs rounded-xl border border-secondary-200 bg-white py-1 text-secondary-900 shadow-lg dark:border-secondary-700 dark:bg-secondary-800 dark:text-secondary-100">
             <button
-              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+              className="flex min-h-[44px] min-w-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
               {...devMarker({
                 context: detailContext,
                 name: 'share option',
@@ -234,7 +234,7 @@ export default function RequirementActionRail({
               {t('shareLinkInline')}
             </button>
             <button
-              className="flex items-center gap-2 w-full px-3 py-2 min-h-[44px] min-w-[44px] text-sm text-left hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-colors"
+              className="flex min-h-[44px] min-w-[44px] w-full items-center gap-2 px-3 py-2 text-left text-sm text-secondary-700 transition-colors hover:bg-secondary-50 hover:text-secondary-900 dark:text-secondary-100 dark:hover:bg-secondary-700 dark:hover:text-white"
               {...devMarker({
                 context: detailContext,
                 name: 'share option',
