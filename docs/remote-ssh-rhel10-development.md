@@ -4,7 +4,8 @@
 <!-- cSpell:ignore IdentitiesOnly ServerAliveInterval AddKeysToAgent -->
 <!-- cSpell:ignore UseKeychain HostName authorized_keys prodlike worktree -->
 <!-- cSpell:ignore ed25519 macos your-admin-user -->
-<!-- cSpell:ignore onepassword SSH_AUTH_SOCK -->
+<!-- cSpell:ignore onepassword SSH_AUTH_SOCK ECONNREFUSED -->
+<!-- cSpell:ignore onepassword restorecon sshconfig libcrypto journalctl -->
 
 This guide describes how to develop on the RHEL 10 server from VS Code
 Remote-SSH and run the app with `npm run dev`.
