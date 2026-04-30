@@ -1,6 +1,13 @@
 import { useTranslations } from 'next-intl'
 import type { MouseEvent } from 'react'
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
@@ -85,6 +92,7 @@ export function useSuggestionWorkflow({
   const [suggestionItems, setSuggestionItems] = useState<SuggestionData[]>([])
   const [suggestionSaving, setSuggestionSaving] = useState(false)
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
+  const suggestionFetchRequestIdRef = useRef(0)
   const [dialog, dispatchDialog] = useReducer(suggestionDialogReducer, {
     mode: 'none',
   })
@@ -97,19 +105,26 @@ export function useSuggestionWorkflow({
   const suggestionResolutionFailed = tf('resolutionFailed')
 
   const fetchSuggestions = useCallback(async () => {
+    const requestId = ++suggestionFetchRequestIdRef.current
+    const isLatestRequest = () =>
+      requestId === suggestionFetchRequestIdRef.current
+
     setSuggestionItems([])
     setSuggestionError(null)
     try {
       const res = await apiFetch(
         `/api/requirement-suggestions/${requirementId}`,
       )
+      if (!isLatestRequest()) return
       if (res.ok) {
         const data = (await res.json()) as { suggestions: SuggestionData[] }
+        if (!isLatestRequest()) return
         setSuggestionItems(data.suggestions)
       } else {
         setSuggestionError(suggestionFetchFailed)
       }
     } catch {
+      if (!isLatestRequest()) return
       setSuggestionError(suggestionFetchFailed)
     }
   }, [requirementId, suggestionFetchFailed])

@@ -144,6 +144,89 @@ describe('useDeviationWorkflow', () => {
     )
     expect(result.current.latestDeviation).toBeNull()
   })
+
+  it('ignores stale deviation responses after a newer package item fetch wins', async () => {
+    const firstFetch = createDeferred<Response>()
+    const secondFetch = createDeferred<Response>()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/package-item-deviations/1') {
+        return firstFetch.promise
+      }
+      if (url === '/api/package-item-deviations/2') {
+        return secondFetch.promise
+      }
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result, rerender } = renderHook(
+      ({ packageItemId }: { packageItemId: number }) =>
+        useDeviationWorkflow({
+          isPackageItemContext: true,
+          packageItemId,
+        }),
+      {
+        initialProps: { packageItemId: 1 },
+        wrapper,
+      },
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/package-item-deviations/1'),
+    )
+
+    rerender({ packageItemId: 2 })
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/package-item-deviations/2'),
+    )
+
+    await act(async () => {
+      secondFetch.resolve(
+        response({
+          deviations: [
+            {
+              createdAt: '2026-03-02',
+              createdBy: 'Owner',
+              decidedAt: null,
+              decidedBy: null,
+              decision: null,
+              decisionMotivation: null,
+              id: 22,
+              isReviewRequested: 1,
+              motivation: 'New package deviation',
+            },
+          ],
+        }),
+      )
+    })
+
+    await waitFor(() => expect(result.current.latestDeviation?.id).toBe(22))
+
+    await act(async () => {
+      firstFetch.resolve(
+        response({
+          deviations: [
+            {
+              createdAt: '2026-03-01',
+              createdBy: 'Owner',
+              decidedAt: null,
+              decidedBy: null,
+              decision: null,
+              decisionMotivation: null,
+              id: 11,
+              isReviewRequested: 0,
+              motivation: 'Old package deviation',
+            },
+          ],
+        }),
+      )
+    })
+
+    expect(result.current.latestDeviation?.id).toBe(22)
+    expect(result.current.deviationError).toBeNull()
+  })
 })
 
 describe('useSuggestionWorkflow', () => {
@@ -210,6 +293,95 @@ describe('useSuggestionWorkflow', () => {
       ),
     )
     expect(result.current.versionSuggestionItems).toHaveLength(0)
+  })
+
+  it('ignores stale suggestion responses after a newer requirement fetch wins', async () => {
+    const firstFetch = createDeferred<Response>()
+    const secondFetch = createDeferred<Response>()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/requirement-suggestions/1') {
+        return firstFetch.promise
+      }
+      if (url === '/api/requirement-suggestions/2') {
+        return secondFetch.promise
+      }
+      throw new Error(`Unhandled fetch: ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result, rerender } = renderHook(
+      ({ requirementId }: { requirementId: number }) =>
+        useSuggestionWorkflow({
+          requirement: makeRequirement(1),
+          requirementId,
+          selectedVersionNumber: 1,
+        }),
+      {
+        initialProps: { requirementId: 1 },
+        wrapper,
+      },
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-suggestions/1'),
+    )
+
+    rerender({ requirementId: 2 })
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/requirement-suggestions/2'),
+    )
+
+    await act(async () => {
+      secondFetch.resolve(
+        response({
+          suggestions: [
+            {
+              content: 'New requirement suggestion',
+              createdAt: '2026-03-02',
+              createdBy: 'Reviewer',
+              id: 22,
+              isReviewRequested: 0,
+              requirementVersionId: 1,
+              resolution: null,
+              resolutionMotivation: null,
+              resolvedAt: null,
+              resolvedBy: null,
+            },
+          ],
+        }),
+      )
+    })
+
+    await waitFor(() =>
+      expect(result.current.versionSuggestionItems).toHaveLength(1),
+    )
+    expect(result.current.versionSuggestionItems[0]?.id).toBe(22)
+
+    await act(async () => {
+      firstFetch.resolve(
+        response({
+          suggestions: [
+            {
+              content: 'Old requirement suggestion',
+              createdAt: '2026-03-01',
+              createdBy: 'Reviewer',
+              id: 11,
+              isReviewRequested: 0,
+              requirementVersionId: 1,
+              resolution: null,
+              resolutionMotivation: null,
+              resolvedAt: null,
+              resolvedBy: null,
+            },
+          ],
+        }),
+      )
+    })
+
+    expect(result.current.versionSuggestionItems[0]?.id).toBe(22)
+    expect(result.current.suggestionError).toBeNull()
   })
 })
 

@@ -115,7 +115,7 @@ export default function RequirementActionRail({
   const shareMenuRef = useRef<HTMLDivElement>(null)
   const restoreDisabled =
     hasPendingWork || selectedVersionNumberForRestore == null
-  const backToLatestVersionNumber = displayVersionNumber ?? latestVersionNumber
+  const backToLatestVersionNumber = latestVersionNumber ?? displayVersionNumber
 
   useEffect(() => {
     if (!showShareMenu) return

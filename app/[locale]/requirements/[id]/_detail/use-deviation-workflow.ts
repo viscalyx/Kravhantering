@@ -1,6 +1,13 @@
 import { useTranslations } from 'next-intl'
 import type { MouseEvent } from 'react'
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { apiFetch } from '@/lib/http/api-fetch'
 import type { DeviationData, DeviationStep } from './types'
@@ -79,6 +86,7 @@ export function useDeviationWorkflow({
   const [deviations, setDeviations] = useState<DeviationData[]>([])
   const [deviationSaving, setDeviationSaving] = useState(false)
   const [deviationError, setDeviationError] = useState<string | null>(null)
+  const deviationFetchRequestIdRef = useRef(0)
   const [dialog, dispatchDialog] = useReducer(deviationDialogReducer, {
     mode: 'none',
   })
@@ -108,6 +116,10 @@ export function useDeviationWorkflow({
   const deviationDecisionFailed = td('decisionFailed')
 
   const fetchDeviations = useCallback(async () => {
+    const requestId = ++deviationFetchRequestIdRef.current
+    const isLatestRequest = () =>
+      requestId === deviationFetchRequestIdRef.current
+
     setDeviations([])
     setDeviationError(null)
     if (!packageItemId) return
@@ -115,13 +127,16 @@ export function useDeviationWorkflow({
       const res = await apiFetch(
         `/api/package-item-deviations/${packageItemId}`,
       )
+      if (!isLatestRequest()) return
       if (res.ok) {
         const data = (await res.json()) as { deviations: DeviationData[] }
+        if (!isLatestRequest()) return
         setDeviations(data.deviations)
       } else {
         setDeviationError(deviationFetchFailed)
       }
     } catch {
+      if (!isLatestRequest()) return
       setDeviationError(deviationFetchFailed)
     }
   }, [packageItemId, deviationFetchFailed])

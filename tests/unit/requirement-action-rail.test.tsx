@@ -25,7 +25,7 @@ vi.mock('@/i18n/routing', () => ({
 }))
 
 describe('RequirementActionRail', () => {
-  it('uses the latest version prop instead of a hardcoded fallback', async () => {
+  it('prefers the latest version prop for back to latest', async () => {
     const onVersionSelect = vi.fn()
 
     render(
@@ -33,6 +33,7 @@ describe('RequirementActionRail', () => {
         canAddToPackage={false}
         currentStatusId={3}
         detailContext="requirement detail: REQ-123"
+        displayVersionNumber={3}
         hasPendingWork={false}
         hasPendingWorkAbovePublished={false}
         isArchiving={false}
@@ -64,6 +65,7 @@ describe('RequirementActionRail', () => {
     )
 
     expect(onVersionSelect).toHaveBeenCalledWith(7)
+    expect(onVersionSelect).not.toHaveBeenCalledWith(3)
     expect(onVersionSelect).not.toHaveBeenCalledWith(1)
   })
 })

@@ -1037,7 +1037,7 @@ describe('RequirementDetailClient', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Back to latest' }),
     )
-    expect(screen.getByText('Published description')).toBeInTheDocument()
+    expect(screen.getByText('Draft description')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'v1' }))
     // Restore is disabled when there's a pending draft version
