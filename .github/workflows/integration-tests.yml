@@ -211,6 +211,7 @@ jobs:
         env:
           CI: true
           PLAYWRIGHT_SKIP_WEBSERVER: '1'
+          PLAYWRIGHT_FORCE_AUTH_SETUP: '1'
           PLAYWRIGHT_BASE_URL: 'http://localhost:3001'
 
       - name: Stop pruned prod-like server
