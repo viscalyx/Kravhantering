@@ -20,6 +20,14 @@
 - `npm run test` - run tests
 - `npm run dev` - start dev server
 
+## Authenticated HTTP requests against the dev server
+
+- Never use plain `curl` against the running dev server. Every protected route returns `302 /api/auth/login`, so a bare `curl` only sees the redirect.
+- Use `scripts/dev-curl.sh` instead. It logs in once via the dev Keycloak realm (default user `ada.admin` / password `devpass`), caches the cookie jar under `.auth/<user>.cookies`, and runs `curl -b <jar>` with the args you pass.
+- Bare paths starting with `/` are resolved against `$DEV_LOGIN_BASE_URL` (default `http://localhost:3000`), so `scripts/dev-curl.sh -s /api/auth/me` works.
+- Switch user with `DEV_LOGIN_USER=rita.reviewer scripts/dev-curl.sh ...`. Switch host with `DEV_LOGIN_BASE_URL=...`. Force re-login with `node scripts/dev-login.mjs --force`. See `docs/auth-developer-workflow.md` for details.
+
+
 ## General Rules
 
 - After changes, update relevant `docs/*.md` when behavior or workflows change.
