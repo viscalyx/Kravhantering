@@ -154,7 +154,6 @@ describe('LifecycleStatusesClient', () => {
   })
 
   it('deletes with confirm', async () => {
-    const user = userEvent.setup()
     confirmMock.mockResolvedValue(true)
     render(<LifecycleStatusesClient />)
     await waitForItemsLoaded()
@@ -165,7 +164,8 @@ describe('LifecycleStatusesClient', () => {
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
     })
-    await user.click(deleteButtons[0])
+    expect(deleteButtons[0]).not.toBeDisabled()
+    fireEvent.click(deleteButtons[0])
 
     await waitFor(() => {
       expect(confirmMock).toHaveBeenCalledWith(

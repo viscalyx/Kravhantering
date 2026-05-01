@@ -88,11 +88,43 @@ describe('RequirementsTable', () => {
         unobserve() {}
       },
     )
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      (callback: FrameRequestCallback): number => {
+        const id = setTimeout(() => {
+          callback(performance.now())
+        }, 0) as unknown as number
+
+        return id
+      },
+    )
+    vi.stubGlobal('cancelAnimationFrame', (id?: number) => {
+      if (typeof id === 'number') {
+        clearTimeout(id as unknown as number)
+      }
+    })
   })
 
   afterEach(() => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
+
+  // jsdom's PointerEvent defaults `isPrimary` to false and `pointerType` to ''.
+  // Real browser pointerdown events on a mouse have `isPrimary: true`,
+  // `pointerType: 'mouse'`, `button: 0`. Production code now ignores
+  // non-primary / non-left pointers, so test events must opt in to the same
+  // shape that real input devices send.
+  function firePrimaryPointerDown(
+    target: Element,
+    init: Record<string, unknown> = {},
+  ) {
+    fireEvent.pointerDown(target, {
+      button: 0,
+      isPrimary: true,
+      pointerType: 'mouse',
+      ...init,
+    })
+  }
 
   function makeRow(overrides: Record<string, unknown> = {}) {
     return {
@@ -841,7 +873,7 @@ describe('RequirementsTable', () => {
     expect(option).toHaveAttribute('data-developer-mode-value', 'verifiable')
   })
 
-  it('keeps the floating action rail within the viewport on narrow screens', () => {
+  it('keeps the floating action rail within the viewport on narrow screens', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -876,10 +908,14 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('resize'))
     })
 
-    expect(getFloatingActionRailContainer(container)?.style.left).toBe('268px')
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.left).toBe(
+        '268px',
+      )
+    })
   })
 
-  it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', () => {
+  it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -905,7 +941,9 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('resize'))
     })
 
-    expect(getFloatingActionRailContainer(container)?.style.top).toBe('124px')
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.top).toBe('124px')
+    })
 
     setElementRect(scrollContainer, {
       bottom: 300,
@@ -919,7 +957,9 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(getFloatingActionRailContainer(container)?.style.top).toBe('80px')
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.top).toBe('80px')
+    })
 
     setElementRect(scrollContainer, {
       bottom: 60,
@@ -933,7 +973,9 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(getFloatingActionRailContainer(container)).toBeNull()
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)).toBeNull()
+    })
   })
 
   it('renders an inline top rail and sticky title bar when requested', () => {
@@ -1102,7 +1144,7 @@ describe('RequirementsTable', () => {
     ).toBe('default')
   })
 
-  it('renders the scroll-to-top pill in a separate end group after vertical scroll', () => {
+  it('renders the scroll-to-top pill in a separate end group after vertical scroll', async () => {
     const { container } = render(
       <RequirementsTable
         floatingActions={[
@@ -1146,12 +1188,14 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(getFloatingActionIds(container)).toEqual([
-      'create',
-      'columns',
-      'print',
-      'scroll-top',
-    ])
+    await waitFor(() => {
+      expect(getFloatingActionIds(container)).toEqual([
+        'create',
+        'columns',
+        'print',
+        'scroll-top',
+      ])
+    })
     const rail = getFloatingActionRail(container)
     const scrollTopGroup = document.querySelector(
       '[data-floating-action-group="scroll-top"]',
@@ -1177,7 +1221,7 @@ describe('RequirementsTable', () => {
     )
   })
 
-  it('scrolls the table back to its top anchor from the end-cap pill', () => {
+  it('scrolls the table back to its top anchor from the end-cap pill', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -1213,6 +1257,12 @@ describe('RequirementsTable', () => {
 
     act(() => {
       window.dispatchEvent(new Event('scroll'))
+    })
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-scroll-top-trigger="true"]'),
+      ).toBeTruthy()
     })
 
     const scrollTopTrigger = document.querySelector(
@@ -1863,7 +1913,7 @@ describe('RequirementsTable', () => {
     ])
     expect(tableContent?.style.width).toBe('1122px')
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
 
@@ -1891,7 +1941,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -1928,7 +1978,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -1966,7 +2016,7 @@ describe('RequirementsTable', () => {
     expect(handle).toBeTruthy()
     expect(getResizeHandleLeft(container, 'description')).toBe('510px')
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100, pointerId: 1 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(window, { clientX: 132, pointerId: 2 })
     fireEvent.pointerUp(window, { clientX: 132, pointerId: 2 })
     fireEvent.pointerCancel(window, { clientX: 132, pointerId: 2 })
@@ -2007,7 +2057,7 @@ describe('RequirementsTable', () => {
     expect(getResizeHandleLeft(container, 'description')).toBe('510px')
     expect(getResizeHandleLeft(container, 'area')).toBe('646px')
 
-    fireEvent.pointerDown(descriptionHandle as Element, { clientX: 100 })
+    firePrimaryPointerDown(descriptionHandle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -2069,7 +2119,7 @@ describe('RequirementsTable', () => {
       Number.parseInt(bottomSegment?.style.height ?? '0', 10),
     ).toBeLessThanOrEqual(48)
 
-    fireEvent.pointerDown(bottomSegment as Element, { clientX: 100 })
+    firePrimaryPointerDown(bottomSegment as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
 
@@ -2120,7 +2170,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment?.className).not.toContain('min-h-[44px]')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
 
-    fireEvent.pointerDown(bottomSegment as Element, {
+    firePrimaryPointerDown(bottomSegment as Element, {
       clientX: 100,
       pointerId: 1,
     })
@@ -2169,7 +2219,7 @@ describe('RequirementsTable', () => {
     expect(getResizeHandleLeft(container, 'description')).toBe('510px')
     expect(getResizeHandleLeft(container, 'area')).toBe('646px')
 
-    fireEvent.pointerDown(descriptionHandle as Element, { clientX: 100 })
+    firePrimaryPointerDown(descriptionHandle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -2205,7 +2255,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 164 })
     fireEvent.pointerUp(window, { clientX: 164 })
@@ -2240,7 +2290,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 132 })
@@ -2288,7 +2338,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 76 })
     fireEvent.pointerMove(window, { clientX: 164 })
@@ -2309,7 +2359,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 68 })
     fireEvent.pointerUp(window, { clientX: 68 })
 
