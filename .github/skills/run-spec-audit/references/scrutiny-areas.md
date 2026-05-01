@@ -190,7 +190,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 14. Reference Data Behavioral Contracts
+## 15. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/package-implementation-types.ts`,
@@ -205,7 +205,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 15. AI Generation Contracts
+## 16. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.
