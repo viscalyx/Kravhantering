@@ -161,6 +161,23 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 10"`
 
+## 14. Two-Step Archiving Atomicity And Strict Targeting — Scenario 12
+
+- **Code:** `lib/dal/requirements.ts` — `initiateArchiving`,
+  `approveArchiving`, `cancelArchiving` (`SERIALIZABLE` transactions
+  with `UPDLOCK, HOLDLOCK` precondition reads, conditional `UPDATE`
+  with row-count guard, strict-target filter on
+  `archive_initiated_at IS NOT NULL`).
+- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+  "Two-Step Archiving"]`
+- **Question:** Are concurrent archiving attempts serialized so at
+  most one succeeds, and do approve/cancel only ever target the
+  version with `archive_initiated_at` set (never a newer
+  Draft/Review)?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 12"`
+
 ## Maintenance
 
 This file must stay in sync with `tests/quality/QUALITY.md`:
@@ -173,7 +190,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 14. Reference Data Behavioral Contracts
+## 15. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/package-implementation-types.ts`,
@@ -188,7 +205,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 15. AI Generation Contracts
+## 16. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.

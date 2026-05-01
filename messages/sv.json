@@ -138,6 +138,7 @@
     "statusLabel": {
       "Utkast": "Utkast",
       "Granskning": "Granskning",
+      "Arkiveringsgranskning": "Arkiveringsgranskning",
       "Publicerad": "Publicerad",
       "Arkiverad": "Arkiverad"
     },

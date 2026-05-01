@@ -60,13 +60,81 @@ process — it cannot be archived directly:
 2. **Approve archiving** (`approveArchiving`) — moves the
    version from Review to Archived, sets `archived_at`,
    clears `archive_initiated_at`, and marks
-   `requirements.is_archived = true`.
+   `requirements.is_archived = true`. This operates **only
+   on the single version that has `archive_initiated_at`
+   set** (the formerly-published version). A newer Draft
+   or Review version that may exist for the same
+   requirement is never the target and can never be
+   archived through this flow.
 3. **Cancel archiving** (`cancelArchiving`) — returns the
    version to Published, clears `archive_initiated_at`.
-   The original `published_at` is preserved.
+   The original `published_at` is preserved. Like
+   `approveArchiving`, this targets only the version with
+   `archive_initiated_at` set; a newer Draft or Review
+   version is never affected.
+
+All three operations run inside a single `SERIALIZABLE`
+transaction with locked precondition reads and conditional
+writes, so concurrent archiving attempts on the same
+requirement are serialized: at most one succeeds and the
+others fail with a conflict error.
+
+While a version is in archiving review (status = Review
+*and* `archive_initiated_at` is set), the UI surfaces a
+distinct status badge label —
+**"Arkiveringsgranskning" / "Archiving Review"** — to
+disambiguate it from publication review. The DB row is
+unchanged (`requirement_status_id` is still 2 and
+`requirement_statuses.name_sv` is still "Granskning"); the
+override is presentation-only and lives in
+[`lib/requirements/status-label.ts`](../lib/requirements/status-label.ts).
+See [UI status labels](#ui-status-labels) below.
 
 See `version-lifecycle-dates.md` for detailed timestamp
 rules.
+
+## UI status labels
+
+The status badge in the requirements list, the version
+history sidebar, and other UI surfaces derives its label
+from a requirement-level effective status combined with
+`requirement_versions.archive_initiated_at` (relevant for
+Review only). For the requirements list view the effective
+status is computed server-side by `EFFECTIVE_STATUS_SQL` in
+[`lib/dal/requirements.ts`](../lib/dal/requirements.ts),
+which consolidates each requirement's
+`requirement_versions.requirement_status_id` rows into a
+single status; for the version history sidebar each row's
+own `requirement_status_id` is used directly. In both cases
+the displayed row's `archive_initiated_at` is what
+distinguishes "Granskning" from "Arkiveringsgranskning":
+
+<!-- markdownlint-disable MD013 -->
+
+| UI label (sv / en) | `requirement_status_id` | Extra predicate | DB `requirement_statuses.name_sv` / `name_en` |
+| --- | --- | --- | --- |
+| Utkast / Draft | 1 (`STATUS_DRAFT`) | — | Utkast / Draft |
+| Granskning / Review | 2 (`STATUS_REVIEW`) | `archive_initiated_at IS NULL` | Granskning / Review |
+| Arkiveringsgranskning / Archiving Review | 2 (`STATUS_REVIEW`) | `archive_initiated_at IS NOT NULL` | Granskning / Review (UI overrides label only) |
+| Publicerad / Published | 3 (`STATUS_PUBLISHED`) | — | Publicerad / Published |
+| Arkiverad / Archived | 4 (`STATUS_ARCHIVED`) | — | Arkiverad / Archived |
+
+<!-- markdownlint-enable MD013 -->
+
+"Arkiveringsgranskning" is a **presentation-only override**:
+the DB row still stores `requirement_status_id = 2` and
+`requirement_statuses.name_sv = 'Granskning'`, and API/MCP
+responses still return `status: 2`,
+`statusNameSv: 'Granskning'`, plus the raw
+`archiveInitiatedAt` field. The override happens in
+[`lib/requirements/status-label.ts`](../lib/requirements/status-label.ts)
+(consumed by `RequirementsTable` and `VersionHistory`) and is
+mirrored by the `isArchiving` prop on `StatusStepper`, which
+re-labels the middle chevron in the archiving variant
+(Publicerad → Granskning → Arkiverad) to
+"Arkiveringsgranskning" / "Archiving Review". The badge and
+chevron color stay yellow because the underlying status is
+still Review.
 
 ## Improvement Suggestion Lifecycle
 

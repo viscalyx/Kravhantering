@@ -752,6 +752,7 @@ export default function RequirementDetailClient({
             <StatusStepper
               currentStatusId={currentStatusId}
               developerModeContext={detailContext}
+              isArchiving={isArchiving}
               statuses={
                 statuses.length === 0
                   ? statuses

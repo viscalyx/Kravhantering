@@ -47,6 +47,13 @@ function sliderClipPath(isFirst: boolean) {
 interface StatusStepperProps {
   currentStatusId: number
   developerModeContext?: string
+  /**
+   * When true, the Review step (id = 2) renders with the
+   * "Arkiveringsgranskning" / "Archiving Review" label so it can
+   * be distinguished from publication review. Mirrors the badge
+   * override in `lib/requirements/status-label.ts`.
+   */
+  isArchiving?: boolean
   statuses?: StatusStep[]
 }
 
@@ -57,6 +64,7 @@ function getStatusStepDeveloperModeValue(step: StatusStep) {
 export default function StatusStepper({
   developerModeContext,
   currentStatusId,
+  isArchiving = false,
   statuses,
 }: StatusStepperProps) {
   const t = useTranslations('requirement.statusLabel')
@@ -97,6 +105,9 @@ export default function StatusStepper({
     return () => ro.disconnect()
   }, [targetIndex])
 
+  const stepLabel = (step: StatusStep) =>
+    isArchiving && step.id === 2 ? t('Arkiveringsgranskning') : t(step.nameSv)
+
   return (
     <div
       className="flex w-full relative"
@@ -135,7 +146,7 @@ export default function StatusStepper({
               className="text-sm select-none font-medium"
               style={{ paddingLeft: i === 0 ? 0 : ARROW / 2 }}
             >
-              {t(step.nameSv)}
+              {stepLabel(step)}
             </span>
           </div>
         </div>
@@ -167,7 +178,7 @@ export default function StatusStepper({
               className="text-sm select-none font-semibold"
               style={{ paddingLeft: targetIndex === 0 ? 0 : ARROW / 2 }}
             >
-              {t(steps[targetIndex].nameSv)}
+              {stepLabel(steps[targetIndex])}
             </span>
           </div>
         </div>

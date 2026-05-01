@@ -138,6 +138,7 @@
     "statusLabel": {
       "Utkast": "Draft",
       "Granskning": "Review",
+      "Arkiveringsgranskning": "Archiving Review",
       "Publicerad": "Published",
       "Arkiverad": "Archived"
     },

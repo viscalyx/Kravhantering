@@ -69,6 +69,7 @@ import {
   type RiskLevelOption,
   type StatusOption,
 } from '@/lib/requirements/list-view'
+import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
 export interface RequirementsTableProps {
   areas?: AreaOption[]
@@ -1348,6 +1349,7 @@ export default function RequirementsTable({
   wrapDescription = false,
 }: RequirementsTableProps) {
   const t = useTranslations('requirement')
+  const tStatusLabel = useTranslations('requirement.statusLabel')
   const tc = useTranslations('common')
   const tfb = useTranslations('improvementSuggestion')
   const router = useRouter()
@@ -2281,11 +2283,16 @@ export default function RequirementsTable({
                 <span className={archivedContentClass}>
                   <StatusBadge
                     color={row.version.statusColor}
-                    label={
-                      (locale === 'sv'
-                        ? row.version.statusNameSv
-                        : row.version.statusNameEn) ?? '—'
-                    }
+                    label={resolveStatusLabel(
+                      {
+                        status: row.version.status,
+                        statusNameSv: row.version.statusNameSv,
+                        statusNameEn: row.version.statusNameEn,
+                        archiveInitiatedAt: row.version.archiveInitiatedAt,
+                      },
+                      locale === 'sv' ? 'sv' : 'en',
+                      tStatusLabel,
+                    )}
                   />
                 </span>
               ) : (

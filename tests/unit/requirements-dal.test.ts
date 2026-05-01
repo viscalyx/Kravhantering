@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  approveArchiving,
+  cancelArchiving,
   editRequirement,
   getRequirementById,
   getRequirementByUniqueId,
+  initiateArchiving,
 } from '@/lib/dal/requirements'
 
 function createSqlServerDb() {
@@ -428,5 +431,185 @@ describe('requirements DAL (SQL Server path)', () => {
       'revision_token = CONVERT(uniqueidentifier, @10)',
     )
     expect(result.revisionToken).toBe('22222222-2222-4222-8222-222222222222')
+  })
+})
+
+describe('archiving helpers (atomicity & strict-target rule)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  describe('initiateArchiving', () => {
+    it('runs all reads and writes inside a SERIALIZABLE transaction with locked precondition selects', async () => {
+      const { db, query, transaction } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, versionNumber: 1 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: 21 }])
+
+      await initiateArchiving(db, 7)
+
+      expect(transaction).toHaveBeenCalledTimes(1)
+      expect(transaction.mock.calls[0]?.[0]).toBe('SERIALIZABLE')
+      const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+      expect(sqlCalls).toHaveLength(3)
+      expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+      expect(sqlCalls[0]).toContain('requirement_status_id = 3')
+      expect(sqlCalls[1]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+      expect(sqlCalls[2]).toMatch(/UPDATE requirement_versions/)
+      expect(sqlCalls[2]).toContain('requirement_status_id = 3')
+      expect(sqlCalls[2]).toContain('archive_initiated_at IS NULL')
+      expect(sqlCalls[2]).toContain('OUTPUT INSERTED.id')
+    })
+
+    it('throws conflict when no published version exists', async () => {
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([])
+
+      await expect(initiateArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message: 'No published version found to archive',
+      })
+    })
+
+    it('throws conflict when a newer Draft or Review version exists', async () => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, versionNumber: 1 }])
+        .mockResolvedValueOnce([{ id: 22 }])
+
+      await expect(initiateArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message:
+          'Cannot initiate archiving while there is a pending draft or review version',
+      })
+    })
+
+    it('throws conflict when the conditional UPDATE affects zero rows', async () => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, versionNumber: 1 }])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+
+      await expect(initiateArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message: 'No published version found to archive',
+      })
+    })
+  })
+
+  describe('approveArchiving', () => {
+    it('runs reads and writes inside a SERIALIZABLE transaction and targets the row with archive_initiated_at IS NOT NULL', async () => {
+      const { db, query, transaction } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([{ id: 21 }])
+        .mockResolvedValueOnce([])
+
+      await approveArchiving(db, 7)
+
+      expect(transaction).toHaveBeenCalledTimes(1)
+      expect(transaction.mock.calls[0]?.[0]).toBe('SERIALIZABLE')
+      const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+      expect(sqlCalls).toHaveLength(3)
+      expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+      expect(sqlCalls[0]).toContain('archive_initiated_at IS NOT NULL')
+      expect(sqlCalls[0]).not.toMatch(/ORDER BY version_number/)
+      expect(sqlCalls[1]).toMatch(/UPDATE requirement_versions/)
+      expect(sqlCalls[1]).toContain('requirement_status_id = 2')
+      expect(sqlCalls[1]).toContain('archive_initiated_at IS NOT NULL')
+      expect(sqlCalls[1]).toContain('OUTPUT INSERTED.id')
+      expect(sqlCalls[2]).toMatch(/UPDATE requirements SET is_archived = 1/)
+    })
+
+    it('throws conflict when no version has archiving initiated', async () => {
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([])
+
+      await expect(approveArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message: 'No version with archiving initiated found',
+      })
+    })
+
+    it('throws conflict when the targeted version is no longer in Review', async () => {
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([{ id: 21, statusId: 1 }])
+
+      await expect(approveArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message:
+          'Can only approve archiving from Review status with archiving initiated',
+      })
+    })
+
+    it('throws conflict when the conditional UPDATE affects zero rows', async () => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([])
+
+      await expect(approveArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message: 'No version with archiving initiated found',
+      })
+    })
+  })
+
+  describe('cancelArchiving', () => {
+    it('runs reads and writes inside a SERIALIZABLE transaction and targets the row with archive_initiated_at IS NOT NULL', async () => {
+      const { db, query, transaction } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([{ id: 21 }])
+
+      await cancelArchiving(db, 7)
+
+      expect(transaction).toHaveBeenCalledTimes(1)
+      expect(transaction.mock.calls[0]?.[0]).toBe('SERIALIZABLE')
+      const sqlCalls = query.mock.calls.map(([sql]) => String(sql))
+      expect(sqlCalls).toHaveLength(2)
+      expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+      expect(sqlCalls[0]).toContain('archive_initiated_at IS NOT NULL')
+      expect(sqlCalls[0]).not.toMatch(/ORDER BY version_number/)
+      expect(sqlCalls[1]).toMatch(/UPDATE requirement_versions/)
+      expect(sqlCalls[1]).toContain('requirement_status_id = 2')
+      expect(sqlCalls[1]).toContain('archive_initiated_at IS NOT NULL')
+      expect(sqlCalls[1]).toContain('OUTPUT INSERTED.id')
+    })
+
+    it('throws conflict when no version has archiving initiated', async () => {
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([])
+
+      await expect(cancelArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message: 'No version with archiving initiated found',
+      })
+    })
+
+    it('throws conflict when the targeted version is no longer in Review', async () => {
+      const { db, query } = createSqlServerDb()
+      query.mockResolvedValueOnce([{ id: 21, statusId: 3 }])
+
+      await expect(cancelArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message:
+          'Can only cancel archiving from Review status with archiving initiated',
+      })
+    })
+
+    it('throws conflict when the conditional UPDATE affects zero rows', async () => {
+      const { db, query } = createSqlServerDb()
+      query
+        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([])
+
+      await expect(cancelArchiving(db, 7)).rejects.toMatchObject({
+        code: 'conflict',
+        message: 'No version with archiving initiated found',
+      })
+    })
   })
 })
