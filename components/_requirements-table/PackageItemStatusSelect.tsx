@@ -62,7 +62,7 @@ function PackageItemStatusSelectImpl({
   return (
     <select
       aria-label={ariaLabel}
-      className="w-auto max-w-full rounded-lg border bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 transition-all duration-200"
+      className="w-auto max-w-full rounded-lg border border-gray-300 dark:border-secondary-600 bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:focus:ring-primary-400/50 transition-all duration-200"
       onChange={handleChange}
       onClick={handleClick}
       title={tooltip}

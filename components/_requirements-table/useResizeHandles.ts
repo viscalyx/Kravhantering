@@ -575,6 +575,16 @@ export function useResizeHandles({
         return
       }
 
+      // Only respond to the primary pointer, and for mouse input only the
+      // primary (left) button. This avoids stealing right-click / middle-click
+      // and concurrent multi-touch pointers.
+      if (event.isPrimary === false) {
+        return
+      }
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return
+      }
+
       event.preventDefault()
       event.stopPropagation()
 

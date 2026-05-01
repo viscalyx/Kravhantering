@@ -191,6 +191,13 @@ export function useFloatingRailPosition({
     tableRef,
   ])
 
+  // Recompute immediately when the inline/floating placement toggles so the
+  // fixed rail state reflects the new mode without waiting for the next
+  // scroll/resize event.
+  useClientLayoutEffect(() => {
+    scheduleFloatingRailUpdate()
+  }, [scheduleFloatingRailUpdate, shouldRenderInlineRail])
+
   return {
     floatingRailPosition,
     scheduleFloatingRailUpdate,

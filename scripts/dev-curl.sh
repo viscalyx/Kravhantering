@@ -20,17 +20,25 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 JAR_PATH="$(node "$REPO_ROOT/scripts/dev-login.mjs" --user "$USER_NAME" --base "$BASE_URL")"
 
 # Rewrite any bare-path arguments (starting with /) to absolute URLs so
-# `scripts/dev-curl.sh /sv/foo` works without repeating the host.
+# `scripts/dev-curl.sh /sv/foo` works without repeating the host. Only true
+# positional arguments are rewritten; values that follow a curl option (e.g.
+# `-o /tmp/out`) are left untouched.
 args=()
+prev=""
 for arg in "$@"; do
   case "$arg" in
     /*)
-      args+=("${BASE_URL%/}${arg}")
+      if [[ "$prev" == -* ]]; then
+        args+=("$arg")
+      else
+        args+=("${BASE_URL%/}${arg}")
+      fi
       ;;
     *)
       args+=("$arg")
       ;;
   esac
+  prev="$arg"
 done
 
 exec curl -b "$JAR_PATH" "${args[@]}"

@@ -226,7 +226,7 @@ async function login({ base, user, password }) {
 
   // 1. Hit /api/auth/login -> redirected to Keycloak /authorize -> login form.
   const loginStart = await step(jar, `${base}/api/auth/login`)
-  const { res: loginPage } = await followRedirects(
+  const { res: loginPage, url: loginPageUrl } = await followRedirects(
     jar,
     loginStart,
     `${base}/api/auth/login`,
@@ -244,7 +244,12 @@ async function login({ base, user, password }) {
   if (!actionMatch) {
     throw new Error('Could not find Keycloak login form in response')
   }
-  const formAction = decodeHtmlEntities(actionMatch[1])
+  // Resolve against the (possibly redirected) login-page URL so that
+  // server-rendered relative form actions work too.
+  const formAction = new URL(
+    decodeHtmlEntities(actionMatch[1]),
+    loginPageUrl,
+  ).toString()
 
   // 2. POST credentials. Keycloak then redirects via 302 chain back to the app.
   const credResponse = await step(jar, formAction, {

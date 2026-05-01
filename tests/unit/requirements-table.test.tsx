@@ -102,6 +102,23 @@ describe('RequirementsTable', () => {
     setViewportWidth(DEFAULT_VIEWPORT_WIDTH)
   })
 
+  // jsdom's PointerEvent defaults `isPrimary` to false and `pointerType` to ''.
+  // Real browser pointerdown events on a mouse have `isPrimary: true`,
+  // `pointerType: 'mouse'`, `button: 0`. Production code now ignores
+  // non-primary / non-left pointers, so test events must opt in to the same
+  // shape that real input devices send.
+  function firePrimaryPointerDown(
+    target: Element,
+    init: Record<string, unknown> = {},
+  ) {
+    fireEvent.pointerDown(target, {
+      button: 0,
+      isPrimary: true,
+      pointerType: 'mouse',
+      ...init,
+    })
+  }
+
   function makeRow(overrides: Record<string, unknown> = {}) {
     return {
       area: { name: 'Integration' },
@@ -1871,7 +1888,7 @@ describe('RequirementsTable', () => {
     ])
     expect(tableContent?.style.width).toBe('1122px')
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
 
@@ -1899,7 +1916,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -1936,7 +1953,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -1974,7 +1991,7 @@ describe('RequirementsTable', () => {
     expect(handle).toBeTruthy()
     expect(getResizeHandleLeft(container, 'description')).toBe('510px')
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100, pointerId: 1 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100, pointerId: 1 })
     fireEvent.pointerMove(window, { clientX: 132, pointerId: 2 })
     fireEvent.pointerUp(window, { clientX: 132, pointerId: 2 })
     fireEvent.pointerCancel(window, { clientX: 132, pointerId: 2 })
@@ -2015,7 +2032,7 @@ describe('RequirementsTable', () => {
     expect(getResizeHandleLeft(container, 'description')).toBe('510px')
     expect(getResizeHandleLeft(container, 'area')).toBe('646px')
 
-    fireEvent.pointerDown(descriptionHandle as Element, { clientX: 100 })
+    firePrimaryPointerDown(descriptionHandle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -2077,7 +2094,7 @@ describe('RequirementsTable', () => {
       Number.parseInt(bottomSegment?.style.height ?? '0', 10),
     ).toBeLessThanOrEqual(48)
 
-    fireEvent.pointerDown(bottomSegment as Element, { clientX: 100 })
+    firePrimaryPointerDown(bottomSegment as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerUp(window, { clientX: 132 })
 
@@ -2128,7 +2145,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment?.className).not.toContain('min-h-[44px]')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
 
-    fireEvent.pointerDown(bottomSegment as Element, {
+    firePrimaryPointerDown(bottomSegment as Element, {
       clientX: 100,
       pointerId: 1,
     })
@@ -2177,7 +2194,7 @@ describe('RequirementsTable', () => {
     expect(getResizeHandleLeft(container, 'description')).toBe('510px')
     expect(getResizeHandleLeft(container, 'area')).toBe('646px')
 
-    fireEvent.pointerDown(descriptionHandle as Element, { clientX: 100 })
+    firePrimaryPointerDown(descriptionHandle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     await act(async () => {
       await new Promise<void>(resolve => {
@@ -2213,7 +2230,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 164 })
     fireEvent.pointerUp(window, { clientX: 164 })
@@ -2248,7 +2265,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 132 })
@@ -2296,7 +2313,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 132 })
     fireEvent.pointerMove(window, { clientX: 76 })
     fireEvent.pointerMove(window, { clientX: 164 })
@@ -2317,7 +2334,7 @@ describe('RequirementsTable', () => {
 
     expect(handle).toBeTruthy()
 
-    fireEvent.pointerDown(handle as Element, { clientX: 100 })
+    firePrimaryPointerDown(handle as Element, { clientX: 100 })
     fireEvent.pointerMove(window, { clientX: 68 })
     fireEvent.pointerUp(window, { clientX: 68 })
 
