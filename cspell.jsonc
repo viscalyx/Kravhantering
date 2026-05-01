@@ -22,6 +22,8 @@
     "matchstr",
     "matchtype",
     "nohup",
+    "recognisable",
+    "safelist",
     "zaproxy",
     "preprod",
     "unlocalized",
