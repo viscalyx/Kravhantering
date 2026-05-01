@@ -27,6 +27,7 @@ for setup, migrations, and the read-only browse workflow.
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Start Next.js development server |
+| `npm run dev:fresh` | Stop any running dev server, wipe `.next/`, and start `next dev` from a clean cache (use after pulling/branch-switching when route folders moved or when a route 404s despite the `page.tsx` existing) |
 | `npm run start:prodlike` | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
 | `npm run build` | Production build |
 | `npm run start` | Start the production server |
@@ -85,6 +86,33 @@ npm run dev:https
 >If you prefer not to add certificates to any trust store, use `npm run dev`
 >(HTTP) instead.
 
+## Stale `.next/` cache after route changes
+
+Turbopack's dev manifest is built from `.next/dev/` on first start. If you
+add, move, or rename a route folder under `app/` while the dev server is
+**off** (or while it's still cached from a previous `next build`), the
+new sibling routes may 404 even though the `page.tsx` exists on disk.
+The build manifest registers them, but Turbopack only re-scans the
+folders it already knew about.
+
+Symptoms:
+
+- `/sv/requirements/IDN0001` returns 200 but `/sv/requirements/IDN0001/4`
+  or `/sv/requirements/IDN0001/edit` returns 404.
+- `touch`-ing the affected `page.tsx` makes it work.
+
+Fix: start the dev server with a clean cache.
+
+```sh
+npm run dev:fresh
+```
+
+This is equivalent to `npm run kill:port && npm run clean && npm run dev`
+(stops any process on port 3000, removes `.next/` and `out/`, then runs
+`next dev`). Use it after a `git pull` or branch switch that reshuffles
+route folders. The plain `npm run dev` is preferred for the common case
+because it preserves Turbopack's incremental compile cache.
+
 ## Project Structure
 
 ```text
@@ -113,26 +141,24 @@ labels, layout surfaces, or interaction patterns, update the relevant:
 - unit and integration tests that cover the affected surface
 - repo instructions if the maintenance rule itself changes
 
-Developer Mode is split into internal dev-only packages:
-
-- `packages/developer-mode-core`
-- `packages/developer-mode-react`
-- README-style package drafts:
-  - [docs/developer-mode-core-README.md](docs/developer-mode-core-README.md)
-  - [docs/developer-mode-react-README.md](docs/developer-mode-react-README.md)
-
-App code should use `devMarker(...)` from
+The overlay runtime is provided by the upstream packages
+[`@viscalyx/developer-mode-core`][dm-core] and
+[`@viscalyx/developer-mode-react`][dm-react]. App code should use
+`devMarker(...)` from
 [`lib/developer-mode-markers.ts`](lib/developer-mode-markers.ts) instead of
 hardcoding `data-developer-mode-*` attributes directly. Local development
-enables the real Developer Mode runtime automatically. Production
-builds alias the Developer Mode packages to no-op entrypoints by default, so
-the overlay runtime and curated marker output are excluded unless
-`ENABLE_DEVELOPER_MODE=true` is set explicitly.
+enables the real Developer Mode runtime automatically. Non-development builds
+alias both packages to first-party noop stubs in
+[`lib/runtime/`](lib/runtime/), so the overlay runtime and marker output are
+excluded unless `ENABLE_DEVELOPER_MODE=true` is set explicitly.
 
 To enable Developer Mode in a browser, focus a non-editable part of the page and
 press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
-See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the full
-behavior and maintenance rules.
+See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the
+consumer-side spec, the canonical glossary, and the app-specific marker rules.
+
+[dm-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
+[dm-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md
 
 ## Dependency Management
 

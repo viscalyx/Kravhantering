@@ -26,12 +26,21 @@ import {
   useCallback,
   useEffect,
   useId,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import PackageItemStatusSelect from '@/components/_requirements-table/PackageItemStatusSelect'
+import {
+  POPOVER_VIEWPORT_MARGIN,
+  type ResizeHandleSegmentKey,
+  type ResizeHandleSegmentNode,
+  useClientLayoutEffect,
+} from '@/components/_requirements-table/shared'
+import { useColumnState } from '@/components/_requirements-table/useColumnState'
+import { useFloatingRailPosition } from '@/components/_requirements-table/useFloatingRailPosition'
+import { useResizeHandles } from '@/components/_requirements-table/useResizeHandles'
 import StatusBadge from '@/components/StatusBadge'
 import { Link, useRouter } from '@/i18n/routing'
 import {
@@ -40,9 +49,7 @@ import {
 } from '@/lib/developer-mode-markers'
 import {
   type AreaOption,
-  clampRequirementColumnWidth,
   clearRequirementFiltersForHiddenColumns,
-  DEFAULT_REQUIREMENT_COLUMN_WIDTHS,
   DEFAULT_REQUIREMENT_SORT,
   type FilterOption,
   type FilterValues,
@@ -492,54 +499,9 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
   )
 }
 
-function areColumnWidthsEqual(
-  left: RequirementColumnWidths,
-  right: RequirementColumnWidths,
-) {
-  return getOrderedRequirementListColumns().every(
-    column =>
-      (left[column.id] ?? DEFAULT_REQUIREMENT_COLUMN_WIDTHS[column.id]) ===
-      (right[column.id] ?? DEFAULT_REQUIREMENT_COLUMN_WIDTHS[column.id]),
-  )
-}
-
-type ResizeHandleSegmentKey = 'bottom' | 'full' | 'top'
-type ResizeHandleSegmentNode = HTMLButtonElement | HTMLDivElement
 const MAX_EXPANDED_DETAIL_RESIZE_GRIP_HEIGHT = 48
-
-interface ExpandedDetailBounds {
-  bottom: number
-  contentHeight: number
-  top: number
-}
-
-function areExpandedDetailBoundsEqual(
-  left: ExpandedDetailBounds | null,
-  right: ExpandedDetailBounds | null,
-) {
-  if (left === right) {
-    return true
-  }
-
-  if (!left || !right) {
-    return false
-  }
-
-  return (
-    left.top === right.top &&
-    left.bottom === right.bottom &&
-    left.contentHeight === right.contentHeight
-  )
-}
-
-const POPOVER_VIEWPORT_MARGIN = 8
-const FLOATING_ACTION_RAIL_MIN_TOP_OFFSET = 80
-const FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET = 4
-const FLOATING_ACTION_RAIL_WIDTH = 44
 const ROW_CLICK_INTERACTIVE_SELECTOR =
   'button, a, input, select, textarea, [contenteditable]:not([contenteditable="false"])'
-const useClientLayoutEffect =
-  typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
   if (typeof window === 'undefined') {
@@ -556,23 +518,6 @@ function clampPopoverLeft(anchorLeft: number, popoverWidth: number) {
   )
 
   return Math.min(Math.max(anchorLeft, POPOVER_VIEWPORT_MARGIN), maxLeft)
-}
-
-interface FloatingActionRailPosition {
-  left: number
-  top: number
-  visible: boolean
-}
-
-function areFloatingActionRailPositionsEqual(
-  left: FloatingActionRailPosition,
-  right: FloatingActionRailPosition,
-) {
-  return (
-    left.left === right.left &&
-    left.top === right.top &&
-    left.visible === right.visible
-  )
 }
 
 /* ── Filter popover for text search columns (uniqueId, description) ── */
@@ -1468,33 +1413,69 @@ export default function RequirementsTable({
   const headerCellRefs = useRef<
     Partial<Record<RequirementColumnId, HTMLTableCellElement | null>>
   >({})
-  const resizeHandleRefs = useRef<
-    Partial<
-      Record<
-        RequirementColumnId,
-        Partial<Record<ResizeHandleSegmentKey, ResizeHandleSegmentNode | null>>
-      >
-    >
-  >({})
-  const columnWidthsRef = useRef(columnWidths)
-  const onColumnWidthsChangeRef = useRef(onColumnWidthsChange)
-  const visibleColumnIdsRef = useRef<RequirementColumnId[]>(
-    columnDefinitions.map(column => column.id),
+  const renderedColumnWidthsRef = useRef<Record<RequirementColumnId, number>>(
+    {} as Record<RequirementColumnId, number>,
   )
-  const resizePreviewVisibleWidthsRef = useRef<Record<
-    RequirementColumnId,
-    number
-  > | null>(null)
-  const pendingResizePreviewVisibleWidthsRef = useRef<Record<
-    RequirementColumnId,
-    number
-  > | null>(null)
-  const resizePreviewFrameRef = useRef<number | null>(null)
-  const [scrollContainerWidth, setScrollContainerWidth] = useState(0)
+  const columnState = useColumnState({
+    allColumns,
+    columnDefinitions,
+    columnWidths,
+    filterValues: fv,
+    headerCellRefs,
+    normalizedColumnDefaults,
+    normalizedVisibleColumns,
+    onColumnWidthsChange,
+    onFilterChange,
+    onSortChange,
+    renderedColumnWidthsRef,
+    sortState,
+  })
+  const { resetColumnWidth } = columnState
+  const {
+    cancelResizePreviewFrame,
+    pendingResizePreviewVisibleWidthsRef,
+    resizePreviewVisibleWidthsRef,
+  } = columnState
+  const canResizeColumns = !!onColumnWidthsChange
+  const expandedDetailRowId =
+    expandedId !== null &&
+    expandedId !== undefined &&
+    renderExpanded &&
+    rows.some(row => row.id === expandedId)
+      ? expandedId
+      : null
+  const checkboxColumnWidth = selectable ? 36 : 0
+  const resize = useResizeHandles({
+    canResizeColumns,
+    checkboxColumnWidth,
+    columnDefinitions,
+    columnState,
+    expandedDetailRowId,
+    refs: {
+      colRefs,
+      expandedDetailCellRef,
+      headerCellRefs,
+      scrollContainerRef,
+      stickyHeaderColRefs,
+      stickyHeaderContentRef,
+      tableContentRef,
+      tableRef,
+    },
+    renderedColumnWidthsRef,
+  })
+  const {
+    expandedDetailBounds,
+    handleResizeKeyDown,
+    handleResizePointerDown,
+    resizeHandleOffsets,
+    resizeHandleRefs,
+    scrollContainerWidth,
+    scrollFadeState,
+    setResizeHoverCursor,
+  } = resize
   const hasManualColumnWidths = columnDefinitions.some(
     column => typeof columnWidths[column.id] === 'number',
   )
-  const checkboxColumnWidth = selectable ? 36 : 0
   const renderedColumnWidths = {
     ...configuredColumnWidths,
   } as Record<RequirementColumnId, number>
@@ -1524,6 +1505,7 @@ export default function RequirementsTable({
       }
     }
   }
+  renderedColumnWidthsRef.current = renderedColumnWidths
 
   const tableWidth =
     columnDefinitions.reduce(
@@ -1534,41 +1516,6 @@ export default function RequirementsTable({
     .map(column => `${column.id}:${renderedColumnWidths[column.id]}`)
     .concat(String(scrollContainerWidth))
     .join('|')
-  const resizeStateRef = useRef<{
-    columnId: RequirementColumnId
-    handle: HTMLElement | null
-    pointerId: number
-    startWidth: number
-    startX: number
-    visibleWidths: Record<RequirementColumnId, number>
-  } | null>(null)
-  const [resizeHandleOffsets, setResizeHandleOffsets] = useState<
-    {
-      columnId: RequirementColumnId
-      left: number
-    }[]
-  >([])
-  const [expandedDetailBounds, setExpandedDetailBounds] =
-    useState<ExpandedDetailBounds | null>(null)
-  const [floatingRailPosition, setFloatingRailPosition] =
-    useState<FloatingActionRailPosition>({
-      left: POPOVER_VIEWPORT_MARGIN,
-      top: FLOATING_ACTION_RAIL_MIN_TOP_OFFSET,
-      visible: false,
-    })
-  const [showScrollTopAction, setShowScrollTopAction] = useState(false)
-  const [scrollFadeState, setScrollFadeState] = useState({
-    left: false,
-    right: false,
-  })
-  const canResizeColumns = !!onColumnWidthsChange
-  const expandedDetailRowId =
-    expandedId !== null &&
-    expandedId !== undefined &&
-    !!renderExpanded &&
-    rows.some(row => row.id === expandedId)
-      ? expandedId
-      : null
   const hasExpandedDetailRow = expandedDetailRowId !== null
   const clippedResizeHandleBounds = hasExpandedDetailRow
     ? expandedDetailBounds
@@ -1582,6 +1529,15 @@ export default function RequirementsTable({
     action => action.position !== 'beforeColumns',
   )
   const shouldRenderInlineRail = floatingActionRailPlacement === 'inline-top'
+  const { floatingRailPosition, showScrollTopAction } = useFloatingRailPosition(
+    {
+      scrollContainerRef,
+      scrollLayoutSignature,
+      shouldRenderInlineRail,
+      tableRef,
+      tableRootRef,
+    },
+  )
 
   const scrollTableToTop = useCallback(() => {
     if (!tableRootRef.current) {
@@ -1763,18 +1719,6 @@ export default function RequirementsTable({
   }
 
   useEffect(() => {
-    columnWidthsRef.current = columnWidths
-  }, [columnWidths])
-
-  useEffect(() => {
-    onColumnWidthsChangeRef.current = onColumnWidthsChange
-  }, [onColumnWidthsChange])
-
-  useEffect(() => {
-    visibleColumnIdsRef.current = columnDefinitions.map(column => column.id)
-  }, [columnDefinitions])
-
-  useEffect(() => {
     if (selectAllRef.current) {
       selectAllRef.current.indeterminate =
         rows.length > 0 &&
@@ -1782,620 +1726,6 @@ export default function RequirementsTable({
         !rows.every(r => selectedIds?.has(r.id))
     }
   }, [rows, selectedIds])
-
-  const buildColumnWidthOverrides = useCallback(
-    (visibleWidths: Record<RequirementColumnId, number>) => {
-      const nextWidths = { ...columnWidthsRef.current }
-
-      for (const columnId of visibleColumnIdsRef.current) {
-        const width = visibleWidths[columnId]
-        const column = allColumns.find(item => item.id === columnId)
-
-        if (typeof width !== 'number' || !column?.resizable) {
-          continue
-        }
-
-        const nextWidth = clampRequirementColumnWidth(columnId, width)
-        if (nextWidth === column.defaultWidthPx) {
-          delete nextWidths[columnId]
-        } else {
-          nextWidths[columnId] = nextWidth
-        }
-      }
-
-      return nextWidths
-    },
-    [allColumns],
-  )
-
-  const syncResizeHandlePositions = useCallback(
-    (visibleWidths: Record<RequirementColumnId, number>) => {
-      let left = checkboxColumnWidth
-
-      for (const [columnIndex, column] of columnDefinitions.entries()) {
-        left += visibleWidths[column.id] ?? renderedColumnWidths[column.id]
-        if (columnIndex === columnDefinitions.length - 1) {
-          continue
-        }
-
-        const handles = Object.values(resizeHandleRefs.current[column.id] ?? {})
-        for (const handle of handles) {
-          if (handle) {
-            handle.style.left = `${left}px`
-          }
-        }
-      }
-    },
-    [checkboxColumnWidth, columnDefinitions, renderedColumnWidths],
-  )
-
-  const applyVisibleWidthPreview = useCallback(
-    (visibleWidths: Record<RequirementColumnId, number>) => {
-      const nextTableWidth =
-        columnDefinitions.reduce(
-          (total, column) =>
-            total +
-            (visibleWidths[column.id] ?? renderedColumnWidths[column.id]),
-          0,
-        ) + checkboxColumnWidth
-      const stickyHeaderContent = stickyHeaderContentRef.current
-      const tableContent = tableContentRef.current
-
-      if (stickyHeaderContent) {
-        stickyHeaderContent.style.width = `${nextTableWidth}px`
-      }
-
-      if (tableContent) {
-        tableContent.style.width = `${nextTableWidth}px`
-      }
-
-      for (const column of columnDefinitions) {
-        const width =
-          visibleWidths[column.id] ?? renderedColumnWidths[column.id]
-        const col = colRefs.current[column.id]
-        const stickyHeaderCol = stickyHeaderColRefs.current[column.id]
-        if (col) {
-          col.style.width = `${width}px`
-        }
-        if (stickyHeaderCol) {
-          stickyHeaderCol.style.width = `${width}px`
-        }
-      }
-
-      syncResizeHandlePositions(visibleWidths)
-    },
-    [
-      checkboxColumnWidth,
-      columnDefinitions,
-      renderedColumnWidths,
-      syncResizeHandlePositions,
-    ],
-  )
-
-  const cancelResizePreviewFrame = useCallback(() => {
-    if (
-      resizePreviewFrameRef.current !== null &&
-      typeof globalThis.cancelAnimationFrame === 'function'
-    ) {
-      globalThis.cancelAnimationFrame(resizePreviewFrameRef.current)
-    }
-
-    resizePreviewFrameRef.current = null
-  }, [])
-
-  const flushResizePreview = useCallback(() => {
-    const nextVisibleWidths = pendingResizePreviewVisibleWidthsRef.current
-    if (!nextVisibleWidths) {
-      return
-    }
-
-    pendingResizePreviewVisibleWidthsRef.current = null
-    resizePreviewVisibleWidthsRef.current = nextVisibleWidths
-    applyVisibleWidthPreview(nextVisibleWidths)
-  }, [applyVisibleWidthPreview])
-
-  const scheduleResizePreview = useCallback(
-    (nextVisibleWidths: Record<RequirementColumnId, number>) => {
-      const activeResize = resizeStateRef.current
-      if (!activeResize) {
-        return
-      }
-
-      const currentVisibleWidths =
-        pendingResizePreviewVisibleWidthsRef.current ??
-        resizePreviewVisibleWidthsRef.current ??
-        activeResize.visibleWidths
-
-      if (
-        currentVisibleWidths[activeResize.columnId] ===
-        nextVisibleWidths[activeResize.columnId]
-      ) {
-        return
-      }
-
-      pendingResizePreviewVisibleWidthsRef.current = nextVisibleWidths
-      if (resizePreviewFrameRef.current !== null) {
-        return
-      }
-
-      if (typeof globalThis.requestAnimationFrame !== 'function') {
-        flushResizePreview()
-        return
-      }
-
-      resizePreviewFrameRef.current = globalThis.requestAnimationFrame(() => {
-        resizePreviewFrameRef.current = null
-        flushResizePreview()
-      })
-    },
-    [flushResizePreview],
-  )
-
-  const commitColumnWidthOverrides = useCallback(
-    (nextWidths: RequirementColumnWidths) => {
-      const onChange = onColumnWidthsChangeRef.current
-      if (!onChange) {
-        return
-      }
-
-      if (areColumnWidthsEqual(columnWidthsRef.current, nextWidths)) {
-        return
-      }
-
-      columnWidthsRef.current = nextWidths
-      onChange(nextWidths)
-    },
-    [],
-  )
-
-  const getVisibleWidthSnapshot = useCallback(() => {
-    const snapshot = {} as Record<RequirementColumnId, number>
-
-    for (const column of columnDefinitions) {
-      const cell = headerCellRefs.current[column.id]
-      const measuredWidth = Math.round(
-        cell?.getBoundingClientRect().width ?? cell?.offsetWidth ?? 0,
-      )
-
-      snapshot[column.id] = clampRequirementColumnWidth(
-        column.id,
-        measuredWidth > 0 ? measuredWidth : renderedColumnWidths[column.id],
-      )
-    }
-
-    return snapshot
-  }, [columnDefinitions, renderedColumnWidths])
-
-  const resetColumnWidth = useCallback(
-    (columnId: RequirementColumnId) => {
-      const onChange = onColumnWidthsChangeRef.current
-      if (!onChange) {
-        return
-      }
-
-      const currentWidths = resizePreviewVisibleWidthsRef.current
-        ? buildColumnWidthOverrides(resizePreviewVisibleWidthsRef.current)
-        : columnWidthsRef.current
-      if (!(columnId in currentWidths)) {
-        return
-      }
-
-      const nextWidths = { ...currentWidths }
-      delete nextWidths[columnId]
-      cancelResizePreviewFrame()
-      pendingResizePreviewVisibleWidthsRef.current = null
-      resizePreviewVisibleWidthsRef.current = null
-      commitColumnWidthOverrides(nextWidths)
-    },
-    [
-      buildColumnWidthOverrides,
-      cancelResizePreviewFrame,
-      commitColumnWidthOverrides,
-    ],
-  )
-
-  const finishResizing = useCallback(
-    (commitPreview: boolean) => {
-      const activeResize = resizeStateRef.current
-      if (!activeResize) {
-        return
-      }
-
-      flushResizePreview()
-
-      const previewVisibleWidths = resizePreviewVisibleWidthsRef.current
-      const finalVisibleWidths =
-        previewVisibleWidths ?? activeResize.visibleWidths
-
-      if (!commitPreview) {
-        applyVisibleWidthPreview(activeResize.visibleWidths)
-      }
-
-      cancelResizePreviewFrame()
-      pendingResizePreviewVisibleWidthsRef.current = null
-      resizePreviewVisibleWidthsRef.current = null
-
-      if (commitPreview) {
-        commitColumnWidthOverrides(
-          buildColumnWidthOverrides(finalVisibleWidths),
-        )
-      }
-
-      if (
-        activeResize.handle?.isConnected &&
-        activeResize.handle.hasPointerCapture?.(activeResize.pointerId)
-      ) {
-        activeResize.handle.releasePointerCapture(activeResize.pointerId)
-      }
-
-      resizeStateRef.current = null
-      document.body.style.removeProperty('cursor')
-      document.body.style.removeProperty('user-select')
-    },
-    [
-      applyVisibleWidthPreview,
-      buildColumnWidthOverrides,
-      cancelResizePreviewFrame,
-      commitColumnWidthOverrides,
-      flushResizePreview,
-    ],
-  )
-
-  const handleResizePointerUp = useCallback(
-    (event: PointerEvent) => {
-      const activeResize = resizeStateRef.current
-      if (!activeResize || event.pointerId !== activeResize.pointerId) {
-        return
-      }
-
-      finishResizing(true)
-    },
-    [finishResizing],
-  )
-
-  const handleResizePointerCancel = useCallback(
-    (event: PointerEvent) => {
-      const activeResize = resizeStateRef.current
-      if (!activeResize || event.pointerId !== activeResize.pointerId) {
-        return
-      }
-
-      finishResizing(false)
-    },
-    [finishResizing],
-  )
-
-  const updateScrollFades = useCallback(() => {
-    if (resizeStateRef.current) {
-      return
-    }
-
-    const container = scrollContainerRef.current
-
-    if (!container) {
-      setScrollFadeState(previous =>
-        previous.left || previous.right
-          ? { left: false, right: false }
-          : previous,
-      )
-      return
-    }
-
-    const maxScrollLeft = container.scrollWidth - container.clientWidth
-    const nextState = {
-      left: container.scrollLeft > 1,
-      right: maxScrollLeft > 1 && container.scrollLeft < maxScrollLeft - 1,
-    }
-
-    setScrollContainerWidth(previous =>
-      previous === container.clientWidth ? previous : container.clientWidth,
-    )
-
-    setScrollFadeState(previous => {
-      if (
-        previous.left === nextState.left &&
-        previous.right === nextState.right
-      ) {
-        return previous
-      }
-
-      return nextState
-    })
-  }, [])
-
-  const updateResizeHandleOffsets = useCallback(() => {
-    if (resizeStateRef.current) {
-      return
-    }
-
-    if (!canResizeColumns) {
-      setResizeHandleOffsets(previous =>
-        previous.length === 0 ? previous : [],
-      )
-      return
-    }
-
-    const nextOffsets = columnDefinitions
-      .map((column, columnIndex) => {
-        const cell = headerCellRefs.current[column.id]
-
-        if (!cell || columnIndex === columnDefinitions.length - 1) {
-          return null
-        }
-
-        return {
-          columnId: column.id,
-          left: Math.round(cell.offsetLeft + cell.offsetWidth),
-        }
-      })
-      .filter(
-        (
-          value,
-        ): value is {
-          columnId: RequirementColumnId
-          left: number
-        } => value !== null,
-      )
-
-    setResizeHandleOffsets(previous => {
-      if (
-        previous.length === nextOffsets.length &&
-        previous.every(
-          (value, index) =>
-            value.columnId === nextOffsets[index]?.columnId &&
-            value.left === nextOffsets[index]?.left,
-        )
-      ) {
-        return previous
-      }
-
-      return nextOffsets
-    })
-  }, [canResizeColumns, columnDefinitions])
-
-  const updateExpandedDetailBounds = useCallback(() => {
-    if (!canResizeColumns || expandedDetailRowId === null) {
-      setExpandedDetailBounds(previous => (previous ? null : previous))
-      return
-    }
-
-    const cell = expandedDetailCellRef.current
-    const tableContent = tableContentRef.current
-
-    if (!cell || !tableContent) {
-      setExpandedDetailBounds(previous => (previous ? null : previous))
-      return
-    }
-
-    const cellRect = cell.getBoundingClientRect()
-    const tableContentRect = tableContent.getBoundingClientRect()
-    const contentHeight = Math.max(0, Math.round(tableContentRect.height))
-    const relativeTop = cellRect.top - tableContentRect.top
-    const relativeBottom = cellRect.bottom - tableContentRect.top
-    const top = Math.min(contentHeight, Math.max(0, Math.floor(relativeTop)))
-    const nextBounds = {
-      bottom: Math.min(contentHeight, Math.max(top, Math.ceil(relativeBottom))),
-      contentHeight,
-      top,
-    }
-
-    setExpandedDetailBounds(previous =>
-      areExpandedDetailBoundsEqual(previous, nextBounds)
-        ? previous
-        : nextBounds,
-    )
-  }, [canResizeColumns, expandedDetailRowId])
-
-  const updateFloatingRail = useCallback(() => {
-    if (shouldRenderInlineRail) {
-      setFloatingRailPosition(previous =>
-        previous.visible ? { ...previous, visible: false } : previous,
-      )
-      setShowScrollTopAction(previous => (previous ? false : previous))
-      return
-    }
-
-    const container = scrollContainerRef.current
-    const tableRoot = tableRootRef.current
-
-    if (!container || typeof window === 'undefined') {
-      setFloatingRailPosition(previous =>
-        previous.visible ? { ...previous, visible: false } : previous,
-      )
-      setShowScrollTopAction(previous => (previous ? false : previous))
-      return
-    }
-
-    const viewportWidth = Math.max(
-      window.innerWidth,
-      document.documentElement.clientWidth,
-    )
-    const viewportHeight = Math.max(
-      window.innerHeight,
-      document.documentElement.clientHeight,
-    )
-    const containerRect = container.getBoundingClientRect()
-    const tableRootRect = tableRoot?.getBoundingClientRect() ?? containerRect
-    const hasMeasuredContainerRect =
-      containerRect.width > 0 || containerRect.height > 0
-    const hasMeasuredTableRootRect =
-      tableRootRect.width > 0 || tableRootRect.height > 0
-    const effectiveTableRect = hasMeasuredTableRootRect
-      ? tableRootRect
-      : containerRect
-    const railLeft = hasMeasuredContainerRect
-      ? Math.max(
-          POPOVER_VIEWPORT_MARGIN,
-          Math.min(
-            containerRect.right + 12,
-            viewportWidth -
-              FLOATING_ACTION_RAIL_WIDTH -
-              POPOVER_VIEWPORT_MARGIN,
-          ),
-        )
-      : Math.max(
-          POPOVER_VIEWPORT_MARGIN,
-          viewportWidth - FLOATING_ACTION_RAIL_WIDTH - POPOVER_VIEWPORT_MARGIN,
-        )
-    const railTop = hasMeasuredContainerRect
-      ? Math.max(
-          FLOATING_ACTION_RAIL_MIN_TOP_OFFSET,
-          effectiveTableRect.top + FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET,
-        )
-      : FLOATING_ACTION_RAIL_MIN_TOP_OFFSET
-    const nextRailPosition = {
-      left: railLeft,
-      top: railTop,
-      visible: hasMeasuredContainerRect
-        ? effectiveTableRect.bottom > railTop &&
-          effectiveTableRect.top < viewportHeight - POPOVER_VIEWPORT_MARGIN
-        : true,
-    }
-    const nextShowScrollTopAction = hasMeasuredContainerRect
-      ? effectiveTableRect.top <
-          railTop - FLOATING_ACTION_RAIL_TABLE_TOP_OFFSET &&
-        effectiveTableRect.bottom > railTop
-      : false
-
-    setFloatingRailPosition(previous =>
-      areFloatingActionRailPositionsEqual(previous, nextRailPosition)
-        ? previous
-        : nextRailPosition,
-    )
-    setShowScrollTopAction(previous =>
-      previous === nextShowScrollTopAction ? previous : nextShowScrollTopAction,
-    )
-  }, [shouldRenderInlineRail])
-
-  const setResizeHoverCursor = useCallback((active: boolean) => {
-    if (resizeStateRef.current) {
-      return
-    }
-
-    if (active) {
-      document.body.style.cursor = 'ew-resize'
-      return
-    }
-
-    document.body.style.removeProperty('cursor')
-  }, [])
-
-  useEffect(() => {
-    const handlePointerMove = (event: PointerEvent) => {
-      const activeResize = resizeStateRef.current
-      if (!activeResize || event.pointerId !== activeResize.pointerId) {
-        return
-      }
-
-      const nextWidth = clampRequirementColumnWidth(
-        activeResize.columnId,
-        activeResize.startWidth + (event.clientX - activeResize.startX),
-      )
-      if (nextWidth === activeResize.visibleWidths[activeResize.columnId]) {
-        return
-      }
-
-      scheduleResizePreview({
-        ...activeResize.visibleWidths,
-        [activeResize.columnId]: nextWidth,
-      })
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handleResizePointerUp)
-    window.addEventListener('pointercancel', handleResizePointerCancel)
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handleResizePointerUp)
-      window.removeEventListener('pointercancel', handleResizePointerCancel)
-      document.body.style.removeProperty('cursor')
-      document.body.style.removeProperty('user-select')
-    }
-  }, [handleResizePointerCancel, handleResizePointerUp, scheduleResizePreview])
-
-  useEffect(() => {
-    const container = scrollContainerRef.current
-
-    if (!container) {
-      return
-    }
-
-    updateScrollFades()
-    updateResizeHandleOffsets()
-    updateExpandedDetailBounds()
-
-    const handleScroll = () => updateScrollFades()
-    container.addEventListener('scroll', handleScroll, { passive: true })
-
-    const handleResizeObserver: ResizeObserverCallback = (
-      _entries,
-      _observer,
-    ) => {
-      updateScrollFades()
-      updateResizeHandleOffsets()
-      updateExpandedDetailBounds()
-    }
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(handleResizeObserver)
-
-    resizeObserver?.observe(container)
-    if (tableContentRef.current) {
-      resizeObserver?.observe(tableContentRef.current)
-    }
-    if (tableRef.current) {
-      resizeObserver?.observe(tableRef.current)
-    }
-    if (expandedDetailCellRef.current) {
-      resizeObserver?.observe(expandedDetailCellRef.current)
-    }
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll)
-      resizeObserver?.disconnect()
-    }
-  }, [updateExpandedDetailBounds, updateResizeHandleOffsets, updateScrollFades])
-
-  useClientLayoutEffect(() => {
-    updateFloatingRail()
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(() => updateFloatingRail())
-
-    if (scrollContainerRef.current) {
-      resizeObserver?.observe(scrollContainerRef.current)
-    }
-    if (tableRef.current) {
-      resizeObserver?.observe(tableRef.current)
-    }
-
-    window.addEventListener('resize', updateFloatingRail)
-    window.addEventListener('scroll', updateFloatingRail, true)
-
-    return () => {
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', updateFloatingRail)
-      window.removeEventListener('scroll', updateFloatingRail, true)
-    }
-  }, [scrollLayoutSignature, updateFloatingRail])
-
-  useEffect(() => {
-    void scrollLayoutSignature
-    updateScrollFades()
-    updateResizeHandleOffsets()
-    updateExpandedDetailBounds()
-    updateFloatingRail()
-  }, [
-    scrollLayoutSignature,
-    updateExpandedDetailBounds,
-    updateFloatingRail,
-    updateResizeHandleOffsets,
-    updateScrollFades,
-  ])
 
   // Sync sticky header horizontal position with the scroll container.
   // Uses ScrollTimeline (compositor-thread, zero JS lag) when available,
@@ -2433,66 +1763,6 @@ export default function RequirementsTable({
     return () => container.removeEventListener('scroll', sync)
   }, [scrollLayoutSignature])
 
-  const handleResizePointerDown = (
-    columnId: RequirementColumnId,
-    event: ReactPointerEvent<HTMLElement>,
-  ) => {
-    if (!canResizeColumns) {
-      return
-    }
-
-    event.preventDefault()
-    event.stopPropagation()
-
-    cancelResizePreviewFrame()
-    pendingResizePreviewVisibleWidthsRef.current = null
-    resizePreviewVisibleWidthsRef.current = null
-    const visibleWidths = getVisibleWidthSnapshot()
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-    resizeStateRef.current = {
-      columnId,
-      handle: event.currentTarget,
-      pointerId: event.pointerId,
-      startWidth: visibleWidths[columnId],
-      startX: event.clientX,
-      visibleWidths,
-    }
-    document.body.style.cursor = 'ew-resize'
-    document.body.style.userSelect = 'none'
-  }
-
-  const handleResizeKeyDown = (
-    columnId: RequirementColumnId,
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-  ) => {
-    if (!canResizeColumns) {
-      return
-    }
-
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-      return
-    }
-
-    event.preventDefault()
-    event.stopPropagation()
-
-    const visibleWidths = getVisibleWidthSnapshot()
-    const step = event.shiftKey ? 32 : 8
-    const delta = event.key === 'ArrowRight' ? step : -step
-    cancelResizePreviewFrame()
-    pendingResizePreviewVisibleWidthsRef.current = null
-    resizePreviewVisibleWidthsRef.current = null
-    commitColumnWidthOverrides(
-      buildColumnWidthOverrides({
-        ...visibleWidths,
-        [columnId]: clampRequirementColumnWidth(
-          columnId,
-          visibleWidths[columnId] + delta,
-        ),
-      }),
-    )
-  }
-
   const applyVisibleColumns = (nextVisibleColumns: RequirementColumnId[]) => {
     if (!onVisibleColumnsChange) {
       return
@@ -2528,33 +1798,6 @@ export default function RequirementsTable({
       onSortChange(DEFAULT_REQUIREMENT_SORT)
     }
   }
-
-  useEffect(() => {
-    const nextFilterValues = clearRequirementFiltersForHiddenColumns(
-      fv,
-      normalizedVisibleColumns,
-      { columnDefaults: normalizedColumnDefaults },
-    )
-
-    if (nextFilterValues !== fv && onFilterChange) {
-      onFilterChange(nextFilterValues)
-    }
-
-    if (
-      !normalizedVisibleColumns.includes(sortState.by as RequirementColumnId) &&
-      onSortChange &&
-      sortState.by !== DEFAULT_REQUIREMENT_SORT.by
-    ) {
-      onSortChange(DEFAULT_REQUIREMENT_SORT)
-    }
-  }, [
-    fv,
-    normalizedColumnDefaults,
-    normalizedVisibleColumns,
-    onFilterChange,
-    onSortChange,
-    sortState.by,
-  ])
 
   const toggleColumn = (columnId: RequirementColumnId) => {
     const column = allColumns.find(item => item.id === columnId)
@@ -3122,35 +2365,16 @@ export default function RequirementsTable({
               className={`py-1 px-1 ${archivedContentClass} ${dividerClass}`}
               title={selectTooltip}
             >
-              <select
-                aria-label={t('packageItemStatus')}
-                className="w-auto max-w-full rounded-lg border bg-white dark:bg-secondary-800/50 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 transition-all duration-200"
-                onChange={e => {
-                  const value = e.target.value
-                  if (row.itemRef) {
-                    onPackageItemStatusChange(
-                      row.itemRef,
-                      value === '' ? null : Number(value),
-                    )
-                  }
-                }}
-                onClick={e => e.stopPropagation()}
-                title={selectTooltip}
-                value={statusId ?? ''}
-              >
-                <option value="">—</option>
-                {packageItemStatuses
-                  .filter(s => !s.isDeviationStatus || row.hasApprovedDeviation)
-                  .map(s => {
-                    const desc =
-                      locale === 'sv' ? s.descriptionSv : s.descriptionEn
-                    return (
-                      <option key={s.id} title={desc || undefined} value={s.id}>
-                        {locale === 'sv' ? s.nameSv : s.nameEn}
-                      </option>
-                    )
-                  })}
-              </select>
+              <PackageItemStatusSelect
+                ariaLabel={t('packageItemStatus')}
+                hasApprovedDeviation={Boolean(row.hasApprovedDeviation)}
+                itemRef={row.itemRef}
+                locale={locale}
+                onChange={onPackageItemStatusChange}
+                statuses={packageItemStatuses}
+                statusId={statusId}
+                tooltip={selectTooltip}
+              />
             </td>
           )
         }

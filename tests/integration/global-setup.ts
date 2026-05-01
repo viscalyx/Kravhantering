@@ -129,12 +129,12 @@ async function loginAndSaveStorageState(
 
 function decodeHtmlEntities(value: string): string {
   return value
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#x2F;/g, '/')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
 }
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
@@ -152,17 +152,29 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   // foreign IdP/app the contributor did not intend or fail with an opaque
   // ECONNREFUSED. Reuse the pinned storage-state files when they all
   // exist; otherwise fail fast with an actionable message.
+  //
+  // CI flows that intentionally start their own server (e.g. the
+  // `test-prodlike-pruned` job, which boots `start:prodlike-pruned` after
+  // `npm prune --omit=dev`) can opt into seeding against that running
+  // server by also setting `PLAYWRIGHT_FORCE_AUTH_SETUP=1`. The seed
+  // then runs against `PLAYWRIGHT_BASE_URL` instead of bailing out.
   if (process.env.PLAYWRIGHT_SKIP_WEBSERVER) {
-    const missing = findMissingRoleFiles()
-    if (missing.length === 0) {
+    if (process.env.PLAYWRIGHT_FORCE_AUTH_SETUP) {
       console.info(
-        '[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set and all role storageStates already exist — reusing cached cookies; skipping Keycloak login.',
+        '[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set and PLAYWRIGHT_FORCE_AUTH_SETUP is set — seeding storageState against the externally-managed server.',
       )
-      return
+    } else {
+      const missing = findMissingRoleFiles()
+      if (missing.length === 0) {
+        console.info(
+          '[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set and all role storageStates already exist — reusing cached cookies; skipping Keycloak login.',
+        )
+        return
+      }
+      throw new Error(
+        `[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set but the following pinned storageState file(s) are missing: ${missing.join(', ')}. Bring up the local IdP (\`npm run idp:up\`) and the app (\`npm run dev\` or \`npm run start:prodlike\`), then run Playwright once without PLAYWRIGHT_SKIP_WEBSERVER so global-setup can seed them — or run the suite normally.`,
+      )
     }
-    throw new Error(
-      `[playwright global-setup] PLAYWRIGHT_SKIP_WEBSERVER is set but the following pinned storageState file(s) are missing: ${missing.join(', ')}. Bring up the local IdP (\`npm run idp:up\`) and the app (\`npm run dev\` or \`npm run start:prodlike\`), then run Playwright once without PLAYWRIGHT_SKIP_WEBSERVER so global-setup can seed them — or run the suite normally.`,
-    )
   }
 
   const baseUrl = getBaseUrl(config)

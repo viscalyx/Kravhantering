@@ -25,6 +25,8 @@
     "matchtype",
     "nohup",
     "tmpfiles",
+    "recognisable",
+    "safelist",
     "zaproxy",
     "preprod",
     "unlocalized",
@@ -409,6 +411,10 @@
     "kodgenerering",
     "xforwarded",
     "proxyn"
+    "johlju",
+    "biomeignore",
+    "coderabbit",
+    "devmode"
   ],
   "flagWords": [],
   "ignorePaths": [
