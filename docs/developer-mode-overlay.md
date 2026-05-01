@@ -35,9 +35,20 @@ the full contract.
   [`lib/runtime/`](../lib/runtime/) so neither the overlay runtime nor
   any reference to the upstream packages is shipped to clients.
 - Tailwind v4 source detection ignores `node_modules`; the overlay's
-  utility classes are opted back in via
-  [`lib/runtime/developer-mode-safelist.ts`](../lib/runtime/developer-mode-safelist.ts),
-  which [`app/globals.css`](../app/globals.css) `@source`-references.
+  utility classes are opted back in by importing the published
+  `@viscalyx/developer-mode-react/safelist.css` artifact from
+  [`app/globals.css`](../app/globals.css). See the upstream
+  [safelist guide][upstream-safelist] for how the artifact is generated.
+  Because the import is resolved during `next build`, the package must
+  be present at build time. The `@viscalyx/developer-mode-*` packages
+  stay in `devDependencies` and `npm prune --omit=dev` is safe **after**
+  the build completes — `safelist.css` has no JavaScript surface and
+  Tailwind inlines the needed utilities into the emitted CSS bundle.
+  The dedicated `test-prodlike-pruned` job in
+  [`.github/workflows/integration-tests.yml`](../.github/workflows/integration-tests.yml)
+  exercises this build → prune → start sequence using the
+  [`start:prodlike-pruned`](../package.json) script, which avoids the
+  dev-only `dotenv-cli` / `cross-env` wrappers.
 - Set `ENABLE_DEVELOPER_MODE=true` only when you explicitly want a
   non-development build to include the real Developer Mode runtime.
 
@@ -255,7 +266,6 @@ Developer Mode is covered by:
 
 - `tests/unit/developer-mode.test.ts`
 - `tests/unit/developer-mode-provider.test.tsx`
-- `tests/unit/developer-mode-safelist.test.ts`
 - `tests/unit/requirement-detail-client.test.tsx`
 - `tests/unit/status-stepper.test.tsx`
 - `tests/unit/version-history.test.tsx`
@@ -284,3 +294,4 @@ that a human or AI might need to reference:
 [upstream-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
 [upstream-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md
 [upstream-noop-guide]: https://github.com/viscalyx/developer-mode/blob/main/docs/production-noop-guide.md
+[upstream-safelist]: https://github.com/viscalyx/developer-mode/blob/main/docs/safelist.md
