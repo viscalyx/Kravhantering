@@ -108,10 +108,155 @@ jobs:
         if: always()
         run: npm run db:down
 
+  test-prodlike-pruned:
+    name: Test Prod-like Server With Dev Dependencies Pruned
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Clean server and database state
+        run: npm run clean:all
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Setup local SQL Server database
+        run: npm run db:setup
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local IdP service
+        run: npm run idp:up
+
+      - name: Wait for IdP to be ready
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 – not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time."
+          exit 1
+
+      # Build with the full devDependency tree so Tailwind can resolve
+      # `@import "@viscalyx/developer-mode-react/safelist.css"` from
+      # `app/globals.css`. The published `safelist.css` artifact has no
+      # JavaScript runtime surface – its `@source inline(...)` declarations
+      # are inlined into the emitted CSS bundle, so the package is no
+      # longer needed after the build completes.
+      - name: Build prod-like bundle (full deps)
+        run: npm run build:local-prod
+
+      # Snapshot the dev-dep tree, then install a prod-only one in its
+      # place. The snapshot is restored after the server is started so the
+      # Playwright runner (a devDependency) can execute against the
+      # already-running pruned server. Renaming `node_modules` is safe
+      # while Node holds open handles to the old tree on Linux.
+      - name: Snapshot full node_modules
+        run: mv node_modules node_modules.full
+
+      - name: Install production-only dependencies
+        run: npm ci --omit=dev
+
+      - name: Start pruned prod-like server
+        run: |
+          mkdir -p test-results/prodlike-pruned
+          nohup npm run start:prodlike-pruned \
+            > test-results/prodlike-pruned/server.log 2>&1 &
+          echo "$!" > test-results/prodlike-pruned/server.pid
+
+      - name: Wait for pruned server to respond
+        run: |
+          echo "Waiting for prod-like server on http://localhost:3001 ..."
+          for i in $(seq 1 60); do
+            if curl -sf --max-time 5 -o /dev/null http://localhost:3001/; then
+              echo "Pruned server is responding."
+              exit 0
+            fi
+            echo "Attempt $i/60 – not responding yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "Pruned server did not become ready in time."
+          echo "----- server.log -----"
+          cat test-results/prodlike-pruned/server.log || true
+          exit 1
+
+      - name: Restore full node_modules for the test runner
+        run: |
+          mv node_modules node_modules.prod
+          mv node_modules.full node_modules
+
+      - name: Run Playwright tests against pruned prod-like server
+        run: npm run test:integration:prodlike
+        env:
+          CI: true
+          PLAYWRIGHT_SKIP_WEBSERVER: '1'
+          PLAYWRIGHT_FORCE_AUTH_SETUP: '1'
+          PLAYWRIGHT_BASE_URL: 'http://localhost:3001'
+
+      - name: Stop pruned prod-like server
+        if: always()
+        run: |
+          if [ -f test-results/prodlike-pruned/server.pid ]; then
+            kill "$(cat test-results/prodlike-pruned/server.pid)" || true
+          fi
+
+      - name: Upload pruned server log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: prodlike-pruned-server-log
+          path: test-results/prodlike-pruned/server.log
+          retention-days: 7
+
+      - name: Upload test results (prodlike-pruned)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-prodlike-pruned
+          path: playwright-report-prodlike/
+          retention-days: 7
+
+      - name: Upload test results XML (prodlike-pruned)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-junit-prodlike-pruned
+          path: test-results/prodlike/playwright-junit.xml
+          retention-days: 7
+
+      - name: Stop local IdP service
+        if: always()
+        run: npm run idp:down
+
+      - name: Stop local database service
+        if: always()
+        run: npm run db:down
+
   comment-on-failure:
     name: Comment on PR if tests failed
     if: failure() && github.event_name == 'pull_request'
-    needs: [test-server]
+    needs: [test-server, test-prodlike-pruned]
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
