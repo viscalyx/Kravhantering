@@ -938,76 +938,98 @@ export async function initiateArchiving(
   db: SqlServerDatabase,
   requirementId: number,
 ): Promise<void> {
-  const publishedRows = (await db.query(
-    `SELECT TOP (1) id, version_number AS versionNumber
-      FROM requirement_versions
-      WHERE requirement_id = @0 AND requirement_status_id = ${STATUS_PUBLISHED}`,
-    [requirementId],
-  )) as Array<Record<string, unknown>>
-  if (!publishedRows[0]) {
-    throw conflictError('No published version found to archive')
-  }
-  const publishedId = Number(publishedRows[0].id)
-  const publishedVersionNumber = Number(publishedRows[0].versionNumber)
+  await db.transaction('SERIALIZABLE', async manager => {
+    const tx: SqlServerTxExecutor = {
+      query: (sql, params) => manager.query(sql, params),
+    }
 
-  const newerRows = (await db.query(
-    `SELECT TOP (1) id FROM requirement_versions
-      WHERE requirement_id = @0
-        AND requirement_status_id IN (${STATUS_DRAFT}, ${STATUS_REVIEW})
-        AND version_number > @1`,
-    [requirementId, publishedVersionNumber],
-  )) as Array<Record<string, unknown>>
-  if (newerRows[0]) {
-    throw conflictError(
-      'Cannot initiate archiving while there is a pending draft or review version',
-    )
-  }
+    const publishedRows = (await tx.query(
+      `SELECT TOP (1) id, version_number AS versionNumber
+        FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
+        WHERE requirement_id = @0 AND requirement_status_id = ${STATUS_PUBLISHED}`,
+      [requirementId],
+    )) as Array<Record<string, unknown>>
+    if (!publishedRows[0]) {
+      throw conflictError('No published version found to archive')
+    }
+    const publishedId = Number(publishedRows[0].id)
+    const publishedVersionNumber = Number(publishedRows[0].versionNumber)
 
-  const now = new Date()
-  await db.query(
-    `UPDATE requirement_versions
-      SET requirement_status_id = ${STATUS_REVIEW},
-          archive_initiated_at = @0,
-          revision_token = NEWID()
-      WHERE id = @1`,
-    [now, publishedId],
-  )
+    const newerRows = (await tx.query(
+      `SELECT TOP (1) id FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
+        WHERE requirement_id = @0
+          AND requirement_status_id IN (${STATUS_DRAFT}, ${STATUS_REVIEW})
+          AND version_number > @1`,
+      [requirementId, publishedVersionNumber],
+    )) as Array<Record<string, unknown>>
+    if (newerRows[0]) {
+      throw conflictError(
+        'Cannot initiate archiving while there is a pending draft or review version',
+      )
+    }
+
+    const now = new Date()
+    const updatedRows = (await tx.query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = ${STATUS_REVIEW},
+            archive_initiated_at = @0,
+            revision_token = NEWID()
+        OUTPUT INSERTED.id AS id
+        WHERE id = @1
+          AND requirement_status_id = ${STATUS_PUBLISHED}
+          AND archive_initiated_at IS NULL`,
+      [now, publishedId],
+    )) as Array<Record<string, unknown>>
+    if (!updatedRows[0]) {
+      throw conflictError('No published version found to archive')
+    }
+  })
 }
 
 export async function approveArchiving(
   db: SqlServerDatabase,
   requirementId: number,
 ): Promise<void> {
-  const rows = (await db.query(
-    `SELECT TOP (1) id, requirement_status_id AS statusId
-      FROM requirement_versions
-      WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
-    [requirementId],
-  )) as Array<Record<string, unknown>>
-  if (!rows[0]) {
-    throw conflictError('No version with archiving initiated found')
-  }
-  if (Number(rows[0].statusId) !== STATUS_REVIEW) {
-    throw conflictError(
-      'Can only approve archiving from Review status with archiving initiated',
-    )
-  }
-  const versionId = Number(rows[0].id)
-  const now = new Date()
-
-  await db.transaction(async manager => {
-    await manager.query(
-      `UPDATE requirements SET is_archived = 1 WHERE id = @0`,
+  // Strict-target rule: operate only on the single version with
+  // archive_initiated_at set (the formerly-published version). A newer
+  // Draft/Review version may exist for the same requirement; it must never
+  // be the target of approve/cancel.
+  await db.transaction('SERIALIZABLE', async manager => {
+    const rows = (await manager.query(
+      `SELECT TOP (1) id, requirement_status_id AS statusId
+        FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
+        WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
       [requirementId],
-    )
-    await manager.query(
+    )) as Array<Record<string, unknown>>
+    if (!rows[0]) {
+      throw conflictError('No version with archiving initiated found')
+    }
+    if (Number(rows[0].statusId) !== STATUS_REVIEW) {
+      throw conflictError(
+        'Can only approve archiving from Review status with archiving initiated',
+      )
+    }
+    const versionId = Number(rows[0].id)
+    const now = new Date()
+
+    const updatedRows = (await manager.query(
       `UPDATE requirement_versions
         SET requirement_status_id = ${STATUS_ARCHIVED},
             archived_at = @0,
             archive_initiated_at = NULL,
             revision_token = NEWID()
-        WHERE id = @1`,
+        OUTPUT INSERTED.id AS id
+        WHERE id = @1
+          AND requirement_status_id = ${STATUS_REVIEW}
+          AND archive_initiated_at IS NOT NULL`,
       [now, versionId],
+    )) as Array<Record<string, unknown>>
+    if (!updatedRows[0]) {
+      throw conflictError('No version with archiving initiated found')
+    }
+    await manager.query(
+      `UPDATE requirements SET is_archived = 1 WHERE id = @0`,
+      [requirementId],
     )
   })
 }
@@ -1016,28 +1038,40 @@ export async function cancelArchiving(
   db: SqlServerDatabase,
   requirementId: number,
 ): Promise<void> {
-  const rows = (await db.query(
-    `SELECT TOP (1) id, requirement_status_id AS statusId
-      FROM requirement_versions
-      WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
-    [requirementId],
-  )) as Array<Record<string, unknown>>
-  if (!rows[0]) {
-    throw conflictError('No version with archiving initiated found')
-  }
-  if (Number(rows[0].statusId) !== STATUS_REVIEW) {
-    throw conflictError(
-      'Can only cancel archiving from Review status with archiving initiated',
-    )
-  }
-  await db.query(
-    `UPDATE requirement_versions
-      SET requirement_status_id = ${STATUS_PUBLISHED},
-          archive_initiated_at = NULL,
-          revision_token = NEWID()
-      WHERE id = @0`,
-    [Number(rows[0].id)],
-  )
+  // Strict-target rule: operate only on the single version with
+  // archive_initiated_at set (the formerly-published version). A newer
+  // Draft/Review version may exist for the same requirement; it must never
+  // be the target of approve/cancel.
+  await db.transaction('SERIALIZABLE', async manager => {
+    const rows = (await manager.query(
+      `SELECT TOP (1) id, requirement_status_id AS statusId
+        FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
+        WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
+      [requirementId],
+    )) as Array<Record<string, unknown>>
+    if (!rows[0]) {
+      throw conflictError('No version with archiving initiated found')
+    }
+    if (Number(rows[0].statusId) !== STATUS_REVIEW) {
+      throw conflictError(
+        'Can only cancel archiving from Review status with archiving initiated',
+      )
+    }
+    const updatedRows = (await manager.query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = ${STATUS_PUBLISHED},
+            archive_initiated_at = NULL,
+            revision_token = NEWID()
+        OUTPUT INSERTED.id AS id
+        WHERE id = @0
+          AND requirement_status_id = ${STATUS_REVIEW}
+          AND archive_initiated_at IS NOT NULL`,
+      [Number(rows[0].id)],
+    )) as Array<Record<string, unknown>>
+    if (!updatedRows[0]) {
+      throw conflictError('No version with archiving initiated found')
+    }
+  })
 }
 
 export async function deleteDraftVersion(

@@ -60,10 +60,24 @@ process — it cannot be archived directly:
 2. **Approve archiving** (`approveArchiving`) — moves the
    version from Review to Archived, sets `archived_at`,
    clears `archive_initiated_at`, and marks
-   `requirements.is_archived = true`.
+   `requirements.is_archived = true`. This operates **only
+   on the single version that has `archive_initiated_at`
+   set** (the formerly-published version). A newer Draft
+   or Review version that may exist for the same
+   requirement is never the target and can never be
+   archived through this flow.
 3. **Cancel archiving** (`cancelArchiving`) — returns the
    version to Published, clears `archive_initiated_at`.
-   The original `published_at` is preserved.
+   The original `published_at` is preserved. Like
+   `approveArchiving`, this targets only the version with
+   `archive_initiated_at` set; a newer Draft or Review
+   version is never affected.
+
+All three operations run inside a single `SERIALIZABLE`
+transaction with locked precondition reads and conditional
+writes, so concurrent archiving attempts on the same
+requirement are serialized: at most one succeeds and the
+others fail with a conflict error.
 
 See `version-lifecycle-dates.md` for detailed timestamp
 rules.

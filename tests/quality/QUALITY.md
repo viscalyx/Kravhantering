@@ -347,6 +347,40 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 11: stale d
 ```
 <!-- markdownlint-enable MD013 -->
 
+---
+
+### Scenario 12: Concurrent Archiving Attempts Are Atomic And Strictly Targeted
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** `initiateArchiving()`, `approveArchiving()`, and
+`cancelArchiving()` in `lib/dal/requirements.ts` now run their precondition
+reads and writes inside a single `SERIALIZABLE` transaction with
+`UPDLOCK, HOLDLOCK` precondition selects and conditional `UPDATE … WHERE`
+clauses guarded by an affected-row check. `approveArchiving()` and
+`cancelArchiving()` additionally target **only the single version that has
+`archive_initiated_at` set** (the formerly-published version). They never
+operate on a newer Draft or Review version that may exist for the same
+requirement; such newer versions can never be archived through this flow.
+Without these guarantees, two concurrent admin requests can both pass the
+precondition select before either `UPDATE` runs and produce contradictory
+state (e.g. both initiating, or one approving while the other cancels), or a
+successor Draft/Review can be silently flipped to Archived.
+
+**The requirement:** Archiving operations are serialized: at most one
+concurrent attempt succeeds. The losing attempt fails with a `conflict` error
+and leaves the requirement in a consistent lifecycle state. Approve and cancel
+target strictly the version with `archive_initiated_at` set; a newer
+Draft/Review version is never the target.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12"
+```
+<!-- markdownlint-enable MD013 -->
+
 ## AI Session Quality Discipline
 
 1. Read `tests/quality/QUALITY.md` before changing lifecycle, package, MCP,

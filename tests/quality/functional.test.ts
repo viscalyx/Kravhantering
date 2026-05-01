@@ -29,6 +29,7 @@ import {
 } from '@/lib/dal/requirement-packages'
 import {
   approveArchiving,
+  cancelArchiving,
   createRequirement,
   editRequirement,
   getVersionHistory,
@@ -763,5 +764,187 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       editedAt: firstSave.editedAt,
       status: STATUS_DRAFT,
     })
+  })
+
+  it('Scenario 12: concurrent initiateArchiving attempts are serialized', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Concurrent initiate baseline',
+    )
+
+    const results = await Promise.allSettled([
+      initiateArchiving(appDb(), published.requirementId),
+      initiateArchiving(appDb(), published.requirementId),
+    ])
+
+    const fulfilled = results.filter(r => r.status === 'fulfilled')
+    const rejected = results.filter(r => r.status === 'rejected')
+    expect(fulfilled).toHaveLength(1)
+    expect(rejected).toHaveLength(1)
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+      code: 'conflict',
+    })
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    expect(history).toHaveLength(1)
+    expect(history[0]).toMatchObject({
+      status: STATUS_REVIEW,
+      versionNumber: 1,
+    })
+    expect(history[0]?.archiveInitiatedAt).not.toBeNull()
+  })
+
+  it('Scenario 12: concurrent approveArchiving attempts are serialized', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Concurrent approve baseline',
+    )
+    await initiateArchiving(appDb(), published.requirementId)
+
+    const results = await Promise.allSettled([
+      approveArchiving(appDb(), published.requirementId),
+      approveArchiving(appDb(), published.requirementId),
+    ])
+
+    const fulfilled = results.filter(r => r.status === 'fulfilled')
+    const rejected = results.filter(r => r.status === 'rejected')
+    expect(fulfilled).toHaveLength(1)
+    expect(rejected).toHaveLength(1)
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+      code: 'conflict',
+    })
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    expect(history[0]).toMatchObject({
+      status: STATUS_ARCHIVED,
+      versionNumber: 1,
+    })
+    expect(history[0]?.archivedAt).not.toBeNull()
+    const flagRows = (await appDb().query(
+      `SELECT is_archived AS isArchived FROM requirements WHERE id = @0`,
+      [published.requirementId],
+    )) as Array<{ isArchived: number | boolean }>
+    expect(Number(flagRows[0]?.isArchived)).toBe(1)
+  })
+
+  it('Scenario 12: concurrent approveArchiving and cancelArchiving cannot both succeed', async () => {
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Concurrent approve-vs-cancel baseline',
+    )
+    await initiateArchiving(appDb(), published.requirementId)
+
+    const results = await Promise.allSettled([
+      approveArchiving(appDb(), published.requirementId),
+      cancelArchiving(appDb(), published.requirementId),
+    ])
+
+    const fulfilled = results.filter(r => r.status === 'fulfilled')
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1)
+    expect(fulfilled.length).toBeLessThanOrEqual(2)
+
+    const history = await getVersionHistory(appDb(), published.requirementId)
+    const v1 = history.find(v => v.versionNumber === 1)
+    expect(v1).toBeDefined()
+    expect([STATUS_ARCHIVED, STATUS_PUBLISHED]).toContain(v1?.status)
+    expect(v1?.archiveInitiatedAt).toBeNull()
+
+    const flagRows = (await appDb().query(
+      `SELECT is_archived AS isArchived FROM requirements WHERE id = @0`,
+      [published.requirementId],
+    )) as Array<{ isArchived: number | boolean }>
+    const isArchived = Number(flagRows[0]?.isArchived) === 1
+    if (v1?.status === STATUS_ARCHIVED) {
+      expect(isArchived).toBe(true)
+    } else {
+      expect(isArchived).toBe(false)
+    }
+  })
+
+  it('Scenario 12: approve/cancel target only the version with archive_initiated_at and never archive a newer Draft/Review', async () => {
+    // Seed a state that cannot be reached through the public API after the
+    // initiateArchiving fix: V1 is in Review with archive_initiated_at set,
+    // V2 exists as a newer Draft. Approve/cancel must operate strictly on V1
+    // and leave V2 untouched.
+    const area = await createArea(appDb())
+    const published = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Strict-target baseline',
+    )
+
+    // Create V2 draft via a normal edit while V1 is still Published.
+    const v2 = await editRequirement(appDb(), published.requirementId, {
+      baseRevisionToken: published.revisionToken,
+      baseVersionId: published.publishedVersionId,
+      description: 'Successor draft (must never be archived)',
+    })
+
+    // Manually flip V1 to Review with archive_initiated_at set, simulating a
+    // legacy/inconsistent state. The public API would now reject this via
+    // initiateArchiving's "no newer Draft/Review" guard, so we bypass it.
+    const initiatedAt = new Date()
+    await appDb().query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = @0,
+            archive_initiated_at = @1,
+            revision_token = NEWID()
+        WHERE id = @2`,
+      [STATUS_REVIEW, initiatedAt, published.publishedVersionId],
+    )
+
+    await approveArchiving(appDb(), published.requirementId)
+
+    const historyAfterApprove = await getVersionHistory(
+      appDb(),
+      published.requirementId,
+    )
+    const v1After = historyAfterApprove.find(v => v.versionNumber === 1)
+    const v2After = historyAfterApprove.find(v => v.versionNumber === 2)
+    expect(v1After?.status).toBe(STATUS_ARCHIVED)
+    expect(v1After?.archivedAt).not.toBeNull()
+    expect(v2After?.id).toBe(v2.id)
+    expect(v2After?.status).toBe(STATUS_DRAFT)
+    expect(v2After?.revisionToken).toBe(v2.revisionToken)
+
+    // Now repeat the same setup for cancelArchiving.
+    const published2 = await createPublishedRequirement(
+      appDb(),
+      area.id,
+      'Strict-target baseline (cancel)',
+    )
+    const v2b = await editRequirement(appDb(), published2.requirementId, {
+      baseRevisionToken: published2.revisionToken,
+      baseVersionId: published2.publishedVersionId,
+      description: 'Successor draft (must never be cancelled into Published)',
+    })
+    await appDb().query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = @0,
+            archive_initiated_at = @1,
+            revision_token = NEWID()
+        WHERE id = @2`,
+      [STATUS_REVIEW, new Date(), published2.publishedVersionId],
+    )
+
+    await cancelArchiving(appDb(), published2.requirementId)
+
+    const historyAfterCancel = await getVersionHistory(
+      appDb(),
+      published2.requirementId,
+    )
+    const v1Cancel = historyAfterCancel.find(v => v.versionNumber === 1)
+    const v2Cancel = historyAfterCancel.find(v => v.versionNumber === 2)
+    expect(v1Cancel?.status).toBe(STATUS_PUBLISHED)
+    expect(v1Cancel?.archiveInitiatedAt).toBeNull()
+    expect(v2Cancel?.id).toBe(v2b.id)
+    expect(v2Cancel?.status).toBe(STATUS_DRAFT)
+    expect(v2Cancel?.revisionToken).toBe(v2b.revisionToken)
   })
 })
