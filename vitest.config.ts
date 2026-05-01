@@ -79,14 +79,6 @@ export default defineConfig({
         __dirname,
         'lib/runtime/build-target.ts',
       ),
-      '@viscalyx/developer-mode-core': path.resolve(
-        __dirname,
-        'packages/developer-mode-core/src/index.ts',
-      ),
-      '@viscalyx/developer-mode-react': path.resolve(
-        __dirname,
-        'packages/developer-mode-react/src/index.tsx',
-      ),
     },
   },
 

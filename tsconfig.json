@@ -19,13 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@viscalyx/developer-mode-core": [
-        "./packages/developer-mode-core/src/index.ts"
-      ],
-      "@viscalyx/developer-mode-react": [
-        "./packages/developer-mode-react/src/index.tsx"
-      ]
+      "@/*": ["./*"]
     },
     "types": ["node", "vitest/globals"]
   },

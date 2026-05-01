@@ -22,6 +22,8 @@
     "matchstr",
     "matchtype",
     "nohup",
+    "recognisable",
+    "safelist",
     "zaproxy",
     "preprod",
     "unlocalized",
@@ -403,7 +405,11 @@
     "refaktorisering",
     "refaktorering",
     "kodredigering",
-    "kodgenerering"
+    "kodgenerering",
+    "johlju",
+    "biomeignore",
+    "coderabbit",
+    "devmode"
   ],
   "flagWords": [],
   "ignorePaths": [

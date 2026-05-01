@@ -113,26 +113,24 @@ labels, layout surfaces, or interaction patterns, update the relevant:
 - unit and integration tests that cover the affected surface
 - repo instructions if the maintenance rule itself changes
 
-Developer Mode is split into internal dev-only packages:
-
-- `packages/developer-mode-core`
-- `packages/developer-mode-react`
-- README-style package drafts:
-  - [docs/developer-mode-core-README.md](docs/developer-mode-core-README.md)
-  - [docs/developer-mode-react-README.md](docs/developer-mode-react-README.md)
-
-App code should use `devMarker(...)` from
+The overlay runtime is provided by the upstream packages
+[`@viscalyx/developer-mode-core`][dm-core] and
+[`@viscalyx/developer-mode-react`][dm-react]. App code should use
+`devMarker(...)` from
 [`lib/developer-mode-markers.ts`](lib/developer-mode-markers.ts) instead of
 hardcoding `data-developer-mode-*` attributes directly. Local development
-enables the real Developer Mode runtime automatically. Production
-builds alias the Developer Mode packages to no-op entrypoints by default, so
-the overlay runtime and curated marker output are excluded unless
-`ENABLE_DEVELOPER_MODE=true` is set explicitly.
+enables the real Developer Mode runtime automatically. Non-development builds
+alias both packages to first-party noop stubs in
+[`lib/runtime/`](lib/runtime/), so the overlay runtime and marker output are
+excluded unless `ENABLE_DEVELOPER_MODE=true` is set explicitly.
 
 To enable Developer Mode in a browser, focus a non-editable part of the page and
 press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.
-See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the full
-behavior and maintenance rules.
+See [docs/developer-mode-overlay.md](docs/developer-mode-overlay.md) for the
+consumer-side spec, the canonical glossary, and the app-specific marker rules.
+
+[dm-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
+[dm-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md
 
 ## Dependency Management
 

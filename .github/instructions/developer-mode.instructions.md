@@ -14,5 +14,8 @@ applyTo: '{app/**/*.tsx,components/**/*.tsx,docs/**/*.md,tests/unit/**/*.ts,test
   instead of hardcoding `data-developer-mode-*` attributes directly.
 - Prefer curated marker coverage for important product patterns over adding more
   fallback heuristics.
-- Developer Mode packages are aliased to no-op entrypoints outside development
-  unless `ENABLE_DEVELOPER_MODE=true` is set for the build.
+- Non-development builds alias the upstream Developer Mode packages to
+  first-party noop stubs in `lib/runtime/` unless `ENABLE_DEVELOPER_MODE=true`
+  is set for the build. See the upstream
+  [production-noop guide](https://github.com/viscalyx/developer-mode/blob/main/docs/production-noop-guide.md)
+  for the wiring rationale and alias-swap strategies.
