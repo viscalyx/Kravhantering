@@ -27,6 +27,7 @@ for setup, migrations, and the read-only browse workflow.
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Start Next.js development server |
+| `npm run dev:fresh` | Stop any running dev server, wipe `.next/`, and start `next dev` from a clean cache (use after pulling/branch-switching when route folders moved or when a route 404s despite the `page.tsx` existing) |
 | `npm run start:prodlike` | Rebuild and start the prod-like app on port 3001 (`NODE_ENV=production`) |
 | `npm run build` | Production build |
 | `npm run start` | Start the production server |
@@ -84,6 +85,33 @@ npm run dev:https
 >root (`certificates/rootCA.pem`) into the host or browser trust store.
 >If you prefer not to add certificates to any trust store, use `npm run dev`
 >(HTTP) instead.
+
+## Stale `.next/` cache after route changes
+
+Turbopack's dev manifest is built from `.next/dev/` on first start. If you
+add, move, or rename a route folder under `app/` while the dev server is
+**off** (or while it's still cached from a previous `next build`), the
+new sibling routes may 404 even though the `page.tsx` exists on disk.
+The build manifest registers them, but Turbopack only re-scans the
+folders it already knew about.
+
+Symptoms:
+
+- `/sv/requirements/IDN0001` returns 200 but `/sv/requirements/IDN0001/4`
+  or `/sv/requirements/IDN0001/edit` returns 404.
+- `touch`-ing the affected `page.tsx` makes it work.
+
+Fix: start the dev server with a clean cache.
+
+```sh
+npm run dev:fresh
+```
+
+This is equivalent to `npm run kill:port && npm run clean && npm run dev`
+(stops any process on port 3000, removes `.next/` and `out/`, then runs
+`next dev`). Use it after a `git pull` or branch switch that reshuffles
+route folders. The plain `npm run dev` is preferred for the common case
+because it preserves Turbopack's incremental compile cache.
 
 ## Project Structure
 
