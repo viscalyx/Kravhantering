@@ -91,11 +91,18 @@ describe('RequirementsTable', () => {
     vi.stubGlobal(
       'requestAnimationFrame',
       (callback: FrameRequestCallback): number => {
-        callback(performance.now())
-        return 0
+        const id = setTimeout(() => {
+          callback(performance.now())
+        }, 0) as unknown as number
+
+        return id
       },
     )
-    vi.stubGlobal('cancelAnimationFrame', () => {})
+    vi.stubGlobal('cancelAnimationFrame', (id?: number) => {
+      if (typeof id === 'number') {
+        clearTimeout(id as unknown as number)
+      }
+    })
   })
 
   afterEach(() => {
@@ -866,7 +873,7 @@ describe('RequirementsTable', () => {
     expect(option).toHaveAttribute('data-developer-mode-value', 'verifiable')
   })
 
-  it('keeps the floating action rail within the viewport on narrow screens', () => {
+  it('keeps the floating action rail within the viewport on narrow screens', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -901,10 +908,14 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('resize'))
     })
 
-    expect(getFloatingActionRailContainer(container)?.style.left).toBe('268px')
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.left).toBe(
+        '268px',
+      )
+    })
   })
 
-  it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', () => {
+  it('keeps the floating action rail fixed while the table remains in view and hides it when scrolled away', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -930,7 +941,9 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('resize'))
     })
 
-    expect(getFloatingActionRailContainer(container)?.style.top).toBe('124px')
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.top).toBe('124px')
+    })
 
     setElementRect(scrollContainer, {
       bottom: 300,
@@ -944,7 +957,9 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(getFloatingActionRailContainer(container)?.style.top).toBe('80px')
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)?.style.top).toBe('80px')
+    })
 
     setElementRect(scrollContainer, {
       bottom: 60,
@@ -958,7 +973,9 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(getFloatingActionRailContainer(container)).toBeNull()
+    await waitFor(() => {
+      expect(getFloatingActionRailContainer(container)).toBeNull()
+    })
   })
 
   it('renders an inline top rail and sticky title bar when requested', () => {
@@ -1127,7 +1144,7 @@ describe('RequirementsTable', () => {
     ).toBe('default')
   })
 
-  it('renders the scroll-to-top pill in a separate end group after vertical scroll', () => {
+  it('renders the scroll-to-top pill in a separate end group after vertical scroll', async () => {
     const { container } = render(
       <RequirementsTable
         floatingActions={[
@@ -1171,12 +1188,14 @@ describe('RequirementsTable', () => {
       window.dispatchEvent(new Event('scroll'))
     })
 
-    expect(getFloatingActionIds(container)).toEqual([
-      'create',
-      'columns',
-      'print',
-      'scroll-top',
-    ])
+    await waitFor(() => {
+      expect(getFloatingActionIds(container)).toEqual([
+        'create',
+        'columns',
+        'print',
+        'scroll-top',
+      ])
+    })
     const rail = getFloatingActionRail(container)
     const scrollTopGroup = document.querySelector(
       '[data-floating-action-group="scroll-top"]',
@@ -1202,7 +1221,7 @@ describe('RequirementsTable', () => {
     )
   })
 
-  it('scrolls the table back to its top anchor from the end-cap pill', () => {
+  it('scrolls the table back to its top anchor from the end-cap pill', async () => {
     const { container } = render(
       <RequirementsTable locale="sv" rows={[makeRow()]} />,
     )
@@ -1238,6 +1257,12 @@ describe('RequirementsTable', () => {
 
     act(() => {
       window.dispatchEvent(new Event('scroll'))
+    })
+
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-scroll-top-trigger="true"]'),
+      ).toBeTruthy()
     })
 
     const scrollTopTrigger = document.querySelector(
