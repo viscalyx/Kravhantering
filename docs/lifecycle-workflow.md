@@ -79,8 +79,53 @@ writes, so concurrent archiving attempts on the same
 requirement are serialized: at most one succeeds and the
 others fail with a conflict error.
 
+While a version is in archiving review (status = Review
+*and* `archive_initiated_at` is set), the UI surfaces a
+distinct status badge label —
+**"Arkiveringsgranskning" / "Archiving Review"** — to
+disambiguate it from publication review. The DB row is
+unchanged (`requirement_status_id` is still 2 and
+`requirement_statuses.name_sv` is still "Granskning"); the
+override is presentation-only and lives in
+[`lib/requirements/status-label.ts`](../lib/requirements/status-label.ts).
+See [UI status labels](#ui-status-labels) below.
+
 See `version-lifecycle-dates.md` for detailed timestamp
 rules.
+
+## UI status labels
+
+The status badge in the requirements list, the version
+history sidebar, and other UI surfaces derives its label
+from `requirement_versions.requirement_status_id` and (for
+Review only) `requirement_versions.archive_initiated_at`:
+
+<!-- markdownlint-disable MD013 -->
+
+| UI label (sv / en) | `requirement_status_id` | Extra predicate | DB `requirement_statuses.name_sv` / `name_en` |
+| --- | --- | --- | --- |
+| Utkast / Draft | 1 (`STATUS_DRAFT`) | — | Utkast / Draft |
+| Granskning / Review | 2 (`STATUS_REVIEW`) | `archive_initiated_at IS NULL` | Granskning / Review |
+| Arkiveringsgranskning / Archiving Review | 2 (`STATUS_REVIEW`) | `archive_initiated_at IS NOT NULL` | Granskning / Review (UI overrides label only) |
+| Publicerad / Published | 3 (`STATUS_PUBLISHED`) | — | Publicerad / Published |
+| Arkiverad / Archived | 4 (`STATUS_ARCHIVED`) | — | Arkiverad / Archived |
+
+<!-- markdownlint-enable MD013 -->
+
+"Arkiveringsgranskning" is a **presentation-only override**:
+the DB row still stores `requirement_status_id = 2` and
+`requirement_statuses.name_sv = 'Granskning'`, and API/MCP
+responses still return `status: 2`,
+`statusNameSv: 'Granskning'`, plus the raw
+`archiveInitiatedAt` field. The override happens in
+[`lib/requirements/status-label.ts`](../lib/requirements/status-label.ts)
+(consumed by `RequirementsTable` and `VersionHistory`) and is
+mirrored by the `isArchiving` prop on `StatusStepper`, which
+re-labels the middle chevron in the archiving variant
+(Publicerad → Granskning → Arkiverad) to
+"Arkiveringsgranskning" / "Archiving Review". The badge and
+chevron color stay yellow because the underlying status is
+still Review.
 
 ## Improvement Suggestion Lifecycle
 

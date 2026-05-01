@@ -914,13 +914,13 @@ precondition.
 | `requirement_type_id` | integer FK → `requirement_types.id` | Functional / Non-functional (nullable) |
 | `quality_characteristic_id` | integer FK → `quality_characteristics.id` | ISO 25010 quality characteristic (nullable) |
 | `risk_level_id` | integer FK → `risk_levels.id` | Risk level classification (nullable) |
-| `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived) |
+| `requirement_status_id` | integer FK → `requirement_statuses.id` | Current lifecycle status (1=Draft, 2=Review, 3=Published, 4=Archived). The UI may render a derived label — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
 | `is_testing_required` | boolean (integer, default false) | Whether the requirement must be verified by test |
 | `verification_method` | text | How to verify the requirement (nullable; only meaningful when `is_testing_required` is true) |
 | `created_at` | text (ISO 8601) | When this version was created |
 | `edited_at` | text (ISO 8601) | Last content edit timestamp (nullable) |
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
-| `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable) |
+| `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
 | `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
 | `created_by` | text | User or system that created this version (nullable) |
 <!-- markdownlint-enable MD013 -->

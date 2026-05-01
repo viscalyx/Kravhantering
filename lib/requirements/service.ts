@@ -366,6 +366,7 @@ function formatRequirementListItem(
     uniqueId: item.uniqueId,
     version: {
       acceptanceCriteria: item.acceptanceCriteria,
+      archiveInitiatedAt: item.archiveInitiatedAt,
       categoryId: item.requirementCategoryId,
       categoryNameEn: item.categoryNameEn,
       categoryNameSv: item.categoryNameSv,

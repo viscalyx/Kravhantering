@@ -120,4 +120,30 @@ describe('StatusStepper', () => {
       ),
     ).toBeInTheDocument()
   })
+
+  it('overrides the Review label with Arkiveringsgranskning when isArchiving is true', () => {
+    const archivingStatuses = [
+      { id: 3, color: '#22c55e', nameEn: 'Published', nameSv: 'Publicerad' },
+      { id: 2, color: '#eab308', nameEn: 'Review', nameSv: 'Granskning' },
+      { id: 4, color: '#6b7280', nameEn: 'Archived', nameSv: 'Arkiverad' },
+    ]
+
+    render(
+      <StatusStepper
+        currentStatusId={2}
+        isArchiving
+        statuses={archivingStatuses}
+      />,
+    )
+
+    expect(screen.getAllByText('Arkiveringsgranskning')).toHaveLength(2)
+    expect(screen.queryByText('Granskning')).not.toBeInTheDocument()
+  })
+
+  it('keeps the Granskning label when isArchiving is false', () => {
+    render(<StatusStepper currentStatusId={2} />)
+
+    expect(screen.getAllByText('Granskning')).toHaveLength(2)
+    expect(screen.queryByText('Arkiveringsgranskning')).not.toBeInTheDocument()
+  })
 })

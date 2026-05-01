@@ -89,6 +89,7 @@ export interface RequirementRow {
   uniqueId: string
   usageScenarioIds?: number[]
   version: {
+    archiveInitiatedAt?: string | null
     categoryNameEn: string | null
     categoryNameSv: string | null
     description: string | null

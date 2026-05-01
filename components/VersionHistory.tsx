@@ -5,9 +5,11 @@ import { useLocale, useTranslations } from 'next-intl'
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { resolveStatusLabel } from '@/lib/requirements/status-label'
 
 interface Version {
   archivedAt: string | null
+  archiveInitiatedAt?: string | null
   createdAt: string
   description: string | null
   editedAt: string | null
@@ -58,6 +60,7 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
     ref,
   ) {
     const t = useTranslations('requirement')
+    const tStatusLabel = useTranslations('requirement.statusLabel')
     const locale = useLocale()
     const [expandedBefore, setExpandedBefore] = useState(false)
     const [expandedAfter, setExpandedAfter] = useState(false)
@@ -318,9 +321,16 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                 <span>v{v.versionNumber}</span>
                 <StatusBadge
                   color={v.statusColor}
-                  label={
-                    (locale === 'sv' ? v.statusNameSv : v.statusNameEn) ?? ''
-                  }
+                  label={resolveStatusLabel(
+                    {
+                      status: v.status,
+                      statusNameSv: v.statusNameSv,
+                      statusNameEn: v.statusNameEn,
+                      archiveInitiatedAt: v.archiveInitiatedAt,
+                    },
+                    locale === 'sv' ? 'sv' : 'en',
+                    tStatusLabel,
+                  )}
                   size="sm"
                 />
                 {v.status === 1 && v.editedAt && (

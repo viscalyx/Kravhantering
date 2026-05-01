@@ -632,6 +632,44 @@ describe('RequirementsTable', () => {
     expect(screen.queryByText('v2')).toBeNull()
   })
 
+  it('renders the archiving review label when a Review row has archiveInitiatedAt set', () => {
+    const rows = [
+      makeRow({
+        version: {
+          ...makeRow().version,
+          status: 2,
+          statusColor: '#f59e0b',
+          statusNameEn: 'Review',
+          statusNameSv: 'Granskning',
+          archiveInitiatedAt: '2026-04-01T12:00:00.000Z',
+        },
+      }),
+    ]
+    render(<RequirementsTable locale="sv" rows={rows} />)
+
+    expect(screen.getByText('Arkiveringsgranskning')).toBeTruthy()
+    expect(screen.queryByText('Granskning')).toBeNull()
+  })
+
+  it('keeps the standard Review label when archiveInitiatedAt is null', () => {
+    const rows = [
+      makeRow({
+        version: {
+          ...makeRow().version,
+          status: 2,
+          statusColor: '#f59e0b',
+          statusNameEn: 'Review',
+          statusNameSv: 'Granskning',
+          archiveInitiatedAt: null,
+        },
+      }),
+    ]
+    render(<RequirementsTable locale="sv" rows={rows} />)
+
+    expect(screen.getByText('Granskning')).toBeTruthy()
+    expect(screen.queryByText('Arkiveringsgranskning')).toBeNull()
+  })
+
   it('renders a package-local marker icon for package-local rows', () => {
     render(
       <RequirementsTable

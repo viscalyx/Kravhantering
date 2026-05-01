@@ -1549,6 +1549,7 @@ function mapLibraryPackageItemRow(
     uniqueId: row.uniqueId,
     usageScenarioIds: parseCsvNumberList(row.usageScenarioIds),
     version: {
+      archiveInitiatedAt: null,
       categoryNameEn: row.categoryNameEn ?? null,
       categoryNameSv: row.categoryNameSv ?? null,
       description: row.description,
@@ -1623,6 +1624,7 @@ function mapPackageLocalRequirementListRow(
     uniqueId: row.uniqueId,
     usageScenarioIds: parseCsvNumberList(row.usageScenarioIds),
     version: {
+      archiveInitiatedAt: null,
       categoryNameEn: row.requirementCategoryNameEn ?? null,
       categoryNameSv: row.requirementCategoryNameSv ?? null,
       description: row.description,
