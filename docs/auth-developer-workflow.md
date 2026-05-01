@@ -424,6 +424,35 @@ cache by running Playwright once normally first (so `globalSetup` can
 log in against the local IdP via `npm run idp:up`) and then re-run with
 `PLAYWRIGHT_SKIP_WEBSERVER=1`.
 
+## Authenticated `curl` against the dev server
+
+The OIDC redirect chain makes plain `curl http://localhost:3000/...`
+useless for any protected route — middleware always returns `302
+/api/auth/login`. Use the helper at `scripts/dev-login.mjs` (or the
+`scripts/dev-curl.sh` wrapper) to log in once via the dev Keycloak realm
+and reuse the resulting cookie jar:
+
+<!-- markdownlint-disable MD013 -->
+```sh
+# Log in as ada.admin (default user, password devpass) and print the
+# Netscape cookie-jar path. Reuses an existing valid jar at
+# .auth/<user>.cookies; pass --force to re-login.
+node scripts/dev-login.mjs
+
+# Convenience wrapper: logs in if needed, then runs curl with cookies
+# attached. Bare paths are resolved against $DEV_LOGIN_BASE_URL.
+scripts/dev-curl.sh -s /api/auth/me
+scripts/dev-curl.sh -i /sv/requirements/IDN0001/4
+
+# Switch users / base URL via env vars.
+DEV_LOGIN_USER=rita.reviewer scripts/dev-curl.sh /sv/requirements
+DEV_LOGIN_BASE_URL=http://localhost:3000 scripts/dev-curl.sh /api/auth/me
+```
+<!-- markdownlint-enable MD013 -->
+
+The cookie jar is written under `.auth/` (gitignored) with mode `0600`.
+Set `DEV_LOGIN_DEBUG=1` to trace the OIDC redirect chain on stderr.
+
 ## Inspecting tokens
 
 After signing in via `http://localhost:3000/api/auth/login`, the session
