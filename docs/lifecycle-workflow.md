@@ -97,8 +97,17 @@ rules.
 
 The status badge in the requirements list, the version
 history sidebar, and other UI surfaces derives its label
-from `requirement_versions.requirement_status_id` and (for
-Review only) `requirement_versions.archive_initiated_at`:
+from a requirement-level effective status combined with
+`requirement_versions.archive_initiated_at` (relevant for
+Review only). For the requirements list view the effective
+status is computed server-side by `EFFECTIVE_STATUS_SQL` in
+[`lib/dal/requirements.ts`](../lib/dal/requirements.ts),
+which consolidates each requirement's
+`requirement_versions.requirement_status_id` rows into a
+single status; for the version history sidebar each row's
+own `requirement_status_id` is used directly. In both cases
+the displayed row's `archive_initiated_at` is what
+distinguishes "Granskning" from "Arkiveringsgranskning":
 
 <!-- markdownlint-disable MD013 -->
 

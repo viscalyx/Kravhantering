@@ -846,8 +846,12 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     ])
 
     const fulfilled = results.filter(r => r.status === 'fulfilled')
-    expect(fulfilled.length).toBeGreaterThanOrEqual(1)
-    expect(fulfilled.length).toBeLessThanOrEqual(2)
+    const rejected = results.filter(r => r.status === 'rejected')
+    expect(fulfilled).toHaveLength(1)
+    expect(rejected).toHaveLength(1)
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({
+      code: 'conflict',
+    })
 
     const history = await getVersionHistory(appDb(), published.requirementId)
     const v1 = history.find(v => v.versionNumber === 1)
