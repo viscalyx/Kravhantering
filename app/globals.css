@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Tailwind v4 excludes node_modules from automatic source detection. The
+ * developer-mode overlay/badge/chip/toast lives in published packages, so
+ * its utility classes (including arbitrary values like `bg-white/92`,
+ * `tracking-[0.18em]`, `text-[11px]`) must be opted-in explicitly here or
+ * the badge that appears when toggling developer mode renders unstyled.
+ * The safelist mirrors the class strings used by the published package so
+ * production builds remain independent of node_modules contents. */
+@source "../lib/runtime/developer-mode-safelist.ts";
+
 /* Class-based dark mode toggle */
 @custom-variant dark (&:where(.dark, .dark *));
 

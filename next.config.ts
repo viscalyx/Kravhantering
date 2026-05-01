@@ -49,13 +49,24 @@ const buildTargetModulePathRelative = `./lib/runtime/build-target${buildTargetSu
 
 const enableDeveloperMode =
   process.env.ENABLE_DEVELOPER_MODE === 'true' || resolvedBuildTarget === 'dev'
-// Swap the developer-mode packages for their `/noop` subpath exports when
-// developer mode is disabled. Both Turbopack and webpack accept a package
-// specifier as the alias value, so the same string works for both bundlers
-// and resolves to the published `dist/noop.js` via the package's `exports`
-// map. Keep the two alias blocks below in sync.
-const developerModeCoreNoopSpecifier = '@viscalyx/developer-mode-core/noop'
-const developerModeReactNoopSpecifier = '@viscalyx/developer-mode-react/noop'
+// When developer mode is disabled, swap the `@viscalyx/developer-mode-*`
+// packages for first-party stubs in `lib/runtime/`. This deliberately avoids
+// pointing the alias at the published package's own `/noop` subpath so that
+// production builds (and the production runtime they produce) contain zero
+// references to the developer-mode packages — they can be pruned with
+// `npm prune --omit=dev` without breaking the build. Webpack accepts both
+// specifiers and absolute paths; Turbopack treats a leading `/` as
+// project-root-relative, so we use a `./`-prefixed relative path.
+const developerModeCoreNoopPathRelative =
+  './lib/runtime/developer-mode-core-noop.ts'
+const developerModeReactNoopPathRelative =
+  './lib/runtime/developer-mode-react-noop.tsx'
+const developerModeCoreNoopPathAbsolute = fileURLToPath(
+  new URL(developerModeCoreNoopPathRelative, import.meta.url),
+)
+const developerModeReactNoopPathAbsolute = fileURLToPath(
+  new URL(developerModeReactNoopPathRelative, import.meta.url),
+)
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -63,10 +74,9 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   generateEtags: true,
-  transpilePackages: [
-    '@viscalyx/developer-mode-core',
-    '@viscalyx/developer-mode-react',
-  ],
+  transpilePackages: enableDeveloperMode
+    ? ['@viscalyx/developer-mode-core', '@viscalyx/developer-mode-react']
+    : [],
   compiler: {
     removeConsole:
       resolvedBuildTarget !== 'dev' ? { exclude: ['error'] } : false,
@@ -88,8 +98,9 @@ const nextConfig: NextConfig = {
         : {}),
       ...(!enableDeveloperMode
         ? {
-            '@viscalyx/developer-mode-core': developerModeCoreNoopSpecifier,
-            '@viscalyx/developer-mode-react': developerModeReactNoopSpecifier,
+            '@viscalyx/developer-mode-core': developerModeCoreNoopPathRelative,
+            '@viscalyx/developer-mode-react':
+              developerModeReactNoopPathRelative,
           }
         : {}),
     },
@@ -107,9 +118,9 @@ const nextConfig: NextConfig = {
 
     if (!enableDeveloperMode) {
       config.resolve.alias['@viscalyx/developer-mode-core'] =
-        developerModeCoreNoopSpecifier
+        developerModeCoreNoopPathAbsolute
       config.resolve.alias['@viscalyx/developer-mode-react'] =
-        developerModeReactNoopSpecifier
+        developerModeReactNoopPathAbsolute
     }
 
     return config
