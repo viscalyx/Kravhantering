@@ -98,9 +98,10 @@ describe('ResponsibilityAreasClient', () => {
     const submitInit = fetchMock.mock.calls[1][1] as RequestInit
     expect(fetchMock.mock.calls[1][0]).toBe('/api/package-responsibility-areas')
     expect(submitInit.method).toBe('POST')
-    expect(submitInit.body).toBe(
-      JSON.stringify({ nameEn: 'Security', nameSv: 'Säkerhet' }),
-    )
+    expect(JSON.parse(submitInit.body as string)).toEqual({
+      nameEn: 'Security',
+      nameSv: 'Säkerhet',
+    })
   })
 
   it('prefills the edit form', async () => {

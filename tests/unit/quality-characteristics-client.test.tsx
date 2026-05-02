@@ -49,11 +49,15 @@ const sampleCategories = [
 ]
 
 const qcNameSvInput = () =>
-  screen.getByRole('textbox', { name: 'qualityCharacteristicMgmt.name (SV)' })
+  screen.getByRole('textbox', {
+    name: /qualityCharacteristicMgmt\.name \(SV\)/,
+  })
 const qcNameEnInput = () =>
-  screen.getByRole('textbox', { name: 'qualityCharacteristicMgmt.name (EN)' })
+  screen.getByRole('textbox', {
+    name: /qualityCharacteristicMgmt\.name \(EN\)/,
+  })
 const qcTypeSelect = () =>
-  screen.getByRole('combobox', { name: 'qualityCharacteristicMgmt.type' })
+  screen.getByRole('combobox', { name: /qualityCharacteristicMgmt\.type/ })
 
 describe('QualityCharacteristicsClient', () => {
   afterEach(cleanup)
@@ -85,6 +89,9 @@ describe('QualityCharacteristicsClient', () => {
     expect(
       screen.getByRole('button', { name: /common\.create/ }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /common\.create/ }),
+    ).toHaveAttribute('title', 'common.create')
   })
 
   it('fetches and displays types with categories in grid', async () => {
@@ -284,8 +291,10 @@ describe('QualityCharacteristicsClient', () => {
     )
     expect(editButtons[0]).toBeDisabled()
     expect(editButtons[0]).toHaveTextContent('common.saving')
+    expect(editButtons[0]).toHaveAttribute('title', 'common.savingInProgress')
     expect(deleteButtons[0]).toBeDisabled()
     expect(deleteButtons[0]).toHaveTextContent('common.saving')
+    expect(deleteButtons[0]).toHaveAttribute('title', 'common.savingInProgress')
 
     await act(async () => {
       resolveSubmit(okJson({ id: 99 }))
@@ -362,7 +371,7 @@ describe('QualityCharacteristicsClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/ }))
     expect(
       screen.queryByRole('textbox', {
-        name: 'qualityCharacteristicMgmt.name (SV)',
+        name: /qualityCharacteristicMgmt\.name \(SV\)/,
       }),
     ).not.toBeInTheDocument()
   })

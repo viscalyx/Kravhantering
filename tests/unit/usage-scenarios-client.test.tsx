@@ -59,9 +59,9 @@ const sampleScenarios = [
 ]
 
 const scenarioNameSvInput = () =>
-  screen.getByRole('textbox', { name: 'scenario.name (SV)' })
+  screen.getByRole('textbox', { name: /scenario\.nameSvLabel/ })
 const scenarioNameEnInput = () =>
-  screen.getByRole('textbox', { name: 'scenario.name (EN)' })
+  screen.getByRole('textbox', { name: /scenario\.nameEnLabel/ })
 
 describe('UsageScenariosClient', () => {
   afterEach(cleanup)
@@ -107,7 +107,7 @@ describe('UsageScenariosClient', () => {
     expect(scenarioNameSvInput()).toBeInTheDocument()
     expect(scenarioNameEnInput()).toBeInTheDocument()
     const nameHelpButton = screen.getByRole('button', {
-      name: 'common.help: scenario.name (SV)',
+      name: 'common.help: scenario.nameSvLabel',
     })
     fireEvent.click(nameHelpButton)
     expect(nameHelpButton).toHaveAttribute('aria-expanded', 'true')
@@ -160,6 +160,31 @@ describe('UsageScenariosClient', () => {
     })
   })
 
+  it('marks linked requirement loading as a status', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/usage-scenarios') {
+        return okJson({ scenarios: sampleScenarios })
+      }
+      if (url === '/api/owners/all') return okJson({ owners: [] })
+      if (url === '/api/usage-scenarios/1') return new Promise(() => {})
+      return okJson({})
+    })
+
+    render(<UsageScenariosClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    })
+  })
+
   it('shows an error instead of an empty state when linked requirements fail to load', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/usage-scenarios') {
@@ -194,7 +219,7 @@ describe('UsageScenariosClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
-      screen.queryByRole('textbox', { name: 'scenario.name (SV)' }),
+      screen.queryByRole('textbox', { name: /scenario\.nameSvLabel/ }),
     ).toBeNull()
   })
 

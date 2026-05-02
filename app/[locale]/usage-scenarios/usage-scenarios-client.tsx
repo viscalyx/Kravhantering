@@ -293,7 +293,7 @@ export default function UsageScenariosClient() {
                     <FieldLabelWithHelp
                       help={t('nameSvHelp')}
                       htmlFor="scen-name-sv"
-                      label={`${t('name')} (SV)`}
+                      label={t('nameSvLabel')}
                       required
                     />
                     <input
@@ -314,7 +314,7 @@ export default function UsageScenariosClient() {
                     <FieldLabelWithHelp
                       help={t('nameEnHelp')}
                       htmlFor="scen-name-en"
-                      label={`${t('name')} (EN)`}
+                      label={t('nameEnLabel')}
                       required
                     />
                     <input
@@ -335,7 +335,7 @@ export default function UsageScenariosClient() {
                     <FieldLabelWithHelp
                       help={t('descriptionSvHelp')}
                       htmlFor="scen-desc-sv"
-                      label={`${t('description')} (SV)`}
+                      label={t('descriptionSvLabel')}
                     />
                     <textarea
                       className={inputClassName}
@@ -354,7 +354,7 @@ export default function UsageScenariosClient() {
                     <FieldLabelWithHelp
                       help={t('descriptionEnHelp')}
                       htmlFor="scen-desc-en"
-                      label={`${t('description')} (EN)`}
+                      label={t('descriptionEnLabel')}
                     />
                     <textarea
                       className={inputClassName}
@@ -428,7 +428,10 @@ export default function UsageScenariosClient() {
                       {t('linkedRequirements')}
                     </h3>
                     {linkedRequirementsLoading ? (
-                      <p className="text-sm text-secondary-500 dark:text-secondary-400">
+                      <p
+                        className="text-sm text-secondary-500 dark:text-secondary-400"
+                        role="status"
+                      >
                         {tc('loading')}
                       </p>
                     ) : linkedRequirementsError ? (
@@ -476,7 +479,7 @@ export default function UsageScenariosClient() {
                                 >
                                   <td className="py-2 px-3 font-medium">
                                     <Link
-                                      className="inline-flex items-center min-h-[44px] min-w-[44px] text-primary-700 dark:text-primary-300 hover:underline"
+                                      className="inline-flex items-center min-h-11 min-w-11 text-primary-700 dark:text-primary-300 hover:underline"
                                       href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
                                     >
                                       {requirement.uniqueId}
@@ -520,7 +523,10 @@ export default function UsageScenariosClient() {
         </AnimatePresence>
 
         {controller.loading ? (
-          <p className="text-secondary-600 dark:text-secondary-400">
+          <p
+            className="text-secondary-600 dark:text-secondary-400"
+            role="status"
+          >
             {tc('loading')}
           </p>
         ) : (

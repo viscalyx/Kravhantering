@@ -6,6 +6,7 @@
     "loadingRequirements": "Fetching requirements…",
     "save": "Save",
     "saving": "Saving…",
+    "savingInProgress": "Saving in progress…",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
@@ -56,6 +57,7 @@
     "showShortText": "Show short text",
     "showFullText": "Show full text",
     "deleting": "Deleting…",
+    "deletingInProgress": "Deleting in progress…",
     "unexpectedError": "An unexpected error occurred"
   },
   "nav": {
@@ -511,10 +513,14 @@
   },
   "scenario": {
     "name": "Name",
+    "nameSvLabel": "Name (Swedish)",
     "nameSvHelp": "Enter the Swedish name for this usage scenario.",
+    "nameEnLabel": "Name (English)",
     "nameEnHelp": "Enter the English name for this usage scenario.",
     "description": "Description",
+    "descriptionSvLabel": "Description (Swedish)",
     "descriptionSvHelp": "Optionally describe the scenario in Swedish so users understand when it applies.",
+    "descriptionEnLabel": "Description (English)",
     "descriptionEnHelp": "Optionally describe the scenario in English so users understand when it applies.",
     "owner": "Scenario owner",
     "ownerHelp": "Choose the owner responsible for this scenario and its linked requirements.",

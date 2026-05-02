@@ -384,8 +384,8 @@ describe('RequirementAreasClient', () => {
       target: { value: 'Failing Area' },
     })
 
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas' && !url.includes('/'))
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas' && !init?.method)
         return okJson({ areas: sampleAreas })
       if (url === '/api/owners') return okJson({ owners: sampleOwners })
       return {

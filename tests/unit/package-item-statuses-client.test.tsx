@@ -75,7 +75,9 @@ describe('PackageItemStatusesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okResponse({ statuses: sampleStatuses }))
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(okResponse({ statuses: sampleStatuses })),
+    )
   })
 
   it('renders heading and create button', async () => {

@@ -195,6 +195,11 @@ export default function QualityCharacteristicsClient() {
         <span className="sr-only">{tc('delete')}</span>
       </>
     )
+  const getMutationActionTitle = (actionLabel: string, isDeleting = false) => {
+    if (controller.submitting) return tc('savingInProgress')
+    if (isDeleting) return tc('deletingInProgress')
+    return actionLabel
+  }
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -212,6 +217,7 @@ export default function QualityCharacteristicsClient() {
             })}
             disabled={controller.submitting}
             onClick={controller.openCreate}
+            title={getMutationActionTitle(tc('create'))}
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
@@ -351,6 +357,7 @@ export default function QualityCharacteristicsClient() {
                 <button
                   className="btn-primary"
                   disabled={controller.submitting}
+                  title={getMutationActionTitle(tc('save'))}
                   type="submit"
                 >
                   {controller.submitting ? tc('saving') : tc('save')}
@@ -359,6 +366,7 @@ export default function QualityCharacteristicsClient() {
                   className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
                   disabled={controller.submitting}
                   onClick={controller.closeForm}
+                  title={getMutationActionTitle(tc('cancel'))}
                   type="button"
                 >
                   {tc('cancel')}
@@ -427,6 +435,10 @@ export default function QualityCharacteristicsClient() {
                                 })}
                                 disabled={parentActionDisabled}
                                 onClick={() => controller.openEdit(parent)}
+                                title={getMutationActionTitle(
+                                  tc('edit'),
+                                  parentDeleting,
+                                )}
                                 type="button"
                               >
                                 {renderEditActionContent('h-3.5 w-3.5')}
@@ -445,6 +457,10 @@ export default function QualityCharacteristicsClient() {
                                     event.currentTarget,
                                   )
                                 }}
+                                title={getMutationActionTitle(
+                                  tc('delete'),
+                                  parentDeleting,
+                                )}
                                 type="button"
                               >
                                 {renderDeleteActionContent(
@@ -480,6 +496,10 @@ export default function QualityCharacteristicsClient() {
                                         onClick={() =>
                                           controller.openEdit(child)
                                         }
+                                        title={getMutationActionTitle(
+                                          tc('edit'),
+                                          childDeleting,
+                                        )}
                                         type="button"
                                       >
                                         {renderEditActionContent('h-3 w-3')}
@@ -498,6 +518,10 @@ export default function QualityCharacteristicsClient() {
                                             event.currentTarget,
                                           )
                                         }}
+                                        title={getMutationActionTitle(
+                                          tc('delete'),
+                                          childDeleting,
+                                        )}
                                         type="button"
                                       >
                                         {renderDeleteActionContent(

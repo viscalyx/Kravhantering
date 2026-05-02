@@ -27,14 +27,14 @@ export default function FieldLabelWithHelp({
       <div className="flex items-center gap-1.5 mb-1">
         <label className="text-sm font-medium" htmlFor={htmlFor}>
           {label}
-          {required ? <span aria-hidden="true"> *</span> : null}
+          {required ? <span className="sr-only"> *</span> : null}
         </label>
         <button
           aria-controls={helpId}
-          aria-describedby={helpId}
+          aria-describedby={isOpen ? helpId : undefined}
           aria-expanded={isOpen}
           aria-label={`${tc('help')}: ${label}`}
-          className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          className="min-h-11 min-w-11 inline-flex items-center justify-center text-secondary-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           onClick={() => setIsOpen(open => !open)}
           type="button"
         >

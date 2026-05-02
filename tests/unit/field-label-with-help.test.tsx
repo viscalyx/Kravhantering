@@ -22,20 +22,23 @@ describe('FieldLabelWithHelp', () => {
     )
 
     expect(
-      screen.getByRole('textbox', { name: 'Display name' }),
+      screen.getByRole('textbox', { name: /Display name/ }),
     ).toBeInTheDocument()
     expect(screen.queryByText('Use the short public name.')).toBeNull()
+    const requiredMarker = document.querySelector('label .sr-only')
+    expect(requiredMarker).toHaveTextContent('*')
 
     const helpButton = screen.getByRole('button', {
       name: 'common.help: Display name',
     })
     expect(helpButton).toHaveAttribute('aria-controls', 'display-name-help')
-    expect(helpButton).toHaveAttribute('aria-describedby', 'display-name-help')
+    expect(helpButton).not.toHaveAttribute('aria-describedby')
     expect(helpButton).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(helpButton)
 
     expect(helpButton).toHaveAttribute('aria-expanded', 'true')
+    expect(helpButton).toHaveAttribute('aria-describedby', 'display-name-help')
     const helpPanel = document.getElementById('display-name-help')
     expect(helpPanel).toHaveTextContent('Use the short public name.')
   })

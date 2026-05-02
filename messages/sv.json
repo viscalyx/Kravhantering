@@ -6,6 +6,7 @@
     "loadingRequirements": "Hämtar krav…",
     "save": "Spara",
     "saving": "Sparar…",
+    "savingInProgress": "Sparning pågår…",
     "cancel": "Avbryt",
     "delete": "Ta bort",
     "edit": "Redigera",
@@ -56,6 +57,7 @@
     "showShortText": "Visa kortad text",
     "showFullText": "Visa fullständig text",
     "deleting": "Tar bort…",
+    "deletingInProgress": "Borttagning pågår…",
     "unexpectedError": "Ett oväntat fel uppstod"
   },
   "nav": {
@@ -511,10 +513,14 @@
   },
   "scenario": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
     "nameSvHelp": "Ange det svenska namnet för användningsscenariot.",
+    "nameEnLabel": "Namn (engelska)",
     "nameEnHelp": "Ange det engelska namnet för användningsscenariot.",
     "description": "Beskrivning",
+    "descriptionSvLabel": "Beskrivning (svenska)",
     "descriptionSvHelp": "Beskriv vid behov scenariot på svenska så att användare förstår när det gäller.",
+    "descriptionEnLabel": "Beskrivning (engelska)",
     "descriptionEnHelp": "Beskriv vid behov scenariot på engelska så att användare förstår när det gäller.",
     "owner": "Scenarioägare",
     "ownerHelp": "Välj ägaren som ansvarar för scenariot och dess kopplade krav.",
