@@ -110,7 +110,7 @@ export async function updateArea(
   data: {
     name?: string
     description?: string
-    ownerId?: number
+    ownerId?: number | null
   },
 ): Promise<RequirementAreaRow | undefined> {
   const sets: string[] = []
