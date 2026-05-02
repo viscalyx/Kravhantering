@@ -89,6 +89,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirement package create/edit forms continue to use the `crud form`
   marker; their package-field help toggles are part of that same form
   surface rather than separate developer-mode markers.
+- Reference-data CRUD forms may use shared field help toggles; those
+  triggers stay inside the existing `crud form` surface rather than
+  adding separate developer-mode markers.
 - Navigation help triggers use the `navigation` context with button
   values `help toggle open` and `help toggle closed`.
 - Auth account-detail rows keep their developer-mode values in English

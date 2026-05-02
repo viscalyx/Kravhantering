@@ -989,12 +989,12 @@ bakom proxyn. Någon `docker-compose.sqlserver.override.yml` behövs
 > `kravhantering` — se användarrutan i det avsnittet.)
 
 Det rekommenderade `npm run start:prodlike-pruned` och det enklare
-`npm run start:prodlike` startar Next.js på `0.0.0.0:3001`. För
-PoC:n ska den bindningen ändras till loopback genom att starta
-servern bakom en proxy och **inte** exponera `3001` i firewalld.
-Detta görs enklast genom att starta Next med
-`--hostname 127.0.0.1`-flaggan i en wrapper, eller — minst kod —
-genom att bara låta firewalld blockera `3001/tcp`.
+`npm run start:prodlike` startar Next.js på `127.0.0.1:3001` genom
+`--hostname 127.0.0.1`. Behåll den loopback-bindningen, eller använd
+en liten wrapper som alltid skickar samma flagga, så att endast den
+lokala nginx-proxyn når appen på port `3001`. Firewalld-reglerna som
+inte öppnar `3001/tcp` är fortsatt defense-in-depth, men de är inte den
+primära spärren för app-porten.
 
 Installera `nginx` (görs i avsnitt 2) och låt den lyssna på `443`.
 Endast `nginx` får binda låga portar; det görs via systemets

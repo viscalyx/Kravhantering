@@ -23,7 +23,7 @@ suppressed in the rules file.
    - SQL Server via `npm run db:up && npm run db:setup`.
    - A local Keycloak realm via `npm run idp:up`.
 3. Builds the production bundle with `npm run build:local-prod` and
-   starts it with `next start --hostname 0.0.0.0 --port 3001` loaded
+   starts it with `next start --hostname 127.0.0.1 --port 3001` loaded
    from [.env.prodlike](../.env.prodlike).
 4. Polls the new [`GET /api/health`](../app/api/health/route.ts)
    endpoint until the app is ready.
