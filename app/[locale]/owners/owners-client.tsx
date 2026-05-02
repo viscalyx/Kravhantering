@@ -92,7 +92,7 @@ export default function OwnersClient() {
         <fieldset className="space-y-5" disabled={disabled}>
           <div>
             <FieldLabelWithHelp
-              help={t('firstNameHelp')}
+              help={t('help.firstName')}
               htmlFor="owner-first-name"
               label={t('firstName')}
               required
@@ -112,7 +112,7 @@ export default function OwnersClient() {
           </div>
           <div>
             <FieldLabelWithHelp
-              help={t('lastNameHelp')}
+              help={t('help.lastName')}
               htmlFor="owner-last-name"
               label={t('lastName')}
               required
@@ -132,7 +132,7 @@ export default function OwnersClient() {
           </div>
           <div>
             <FieldLabelWithHelp
-              help={t('emailHelp')}
+              help={t('help.email')}
               htmlFor="owner-email"
               label={t('email')}
               required

@@ -63,6 +63,19 @@ const scenarioNameSvInput = () =>
 const scenarioNameEnInput = () =>
   screen.getByRole('textbox', { name: /scenario\.nameEnLabel/ })
 
+function setupUsageScenarioMocks(
+  scenarioDetailResponse: () => Promise<unknown> | unknown,
+) {
+  fetchMock.mockImplementation(async (url: string) => {
+    if (url === '/api/usage-scenarios') {
+      return okJson({ scenarios: sampleScenarios })
+    }
+    if (url === '/api/owners/all') return okJson({ owners: [] })
+    if (url === '/api/usage-scenarios/1') return scenarioDetailResponse()
+    return okJson({})
+  })
+}
+
 describe('UsageScenariosClient', () => {
   afterEach(cleanup)
 
@@ -161,14 +174,7 @@ describe('UsageScenariosClient', () => {
   })
 
   it('marks linked requirement loading as a status', async () => {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/usage-scenarios') {
-        return okJson({ scenarios: sampleScenarios })
-      }
-      if (url === '/api/owners/all') return okJson({ owners: [] })
-      if (url === '/api/usage-scenarios/1') return new Promise(() => {})
-      return okJson({})
-    })
+    setupUsageScenarioMocks(() => new Promise(() => {}))
 
     render(<UsageScenariosClient />)
     await waitFor(() => {
@@ -186,14 +192,7 @@ describe('UsageScenariosClient', () => {
   })
 
   it('shows an error instead of an empty state when linked requirements fail to load', async () => {
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/usage-scenarios') {
-        return okJson({ scenarios: sampleScenarios })
-      }
-      if (url === '/api/owners/all') return okJson({ owners: [] })
-      if (url === '/api/usage-scenarios/1') return notOk()
-      return okJson({})
-    })
+    setupUsageScenarioMocks(notOk)
 
     render(<UsageScenariosClient />)
     await waitFor(() => {

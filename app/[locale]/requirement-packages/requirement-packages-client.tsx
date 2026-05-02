@@ -407,7 +407,7 @@ export default function RequirementPackagesClient() {
                   </label>
                   {helpButton('pkg-name', t('name'))}
                 </div>
-                {helpPanel('nameHelp', 'pkg-name')}
+                {helpPanel('help.name', 'pkg-name')}
                 <input
                   className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
                   id="pkg-name"

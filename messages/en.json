@@ -240,13 +240,15 @@
   },
   "area": {
     "prefix": "Prefix",
-    "prefixHelp": "Enter the short uppercase prefix used when requirement IDs are generated for this area. The prefix can only be changed when creating a new area.",
     "name": "Name",
-    "nameHelp": "Enter the display name for this requirement area.",
     "description": "Description",
-    "descriptionHelp": "Optionally describe what kinds of requirements belong in this area.",
     "owner": "Requirement owner",
-    "ownerHelp": "Choose the person or group responsible for this requirement area.",
+    "help": {
+      "prefix": "Enter the short uppercase prefix used when requirement IDs are generated for this area. The prefix can only be changed when creating a new area.",
+      "name": "Enter the display name for this requirement area.",
+      "description": "Optionally describe what kinds of requirements belong in this area.",
+      "owner": "Choose the person or group responsible for this requirement area."
+    },
     "newArea": "New requirement area",
     "editArea": "Edit requirement area"
   },
@@ -261,7 +263,9 @@
   },
   "package": {
     "name": "Name",
-    "nameHelp": "Provide a clear name that makes the package easy to recognize and reuse.",
+    "help": {
+      "name": "Provide a clear name that makes the package easy to recognize and reuse."
+    },
     "responsibilityArea": "Business object",
     "responsibilityAreaHelp": "Choose the business object the package belongs to, or leave it blank if the package spans multiple business objects.",
     "implementationType": "Implementation type",
@@ -523,7 +527,9 @@
     "descriptionEnLabel": "Description (English)",
     "descriptionEnHelp": "Optionally describe the scenario in English so users understand when it applies.",
     "owner": "Scenario owner",
-    "ownerHelp": "Choose the owner responsible for this scenario and its linked requirements.",
+    "help": {
+      "owner": "Choose the owner responsible for this scenario and its linked requirements."
+    },
     "newScenario": "New usage scenario",
     "editScenario": "Edit usage scenario",
     "linkedRequirements": "Linked requirements",
@@ -535,7 +541,9 @@
     "issuerHelp": "<strong>Specify the authority or organization that issued the document.</strong>\nExamples: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
     "linkedRequirements": "Linked requirements",
     "name": "Name",
-    "nameHelp": "<strong>Enter the official name of the governing document.</strong>\nUse the full, commonly recognized title. Example: General Data Protection Regulation, Informationssäkerhet för samhällsviktiga och digitala tjänster.",
+    "help": {
+      "name": "<strong>Enter the official name of the governing document.</strong>\nUse the full, commonly recognized title. Example: General Data Protection Regulation, Informationssäkerhet för samhällsviktiga och digitala tjänster."
+    },
     "newNormReference": "New norm reference",
     "normReferenceId": "Norm reference ID",
     "normReferenceIdHelp": "<strong>A unique identifier for this norm reference.</strong>\nLeave blank to auto-generate from the reference field, name, or a sequential number. See the help panel for norm references under reference data for the full generation algorithm.",
@@ -598,11 +606,13 @@
   "ownerMgmt": {
     "name": "Name",
     "firstName": "First name",
-    "firstNameHelp": "Enter the owner's given name.",
     "lastName": "Last name",
-    "lastNameHelp": "Enter the owner's family name.",
     "email": "Email",
-    "emailHelp": "Enter the email address used to contact this owner."
+    "help": {
+      "firstName": "Enter the owner's given name.",
+      "lastName": "Enter the owner's family name.",
+      "email": "Enter the email address used to contact this owner."
+    }
   },
   "responsibilityAreaMgmt": {
     "name": "Name",

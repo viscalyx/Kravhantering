@@ -103,7 +103,7 @@ export default function NormReferenceFormFields({
           </label>
           {helpButton('name', t('name'))}
         </div>
-        {helpPanel('nameHelp', 'name')}
+        {helpPanel('help.name', 'name')}
         <input
           className={fieldClass}
           id={`${idPrefix}-name`}

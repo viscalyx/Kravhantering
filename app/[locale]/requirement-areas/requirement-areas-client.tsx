@@ -162,7 +162,7 @@ export default function RequirementAreasClient() {
         <>
           <div>
             <FieldLabelWithHelp
-              help={t('prefixHelp')}
+              help={t('help.prefix')}
               htmlFor="area-prefix"
               label={t('prefix')}
               required
@@ -184,7 +184,7 @@ export default function RequirementAreasClient() {
           </div>
           <div>
             <FieldLabelWithHelp
-              help={t('nameHelp')}
+              help={t('help.name')}
               htmlFor="area-name"
               label={t('name')}
               required
@@ -205,7 +205,7 @@ export default function RequirementAreasClient() {
           </div>
           <div>
             <FieldLabelWithHelp
-              help={t('descriptionHelp')}
+              help={t('help.description')}
               htmlFor="area-desc"
               label={t('description')}
             />
@@ -224,7 +224,7 @@ export default function RequirementAreasClient() {
           </div>
           <div>
             <FieldLabelWithHelp
-              help={t('ownerHelp')}
+              help={t('help.owner')}
               htmlFor="area-owner"
               label={t('owner')}
             />

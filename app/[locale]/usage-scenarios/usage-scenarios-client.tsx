@@ -371,7 +371,7 @@ export default function UsageScenariosClient() {
                   </div>
                   <div>
                     <FieldLabelWithHelp
-                      help={t('ownerHelp')}
+                      help={t('help.owner')}
                       htmlFor="scen-owner"
                       label={t('owner')}
                     />

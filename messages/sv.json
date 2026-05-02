@@ -240,13 +240,15 @@
   },
   "area": {
     "prefix": "Prefix",
-    "prefixHelp": "Ange det korta prefix med versaler som används när krav-ID:n skapas för området. Prefixet kan bara ändras när ett nytt område skapas.",
     "name": "Namn",
-    "nameHelp": "Ange visningsnamnet för kravområdet.",
     "description": "Beskrivning",
-    "descriptionHelp": "Beskriv vid behov vilka typer av krav som hör hemma i området.",
     "owner": "Kravägare",
-    "ownerHelp": "Välj den person eller grupp som ansvarar för kravområdet.",
+    "help": {
+      "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för området. Prefixet kan bara ändras när ett nytt område skapas.",
+      "name": "Ange visningsnamnet för kravområdet.",
+      "description": "Beskriv vid behov vilka typer av krav som hör hemma i området.",
+      "owner": "Välj den person eller grupp som ansvarar för kravområdet."
+    },
     "newArea": "Nytt kravområde",
     "editArea": "Redigera kravområde"
   },
@@ -261,7 +263,9 @@
   },
   "package": {
     "name": "Namn",
-    "nameHelp": "Ange ett tydligt namn som gör paketet lätt att känna igen och återanvända.",
+    "help": {
+      "name": "Ange ett tydligt namn som gör paketet lätt att känna igen och återanvända."
+    },
     "responsibilityArea": "Verksamhetsobjekt",
     "responsibilityAreaHelp": "Välj det verksamhetsobjekt som paketet hör till, eller lämna tomt om paketet spänner över flera verksamhetsobjekt.",
     "implementationType": "Genomförandeform",
@@ -523,7 +527,9 @@
     "descriptionEnLabel": "Beskrivning (engelska)",
     "descriptionEnHelp": "Beskriv vid behov scenariot på engelska så att användare förstår när det gäller.",
     "owner": "Scenarioägare",
-    "ownerHelp": "Välj ägaren som ansvarar för scenariot och dess kopplade krav.",
+    "help": {
+      "owner": "Välj ägaren som ansvarar för scenariot och dess kopplade krav."
+    },
     "newScenario": "Nytt användningsscenario",
     "editScenario": "Redigera användningsscenario",
     "linkedRequirements": "Kopplade krav",
@@ -535,7 +541,9 @@
     "issuerHelp": "<strong>Ange den myndighet eller organisation som utfärdat dokumentet.</strong>\nExempel: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
     "linkedRequirements": "Kopplade krav",
     "name": "Benämning",
-    "nameHelp": "<strong>Ange dokumentets officiella namn.</strong>\nAnvänd den fullständiga, vedertagna titeln. Exempel: Dataskyddsförordningen, Informationssäkerhet för samhällsviktiga och digitala tjänster.",
+    "help": {
+      "name": "<strong>Ange dokumentets officiella namn.</strong>\nAnvänd den fullständiga, vedertagna titeln. Exempel: Dataskyddsförordningen, Informationssäkerhet för samhällsviktiga och digitala tjänster."
+    },
     "newNormReference": "Ny normreferens",
     "normReferenceId": "Normreferens-ID",
     "normReferenceIdHelp": "<strong>En unik identifierare för denna normreferens.</strong>\nLämna tomt för att auto-generera från referensfältet, namnet eller ett löpnummer. Se hjälppanelen för normreferenser under referensdata för hela genereringsalgoritmen.",
@@ -598,11 +606,13 @@
   "ownerMgmt": {
     "name": "Namn",
     "firstName": "Förnamn",
-    "firstNameHelp": "Ange ägarens förnamn.",
     "lastName": "Efternamn",
-    "lastNameHelp": "Ange ägarens efternamn.",
     "email": "E-post",
-    "emailHelp": "Ange e-postadressen som används för att kontakta ägaren."
+    "help": {
+      "firstName": "Ange ägarens förnamn.",
+      "lastName": "Ange ägarens efternamn.",
+      "email": "Ange e-postadressen som används för att kontakta ägaren."
+    }
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",
