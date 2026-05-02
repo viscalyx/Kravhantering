@@ -102,6 +102,7 @@
     "goHome": "Go to catalog"
   },
   "requirement": {
+    "statusStepperAriaLabel": "Requirement status workflow steps",
     "uniqueId": "Requirement ID",
     "description": "Requirement text",
     "acceptanceCriteria": "Acceptance criterion",
@@ -383,6 +384,7 @@
     "stepDraft": "Draft",
     "stepReviewRequested": "Review requested",
     "stepDecided": "Decided",
+    "stepperAriaLabel": "Deviation workflow steps",
     "requestDeviation": "Request a deviation",
     "requestDeviationSelected": "Request deviation for selected ({count})",
     "requestReview": "Review \u2197",
@@ -441,6 +443,7 @@
     "stepDraft": "Draft",
     "stepReviewRequested": "Review requested",
     "stepResolved": "Reviewed",
+    "stepperAriaLabel": "Improvement suggestion workflow steps",
     "requestReview": "Review ↗",
     "revertToDraft": "← Draft",
     "markResolved": "Resolved ↗",

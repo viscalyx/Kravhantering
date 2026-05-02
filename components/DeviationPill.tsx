@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -31,8 +32,32 @@ function DeviationPillContent({
   const isDecided = deviation.decision !== null
   const isApproved = deviation.decision === 1
 
+  // Non-color status cue (WCAG 1.4.1): every state pairs an icon with the
+  // translated status text so color-blind users and AT can identify state.
+  const statusChip = isDecided
+    ? isApproved
+      ? {
+          Icon: CheckCircle2,
+          label: t('statusApproved'),
+          className:
+            'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40',
+        }
+      : {
+          Icon: XCircle,
+          label: t('statusRejected'),
+          className:
+            'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40',
+        }
+    : {
+        Icon: Clock,
+        label: t('statusPending'),
+        className:
+          'text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/40',
+      }
+
   return (
     <div
+      aria-label={t('deviationRequested')}
       className={`rounded-xl border px-4 py-3 text-sm ${
         muted
           ? 'border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50 opacity-75'
@@ -42,6 +67,7 @@ function DeviationPillContent({
               : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30'
             : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
       }`}
+      role="status"
       {...devMarker({
         context: developerModeContext,
         name: 'deviation pill',
@@ -49,9 +75,20 @@ function DeviationPillContent({
         value: isDecided ? (isApproved ? 'approved' : 'rejected') : 'pending',
       })}
     >
-      <p className="font-medium text-secondary-900 dark:text-secondary-100 mb-1">
-        {t('deviationRequested')}
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <p className="font-medium text-secondary-900 dark:text-secondary-100">
+          {t('deviationRequested')}
+        </p>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusChip.className}`}
+        >
+          <statusChip.Icon
+            aria-hidden="true"
+            className="h-3.5 w-3.5 shrink-0"
+          />
+          {statusChip.label}
+        </span>
+      </div>
       <p className="text-secondary-700 dark:text-secondary-300 mb-1">
         {deviation.motivation}
       </p>

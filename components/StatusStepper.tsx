@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { pickReadableTextOn } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface StatusStep {
@@ -68,6 +69,7 @@ export default function StatusStepper({
   statuses,
 }: StatusStepperProps) {
   const t = useTranslations('requirement.statusLabel')
+  const tStepper = useTranslations('requirement')
   const steps = useMemo(() => {
     if (!statuses || statuses.length === 0) return FALLBACK_STEPS
     return statuses
@@ -108,9 +110,14 @@ export default function StatusStepper({
   const stepLabel = (step: StatusStep) =>
     isArchiving && step.id === 2 ? t('Arkiveringsgranskning') : t(step.nameSv)
 
+  const sliderTextColor = pickReadableTextOn(activeColor)
+
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; this is a workflow progress indicator
     <div
+      aria-label={tStepper('statusStepperAriaLabel')}
       className="flex w-full relative"
+      role="group"
       {...devMarker({
         context: developerModeContext,
         name: 'status stepper',
@@ -121,6 +128,7 @@ export default function StatusStepper({
       {/* Background (inactive) steps */}
       {steps.map((step, i) => (
         <div
+          aria-current={i === targetIndex ? 'step' : undefined}
           className="flex-1 min-w-0"
           key={`status-step-${step.id}`}
           {...devMarker({
@@ -166,12 +174,13 @@ export default function StatusStepper({
           }}
         >
           <div
-            className="h-10 flex items-center justify-center text-white"
+            className="h-10 flex items-center justify-center"
             style={{
               backgroundColor: activeColor,
+              color: sliderTextColor,
               clipPath: sliderClipPath(targetIndex === 0),
               transition:
-                'clip-path 300ms ease-out, background-color 300ms ease-out',
+                'clip-path 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out',
             }}
           >
             <span

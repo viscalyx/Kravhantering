@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckCircle2, Eye, PenLine, XCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { devMarker } from '@/lib/developer-mode-markers'
 
@@ -45,8 +46,39 @@ export default function SuggestionPill({
       ? 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30'
       : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30'
 
+  // Non-color status cue (WCAG 1.4.1): every state pairs an icon with the
+  // translated status text so color-blind users and AT can identify state.
+  const statusChip = isResolved
+    ? isActioned
+      ? {
+          Icon: CheckCircle2,
+          label: t('statusResolved'),
+          className:
+            'text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/40',
+        }
+      : {
+          Icon: XCircle,
+          label: t('statusDismissed'),
+          className:
+            'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-900/40',
+        }
+    : effectiveStep === 'review_requested'
+      ? {
+          Icon: Eye,
+          label: t('statusPending'),
+          className:
+            'text-yellow-800 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40',
+        }
+      : {
+          Icon: PenLine,
+          label: t('stepDraft'),
+          className:
+            'text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40',
+        }
+
   return (
     <div
+      aria-label={t('suggestionSubmitted')}
       className={`rounded-xl border px-4 py-3 text-sm ${
         muted
           ? 'border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50 opacity-75'
@@ -56,6 +88,7 @@ export default function SuggestionPill({
               : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30'
             : pendingColorClass
       }`}
+      role="status"
       {...devMarker({
         context: developerModeContext,
         name: 'suggestion pill',
@@ -63,9 +96,20 @@ export default function SuggestionPill({
         value: isResolved ? (isActioned ? 'resolved' : 'dismissed') : 'pending',
       })}
     >
-      <p className="font-medium text-secondary-900 dark:text-secondary-100 mb-1">
-        {t('suggestionSubmitted')}
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <p className="font-medium text-secondary-900 dark:text-secondary-100">
+          {t('suggestionSubmitted')}
+        </p>
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusChip.className}`}
+        >
+          <statusChip.Icon
+            aria-hidden="true"
+            className="h-3.5 w-3.5 shrink-0"
+          />
+          {statusChip.label}
+        </span>
+      </div>
       <p className="text-secondary-700 dark:text-secondary-300 mb-1">
         {suggestion.content}
       </p>

@@ -23,7 +23,7 @@ const baseDeviation = {
 }
 
 describe('DeviationPill', () => {
-  it('renders pending deviation with amber styling', () => {
+  it('renders pending deviation with amber styling, status chip, and role="status"', () => {
     const { container } = render(
       <DeviationPill history={[]} latest={baseDeviation} />,
     )
@@ -31,12 +31,16 @@ describe('DeviationPill', () => {
     expect(screen.getByText('deviationRequested')).toBeInTheDocument()
     expect(screen.getByText('Test motivation text')).toBeInTheDocument()
     expect(screen.getByText('Alice')).toBeInTheDocument()
+    // Non-color cue (WCAG 1.4.1): pending state shows explicit status text
+    expect(screen.getByText('statusPending')).toBeInTheDocument()
 
     const pill = container.querySelector('.border-amber-200')
     expect(pill).toBeTruthy()
+    // WCAG 4.1.3 status messages
+    expect(container.querySelector('[role="status"]')).toBeTruthy()
   })
 
-  it('renders approved deviation with green styling', () => {
+  it('renders approved deviation with green styling and approval chip', () => {
     const approved = {
       ...baseDeviation,
       decision: 1,
@@ -49,14 +53,17 @@ describe('DeviationPill', () => {
       <DeviationPill history={[]} latest={approved} />,
     )
 
-    expect(screen.getByText('statusApproved')).toBeInTheDocument()
+    // statusApproved appears twice: once in the header chip, once in the decision heading
+    expect(screen.getAllByText('statusApproved').length).toBeGreaterThanOrEqual(
+      1,
+    )
     expect(screen.getByText('Approved reason')).toBeInTheDocument()
 
     const pill = container.querySelector('.border-green-200')
     expect(pill).toBeTruthy()
   })
 
-  it('renders rejected deviation with red styling', () => {
+  it('renders rejected deviation with red styling and rejection chip', () => {
     const rejected = {
       ...baseDeviation,
       decision: 2,
@@ -69,7 +76,9 @@ describe('DeviationPill', () => {
       <DeviationPill history={[]} latest={rejected} />,
     )
 
-    expect(screen.getByText('statusRejected')).toBeInTheDocument()
+    expect(screen.getAllByText('statusRejected').length).toBeGreaterThanOrEqual(
+      1,
+    )
     expect(screen.getByText('Rejected reason')).toBeInTheDocument()
 
     const pill = container.querySelector('.border-red-200')
