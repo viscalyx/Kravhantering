@@ -511,8 +511,13 @@
   },
   "scenario": {
     "name": "Namn",
+    "nameSvHelp": "Ange det svenska namnet för användningsscenariot.",
+    "nameEnHelp": "Ange det engelska namnet för användningsscenariot.",
     "description": "Beskrivning",
+    "descriptionSvHelp": "Beskriv vid behov scenariot på svenska så att användare förstår när det gäller.",
+    "descriptionEnHelp": "Beskriv vid behov scenariot på engelska så att användare förstår när det gäller.",
     "owner": "Scenarioägare",
+    "ownerHelp": "Välj ägaren som ansvarar för scenariot och dess kopplade krav.",
     "newScenario": "Nytt användningsscenario",
     "editScenario": "Redigera användningsscenario",
     "linkedRequirements": "Kopplade krav",
@@ -551,8 +556,12 @@
   },
   "qualityCharacteristicMgmt": {
     "name": "Namn",
+    "nameSvHelp": "Ange det svenska namnet för kvalitetsegenskapen.",
+    "nameEnHelp": "Ange det engelska namnet för kvalitetsegenskapen.",
     "type": "Typ",
+    "typeHelp": "Välj den kravtyp som kvalitetsegenskapen hör till.",
     "parent": "Överordnad egenskap",
+    "parentHelp": "Välj vid behov en överordnad egenskap för att skapa en underegenskap.",
     "topLevel": "Toppnivå (ingen överordnad)",
     "subtitle": "ISO/IEC 25010:2023 — Systems and software Quality Requirements and Evaluation (SQuaRE)"
   },
@@ -632,6 +641,7 @@
   },
   "admin": {
     "title": "Administrationscenter",
+    "loading": "Laddar administrationscenter...",
     "description": "Hantera benämningar, standardkolumner och länkar till referensdata utan att ändra route-sluggar eller API-fält.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",

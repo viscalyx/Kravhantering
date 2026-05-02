@@ -511,8 +511,13 @@
   },
   "scenario": {
     "name": "Name",
+    "nameSvHelp": "Enter the Swedish name for this usage scenario.",
+    "nameEnHelp": "Enter the English name for this usage scenario.",
     "description": "Description",
+    "descriptionSvHelp": "Optionally describe the scenario in Swedish so users understand when it applies.",
+    "descriptionEnHelp": "Optionally describe the scenario in English so users understand when it applies.",
     "owner": "Scenario owner",
+    "ownerHelp": "Choose the owner responsible for this scenario and its linked requirements.",
     "newScenario": "New usage scenario",
     "editScenario": "Edit usage scenario",
     "linkedRequirements": "Linked requirements",
@@ -551,8 +556,12 @@
   },
   "qualityCharacteristicMgmt": {
     "name": "Name",
+    "nameSvHelp": "Enter the Swedish name for this quality characteristic.",
+    "nameEnHelp": "Enter the English name for this quality characteristic.",
     "type": "Type",
+    "typeHelp": "Choose the requirement type this quality characteristic belongs to.",
     "parent": "Parent characteristic",
+    "parentHelp": "Optionally choose a top-level characteristic to create a sub-characteristic.",
     "topLevel": "Top-level (no parent)",
     "subtitle": "ISO/IEC 25010:2023 — Systems and software Quality Requirements and Evaluation (SQuaRE)"
   },
@@ -632,6 +641,7 @@
   },
   "admin": {
     "title": "Admin center",
+    "loading": "Loading admin center...",
     "description": "Manage UI terminology, default columns, and shortcuts into reference data without changing route slugs or API field names.",
     "settings": "Settings",
     "adminCenter": "Admin center",
