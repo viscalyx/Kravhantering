@@ -10,20 +10,29 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import { buildUiTerminologyPayload } from '@/lib/ui-terminology'
 import AdminClient from './admin-client'
 
+type PageParams = Promise<{ locale: string }>
+
+function resolveLocale(requestedLocale: string): 'sv' | 'en' {
+  return routing.locales.includes(requestedLocale as 'sv' | 'en')
+    ? (requestedLocale as 'sv' | 'en')
+    : routing.defaultLocale
+}
+
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ locale: string }>
+  params: PageParams
 }): Promise<Metadata> {
   const { locale: requestedLocale } = await params
-  const locale = routing.locales.includes(requestedLocale as 'sv' | 'en')
-    ? (requestedLocale as 'sv' | 'en')
-    : routing.defaultLocale
+  const locale = resolveLocale(requestedLocale)
   const t = await getTranslations({ locale, namespace: 'admin' })
   return { title: t('title') }
 }
 
-export default async function AdminPage() {
+export default async function AdminPage({ params }: { params: PageParams }) {
+  const { locale: requestedLocale } = await params
+  const locale = resolveLocale(requestedLocale)
+  const t = await getTranslations({ locale, namespace: 'admin' })
   const db = await getRequestSqlServerDataSource()
   const [terminology, initialColumnDefaults] = await Promise.all([
     getUiTerminology(db),
@@ -33,10 +42,8 @@ export default async function AdminPage() {
   return (
     <Suspense
       fallback={
-        <div
-          aria-hidden="true"
-          className="section-padding px-4 sm:px-6 lg:px-8"
-        >
+        <div className="section-padding px-4 sm:px-6 lg:px-8" role="status">
+          <span className="sr-only">{t('loading')}</span>
           <div className="container-custom space-y-6">
             <div className="h-40 rounded-[2rem] border border-secondary-200/70 bg-secondary-100/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
             <div className="h-64 rounded-[2rem] border border-secondary-200/70 bg-white/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
