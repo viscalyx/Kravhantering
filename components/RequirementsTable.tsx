@@ -2263,6 +2263,7 @@ export default function RequirementsTable({
             {row.version?.riskLevelColor ? (
               <span className="inline-flex items-center gap-1.5">
                 <span
+                  aria-hidden="true"
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: row.version.riskLevelColor }}
                 />
@@ -2394,6 +2395,7 @@ export default function RequirementsTable({
             {statusColor ? (
               <span className="inline-flex items-center gap-1.5">
                 <span
+                  aria-hidden="true"
                   className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: statusColor }}
                 />

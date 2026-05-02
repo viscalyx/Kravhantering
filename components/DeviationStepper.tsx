@@ -1,5 +1,6 @@
 'use client'
 
+import { CheckCircle2, Eye, type LucideIcon, PenLine } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -25,14 +26,30 @@ function sliderClipPath(isFirst: boolean) {
   return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, ${a} 50%)`
 }
 
-const STEPS: { color: string; key: DeviationStep; translationKey: string }[] = [
-  { key: 'draft', translationKey: 'stepDraft', color: '#3b82f6' },
+const STEPS: {
+  color: string
+  Icon: LucideIcon
+  key: DeviationStep
+  translationKey: string
+}[] = [
+  {
+    key: 'draft',
+    translationKey: 'stepDraft',
+    color: '#3b82f6',
+    Icon: PenLine,
+  },
   {
     key: 'review_requested',
     translationKey: 'stepReviewRequested',
     color: '#eab308',
+    Icon: Eye,
   },
-  { key: 'decided', translationKey: 'stepDecided', color: '#22c55e' },
+  {
+    key: 'decided',
+    translationKey: 'stepDecided',
+    color: '#22c55e',
+    Icon: CheckCircle2,
+  },
 ]
 
 interface DeviationStepperProps {
@@ -78,8 +95,11 @@ export default function DeviationStepper({
   }, [targetIndex])
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; this is a workflow progress indicator
     <div
+      aria-label={t('stepperAriaLabel')}
       className="flex w-full relative"
+      role="group"
       {...devMarker({
         context: developerModeContext,
         name: 'deviation stepper',
@@ -89,6 +109,7 @@ export default function DeviationStepper({
     >
       {STEPS.map((step, i) => (
         <div
+          aria-current={i === targetIndex ? 'step' : undefined}
           className="flex-1 min-w-0"
           key={`deviation-step-${step.key}`}
           {...devMarker({
@@ -111,9 +132,10 @@ export default function DeviationStepper({
             style={{ clipPath: stepClipPath(i === 0) }}
           >
             <span
-              className="text-sm select-none font-medium"
+              className="text-sm select-none font-medium inline-flex items-center gap-1"
               style={{ paddingLeft: i === 0 ? 0 : ARROW / 2 }}
             >
+              <step.Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               {t(step.translationKey)}
             </span>
           </div>
@@ -142,9 +164,18 @@ export default function DeviationStepper({
             }}
           >
             <span
-              className="text-sm select-none font-semibold"
+              className="text-sm select-none font-semibold inline-flex items-center gap-1"
               style={{ paddingLeft: targetIndex === 0 ? 0 : ARROW / 2 }}
             >
+              {(() => {
+                const ActiveIcon = STEPS[targetIndex].Icon
+                return (
+                  <ActiveIcon
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 shrink-0"
+                  />
+                )
+              })()}
               {t(STEPS[targetIndex].translationKey)}
             </span>
           </div>

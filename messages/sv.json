@@ -102,6 +102,7 @@
     "goHome": "Gå till kravkatalogen"
   },
   "requirement": {
+    "statusStepperAriaLabel": "Arbetsflöde för kravstatus",
     "uniqueId": "Krav-ID",
     "description": "Kravtext",
     "acceptanceCriteria": "Acceptanskriterium",
@@ -383,6 +384,7 @@
     "stepDraft": "Utkast",
     "stepReviewRequested": "Granskning begärd",
     "stepDecided": "Beslutad",
+    "stepperAriaLabel": "Steg i avstegsarbetsflödet",
     "requestDeviation": "Begär ett avsteg",
     "requestDeviationSelected": "Begär avsteg för valda ({count})",
     "requestReview": "Granskning \u2197",
@@ -441,6 +443,7 @@
     "stepDraft": "Utkast",
     "stepReviewRequested": "Granskning begärd",
     "stepResolved": "Granskad",
+    "stepperAriaLabel": "Steg i förbättringsförslagens arbetsflöde",
     "requestReview": "Granskning ↗",
     "revertToDraft": "← Utkast",
     "markResolved": "Åtgärdad ↗",

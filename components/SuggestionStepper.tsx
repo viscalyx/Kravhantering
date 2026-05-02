@@ -1,7 +1,9 @@
 'use client'
 
+import { CheckCircle2, Eye, type LucideIcon, PenLine } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { pickReadableTextOn } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 export type SuggestionStep = 'draft' | 'resolved' | 'review_requested'
@@ -25,18 +27,33 @@ function sliderClipPath(isFirst: boolean) {
   return `polygon(0 0, calc(100% - ${a}) 0, 100% 50%, calc(100% - ${a}) 100%, 0 100%, ${a} 50%)`
 }
 
-const STEPS: { color: string; key: SuggestionStep; translationKey: string }[] =
-  [
-    { key: 'draft', translationKey: 'stepDraft', color: '#3b82f6' },
-    {
-      key: 'review_requested',
-      translationKey: 'stepReviewRequested',
-      color: '#eab308',
-    },
-    { key: 'resolved', translationKey: 'stepResolved', color: '#22c55e' },
-  ]
+const STEPS: {
+  color: string
+  Icon: LucideIcon
+  key: SuggestionStep
+  translationKey: string
+}[] = [
+  {
+    key: 'draft',
+    translationKey: 'stepDraft',
+    color: '#3b82f6',
+    Icon: PenLine,
+  },
+  {
+    key: 'review_requested',
+    translationKey: 'stepReviewRequested',
+    color: '#eab308',
+    Icon: Eye,
+  },
+  {
+    key: 'resolved',
+    translationKey: 'stepResolved',
+    color: '#22c55e',
+    Icon: CheckCircle2,
+  },
+]
 
-interface SuggestionStepperProps {
+interface ComponentProps {
   currentStep: SuggestionStep
   developerModeContext?: string
 }
@@ -44,13 +61,14 @@ interface SuggestionStepperProps {
 export default function SuggestionStepper({
   currentStep,
   developerModeContext,
-}: SuggestionStepperProps) {
+}: ComponentProps) {
   const t = useTranslations('improvementSuggestion')
   const targetIndex = useMemo(
     () => STEPS.findIndex(s => s.key === currentStep),
     [currentStep],
   )
   const activeColor = STEPS[targetIndex]?.color ?? '#6b7280'
+  const sliderTextColor = pickReadableTextOn(activeColor)
   const containerRef = useRef<HTMLDivElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [sliderPos, setSliderPos] = useState<{
@@ -79,8 +97,11 @@ export default function SuggestionStepper({
   }, [targetIndex])
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; this is a workflow progress indicator
     <div
+      aria-label={t('stepperAriaLabel')}
       className="flex w-full relative"
+      role="group"
       {...devMarker({
         context: developerModeContext,
         name: 'suggestion stepper',
@@ -90,6 +111,7 @@ export default function SuggestionStepper({
     >
       {STEPS.map((step, i) => (
         <div
+          aria-current={i === targetIndex ? 'step' : undefined}
           className="flex-1 min-w-0"
           key={`suggestion-step-${step.key}`}
           {...devMarker({
@@ -112,9 +134,10 @@ export default function SuggestionStepper({
             style={{ clipPath: stepClipPath(i === 0) }}
           >
             <span
-              className="text-sm select-none font-medium"
+              className="text-sm select-none font-medium inline-flex items-center gap-1"
               style={{ paddingLeft: i === 0 ? 0 : ARROW / 2 }}
             >
+              <step.Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
               {t(step.translationKey)}
             </span>
           </div>
@@ -134,18 +157,28 @@ export default function SuggestionStepper({
           }}
         >
           <div
-            className="h-10 flex items-center justify-center text-white"
+            className="h-10 flex items-center justify-center"
             style={{
               backgroundColor: activeColor,
+              color: sliderTextColor,
               clipPath: sliderClipPath(targetIndex === 0),
               transition:
-                'clip-path 300ms ease-out, background-color 300ms ease-out',
+                'clip-path 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out',
             }}
           >
             <span
-              className="text-sm select-none font-semibold"
+              className="text-sm select-none font-semibold inline-flex items-center gap-1"
               style={{ paddingLeft: targetIndex === 0 ? 0 : ARROW / 2 }}
             >
+              {(() => {
+                const ActiveIcon = STEPS[targetIndex].Icon
+                return (
+                  <ActiveIcon
+                    aria-hidden="true"
+                    className="h-3.5 w-3.5 shrink-0"
+                  />
+                )
+              })()}
               {t(STEPS[targetIndex].translationKey)}
             </span>
           </div>

@@ -24,6 +24,11 @@ applyTo: '{components,app}/**/*.tsx'
 - ARIA labels on all interactive elements
 - Visible focus rings on keyboard-navigable elements
 - Decorative icons: `aria-hidden="true"`
+- Never convey state through color alone (WCAG 1.4.1 Level A). Status and state components must always pair color with an icon AND an explicit text label.
+- DB-driven colors applied as text foreground must satisfy WCAG 1.4.3 Level AA (≥4.5:1 for normal text, ≥3:1 for large text ≥18pt/14pt bold) against their rendered background **in both light and dark mode**. For translucent fills (e.g. `${hex}20`) on the page background, use `getReadableTextColors()` from `lib/color-contrast.ts` and emit the `--sb-fg-light` / `--sb-fg-dark` CSS variables (see `components/StatusBadge.tsx` + the `.status-badge` rule in `app/globals.css` for the pattern). Use bare `clampForReadability()` only when the backdrop is theme-independent (e.g. printed reports on white paper).
+- When text is rendered on a solid (non-translucent) DB-driven background, use `pickReadableTextOn(bgHex)` to choose between `#ffffff` and `#111827`. Never hardcode `text-white` / `text-black` over a configurable color — a yellow status would render white-on-yellow and fail 1.4.3.
+- Status containers that can display dynamic state must carry `role="status"` (implicit `aria-live="polite"`, WCAG 4.1.3 Level AA) so assistive technology announces updates without requiring focus movement.
+- Steppers and progress indicators must use `role="group"` with a translated `aria-label` on the container and `aria-current="step"` on the currently active step element (WCAG 4.1.2 Level A).
 
 ## Form Help Texts
 
