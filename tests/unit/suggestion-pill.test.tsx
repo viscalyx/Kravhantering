@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SuggestionPill from '@/components/SuggestionPill'
 
 vi.mock('next-intl', () => ({
@@ -23,6 +23,8 @@ const baseSuggestion = {
 }
 
 describe('SuggestionPill', () => {
+  beforeEach(() => vi.clearAllMocks())
+
   it('renders draft state with PenLine icon, status chip, and role="status"', () => {
     const { container } = render(<SuggestionPill suggestion={baseSuggestion} />)
 
@@ -31,7 +33,7 @@ describe('SuggestionPill', () => {
     // Non-color cue (WCAG 1.4.1): draft shows the stepDraft label
     expect(screen.getByText('stepDraft')).toBeInTheDocument()
     // WCAG 4.1.3 status messages
-    expect(container.querySelector('[role="status"]')).toBeTruthy()
+    expect(screen.getByRole('status')).toBeInTheDocument()
     // Decorative icon present (WCAG 1.4.1)
     expect(container.querySelector('svg[aria-hidden="true"]')).toBeTruthy()
     // Color cue still applied

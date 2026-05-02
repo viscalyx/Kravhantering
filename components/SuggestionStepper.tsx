@@ -53,7 +53,7 @@ const STEPS: {
   },
 ]
 
-interface SuggestionStepperProps {
+interface ComponentProps {
   currentStep: SuggestionStep
   developerModeContext?: string
 }
@@ -61,7 +61,7 @@ interface SuggestionStepperProps {
 export default function SuggestionStepper({
   currentStep,
   developerModeContext,
-}: SuggestionStepperProps) {
+}: ComponentProps) {
   const t = useTranslations('improvementSuggestion')
   const targetIndex = useMemo(
     () => STEPS.findIndex(s => s.key === currentStep),

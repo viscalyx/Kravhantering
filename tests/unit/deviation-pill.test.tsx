@@ -37,7 +37,7 @@ describe('DeviationPill', () => {
     const pill = container.querySelector('.border-amber-200')
     expect(pill).toBeTruthy()
     // WCAG 4.1.3 status messages
-    expect(container.querySelector('[role="status"]')).toBeTruthy()
+    expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
   it('renders approved deviation with green styling and approval chip', () => {
