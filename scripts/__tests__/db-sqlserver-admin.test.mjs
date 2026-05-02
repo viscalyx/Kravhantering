@@ -31,10 +31,10 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(stripWrappingQuotes('"value')).toBe('"value')
   })
 
-  it('prefers SQLSERVER_DATABASE_URL during the coexistence window', () => {
+  it('prefers SQLSERVER_DATABASE_URL over a legacy DATABASE_URL', () => {
     expect(
       getSqlServerDatabaseUrl({
-        DATABASE_URL: 'file:./dev.sqlite',
+        DATABASE_URL: 'postgres://legacy.example.invalid/kravhantering',
         SQLSERVER_DATABASE_URL:
           'mssql://sa:Password123!@127.0.0.1:1433/kravhantering?encrypt=true&trustServerCertificate=true',
       }),

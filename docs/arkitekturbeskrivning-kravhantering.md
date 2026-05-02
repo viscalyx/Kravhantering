@@ -870,10 +870,12 @@ Container deployment / ingress
 
 ### Konfiguration
 
-- **Databaskontrakt:** `DATABASE_URL`
+- **Databaskontrakt:** `DATABASE_URL` med `mssql://`
+  mot SQL Server över TCP
 - **Node-runtime:** 24.x
-- **Lokal databastjänst:** `http://db:9000` i devcontainer eller
-  `http://127.0.0.1:9000` lokalt
+- **Lokal databastjänst:** SQL Server TCP på `db:1433` i
+  devcontainer eller `127.0.0.1:${SQLSERVER_HOST_PORT:-1433}`
+  lokalt, enligt `docker-compose.sqlserver.yml`
 - **Anpassad domän:** `kravhantering.{foretag}.se`
 - **Autentiseringskontrakt:** OIDC-issuer, klient-id,
   klienthemlighet, redirect-URI, post-logout-URI,
@@ -886,7 +888,7 @@ Container deployment / ingress
 <!-- markdownlint-disable MD013 -->
 | Bindning | Typ | Beskrivning |
 | --- | --- | --- |
-| `DATABASE_URL` | URL / anslutningssträng | SQL Server-anslutningssträng (mssql://) |
+| `DATABASE_URL` | URL / anslutningssträng | SQL Server-anslutningssträng (`mssql://`) över TCP |
 | `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` | Sträng | Nyckel för server actions i flerinstansmiljöer |
 | `AUTH_*` | Miljövariabler | OIDC-, sessions- och proxykontrakt för integrerad autentisering |
 | `OPENROUTER_API_KEY` | Sträng | AI-integration för kravgenerering |
@@ -1405,7 +1407,7 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 
 > **Byte av plattform** kräver anpassning av
 > container-/ingresskonfiguration och databastjänst
-> (`lib/db.ts`, `docker-compose.dev.yml` och
+> (`lib/db.ts`, `docker-compose.sqlserver.yml` och
 > motsvarande miljövariabler). Affärslogik,
 > användargränssnitt och databasschema förblir
 > oförändrade.

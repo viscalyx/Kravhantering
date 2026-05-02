@@ -17,7 +17,6 @@ RUN apt-get update && \
         python3-yaml \
         ripgrep \
         socat \
-        sqlite3 \
         mkcert && \
     rm -rf /var/lib/apt/lists/*
 

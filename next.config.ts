@@ -84,7 +84,7 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp', 'image/avif'],
   },
-  serverExternalPackages: ['better-sqlite3', 'mermaid'],
+  serverExternalPackages: ['mermaid'],
   allowedDevOrigins: ['0.0.0.0', '127.0.0.1'],
   // Turbopack-equivalent of the webpack alias block below. Next.js 16
   // uses Turbopack for `next build`, so the `webpack(config)` hook is
