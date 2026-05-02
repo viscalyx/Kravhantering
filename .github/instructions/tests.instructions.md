@@ -57,6 +57,7 @@ expect(result).toEqual([{ slug: 'post-1' }, { slug: 'post-2' }])
 - Test user behavior, not implementation
 - Clear mocks in `beforeEach`
 - Use `@/lib/` path alias in mocks (not `../../lib/`)
+- Test ARIA roles and attributes on status and state components: assert `role`, `aria-current`, `aria-label` values using `screen.getByRole()` and `container.querySelector('[aria-current="step"]')`.
 
 ## React `act()` Guidance
 

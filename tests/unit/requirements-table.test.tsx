@@ -727,6 +727,37 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Hög')).toBeTruthy()
   })
 
+  it('hides the read-only package item status color dot from assistive tech', () => {
+    const rows = [
+      makeRow({
+        packageItemStatusColor: '#f59e0b',
+        packageItemStatusDescriptionEn: 'In progress',
+        packageItemStatusDescriptionSv: 'Pågående',
+        packageItemStatusId: 2,
+        packageItemStatusNameEn: 'Ongoing',
+        packageItemStatusNameSv: 'Pågående',
+      }),
+    ]
+
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'packageItemStatus',
+        ]}
+      />,
+    )
+
+    const statusLabel = screen.getByText('Pågående')
+    const statusWrapper = statusLabel.closest('span')
+    const statusDot = statusWrapper?.querySelector('span[aria-hidden="true"]')
+
+    expect(statusDot).toHaveAttribute('aria-hidden', 'true')
+    expect(statusDot).toHaveStyle({ backgroundColor: '#f59e0b' })
+  })
+
   it('toggles sorting from the header button and updates aria-sort', () => {
     const onSortChange = vi.fn()
 
