@@ -1,4 +1,4 @@
 interface:
   display_name: "Spec Audit"
   short_description: "Audit code against specs, report defects only"
-  default_prompt: "Use $run-spec-audit to compare actual code in app/, lib/, and drizzle/ against project specifications in docs/. Report only defects with exact file and line citations, classified by severity. Include a self-audit of the skill's own relevance at the end."
+  default_prompt: "Use $run-spec-audit to compare actual code in app/, lib/, lib/typeorm/, typeorm/, and tests/ against project specifications in docs/. Report only defects with exact file and line citations, classified by severity. Include a self-audit of the skill's own relevance at the end."

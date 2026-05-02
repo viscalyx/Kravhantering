@@ -10,7 +10,7 @@
 - Framer Motion
 - Vitest
 - Self-hosted Next.js runtime
-- Database: Microsoft SQL Server + TypeORM (sole stack; SQLite + Drizzle have been removed)
+- Database: Microsoft SQL Server + TypeORM (sole stack)
 
 ## Commands
 

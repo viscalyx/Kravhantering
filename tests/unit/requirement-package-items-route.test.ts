@@ -275,7 +275,7 @@ describe('requirement-packages/[id]/items route', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
     mocks.linkRequirementsToPackageAtomically.mockRejectedValue(
-      new Error('SQLite transaction failed'),
+      new Error('SQL transaction failed'),
     )
 
     try {

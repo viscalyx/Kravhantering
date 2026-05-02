@@ -121,7 +121,6 @@
     "cspell",
     "devcontainer",
     "devcontainers",
-    "drizzle",
     "filimport",
     "fontdata",
     "FOUC",
@@ -420,7 +419,6 @@
   "ignorePaths": [
     "node_modules",
     ".next",
-    ".local/sqlite",
     "coverage",
     "test-results",
     "playwright-report*",
@@ -432,7 +430,6 @@
     "*.min.js",
     "*.min.css",
     "package-lock.json",
-    "drizzle/migrations",
     "worker-configuration.d.ts",
     "*.db",
     "*.png",

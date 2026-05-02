@@ -1405,7 +1405,7 @@ oavsett om körningen sker lokalt, i CI eller senare i OpenShift.
 
 > **Byte av plattform** kräver anpassning av
 > container-/ingresskonfiguration och databastjänst
-> (`lib/db.ts`, `docker-compose.dev.yml` och
+> (`lib/db.ts`, `docker-compose.sqlserver.yml` och
 > motsvarande miljövariabler). Affärslogik,
 > användargränssnitt och databasschema förblir
 > oförändrade.

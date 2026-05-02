@@ -106,7 +106,6 @@ DATABASE_READONLY_URL=...
 | `npm run db:health` | Run a simple `SELECT 1` health probe |
 | `npm run db:browse` | Print a read-only VS Code SQLTools connection block |
 | `npm run db:setup` | Wait, reset, run TypeORM migrations, seed, and configure the read-only login |
-| `npm run db:generate` | Generate a new TypeORM migration based on entity changes |
 | `npm run db:migrate` | Run TypeORM migrations only |
 | `npm run db:seed` | Apply `typeorm/seed.mjs` only |
 | `npm run db:reset` | Drop and recreate the database |

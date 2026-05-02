@@ -60,8 +60,6 @@ certificates
 out
 build/
 
-# Local database service data
-.local/sqlite/
 bundled
 
 # Generated types
@@ -234,7 +232,7 @@ __pycache__/
 .cache
 .parcel-cache
 
-# Drizzle local DB
+# Local database files
 *.db
 *.db-journal
 
