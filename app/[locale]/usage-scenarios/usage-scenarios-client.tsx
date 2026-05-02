@@ -502,7 +502,7 @@ export default function UsageScenariosClient() {
                                     <StatusBadge
                                       color={requirement.statusColor}
                                       label={
-                                        (locale === 'sv'
+                                        (isSwedish(locale)
                                           ? requirement.statusNameSv
                                           : requirement.statusNameEn) ?? ''
                                       }
