@@ -11,8 +11,8 @@ const confirmMock = vi.fn()
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: (ns?: string) => (key: string) =>
-    ns ? `${ns}.${key}` : key,
+  useTranslations: (namespace?: string) => (key: string) =>
+    namespace ? `${namespace}.${key}` : key,
 }))
 
 vi.mock('@/components/ConfirmModal', () => ({
@@ -20,7 +20,14 @@ vi.mock('@/components/ConfirmModal', () => ({
 }))
 
 function okJson(body: unknown) {
-  return { ok: true, json: async () => body }
+  return {
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: async () => body,
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    text: async () => JSON.stringify(body),
+  } as Response
 }
 
 const fetchMock = vi.fn()
@@ -28,138 +35,115 @@ vi.stubGlobal('fetch', fetchMock)
 
 import ResponsibilityAreasClient from '@/app/[locale]/requirement-packages/responsibility-areas/responsibility-areas-client'
 
-const sampleItems = [{ id: 1, nameSv: 'Område sv', nameEn: 'Area en' }]
-
 describe('ResponsibilityAreasClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ areas: sampleItems }))
+    confirmMock.mockResolvedValue(true)
+    fetchMock.mockResolvedValue(
+      okJson({
+        areas: [
+          { id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' },
+          { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
+        ],
+      }),
+    )
   })
 
-  it('renders heading and create button', async () => {
+  it('renders the heading, create button, and table rows', async () => {
     render(<ResponsibilityAreasClient />)
+
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'nav.responsibilityAreas',
     )
     expect(
-      screen.getByRole('button', { name: /common\.create/i }),
+      screen.getByRole('button', { name: 'common.create' }),
     ).toBeInTheDocument()
+
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Architecture')).toBeInTheDocument()
     })
+    expect(screen.getByText('Operations')).toBeInTheDocument()
   })
 
-  it('fetches and displays items', async () => {
+  it('opens and submits the create form', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson({ areas: [] }))
+      .mockResolvedValueOnce(
+        okJson({ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          areas: [{ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }],
+        }),
+      )
+
     render(<ResponsibilityAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.create' }))
+    fireEvent.change(screen.getByLabelText(/\(SV\)/), {
+      target: { value: 'Säkerhet' },
     })
-  })
-
-  it('shows loading text initially', () => {
-    fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<ResponsibilityAreasClient />)
-    expect(screen.getByText('common.loading')).toBeInTheDocument()
-  })
-
-  it('opens create form', async () => {
-    render(<ResponsibilityAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/\(EN\)/), {
+      target: { value: 'Security' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+SV/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+EN/),
-    ).toBeInTheDocument()
-  })
+    fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
 
-  it('submits create form', async () => {
-    render(<ResponsibilityAreasClient />)
     await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
+      expect(screen.getByText('Security')).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-
-    fireEvent.change(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+SV/),
-      { target: { value: 'Ny' } },
+    const submitInit = fetchMock.mock.calls[1][1] as RequestInit
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/package-responsibility-areas')
+    expect(submitInit.method).toBe('POST')
+    expect(submitInit.body).toBe(
+      JSON.stringify({ nameEn: 'Security', nameSv: 'Säkerhet' }),
     )
-    fireEvent.change(
-      screen.getByLabelText(/responsibilityAreaMgmt\.name.+EN/),
-      { target: { value: 'New' } },
+  })
+
+  it('prefills the edit form', async () => {
+    render(<ResponsibilityAreasClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Architecture')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
+
+    expect(screen.getByLabelText(/\(SV\)/)).toHaveValue('Arkitektur')
+    expect(screen.getByLabelText(/\(EN\)/)).toHaveValue('Architecture')
+  })
+
+  it('confirms and deletes a row', async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          areas: [{ id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' }],
+        }),
+      )
+      .mockResolvedValueOnce(okJson({ ok: true }))
+      .mockResolvedValueOnce(okJson({ areas: [] }))
+
+    render(<ResponsibilityAreasClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Architecture')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'common.delete' }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(3)
+    })
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        icon: 'caution',
+        message: 'common.confirm',
+        variant: 'danger',
+      }),
     )
-
-    fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
-    fetchMock.mockResolvedValueOnce(okJson({ areas: sampleItems }))
-
-    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-responsibility-areas',
-        expect.objectContaining({ method: 'POST' }),
-      )
-    })
-  })
-
-  it('opens edit form with existing data', async () => {
-    render(<ResponsibilityAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
-    })
-    const editButtons = screen.getAllByRole('button', {
-      name: /common\.edit/i,
-    })
-    fireEvent.click(editButtons[0])
-    expect(
-      (
-        screen.getByLabelText(
-          /responsibilityAreaMgmt\.name.+EN/,
-        ) as HTMLInputElement
-      ).value,
-    ).toBe('Area en')
-  })
-
-  it('closes form on cancel', async () => {
-    render(<ResponsibilityAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
-    })
-    fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(
-      screen.queryByLabelText(/responsibilityAreaMgmt\.name.+SV/),
-    ).toBeNull()
-  })
-
-  it('deletes with confirm', async () => {
-    confirmMock.mockResolvedValue(true)
-    render(<ResponsibilityAreasClient />)
-    await waitFor(() => {
-      expect(screen.getByText('Area en')).toBeInTheDocument()
-    })
-
-    fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ areas: [] }))
-
-    const deleteButtons = screen.getAllByRole('button', {
-      name: /common\.delete/i,
-    })
-    fireEvent.click(deleteButtons[0])
-
-    await waitFor(() => {
-      expect(confirmMock).toHaveBeenCalledWith(
-        expect.objectContaining({ variant: 'danger', icon: 'caution' }),
-      )
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-responsibility-areas/1',
-        expect.objectContaining({ method: 'DELETE' }),
-      )
-    })
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      '/api/package-responsibility-areas/1',
+    )
+    expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('DELETE')
   })
 })

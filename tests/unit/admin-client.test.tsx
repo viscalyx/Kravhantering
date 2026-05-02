@@ -17,12 +17,24 @@ import {
   getDefaultUiTerminology,
 } from '@/lib/ui-terminology'
 
+const routerMock = vi.hoisted(() => ({
+  refresh: vi.fn(),
+  replace: vi.fn(),
+}))
+const searchParamsMock = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}))
 const fetchMock = vi.fn()
-const routerRefresh = vi.fn()
+const routerRefresh = routerMock.refresh
+const routerReplace = routerMock.replace
 
 vi.mock('next-intl', () => ({
   useTranslations: (namespace?: string) => (key: string) =>
     namespace ? `${namespace}.${key}` : key,
+}))
+
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => searchParamsMock.current,
 }))
 
 vi.mock('@/i18n/routing', () => ({
@@ -33,6 +45,7 @@ vi.mock('@/i18n/routing', () => ({
   ),
   useRouter: () => ({
     refresh: routerRefresh,
+    replace: routerReplace,
   }),
 }))
 
@@ -66,7 +79,53 @@ describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
     routerRefresh.mockReset()
+    routerReplace.mockReset()
+    searchParamsMock.current = new URLSearchParams()
     vi.stubGlobal('fetch', fetchMock)
+  })
+
+  it('opens the reference data tab from the admin tab query parameter', () => {
+    searchParamsMock.current = new URLSearchParams('tab=referenceData')
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const referenceDataTab = screen.getByRole('tab', {
+      name: 'admin.referenceData',
+    })
+
+    expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'referenceData-panel',
+    )
+  })
+
+  it('writes the selected admin tab to the current history entry', () => {
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.referenceData' }))
+
+    expect(routerReplace).toHaveBeenCalledWith(
+      {
+        pathname: '/admin',
+        query: { tab: 'referenceData' },
+      },
+      { scroll: false },
+    )
   })
 
   it('renders icon-bearing reference data cards that link to the existing pages', () => {

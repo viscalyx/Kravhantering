@@ -21,8 +21,9 @@ import {
   UserCog,
   Wrench,
 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -78,6 +79,31 @@ const ADMIN_TAB_DEVELOPER_MODE_VALUES: Record<AdminTab, string> = {
   terminology: 'terminology',
 }
 
+const ADMIN_TAB_QUERY_KEY = 'tab'
+const DEFAULT_ADMIN_TAB: AdminTab = 'terminology'
+
+function getAdminTabFromSearchParams(searchParams: URLSearchParams): AdminTab {
+  const tab = searchParams.get(ADMIN_TAB_QUERY_KEY)
+
+  return adminTabs.some(item => item.id === tab)
+    ? (tab as AdminTab)
+    : DEFAULT_ADMIN_TAB
+}
+
+function getAdminTabHref(tab: AdminTab, searchParams: URLSearchParams) {
+  const query = Object.fromEntries(searchParams.entries())
+
+  if (tab === DEFAULT_ADMIN_TAB) {
+    delete query[ADMIN_TAB_QUERY_KEY]
+  } else {
+    query[ADMIN_TAB_QUERY_KEY] = tab
+  }
+
+  return Object.keys(query).length > 0
+    ? { pathname: '/admin', query }
+    : '/admin'
+}
+
 function createShippedTerminology() {
   return buildUiTerminologyPayload(getDefaultUiTerminology())
 }
@@ -101,7 +127,10 @@ export default function AdminClient({
   const tis = useTranslations('improvementSuggestion')
   const terminologyLabel = useTranslations('terminology')
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<AdminTab>('terminology')
+  const searchParams = useSearchParams()
+  const [activeTab, setActiveTab] = useState<AdminTab>(() =>
+    getAdminTabFromSearchParams(new URLSearchParams(searchParams)),
+  )
   const [activeLocale, setActiveLocale] = useState<UiLocale>('sv')
   const [terminology, setTerminology] = useState(initialTerminology)
   const [columnDefaults, setColumnDefaults] = useState<
@@ -118,6 +147,17 @@ export default function AdminClient({
   )
   const isTerminologySaving = terminologySaveState === 'saving'
   const isColumnSaving = columnSaveState === 'saving'
+
+  useEffect(() => {
+    setActiveTab(getAdminTabFromSearchParams(new URLSearchParams(searchParams)))
+  }, [searchParams])
+
+  const selectTab = (tab: AdminTab) => {
+    setActiveTab(tab)
+    router.replace(getAdminTabHref(tab, new URLSearchParams(searchParams)), {
+      scroll: false,
+    })
+  }
 
   const updateTermValue = (
     key: UiTermTranslation['key'],
@@ -422,7 +462,7 @@ export default function AdminClient({
                     value: ADMIN_TAB_DEVELOPER_MODE_VALUES[tab.id],
                   })}
                   id={`${tab.id}-tab`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => selectTab(tab.id)}
                   role="tab"
                   type="button"
                 >

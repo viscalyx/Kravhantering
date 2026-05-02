@@ -71,13 +71,16 @@ export async function createArea(
     ownerId?: number
   },
 ): Promise<RequirementAreaRow> {
+  const now = new Date()
   const rows = await db.query(
     `
       INSERT INTO requirement_areas (
         prefix,
         name,
         description,
-        owner_id
+        owner_id,
+        created_at,
+        updated_at
       )
       OUTPUT
         inserted.id AS id,
@@ -88,9 +91,15 @@ export async function createArea(
         inserted.next_sequence AS nextSequence,
         inserted.created_at AS createdAt,
         inserted.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3)
+      VALUES (@0, @1, @2, @3, @4, @4)
     `,
-    [data.prefix, data.name, data.description ?? null, data.ownerId ?? null],
+    [
+      data.prefix,
+      data.name,
+      data.description ?? null,
+      data.ownerId ?? null,
+      now,
+    ],
   )
   return mapAreaRow(rows[0])
 }

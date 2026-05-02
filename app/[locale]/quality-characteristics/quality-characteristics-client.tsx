@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 
@@ -33,11 +34,42 @@ interface TypeCategory {
   requirementTypeId: number
 }
 
+interface TypeCategoryForm {
+  nameEn: string
+  nameSv: string
+  parentId: string
+  requirementTypeId: string
+}
+
 interface Type {
   id: number
   nameEn: string
   nameSv: string
 }
+
+const getInitialForm = (): TypeCategoryForm => ({
+  nameEn: '',
+  nameSv: '',
+  parentId: '',
+  requirementTypeId: '',
+})
+
+const toForm = (category: TypeCategory): TypeCategoryForm => ({
+  nameEn: category.nameEn,
+  nameSv: category.nameSv,
+  parentId: category.parentId?.toString() ?? '',
+  requirementTypeId: category.requirementTypeId.toString(),
+})
+
+const toPayload = (form: TypeCategoryForm) => ({
+  nameSv: form.nameSv,
+  nameEn: form.nameEn,
+  requirementTypeId: Number(form.requirementTypeId),
+  parentId: form.parentId ? Number(form.parentId) : null,
+})
+
+const inputClassName =
+  'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
 export default function QualityCharacteristicsClient() {
   useHelpContent(QUALITY_CHARACTERISTICS_HELP)
@@ -45,137 +77,85 @@ export default function QualityCharacteristicsClient() {
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
-
+  const { confirm } = useConfirmModal()
   const [types, setTypes] = useState<Type[]>([])
-  const [categories, setCategories] = useState<TypeCategory[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [form, setForm] = useState({
-    nameSv: '',
-    nameEn: '',
-    requirementTypeId: '' as string,
-    parentId: '' as string,
-  })
+  const [typesLoading, setTypesLoading] = useState(true)
+  const errorFallback = tc('error')
 
-  const resetForm = () => ({
-    nameSv: '',
-    nameEn: '',
-    requirementTypeId: '' as string,
-    parentId: '' as string,
-  })
-
-  const getName = (cat: TypeCategory) =>
-    locale === 'sv' ? cat.nameSv : cat.nameEn
+  const getName = (category: TypeCategory) =>
+    locale === 'sv' ? category.nameSv : category.nameEn
   const getTypeName = (type: Type) =>
     locale === 'sv' ? type.nameSv : type.nameEn
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [typesRes, catRes] = await Promise.all([
-        apiFetch('/api/requirement-types'),
-        apiFetch('/api/quality-characteristics'),
-      ])
-      if (typesRes.ok)
-        setTypes(((await typesRes.json()) as { types?: Type[] }).types ?? [])
-      if (catRes.ok)
-        setCategories(
-          ((await catRes.json()) as { qualityCharacteristics?: TypeCategory[] })
-            .qualityCharacteristics ?? [],
-        )
-    } finally {
-      setLoading(false)
+  const presentMutationError = useCallback(
+    async ({
+      anchorEl,
+      message,
+    }: {
+      anchorEl?: HTMLElement
+      message: string
+    }) => {
+      await confirm({
+        anchorEl,
+        icon: 'warning',
+        message: message || errorFallback,
+        showCancel: false,
+      })
+    },
+    [confirm, errorFallback],
+  )
+
+  const getCaughtErrorMessage = useCallback(
+    (error: unknown) =>
+      error instanceof Error ? error.message || errorFallback : errorFallback,
+    [errorFallback],
+  )
+
+  const controller = useCrudAdminResource<TypeCategory, TypeCategoryForm>({
+    confirmDeleteMessage: tc('confirm'),
+    endpoint: '/api/quality-characteristics',
+    errorMessage: errorFallback,
+    getCaughtErrorMessage,
+    getInitialForm,
+    listKey: 'qualityCharacteristics',
+    onDeleteError: presentMutationError,
+    onSubmitError: presentMutationError,
+    reloadOnDeleteError: true,
+    toForm,
+    toPayload,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchTypes() {
+      setTypesLoading(true)
+      try {
+        const response = await apiFetch('/api/requirement-types')
+        if (!response.ok || cancelled) return
+        setTypes(((await response.json()) as { types?: Type[] }).types ?? [])
+      } finally {
+        if (!cancelled) setTypesLoading(false)
+      }
+    }
+
+    void fetchTypes()
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  const { confirm } = useConfirmModal()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    const method = editId ? 'PUT' : 'POST'
-    const url = editId
-      ? `/api/quality-characteristics/${editId}`
-      : '/api/quality-characteristics'
-    try {
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nameSv: form.nameSv,
-          nameEn: form.nameEn,
-          requirementTypeId: Number(form.requirementTypeId),
-          parentId: form.parentId ? Number(form.parentId) : null,
-        }),
-      })
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string }
-        await confirm({
-          message: data.error ?? tc('error'),
-          showCancel: false,
-          icon: 'warning',
-        })
-        return
-      }
-      setShowForm(false)
-      setEditId(null)
-      setForm(resetForm())
-      fetchData()
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleEdit = (cat: TypeCategory) => {
-    setEditId(cat.id)
-    setForm({
-      nameSv: cat.nameSv,
-      nameEn: cat.nameEn,
-      requirementTypeId: cat.requirementTypeId.toString(),
-      parentId: cat.parentId?.toString() ?? '',
-    })
-    setShowForm(true)
-  }
-
-  const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
-    if (
-      !(await confirm({
-        message: tc('confirm'),
-        variant: 'danger',
-        icon: 'caution',
-        anchorEl,
-      }))
-    )
-      return
-    const res = await apiFetch(`/api/quality-characteristics/${id}`, {
-      method: 'DELETE',
-    })
-    if (!res.ok) {
-      const data = (await res.json()) as { error?: string }
-      await confirm({
-        message: data.error ?? tc('error'),
-        showCancel: false,
-        icon: 'warning',
-        anchorEl,
-      })
-    }
-    fetchData()
-  }
-
-  const parentOptions = categories.filter(
-    c =>
-      c.parentId === null &&
-      c.id !== editId &&
-      (form.requirementTypeId
-        ? c.requirementTypeId === Number(form.requirementTypeId)
+  const parentOptions = controller.items.filter(
+    category =>
+      category.parentId === null &&
+      category.id !== controller.editId &&
+      (controller.form.requirementTypeId
+        ? category.requirementTypeId ===
+          Number(controller.form.requirementTypeId)
         : true),
   )
+  const loading = controller.loading || typesLoading
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -191,11 +171,8 @@ export default function QualityCharacteristicsClient() {
               name: 'create button',
               priority: 350,
             })}
-            onClick={() => {
-              setShowForm(true)
-              setEditId(null)
-              setForm(resetForm())
-            }}
+            disabled={controller.submitting}
+            onClick={controller.openCreate}
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
@@ -206,8 +183,17 @@ export default function QualityCharacteristicsClient() {
           {t('subtitle')}
         </p>
 
+        {controller.loadError && (
+          <div
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200"
+            role="alert"
+          >
+            {controller.loadError}
+          </div>
+        )}
+
         <AnimatePresence>
-          {showForm && (
+          {controller.showForm && (
             <motion.form
               animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
@@ -218,12 +204,12 @@ export default function QualityCharacteristicsClient() {
                 context: 'quality characteristics',
                 name: 'crud form',
                 priority: 340,
-                value: editId ? 'edit' : 'create',
+                value: controller.editId ? 'edit' : 'create',
               })}
-              onSubmit={handleSubmit}
+              onSubmit={controller.submit}
             >
               <h2 className="text-lg font-semibold">
-                {editId ? tc('edit') : tc('create')}
+                {controller.editId ? tc('edit') : tc('create')}
               </h2>
               <div>
                 <label
@@ -233,13 +219,17 @@ export default function QualityCharacteristicsClient() {
                   {t('name')} (SV) *
                 </label>
                 <input
-                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  className={inputClassName}
+                  disabled={controller.submitting}
                   id="qc-name-sv"
-                  onChange={e =>
-                    setForm(f => ({ ...f, nameSv: e.target.value }))
+                  onChange={event =>
+                    controller.setForm(previousForm => ({
+                      ...previousForm,
+                      nameSv: event.target.value,
+                    }))
                   }
                   required
-                  value={form.nameSv}
+                  value={controller.form.nameSv}
                 />
               </div>
               <div>
@@ -250,13 +240,17 @@ export default function QualityCharacteristicsClient() {
                   {t('name')} (EN) *
                 </label>
                 <input
-                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  className={inputClassName}
+                  disabled={controller.submitting}
                   id="qc-name-en"
-                  onChange={e =>
-                    setForm(f => ({ ...f, nameEn: e.target.value }))
+                  onChange={event =>
+                    controller.setForm(previousForm => ({
+                      ...previousForm,
+                      nameEn: event.target.value,
+                    }))
                   }
                   required
-                  value={form.nameEn}
+                  value={controller.form.nameEn}
                 />
               </div>
               <div>
@@ -267,22 +261,23 @@ export default function QualityCharacteristicsClient() {
                   {t('type')} *
                 </label>
                 <select
-                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  className={inputClassName}
+                  disabled={controller.submitting}
                   id="qc-type"
-                  onChange={e =>
-                    setForm(f => ({
-                      ...f,
-                      requirementTypeId: e.target.value,
+                  onChange={event =>
+                    controller.setForm(previousForm => ({
+                      ...previousForm,
                       parentId: '',
+                      requirementTypeId: event.target.value,
                     }))
                   }
                   required
-                  value={form.requirementTypeId}
+                  value={controller.form.requirementTypeId}
                 >
                   <option value="">—</option>
-                  {types.map(tp => (
-                    <option key={tp.id} value={tp.id}>
-                      {getTypeName(tp)}
+                  {types.map(type => (
+                    <option key={type.id} value={type.id}>
+                      {getTypeName(type)}
                     </option>
                   ))}
                 </select>
@@ -295,17 +290,21 @@ export default function QualityCharacteristicsClient() {
                   {t('parent')}
                 </label>
                 <select
-                  className="w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200"
+                  className={inputClassName}
+                  disabled={controller.submitting}
                   id="qc-parent"
-                  onChange={e =>
-                    setForm(f => ({ ...f, parentId: e.target.value }))
+                  onChange={event =>
+                    controller.setForm(previousForm => ({
+                      ...previousForm,
+                      parentId: event.target.value,
+                    }))
                   }
-                  value={form.parentId}
+                  value={controller.form.parentId}
                 >
                   <option value="">{t('topLevel')}</option>
-                  {parentOptions.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {getName(p)}
+                  {parentOptions.map(parent => (
+                    <option key={parent.id} value={parent.id}>
+                      {getName(parent)}
                     </option>
                   ))}
                 </select>
@@ -313,14 +312,15 @@ export default function QualityCharacteristicsClient() {
               <div className="flex gap-3">
                 <button
                   className="btn-primary"
-                  disabled={isSubmitting}
+                  disabled={controller.submitting}
                   type="submit"
                 >
-                  {tc('save')}
+                  {controller.submitting ? tc('saving') : tc('save')}
                 </button>
                 <button
                   className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                  onClick={() => setShowForm(false)}
+                  disabled={controller.submitting}
+                  onClick={controller.closeForm}
                   type="button"
                 >
                   {tc('cancel')}
@@ -344,8 +344,9 @@ export default function QualityCharacteristicsClient() {
             })}
           >
             {types.map(type => {
-              const topLevel = categories.filter(
-                c => c.requirementTypeId === type.id && !c.parentId,
+              const topLevel = controller.items.filter(
+                category =>
+                  category.requirementTypeId === type.id && !category.parentId,
               )
               return (
                 <div key={type.id}>
@@ -354,8 +355,8 @@ export default function QualityCharacteristicsClient() {
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {topLevel.map(parent => {
-                      const children = categories.filter(
-                        c => c.parentId === parent.id,
+                      const children = controller.items.filter(
+                        category => category.parentId === parent.id,
                       )
                       return (
                         <div
@@ -374,7 +375,8 @@ export default function QualityCharacteristicsClient() {
                                   name: 'table action',
                                   value: 'edit',
                                 })}
-                                onClick={() => handleEdit(parent)}
+                                disabled={controller.deletingIds.has(parent.id)}
+                                onClick={() => controller.openEdit(parent)}
                                 type="button"
                               >
                                 <Pencil
@@ -390,12 +392,13 @@ export default function QualityCharacteristicsClient() {
                                   name: 'table action',
                                   value: 'delete',
                                 })}
-                                onClick={e =>
-                                  handleDelete(
+                                disabled={controller.deletingIds.has(parent.id)}
+                                onClick={event => {
+                                  void controller.remove(
                                     parent.id,
-                                    e.currentTarget as HTMLElement,
+                                    event.currentTarget,
                                   )
-                                }
+                                }}
                                 type="button"
                               >
                                 <Trash2
@@ -422,7 +425,10 @@ export default function QualityCharacteristicsClient() {
                                         name: 'table action',
                                         value: 'edit',
                                       })}
-                                      onClick={() => handleEdit(child)}
+                                      disabled={controller.deletingIds.has(
+                                        child.id,
+                                      )}
+                                      onClick={() => controller.openEdit(child)}
                                       type="button"
                                     >
                                       <Pencil
@@ -440,12 +446,15 @@ export default function QualityCharacteristicsClient() {
                                         name: 'table action',
                                         value: 'delete',
                                       })}
-                                      onClick={e =>
-                                        handleDelete(
+                                      disabled={controller.deletingIds.has(
+                                        child.id,
+                                      )}
+                                      onClick={event => {
+                                        void controller.remove(
                                           child.id,
-                                          e.currentTarget as HTMLElement,
+                                          event.currentTarget,
                                         )
-                                      }
+                                      }}
                                       type="button"
                                     >
                                       <Trash2

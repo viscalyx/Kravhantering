@@ -4,9 +4,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
+import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -45,6 +45,14 @@ interface Scenario {
   ownerId: number | null
 }
 
+interface ScenarioForm {
+  descriptionEn: string
+  descriptionSv: string
+  nameEn: string
+  nameSv: string
+  ownerId: string
+}
+
 interface LinkedRequirement {
   description: string | null
   id: number
@@ -57,6 +65,33 @@ interface LinkedRequirement {
 
 const DESCRIPTION_TRUNCATE = 80
 
+const getInitialForm = (): ScenarioForm => ({
+  descriptionEn: '',
+  descriptionSv: '',
+  nameEn: '',
+  nameSv: '',
+  ownerId: '',
+})
+
+const toForm = (scenario: Scenario): ScenarioForm => ({
+  descriptionEn: scenario.descriptionEn ?? '',
+  descriptionSv: scenario.descriptionSv ?? '',
+  nameEn: scenario.nameEn,
+  nameSv: scenario.nameSv,
+  ownerId: scenario.ownerId != null ? String(scenario.ownerId) : '',
+})
+
+const toPayload = (form: ScenarioForm) => ({
+  nameSv: form.nameSv,
+  nameEn: form.nameEn,
+  descriptionSv: form.descriptionSv || undefined,
+  descriptionEn: form.descriptionEn || undefined,
+  ownerId: form.ownerId ? Number(form.ownerId) : null,
+})
+
+const inputClassName =
+  'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
 export default function UsageScenariosClient() {
   useHelpContent(USAGE_SCENARIOS_HELP)
   const t = useTranslations('scenario')
@@ -64,72 +99,64 @@ export default function UsageScenariosClient() {
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
   const locale = useLocale()
-
-  const getName = (s: Scenario) => (locale === 'sv' ? s.nameSv : s.nameEn)
-  const getDescription = (s: Scenario) =>
-    locale === 'sv' ? s.descriptionSv : s.descriptionEn
-
-  const [scenarios, setScenarios] = useState<Scenario[]>([])
   const [owners, setOwners] = useState<Owner[]>([])
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
   const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
     useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [form, setForm] = useState({
-    nameSv: '',
-    nameEn: '',
-    descriptionSv: '',
-    descriptionEn: '',
-    ownerId: '',
+  const linkedReqRequestId = useRef(0)
+
+  const getName = (scenario: Scenario) =>
+    locale === 'sv' ? scenario.nameSv : scenario.nameEn
+  const getDescription = (scenario: Scenario) =>
+    locale === 'sv' ? scenario.descriptionSv : scenario.descriptionEn
+
+  const controller = useCrudAdminResource<Scenario, ScenarioForm>({
+    confirmDeleteMessage: tc('confirm'),
+    endpoint: '/api/usage-scenarios',
+    errorMessage: tc('error'),
+    getInitialForm,
+    listKey: 'scenarios',
+    toForm,
+    toPayload,
   })
 
-  const fetchScenarios = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await apiFetch('/api/usage-scenarios')
-      if (res.ok)
-        setScenarios(
-          ((await res.json()) as { scenarios?: Scenario[] }).scenarios ?? [],
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchOwners() {
+      try {
+        const response = await apiFetch('/api/owners/all')
+        if (!response.ok || cancelled) return
+        setOwners(
+          ((await response.json()) as { owners?: Owner[] }).owners ?? [],
         )
-    } catch {
-      setScenarios([])
-    } finally {
-      setLoading(false)
+      } catch {
+        if (!cancelled) setOwners([])
+      }
+    }
+
+    void fetchOwners()
+
+    return () => {
+      cancelled = true
     }
   }, [])
-
-  const fetchOwners = useCallback(async () => {
-    try {
-      const res = await apiFetch('/api/owners/all')
-      if (res.ok)
-        setOwners(((await res.json()) as { owners?: Owner[] }).owners ?? [])
-    } catch {
-      setOwners([])
-    }
-  }, [])
-
-  const linkedReqRequestId = useRef(0)
 
   const fetchLinkedRequirements = useCallback(async (scenarioId: number) => {
     const requestId = ++linkedReqRequestId.current
     setLinkedRequirementsLoading(true)
     try {
-      const res = await apiFetch(`/api/usage-scenarios/${scenarioId}`)
-      if (res.ok && requestId === linkedReqRequestId.current) {
-        const data = (await res.json()) as {
+      const response = await apiFetch(`/api/usage-scenarios/${scenarioId}`)
+      if (response.ok && requestId === linkedReqRequestId.current) {
+        const data = (await response.json()) as {
           linkedRequirements?: LinkedRequirement[]
         }
         setLinkedRequirements(data.linkedRequirements ?? [])
       }
     } catch {
-      // Keep existing linkedRequirements on error
+      // Keep existing linked requirements on error.
     } finally {
       if (requestId === linkedReqRequestId.current) {
         setLinkedRequirementsLoading(false)
@@ -137,96 +164,36 @@ export default function UsageScenariosClient() {
     }
   }, [])
 
-  useEffect(() => {
-    fetchScenarios()
-    fetchOwners()
-  }, [fetchScenarios, fetchOwners])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      const method = editId ? 'PUT' : 'POST'
-      const url = editId
-        ? `/api/usage-scenarios/${editId}`
-        : '/api/usage-scenarios'
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nameSv: form.nameSv,
-          nameEn: form.nameEn,
-          descriptionSv: form.descriptionSv || undefined,
-          descriptionEn: form.descriptionEn || undefined,
-          ownerId: form.ownerId ? Number(form.ownerId) : null,
-        }),
-      })
-      if (!res.ok) return
-      setShowForm(false)
-      setEditId(null)
-      setLinkedRequirements([])
-      setForm({
-        nameSv: '',
-        nameEn: '',
-        descriptionSv: '',
-        descriptionEn: '',
-        ownerId: '',
-      })
-      fetchScenarios()
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleEdit = (s: Scenario) => {
-    setEditId(s.id)
+  const openCreate = () => {
     setLinkedRequirements([])
-    setForm({
-      nameSv: s.nameSv,
-      nameEn: s.nameEn,
-      descriptionSv: s.descriptionSv ?? '',
-      descriptionEn: s.descriptionEn ?? '',
-      ownerId: s.ownerId != null ? String(s.ownerId) : '',
-    })
-    setShowForm(true)
-    fetchLinkedRequirements(s.id)
+    controller.openCreate()
   }
 
-  const { confirm } = useConfirmModal()
+  const openEdit = (scenario: Scenario) => {
+    setLinkedRequirements([])
+    controller.openEdit(scenario)
+    void fetchLinkedRequirements(scenario.id)
+  }
 
-  const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
-    if (
-      !(await confirm({
-        message: tc('confirm'),
-        variant: 'danger',
-        icon: 'caution',
-        anchorEl,
-      }))
-    )
-      return
-    setDeleteError(null)
-    setDeletingId(id)
-    try {
-      const res = await apiFetch(`/api/usage-scenarios/${id}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        setDeleteError(
-          (body as { error?: string } | null)?.error ?? tc('error'),
-        )
-        return
-      }
-      fetchScenarios()
-    } catch {
-      setDeleteError(tc('error'))
-    } finally {
-      setDeletingId(null)
+  const closeForm = () => {
+    setLinkedRequirements([])
+    controller.closeForm()
+  }
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    const didSubmit = await controller.submit(event)
+    if (didSubmit) setLinkedRequirements([])
+  }
+
+  const remove = async (id: number, anchorEl?: HTMLElement) => {
+    const didRemove = await controller.remove(id, anchorEl)
+    if (didRemove && controller.editId === id) setLinkedRequirements([])
+  }
+
+  const getOwnerName = (scenario: Scenario) => {
+    if (scenario.owner) {
+      return `${scenario.owner.firstName} ${scenario.owner.lastName}`
     }
-  }
-
-  const getOwnerName = (s: Scenario) => {
-    if (s.owner) return `${s.owner.firstName} ${s.owner.lastName}`
     return '—'
   }
 
@@ -235,9 +202,6 @@ export default function UsageScenariosClient() {
     if (text.length <= DESCRIPTION_TRUNCATE) return text
     return `${text.slice(0, DESCRIPTION_TRUNCATE)}…`
   }
-
-  const selectClass =
-    'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -253,19 +217,8 @@ export default function UsageScenariosClient() {
               name: 'create button',
               priority: 350,
             })}
-            disabled={submitting}
-            onClick={() => {
-              setShowForm(true)
-              setEditId(null)
-              setLinkedRequirements([])
-              setForm({
-                nameSv: '',
-                nameEn: '',
-                descriptionSv: '',
-                descriptionEn: '',
-                ownerId: '',
-              })
-            }}
+            disabled={controller.submitting}
+            onClick={openCreate}
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
@@ -273,8 +226,23 @@ export default function UsageScenariosClient() {
           </button>
         </div>
 
+        {(controller.deleteError || controller.loadError) && (
+          <p
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            {...devMarker({
+              context: 'scenarios',
+              name: 'error banner',
+              priority: 340,
+              value: controller.deleteError ? 'delete-error' : 'load-error',
+            })}
+            role="alert"
+          >
+            {controller.deleteError ?? controller.loadError}
+          </p>
+        )}
+
         <AnimatePresence>
-          {showForm && (
+          {controller.showForm && (
             <motion.div
               animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6"
@@ -289,12 +257,12 @@ export default function UsageScenariosClient() {
                     context: 'scenarios',
                     name: 'crud form',
                     priority: 340,
-                    value: editId ? 'edit' : 'create',
+                    value: controller.editId ? 'edit' : 'create',
                   })}
-                  onSubmit={handleSubmit}
+                  onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">
-                    {editId ? tc('edit') : tc('create')}
+                    {controller.editId ? tc('edit') : tc('create')}
                   </h2>
                   <div>
                     <label
@@ -304,13 +272,17 @@ export default function UsageScenariosClient() {
                       {t('name')} (SV) *
                     </label>
                     <input
-                      className={selectClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="scen-name-sv"
-                      onChange={e =>
-                        setForm(f => ({ ...f, nameSv: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          nameSv: event.target.value,
+                        }))
                       }
                       required
-                      value={form.nameSv}
+                      value={controller.form.nameSv}
                     />
                   </div>
                   <div>
@@ -321,13 +293,17 @@ export default function UsageScenariosClient() {
                       {t('name')} (EN) *
                     </label>
                     <input
-                      className={selectClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="scen-name-en"
-                      onChange={e =>
-                        setForm(f => ({ ...f, nameEn: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          nameEn: event.target.value,
+                        }))
                       }
                       required
-                      value={form.nameEn}
+                      value={controller.form.nameEn}
                     />
                   </div>
                   <div>
@@ -338,12 +314,16 @@ export default function UsageScenariosClient() {
                       {t('description')} (SV)
                     </label>
                     <textarea
-                      className={selectClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="scen-desc-sv"
-                      onChange={e =>
-                        setForm(f => ({ ...f, descriptionSv: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          descriptionSv: event.target.value,
+                        }))
                       }
-                      value={form.descriptionSv}
+                      value={controller.form.descriptionSv}
                     />
                   </div>
                   <div>
@@ -354,12 +334,16 @@ export default function UsageScenariosClient() {
                       {t('description')} (EN)
                     </label>
                     <textarea
-                      className={selectClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="scen-desc-en"
-                      onChange={e =>
-                        setForm(f => ({ ...f, descriptionEn: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          descriptionEn: event.target.value,
+                        }))
                       }
-                      value={form.descriptionEn}
+                      value={controller.form.descriptionEn}
                     />
                   </div>
                   <div>
@@ -370,36 +354,45 @@ export default function UsageScenariosClient() {
                       {t('owner')}
                     </label>
                     <select
-                      className={selectClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="scen-owner"
-                      onChange={e =>
-                        setForm(f => ({ ...f, ownerId: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          ownerId: event.target.value,
+                        }))
                       }
-                      value={form.ownerId}
+                      value={controller.form.ownerId}
                     >
-                      <option value="">{t('owner')}...</option>
-                      {owners.map(o => (
-                        <option key={o.id} value={o.id}>
-                          {o.firstName} {o.lastName}
+                      <option value="">—</option>
+                      {owners.map(owner => (
+                        <option key={owner.id} value={owner.id}>
+                          {owner.firstName} {owner.lastName}
                         </option>
                       ))}
                     </select>
                   </div>
+                  {controller.formError && (
+                    <p
+                      className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                      role="alert"
+                    >
+                      {controller.formError}
+                    </p>
+                  )}
                   <div className="flex gap-3">
                     <button
                       className="btn-primary"
-                      disabled={submitting}
+                      disabled={controller.submitting}
                       type="submit"
                     >
-                      {submitting ? tc('saving') : tc('save')}
+                      {controller.submitting ? tc('saving') : tc('save')}
                     </button>
                     <button
-                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                      disabled={submitting}
-                      onClick={() => {
-                        setShowForm(false)
-                        setLinkedRequirements([])
-                      }}
+                      className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
+                      disabled={controller.submitting}
+                      onClick={closeForm}
                       type="button"
                     >
                       {tc('cancel')}
@@ -407,7 +400,7 @@ export default function UsageScenariosClient() {
                   </div>
                 </form>
 
-                {editId && (
+                {controller.editId && (
                   <div>
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
                       {t('linkedRequirements')}
@@ -440,46 +433,46 @@ export default function UsageScenariosClient() {
                             </tr>
                           </thead>
                           <tbody>
-                            {linkedRequirements.map(req => {
+                            {linkedRequirements.map(requirement => {
                               const truncated = truncateDescription(
-                                req.description,
+                                requirement.description,
                               )
                               const isTruncated =
-                                truncated !== req.description &&
-                                req.description != null
+                                truncated !== requirement.description &&
+                                requirement.description != null
                               return (
                                 <tr
                                   className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                                  key={req.id}
+                                  key={`${requirement.id}-v${requirement.versionNumber}`}
                                 >
                                   <td className="py-2 px-3 font-medium">
                                     <Link
                                       className="inline-flex items-center min-h-[44px] min-w-[44px] text-primary-700 dark:text-primary-300 hover:underline"
-                                      href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
+                                      href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
                                     >
-                                      {req.uniqueId}
+                                      {requirement.uniqueId}
                                     </Link>
                                   </td>
                                   <td
                                     className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
                                     title={
                                       isTruncated
-                                        ? (req.description ?? undefined)
+                                        ? (requirement.description ?? undefined)
                                         : undefined
                                     }
                                   >
                                     {truncated ?? '—'}
                                   </td>
                                   <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
-                                    v{req.versionNumber}
+                                    v{requirement.versionNumber}
                                   </td>
                                   <td className="py-2 px-3">
                                     <StatusBadge
-                                      color={req.statusColor}
+                                      color={requirement.statusColor}
                                       label={
                                         (locale === 'sv'
-                                          ? req.statusNameSv
-                                          : req.statusNameEn) ?? ''
+                                          ? requirement.statusNameSv
+                                          : requirement.statusNameEn) ?? ''
                                       }
                                     />
                                   </td>
@@ -497,21 +490,7 @@ export default function UsageScenariosClient() {
           )}
         </AnimatePresence>
 
-        {deleteError && (
-          <p
-            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-            {...devMarker({
-              context: 'scenarios',
-              name: 'error banner',
-              priority: 340,
-              value: 'delete-error',
-            })}
-          >
-            {deleteError}
-          </p>
-        )}
-
-        {loading ? (
+        {controller.loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">
             {tc('loading')}
           </p>
@@ -537,21 +516,23 @@ export default function UsageScenariosClient() {
                 </tr>
               </thead>
               <tbody>
-                {scenarios.map(s => (
+                {controller.items.map(scenario => (
                   <tr
                     className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={s.id}
+                    key={scenario.id}
                   >
-                    <td className="py-3 px-4 font-medium">{getName(s)}</td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 truncate max-w-xs">
-                      {getDescription(s) ?? '—'}
+                    <td className="py-3 px-4 font-medium">
+                      {getName(scenario)}
+                    </td>
+                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate">
+                      {getDescription(scenario) || '—'}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {getOwnerName(s)}
+                      {getOwnerName(scenario)}
                     </td>
                     <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
                       {t('requirementCount', {
-                        count: s.linkedRequirementCount,
+                        count: scenario.linkedRequirementCount,
                       })}
                     </td>
                     <td className="py-3 px-4 text-right">
@@ -562,8 +543,8 @@ export default function UsageScenariosClient() {
                           name: 'table action',
                           value: 'edit',
                         })}
-                        disabled={submitting}
-                        onClick={() => handleEdit(s)}
+                        disabled={controller.submitting}
+                        onClick={() => openEdit(scenario)}
                         type="button"
                       >
                         {tc('edit')}
@@ -575,13 +556,18 @@ export default function UsageScenariosClient() {
                           name: 'table action',
                           value: 'delete',
                         })}
-                        disabled={submitting || deletingId === s.id}
-                        onClick={e =>
-                          handleDelete(s.id, e.currentTarget as HTMLElement)
+                        disabled={
+                          controller.submitting ||
+                          controller.deletingIds.has(scenario.id)
                         }
+                        onClick={event => {
+                          void remove(scenario.id, event.currentTarget)
+                        }}
                         type="button"
                       >
-                        {deletingId === s.id ? tc('loading') : tc('delete')}
+                        {controller.deletingIds.has(scenario.id)
+                          ? tc('loading')
+                          : tc('delete')}
                       </button>
                     </td>
                   </tr>
