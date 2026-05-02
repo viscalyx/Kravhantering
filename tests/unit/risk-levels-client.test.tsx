@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { okResponse } from './test-helpers'
 
 const confirmMock = vi.fn()
 
@@ -31,11 +32,12 @@ vi.mock('@/components/StatusBadge', () => ({
   default: ({ label }: { label: string }) => <span>{label}</span>,
 }))
 
-function okJson(body: unknown) {
-  return { ok: true, json: async () => body }
-}
 function notOk() {
-  return { ok: false }
+  return new Response(JSON.stringify({ error: 'Bad request' }), {
+    headers: { 'content-type': 'application/json' },
+    status: 400,
+    statusText: 'Bad Request',
+  })
 }
 
 const fetchMock = vi.fn()
@@ -67,7 +69,7 @@ describe('RiskLevelsClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ riskLevels: sampleRiskLevels }))
+    fetchMock.mockResolvedValue(okResponse({ riskLevels: sampleRiskLevels }))
   })
 
   it('renders heading and create button', async () => {
@@ -124,8 +126,10 @@ describe('RiskLevelsClient', () => {
       target: { value: 'Critical' },
     })
 
-    fetchMock.mockResolvedValueOnce(okJson({ id: 3 }))
-    fetchMock.mockResolvedValueOnce(okJson({ riskLevels: sampleRiskLevels }))
+    fetchMock.mockResolvedValueOnce(okResponse({ id: 3 }))
+    fetchMock.mockResolvedValueOnce(
+      okResponse({ riskLevels: sampleRiskLevels }),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
@@ -158,10 +162,10 @@ describe('RiskLevelsClient', () => {
   it('keeps previously loaded linked requirements when a later linked fetch fails', async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url === '/api/risk-levels') {
-        return okJson({ riskLevels: sampleRiskLevels })
+        return okResponse({ riskLevels: sampleRiskLevels })
       }
       if (url === '/api/risk-levels/1') {
-        return okJson({
+        return okResponse({
           linkedRequirements: [
             {
               description: 'Requirement one',
@@ -176,7 +180,7 @@ describe('RiskLevelsClient', () => {
         })
       }
       if (url === '/api/risk-levels/2') return notOk()
-      return okJson({})
+      return okResponse({})
     })
 
     render(<RiskLevelsClient />)
@@ -222,8 +226,8 @@ describe('RiskLevelsClient', () => {
       expect(screen.getByText('Low')).toBeInTheDocument()
     })
 
-    fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ riskLevels: [] }))
+    fetchMock.mockResolvedValueOnce(okResponse({}))
+    fetchMock.mockResolvedValueOnce(okResponse({ riskLevels: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,

@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -46,6 +47,13 @@ const sampleCategories = [
     requirementTypeId: 1,
   },
 ]
+
+const qcNameSvInput = () =>
+  screen.getByRole('textbox', { name: 'qualityCharacteristicMgmt.name (SV)' })
+const qcNameEnInput = () =>
+  screen.getByRole('textbox', { name: 'qualityCharacteristicMgmt.name (EN)' })
+const qcTypeSelect = () =>
+  screen.getByRole('combobox', { name: 'qualityCharacteristicMgmt.type' })
 
 describe('QualityCharacteristicsClient', () => {
   afterEach(cleanup)
@@ -100,8 +108,58 @@ describe('QualityCharacteristicsClient', () => {
       expect(screen.getByText('Quality')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
-    expect(screen.getByLabelText(/SV/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/EN/)).toBeInTheDocument()
+    expect(qcNameSvInput()).toBeInTheDocument()
+    expect(qcNameEnInput()).toBeInTheDocument()
+    const nameHelpButton = screen.getByRole('button', {
+      name: 'common.help: qualityCharacteristicMgmt.name (SV)',
+    })
+    fireEvent.click(nameHelpButton)
+    expect(nameHelpButton).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByText('qualityCharacteristicMgmt.nameSvHelp'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'common.help: qualityCharacteristicMgmt.type',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows a persistent error when requirement types fail to load', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-types') {
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({ error: 'Cannot load requirement types' }),
+            {
+              headers: { 'content-type': 'application/json' },
+              status: 500,
+              statusText: 'Server Error',
+            },
+          ),
+        )
+      }
+      if (url === '/api/quality-characteristics') {
+        return Promise.resolve(
+          okJson({ qualityCharacteristics: sampleCategories }),
+        )
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<QualityCharacteristicsClient />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Cannot load requirement types',
+      )
+    })
+    expect(confirmMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Cannot load requirement types',
+        showCancel: false,
+      }),
+    )
   })
 
   it('shows edit and delete buttons for parent characteristics', async () => {
@@ -126,13 +184,13 @@ describe('QualityCharacteristicsClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
 
-    fireEvent.change(screen.getByLabelText(/SV/), {
+    fireEvent.change(qcNameSvInput(), {
       target: { value: 'Ny' },
     })
-    fireEvent.change(screen.getByLabelText(/EN/), {
+    fireEvent.change(qcNameEnInput(), {
       target: { value: 'New' },
     })
-    fireEvent.change(screen.getByLabelText(/type/i), {
+    fireEvent.change(qcTypeSelect(), {
       target: { value: '1' },
     })
 
@@ -176,6 +234,68 @@ describe('QualityCharacteristicsClient', () => {
     expect(headers.get('x-requested-with')).toBe('XMLHttpRequest')
   })
 
+  it('disables row actions and shows saving labels while submitting', async () => {
+    const { container } = render(<QualityCharacteristicsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Quality')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
+
+    fireEvent.change(qcNameSvInput(), {
+      target: { value: 'Ny' },
+    })
+    fireEvent.change(qcNameEnInput(), {
+      target: { value: 'New' },
+    })
+    fireEvent.change(qcTypeSelect(), {
+      target: { value: '1' },
+    })
+
+    let resolveSubmit: (response: ReturnType<typeof okJson>) => void = () => {}
+    const pendingSubmit = new Promise<ReturnType<typeof okJson>>(resolve => {
+      resolveSubmit = resolve
+    })
+    fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
+      if (opts?.method === 'POST') return pendingSubmit
+      if (url === '/api/requirement-types') {
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      }
+      if (url === '/api/quality-characteristics') {
+        return Promise.resolve(
+          okJson({ qualityCharacteristics: sampleCategories }),
+        )
+      }
+      return Promise.resolve(okJson({}))
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/ }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/quality-characteristics',
+        expect.objectContaining({ method: 'POST' }),
+      )
+    })
+    const editButtons = container.querySelectorAll(
+      '[data-developer-mode-name="table action"][data-developer-mode-value="edit"]',
+    )
+    const deleteButtons = container.querySelectorAll(
+      '[data-developer-mode-name="table action"][data-developer-mode-value="delete"]',
+    )
+    expect(editButtons[0]).toBeDisabled()
+    expect(editButtons[0]).toHaveTextContent('common.saving')
+    expect(deleteButtons[0]).toBeDisabled()
+    expect(deleteButtons[0]).toHaveTextContent('common.saving')
+
+    await act(async () => {
+      resolveSubmit(okJson({ id: 99 }))
+      await pendingSubmit
+    })
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /common\.save/ })).toBeNull()
+    })
+  })
+
   it('shows error alert on failed submit', async () => {
     render(<QualityCharacteristicsClient />)
     await waitFor(() => {
@@ -183,13 +303,13 @@ describe('QualityCharacteristicsClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
 
-    fireEvent.change(screen.getByLabelText(/SV/), {
+    fireEvent.change(qcNameSvInput(), {
       target: { value: 'Ny' },
     })
-    fireEvent.change(screen.getByLabelText(/EN/), {
+    fireEvent.change(qcNameEnInput(), {
       target: { value: 'New' },
     })
-    fireEvent.change(screen.getByLabelText(/type/i), {
+    fireEvent.change(qcTypeSelect(), {
       target: { value: '1' },
     })
 
@@ -227,8 +347,8 @@ describe('QualityCharacteristicsClient', () => {
     )
     fireEvent.click(editButtons[0])
 
-    expect(screen.getByLabelText(/SV/)).toHaveValue('Kat sv')
-    expect(screen.getByLabelText(/EN/)).toHaveValue('Maintainability')
+    expect(qcNameSvInput()).toHaveValue('Kat sv')
+    expect(qcNameEnInput()).toHaveValue('Maintainability')
   })
 
   it('hides form when cancel button is clicked', async () => {
@@ -237,10 +357,14 @@ describe('QualityCharacteristicsClient', () => {
       expect(screen.getByText('Quality')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
-    expect(screen.getByLabelText(/SV/)).toBeInTheDocument()
+    expect(qcNameSvInput()).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/ }))
-    expect(screen.queryByLabelText(/SV/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('textbox', {
+        name: 'qualityCharacteristicMgmt.name (SV)',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('deletes characteristic after confirmation', async () => {
@@ -332,7 +456,7 @@ describe('QualityCharacteristicsClient', () => {
     )
     fireEvent.click(editButtons[0])
 
-    fireEvent.change(screen.getByLabelText(/EN/), {
+    fireEvent.change(qcNameEnInput(), {
       target: { value: 'Updated' },
     })
 

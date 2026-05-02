@@ -243,6 +243,29 @@ describe('useCrudAdminResource', () => {
     expect(result.current.items).toEqual([])
   })
 
+  it('closes and resets the edit form when deleting the active item', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ items: [{ id: 1, name: 'One' }] }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ items: [] }))
+
+    const { result } = renderResource()
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openEdit({ id: 1, name: 'One' })
+      result.current.setForm({ name: 'Unsaved edit' })
+    })
+
+    await act(async () => {
+      await result.current.remove(1)
+    })
+
+    expect(result.current.editId).toBeNull()
+    expect(result.current.form).toEqual({ name: '' })
+    expect(result.current.showForm).toBe(false)
+  })
+
   it('surfaces server errors without closing the form', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ items: [] }))

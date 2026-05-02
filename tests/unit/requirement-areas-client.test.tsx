@@ -216,6 +216,51 @@ describe('RequirementAreasClient', () => {
     )
   })
 
+  it('sends ownerId null when an existing owner is cleared', async () => {
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    fireEvent.change(screen.getByRole('combobox', { name: /area\.owner/ }), {
+      target: { value: '' },
+    })
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: sampleAreas })
+      }
+      if (url === '/api/owners') return okJson({ owners: sampleOwners })
+      return okJson({ id: 1 })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas/1',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect((putCall?.[1] as RequestInit).body).toBe(
+      JSON.stringify({
+        description: 'System integration',
+        name: 'Integration',
+        ownerId: null,
+      }),
+    )
+  })
+
   it('closes form when cancel is clicked', async () => {
     render(<RequirementAreasClient />)
     await waitFor(() => {

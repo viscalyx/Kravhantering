@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { okResponse } from './test-helpers'
 
 const confirmMock = vi.fn()
 
@@ -23,11 +24,12 @@ vi.mock('@/components/StatusBadge', () => ({
   default: ({ label }: { label: string }) => <span>{label}</span>,
 }))
 
-function okJson(body: unknown) {
-  return { ok: true, json: async () => body }
-}
 function notOk() {
-  return { ok: false }
+  return new Response(JSON.stringify({ error: 'Bad request' }), {
+    headers: { 'content-type': 'application/json' },
+    status: 400,
+    statusText: 'Bad Request',
+  })
 }
 
 const fetchMock = vi.fn()
@@ -73,7 +75,7 @@ describe('PackageItemStatusesClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValue(okResponse({ statuses: sampleStatuses }))
   })
 
   it('renders heading and create button', async () => {
@@ -147,8 +149,8 @@ describe('PackageItemStatusesClient', () => {
       { target: { value: 'New status' } },
     )
 
-    fetchMock.mockResolvedValueOnce(okJson({ id: 3 }))
-    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValueOnce(okResponse({ id: 3 }))
+    fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
@@ -183,7 +185,7 @@ describe('PackageItemStatusesClient', () => {
 
   it('shows an error instead of an empty state when linked packages fail to load', async () => {
     fetchMock
-      .mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+      .mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
       .mockResolvedValueOnce(notOk())
 
     render(<PackageItemStatusesClient />)
@@ -221,8 +223,8 @@ describe('PackageItemStatusesClient', () => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
     })
 
-    fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ statuses: [] }))
+    fetchMock.mockResolvedValueOnce(okResponse({}))
+    fetchMock.mockResolvedValueOnce(okResponse({ statuses: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
@@ -241,9 +243,9 @@ describe('PackageItemStatusesClient', () => {
   })
 
   it('disables sort order field when editing the default status (ID 1)', async () => {
-    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
     fetchMock.mockResolvedValueOnce(
-      okJson({ status: sampleStatuses[1], linkedItems: [] }),
+      okResponse({ status: sampleStatuses[1], linkedItems: [] }),
     )
     render(<PackageItemStatusesClient />)
     await waitFor(() => {
@@ -266,9 +268,9 @@ describe('PackageItemStatusesClient', () => {
   })
 
   it('disables sort order field when editing the deviated status (ID 5)', async () => {
-    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
     fetchMock.mockResolvedValueOnce(
-      okJson({ status: sampleStatuses[0], linkedItems: [] }),
+      okResponse({ status: sampleStatuses[0], linkedItems: [] }),
     )
     render(<PackageItemStatusesClient />)
     await waitFor(() => {
@@ -291,9 +293,9 @@ describe('PackageItemStatusesClient', () => {
   })
 
   it('enables sort order field when editing a non-default status', async () => {
-    fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+    fetchMock.mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
     fetchMock.mockResolvedValueOnce(
-      okJson({ status: sampleStatuses[2], linkedItems: [] }),
+      okResponse({ status: sampleStatuses[2], linkedItems: [] }),
     )
     render(<PackageItemStatusesClient />)
     await waitFor(() => {

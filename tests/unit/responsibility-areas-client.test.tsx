@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { okResponse } from './test-helpers'
 
 const confirmMock = vi.fn()
 
@@ -18,17 +19,6 @@ vi.mock('next-intl', () => ({
 vi.mock('@/components/ConfirmModal', () => ({
   useConfirmModal: () => ({ confirm: confirmMock }),
 }))
-
-function okJson(body: unknown) {
-  return {
-    headers: new Headers({ 'content-type': 'application/json' }),
-    json: async () => body,
-    ok: true,
-    status: 200,
-    statusText: 'OK',
-    text: async () => JSON.stringify(body),
-  } as Response
-}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -43,7 +33,7 @@ describe('ResponsibilityAreasClient', () => {
     fetchMock.mockReset()
     confirmMock.mockResolvedValue(true)
     fetchMock.mockResolvedValue(
-      okJson({
+      okResponse({
         areas: [
           { id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' },
           { id: 2, nameEn: 'Operations', nameSv: 'Drift' },
@@ -70,12 +60,12 @@ describe('ResponsibilityAreasClient', () => {
 
   it('opens and submits the create form', async () => {
     fetchMock
-      .mockResolvedValueOnce(okJson({ areas: [] }))
+      .mockResolvedValueOnce(okResponse({ areas: [] }))
       .mockResolvedValueOnce(
-        okJson({ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }),
+        okResponse({ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }),
       )
       .mockResolvedValueOnce(
-        okJson({
+        okResponse({
           areas: [{ id: 3, nameEn: 'Security', nameSv: 'Säkerhet' }],
         }),
       )
@@ -136,12 +126,12 @@ describe('ResponsibilityAreasClient', () => {
   it('confirms and deletes a row', async () => {
     fetchMock
       .mockResolvedValueOnce(
-        okJson({
+        okResponse({
           areas: [{ id: 1, nameEn: 'Architecture', nameSv: 'Arkitektur' }],
         }),
       )
-      .mockResolvedValueOnce(okJson({ ok: true }))
-      .mockResolvedValueOnce(okJson({ areas: [] }))
+      .mockResolvedValueOnce(okResponse({ ok: true }))
+      .mockResolvedValueOnce(okResponse({ areas: [] }))
 
     render(<ResponsibilityAreasClient />)
 

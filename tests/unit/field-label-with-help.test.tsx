@@ -36,9 +36,7 @@ describe('FieldLabelWithHelp', () => {
     fireEvent.click(helpButton)
 
     expect(helpButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Use the short public name.')).toHaveAttribute(
-      'id',
-      'display-name-help',
-    )
+    const helpPanel = document.getElementById('display-name-help')
+    expect(helpPanel).toHaveTextContent('Use the short public name.')
   })
 })
