@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { type ReactNode, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 
-interface FieldLabelWithHelpProps {
+interface ComponentProps {
   help: ReactNode
   htmlFor: string
   label: string
@@ -17,7 +17,7 @@ export default function FieldLabelWithHelp({
   htmlFor,
   label,
   required = false,
-}: FieldLabelWithHelpProps) {
+}: ComponentProps) {
   const tc = useTranslations('common')
   const [isOpen, setIsOpen] = useState(false)
   const helpId = `${htmlFor}-help`
