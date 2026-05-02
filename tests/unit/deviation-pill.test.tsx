@@ -54,9 +54,7 @@ describe('DeviationPill', () => {
     )
 
     // statusApproved appears twice: once in the header chip, once in the decision heading
-    expect(screen.getAllByText('statusApproved').length).toBeGreaterThanOrEqual(
-      1,
-    )
+    expect(screen.getAllByText('statusApproved')).toHaveLength(2)
     expect(screen.getByText('Approved reason')).toBeInTheDocument()
 
     const pill = container.querySelector('.border-green-200')
@@ -76,9 +74,7 @@ describe('DeviationPill', () => {
       <DeviationPill history={[]} latest={rejected} />,
     )
 
-    expect(screen.getAllByText('statusRejected').length).toBeGreaterThanOrEqual(
-      1,
-    )
+    expect(screen.getAllByText('statusRejected')).toHaveLength(2)
     expect(screen.getByText('Rejected reason')).toBeInTheDocument()
 
     const pill = container.querySelector('.border-red-200')

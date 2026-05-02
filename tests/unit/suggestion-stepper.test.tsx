@@ -11,6 +11,15 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+function findActiveSlider(
+  container: HTMLElement,
+  expectedRgb: string,
+): HTMLElement | undefined {
+  return Array.from(container.querySelectorAll('div')).find(
+    d => d.style.backgroundColor === expectedRgb,
+  )
+}
+
 describe('SuggestionStepper', () => {
   it('renders three step labels', () => {
     render(<SuggestionStepper currentStep="draft" />)
@@ -23,7 +32,7 @@ describe('SuggestionStepper', () => {
   it('highlights the draft step with blue', () => {
     const { container } = render(<SuggestionStepper currentStep="draft" />)
 
-    const activeStep = container.querySelector('.text-white')
+    const activeStep = findActiveSlider(container, 'rgb(59, 130, 246)')
     expect(activeStep).toHaveStyle({ backgroundColor: '#3b82f6' })
   })
 
@@ -32,15 +41,16 @@ describe('SuggestionStepper', () => {
       <SuggestionStepper currentStep="review_requested" />,
     )
 
-    const activeStep = container.querySelector('.text-white')
+    const activeStep = findActiveSlider(container, 'rgb(234, 179, 8)')
     expect(activeStep).toHaveStyle({ backgroundColor: '#eab308' })
+    expect(activeStep?.style.color).toBe('rgb(17, 24, 39)')
     expect(screen.getAllByText('stepReviewRequested')).toHaveLength(2)
   })
 
   it('highlights the resolved step with green', () => {
     const { container } = render(<SuggestionStepper currentStep="resolved" />)
 
-    const activeStep = container.querySelector('.text-white')
+    const activeStep = findActiveSlider(container, 'rgb(34, 197, 94)')
     expect(activeStep).toHaveStyle({ backgroundColor: '#22c55e' })
     expect(screen.getAllByText('stepResolved')).toHaveLength(2)
   })

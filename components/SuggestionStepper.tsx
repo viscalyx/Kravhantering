@@ -3,6 +3,7 @@
 import { CheckCircle2, Eye, type LucideIcon, PenLine } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { pickReadableTextOn } from '@/lib/color-contrast'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 export type SuggestionStep = 'draft' | 'resolved' | 'review_requested'
@@ -67,6 +68,7 @@ export default function SuggestionStepper({
     [currentStep],
   )
   const activeColor = STEPS[targetIndex]?.color ?? '#6b7280'
+  const sliderTextColor = pickReadableTextOn(activeColor)
   const containerRef = useRef<HTMLDivElement>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const [sliderPos, setSliderPos] = useState<{
@@ -155,12 +157,13 @@ export default function SuggestionStepper({
           }}
         >
           <div
-            className="h-10 flex items-center justify-center text-white"
+            className="h-10 flex items-center justify-center"
             style={{
               backgroundColor: activeColor,
+              color: sliderTextColor,
               clipPath: sliderClipPath(targetIndex === 0),
               transition:
-                'clip-path 300ms ease-out, background-color 300ms ease-out',
+                'clip-path 300ms ease-out, background-color 300ms ease-out, color 300ms ease-out',
             }}
           >
             <span

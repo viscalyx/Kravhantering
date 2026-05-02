@@ -81,11 +81,23 @@ describe('SuggestionPill', () => {
     expect(container.querySelector('.border-red-200')).toBeTruthy()
   })
 
-  it('honors an explicit step prop override', () => {
-    const { container } = render(
+  it('honors explicit step prop overrides', () => {
+    const { container, rerender } = render(
+      <SuggestionPill step="draft" suggestion={baseSuggestion} />,
+    )
+
+    expect(container.querySelector('.border-blue-200')).toBeTruthy()
+    expect(screen.getByText('stepDraft')).toBeInTheDocument()
+
+    rerender(
       <SuggestionPill step="review_requested" suggestion={baseSuggestion} />,
     )
     expect(container.querySelector('.border-yellow-200')).toBeTruthy()
     expect(screen.getByText('statusPending')).toBeInTheDocument()
+
+    rerender(<SuggestionPill step="resolved" suggestion={baseSuggestion} />)
+    expect(container.querySelector('.border-green-200')).toBeTruthy()
+    expect(screen.getByText('statusResolved')).toBeInTheDocument()
+    expect(screen.queryByText('resolutionHeading')).not.toBeInTheDocument()
   })
 })
