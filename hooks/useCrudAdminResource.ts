@@ -119,8 +119,18 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   const [deletingIds, setDeletingIds] = useState<Set<TItem['id']>>(new Set())
   const [form, setForm] = useState<TForm>(() => getInitialForm())
   const submittingRef = useRef(false)
+  const editIdRef = useRef<TItem['id'] | null>(null)
   const getCaughtErrorMessageRef = useRef(getCaughtErrorMessage)
   getCaughtErrorMessageRef.current = getCaughtErrorMessage
+
+  useEffect(() => {
+    editIdRef.current = editId
+  }, [editId])
+
+  const setTrackedEditId = useCallback((nextEditId: TItem['id'] | null) => {
+    editIdRef.current = nextEditId
+    setEditId(nextEditId)
+  }, [])
 
   const resolveItemEndpoint = useCallback(
     (id: TItem['id']) => itemEndpoint?.(id) ?? `${endpoint}/${id}`,
@@ -159,22 +169,22 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   }, [])
 
   const openCreate = useCallback(() => {
-    setEditId(null)
+    setTrackedEditId(null)
     setForm(getInitialForm())
     setFormError(null)
     setDeleteError(null)
     setShowForm(true)
-  }, [getInitialForm])
+  }, [getInitialForm, setTrackedEditId])
 
   const openEdit = useCallback(
     (item: TItem) => {
-      setEditId(item.id)
+      setTrackedEditId(item.id)
       setForm(toForm(item))
       setFormError(null)
       setDeleteError(null)
       setShowForm(true)
     },
-    [toForm],
+    [setTrackedEditId, toForm],
   )
 
   const submit = useCallback(
@@ -209,7 +219,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
           return false
         }
         setShowForm(false)
-        setEditId(null)
+        setTrackedEditId(null)
         setForm(getInitialForm())
         await reload()
         return true
@@ -240,6 +250,7 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
       onSubmitError,
       reload,
       resolveItemEndpoint,
+      setTrackedEditId,
       toPayload,
       toCreatePayload,
       toUpdatePayload,
@@ -274,14 +285,14 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
           if (reloadOnDeleteError) await reload()
           return false
         }
-        setEditId(previousEditId => {
-          if (previousEditId === id) {
-            setShowForm(false)
-            setForm(getInitialForm())
-            return null
-          }
-          return previousEditId
-        })
+        setEditId(previousEditId =>
+          previousEditId === id ? null : previousEditId,
+        )
+        if (editIdRef.current === id) {
+          editIdRef.current = null
+          setShowForm(false)
+          setForm(getInitialForm())
+        }
         await reload()
         return true
       } catch (error) {
