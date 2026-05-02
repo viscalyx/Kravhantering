@@ -230,7 +230,7 @@ export default function PackageItemStatusesClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="pis-name-sv"
                     >
-                      {t('name')} (SV) *
+                      {t('name')} (SV) <span aria-hidden="true">*</span>
                     </label>
                     <input
                       className={inputClassName}
@@ -254,7 +254,7 @@ export default function PackageItemStatusesClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="pis-name-en"
                     >
-                      {t('name')} (EN) *
+                      {t('name')} (EN) <span aria-hidden="true">*</span>
                     </label>
                     <input
                       className={inputClassName}
@@ -326,7 +326,7 @@ export default function PackageItemStatusesClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="pis-color"
                     >
-                      {t('color')} *
+                      {t('color')} <span aria-hidden="true">*</span>
                     </label>
                     <div className="flex items-center gap-3">
                       <input

@@ -16,6 +16,7 @@ import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { generatePackageSlug, normalizeSlugInput } from '@/lib/slug'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
@@ -58,46 +59,6 @@ interface Package {
   requirementAreas: RequirementArea[]
   responsibilityArea: TaxonomyItem | null
   uniqueId: string
-}
-
-function getResponseMessage(body: unknown): string | null {
-  if (typeof body === 'string') {
-    const trimmed = body.trim()
-    return trimmed.length > 0 ? trimmed : null
-  }
-
-  if (body && typeof body === 'object') {
-    const error = (body as { error?: unknown }).error
-    if (typeof error === 'string' && error.trim().length > 0) {
-      return error.trim()
-    }
-
-    const message = (body as { message?: unknown }).message
-    if (typeof message === 'string' && message.trim().length > 0) {
-      return message.trim()
-    }
-  }
-
-  return null
-}
-
-async function readResponseMessage(res: Response): Promise<string | null> {
-  const contentType = res.headers?.get?.('content-type')?.toLowerCase() ?? ''
-
-  if (contentType.includes('application/json')) {
-    return getResponseMessage(await res.json().catch(() => null))
-  }
-
-  const text = (await res.text().catch(() => '')).trim()
-  if (text.length > 0) {
-    try {
-      return getResponseMessage(JSON.parse(text)) ?? text
-    } catch {
-      return text
-    }
-  }
-
-  return getResponseMessage(await res.json().catch(() => null))
 }
 
 export default function RequirementPackagesClient() {
@@ -442,7 +403,7 @@ export default function RequirementPackagesClient() {
                     className="block text-sm font-medium"
                     htmlFor="pkg-name"
                   >
-                    {t('name')} *
+                    {t('name')} <span aria-hidden="true">*</span>
                   </label>
                   {helpButton('pkg-name', t('name'))}
                 </div>
@@ -477,7 +438,7 @@ export default function RequirementPackagesClient() {
                     className="block text-sm font-medium"
                     htmlFor="pkg-unique-id"
                   >
-                    {t('uniqueId')} *
+                    {t('uniqueId')} <span aria-hidden="true">*</span>
                   </label>
                   {helpButton('pkg-unique-id', t('uniqueId'))}
                 </div>

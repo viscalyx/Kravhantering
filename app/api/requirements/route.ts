@@ -209,7 +209,6 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    console.log('[API] Requirement created:', result.detail?.uniqueId)
     return NextResponse.json(result.result, { status: 201 })
   } catch (error) {
     console.error('[API] Failed to create requirement:', error)

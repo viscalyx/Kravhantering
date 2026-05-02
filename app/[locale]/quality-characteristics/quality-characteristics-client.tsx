@@ -132,8 +132,16 @@ export default function QualityCharacteristicsClient() {
       setTypesLoading(true)
       try {
         const response = await apiFetch('/api/requirement-types')
-        if (!response.ok || cancelled) return
+        if (cancelled) return
+        if (!response.ok) {
+          await presentMutationError({ message: errorFallback })
+          return
+        }
         setTypes(((await response.json()) as { types?: Type[] }).types ?? [])
+      } catch (error) {
+        if (!cancelled) {
+          await presentMutationError({ message: getCaughtErrorMessage(error) })
+        }
       } finally {
         if (!cancelled) setTypesLoading(false)
       }
@@ -144,7 +152,7 @@ export default function QualityCharacteristicsClient() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [errorFallback, getCaughtErrorMessage, presentMutationError])
 
   const parentOptions = controller.items.filter(
     category =>
@@ -216,7 +224,7 @@ export default function QualityCharacteristicsClient() {
                   className="block text-sm font-medium mb-1"
                   htmlFor="qc-name-sv"
                 >
-                  {t('name')} (SV) *
+                  {t('name')} (SV) <span aria-hidden="true">*</span>
                 </label>
                 <input
                   className={inputClassName}
@@ -237,7 +245,7 @@ export default function QualityCharacteristicsClient() {
                   className="block text-sm font-medium mb-1"
                   htmlFor="qc-name-en"
                 >
-                  {t('name')} (EN) *
+                  {t('name')} (EN) <span aria-hidden="true">*</span>
                 </label>
                 <input
                   className={inputClassName}
@@ -258,7 +266,7 @@ export default function QualityCharacteristicsClient() {
                   className="block text-sm font-medium mb-1"
                   htmlFor="qc-type"
                 >
-                  {t('type')} *
+                  {t('type')} <span aria-hidden="true">*</span>
                 </label>
                 <select
                   className={inputClassName}

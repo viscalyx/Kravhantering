@@ -224,7 +224,7 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-name-sv"
                     >
-                      {t('name')} (SV) *
+                      {t('name')} (SV) <span aria-hidden="true">*</span>
                     </label>
                     <input
                       className={inputClassName}
@@ -245,7 +245,7 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-name-en"
                     >
-                      {t('name')} (EN) *
+                      {t('name')} (EN) <span aria-hidden="true">*</span>
                     </label>
                     <input
                       className={inputClassName}
@@ -266,7 +266,7 @@ export default function RiskLevelsClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="rl-color"
                     >
-                      {t('color')} *
+                      {t('color')} <span aria-hidden="true">*</span>
                     </label>
                     <div className="flex items-center gap-3">
                       <input

@@ -119,7 +119,7 @@ export default function LifecycleStatusesClient() {
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <label className="text-sm font-medium" htmlFor="ls-name-sv">
-                {t('name')} (SV) *
+                {t('name')} (SV) <span aria-hidden="true">*</span>
               </label>
               {helpButton('nameSv', `${t('name')} (SV)`)}
             </div>
@@ -141,7 +141,7 @@ export default function LifecycleStatusesClient() {
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <label className="text-sm font-medium" htmlFor="ls-name-en">
-                {t('name')} (EN) *
+                {t('name')} (EN) <span aria-hidden="true">*</span>
               </label>
               {helpButton('nameEn', `${t('name')} (EN)`)}
             </div>

@@ -143,7 +143,7 @@ export default function RequirementAreasClient() {
               className="block text-sm font-medium mb-1"
               htmlFor="area-prefix"
             >
-              {t('prefix')} *
+              {t('prefix')} <span aria-hidden="true">*</span>
             </label>
             <input
               className={inputClassName}
@@ -165,7 +165,7 @@ export default function RequirementAreasClient() {
               className="block text-sm font-medium mb-1"
               htmlFor="area-name"
             >
-              {t('name')} *
+              {t('name')} <span aria-hidden="true">*</span>
             </label>
             <input
               className={inputClassName}

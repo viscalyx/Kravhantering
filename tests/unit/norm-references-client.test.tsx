@@ -87,25 +87,25 @@ describe('NormReferencesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     const nameInput = await screen.findByRole('textbox', {
-      name: /^normReference\.name \*/,
+      name: /^normReference\.name/,
     })
     fireEvent.change(nameInput, {
       target: { value: 'New norm' },
     })
     fireEvent.change(
-      screen.getByRole('combobox', { name: /^normReference\.type \*/ }),
+      screen.getByRole('combobox', { name: /^normReference\.type/ }),
       {
         target: { value: 'Standard' },
       },
     )
     fireEvent.change(
-      screen.getByRole('textbox', { name: /^normReference\.reference \*/ }),
+      screen.getByRole('textbox', { name: /^normReference\.reference/ }),
       {
         target: { value: 'Ref 1' },
       },
     )
     fireEvent.change(
-      screen.getByRole('textbox', { name: /^normReference\.issuer \*/ }),
+      screen.getByRole('textbox', { name: /^normReference\.issuer/ }),
       {
         target: { value: 'Issuer' },
       },
@@ -150,7 +150,7 @@ describe('NormReferencesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.edit bbr/i }))
     const nameInput = (await screen.findByRole('textbox', {
-      name: /^normReference\.name \*/,
+      name: /^normReference\.name/,
     })) as HTMLInputElement
     expect(nameInput.value).toBe('BBR')
     await waitFor(() => {
@@ -166,7 +166,7 @@ describe('NormReferencesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     const nameInput = await screen.findByRole('textbox', {
-      name: /^normReference\.name \*/,
+      name: /^normReference\.name/,
     })
     fireEvent.change(nameInput, {
       target: { value: 'Dirty norm' },
@@ -185,7 +185,7 @@ describe('NormReferencesClient', () => {
     expect(
       (
         screen.getByRole('textbox', {
-          name: /^normReference\.name \*/,
+          name: /^normReference\.name/,
         }) as HTMLInputElement
       ).value,
     ).toBe('Dirty norm')

@@ -192,7 +192,7 @@ export default function PackageEditPanel({
       <div>
         <div className="mb-1 flex items-center gap-1.5">
           <label className="block text-sm font-medium" htmlFor="pkg-name">
-            {t('name')} *
+            {t('name')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('pkg-name', t('name'))}
         </div>
@@ -211,7 +211,7 @@ export default function PackageEditPanel({
       <div>
         <div className="mb-1 flex items-center gap-1.5">
           <label className="block text-sm font-medium" htmlFor="pkg-unique-id">
-            {t('uniqueId')} *
+            {t('uniqueId')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('pkg-unique-id', t('uniqueId'))}
         </div>

@@ -807,7 +807,6 @@ export default function AiRequirementGenerator({
           console.error('[AI Create] POST failed:', res.status, errText)
           errors.push(errText)
         } else {
-          console.log('[AI Create] POST succeeded:', res.status)
           succeededIndices.push(selectedIndices[si])
         }
       }

@@ -94,7 +94,7 @@ export default function OwnersClient() {
               className="block text-sm font-medium mb-1"
               htmlFor="owner-first-name"
             >
-              {t('firstName')} *
+              {t('firstName')} <span aria-hidden="true">*</span>
             </label>
             <input
               className={inputClassName}
@@ -114,7 +114,7 @@ export default function OwnersClient() {
               className="block text-sm font-medium mb-1"
               htmlFor="owner-last-name"
             >
-              {t('lastName')} *
+              {t('lastName')} <span aria-hidden="true">*</span>
             </label>
             <input
               className={inputClassName}
@@ -134,7 +134,7 @@ export default function OwnersClient() {
               className="block text-sm font-medium mb-1"
               htmlFor="owner-email"
             >
-              {t('email')} *
+              {t('email')} <span aria-hidden="true">*</span>
             </label>
             <input
               className={inputClassName}

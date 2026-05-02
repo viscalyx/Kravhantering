@@ -3094,6 +3094,7 @@ export default function RequirementsTable({
             data-requirements-data-table="true"
             ref={tableRef}
           >
+            <caption className="sr-only">{t('tableCaption')}</caption>
             <colgroup>
               {selectable && <col style={{ width: '36px' }} />}
               {columnDefinitions.map(column => (
@@ -3116,7 +3117,9 @@ export default function RequirementsTable({
                     className="py-12 text-center text-secondary-600 dark:text-secondary-400"
                     colSpan={columnDefinitions.length + (selectable ? 1 : 0)}
                   >
-                    {tc('noResults')}
+                    <span aria-live="polite" role="status">
+                      {tc('noResults')}
+                    </span>
                   </td>
                 </tr>
               ) : rows.length > 0 ? (

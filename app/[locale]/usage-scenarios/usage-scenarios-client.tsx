@@ -10,6 +10,7 @@ import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { isSwedish } from '@/lib/i18n/localized'
 
 const USAGE_SCENARIOS_HELP: HelpContent = {
   sections: [
@@ -108,9 +109,9 @@ export default function UsageScenariosClient() {
   const linkedReqRequestId = useRef(0)
 
   const getName = (scenario: Scenario) =>
-    locale === 'sv' ? scenario.nameSv : scenario.nameEn
+    isSwedish(locale) ? scenario.nameSv : scenario.nameEn
   const getDescription = (scenario: Scenario) =>
-    locale === 'sv' ? scenario.descriptionSv : scenario.descriptionEn
+    isSwedish(locale) ? scenario.descriptionSv : scenario.descriptionEn
 
   const controller = useCrudAdminResource<Scenario, ScenarioForm>({
     confirmDeleteMessage: tc('confirm'),
@@ -269,7 +270,7 @@ export default function UsageScenariosClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="scen-name-sv"
                     >
-                      {t('name')} (SV) *
+                      {t('name')} (SV) <span aria-hidden="true">*</span>
                     </label>
                     <input
                       className={inputClassName}
@@ -290,7 +291,7 @@ export default function UsageScenariosClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="scen-name-en"
                     >
-                      {t('name')} (EN) *
+                      {t('name')} (EN) <span aria-hidden="true">*</span>
                     </label>
                     <input
                       className={inputClassName}

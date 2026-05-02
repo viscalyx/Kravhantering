@@ -117,7 +117,7 @@ export default function AddToPackageDialog({
                       className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
                       htmlFor="atp-package"
                     >
-                      {tp('selectPackage')} *
+                      {tp('selectPackage')} <span aria-hidden="true">*</span>
                     </label>
                     {helpButton('atp-package', tp('selectPackage'))}
                   </div>
