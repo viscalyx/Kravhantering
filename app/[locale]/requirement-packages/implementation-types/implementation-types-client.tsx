@@ -4,6 +4,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import CrudAdminPanel, {
   type CrudAdminColumn,
 } from '@/components/CrudAdminPanel'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 
@@ -86,12 +87,12 @@ export default function ImplementationTypesClient() {
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('nameSvHelp')}
               htmlFor="it-name-sv"
-            >
-              {t('name')} (SV) <span aria-hidden="true">*</span>
-            </label>
+              label={t('nameSvLabel')}
+              required
+            />
             <input
               className={inputClassName}
               disabled={disabled}
@@ -107,12 +108,12 @@ export default function ImplementationTypesClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('nameEnHelp')}
               htmlFor="it-name-en"
-            >
-              {t('name')} (EN) <span aria-hidden="true">*</span>
-            </label>
+              label={t('nameEnLabel')}
+              required
+            />
             <input
               className={inputClassName}
               disabled={disabled}

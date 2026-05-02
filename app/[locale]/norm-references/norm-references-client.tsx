@@ -367,7 +367,7 @@ export default function NormReferencesClient() {
                               return (
                                 <tr
                                   className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                                  key={requirement.id}
+                                  key={`${requirement.id}-v${requirement.versionNumber}`}
                                 >
                                   <td className="py-2 px-3 font-medium">
                                     <Link

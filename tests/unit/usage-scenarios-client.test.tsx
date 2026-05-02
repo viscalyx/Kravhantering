@@ -34,6 +34,9 @@ vi.mock('@/components/StatusBadge', () => ({
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
+function notOk() {
+  return { ok: false }
+}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -137,6 +140,32 @@ describe('UsageScenariosClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('shows an error instead of an empty state when linked requirements fail to load', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/usage-scenarios') {
+        return okJson({ scenarios: sampleScenarios })
+      }
+      if (url === '/api/owners/all') return okJson({ owners: [] })
+      if (url === '/api/usage-scenarios/1') return notOk()
+      return okJson({})
+    })
+
+    render(<UsageScenariosClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('common.error')
+    })
+    expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
   it('closes form on cancel', async () => {

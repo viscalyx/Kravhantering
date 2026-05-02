@@ -26,6 +26,9 @@ vi.mock('@/components/StatusBadge', () => ({
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
+function notOk() {
+  return { ok: false }
+}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -176,6 +179,27 @@ describe('PackageItemStatusesClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('shows an error instead of an empty state when linked packages fail to load', async () => {
+    fetchMock
+      .mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
+      .mockResolvedValueOnce(notOk())
+
+    render(<PackageItemStatusesClient />)
+    await waitFor(() => {
+      expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[1])
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('common.error')
+    })
+    expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
   it('closes form on cancel', async () => {

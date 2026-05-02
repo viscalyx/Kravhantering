@@ -128,6 +128,23 @@ describe('AdminClient', () => {
     )
   })
 
+  it('removes the admin tab query when returning to the default tab', () => {
+    searchParamsMock.current = new URLSearchParams('tab=referenceData')
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.terminology' }))
+
+    expect(routerReplace).toHaveBeenCalledWith('/admin', { scroll: false })
+  })
+
   it('renders icon-bearing reference data cards that link to the existing pages', () => {
     render(
       <AdminClient

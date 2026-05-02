@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
+import { Suspense } from 'react'
 import { routing } from '@/i18n/routing'
 import {
   getRequirementListColumnDefaults,
@@ -30,9 +31,23 @@ export default async function AdminPage() {
   ])
 
   return (
-    <AdminClient
-      initialColumnDefaults={initialColumnDefaults}
-      initialTerminology={buildUiTerminologyPayload(terminology)}
-    />
+    <Suspense
+      fallback={
+        <div
+          aria-hidden="true"
+          className="section-padding px-4 sm:px-6 lg:px-8"
+        >
+          <div className="container-custom space-y-6">
+            <div className="h-40 rounded-[2rem] border border-secondary-200/70 bg-secondary-100/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
+            <div className="h-64 rounded-[2rem] border border-secondary-200/70 bg-white/70 dark:border-secondary-700/60 dark:bg-secondary-900/70" />
+          </div>
+        </div>
+      }
+    >
+      <AdminClient
+        initialColumnDefaults={initialColumnDefaults}
+        initialTerminology={buildUiTerminologyPayload(terminology)}
+      />
+    </Suspense>
   )
 }

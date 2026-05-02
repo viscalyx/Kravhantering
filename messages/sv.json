@@ -238,9 +238,13 @@
   },
   "area": {
     "prefix": "Prefix",
+    "prefixHelp": "Ange det korta prefix med versaler som används när krav-ID:n skapas för området. Prefixet kan bara ändras när ett nytt område skapas.",
     "name": "Namn",
+    "nameHelp": "Ange visningsnamnet för kravområdet.",
     "description": "Beskrivning",
+    "descriptionHelp": "Beskriv vid behov vilka typer av krav som hör hemma i området.",
     "owner": "Kravägare",
+    "ownerHelp": "Välj den person eller grupp som ansvarar för kravområdet.",
     "newArea": "Nytt kravområde",
     "editArea": "Redigera kravområde"
   },
@@ -554,8 +558,14 @@
   },
   "statusMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska statusnamnet som visas när applikationens språk är svenska.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska statusnamnet som visas när applikationens språk är engelska.",
     "color": "Färg",
+    "colorHelp": "Välj den färg som används för statusmärket.",
     "sortOrder": "Sorteringsordning",
+    "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först.",
     "isSystem": "Systemstatus",
     "newStatus": "Ny status",
     "editStatus": "Redigera status",
@@ -573,23 +583,36 @@
   "ownerMgmt": {
     "name": "Namn",
     "firstName": "Förnamn",
+    "firstNameHelp": "Ange ägarens förnamn.",
     "lastName": "Efternamn",
-    "email": "E-post"
+    "lastNameHelp": "Ange ägarens efternamn.",
+    "email": "E-post",
+    "emailHelp": "Ange e-postadressen som används för att kontakta ägaren."
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska namnet för verksamhetsobjektet.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska namnet för verksamhetsobjektet.",
     "title": "Verksamhetsobjekt",
     "newItem": "Nytt verksamhetsobjekt",
     "editItem": "Redigera verksamhetsobjekt"
   },
   "implementationTypeMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska namnet för genomförandeformen.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska namnet för genomförandeformen.",
     "title": "Genomförandeformer",
     "newItem": "Ny genomförandeform",
     "editItem": "Redigera genomförandeform"
   },
   "lifecycleStatusMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameEnLabel": "Namn (engelska)",
     "title": "Livscykelstatusar",
     "newItem": "Ny livscykelstatus",
     "editItem": "Redigera livscykelstatus",

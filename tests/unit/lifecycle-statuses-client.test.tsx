@@ -90,10 +90,14 @@ describe('LifecycleStatusesClient', () => {
     await waitForItemsLoaded()
     await user.click(screen.getByRole('button', { name: /common\.create/i }))
     expect(
-      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
+      screen.getByRole('textbox', {
+        name: /lifecycleStatusMgmt\.nameSvLabel/,
+      }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+EN/ }),
+      screen.getByRole('textbox', {
+        name: /lifecycleStatusMgmt\.nameEnLabel/,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -104,11 +108,15 @@ describe('LifecycleStatusesClient', () => {
     await user.click(screen.getByRole('button', { name: /common\.create/i }))
 
     fireEvent.change(
-      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
+      screen.getByRole('textbox', {
+        name: /lifecycleStatusMgmt\.nameSvLabel/,
+      }),
       { target: { value: 'Ny' } },
     )
     fireEvent.change(
-      screen.getByRole('textbox', { name: /lifecycleStatusMgmt\.name.+EN/ }),
+      screen.getByRole('textbox', {
+        name: /lifecycleStatusMgmt\.nameEnLabel/,
+      }),
       { target: { value: 'New' } },
     )
 
@@ -136,7 +144,7 @@ describe('LifecycleStatusesClient', () => {
     expect(
       (
         screen.getByRole('textbox', {
-          name: /lifecycleStatusMgmt\.name.+EN/,
+          name: /lifecycleStatusMgmt\.nameEnLabel/,
         }) as HTMLInputElement
       ).value,
     ).toBe('Development')
@@ -149,7 +157,9 @@ describe('LifecycleStatusesClient', () => {
     await user.click(screen.getByRole('button', { name: /common\.create/i }))
     await user.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
-      screen.queryByRole('textbox', { name: /lifecycleStatusMgmt\.name.+SV/ }),
+      screen.queryByRole('textbox', {
+        name: /lifecycleStatusMgmt\.nameSvLabel/,
+      }),
     ).toBeNull()
   })
 

@@ -104,6 +104,9 @@ export default function UsageScenariosClient() {
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
+  const [linkedRequirementsError, setLinkedRequirementsError] = useState<
+    string | null
+  >(null)
   const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
     useState(false)
   const linkedReqRequestId = useRef(0)
@@ -145,50 +148,70 @@ export default function UsageScenariosClient() {
     }
   }, [])
 
-  const fetchLinkedRequirements = useCallback(async (scenarioId: number) => {
-    const requestId = ++linkedReqRequestId.current
-    setLinkedRequirementsLoading(true)
-    try {
-      const response = await apiFetch(`/api/usage-scenarios/${scenarioId}`)
-      if (response.ok && requestId === linkedReqRequestId.current) {
+  const fetchLinkedRequirements = useCallback(
+    async (scenarioId: number) => {
+      const requestId = ++linkedReqRequestId.current
+      const previousLinkedRequirements = linkedRequirements
+      setLinkedRequirementsLoading(true)
+      setLinkedRequirementsError(null)
+      try {
+        const response = await apiFetch(`/api/usage-scenarios/${scenarioId}`)
+        if (requestId !== linkedReqRequestId.current) return
+        if (!response.ok) {
+          setLinkedRequirements(previousLinkedRequirements)
+          setLinkedRequirementsError(tc('error'))
+          return
+        }
         const data = (await response.json()) as {
           linkedRequirements?: LinkedRequirement[]
         }
+        if (requestId !== linkedReqRequestId.current) return
         setLinkedRequirements(data.linkedRequirements ?? [])
+      } catch {
+        if (requestId === linkedReqRequestId.current) {
+          setLinkedRequirements(previousLinkedRequirements)
+          setLinkedRequirementsError(tc('error'))
+        }
+      } finally {
+        if (requestId === linkedReqRequestId.current) {
+          setLinkedRequirementsLoading(false)
+        }
       }
-    } catch {
-      // Keep existing linked requirements on error.
-    } finally {
-      if (requestId === linkedReqRequestId.current) {
-        setLinkedRequirementsLoading(false)
-      }
-    }
-  }, [])
+    },
+    [linkedRequirements, tc],
+  )
 
   const openCreate = () => {
     setLinkedRequirements([])
+    setLinkedRequirementsError(null)
     controller.openCreate()
   }
 
   const openEdit = (scenario: Scenario) => {
-    setLinkedRequirements([])
     controller.openEdit(scenario)
     void fetchLinkedRequirements(scenario.id)
   }
 
   const closeForm = () => {
     setLinkedRequirements([])
+    setLinkedRequirementsError(null)
     controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     const didSubmit = await controller.submit(event)
-    if (didSubmit) setLinkedRequirements([])
+    if (didSubmit) {
+      setLinkedRequirements([])
+      setLinkedRequirementsError(null)
+    }
   }
 
   const remove = async (id: number, anchorEl?: HTMLElement) => {
     const didRemove = await controller.remove(id, anchorEl)
-    if (didRemove && controller.editId === id) setLinkedRequirements([])
+    if (didRemove && controller.editId === id) {
+      setLinkedRequirements([])
+      setLinkedRequirementsError(null)
+    }
   }
 
   const getOwnerName = (scenario: Scenario) => {
@@ -409,6 +432,13 @@ export default function UsageScenariosClient() {
                     {linkedRequirementsLoading ? (
                       <p className="text-sm text-secondary-500 dark:text-secondary-400">
                         {tc('loading')}
+                      </p>
+                    ) : linkedRequirementsError ? (
+                      <p
+                        className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        role="alert"
+                      >
+                        {linkedRequirementsError}
                       </p>
                     ) : linkedRequirements.length === 0 ? (
                       <p className="text-sm text-secondary-500 dark:text-secondary-400">

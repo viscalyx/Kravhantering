@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl'
 import CrudAdminPanel, {
   type CrudAdminColumn,
 } from '@/components/CrudAdminPanel'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 
@@ -90,12 +91,12 @@ export default function OwnersClient() {
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <fieldset className="space-y-5" disabled={disabled}>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('firstNameHelp')}
               htmlFor="owner-first-name"
-            >
-              {t('firstName')} <span aria-hidden="true">*</span>
-            </label>
+              label={t('firstName')}
+              required
+            />
             <input
               className={inputClassName}
               id="owner-first-name"
@@ -110,12 +111,12 @@ export default function OwnersClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('lastNameHelp')}
               htmlFor="owner-last-name"
-            >
-              {t('lastName')} <span aria-hidden="true">*</span>
-            </label>
+              label={t('lastName')}
+              required
+            />
             <input
               className={inputClassName}
               id="owner-last-name"
@@ -130,12 +131,12 @@ export default function OwnersClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('emailHelp')}
               htmlFor="owner-email"
-            >
-              {t('email')} <span aria-hidden="true">*</span>
-            </label>
+              label={t('email')}
+              required
+            />
             <input
               className={inputClassName}
               id="owner-email"

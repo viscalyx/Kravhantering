@@ -238,9 +238,13 @@
   },
   "area": {
     "prefix": "Prefix",
+    "prefixHelp": "Enter the short uppercase prefix used when requirement IDs are generated for this area. The prefix can only be changed when creating a new area.",
     "name": "Name",
+    "nameHelp": "Enter the display name for this requirement area.",
     "description": "Description",
+    "descriptionHelp": "Optionally describe what kinds of requirements belong in this area.",
     "owner": "Requirement owner",
+    "ownerHelp": "Choose the person or group responsible for this requirement area.",
     "newArea": "New requirement area",
     "editArea": "Edit requirement area"
   },
@@ -554,8 +558,14 @@
   },
   "statusMgmt": {
     "name": "Name",
+    "nameSvLabel": "Name (Swedish)",
+    "nameSvHelp": "Enter the Swedish status name shown when the application language is Swedish.",
+    "nameEnLabel": "Name (English)",
+    "nameEnHelp": "Enter the English status name shown when the application language is English.",
     "color": "Color",
+    "colorHelp": "Choose the color used for this status badge.",
     "sortOrder": "Sort order",
+    "sortOrderHelp": "Enter a number that controls the display order. Lower numbers appear first.",
     "isSystem": "System status",
     "newStatus": "New status",
     "editStatus": "Edit status",
@@ -573,23 +583,36 @@
   "ownerMgmt": {
     "name": "Name",
     "firstName": "First name",
+    "firstNameHelp": "Enter the owner's given name.",
     "lastName": "Last name",
-    "email": "Email"
+    "lastNameHelp": "Enter the owner's family name.",
+    "email": "Email",
+    "emailHelp": "Enter the email address used to contact this owner."
   },
   "responsibilityAreaMgmt": {
     "name": "Name",
+    "nameSvLabel": "Name (Swedish)",
+    "nameSvHelp": "Enter the Swedish name for this business object.",
+    "nameEnLabel": "Name (English)",
+    "nameEnHelp": "Enter the English name for this business object.",
     "title": "Business objects",
     "newItem": "New business object",
     "editItem": "Edit business object"
   },
   "implementationTypeMgmt": {
     "name": "Name",
+    "nameSvLabel": "Name (Swedish)",
+    "nameSvHelp": "Enter the Swedish name for this implementation type.",
+    "nameEnLabel": "Name (English)",
+    "nameEnHelp": "Enter the English name for this implementation type.",
     "title": "Implementation types",
     "newItem": "New implementation type",
     "editItem": "Edit implementation type"
   },
   "lifecycleStatusMgmt": {
     "name": "Name",
+    "nameSvLabel": "Name (Swedish)",
+    "nameEnLabel": "Name (English)",
     "title": "Lifecycle statuses",
     "newItem": "New lifecycle status",
     "editItem": "Edit lifecycle status",

@@ -74,10 +74,14 @@ describe('ImplementationTypesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     expect(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameSvLabel/,
+      }),
     ).toBeInTheDocument()
     expect(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameEnLabel/,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -89,11 +93,15 @@ describe('ImplementationTypesClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameSvLabel/,
+      }),
       { target: { value: 'Ny' } },
     )
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameEnLabel/,
+      }),
       { target: { value: 'New' } },
     )
 
@@ -121,9 +129,9 @@ describe('ImplementationTypesClient', () => {
     fireEvent.click(editButtons[0])
     expect(
       (
-        screen.getByLabelText(
-          /implementationTypeMgmt\.name.+EN/,
-        ) as HTMLInputElement
+        screen.getByRole('textbox', {
+          name: /implementationTypeMgmt\.nameEnLabel/,
+        }) as HTMLInputElement
       ).value,
     ).toBe('Type en')
   })
@@ -136,7 +144,9 @@ describe('ImplementationTypesClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
-      screen.queryByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.queryByRole('textbox', {
+        name: /implementationTypeMgmt\.nameSvLabel/,
+      }),
     ).toBeNull()
   })
 
@@ -174,11 +184,15 @@ describe('ImplementationTypesClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameSvLabel/,
+      }),
       { target: { value: 'Ny' } },
     )
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameEnLabel/,
+      }),
       { target: { value: 'New' } },
     )
 
@@ -190,7 +204,9 @@ describe('ImplementationTypesClient', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Cannot save')
     })
     expect(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameSvLabel/,
+      }),
     ).toBeInTheDocument()
   })
 
@@ -202,11 +218,15 @@ describe('ImplementationTypesClient', () => {
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+SV/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameSvLabel/,
+      }),
       { target: { value: 'Ny' } },
     )
     fireEvent.change(
-      screen.getByLabelText(/implementationTypeMgmt\.name.+EN/),
+      screen.getByRole('textbox', {
+        name: /implementationTypeMgmt\.nameEnLabel/,
+      }),
       { target: { value: 'New' } },
     )
 

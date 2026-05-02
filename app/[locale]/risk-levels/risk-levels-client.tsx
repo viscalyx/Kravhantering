@@ -106,25 +106,35 @@ export default function RiskLevelsClient() {
     toPayload,
   })
 
-  const fetchLinkedRequirements = useCallback(async (riskLevelId: number) => {
-    const requestId = ++linkedReqRequestId.current
-    setLinkedRequirementsLoading(true)
-    try {
-      const response = await apiFetch(`/api/risk-levels/${riskLevelId}`)
-      if (response.ok && requestId === linkedReqRequestId.current) {
+  const fetchLinkedRequirements = useCallback(
+    async (riskLevelId: number) => {
+      const requestId = ++linkedReqRequestId.current
+      const previousLinkedRequirements = linkedRequirements
+      setLinkedRequirementsLoading(true)
+      try {
+        const response = await apiFetch(`/api/risk-levels/${riskLevelId}`)
+        if (requestId !== linkedReqRequestId.current) return
+        if (!response.ok) {
+          setLinkedRequirements(previousLinkedRequirements)
+          return
+        }
         const data = (await response.json()) as {
           linkedRequirements?: LinkedRequirement[]
         }
+        if (requestId !== linkedReqRequestId.current) return
         setLinkedRequirements(data.linkedRequirements ?? [])
+      } catch {
+        if (requestId === linkedReqRequestId.current) {
+          setLinkedRequirements(previousLinkedRequirements)
+        }
+      } finally {
+        if (requestId === linkedReqRequestId.current) {
+          setLinkedRequirementsLoading(false)
+        }
       }
-    } catch {
-      // Keep existing linked requirements on error.
-    } finally {
-      if (requestId === linkedReqRequestId.current) {
-        setLinkedRequirementsLoading(false)
-      }
-    }
-  }, [])
+    },
+    [linkedRequirements],
+  )
 
   const openCreate = () => {
     setLinkedRequirements([])
@@ -132,7 +142,6 @@ export default function RiskLevelsClient() {
   }
 
   const openEdit = (riskLevel: RiskLevel) => {
-    setLinkedRequirements([])
     controller.openEdit(riskLevel)
     void fetchLinkedRequirements(riskLevel.id)
   }

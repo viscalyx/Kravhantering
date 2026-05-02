@@ -82,9 +82,15 @@ describe('OwnersClient', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
       'common.create',
     )
-    expect(screen.getByLabelText(/ownerMgmt\.firstName/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/ownerMgmt\.lastName/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/ownerMgmt\.email/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /ownerMgmt\.firstName/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /ownerMgmt\.lastName/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /ownerMgmt\.email/ }),
+    ).toBeInTheDocument()
   })
 
   it('submits create form and refreshes list', async () => {
@@ -95,15 +101,24 @@ describe('OwnersClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/ownerMgmt\.firstName/), {
-      target: { value: 'New' },
-    })
-    fireEvent.change(screen.getByLabelText(/ownerMgmt\.lastName/), {
-      target: { value: 'Owner' },
-    })
-    fireEvent.change(screen.getByLabelText(/ownerMgmt\.email/), {
-      target: { value: 'new@test.com' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /ownerMgmt\.firstName/ }),
+      {
+        target: { value: 'New' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /ownerMgmt\.lastName/ }),
+      {
+        target: { value: 'Owner' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /ownerMgmt\.email/ }),
+      {
+        target: { value: 'new@test.com' },
+      },
+    )
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 3 }))
     fetchMock.mockResolvedValueOnce(okJson({ owners: [] }))
@@ -133,7 +148,11 @@ describe('OwnersClient', () => {
       'common.edit',
     )
     expect(
-      (screen.getByLabelText(/ownerMgmt\.firstName/) as HTMLInputElement).value,
+      (
+        screen.getByRole('textbox', {
+          name: /ownerMgmt\.firstName/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('Anna')
   })
 
@@ -148,9 +167,12 @@ describe('OwnersClient', () => {
     })
     fireEvent.click(editButtons[0])
 
-    fireEvent.change(screen.getByLabelText(/ownerMgmt\.firstName/), {
-      target: { value: 'Updated' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /ownerMgmt\.firstName/ }),
+      {
+        target: { value: 'Updated' },
+      },
+    )
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 1 }))
     fetchMock.mockResolvedValueOnce(
@@ -178,10 +200,14 @@ describe('OwnersClient', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByLabelText(/ownerMgmt\.firstName/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /ownerMgmt\.firstName/ }),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/ownerMgmt\.firstName/)).toBeNull()
+    expect(
+      screen.queryByRole('textbox', { name: /ownerMgmt\.firstName/ }),
+    ).toBeNull()
   })
 
   it('calls delete with confirm and refreshes', async () => {
@@ -248,9 +274,15 @@ describe('OwnersClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    const firstNameInput = screen.getByLabelText(/ownerMgmt\.firstName/)
-    const lastNameInput = screen.getByLabelText(/ownerMgmt\.lastName/)
-    const emailInput = screen.getByLabelText(/ownerMgmt\.email/)
+    const firstNameInput = screen.getByRole('textbox', {
+      name: /ownerMgmt\.firstName/,
+    })
+    const lastNameInput = screen.getByRole('textbox', {
+      name: /ownerMgmt\.lastName/,
+    })
+    const emailInput = screen.getByRole('textbox', {
+      name: /ownerMgmt\.email/,
+    })
     fireEvent.change(firstNameInput, { target: { value: 'Test' } })
     fireEvent.change(lastNameInput, { target: { value: 'User' } })
     fireEvent.change(emailInput, { target: { value: 'test@test.com' } })
@@ -273,7 +305,9 @@ describe('OwnersClient', () => {
     resolveFetch?.()
 
     await waitFor(() => {
-      expect(screen.queryByLabelText(/ownerMgmt\.firstName/)).toBeNull()
+      expect(
+        screen.queryByRole('textbox', { name: /ownerMgmt\.firstName/ }),
+      ).toBeNull()
     })
   })
 

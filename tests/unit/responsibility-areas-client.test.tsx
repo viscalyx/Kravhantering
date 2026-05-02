@@ -40,6 +40,7 @@ describe('ResponsibilityAreasClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    fetchMock.mockReset()
     confirmMock.mockResolvedValue(true)
     fetchMock.mockResolvedValue(
       okJson({
@@ -83,12 +84,22 @@ describe('ResponsibilityAreasClient', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
 
     fireEvent.click(screen.getByRole('button', { name: 'common.create' }))
-    fireEvent.change(screen.getByLabelText(/\(SV\)/), {
-      target: { value: 'Säkerhet' },
-    })
-    fireEvent.change(screen.getByLabelText(/\(EN\)/), {
-      target: { value: 'Security' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /responsibilityAreaMgmt\.nameSvLabel/,
+      }),
+      {
+        target: { value: 'Säkerhet' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', {
+        name: /responsibilityAreaMgmt\.nameEnLabel/,
+      }),
+      {
+        target: { value: 'Security' },
+      },
+    )
     fireEvent.click(screen.getByRole('button', { name: 'common.save' }))
 
     await waitFor(() => {
@@ -110,8 +121,16 @@ describe('ResponsibilityAreasClient', () => {
     })
     fireEvent.click(screen.getAllByRole('button', { name: 'common.edit' })[0])
 
-    expect(screen.getByLabelText(/\(SV\)/)).toHaveValue('Arkitektur')
-    expect(screen.getByLabelText(/\(EN\)/)).toHaveValue('Architecture')
+    expect(
+      screen.getByRole('textbox', {
+        name: /responsibilityAreaMgmt\.nameSvLabel/,
+      }),
+    ).toHaveValue('Arkitektur')
+    expect(
+      screen.getByRole('textbox', {
+        name: /responsibilityAreaMgmt\.nameEnLabel/,
+      }),
+    ).toHaveValue('Architecture')
   })
 
   it('confirms and deletes a row', async () => {

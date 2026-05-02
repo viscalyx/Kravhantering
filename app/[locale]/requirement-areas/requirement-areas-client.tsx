@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import CrudAdminPanel, {
   type CrudAdminColumn,
 } from '@/components/CrudAdminPanel'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -60,8 +61,14 @@ const toForm = (area: Area): AreaForm => ({
   prefix: area.prefix,
 })
 
-const toPayload = (form: AreaForm) => ({
+const toCreatePayload = (form: AreaForm) => ({
   ...form,
+  ownerId: form.ownerId ? Number(form.ownerId) : undefined,
+})
+
+const toUpdatePayload = (form: AreaForm) => ({
+  description: form.description,
+  name: form.name,
   ownerId: form.ownerId ? Number(form.ownerId) : undefined,
 })
 
@@ -100,8 +107,10 @@ export default function RequirementAreasClient() {
     errorMessage: tc('error'),
     getInitialForm,
     listKey: 'areas',
+    toCreatePayload,
     toForm,
-    toPayload,
+    toPayload: toCreatePayload,
+    toUpdatePayload,
   })
 
   const columns: CrudAdminColumn<Area>[] = [
@@ -136,18 +145,24 @@ export default function RequirementAreasClient() {
       columns={columns}
       controller={controller}
       devContext="areas"
-      renderFormFields={({ disabled, form, inputClassName, setForm }) => (
+      renderFormFields={({
+        disabled,
+        form,
+        inputClassName,
+        isEditing,
+        setForm,
+      }) => (
         <>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('prefixHelp')}
               htmlFor="area-prefix"
-            >
-              {t('prefix')} <span aria-hidden="true">*</span>
-            </label>
+              label={t('prefix')}
+              required
+            />
             <input
               className={inputClassName}
-              disabled={disabled}
+              disabled={disabled || isEditing}
               id="area-prefix"
               maxLength={10}
               onChange={event =>
@@ -161,12 +176,12 @@ export default function RequirementAreasClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('nameHelp')}
               htmlFor="area-name"
-            >
-              {t('name')} <span aria-hidden="true">*</span>
-            </label>
+              label={t('name')}
+              required
+            />
             <input
               className={inputClassName}
               disabled={disabled}
@@ -182,12 +197,11 @@ export default function RequirementAreasClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('descriptionHelp')}
               htmlFor="area-desc"
-            >
-              {t('description')}
-            </label>
+              label={t('description')}
+            />
             <textarea
               className={inputClassName}
               disabled={disabled}
@@ -202,12 +216,11 @@ export default function RequirementAreasClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('ownerHelp')}
               htmlFor="area-owner"
-            >
-              {t('owner')}
-            </label>
+              label={t('owner')}
+            />
             <select
               className={inputClassName}
               disabled={disabled}

@@ -6,6 +6,7 @@ import { useConfirmModal } from '@/components/ConfirmModal'
 import CrudAdminPanel, {
   type CrudAdminColumn,
 } from '@/components/CrudAdminPanel'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -154,12 +155,12 @@ export default function RequirementStatusesClient() {
       renderFormFields={({ disabled, form, inputClassName, setForm }) => (
         <>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('nameSvHelp')}
               htmlFor="status-name-sv"
-            >
-              {t('name')} (SV) <span aria-hidden="true">*</span>
-            </label>
+              label={t('nameSvLabel')}
+              required
+            />
             <input
               className={inputClassName}
               disabled={disabled}
@@ -175,12 +176,12 @@ export default function RequirementStatusesClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('nameEnHelp')}
               htmlFor="status-name-en"
-            >
-              {t('name')} (EN) <span aria-hidden="true">*</span>
-            </label>
+              label={t('nameEnLabel')}
+              required
+            />
             <input
               className={inputClassName}
               disabled={disabled}
@@ -196,12 +197,11 @@ export default function RequirementStatusesClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('sortOrderHelp')}
               htmlFor="status-sort-order"
-            >
-              {t('sortOrder')}
-            </label>
+              label={t('sortOrder')}
+            />
             <input
               className={inputClassName}
               disabled={disabled}
@@ -218,12 +218,11 @@ export default function RequirementStatusesClient() {
             />
           </div>
           <div>
-            <label
-              className="block text-sm font-medium mb-1"
+            <FieldLabelWithHelp
+              help={t('colorHelp')}
               htmlFor="status-color"
-            >
-              {t('color')}
-            </label>
+              label={t('color')}
+            />
             <div className="flex items-center gap-3">
               <input
                 className="h-10 w-10 rounded-lg border-0 cursor-pointer"

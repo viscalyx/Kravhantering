@@ -24,8 +24,10 @@ interface CrudAdminPanelProps<TItem extends { id: CrudId }, TForm> {
   formMaxWidthClassName?: string
   renderFormFields: (props: {
     disabled: boolean
+    editId: CrudId | null
     form: TForm
     inputClassName: string
+    isEditing: boolean
     setForm: React.Dispatch<React.SetStateAction<TForm>>
   }) => ReactNode
   title: ReactNode
@@ -72,6 +74,11 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         {visibleError && (
           <div
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200"
+            {...devMarker({
+              context: devContext,
+              name: 'crud-admin-visible-error',
+              priority: 340,
+            })}
             role="alert"
           >
             {visibleError}
@@ -99,8 +106,10 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
               </h2>
               {renderFormFields({
                 disabled: controller.submitting,
+                editId: controller.editId,
                 form: controller.form,
                 inputClassName,
+                isEditing: controller.editId !== null,
                 setForm: controller.setForm,
               })}
               {controller.formError && (
@@ -160,58 +169,68 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
                   </tr>
                 </thead>
                 <tbody>
-                  {controller.items.map(item => (
-                    <tr
-                      className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                      key={item.id}
-                    >
-                      {columns.map(column => (
-                        <td
-                          className={column.className ?? 'py-3 px-4'}
-                          key={column.key}
-                        >
-                          {column.render(item)}
-                        </td>
-                      ))}
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                          {...devMarker({
-                            context: devContext,
-                            name: 'table action',
-                            value: 'edit',
-                          })}
-                          disabled={controller.deletingIds.has(item.id)}
-                          onClick={() => controller.openEdit(item)}
-                          type="button"
-                        >
-                          {common('edit')}
-                        </button>
-                        {canDelete(item) && (
+                  {controller.items.map(item => {
+                    const isDeleting = controller.deletingIds.has(item.id)
+                    const rowActionDisabled =
+                      controller.submitting || isDeleting
+
+                    return (
+                      <tr
+                        className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
+                        key={item.id}
+                      >
+                        {columns.map(column => (
+                          <td
+                            className={column.className ?? 'py-3 px-4'}
+                            key={column.key}
+                          >
+                            {column.render(item)}
+                          </td>
+                        ))}
+                        <td className="py-3 px-4 text-right">
                           <button
-                            className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                            className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                             {...devMarker({
                               context: devContext,
                               name: 'table action',
-                              value: 'delete',
+                              value: 'edit',
                             })}
-                            disabled={controller.deletingIds.has(item.id)}
-                            onClick={event => {
-                              void controller.remove(
-                                item.id,
-                                event.currentTarget,
-                              )
-                            }}
+                            disabled={rowActionDisabled}
+                            onClick={() => controller.openEdit(item)}
                             type="button"
                           >
-                            {controller.deletingIds.has(item.id)
-                              ? common('deleting')
-                              : common('delete')}
+                            {controller.submitting
+                              ? common('saving')
+                              : common('edit')}
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                          {canDelete(item) && (
+                            <button
+                              className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
+                              {...devMarker({
+                                context: devContext,
+                                name: 'table action',
+                                value: 'delete',
+                              })}
+                              disabled={rowActionDisabled}
+                              onClick={event => {
+                                void controller.remove(
+                                  item.id,
+                                  event.currentTarget,
+                                )
+                              }}
+                              type="button"
+                            >
+                              {controller.submitting
+                                ? common('saving')
+                                : isDeleting
+                                  ? common('deleting')
+                                  : common('delete')}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

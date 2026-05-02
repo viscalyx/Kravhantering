@@ -30,8 +30,10 @@ interface CrudAdminResourceOptions<TItem extends { id: CrudId }, TForm> {
     details: CrudAdminMutationErrorDetails,
   ) => Promise<void> | void
   reloadOnDeleteError?: boolean
+  toCreatePayload?: (form: TForm) => unknown
   toForm: (item: TItem) => TForm
   toPayload: (form: TForm) => unknown
+  toUpdatePayload?: (form: TForm) => unknown
 }
 
 export interface CrudAdminResourceController<
@@ -97,8 +99,10 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
   onDeleteError,
   onSubmitError,
   reloadOnDeleteError = false,
+  toCreatePayload,
   toForm,
   toPayload,
+  toUpdatePayload,
 }: CrudAdminResourceOptions<TItem, TForm>): CrudAdminResourceController<
   TItem,
   TForm
@@ -183,10 +187,14 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
       setFormError(null)
       try {
         const activeEditId = editId
+        const payload =
+          activeEditId === null
+            ? (toCreatePayload ?? toPayload)(form)
+            : (toUpdatePayload ?? toPayload)(form)
         const response = await apiFetch(
           activeEditId === null ? endpoint : resolveItemEndpoint(activeEditId),
           {
-            body: JSON.stringify(toPayload(form)),
+            body: JSON.stringify(payload),
             headers: { 'Content-Type': 'application/json' },
             method: activeEditId === null ? 'POST' : 'PUT',
           },
@@ -233,6 +241,8 @@ export function useCrudAdminResource<TItem extends { id: CrudId }, TForm>({
       reload,
       resolveItemEndpoint,
       toPayload,
+      toCreatePayload,
+      toUpdatePayload,
     ],
   )
 

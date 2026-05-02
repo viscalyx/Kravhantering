@@ -104,8 +104,12 @@ describe('RequirementAreasClient', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
       'common.create',
     )
-    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/area\.name/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /area\.prefix/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /area\.name/ }),
+    ).toBeInTheDocument()
   })
 
   it('submits create form and refreshes list', async () => {
@@ -116,10 +120,10 @@ describe('RequirementAreasClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/area\.prefix/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.prefix/ }), {
       target: { value: 'NEW' },
     })
-    fireEvent.change(screen.getByLabelText(/area\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'New Area' },
     })
 
@@ -155,10 +159,16 @@ describe('RequirementAreasClient', () => {
       'common.edit',
     )
     expect(
-      (screen.getByLabelText(/area\.prefix/) as HTMLInputElement).value,
+      (
+        screen.getByRole('textbox', {
+          name: /area\.prefix/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('INT')
+    expect(screen.getByRole('textbox', { name: /area\.prefix/ })).toBeDisabled()
     expect(
-      (screen.getByLabelText(/area\.name/) as HTMLInputElement).value,
+      (screen.getByRole('textbox', { name: /area\.name/ }) as HTMLInputElement)
+        .value,
     ).toBe('Integration')
   })
 
@@ -173,7 +183,7 @@ describe('RequirementAreasClient', () => {
     })
     fireEvent.click(editButtons[0])
 
-    fireEvent.change(screen.getByLabelText(/area\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'Updated' },
     })
 
@@ -192,6 +202,18 @@ describe('RequirementAreasClient', () => {
         expect.objectContaining({ method: 'PUT' }),
       )
     })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect((putCall?.[1] as RequestInit).body).toBe(
+      JSON.stringify({
+        description: 'System integration',
+        name: 'Updated',
+        ownerId: 1,
+      }),
+    )
   })
 
   it('closes form when cancel is clicked', async () => {
@@ -201,10 +223,12 @@ describe('RequirementAreasClient', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /area\.prefix/ }),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/area\.prefix/)).toBeNull()
+    expect(screen.queryByRole('textbox', { name: /area\.prefix/ })).toBeNull()
   })
 
   it('calls delete with confirm and refreshes', async () => {
@@ -308,10 +332,10 @@ describe('RequirementAreasClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/area\.prefix/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.prefix/ }), {
       target: { value: 'FAIL' },
     })
-    fireEvent.change(screen.getByLabelText(/area\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'Failing Area' },
     })
 
@@ -334,9 +358,15 @@ describe('RequirementAreasClient', () => {
       )
     })
 
-    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
     expect(
-      (screen.getByLabelText(/area\.prefix/) as HTMLInputElement).value,
+      screen.getByRole('textbox', { name: /area\.prefix/ }),
+    ).toBeInTheDocument()
+    expect(
+      (
+        screen.getByRole('textbox', {
+          name: /area\.prefix/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('FAIL')
   })
 })

@@ -112,9 +112,15 @@ describe('RequirementStatusesClient', () => {
       expect(screen.getByText('Draft')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByLabelText(/statusMgmt\.name.+SV/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/statusMgmt\.name.+EN/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/statusMgmt\.sortOrder/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameEnLabel/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('spinbutton', { name: /statusMgmt\.sortOrder/ }),
+    ).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
@@ -124,12 +130,18 @@ describe('RequirementStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
-      target: { value: 'New' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+      {
+        target: { value: 'Ny' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameEnLabel/ }),
+      {
+        target: { value: 'New' },
+      },
+    )
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 3 }))
     fetchMock.mockResolvedValueOnce(okJson({ statuses: sampleStatuses }))
@@ -151,12 +163,18 @@ describe('RequirementStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
-      target: { value: 'New' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+      {
+        target: { value: 'Ny' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameEnLabel/ }),
+      {
+        target: { value: 'New' },
+      },
+    )
 
     fetchMock.mockResolvedValueOnce(errJson({ error: 'Cannot save' }))
 
@@ -173,7 +191,9 @@ describe('RequirementStatusesClient', () => {
         }),
       )
     })
-    expect(screen.getByLabelText(/statusMgmt\.name.+SV/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+    ).toBeInTheDocument()
   })
 
   it('falls back to common.error when save fails without a response message', async () => {
@@ -183,12 +203,18 @@ describe('RequirementStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
-      target: { value: 'New' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+      {
+        target: { value: 'Ny' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameEnLabel/ }),
+      {
+        target: { value: 'New' },
+      },
+    )
 
     fetchMock.mockResolvedValueOnce(errText(''))
 
@@ -214,12 +240,18 @@ describe('RequirementStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+SV/), {
-      target: { value: 'Ny' },
-    })
-    fireEvent.change(screen.getByLabelText(/statusMgmt\.name.+EN/), {
-      target: { value: 'New' },
-    })
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+      {
+        target: { value: 'Ny' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /statusMgmt\.nameEnLabel/ }),
+      {
+        target: { value: 'New' },
+      },
+    )
 
     fetchMock.mockRejectedValueOnce(new Error(''))
 
@@ -248,7 +280,11 @@ describe('RequirementStatusesClient', () => {
     })
     fireEvent.click(editButtons[0])
     expect(
-      (screen.getByLabelText(/statusMgmt\.name.+EN/) as HTMLInputElement).value,
+      (
+        screen.getByRole('textbox', {
+          name: /statusMgmt\.nameEnLabel/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('Draft')
   })
 
@@ -259,7 +295,9 @@ describe('RequirementStatusesClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/statusMgmt\.name.+SV/)).toBeNull()
+    expect(
+      screen.queryByRole('textbox', { name: /statusMgmt\.nameSvLabel/ }),
+    ).toBeNull()
   })
 
   it('deletes non-system status with confirm', async () => {

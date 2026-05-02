@@ -34,6 +34,9 @@ vi.mock('@/components/StatusBadge', () => ({
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
+function notOk() {
+  return { ok: false }
+}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -150,6 +153,56 @@ describe('RiskLevelsClient', () => {
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('keeps previously loaded linked requirements when a later linked fetch fails', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/risk-levels') {
+        return okJson({ riskLevels: sampleRiskLevels })
+      }
+      if (url === '/api/risk-levels/1') {
+        return okJson({
+          linkedRequirements: [
+            {
+              description: 'Requirement one',
+              id: 10,
+              statusColor: '#3b82f6',
+              statusNameEn: 'Draft',
+              statusNameSv: 'Utkast',
+              uniqueId: 'REQ-1',
+              versionNumber: 1,
+            },
+          ],
+        })
+      }
+      if (url === '/api/risk-levels/2') return notOk()
+      return okJson({})
+    })
+
+    render(<RiskLevelsClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Low')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByText('REQ-1')).toBeInTheDocument()
+    })
+
+    fireEvent.click(editButtons[1])
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/risk-levels/2')
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('common.loading')).toBeNull()
+    })
+    expect(screen.getByText('REQ-1')).toBeInTheDocument()
+    expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
   it('closes form on cancel', async () => {

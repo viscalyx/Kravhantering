@@ -92,6 +92,7 @@ export default function PackageItemStatusesClient() {
   const tc = useTranslations('common')
   const locale = useLocale()
   const [linkedItems, setLinkedItems] = useState<LinkedItem[]>([])
+  const [linkedItemsError, setLinkedItemsError] = useState<string | null>(null)
   const [linkedItemsLoading, setLinkedItemsLoading] = useState(false)
   const linkedItemRequestId = useRef(0)
 
@@ -114,50 +115,69 @@ export default function PackageItemStatusesClient() {
     toPayload,
   })
 
-  const fetchLinkedItems = useCallback(async (statusId: number) => {
-    const requestId = ++linkedItemRequestId.current
-    setLinkedItemsLoading(true)
-    try {
-      const response = await apiFetch(`/api/package-item-statuses/${statusId}`)
-      if (response.ok && requestId === linkedItemRequestId.current) {
+  const fetchLinkedItems = useCallback(
+    async (statusId: number) => {
+      const requestId = ++linkedItemRequestId.current
+      setLinkedItemsLoading(true)
+      setLinkedItemsError(null)
+      try {
+        const response = await apiFetch(
+          `/api/package-item-statuses/${statusId}`,
+        )
+        if (requestId !== linkedItemRequestId.current) return
+        if (!response.ok) {
+          setLinkedItemsError(tc('error'))
+          return
+        }
         const data = (await response.json()) as {
           linkedItems?: LinkedItem[]
         }
+        if (requestId !== linkedItemRequestId.current) return
         setLinkedItems(data.linkedItems ?? [])
+      } catch {
+        if (requestId === linkedItemRequestId.current) {
+          setLinkedItemsError(tc('error'))
+        }
+      } finally {
+        if (requestId === linkedItemRequestId.current) {
+          setLinkedItemsLoading(false)
+        }
       }
-    } catch {
-      // Keep existing linked items on error.
-    } finally {
-      if (requestId === linkedItemRequestId.current) {
-        setLinkedItemsLoading(false)
-      }
-    }
-  }, [])
+    },
+    [tc],
+  )
 
   const openCreate = () => {
     setLinkedItems([])
+    setLinkedItemsError(null)
     controller.openCreate()
   }
 
   const openEdit = (status: PackageItemStatus) => {
-    setLinkedItems([])
     controller.openEdit(status)
     void fetchLinkedItems(status.id)
   }
 
   const closeForm = () => {
     setLinkedItems([])
+    setLinkedItemsError(null)
     controller.closeForm()
   }
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     const didSubmit = await controller.submit(event)
-    if (didSubmit) setLinkedItems([])
+    if (didSubmit) {
+      setLinkedItems([])
+      setLinkedItemsError(null)
+    }
   }
 
   const remove = async (id: number, anchorEl?: HTMLElement) => {
     const didRemove = await controller.remove(id, anchorEl)
-    if (didRemove && controller.editId === id) setLinkedItems([])
+    if (didRemove && controller.editId === id) {
+      setLinkedItems([])
+      setLinkedItemsError(null)
+    }
   }
 
   const isSortOrderLocked =
@@ -426,6 +446,13 @@ export default function PackageItemStatusesClient() {
                     {linkedItemsLoading ? (
                       <p className="text-sm text-secondary-500 dark:text-secondary-400">
                         {tc('loading')}
+                      </p>
+                    ) : linkedItemsError ? (
+                      <p
+                        className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        role="alert"
+                      >
+                        {linkedItemsError}
                       </p>
                     ) : linkedItems.length === 0 ? (
                       <p className="text-sm text-secondary-500 dark:text-secondary-400">

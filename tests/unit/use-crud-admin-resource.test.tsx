@@ -141,6 +141,64 @@ describe('useCrudAdminResource', () => {
     expect(result.current.items).toEqual([{ id: 2, name: 'Created' }])
   })
 
+  it('uses create and update specific payload mappers when provided', async () => {
+    const toPayload = vi.fn((form: TestForm) => ({ fallback: form.name }))
+    const toCreatePayload = vi.fn((form: TestForm) => ({
+      createName: form.name,
+    }))
+    const toUpdatePayload = vi.fn((form: TestForm) => ({
+      updateName: form.name,
+    }))
+
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ items: [{ id: 1, name: 'Existing' }] }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ id: 2, name: 'Created' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ items: [{ id: 1, name: 'Existing' }] }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ id: 1, name: 'Updated' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ items: [{ id: 1, name: 'Updated' }] }),
+      )
+
+    const { result } = renderResource({
+      toCreatePayload,
+      toPayload,
+      toUpdatePayload,
+    })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    act(() => {
+      result.current.openCreate()
+      result.current.setForm({ name: 'Created' })
+    })
+
+    await act(async () => {
+      await result.current.submit()
+    })
+
+    act(() => {
+      result.current.openEdit({ id: 1, name: 'Existing' })
+      result.current.setForm({ name: 'Updated' })
+    })
+
+    await act(async () => {
+      await result.current.submit()
+    })
+
+    expect(toCreatePayload).toHaveBeenCalledWith({ name: 'Created' })
+    expect(toUpdatePayload).toHaveBeenCalledWith({ name: 'Updated' })
+    expect(toPayload).not.toHaveBeenCalled()
+    expect((fetchMock.mock.calls[1][1] as RequestInit).body).toBe(
+      JSON.stringify({ createName: 'Created' }),
+    )
+    expect((fetchMock.mock.calls[3][1] as RequestInit).body).toBe(
+      JSON.stringify({ updateName: 'Updated' }),
+    )
+  })
+
   it('prefills the form for editing', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({ items: [{ id: 7, name: 'Editable' }] }),

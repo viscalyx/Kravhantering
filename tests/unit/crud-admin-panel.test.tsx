@@ -30,10 +30,12 @@ function PanelHarness({
   canDelete,
   deleteError = null,
   loading = false,
+  submitting = false,
 }: {
   canDelete?: (item: PanelItem) => boolean
   deleteError?: string | null
   loading?: boolean
+  submitting?: boolean
 }) {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState<PanelForm>({ name: '' })
@@ -54,7 +56,7 @@ function PanelHarness({
     setForm,
     showForm,
     submit: submitMock,
-    submitting: false,
+    submitting,
   }
 
   return (
@@ -128,9 +130,20 @@ describe('CrudAdminPanel', () => {
   })
 
   it('renders error and loading states', () => {
-    const { rerender } = render(<PanelHarness deleteError="Delete failed" />)
+    const { container, rerender } = render(
+      <PanelHarness deleteError="Delete failed" />,
+    )
 
     expect(screen.getByRole('alert')).toHaveTextContent('Delete failed')
+    expect(screen.getByRole('alert')).toHaveAttribute(
+      'data-developer-mode-name',
+      'crud-admin-visible-error',
+    )
+    expect(
+      container.querySelector(
+        '[data-developer-mode-name="crud-admin-visible-error"][data-developer-mode-context="test admin"]',
+      ),
+    ).toBeInTheDocument()
 
     rerender(<PanelHarness loading />)
 
@@ -165,5 +178,22 @@ describe('CrudAdminPanel', () => {
       screen.getByRole('button', { name: 'common.edit' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.delete' })).toBeNull()
+  })
+
+  it('disables row actions and shows saving text while submitting', () => {
+    render(<PanelHarness submitting />)
+
+    const savingButtons = screen.getAllByRole('button', {
+      name: 'common.saving',
+    })
+
+    expect(savingButtons).toHaveLength(2)
+    for (const button of savingButtons) {
+      expect(button).toBeDisabled()
+      fireEvent.click(button)
+    }
+
+    expect(openEditMock).not.toHaveBeenCalled()
+    expect(removeMock).not.toHaveBeenCalled()
   })
 })
