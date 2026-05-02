@@ -1,15 +1,15 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
-import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import CrudAdminPanel, {
+  type CrudAdminColumn,
+} from '@/components/CrudAdminPanel'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
-import { devMarker } from '@/lib/developer-mode-markers'
-import { apiFetch } from '@/lib/http/api-fetch'
-import { readResponseMessage } from '@/lib/http/response-message'
+import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 
 const REQUIREMENT_STATUSES_HELP: HelpContent = {
   sections: [
@@ -36,374 +36,219 @@ interface Status {
   sortOrder: number
 }
 
+interface StatusForm {
+  color: string
+  nameEn: string
+  nameSv: string
+  sortOrder: number
+}
+
+const getInitialForm = (): StatusForm => ({
+  color: '#3b82f6',
+  nameEn: '',
+  nameSv: '',
+  sortOrder: 0,
+})
+
+const toForm = (status: Status): StatusForm => ({
+  color: status.color ?? '#3b82f6',
+  nameEn: status.nameEn,
+  nameSv: status.nameSv,
+  sortOrder: status.sortOrder,
+})
+
+const toPayload = (form: StatusForm) => form
+
 export default function RequirementStatusesClient() {
   useHelpContent(REQUIREMENT_STATUSES_HELP)
   const t = useTranslations('statusMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
+  const { confirm } = useConfirmModal()
+  const errorFallback = tc('error')
 
-  const getName = (s: Status) => (locale === 'sv' ? s.nameSv : s.nameEn)
+  const getName = (status: Status) =>
+    locale === 'sv' ? status.nameSv : status.nameEn
 
-  const [statuses, setStatuses] = useState<Status[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const [form, setForm] = useState({
-    nameSv: '',
-    nameEn: '',
-    sortOrder: 0,
-    color: '#3b82f6',
+  const presentMutationError = useCallback(
+    async ({
+      anchorEl,
+      message,
+    }: {
+      anchorEl?: HTMLElement
+      message: string
+    }) => {
+      await confirm({
+        anchorEl,
+        icon: 'warning',
+        message: message || errorFallback,
+        showCancel: false,
+      })
+    },
+    [confirm, errorFallback],
+  )
+
+  const getCaughtErrorMessage = useCallback(
+    (error: unknown) =>
+      error instanceof Error ? error.message || errorFallback : errorFallback,
+    [errorFallback],
+  )
+
+  const controller = useCrudAdminResource<Status, StatusForm>({
+    confirmDeleteMessage: tc('confirm'),
+    endpoint: '/api/requirement-statuses',
+    errorMessage: errorFallback,
+    getCaughtErrorMessage,
+    getInitialForm,
+    listKey: 'statuses',
+    onDeleteError: presentMutationError,
+    onSubmitError: presentMutationError,
+    reloadOnDeleteError: true,
+    toForm,
+    toPayload,
   })
 
-  const fetchStatuses = useCallback(async () => {
-    setLoading(true)
-    const res = await apiFetch('/api/requirement-statuses')
-    if (res.ok) {
-      const data = (await res.json()) as { statuses?: Status[] }
-      setStatuses(data.statuses ?? [])
-    }
-    setLoading(false)
-  }, [])
-
-  useEffect(() => {
-    fetchStatuses()
-  }, [fetchStatuses])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (submitting) return
-    const nativeEvent = e.nativeEvent as Event & {
-      submitter?: EventTarget | null
-    }
-    const submitter =
-      nativeEvent.submitter instanceof HTMLElement
-        ? nativeEvent.submitter
-        : undefined
-    setSubmitting(true)
-    try {
-      const method = editId ? 'PUT' : 'POST'
-      const url = editId
-        ? `/api/requirement-statuses/${editId}`
-        : '/api/requirement-statuses'
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-      if (!res.ok) {
-        await confirm({
-          message:
-            (await readResponseMessage(res)) || res.statusText || tc('error'),
-          showCancel: false,
-          icon: 'warning',
-          anchorEl: submitter,
-        })
-        return
-      }
-      setShowForm(false)
-      setEditId(null)
-      setForm({ nameSv: '', nameEn: '', sortOrder: 0, color: '#3b82f6' })
-      await fetchStatuses()
-    } catch (error) {
-      await confirm({
-        message:
-          error instanceof Error ? error.message || tc('error') : tc('error'),
-        showCancel: false,
-        icon: 'warning',
-        anchorEl: submitter,
-      })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleEdit = (s: Status) => {
-    setEditId(s.id)
-    setForm({
-      nameSv: s.nameSv,
-      nameEn: s.nameEn,
-      sortOrder: s.sortOrder,
-      color: s.color ?? '#3b82f6',
-    })
-    setShowForm(true)
-  }
-
-  const { confirm } = useConfirmModal()
-
-  const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
-    if (
-      !(await confirm({
-        message: tc('confirm'),
-        variant: 'danger',
-        icon: 'caution',
-        anchorEl,
-      }))
-    )
-      return
-    try {
-      const res = await apiFetch(`/api/requirement-statuses/${id}`, {
-        method: 'DELETE',
-      })
-      if (res.ok) {
-        return
-      }
-      await confirm({
-        message: (await readResponseMessage(res)) || tc('error'),
-        showCancel: false,
-        icon: 'warning',
-        anchorEl,
-      })
-    } catch (error) {
-      await confirm({
-        message:
-          error instanceof Error ? error.message || tc('error') : tc('error'),
-        showCancel: false,
-        icon: 'warning',
-        anchorEl,
-      })
-    } finally {
-      void fetchStatuses()
-    }
-  }
-
-  const inputClass =
-    'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+  const columns: CrudAdminColumn<Status>[] = [
+    {
+      className: 'py-3 px-4 font-medium',
+      header: t('name'),
+      key: 'name',
+      render: status => (
+        <StatusBadge color={status.color} label={getName(status)} />
+      ),
+    },
+    {
+      header: t('color'),
+      key: 'color',
+      render: status => (
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="inline-block h-4 w-4 rounded-full border"
+            style={{ backgroundColor: status.color ?? '#ccc' }}
+          />
+          <span className="font-mono text-xs text-secondary-500">
+            {status.color}
+          </span>
+        </span>
+      ),
+    },
+    {
+      header: t('sortOrder'),
+      key: 'sortOrder',
+      render: status => status.sortOrder,
+    },
+    {
+      header: t('isSystem'),
+      key: 'isSystem',
+      render: status => (status.isSystem ? tc('yes') : tc('no')),
+    },
+  ]
 
   return (
-    <div className="section-padding px-4 sm:px-6 lg:px-8">
-      <div className="container-custom">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('statuses')}
-          </h1>
-          <button
-            className="btn-primary inline-flex items-center gap-1.5"
-            {...devMarker({
-              context: 'statuses',
-              name: 'create button',
-              priority: 350,
-            })}
-            onClick={() => {
-              setShowForm(true)
-              setEditId(null)
-              setForm({
-                nameSv: '',
-                nameEn: '',
-                sortOrder: 0,
-                color: '#3b82f6',
-              })
-            }}
-            type="button"
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {tc('create')}
-          </button>
-        </div>
-
-        <AnimatePresence>
-          {showForm && (
-            <motion.form
-              animate={{ opacity: 1, y: 0 }}
-              className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
-              {...devMarker({
-                context: 'statuses',
-                name: 'crud form',
-                priority: 340,
-                value: editId ? 'edit' : 'create',
-              })}
-              onSubmit={handleSubmit}
-            >
-              <h2 className="text-lg font-semibold">
-                {editId ? tc('edit') : tc('create')}
-              </h2>
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1"
-                  htmlFor="status-name-sv"
-                >
-                  {t('name')} (SV) *
-                </label>
-                <input
-                  className={inputClass}
-                  id="status-name-sv"
-                  onChange={e =>
-                    setForm(f => ({ ...f, nameSv: e.target.value }))
-                  }
-                  required
-                  value={form.nameSv}
-                />
-              </div>
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1"
-                  htmlFor="status-name-en"
-                >
-                  {t('name')} (EN) *
-                </label>
-                <input
-                  className={inputClass}
-                  id="status-name-en"
-                  onChange={e =>
-                    setForm(f => ({ ...f, nameEn: e.target.value }))
-                  }
-                  required
-                  value={form.nameEn}
-                />
-              </div>
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1"
-                  htmlFor="status-sort-order"
-                >
-                  {t('sortOrder')}
-                </label>
-                <input
-                  className={inputClass}
-                  id="status-sort-order"
-                  min={0}
-                  onChange={e =>
-                    setForm(f => ({ ...f, sortOrder: Number(e.target.value) }))
-                  }
-                  type="number"
-                  value={form.sortOrder}
-                />
-              </div>
-              <div>
-                <label
-                  className="block text-sm font-medium mb-1"
-                  htmlFor="status-color"
-                >
-                  {t('color')}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    className="h-10 w-10 rounded-lg border-0 cursor-pointer"
-                    id="status-color"
-                    onChange={e =>
-                      setForm(f => ({ ...f, color: e.target.value }))
-                    }
-                    type="color"
-                    value={form.color}
-                  />
-                  <span className="text-sm font-mono text-secondary-500">
-                    {form.color}
-                  </span>
-                  <StatusBadge
-                    color={form.color}
-                    label={form.nameSv || t('preview')}
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  className="btn-primary"
-                  disabled={submitting}
-                  type="submit"
-                >
-                  {submitting ? tc('saving') : tc('save')}
-                </button>
-                <button
-                  className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                  disabled={submitting}
-                  onClick={() => setShowForm(false)}
-                  type="button"
-                >
-                  {tc('cancel')}
-                </button>
-              </div>
-            </motion.form>
-          )}
-        </AnimatePresence>
-
-        {loading ? (
-          <p className="text-secondary-600 dark:text-secondary-400">
-            {tc('loading')}
-          </p>
-        ) : (
-          <div
-            className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-hidden"
-            {...devMarker({
-              context: 'statuses',
-              name: 'crud table',
-              priority: 340,
-            })}
-          >
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-secondary-50/80 dark:bg-secondary-800/30 text-left text-secondary-700 dark:text-secondary-300">
-                  <th className="py-3 px-4 font-medium">{t('name')}</th>
-                  <th className="py-3 px-4 font-medium">{t('color')}</th>
-                  <th className="py-3 px-4 font-medium">{t('sortOrder')}</th>
-                  <th className="py-3 px-4 font-medium">{t('isSystem')}</th>
-                  <th className="py-3 px-4" />
-                </tr>
-              </thead>
-              <tbody>
-                {statuses.map(s => (
-                  <tr
-                    className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={s.id}
-                  >
-                    <td className="py-3 px-4 font-medium">
-                      <StatusBadge color={s.color} label={getName(s)} />
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="flex items-center gap-2">
-                        <span
-                          className="inline-block h-4 w-4 rounded-full border"
-                          style={{ backgroundColor: s.color ?? '#ccc' }}
-                        />
-                        <span className="font-mono text-xs text-secondary-500">
-                          {s.color}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">{s.sortOrder}</td>
-                    <td className="py-3 px-4">
-                      {s.isSystem ? tc('yes') : tc('no')}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                        {...devMarker({
-                          context: 'statuses',
-                          name: 'table action',
-                          value: 'edit',
-                        })}
-                        onClick={() => handleEdit(s)}
-                        type="button"
-                      >
-                        {tc('edit')}
-                      </button>
-                      {!s.isSystem && (
-                        <button
-                          className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                          {...devMarker({
-                            context: 'statuses',
-                            name: 'table action',
-                            value: 'delete',
-                          })}
-                          onClick={e =>
-                            handleDelete(s.id, e.currentTarget as HTMLElement)
-                          }
-                          type="button"
-                        >
-                          {tc('delete')}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <CrudAdminPanel
+      canDelete={status => !status.isSystem}
+      columns={columns}
+      controller={controller}
+      devContext="statuses"
+      renderFormFields={({ disabled, form, inputClassName, setForm }) => (
+        <>
+          <div>
+            <FieldLabelWithHelp
+              help={t('nameSvHelp')}
+              htmlFor="status-name-sv"
+              label={t('nameSvLabel')}
+              required
+            />
+            <input
+              className={inputClassName}
+              disabled={disabled}
+              id="status-name-sv"
+              onChange={event =>
+                setForm(previousForm => ({
+                  ...previousForm,
+                  nameSv: event.target.value,
+                }))
+              }
+              required
+              value={form.nameSv}
+            />
           </div>
-        )}
-      </div>
-    </div>
+          <div>
+            <FieldLabelWithHelp
+              help={t('nameEnHelp')}
+              htmlFor="status-name-en"
+              label={t('nameEnLabel')}
+              required
+            />
+            <input
+              className={inputClassName}
+              disabled={disabled}
+              id="status-name-en"
+              onChange={event =>
+                setForm(previousForm => ({
+                  ...previousForm,
+                  nameEn: event.target.value,
+                }))
+              }
+              required
+              value={form.nameEn}
+            />
+          </div>
+          <div>
+            <FieldLabelWithHelp
+              help={t('sortOrderHelp')}
+              htmlFor="status-sort-order"
+              label={t('sortOrder')}
+            />
+            <input
+              className={inputClassName}
+              disabled={disabled}
+              id="status-sort-order"
+              min={0}
+              onChange={event =>
+                setForm(previousForm => ({
+                  ...previousForm,
+                  sortOrder: Number(event.target.value),
+                }))
+              }
+              type="number"
+              value={form.sortOrder}
+            />
+          </div>
+          <div>
+            <FieldLabelWithHelp
+              help={t('colorHelp')}
+              htmlFor="status-color"
+              label={t('color')}
+            />
+            <div className="flex items-center gap-3">
+              <input
+                className="h-10 w-10 rounded-lg border-0 cursor-pointer"
+                disabled={disabled}
+                id="status-color"
+                onChange={event =>
+                  setForm(previousForm => ({
+                    ...previousForm,
+                    color: event.target.value,
+                  }))
+                }
+                type="color"
+                value={form.color}
+              />
+              <span className="text-sm font-mono text-secondary-500">
+                {form.color}
+              </span>
+              <StatusBadge
+                color={form.color}
+                label={form.nameSv || t('preview')}
+              />
+            </div>
+          </div>
+        </>
+      )}
+      title={tn('statuses')}
+    />
   )
 }

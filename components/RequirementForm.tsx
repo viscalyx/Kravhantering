@@ -416,7 +416,7 @@ export default function RequirementForm({
             disabled={submitting || isRefreshing}
             type="submit"
           >
-            {submitting ? tc('loading') : tc('save')}
+            {submitting ? tc('saving') : tc('save')}
           </button>
           <button
             className="px-4 py-2.5 rounded-xl border text-sm font-medium min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-all duration-200"

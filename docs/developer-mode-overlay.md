@@ -89,6 +89,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirement package create/edit forms continue to use the `crud form`
   marker; their package-field help toggles are part of that same form
   surface rather than separate developer-mode markers.
+- Reference-data CRUD forms may use shared field help toggles; those
+  triggers stay inside the existing `crud form` surface rather than
+  adding separate developer-mode markers.
 - Navigation help triggers use the `navigation` context with button
   values `help toggle open` and `help toggle closed`.
 - Auth account-detail rows keep their developer-mode values in English
@@ -100,6 +103,10 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Requirement package form save errors and package-list load errors stay
   inside the existing `packages` form/table surfaces; they do not add
   separate developer-mode markers.
+- Shared CRUD admin panel load/delete errors expose
+  `crud-admin-visible-error` in the affected admin page context so
+  scanner checks can distinguish the visible banner from row/form
+  controls.
 - Requirement package list filtering exposes
   `packages > text field: name filter` on the Name search input above
   the table, while the package create trigger keeps the existing
@@ -248,6 +255,7 @@ The current canonical labels include:
 - `create button`
 - `crud form`
 - `crud table`
+- `crud-admin-visible-error`
 - `error banner`
 - `text field`
 - `table action`

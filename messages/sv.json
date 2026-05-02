@@ -6,6 +6,7 @@
     "loadingRequirements": "Hämtar krav…",
     "save": "Spara",
     "saving": "Sparar…",
+    "savingInProgress": "Sparning pågår…",
     "cancel": "Avbryt",
     "delete": "Ta bort",
     "edit": "Redigera",
@@ -56,6 +57,7 @@
     "showShortText": "Visa kortad text",
     "showFullText": "Visa fullständig text",
     "deleting": "Tar bort…",
+    "deletingInProgress": "Borttagning pågår…",
     "unexpectedError": "Ett oväntat fel uppstod"
   },
   "nav": {
@@ -103,6 +105,7 @@
   },
   "requirement": {
     "statusStepperAriaLabel": "Arbetsflöde för kravstatus",
+    "tableCaption": "Lista över krav",
     "uniqueId": "Krav-ID",
     "description": "Kravtext",
     "acceptanceCriteria": "Acceptanskriterium",
@@ -240,6 +243,12 @@
     "name": "Namn",
     "description": "Beskrivning",
     "owner": "Kravägare",
+    "help": {
+      "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för området. Prefixet kan bara ändras när ett nytt område skapas.",
+      "name": "Ange visningsnamnet för kravområdet.",
+      "description": "Beskriv vid behov vilka typer av krav som hör hemma i området.",
+      "owner": "Välj den person eller grupp som ansvarar för kravområdet."
+    },
     "newArea": "Nytt kravområde",
     "editArea": "Redigera kravområde"
   },
@@ -254,7 +263,9 @@
   },
   "package": {
     "name": "Namn",
-    "nameHelp": "Ange ett tydligt namn som gör paketet lätt att känna igen och återanvända.",
+    "help": {
+      "name": "Ange ett tydligt namn som gör paketet lätt att känna igen och återanvända."
+    },
     "responsibilityArea": "Verksamhetsobjekt",
     "responsibilityAreaHelp": "Välj det verksamhetsobjekt som paketet hör till, eller lämna tomt om paketet spänner över flera verksamhetsobjekt.",
     "implementationType": "Genomförandeform",
@@ -394,7 +405,7 @@
     "decisionHeading": "Beslut:",
     "revertToDraftConfirm": "Är du säker på att du vill återställa detta avsteg till utkast?",
     "revertToDraftConfirmTitle": "Återställ till utkast",
-    "historyLabel": "Tidigare avsteg ({count})",
+    "historyLabel": "{count, plural, one {Tidigare avsteg (#)} other {Tidigare avsteg (#)}}",
     "decisionMotivationPlaceholder": "Ange resonemanget för beslutet",
     "decidedByPlaceholder": "Ange namnet på beslutsfattaren",
     "createdByLabel": "Ansvarig för kravställning",
@@ -478,12 +489,47 @@
       "implementationType": "Genomförandeform",
       "lifecycleStatus": "Livscykelstatus",
       "businessNeedsReference": "Verksamhetsbehovsreferens"
+    },
+    "printLabels": {
+      "description": "Beskrivning",
+      "acceptanceCriteria": "Acceptanskriterier",
+      "category": "Kategori",
+      "type": "Typ",
+      "qualityCharacteristic": "Kvalitetsegenskap",
+      "riskLevel": "Risknivå",
+      "riskLevelValue": "Risknivå:",
+      "requiresTesting": "Kräver testning",
+      "createdBy": "Skapad av",
+      "references": "Referenser",
+      "scenarios": "Scenarier",
+      "deviation": "Avvikelse",
+      "motivation": "Motivering:",
+      "submittedBy": "Inlämnad av:",
+      "metadataChanges": "Metadataändringar",
+      "metadataField": "Fält",
+      "metadataPrevious": "Tidigare",
+      "metadataNew": "Nytt",
+      "timelinePublished": "Publicerad",
+      "timelineArchived": "Arkiverad",
+      "timelineEdited": "Redigerad",
+      "timelineCreated": "Skapad"
     }
   },
   "scenario": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska namnet för användningsscenariot.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska namnet för användningsscenariot.",
     "description": "Beskrivning",
+    "descriptionSvLabel": "Beskrivning (svenska)",
+    "descriptionSvHelp": "Beskriv vid behov scenariot på svenska så att användare förstår när det gäller.",
+    "descriptionEnLabel": "Beskrivning (engelska)",
+    "descriptionEnHelp": "Beskriv vid behov scenariot på engelska så att användare förstår när det gäller.",
     "owner": "Scenarioägare",
+    "help": {
+      "owner": "Välj ägaren som ansvarar för scenariot och dess kopplade krav."
+    },
     "newScenario": "Nytt användningsscenario",
     "editScenario": "Redigera användningsscenario",
     "linkedRequirements": "Kopplade krav",
@@ -495,7 +541,9 @@
     "issuerHelp": "<strong>Ange den myndighet eller organisation som utfärdat dokumentet.</strong>\nExempel: Riksdagen, ISO, MSB, Myndigheten för digital förvaltning.",
     "linkedRequirements": "Kopplade krav",
     "name": "Benämning",
-    "nameHelp": "<strong>Ange dokumentets officiella namn.</strong>\nAnvänd den fullständiga, vedertagna titeln. Exempel: Dataskyddsförordningen, Informationssäkerhet för samhällsviktiga och digitala tjänster.",
+    "help": {
+      "name": "<strong>Ange dokumentets officiella namn.</strong>\nAnvänd den fullständiga, vedertagna titeln. Exempel: Dataskyddsförordningen, Informationssäkerhet för samhällsviktiga och digitala tjänster."
+    },
     "newNormReference": "Ny normreferens",
     "normReferenceId": "Normreferens-ID",
     "normReferenceIdHelp": "<strong>En unik identifierare för denna normreferens.</strong>\nLämna tomt för att auto-generera från referensfältet, namnet eller ett löpnummer. Se hjälppanelen för normreferenser under referensdata för hela genereringsalgoritmen.",
@@ -522,15 +570,25 @@
   },
   "qualityCharacteristicMgmt": {
     "name": "Namn",
+    "nameSvHelp": "Ange det svenska namnet för kvalitetsegenskapen.",
+    "nameEnHelp": "Ange det engelska namnet för kvalitetsegenskapen.",
     "type": "Typ",
+    "typeHelp": "Välj den kravtyp som kvalitetsegenskapen hör till.",
     "parent": "Överordnad egenskap",
+    "parentHelp": "Välj vid behov en överordnad egenskap för att skapa en underegenskap.",
     "topLevel": "Toppnivå (ingen överordnad)",
     "subtitle": "ISO/IEC 25010:2023 — Systems and software Quality Requirements and Evaluation (SQuaRE)"
   },
   "statusMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska statusnamnet som visas när applikationens språk är svenska.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska statusnamnet som visas när applikationens språk är engelska.",
     "color": "Färg",
+    "colorHelp": "Välj den färg som används för statusmärket.",
     "sortOrder": "Sorteringsordning",
+    "sortOrderHelp": "Ange ett tal som styr visningsordningen. Lägre tal visas först.",
     "isSystem": "Systemstatus",
     "newStatus": "Ny status",
     "editStatus": "Redigera status",
@@ -549,22 +607,37 @@
     "name": "Namn",
     "firstName": "Förnamn",
     "lastName": "Efternamn",
-    "email": "E-post"
+    "email": "E-post",
+    "help": {
+      "firstName": "Ange ägarens förnamn.",
+      "lastName": "Ange ägarens efternamn.",
+      "email": "Ange e-postadressen som används för att kontakta ägaren."
+    }
   },
   "responsibilityAreaMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska namnet för verksamhetsobjektet.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska namnet för verksamhetsobjektet.",
     "title": "Verksamhetsobjekt",
     "newItem": "Nytt verksamhetsobjekt",
     "editItem": "Redigera verksamhetsobjekt"
   },
   "implementationTypeMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameSvHelp": "Ange det svenska namnet för genomförandeformen.",
+    "nameEnLabel": "Namn (engelska)",
+    "nameEnHelp": "Ange det engelska namnet för genomförandeformen.",
     "title": "Genomförandeformer",
     "newItem": "Ny genomförandeform",
     "editItem": "Redigera genomförandeform"
   },
   "lifecycleStatusMgmt": {
     "name": "Namn",
+    "nameSvLabel": "Namn (svenska)",
+    "nameEnLabel": "Namn (engelska)",
     "title": "Livscykelstatusar",
     "newItem": "Ny livscykelstatus",
     "editItem": "Redigera livscykelstatus",
@@ -584,6 +657,7 @@
   },
   "admin": {
     "title": "Administrationscenter",
+    "loading": "Laddar administrationscenter...",
     "description": "Hantera benämningar, standardkolumner och länkar till referensdata utan att ändra route-sluggar eller API-fält.",
     "settings": "Inställningar",
     "adminCenter": "Administrationscenter",
@@ -1115,7 +1189,7 @@
     "thinkingPhase": "Analyserar krav…",
     "generatingPhase": "Genererar krav…",
     "createSelected": "Skapa valda ({count})",
-    "createConfirm": "Skapa {count} krav i område {area}?",
+    "createConfirm": "{count, plural, one {Skapa # krav i område {area}?} other {Skapa # krav i område {area}?}}",
     "createError": "Kunde inte skapa krav",
     "thinkingTrace": "Resonemangskedja",
     "rationale": "Motivering",
@@ -1125,7 +1199,7 @@
     "rateLimited": "Hastighetsbegränsad, försök igen",
     "parseError": "Kunde inte tolka genererade krav",
     "showRawResponse": "Visa råsvar",
-    "tokensCount": "{count} tokens",
+    "tokensCount": "{count, plural, one {# token} other {# tokens}}",
     "requirementsGenerated": "krav genererade",
     "selectAll": "Markera alla",
     "deselectAll": "Avmarkera alla",
@@ -1159,7 +1233,7 @@
     "capabilityLogprobsTooltip": "Modellen kan returnera sannolikheter på token-nivå, användbart för konfidenspoäng. Krävs inte för kravgenerering.",
     "capabilityVision": "Vision (bildinmatning)",
     "capabilityVisionTooltip": "Modellen kan analysera bilder som arkitekturdiagram, wireframes eller skärmbilder. När aktiverat kan du bifoga bilder som kontext för kravgenerering.",
-    "modelsMatch": "{count} modeller matchar",
+    "modelsMatch": "{count, plural, one {# modell matchar} other {# modeller matchar}}",
     "dataPolicySettings": "Dataintegritet",
     "dataPolicyProviderNote": "Dataintegritet styr hur AI-leverantörer hanterar dina promptar och svar — om de lagrar, tränar på eller behåller din data. Dessa inställningar filtrerar leverantörer vid varje förfrågan och kan minska tillgängliga leverantörer för vald modell.",
     "dataPolicyDenyTraining": "Neka datainsamling",

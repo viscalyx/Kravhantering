@@ -34,6 +34,13 @@ vi.mock('@/components/StatusBadge', () => ({
 function okJson(body: unknown) {
   return { ok: true, json: async () => body }
 }
+function notOk(body: unknown = { error: 'Bad request' }) {
+  return new Response(JSON.stringify(body), {
+    headers: { 'content-type': 'application/json' },
+    status: 400,
+    statusText: 'Bad Request',
+  })
+}
 
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
@@ -50,6 +57,24 @@ const sampleScenarios = [
     ownerId: null,
   },
 ]
+
+const scenarioNameSvInput = () =>
+  screen.getByRole('textbox', { name: /scenario\.nameSvLabel/ })
+const scenarioNameEnInput = () =>
+  screen.getByRole('textbox', { name: /scenario\.nameEnLabel/ })
+
+function setupUsageScenarioMocks(
+  scenarioDetailResponse: () => Promise<unknown> | unknown,
+) {
+  fetchMock.mockImplementation(async (url: string) => {
+    if (url === '/api/usage-scenarios') {
+      return okJson({ scenarios: sampleScenarios })
+    }
+    if (url === '/api/owners/all') return okJson({ owners: [] })
+    if (url === '/api/usage-scenarios/1') return scenarioDetailResponse()
+    return okJson({})
+  })
+}
 
 describe('UsageScenariosClient', () => {
   afterEach(cleanup)
@@ -92,8 +117,19 @@ describe('UsageScenariosClient', () => {
       expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByLabelText(/scenario\.name.+SV/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/scenario\.name.+EN/)).toBeInTheDocument()
+    expect(scenarioNameSvInput()).toBeInTheDocument()
+    expect(scenarioNameEnInput()).toBeInTheDocument()
+    const nameHelpButton = screen.getByRole('button', {
+      name: 'common.help: scenario.nameSvLabel',
+    })
+    fireEvent.click(nameHelpButton)
+    expect(nameHelpButton).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('scenario.nameSvHelp')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'common.help: scenario.owner',
+      }),
+    ).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
@@ -102,10 +138,10 @@ describe('UsageScenariosClient', () => {
       expect(screen.getByText('Scenario A')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.change(screen.getByLabelText(/scenario\.name.+SV/), {
+    fireEvent.change(scenarioNameSvInput(), {
       target: { value: 'Ny' },
     })
-    fireEvent.change(screen.getByLabelText(/scenario\.name.+EN/), {
+    fireEvent.change(scenarioNameEnInput(), {
       target: { value: 'New' },
     })
 
@@ -131,12 +167,47 @@ describe('UsageScenariosClient', () => {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
-    expect(
-      (screen.getByLabelText(/scenario\.name.+EN/) as HTMLInputElement).value,
-    ).toBe('Scenario A')
+    expect((scenarioNameEnInput() as HTMLInputElement).value).toBe('Scenario A')
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
+  })
+
+  it('marks linked requirement loading as a status', async () => {
+    setupUsageScenarioMocks(() => new Promise(() => {}))
+
+    render(<UsageScenariosClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('common.loading')
+    })
+  })
+
+  it('shows an error instead of an empty state when linked requirements fail to load', async () => {
+    setupUsageScenarioMocks(notOk)
+
+    render(<UsageScenariosClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('common.error')
+    })
+    expect(screen.queryByText('common.noneAvailable')).toBeNull()
   })
 
   it('closes form on cancel', async () => {
@@ -146,7 +217,9 @@ describe('UsageScenariosClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/scenario\.name.+SV/)).toBeNull()
+    expect(
+      screen.queryByRole('textbox', { name: /scenario\.nameSvLabel/ }),
+    ).toBeNull()
   })
 
   it('deletes with confirm', async () => {

@@ -82,6 +82,27 @@ const pages: MarkerSpec[] = [
       }),
       okJson({ owners: [] }),
     ],
+    fetchHandler: input => {
+      const url = String(input)
+      if (url === '/api/requirement-areas') {
+        return okJson({
+          areas: [
+            {
+              description: null,
+              id: 1,
+              nameEn: 'A',
+              nameSv: 'A',
+              nextSequence: 1,
+              ownerId: null,
+              ownerName: null,
+              prefix: 'A',
+            },
+          ],
+        }) as Response
+      }
+      if (url === '/api/owners') return okJson({ owners: [] }) as Response
+      return okJson({}) as Response
+    },
     expectedMarkers: ['create button', 'crud table', 'table action'],
   },
   {
@@ -102,10 +123,33 @@ const pages: MarkerSpec[] = [
             nameEn: 'S',
             descriptionSv: null,
             descriptionEn: null,
+            linkedRequirementCount: 0,
+            owner: null,
             ownerId: null,
           },
         ],
       }),
+    fetchHandler: input => {
+      const url = String(input)
+      if (url === '/api/usage-scenarios') {
+        return okJson({
+          scenarios: [
+            {
+              descriptionEn: null,
+              descriptionSv: null,
+              id: 1,
+              linkedRequirementCount: 0,
+              nameEn: 'S',
+              nameSv: 'S',
+              owner: null,
+              ownerId: null,
+            },
+          ],
+        }) as Response
+      }
+      if (url === '/api/owners/all') return okJson({ owners: [] }) as Response
+      return okJson({}) as Response
+    },
     expectedMarkers: ['create button', 'crud table', 'table action'],
   },
   {

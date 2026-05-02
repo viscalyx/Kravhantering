@@ -1,6 +1,7 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
+import { localizedName } from '@/lib/i18n/localized'
 import type {
   DiffSegment,
   MetadataChange,
@@ -314,10 +315,10 @@ function VersionDetails({
   version: VersionSummaryData
   locale: string
 }) {
-  const getName = (item: { nameSv: string; nameEn: string } | null) => {
-    if (!item) return null
-    return locale === 'sv' ? item.nameSv : item.nameEn
-  }
+  const t = useTranslations('reports.printLabels')
+  const tc = useTranslations('common')
+  const getName = (item: { nameSv: string; nameEn: string } | null) =>
+    item ? localizedName(item, locale) || null : null
 
   return (
     <div style={{ fontSize: '0.875rem' }}>
@@ -330,7 +331,7 @@ function VersionDetails({
               marginBottom: '0.25rem',
             }}
           >
-            {locale === 'sv' ? 'Beskrivning' : 'Description'}
+            {t('description')}
           </div>
           <div style={{ whiteSpace: 'pre-wrap', color: '#4b5563' }}>
             {version.description}
@@ -346,7 +347,7 @@ function VersionDetails({
               marginBottom: '0.25rem',
             }}
           >
-            {locale === 'sv' ? 'Acceptanskriterier' : 'Acceptance Criteria'}
+            {t('acceptanceCriteria')}
           </div>
           <div style={{ whiteSpace: 'pre-wrap', color: '#4b5563' }}>
             {version.acceptanceCriteria}
@@ -364,53 +365,37 @@ function VersionDetails({
       >
         {getName(version.category) && (
           <MetadataItem
-            label={locale === 'sv' ? 'Kategori' : 'Category'}
+            label={t('category')}
             value={getName(version.category)}
           />
         )}
         {getName(version.type) && (
-          <MetadataItem
-            label={locale === 'sv' ? 'Typ' : 'Type'}
-            value={getName(version.type)}
-          />
+          <MetadataItem label={t('type')} value={getName(version.type)} />
         )}
         {getName(version.qualityCharacteristic) && (
           <MetadataItem
-            label={
-              locale === 'sv' ? 'Kvalitetsegenskap' : 'Quality Characteristic'
-            }
+            label={t('qualityCharacteristic')}
             value={getName(version.qualityCharacteristic)}
           />
         )}
         {getName(version.riskLevel) && (
           <MetadataItem
-            label={locale === 'sv' ? 'Risknivå' : 'Risk Level'}
+            label={t('riskLevel')}
             value={getName(version.riskLevel)}
           />
         )}
         <MetadataItem
-          label={locale === 'sv' ? 'Kräver testning' : 'Requires Testing'}
-          value={
-            version.requiresTesting
-              ? locale === 'sv'
-                ? 'Ja'
-                : 'Yes'
-              : locale === 'sv'
-                ? 'Nej'
-                : 'No'
-          }
+          label={t('requiresTesting')}
+          value={version.requiresTesting ? tc('yes') : tc('no')}
         />
         {version.createdBy && (
-          <MetadataItem
-            label={locale === 'sv' ? 'Skapad av' : 'Created By'}
-            value={version.createdBy}
-          />
+          <MetadataItem label={t('createdBy')} value={version.createdBy} />
         )}
       </div>
       {version.normReferences.length > 0 && (
         <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontWeight: 600, color: '#374151' }}>
-            {locale === 'sv' ? 'Referenser' : 'References'}:{' '}
+            {t('references')}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
             {version.normReferences.map(r => r.name).join(', ')}
@@ -420,12 +405,10 @@ function VersionDetails({
       {version.scenarios.length > 0 && (
         <div style={{ marginTop: '0.25rem' }}>
           <span style={{ fontWeight: 600, color: '#374151' }}>
-            {locale === 'sv' ? 'Scenarier' : 'Scenarios'}:{' '}
+            {t('scenarios')}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
-            {version.scenarios
-              .map(s => (locale === 'sv' ? s.nameSv : s.nameEn))
-              .join(', ')}
+            {version.scenarios.map(s => localizedName(s, locale)).join(', ')}
           </span>
         </div>
       )}
@@ -523,6 +506,8 @@ function MetadataChangesSection({
 }: {
   section: Extract<ReportSection, { type: 'metadata-changes' }>
 }) {
+  const t = useTranslations('reports.printLabels')
+  const headers = [t('metadataField'), t('metadataPrevious'), t('metadataNew')]
   return (
     <div className="print-avoid-break" style={{ marginBottom: '1rem' }}>
       <h3
@@ -533,7 +518,7 @@ function MetadataChangesSection({
           marginBottom: '0.5rem',
         }}
       >
-        Metadata Changes
+        {t('metadataChanges')}
       </h3>
       <table
         style={{
@@ -544,7 +529,7 @@ function MetadataChangesSection({
       >
         <thead>
           <tr>
-            {['Field', 'Previous', 'New'].map(h => (
+            {headers.map(h => (
               <th
                 key={h}
                 style={{
@@ -662,20 +647,23 @@ function TimelineDate({
   entry: TimelineEntryData
   locale: string
 }) {
+  const t = useTranslations('reports.printLabels')
   const dates: string[] = []
   if (entry.publishedAt)
     dates.push(
-      `Published: ${new Date(entry.publishedAt).toLocaleDateString(locale)}`,
+      `${t('timelinePublished')}: ${new Date(entry.publishedAt).toLocaleDateString(locale)}`,
     )
   if (entry.archivedAt)
     dates.push(
-      `Archived: ${new Date(entry.archivedAt).toLocaleDateString(locale)}`,
+      `${t('timelineArchived')}: ${new Date(entry.archivedAt).toLocaleDateString(locale)}`,
     )
   if (entry.editedAt)
-    dates.push(`Edited: ${new Date(entry.editedAt).toLocaleDateString(locale)}`)
+    dates.push(
+      `${t('timelineEdited')}: ${new Date(entry.editedAt).toLocaleDateString(locale)}`,
+    )
   if (dates.length === 0)
     dates.push(
-      `Created: ${new Date(entry.createdAt).toLocaleDateString(locale)}`,
+      `${t('timelineCreated')}: ${new Date(entry.createdAt).toLocaleDateString(locale)}`,
     )
   return <span>{dates.join(' · ')}</span>
 }
@@ -840,10 +828,9 @@ function DeviationSummarySection({
   section: Extract<ReportSection, { type: 'deviation-summary' }>
 }) {
   const locale = section.locale
+  const t = useTranslations('reports.printLabels')
   const riskName = section.riskLevel
-    ? locale === 'sv'
-      ? section.riskLevel.nameSv
-      : section.riskLevel.nameEn
+    ? localizedName(section.riskLevel, locale)
     : null
   return (
     <div
@@ -863,7 +850,7 @@ function DeviationSummarySection({
           color: '#92400e',
         }}
       >
-        {locale === 'sv' ? 'Avvikelse' : 'Deviation'}
+        {t('deviation')}
       </h3>
       {riskName && (
         <div style={{ marginBottom: '0.75rem' }}>
@@ -874,7 +861,7 @@ function DeviationSummarySection({
               color: '#6b7280',
             }}
           >
-            {locale === 'sv' ? 'Risknivå:' : 'Risk Level:'}
+            {t('riskLevelValue')}
           </span>{' '}
           <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
             {riskName}
@@ -890,7 +877,7 @@ function DeviationSummarySection({
             marginBottom: '0.25rem',
           }}
         >
-          {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
+          {t('motivation')}
         </div>
         <div
           style={{
@@ -912,8 +899,7 @@ function DeviationSummarySection({
       >
         {section.createdBy && (
           <span>
-            {locale === 'sv' ? 'Inlämnad av:' : 'Submitted by:'}{' '}
-            {section.createdBy} ·{' '}
+            {t('submittedBy')} {section.createdBy} ·{' '}
           </span>
         )}
         {new Date(section.createdAt).toLocaleDateString(locale)}
@@ -974,6 +960,7 @@ function SuggestionCard({
   item: SuggestionReportItem
   locale: string
 }) {
+  const t = useTranslations('reports.printLabels')
   const isResolved = item.resolvedAt !== null
 
   return (
@@ -1023,7 +1010,7 @@ function SuggestionCard({
               fontSize: '0.75rem',
             }}
           >
-            {locale === 'sv' ? 'Motivering:' : 'Motivation:'}
+            {t('motivation')}
           </div>
           <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>
             {item.resolutionMotivation}

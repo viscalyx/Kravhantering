@@ -100,7 +100,7 @@ describe('PackageEditPanel', () => {
       screen.getByRole('button', { name: 'common.help: package.name' }),
     )
 
-    expect(screen.getByText('package.nameHelp')).toBeInTheDocument()
+    expect(screen.getByText('package.help.name')).toBeInTheDocument()
   })
 
   it('submits the updated package information', async () => {

@@ -170,6 +170,7 @@ export async function createScenario(
     ownerId?: number | null
   },
 ): Promise<ScenarioRow> {
+  const now = new Date()
   const rows = await db.query(
     `
       INSERT INTO usage_scenarios (
@@ -177,7 +178,9 @@ export async function createScenario(
         name_en,
         description_sv,
         description_en,
-        owner_id
+        owner_id,
+        created_at,
+        updated_at
       )
       OUTPUT
         inserted.id AS id,
@@ -188,7 +191,7 @@ export async function createScenario(
         inserted.owner_id AS ownerId,
         inserted.created_at AS createdAt,
         inserted.updated_at AS updatedAt
-      VALUES (@0, @1, @2, @3, @4)
+      VALUES (@0, @1, @2, @3, @4, @5, @5)
     `,
     [
       data.nameSv,
@@ -196,6 +199,7 @@ export async function createScenario(
       data.descriptionSv ?? null,
       data.descriptionEn ?? null,
       data.ownerId ?? null,
+      now,
     ],
   )
   return {

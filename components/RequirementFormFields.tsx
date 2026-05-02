@@ -263,7 +263,7 @@ export default function RequirementFormFields({
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={fid('areaId')}>
             {t('area')}
-            {areaRequired ? ' *' : ''}
+            {areaRequired ? <span aria-hidden="true"> *</span> : null}
           </label>
           {helpButton(fid('areaId'), t('area'))}
         </div>
@@ -296,7 +296,7 @@ export default function RequirementFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={fid('description')}>
-            {t('description')} *
+            {t('description')} <span aria-hidden="true">*</span>
           </label>
           {helpButton(fid('description'), t('description'))}
         </div>
@@ -466,7 +466,7 @@ export default function RequirementFormFields({
               className="text-sm font-medium"
               htmlFor={fid('verificationMethod')}
             >
-              {t('verificationMethod')} *
+              {t('verificationMethod')} <span aria-hidden="true">*</span>
             </label>
             {helpButton(fid('verificationMethod'), t('verificationMethod'))}
           </div>

@@ -82,7 +82,7 @@ jobs:
           # BUILD_TARGET=local-prod, otherwise it throws on startup.
           NODE_ENV=production BUILD_TARGET=local-prod \
             nohup npx dotenv -e .env.prodlike -- \
-            npx next start --hostname 0.0.0.0 --port 3001 \
+            npx next start --hostname 127.0.0.1 --port 3001 \
             > test-results/app.log 2>&1 &
           echo $! > test-results/app.pid
 

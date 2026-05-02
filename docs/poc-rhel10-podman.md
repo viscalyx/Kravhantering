@@ -24,8 +24,9 @@ Denna sida beskriver vilka förutsättningar som måste finnas på en
 Proof-of-Concept (PoC) av Kravhantering. PoC:n återanvänder de
 befintliga Compose-filerna för **Keycloak** (IdP) och
 **Microsoft SQL Server** men kör dem i **Podman** istället för Docker.
-Applikationen startas med `npm run start:prodlike` (Next.js på port
-`3001`).
+Applikationen byggs med `npm run build:local-prod`, rensas med
+`npm prune --omit=dev` och startas därefter med
+`npm run start:prodlike-pruned` (Next.js på port `3001`).
 
 Målet är en så **låg-privilegierad** uppsättning som möjligt:
 
@@ -549,7 +550,8 @@ arbetet enligt följande:
     nyckeln ska ägas av `kravhantering`, inte av root.
   - [9. Justeringar i `.env.prodlike`](#9-justeringar-i-envprodlike).
   - Avsnitt 10 "Starta PoC:n" (`podman compose …`,
-    `npm run start:prodlike`).
+    `npm run build:local-prod`, `npm prune --omit=dev` och
+    `npm run start:prodlike-pruned`).
   - [11. Persistens efter omstart …](#11-persistens-efter-omstart-frivilligt-men-rekommenderat)
     — `systemd --user`-units (Quadlet) som ägs av användaren.
 
@@ -986,12 +988,13 @@ bakom proxyn. Någon `docker-compose.sqlserver.override.yml` behövs
 > kräver root. (CSR-/nyckelgenereringen i 8.1 körs däremot som
 > `kravhantering` — se användarrutan i det avsnittet.)
 
-Next.js startas av `npm run start:prodlike` som lyssnar på
-`0.0.0.0:3001`. För PoC:n ska den bindningen ändras till loopback
-genom att starta servern bakom en proxy och **inte** exponera `3001`
-i firewalld. Detta görs enklast genom att starta Next med
-`--hostname 127.0.0.1`-flaggan i en wrapper, eller — minst kod —
-genom att bara låta firewalld blockera `3001/tcp`.
+Det rekommenderade `npm run start:prodlike-pruned` och det enklare
+`npm run start:prodlike` startar Next.js på `127.0.0.1:3001` genom
+`--hostname 127.0.0.1`. Behåll den loopback-bindningen, eller använd
+en liten wrapper som alltid skickar samma flagga, så att endast den
+lokala nginx-proxyn når appen på port `3001`. Firewalld-reglerna som
+inte öppnar `3001/tcp` är fortsatt defense-in-depth, men de är inte den
+primära spärren för app-porten.
 
 Installera `nginx` (görs i avsnitt 2) och låt den lyssna på `443`.
 Endast `nginx` får binda låga portar; det görs via systemets
@@ -1008,7 +1011,7 @@ server {
     ssl_certificate     /etc/pki/tls/certs/kravhantering.crt;
     ssl_certificate_key /etc/pki/tls/private/kravhantering.key;
 
-    # Next.js (start:prodlike → port 3001 på loopback)
+    # Next.js (start:prodlike-pruned/start:prodlike → port 3001 på loopback)
     location / {
         proxy_pass         http://127.0.0.1:3001;
         proxy_http_version 1.1;
@@ -1264,8 +1267,8 @@ vid förnyelse om policyn tillåter — annars generera en ny.
 
 > **Användare:** Kör som `kravhantering` (växla först enligt
 > [3.1](#31-byta-till-kravhantering-användaren)). `.env.prodlike.local`
-> ligger i användarens projektkatalog och läses av `npm run
-> start:prodlike` i nästa avsnitt.
+> ligger i användarens projektkatalog och exporteras i skalet före
+> bygg och start i nästa avsnitt.
 
 Standard-`.env.prodlike` pekar på `localhost:3001` och
 `localhost:8080`. För PoC:n måste alla URL:er bytas till PoC-värdens
@@ -1282,21 +1285,23 @@ AUTH_SESSION_COOKIE_PASSWORD=<openssl rand -base64 48>
 MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 ```
 
-> **Viktigt — `.env.prodlike.local` läses inte automatiskt av `npm
-> run start:prodlike`.** Skriptet laddar bara `.env.prodlike` via
-> `dotenv -e` (se `package.json` → `start:prodlike` /
-> `build:local-prod`). `dotenv-cli` skriver dessutom **inte** över
-> variabler som redan finns i processens miljö, så lösningen är att
-> först exportera innehållet i `.env.prodlike.local` till skalet och
-> sedan köra `npm run start:prodlike` — då vinner de exporterade
-> värdena över `.env.prodlike`. Det körs i avsnitt
+> **Viktigt — `.env.prodlike.local` läses inte automatiskt av
+> prodlike-skripten.** `build:local-prod` och `start:prodlike` laddar
+> bara `.env.prodlike` via `dotenv -e`, medan
+> `start:prodlike-pruned` laddar `.env.prodlike` via Node
+> `--env-file` för att slippa dev-beroendena `dotenv-cli` och
+> `cross-env`. Lösningen är att först exportera innehållet i
+> `.env.prodlike.local` till skalet och sedan bygga/starta — då vinner
+> de exporterade värdena över `.env.prodlike`. Det körs i avsnitt
 > [10. Starta PoC:n](#10-starta-poc) med:
 >
 > ```bash
 > set -a
 > . ./.env.prodlike.local
 > set +a
-> npm run start:prodlike
+> npm run build:local-prod
+> npm prune --omit=dev
+> npm run start:prodlike-pruned
 > ```
 >
 > Bekräfta att override:n slog igenom med `echo
@@ -1307,12 +1312,15 @@ MSSQL_SA_PASSWORD=<starkt slumpat lösenord>
 > ger `ERR_CONNECTION_REFUSED` på en PoC-värd där `8080` inte är
 > exponerat.
 >
-> **Alternativ: lägg på `.env.prodlike.local` med `dotenv-cli`.**
+> **Alternativ utan rensning: lägg på `.env.prodlike.local` med
+> `dotenv-cli`.**
 > `dotenv-cli` (binären `dotenv` / `npx dotenv`) finns redan som
 > dev-beroende i `package.json` och installeras automatiskt av
-> `npm ci` i avsnitt 10 — inget extra `npm install` behövs. Eftersom
-> `dotenv-cli` inte skriver över redan satta variabler kan du i stället
-> för `set -a; . ./.env.prodlike.local; set +a` köra:
+> `npm ci` i avsnitt 10 — inget extra `npm install` behövs. Den tas
+> däremot bort av `npm prune --omit=dev`, så använd bara detta för en
+> snabb start utan rensningssteget. Eftersom `dotenv-cli` inte skriver
+> över redan satta variabler kan du i stället för
+> `set -a; . ./.env.prodlike.local; set +a` köra:
 >
 > ```bash
 > npx dotenv -e .env.prodlike.local -- npm run start:prodlike
@@ -1333,7 +1341,7 @@ startats (t.ex. vid en senare justering av JSON-filen) krävs en
 `podman compose -f docker-compose.idp.yml restart idp` för att den nya
 realmen ska läsas in.
 
-Klienten som körs av `npm run start:prodlike` heter
+Klienten som används av prodlike-skripten heter
 `kravhantering-local` och har som standard följande fält pekande mot
 `http://localhost:3001` / `http://127.0.0.1:3001`:
 
@@ -1384,7 +1392,7 @@ Förväntat resultat (med `POC_HOST=kravhantering.poc.example.com`):
 
 Den andra klienten i realmen, `kravhantering-app`, används av
 dev-servern på port 3000/3001 och behöver inte ändras för PoC:n
-— `start:prodlike` använder bara `kravhantering-local`.
+— prodlike-skripten använder bara `kravhantering-local`.
 
 **MCP-klienten (`kravhantering-mcp`) fungerar i prodlike utan
 extra åtgärder.** Den är en service-account-klient
@@ -1415,8 +1423,9 @@ podman compose -f docker-compose.idp.yml restart idp
 
 > **Användare:** Kör som `kravhantering` (växla först enligt
 > [3.1](#31-byta-till-kravhantering-användaren)). Rootless `podman
-> compose`, `npm ci` och `npm run start:prodlike` ska alla köras av
-> PoC-användaren — inte med `sudo`.
+> compose`, `npm ci`, `npm run build:local-prod`,
+> `npm prune --omit=dev` och `npm run start:prodlike-pruned` ska alla
+> köras av PoC-användaren — inte med `sudo`.
 
 Som `kravhantering`-användaren, från repots rotkatalog
 (`~/Kravhantering/`, klonad i [7.1](#71-klona-projektet-i-kravhantering-användarens-hemkatalog)):
@@ -1443,12 +1452,11 @@ podman compose -f docker-compose.idp.yml \
 npm run db:wait
 npm run db:setup
 
-# 5. Bygg och starta applikationen
-#    Ladda först .env.prodlike.local i skalet — npm run start:prodlike
-#    läser bara .env.prodlike via dotenv -e, och dotenv-cli skriver
-#    inte över variabler som redan finns i processens miljö. Genom att
-#    exportera .env.prodlike.local först vinner PoC-URL:erna i
-#    avsnitt 9 över localhost-värdena i .env.prodlike.
+# 5. Ladda PoC-värdena i skalet innan både build och start.
+#    build:local-prod läser bara .env.prodlike via dotenv -e, och
+#    start:prodlike-pruned läser .env.prodlike via Node --env-file.
+#    Genom att exportera .env.prodlike.local först vinner PoC-URL:erna
+#    i avsnitt 9 över localhost-värdena i .env.prodlike.
 set -a
 . ./.env.prodlike.local
 set +a
@@ -1456,19 +1464,26 @@ set +a
 # Snabbverifiering — ska peka på https://<POC_HOST>/auth/..., inte localhost:8080
 echo "AUTH_OIDC_ISSUER_URL=$AUTH_OIDC_ISSUER_URL"
 
-npm run start:prodlike
+# 6. Bygg med hela beroendeträdet. Dev-beroenden behövs vid build.
+npm run build:local-prod
 
-# Alternativ till `set -a` + `npm run start:prodlike` ovan: använd
-# dotenv-cli (redan installerat av `npm ci` ovan) för att lägga
-# .env.prodlike.local ovanpå .env.prodlike. Effekten är densamma —
-# välj en av varianterna.
-#
-#   npx dotenv -e .env.prodlike.local -- npm run start:prodlike
+# 7. Gör runtime mer lik produktion genom att ta bort devDependencies.
+#    Kör `npm ci` igen först om du behöver bygga om efter detta steg.
+npm prune --omit=dev
+
+# 8. Starta den redan byggda appen utan dev-beroenden eller ombyggnad.
+npm run start:prodlike-pruned
 ```
 
 Verifiera utifrån att `https://kravhantering.poc.example.com` svarar,
 och att `curl -v telnet://<publik-ip>:1433` och `:8080` ger
 *connection refused*.
+
+`start:prodlike-pruned` förutsätter alltså att
+`npm run build:local-prod` redan har lyckats. Om du vill göra en snabb
+engångskörning utan att rensa bort dev-beroenden kan du fortfarande
+använda `npx dotenv -e .env.prodlike.local -- npm run start:prodlike`
+före `npm prune --omit=dev`.
 
 ## 11. Persistens efter omstart (frivilligt men rekommenderat)
 
@@ -1492,11 +1507,11 @@ loginctl show-user kravhantering -p Linger
 ```
 
 Skapa katalogen för user-units (finns inte som standard) och därefter
-unit-filen `~/.config/systemd/user/kravhantering-app.service`. Den kör
-samma `npx dotenv -e .env.prodlike.local -- npm run start:prodlike`-rad
-som i avsnitt 10, men under systemd så att processen lever vidare när
-SSH-sessionen avslutas och startas om automatiskt vid serverns
-omstart (förutsatt att linger är aktivt):
+unit-filen `~/.config/systemd/user/kravhantering-app.service`. Den
+läser `.env.prodlike.local` via `EnvironmentFile` och kör den redan
+byggda, rensade runtime:n med `npm run start:prodlike-pruned`, så att
+processen lever vidare när SSH-sessionen avslutas och startas om
+automatiskt vid serverns omstart (förutsatt att linger är aktivt):
 
 ```bash
 mkdir --parents ~/.config/systemd/user
@@ -1514,16 +1529,16 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=%h/Kravhantering
-# /usr/bin krävs för npx/node (alternatives → node-24, se 2.2),
+# /usr/bin krävs för npm/node (alternatives → node-24, se 2.2),
 # %h/.local/bin krävs för podman-compose (se 7.1).
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-# dotenv-cli (devDependency, installeras av `npm ci` i avsnitt 10)
-# lägger .env.prodlike.local ovanpå .env.prodlike — exakt samma
-# layering som det manuella start-kommandot i avsnitt 10.
-ExecStart=/usr/bin/npx dotenv -e .env.prodlike.local -- npm run start:prodlike
+# PoC-värdena läses in före `start:prodlike-pruned`, vars Node
+# --env-file=.env.prodlike sedan lämnar redan satta variabler orörda.
+EnvironmentFile=%h/Kravhantering/.env.prodlike.local
+ExecStart=/usr/bin/npm run start:prodlike-pruned
 Restart=on-failure
 RestartSec=5
-# Förläng om appen behöver längre tid för första bygget.
+# Förläng om appen behöver längre tid att bli redo vid kallstart.
 TimeoutStartSec=120
 
 [Install]
@@ -1540,6 +1555,11 @@ systemctl --user enable --now kravhantering-app.service
 systemctl --user status kravhantering-app.service
 journalctl --user -u kravhantering-app.service -f
 ```
+
+Vid ny kod eller ändrade produktionsberoenden: stoppa tjänsten, kör
+`npm ci`, `npm run build:local-prod` och `npm prune --omit=dev` igen,
+och starta därefter om `kravhantering-app.service`. Själva
+systemd-tjänsten bygger inte om appen.
 
 > **Notis (loggar):** Om `journalctl --user -u kravhantering-app.service`
 > svarar med `No journal files were opened due to insufficient
@@ -1836,8 +1856,9 @@ detta dokument:
   `loginctl enable-linger` (avsnitt 3).
 - CSR-generering, inläggning av utfärdat cert + chain, samt trust
   av intern root-CA via `update-ca-trust` (avsnitt 8.1).
-- Compose-overrides, `podman compose up -d`, databasmigrering/seed
-  och start av appen via `npm run start:prodlike` (avsnitt 7, 10).
+- Compose-overrides, `podman compose up -d`, databasmigrering/seed,
+  `npm run build:local-prod`, `npm prune --omit=dev` och start av
+  appen via `npm run start:prodlike-pruned` (avsnitt 7, 10).
 - nginx-konfiguration som reverse proxy mot `127.0.0.1:3001` /
   `127.0.0.1:8080` (avsnitt 8) och valfria Quadlet-tjänster för
   persistens (avsnitt 11).

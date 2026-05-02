@@ -98,7 +98,7 @@ export default function PackageEditPanel({
       aria-controls={`help-${field}`}
       aria-expanded={openHelp.has(field)}
       aria-label={`${tc('help')}: ${label}`}
-      className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center text-secondary-400 transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:hover:text-primary-400"
       onClick={() => toggleHelp(field)}
       type="button"
     >
@@ -192,11 +192,11 @@ export default function PackageEditPanel({
       <div>
         <div className="mb-1 flex items-center gap-1.5">
           <label className="block text-sm font-medium" htmlFor="pkg-name">
-            {t('name')} *
+            {t('name')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('pkg-name', t('name'))}
         </div>
-        {helpPanel('nameHelp', 'pkg-name')}
+        {helpPanel('help.name', 'pkg-name')}
         <input
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
           id="pkg-name"
@@ -211,7 +211,7 @@ export default function PackageEditPanel({
       <div>
         <div className="mb-1 flex items-center gap-1.5">
           <label className="block text-sm font-medium" htmlFor="pkg-unique-id">
-            {t('uniqueId')} *
+            {t('uniqueId')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('pkg-unique-id', t('uniqueId'))}
         </div>

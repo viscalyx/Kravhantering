@@ -104,8 +104,12 @@ describe('RequirementAreasClient', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
       'common.create',
     )
-    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/area\.name/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /area\.prefix/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /area\.name/ }),
+    ).toBeInTheDocument()
   })
 
   it('submits create form and refreshes list', async () => {
@@ -116,10 +120,10 @@ describe('RequirementAreasClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/area\.prefix/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.prefix/ }), {
       target: { value: 'NEW' },
     })
-    fireEvent.change(screen.getByLabelText(/area\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'New Area' },
     })
 
@@ -155,10 +159,16 @@ describe('RequirementAreasClient', () => {
       'common.edit',
     )
     expect(
-      (screen.getByLabelText(/area\.prefix/) as HTMLInputElement).value,
+      (
+        screen.getByRole('textbox', {
+          name: /area\.prefix/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('INT')
+    expect(screen.getByRole('textbox', { name: /area\.prefix/ })).toBeDisabled()
     expect(
-      (screen.getByLabelText(/area\.name/) as HTMLInputElement).value,
+      (screen.getByRole('textbox', { name: /area\.name/ }) as HTMLInputElement)
+        .value,
     ).toBe('Integration')
   })
 
@@ -173,7 +183,7 @@ describe('RequirementAreasClient', () => {
     })
     fireEvent.click(editButtons[0])
 
-    fireEvent.change(screen.getByLabelText(/area\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'Updated' },
     })
 
@@ -192,6 +202,63 @@ describe('RequirementAreasClient', () => {
         expect.objectContaining({ method: 'PUT' }),
       )
     })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect((putCall?.[1] as RequestInit).body).toBe(
+      JSON.stringify({
+        description: 'System integration',
+        name: 'Updated',
+        ownerId: 1,
+      }),
+    )
+  })
+
+  it('sends ownerId null when an existing owner is cleared', async () => {
+    render(<RequirementAreasClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Integration')).toBeInTheDocument()
+    })
+
+    const editButtons = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    fireEvent.click(editButtons[0])
+
+    fireEvent.change(screen.getByRole('combobox', { name: /area\.owner/ }), {
+      target: { value: '' },
+    })
+
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url === '/api/requirement-areas') {
+        return okJson({ areas: sampleAreas })
+      }
+      if (url === '/api/owners') return okJson({ owners: sampleOwners })
+      return okJson({ id: 1 })
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/requirement-areas/1',
+        expect.objectContaining({ method: 'PUT' }),
+      )
+    })
+    const putCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        url === '/api/requirement-areas/1' &&
+        (init as RequestInit | undefined)?.method === 'PUT',
+    )
+    expect((putCall?.[1] as RequestInit).body).toBe(
+      JSON.stringify({
+        description: 'System integration',
+        name: 'Integration',
+        ownerId: null,
+      }),
+    )
   })
 
   it('closes form when cancel is clicked', async () => {
@@ -201,10 +268,12 @@ describe('RequirementAreasClient', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: /area\.prefix/ }),
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
-    expect(screen.queryByLabelText(/area\.prefix/)).toBeNull()
+    expect(screen.queryByRole('textbox', { name: /area\.prefix/ })).toBeNull()
   })
 
   it('calls delete with confirm and refreshes', async () => {
@@ -308,15 +377,15 @@ describe('RequirementAreasClient', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
 
-    fireEvent.change(screen.getByLabelText(/area\.prefix/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.prefix/ }), {
       target: { value: 'FAIL' },
     })
-    fireEvent.change(screen.getByLabelText(/area\.name/), {
+    fireEvent.change(screen.getByRole('textbox', { name: /area\.name/ }), {
       target: { value: 'Failing Area' },
     })
 
-    fetchMock.mockImplementation(async (url: string) => {
-      if (url === '/api/requirement-areas' && !url.includes('/'))
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/requirement-areas' && !init?.method)
         return okJson({ areas: sampleAreas })
       if (url === '/api/owners') return okJson({ owners: sampleOwners })
       return {
@@ -334,9 +403,15 @@ describe('RequirementAreasClient', () => {
       )
     })
 
-    expect(screen.getByLabelText(/area\.prefix/)).toBeInTheDocument()
     expect(
-      (screen.getByLabelText(/area\.prefix/) as HTMLInputElement).value,
+      screen.getByRole('textbox', { name: /area\.prefix/ }),
+    ).toBeInTheDocument()
+    expect(
+      (
+        screen.getByRole('textbox', {
+          name: /area\.prefix/,
+        }) as HTMLInputElement
+      ).value,
     ).toBe('FAIL')
   })
 })

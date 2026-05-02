@@ -3,10 +3,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useConfirmModal } from '@/components/ConfirmModal'
+import { useCallback, useRef, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
+import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import {
@@ -41,186 +41,148 @@ interface PackageItemStatus {
   sortOrder: number
 }
 
+interface PackageItemStatusForm {
+  color: string
+  descriptionEn: string
+  descriptionSv: string
+  nameEn: string
+  nameSv: string
+  sortOrder: string
+}
+
 interface LinkedItem {
   packageId: number
   packageName: string
   requirementCount: number
 }
 
+const getInitialForm = (): PackageItemStatusForm => ({
+  color: '#3b82f6',
+  descriptionEn: '',
+  descriptionSv: '',
+  nameEn: '',
+  nameSv: '',
+  sortOrder: '0',
+})
+
+const toForm = (status: PackageItemStatus): PackageItemStatusForm => ({
+  color: status.color,
+  descriptionEn: status.descriptionEn ?? '',
+  descriptionSv: status.descriptionSv ?? '',
+  nameEn: status.nameEn,
+  nameSv: status.nameSv,
+  sortOrder: String(status.sortOrder),
+})
+
+const toPayload = (form: PackageItemStatusForm) => ({
+  nameSv: form.nameSv,
+  nameEn: form.nameEn,
+  descriptionSv: form.descriptionSv || null,
+  descriptionEn: form.descriptionEn || null,
+  color: form.color,
+  sortOrder: Number(form.sortOrder) || 0,
+})
+
+const inputClassName =
+  'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
 export default function PackageItemStatusesClient() {
   useHelpContent(PACKAGE_ITEM_STATUSES_HELP)
   const t = useTranslations('packageItemStatusAdmin')
   const tc = useTranslations('common')
   const locale = useLocale()
-
-  const getName = (s: PackageItemStatus) =>
-    locale === 'sv' ? s.nameSv : s.nameEn
-
-  const getDescription = (s: PackageItemStatus) =>
-    locale === 'sv' ? s.descriptionSv : s.descriptionEn
-
-  const [statuses, setStatuses] = useState<PackageItemStatus[]>([])
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
   const [linkedItems, setLinkedItems] = useState<LinkedItem[]>([])
+  const [linkedItemsError, setLinkedItemsError] = useState<string | null>(null)
   const [linkedItemsLoading, setLinkedItemsLoading] = useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [form, setForm] = useState({
-    nameSv: '',
-    nameEn: '',
-    descriptionSv: '',
-    descriptionEn: '',
-    color: '#3b82f6',
-    sortOrder: '0',
-  })
-
-  const fetchStatuses = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await apiFetch('/api/package-item-statuses')
-      if (res.ok)
-        setStatuses(
-          ((await res.json()) as { statuses?: PackageItemStatus[] }).statuses ??
-            [],
-        )
-    } catch {
-      setStatuses([])
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   const linkedItemRequestId = useRef(0)
 
-  const fetchLinkedItems = useCallback(async (statusId: number) => {
-    const requestId = ++linkedItemRequestId.current
-    setLinkedItemsLoading(true)
-    try {
-      const res = await apiFetch(`/api/package-item-statuses/${statusId}`)
-      if (res.ok && requestId === linkedItemRequestId.current) {
-        const data = (await res.json()) as {
+  const getName = (status: PackageItemStatus) =>
+    locale === 'sv' ? status.nameSv : status.nameEn
+
+  const getDescription = (status: PackageItemStatus) =>
+    locale === 'sv' ? status.descriptionSv : status.descriptionEn
+
+  const controller = useCrudAdminResource<
+    PackageItemStatus,
+    PackageItemStatusForm
+  >({
+    confirmDeleteMessage: tc('confirm'),
+    endpoint: '/api/package-item-statuses',
+    errorMessage: tc('error'),
+    getInitialForm,
+    listKey: 'statuses',
+    toForm,
+    toPayload,
+  })
+
+  const fetchLinkedItems = useCallback(
+    async (statusId: number) => {
+      const requestId = ++linkedItemRequestId.current
+      setLinkedItemsLoading(true)
+      setLinkedItemsError(null)
+      try {
+        const response = await apiFetch(
+          `/api/package-item-statuses/${statusId}`,
+        )
+        if (requestId !== linkedItemRequestId.current) return
+        if (!response.ok) {
+          setLinkedItemsError(tc('error'))
+          return
+        }
+        const data = (await response.json()) as {
           linkedItems?: LinkedItem[]
         }
+        if (requestId !== linkedItemRequestId.current) return
         setLinkedItems(data.linkedItems ?? [])
+      } catch {
+        if (requestId === linkedItemRequestId.current) {
+          setLinkedItemsError(tc('error'))
+        }
+      } finally {
+        if (requestId === linkedItemRequestId.current) {
+          setLinkedItemsLoading(false)
+        }
       }
-    } catch {
-      // Keep existing linkedItems on error
-    } finally {
-      if (requestId === linkedItemRequestId.current) {
-        setLinkedItemsLoading(false)
-      }
-    }
-  }, [])
+    },
+    [tc],
+  )
 
-  useEffect(() => {
-    fetchStatuses()
-  }, [fetchStatuses])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      const method = editId ? 'PUT' : 'POST'
-      const url = editId
-        ? `/api/package-item-statuses/${editId}`
-        : '/api/package-item-statuses'
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nameSv: form.nameSv,
-          nameEn: form.nameEn,
-          descriptionSv: form.descriptionSv || null,
-          descriptionEn: form.descriptionEn || null,
-          color: form.color,
-          sortOrder: Number(form.sortOrder) || 0,
-        }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        setSubmitError(
-          (body as { error?: string } | null)?.error ?? tc('error'),
-        )
-        return
-      }
-      setSubmitError(null)
-      setShowForm(false)
-      setEditId(null)
-      setLinkedItems([])
-      setForm({
-        nameSv: '',
-        nameEn: '',
-        descriptionSv: '',
-        descriptionEn: '',
-        color: '#3b82f6',
-        sortOrder: '0',
-      })
-      fetchStatuses()
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleEdit = (s: PackageItemStatus) => {
-    setSubmitError(null)
-    setEditId(s.id)
+  const openCreate = () => {
     setLinkedItems([])
-    setForm({
-      nameSv: s.nameSv,
-      nameEn: s.nameEn,
-      descriptionSv: s.descriptionSv ?? '',
-      descriptionEn: s.descriptionEn ?? '',
-      color: s.color,
-      sortOrder: String(s.sortOrder),
-    })
-    setShowForm(true)
-    fetchLinkedItems(s.id)
+    setLinkedItemsError(null)
+    controller.openCreate()
   }
 
-  const { confirm } = useConfirmModal()
+  const openEdit = (status: PackageItemStatus) => {
+    controller.openEdit(status)
+    void fetchLinkedItems(status.id)
+  }
 
-  const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
-    if (
-      !(await confirm({
-        message: tc('confirm'),
-        variant: 'danger',
-        icon: 'caution',
-        anchorEl,
-      }))
-    )
-      return
-    setDeleteError(null)
-    setDeletingId(id)
-    try {
-      const res = await apiFetch(`/api/package-item-statuses/${id}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        setDeleteError(
-          (body as { error?: string } | null)?.error ?? tc('error'),
-        )
-        return
-      }
-      if (editId === id) {
-        setEditId(null)
-        setShowForm(false)
-        setLinkedItems([])
-      }
-      fetchStatuses()
-    } catch {
-      setDeleteError(tc('error'))
-    } finally {
-      setDeletingId(null)
+  const closeForm = () => {
+    setLinkedItems([])
+    setLinkedItemsError(null)
+    controller.closeForm()
+  }
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    const didSubmit = await controller.submit(event)
+    if (didSubmit) {
+      setLinkedItems([])
+      setLinkedItemsError(null)
     }
   }
 
-  const inputClass =
-    'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+  const remove = async (id: number, anchorEl?: HTMLElement) => {
+    const didRemove = await controller.remove(id, anchorEl)
+    if (didRemove && controller.editId === id) {
+      setLinkedItems([])
+      setLinkedItemsError(null)
+    }
+  }
+
+  const isSortOrderLocked =
+    controller.editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
+    controller.editId === DEVIATED_PACKAGE_ITEM_STATUS_ID
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -236,21 +198,8 @@ export default function PackageItemStatusesClient() {
               name: 'create button',
               priority: 350,
             })}
-            disabled={submitting}
-            onClick={() => {
-              setSubmitError(null)
-              setShowForm(true)
-              setEditId(null)
-              setLinkedItems([])
-              setForm({
-                nameSv: '',
-                nameEn: '',
-                descriptionSv: '',
-                descriptionEn: '',
-                color: '#3b82f6',
-                sortOrder: '0',
-              })
-            }}
+            disabled={controller.submitting}
+            onClick={openCreate}
             type="button"
           >
             <Plus aria-hidden="true" className="h-4 w-4" />
@@ -258,8 +207,23 @@ export default function PackageItemStatusesClient() {
           </button>
         </div>
 
+        {(controller.deleteError || controller.loadError) && (
+          <p
+            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+            role="alert"
+            {...devMarker({
+              context: 'package-item-statuses',
+              name: 'error banner',
+              priority: 340,
+              value: controller.deleteError ? 'delete-error' : 'load-error',
+            })}
+          >
+            {controller.deleteError ?? controller.loadError}
+          </p>
+        )}
+
         <AnimatePresence>
-          {showForm && (
+          {controller.showForm && (
             <motion.div
               animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6"
@@ -274,28 +238,32 @@ export default function PackageItemStatusesClient() {
                     context: 'package-item-statuses',
                     name: 'crud form',
                     priority: 340,
-                    value: editId ? 'edit' : 'create',
+                    value: controller.editId ? 'edit' : 'create',
                   })}
-                  onSubmit={handleSubmit}
+                  onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">
-                    {editId ? t('editItem') : t('newItem')}
+                    {controller.editId ? t('editItem') : t('newItem')}
                   </h2>
                   <div>
                     <label
                       className="block text-sm font-medium mb-1"
                       htmlFor="pis-name-sv"
                     >
-                      {t('name')} (SV) *
+                      {t('name')} (SV) <span aria-hidden="true">*</span>
                     </label>
                     <input
-                      className={inputClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="pis-name-sv"
-                      onChange={e =>
-                        setForm(f => ({ ...f, nameSv: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          nameSv: event.target.value,
+                        }))
                       }
                       required
-                      value={form.nameSv}
+                      value={controller.form.nameSv}
                     />
                     <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                       {t('nameSvHelp')}
@@ -306,16 +274,20 @@ export default function PackageItemStatusesClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="pis-name-en"
                     >
-                      {t('name')} (EN) *
+                      {t('name')} (EN) <span aria-hidden="true">*</span>
                     </label>
                     <input
-                      className={inputClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="pis-name-en"
-                      onChange={e =>
-                        setForm(f => ({ ...f, nameEn: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          nameEn: event.target.value,
+                        }))
                       }
                       required
-                      value={form.nameEn}
+                      value={controller.form.nameEn}
                     />
                     <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                       {t('nameEnHelp')}
@@ -329,13 +301,17 @@ export default function PackageItemStatusesClient() {
                       {t('definition')} (SV)
                     </label>
                     <textarea
-                      className={inputClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="pis-definition-sv"
-                      onChange={e =>
-                        setForm(f => ({ ...f, descriptionSv: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          descriptionSv: event.target.value,
+                        }))
                       }
                       rows={2}
-                      value={form.descriptionSv}
+                      value={controller.form.descriptionSv}
                     />
                     <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                       {t('definitionSvHelp')}
@@ -349,13 +325,17 @@ export default function PackageItemStatusesClient() {
                       {t('definition')} (EN)
                     </label>
                     <textarea
-                      className={inputClass}
+                      className={inputClassName}
+                      disabled={controller.submitting}
                       id="pis-definition-en"
-                      onChange={e =>
-                        setForm(f => ({ ...f, descriptionEn: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          descriptionEn: event.target.value,
+                        }))
                       }
                       rows={2}
-                      value={form.descriptionEn}
+                      value={controller.form.descriptionEn}
                     />
                     <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                       {t('definitionEnHelp')}
@@ -366,33 +346,41 @@ export default function PackageItemStatusesClient() {
                       className="block text-sm font-medium mb-1"
                       htmlFor="pis-color"
                     >
-                      {t('color')} *
+                      {t('color')} <span aria-hidden="true">*</span>
                     </label>
                     <div className="flex items-center gap-3">
                       <input
                         className="h-10 w-14 rounded-lg border cursor-pointer"
+                        disabled={controller.submitting}
                         id="pis-color"
-                        onChange={e =>
-                          setForm(f => ({ ...f, color: e.target.value }))
+                        onChange={event =>
+                          controller.setForm(previousForm => ({
+                            ...previousForm,
+                            color: event.target.value,
+                          }))
                         }
                         required
                         type="color"
-                        value={form.color}
+                        value={controller.form.color}
                       />
                       <input
                         aria-label={t('colorHex')}
-                        className={inputClass}
-                        onChange={e =>
-                          setForm(f => ({ ...f, color: e.target.value }))
+                        className={inputClassName}
+                        disabled={controller.submitting}
+                        onChange={event =>
+                          controller.setForm(previousForm => ({
+                            ...previousForm,
+                            color: event.target.value,
+                          }))
                         }
                         pattern="^#[0-9a-fA-F]{6}$"
                         placeholder="#3b82f6"
-                        value={form.color}
+                        value={controller.form.color}
                       />
                       <span
                         aria-hidden="true"
                         className="inline-block w-6 h-6 rounded-full shrink-0 border"
-                        style={{ backgroundColor: form.color }}
+                        style={{ backgroundColor: controller.form.color }}
                       />
                     </div>
                   </div>
@@ -404,21 +392,20 @@ export default function PackageItemStatusesClient() {
                       {t('sortOrder')}
                     </label>
                     <input
-                      className={`${inputClass}${editId === DEFAULT_PACKAGE_ITEM_STATUS_ID || editId === DEVIATED_PACKAGE_ITEM_STATUS_ID ? ' opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={
-                        editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
-                        editId === DEVIATED_PACKAGE_ITEM_STATUS_ID
-                      }
+                      className={`${inputClassName}${isSortOrderLocked ? ' opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={controller.submitting || isSortOrderLocked}
                       id="pis-sort-order"
                       min="0"
-                      onChange={e =>
-                        setForm(f => ({ ...f, sortOrder: e.target.value }))
+                      onChange={event =>
+                        controller.setForm(previousForm => ({
+                          ...previousForm,
+                          sortOrder: event.target.value,
+                        }))
                       }
                       type="number"
-                      value={form.sortOrder}
+                      value={controller.form.sortOrder}
                     />
-                    {(editId === DEFAULT_PACKAGE_ITEM_STATUS_ID ||
-                      editId === DEVIATED_PACKAGE_ITEM_STATUS_ID) && (
+                    {isSortOrderLocked && (
                       <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
                         {t('sortOrderLocked')}
                       </p>
@@ -427,34 +414,31 @@ export default function PackageItemStatusesClient() {
                   <div className="flex gap-3">
                     <button
                       className="btn-primary"
-                      disabled={submitting}
+                      disabled={controller.submitting}
                       type="submit"
                     >
-                      {submitting ? tc('saving') : tc('save')}
+                      {controller.submitting ? tc('saving') : tc('save')}
                     </button>
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                      disabled={submitting}
-                      onClick={() => {
-                        setShowForm(false)
-                        setLinkedItems([])
-                      }}
+                      disabled={controller.submitting}
+                      onClick={closeForm}
                       type="button"
                     >
                       {tc('cancel')}
                     </button>
                   </div>
-                  {submitError && (
+                  {controller.formError && (
                     <p
                       className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
                       role="alert"
                     >
-                      {submitError}
+                      {controller.formError}
                     </p>
                   )}
                 </form>
 
-                {editId && (
+                {controller.editId && (
                   <div>
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
                       {t('linkedPackages')}
@@ -462,6 +446,13 @@ export default function PackageItemStatusesClient() {
                     {linkedItemsLoading ? (
                       <p className="text-sm text-secondary-500 dark:text-secondary-400">
                         {tc('loading')}
+                      </p>
+                    ) : linkedItemsError ? (
+                      <p
+                        className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
+                        role="alert"
+                      >
+                        {linkedItemsError}
                       </p>
                     ) : linkedItems.length === 0 ? (
                       <p className="text-sm text-secondary-500 dark:text-secondary-400">
@@ -507,22 +498,7 @@ export default function PackageItemStatusesClient() {
           )}
         </AnimatePresence>
 
-        {deleteError && (
-          <p
-            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-            role="alert"
-            {...devMarker({
-              context: 'package-item-statuses',
-              name: 'error banner',
-              priority: 340,
-              value: 'delete-error',
-            })}
-          >
-            {deleteError}
-          </p>
-        )}
-
-        {loading ? (
+        {controller.loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">
             {tc('loading')}
           </p>
@@ -549,24 +525,27 @@ export default function PackageItemStatusesClient() {
                 </tr>
               </thead>
               <tbody>
-                {statuses.map(s => (
+                {controller.items.map(status => (
                   <tr
                     className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={s.id}
+                    key={status.id}
                   >
                     <td className="py-3 px-4">
-                      <StatusBadge color={s.color} label={getName(s)} />
+                      <StatusBadge
+                        color={status.color}
+                        label={getName(status)}
+                      />
                     </td>
-                    <td className="py-3 px-4 font-medium">{getName(s)}</td>
+                    <td className="py-3 px-4 font-medium">{getName(status)}</td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate">
-                      {getDescription(s) || '—'}
+                      {getDescription(status) || '—'}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {s.sortOrder}
+                      {status.sortOrder}
                     </td>
                     <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
                       {t('itemCount', {
-                        count: s.linkedItemCount,
+                        count: status.linkedItemCount,
                       })}
                     </td>
                     <td className="py-3 px-4 text-right">
@@ -577,8 +556,8 @@ export default function PackageItemStatusesClient() {
                           name: 'table action',
                           value: 'edit',
                         })}
-                        disabled={submitting}
-                        onClick={() => handleEdit(s)}
+                        disabled={controller.submitting}
+                        onClick={() => openEdit(status)}
                         type="button"
                       >
                         {tc('edit')}
@@ -590,13 +569,18 @@ export default function PackageItemStatusesClient() {
                           name: 'table action',
                           value: 'delete',
                         })}
-                        disabled={submitting || deletingId === s.id}
-                        onClick={e =>
-                          handleDelete(s.id, e.currentTarget as HTMLElement)
+                        disabled={
+                          controller.submitting ||
+                          controller.deletingIds.has(status.id)
                         }
+                        onClick={event => {
+                          void remove(status.id, event.currentTarget)
+                        }}
                         type="button"
                       >
-                        {deletingId === s.id ? tc('loading') : tc('delete')}
+                        {controller.deletingIds.has(status.id)
+                          ? tc('loading')
+                          : tc('delete')}
                       </button>
                     </td>
                   </tr>

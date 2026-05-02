@@ -5,8 +5,8 @@
 
 This suite verifies the administration centre entrypoint: navigating from the
 requirements catalogue, persisting terminology and column-order changes across
-page reloads, touch-target accessibility on mobile, and locale-specific page
-loads.
+page reloads, preserving the selected reference-data tab in browser history,
+touch-target accessibility on mobile, and locale-specific page loads.
 
 ## Data Model
 
@@ -16,6 +16,7 @@ loads.
 | `DEFAULT_TERMINOLOGY_PAYLOAD` | Full set of UI terminology keys with default values. Reset via `PUT /api/admin/terminology`. |
 | `DEFAULT_COLUMN_PAYLOAD` | Full set of requirement list column defaults. Reset via `PUT /api/admin/requirement-columns`. |
 | `[data-testid^="admin-column-row-"]` | Drag-sortable column rows in the Kolumner tab. |
+| `?tab=referenceData` | URL state that restores the Reference data tab when browser history returns to `/admin`. |
 <!-- markdownlint-enable MD013 -->
 
 ## Overview Flowchart
@@ -33,11 +34,16 @@ flowchart TD
     I --> J[Assert renamed label in thead]
     J --> K[Assert column order]
     K --> L[Reload and re-assert]
-    B -- mobile touch targets --> M[Open /sv/admin on mobile]
-    M --> N[Assert all interactive elements ≥ 44×44px]
-    B -- locale load --> O[Open /locale/admin]
-    O --> P[Assert h1 in correct language]
-    A --> Q[afterEach: resetAdminSettings]
+    B -- browser back --> M[Open /en/admin]
+    M --> N[Click Reference data]
+    N --> O[Open /en/requirement-areas]
+    O --> P[Go back]
+    P --> Q[Assert /en/admin?tab=referenceData]
+    B -- mobile touch targets --> R[Open /sv/admin on mobile]
+    R --> S[Assert all interactive elements ≥ 44×44px]
+    B -- locale load --> T[Open /locale/admin]
+    T --> U[Assert h1 in correct language]
+    A --> V[afterEach: resetAdminSettings]
 ```
 
 ## Test Setup
@@ -156,6 +162,45 @@ flowchart LR
     D -- No --> E[Click Flytta upp on first mismatch]
     E --> C
     D -- Yes --> F[Save]
+```
+
+## browser back returns to the reference data tab after opening a reference page
+
+### Purpose: Browser History
+
+Confirms that selecting Reference data is stored in the admin URL before a
+reference-data card opens a child admin page. Browser Back should therefore
+return to `/en/admin?tab=referenceData`, with the Reference data tab still
+selected.
+
+### Step-by-Step Flow: Browser History
+
+1. Navigate to `/en/admin`.
+1. Click the "Reference data" tab.
+1. Assert the URL is `/en/admin?tab=referenceData`.
+1. Click the "Areas" reference-data card.
+1. Assert the URL is `/en/requirement-areas`.
+1. Use browser Back.
+1. Assert the URL is `/en/admin?tab=referenceData`.
+1. Assert the Reference data tab has `aria-selected="true"` and the Areas card
+   is visible.
+
+### Sequence Diagram: Browser History
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant A as AdminPage
+    participant R as RequirementAreasPage
+
+    U->>A: Open /en/admin
+    U->>A: Click Reference data
+    Note over A: ✓ URL = /en/admin?tab=referenceData
+    U->>R: Click Areas card
+    Note over R: ✓ URL = /en/requirement-areas
+    U->>A: Browser Back
+    Note over A: ✓ URL = /en/admin?tab=referenceData
+    Note over A: ✓ Reference data tab selected
 ```
 
 ## keeps admin tabs and actions usable on mobile

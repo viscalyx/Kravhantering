@@ -99,11 +99,11 @@ export default function NormReferenceFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-name`}>
-            {t('name')} *
+            {t('name')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('name', t('name'))}
         </div>
-        {helpPanel('nameHelp', 'name')}
+        {helpPanel('help.name', 'name')}
         <input
           className={fieldClass}
           id={`${idPrefix}-name`}
@@ -115,7 +115,7 @@ export default function NormReferenceFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-type`}>
-            {t('type')} *
+            {t('type')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('type', t('type'))}
         </div>
@@ -141,7 +141,7 @@ export default function NormReferenceFormFields({
             className="text-sm font-medium"
             htmlFor={`${idPrefix}-reference`}
           >
-            {t('reference')} *
+            {t('reference')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('reference', t('reference'))}
         </div>
@@ -176,7 +176,7 @@ export default function NormReferenceFormFields({
       <div>
         <div className="flex items-center gap-1.5 mb-1">
           <label className="text-sm font-medium" htmlFor={`${idPrefix}-issuer`}>
-            {t('issuer')} *
+            {t('issuer')} <span aria-hidden="true">*</span>
           </label>
           {helpButton('issuer', t('issuer'))}
         </div>

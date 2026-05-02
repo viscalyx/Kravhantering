@@ -3,11 +3,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import StatusBadge from '@/components/StatusBadge'
+import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -46,6 +47,16 @@ interface NormReference {
   version: string | null
 }
 
+interface NormReferenceForm {
+  issuer: string
+  name: string
+  normReferenceId: string
+  reference: string
+  type: string
+  uri: string
+  version: string
+}
+
 interface LinkedRequirement {
   description: string | null
   id: number
@@ -58,15 +69,35 @@ interface LinkedRequirement {
 
 const DESCRIPTION_TRUNCATE = 80
 
-const INITIAL_FORM = {
-  normReferenceId: '',
-  name: '',
-  type: '',
-  reference: '',
-  version: '',
+const getInitialForm = (): NormReferenceForm => ({
   issuer: '',
+  name: '',
+  normReferenceId: '',
+  reference: '',
+  type: '',
   uri: '',
-}
+  version: '',
+})
+
+const toForm = (normReference: NormReference): NormReferenceForm => ({
+  issuer: normReference.issuer,
+  name: normReference.name,
+  normReferenceId: normReference.normReferenceId,
+  reference: normReference.reference,
+  type: normReference.type,
+  uri: normReference.uri ?? '',
+  version: normReference.version ?? '',
+})
+
+const toPayload = (form: NormReferenceForm) => ({
+  normReferenceId: form.normReferenceId || undefined,
+  name: form.name,
+  type: form.type,
+  reference: form.reference,
+  version: form.version || null,
+  issuer: form.issuer,
+  uri: form.uri || null,
+})
 
 export default function NormReferencesClient() {
   useHelpContent(NORM_REFERENCES_HELP)
@@ -75,83 +106,65 @@ export default function NormReferencesClient() {
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
   const locale = useLocale()
-
-  const [normReferences, setNormReferences] = useState<NormReference[]>([])
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState<number | null>(null)
+  const { confirm } = useConfirmModal()
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
   const [linkedRequirementsLoading, setLinkedRequirementsLoading] =
     useState(false)
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set())
   const [linkedRequirementsError, setLinkedRequirementsError] = useState(false)
-  const [normListError, setNormListError] = useState(false)
-  const [form, setForm] = useState({
-    normReferenceId: '',
-    name: '',
-    type: '',
-    reference: '',
-    version: '',
-    issuer: '',
-    uri: '',
+  const linkedReqRequestId = useRef(0)
+
+  const controller = useCrudAdminResource<NormReference, NormReferenceForm>({
+    confirmDeleteMessage: tc('confirm'),
+    endpoint: '/api/norm-references',
+    errorMessage: tc('error'),
+    getInitialForm,
+    listKey: 'normReferences',
+    toForm,
+    toPayload,
   })
 
   const isFormDirty = () => {
-    return Object.keys(INITIAL_FORM).some(
+    const editedNormReference = controller.editId
+      ? controller.items.find(
+          normReference => normReference.id === controller.editId,
+        )
+      : null
+    const initialForm = editedNormReference
+      ? toForm(editedNormReference)
+      : getInitialForm()
+
+    return Object.keys(initialForm).some(
       key =>
-        form[key as keyof typeof form] !==
-        (editId
-          ? (normReferences.find(nr => nr.id === editId)?.[
-              key as keyof NormReference
-            ] ?? '')
-          : INITIAL_FORM[key as keyof typeof INITIAL_FORM]),
+        controller.form[key as keyof NormReferenceForm] !==
+        initialForm[key as keyof NormReferenceForm],
     )
   }
 
-  const normReqRequestId = useRef(0)
-
-  const fetchNormReferences = useCallback(async () => {
-    const requestId = ++normReqRequestId.current
-    setLoading(true)
-    setNormListError(false)
-    try {
-      const res = await apiFetch('/api/norm-references')
-      if (requestId !== normReqRequestId.current) return
-      if (res.ok) {
-        setNormReferences(
-          ((await res.json()) as { normReferences?: NormReference[] })
-            .normReferences ?? [],
-        )
-      } else {
-        setNormListError(true)
-      }
-    } catch {
-      if (requestId === normReqRequestId.current) {
-        setNormListError(true)
-      }
-    } finally {
-      if (requestId === normReqRequestId.current) {
-        setLoading(false)
-      }
+  const guardUnsavedChanges = async (
+    anchorEl?: HTMLElement | null,
+  ): Promise<boolean> => {
+    if (controller.showForm && isFormDirty()) {
+      return confirm({
+        anchorEl: anchorEl ?? undefined,
+        icon: 'caution',
+        message: tc('unsavedChangesConfirm'),
+        variant: 'danger',
+      })
     }
-  }, [])
-
-  const linkedReqRequestId = useRef(0)
+    return true
+  }
 
   const fetchLinkedRequirements = useCallback(async (id: number) => {
     const requestId = ++linkedReqRequestId.current
     setLinkedRequirementsLoading(true)
     setLinkedRequirementsError(false)
     try {
-      const res = await apiFetch(`/api/norm-references/${id}`)
+      const response = await apiFetch(`/api/norm-references/${id}`)
       if (requestId !== linkedReqRequestId.current) return
-      if (res.ok) {
-        const data = (await res.json()) as {
+      if (response.ok) {
+        const data = (await response.json()) as {
           linkedRequirements?: LinkedRequirement[]
         }
         setLinkedRequirements(data.linkedRequirements ?? [])
@@ -169,130 +182,49 @@ export default function NormReferencesClient() {
     }
   }, [])
 
-  useEffect(() => {
-    fetchNormReferences()
-  }, [fetchNormReferences])
-
-  const resetForm = () => {
-    setForm({ ...INITIAL_FORM })
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setFormError(null)
-    try {
-      const method = editId ? 'PUT' : 'POST'
-      const url = editId
-        ? `/api/norm-references/${editId}`
-        : '/api/norm-references'
-      const res = await apiFetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          normReferenceId: form.normReferenceId || undefined,
-          name: form.name,
-          type: form.type,
-          reference: form.reference,
-          version: form.version || null,
-          issuer: form.issuer,
-          uri: form.uri || null,
-        }),
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        setFormError((body as { error?: string } | null)?.error ?? tc('error'))
-        return
-      }
-      setFormError(null)
-      setShowForm(false)
-      setEditId(null)
-      setLinkedRequirements([])
-      resetForm()
-      fetchNormReferences()
-    } catch {
-      setFormError(tc('error'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const { confirm } = useConfirmModal()
-
-  const guardUnsavedChanges = async (
-    anchorEl?: HTMLElement | null,
-  ): Promise<boolean> => {
-    if (showForm && isFormDirty()) {
-      return confirm({
-        message: tc('unsavedChangesConfirm'),
-        variant: 'danger',
-        icon: 'caution',
-        anchorEl: anchorEl ?? undefined,
-      })
-    }
-    return true
-  }
-
-  const handleEdit = async (nr: NormReference, anchorEl?: HTMLElement) => {
+  const openCreate = async (anchorEl?: HTMLElement | null) => {
     if (!(await guardUnsavedChanges(anchorEl))) return
-    setEditId(nr.id)
-    setFormError(null)
     setLinkedRequirements([])
-    setForm({
-      normReferenceId: nr.normReferenceId,
-      name: nr.name,
-      type: nr.type,
-      reference: nr.reference,
-      version: nr.version ?? '',
-      issuer: nr.issuer,
-      uri: nr.uri ?? '',
-    })
-    setShowForm(true)
-    fetchLinkedRequirements(nr.id)
+    setLinkedRequirementsError(false)
+    controller.openCreate()
   }
 
-  const handleDelete = async (id: number, anchorEl?: HTMLElement) => {
-    if (
-      !(await confirm({
-        message: tc('confirm'),
-        variant: 'danger',
-        icon: 'caution',
-        anchorEl,
-      }))
-    )
-      return
-    setDeleteError(null)
-    setDeletingIds(prev => new Set(prev).add(id))
-    try {
-      const res = await apiFetch(`/api/norm-references/${id}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        setDeleteError(
-          (body as { error?: string } | null)?.error ?? tc('error'),
-        )
-        return
-      }
-      setEditId(prev => {
-        if (prev === id) {
-          setShowForm(false)
-          setLinkedRequirements([])
-          resetForm()
-          return null
-        }
-        return prev
-      })
-      fetchNormReferences()
-    } catch {
-      setDeleteError(tc('error'))
-    } finally {
-      setDeletingIds(prev => {
-        const next = new Set(prev)
-        next.delete(id)
-        return next
-      })
+  const openEdit = async (
+    normReference: NormReference,
+    anchorEl?: HTMLElement | null,
+  ) => {
+    if (!(await guardUnsavedChanges(anchorEl))) return
+    setLinkedRequirements([])
+    setLinkedRequirementsError(false)
+    controller.openEdit(normReference)
+    void fetchLinkedRequirements(normReference.id)
+  }
+
+  const closeForm = async (anchorEl?: HTMLElement | null) => {
+    if (!(await guardUnsavedChanges(anchorEl))) return
+    setLinkedRequirements([])
+    setLinkedRequirementsError(false)
+    controller.closeForm()
+  }
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    const didSubmit = await controller.submit(event)
+    if (didSubmit) {
+      setLinkedRequirements([])
+      setLinkedRequirementsError(false)
     }
+  }
+
+  const remove = async (id: number, anchorEl?: HTMLElement) => {
+    const didRemove = await controller.remove(id, anchorEl)
+    if (didRemove && controller.editId === id) {
+      setLinkedRequirements([])
+      setLinkedRequirementsError(false)
+    }
+  }
+
+  const setFormField = (field: string, value: string) => {
+    controller.setForm(previousForm => ({ ...previousForm, [field]: value }))
   }
 
   const truncateDescription = (text: string | null) => {
@@ -315,14 +247,9 @@ export default function NormReferencesClient() {
               name: 'create button',
               priority: 350,
             })}
-            disabled={submitting}
-            onClick={async e => {
-              if (!(await guardUnsavedChanges(e.currentTarget))) return
-              setShowForm(true)
-              setEditId(null)
-              setLinkedRequirements([])
-              setFormError(null)
-              resetForm()
+            disabled={controller.submitting}
+            onClick={event => {
+              void openCreate(event.currentTarget)
             }}
             type="button"
           >
@@ -332,7 +259,7 @@ export default function NormReferencesClient() {
         </div>
 
         <AnimatePresence>
-          {showForm && (
+          {controller.showForm && (
             <motion.div
               animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6"
@@ -347,49 +274,41 @@ export default function NormReferencesClient() {
                     context: 'normReferences',
                     name: 'crud form',
                     priority: 340,
-                    value: editId ? 'edit' : 'create',
+                    value: controller.editId ? 'edit' : 'create',
                   })}
-                  onSubmit={handleSubmit}
+                  onSubmit={submit}
                 >
                   <h2 className="text-lg font-semibold">
-                    {editId ? t('editNormReference') : t('newNormReference')}
+                    {controller.editId
+                      ? t('editNormReference')
+                      : t('newNormReference')}
                   </h2>
                   <NormReferenceFormFields
-                    form={form}
+                    form={controller.form}
                     idPrefix="nr"
-                    onSetField={(field, value) =>
-                      setForm(f => ({ ...f, [field]: value }))
-                    }
+                    onSetField={setFormField}
                   />
-                  {formError && (
+                  {controller.formError && (
                     <p
                       className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
                       role="alert"
                     >
-                      {formError}
+                      {controller.formError}
                     </p>
                   )}
                   <div className="flex gap-3">
                     <button
                       className="btn-primary"
-                      disabled={submitting}
+                      disabled={controller.submitting}
                       type="submit"
                     >
-                      {submitting ? tc('saving') : tc('save')}
+                      {controller.submitting ? tc('saving') : tc('save')}
                     </button>
                     <button
                       className="px-4 py-2.5 rounded-xl border text-sm min-h-11 min-w-11 text-secondary-700 dark:text-secondary-300 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 transition-all duration-200"
-                      disabled={submitting}
-                      onClick={async (
-                        e: React.MouseEvent<HTMLButtonElement>,
-                      ) => {
-                        const anchorEl = e.currentTarget
-                        if (!(await guardUnsavedChanges(anchorEl))) return
-                        setShowForm(false)
-                        setEditId(null)
-                        setLinkedRequirements([])
-                        setFormError(null)
-                        resetForm()
+                      disabled={controller.submitting}
+                      onClick={event => {
+                        void closeForm(event.currentTarget)
                       }}
                       type="button"
                     >
@@ -398,7 +317,7 @@ export default function NormReferencesClient() {
                   </div>
                 </form>
 
-                {editId && (
+                {controller.editId && (
                   <div>
                     <h3 className="text-sm font-medium text-secondary-600 dark:text-secondary-400 mb-3">
                       {t('linkedRequirements')}
@@ -438,46 +357,46 @@ export default function NormReferencesClient() {
                             </tr>
                           </thead>
                           <tbody>
-                            {linkedRequirements.map(req => {
+                            {linkedRequirements.map(requirement => {
                               const truncated = truncateDescription(
-                                req.description,
+                                requirement.description,
                               )
                               const isTruncated =
-                                truncated !== req.description &&
-                                req.description != null
+                                truncated !== requirement.description &&
+                                requirement.description != null
                               return (
                                 <tr
                                   className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                                  key={req.id}
+                                  key={`${requirement.id}-v${requirement.versionNumber}`}
                                 >
                                   <td className="py-2 px-3 font-medium">
                                     <Link
                                       className="inline-flex items-center min-h-[44px] min-w-[44px] rounded text-primary-700 dark:text-primary-300 hover:underline focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus:outline-none"
-                                      href={`/requirements/${req.uniqueId}/${req.versionNumber}`}
+                                      href={`/requirements/${requirement.uniqueId}/${requirement.versionNumber}`}
                                     >
-                                      {req.uniqueId}
+                                      {requirement.uniqueId}
                                     </Link>
                                   </td>
                                   <td
                                     className="py-2 px-3 text-secondary-600 dark:text-secondary-400 max-w-xs"
                                     title={
                                       isTruncated
-                                        ? (req.description ?? undefined)
+                                        ? (requirement.description ?? undefined)
                                         : undefined
                                     }
                                   >
                                     {truncated ?? '—'}
                                   </td>
                                   <td className="py-2 px-3 text-secondary-600 dark:text-secondary-400">
-                                    v{req.versionNumber}
+                                    v{requirement.versionNumber}
                                   </td>
                                   <td className="py-2 px-3">
                                     <StatusBadge
-                                      color={req.statusColor}
+                                      color={requirement.statusColor}
                                       label={
                                         (locale === 'sv'
-                                          ? req.statusNameSv
-                                          : req.statusNameEn) ?? ''
+                                          ? requirement.statusNameSv
+                                          : requirement.statusNameEn) ?? ''
                                       }
                                     />
                                   </td>
@@ -495,7 +414,7 @@ export default function NormReferencesClient() {
           )}
         </AnimatePresence>
 
-        {deleteError && (
+        {(controller.deleteError || controller.loadError) && (
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
             role="alert"
@@ -503,23 +422,14 @@ export default function NormReferencesClient() {
               context: 'normReferences',
               name: 'error banner',
               priority: 340,
-              value: 'delete-error',
+              value: controller.deleteError ? 'delete-error' : 'load-error',
             })}
           >
-            {deleteError}
+            {controller.deleteError ?? controller.loadError}
           </p>
         )}
 
-        {normListError && (
-          <p
-            className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
-            role="alert"
-          >
-            {tc('error')}
-          </p>
-        )}
-
-        {loading ? (
+        {controller.loading ? (
           <p className="text-secondary-600 dark:text-secondary-400">
             {tc('loading')}
           </p>
@@ -552,7 +462,7 @@ export default function NormReferencesClient() {
                 </tr>
               </thead>
               <tbody>
-                {normReferences.length === 0 && (
+                {controller.items.length === 0 && (
                   <tr>
                     <td
                       className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
@@ -562,54 +472,56 @@ export default function NormReferencesClient() {
                     </td>
                   </tr>
                 )}
-                {normReferences.map(nr => (
+                {controller.items.map(normReference => (
                   <tr
                     className="border-b last:border-b-0 hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={nr.id}
+                    key={normReference.id}
                   >
                     <td className="py-3 px-4 font-mono text-xs font-medium text-secondary-700 dark:text-secondary-300">
-                      {nr.normReferenceId}
+                      {normReference.normReferenceId}
                     </td>
-                    <td className="py-3 px-4 font-medium">{nr.name}</td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {nr.type}
-                    </td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {nr.reference}
+                    <td className="py-3 px-4 font-medium">
+                      {normReference.name}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {nr.version ?? '—'}
+                      {normReference.type}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {nr.issuer}
+                      {normReference.reference}
+                    </td>
+                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                      {normReference.version ?? '—'}
+                    </td>
+                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
+                      {normReference.issuer}
                     </td>
                     <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
                       {t('requirementCount', {
-                        count: nr.linkedRequirementCount,
+                        count: normReference.linkedRequirementCount,
                       })}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       <button
-                        aria-label={`${tc('edit')} ${nr.name || nr.normReferenceId}`}
+                        aria-label={`${tc('edit')} ${normReference.name || normReference.normReferenceId}`}
                         className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
                           context: 'normReferences',
                           name: 'table action',
                           value: 'edit',
                         })}
-                        disabled={submitting}
-                        onClick={e =>
-                          handleEdit(nr, e.currentTarget as HTMLElement)
-                        }
+                        disabled={controller.submitting}
+                        onClick={event => {
+                          void openEdit(normReference, event.currentTarget)
+                        }}
                         type="button"
                       >
                         {tc('edit')}
                       </button>
                       <button
                         aria-label={
-                          deletingIds.has(nr.id)
-                            ? `${tc('loading')} ${nr.name || nr.normReferenceId}`
-                            : `${tc('delete')} ${nr.name || nr.normReferenceId}`
+                          controller.deletingIds.has(normReference.id)
+                            ? `${tc('loading')} ${normReference.name || normReference.normReferenceId}`
+                            : `${tc('delete')} ${normReference.name || normReference.normReferenceId}`
                         }
                         className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
@@ -617,13 +529,18 @@ export default function NormReferencesClient() {
                           name: 'table action',
                           value: 'delete',
                         })}
-                        disabled={submitting || deletingIds.has(nr.id)}
-                        onClick={e =>
-                          handleDelete(nr.id, e.currentTarget as HTMLElement)
+                        disabled={
+                          controller.submitting ||
+                          controller.deletingIds.has(normReference.id)
                         }
+                        onClick={event => {
+                          void remove(normReference.id, event.currentTarget)
+                        }}
                         type="button"
                       >
-                        {deletingIds.has(nr.id) ? tc('loading') : tc('delete')}
+                        {controller.deletingIds.has(normReference.id)
+                          ? tc('loading')
+                          : tc('delete')}
                       </button>
                     </td>
                   </tr>

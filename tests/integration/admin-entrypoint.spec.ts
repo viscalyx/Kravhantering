@@ -232,6 +232,30 @@ for (const { name, viewport } of viewportVariants) {
         .toEqual(targetOrder)
     })
 
+    if (name === 'desktop') {
+      test('browser back returns to the reference data tab after opening a reference page', async ({
+        page,
+      }) => {
+        await page.goto('/en/admin')
+
+        const referenceDataTab = page.getByRole('tab', {
+          name: 'Reference data',
+        })
+        await referenceDataTab.click()
+        await expect(page).toHaveURL('/en/admin?tab=referenceData')
+
+        await page.getByTestId('reference-data-card-areas').click()
+        await expect(page).toHaveURL('/en/requirement-areas')
+
+        await page.goBack()
+        await expect(page).toHaveURL('/en/admin?tab=referenceData')
+        await expect(referenceDataTab).toHaveAttribute('aria-selected', 'true')
+        await expect(
+          page.getByTestId('reference-data-card-areas'),
+        ).toBeVisible()
+      })
+    }
+
     if (name === 'mobile') {
       test('keeps admin tabs and actions usable on mobile', async ({
         page,
