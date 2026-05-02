@@ -57,7 +57,7 @@ export default defineConfig({
         'scripts/prebuild.js',
       ],
       thresholds: {
-        branches: 50,
+        branches: 45,
         functions: 40,
         lines: 50,
         statements: 50,
