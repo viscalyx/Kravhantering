@@ -5,10 +5,12 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { useConfirmModal } from '@/components/ConfirmModal'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 
 const QUALITY_CHARACTERISTICS_HELP: HelpContent = {
   sections: [
@@ -79,6 +81,7 @@ export default function QualityCharacteristicsClient() {
   const locale = useLocale()
   const { confirm } = useConfirmModal()
   const [types, setTypes] = useState<Type[]>([])
+  const [typesError, setTypesError] = useState<string>()
   const [typesLoading, setTypesLoading] = useState(true)
   const errorFallback = tc('error')
 
@@ -134,13 +137,18 @@ export default function QualityCharacteristicsClient() {
         const response = await apiFetch('/api/requirement-types')
         if (cancelled) return
         if (!response.ok) {
-          await presentMutationError({ message: errorFallback })
+          const message = (await readResponseMessage(response)) ?? errorFallback
+          setTypesError(message)
+          await presentMutationError({ message })
           return
         }
+        setTypesError(undefined)
         setTypes(((await response.json()) as { types?: Type[] }).types ?? [])
       } catch (error) {
         if (!cancelled) {
-          await presentMutationError({ message: getCaughtErrorMessage(error) })
+          const message = getCaughtErrorMessage(error)
+          setTypesError(message)
+          await presentMutationError({ message })
         }
       } finally {
         if (!cancelled) setTypesLoading(false)
@@ -164,6 +172,29 @@ export default function QualityCharacteristicsClient() {
         : true),
   )
   const loading = controller.loading || typesLoading
+  const renderEditActionContent = (iconClassName: string) =>
+    controller.submitting ? (
+      <span className="px-1 text-xs font-medium">{tc('saving')}</span>
+    ) : (
+      <>
+        <Pencil aria-hidden="true" className={iconClassName} />
+        <span className="sr-only">{tc('edit')}</span>
+      </>
+    )
+  const renderDeleteActionContent = (
+    isDeleting: boolean,
+    iconClassName: string,
+  ) =>
+    controller.submitting ? (
+      <span className="px-1 text-xs font-medium">{tc('saving')}</span>
+    ) : isDeleting ? (
+      <span className="px-1 text-xs font-medium">{tc('deleting')}</span>
+    ) : (
+      <>
+        <Trash2 aria-hidden="true" className={iconClassName} />
+        <span className="sr-only">{tc('delete')}</span>
+      </>
+    )
 
   return (
     <div className="section-padding px-4 sm:px-6 lg:px-8">
@@ -220,12 +251,12 @@ export default function QualityCharacteristicsClient() {
                 {controller.editId ? tc('edit') : tc('create')}
               </h2>
               <div>
-                <label
-                  className="block text-sm font-medium mb-1"
+                <FieldLabelWithHelp
+                  help={t('nameSvHelp')}
                   htmlFor="qc-name-sv"
-                >
-                  {t('name')} (SV) <span aria-hidden="true">*</span>
-                </label>
+                  label={`${t('name')} (SV)`}
+                  required
+                />
                 <input
                   className={inputClassName}
                   disabled={controller.submitting}
@@ -241,12 +272,12 @@ export default function QualityCharacteristicsClient() {
                 />
               </div>
               <div>
-                <label
-                  className="block text-sm font-medium mb-1"
+                <FieldLabelWithHelp
+                  help={t('nameEnHelp')}
                   htmlFor="qc-name-en"
-                >
-                  {t('name')} (EN) <span aria-hidden="true">*</span>
-                </label>
+                  label={`${t('name')} (EN)`}
+                  required
+                />
                 <input
                   className={inputClassName}
                   disabled={controller.submitting}
@@ -262,12 +293,12 @@ export default function QualityCharacteristicsClient() {
                 />
               </div>
               <div>
-                <label
-                  className="block text-sm font-medium mb-1"
+                <FieldLabelWithHelp
+                  help={t('typeHelp')}
                   htmlFor="qc-type"
-                >
-                  {t('type')} <span aria-hidden="true">*</span>
-                </label>
+                  label={t('type')}
+                  required
+                />
                 <select
                   className={inputClassName}
                   disabled={controller.submitting}
@@ -291,12 +322,11 @@ export default function QualityCharacteristicsClient() {
                 </select>
               </div>
               <div>
-                <label
-                  className="block text-sm font-medium mb-1"
+                <FieldLabelWithHelp
+                  help={t('parentHelp')}
                   htmlFor="qc-parent"
-                >
-                  {t('parent')}
-                </label>
+                  label={t('parent')}
+                />
                 <select
                   className={inputClassName}
                   disabled={controller.submitting}
@@ -342,6 +372,13 @@ export default function QualityCharacteristicsClient() {
           <p className="text-secondary-600 dark:text-secondary-400">
             {tc('loading')}
           </p>
+        ) : typesError ? (
+          <div
+            className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/30 dark:text-red-200"
+            role="alert"
+          >
+            {typesError}
+          </div>
         ) : (
           <div
             className="space-y-8"
@@ -363,6 +400,11 @@ export default function QualityCharacteristicsClient() {
                   </h2>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {topLevel.map(parent => {
+                      const parentDeleting = controller.deletingIds.has(
+                        parent.id,
+                      )
+                      const parentActionDisabled =
+                        controller.submitting || parentDeleting
                       const children = controller.items.filter(
                         category => category.parentId === parent.id,
                       )
@@ -383,15 +425,11 @@ export default function QualityCharacteristicsClient() {
                                   name: 'table action',
                                   value: 'edit',
                                 })}
-                                disabled={controller.deletingIds.has(parent.id)}
+                                disabled={parentActionDisabled}
                                 onClick={() => controller.openEdit(parent)}
                                 type="button"
                               >
-                                <Pencil
-                                  aria-hidden="true"
-                                  className="h-3.5 w-3.5"
-                                />
-                                <span className="sr-only">{tc('edit')}</span>
+                                {renderEditActionContent('h-3.5 w-3.5')}
                               </button>
                               <button
                                 className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
@@ -400,7 +438,7 @@ export default function QualityCharacteristicsClient() {
                                   name: 'table action',
                                   value: 'delete',
                                 })}
-                                disabled={controller.deletingIds.has(parent.id)}
+                                disabled={parentActionDisabled}
                                 onClick={event => {
                                   void controller.remove(
                                     parent.id,
@@ -409,73 +447,68 @@ export default function QualityCharacteristicsClient() {
                                 }}
                                 type="button"
                               >
-                                <Trash2
-                                  aria-hidden="true"
-                                  className="h-3.5 w-3.5"
-                                />
-                                <span className="sr-only">{tc('delete')}</span>
+                                {renderDeleteActionContent(
+                                  parentDeleting,
+                                  'h-3.5 w-3.5',
+                                )}
                               </button>
                             </span>
                           </div>
                           {children.length > 0 && (
                             <ul className="space-y-1">
-                              {children.map(child => (
-                                <li
-                                  className="group text-sm text-secondary-700 dark:text-secondary-300 pl-3 border-l-2 border-primary-200 dark:border-primary-800 flex items-center justify-between gap-1"
-                                  key={child.id}
-                                >
-                                  <span>{getName(child)}</span>
-                                  <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                                    <button
-                                      className="text-primary-700 dark:text-primary-300 hover:text-primary-900 dark:hover:text-primary-100 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                                      {...devMarker({
-                                        context: 'quality characteristics',
-                                        name: 'table action',
-                                        value: 'edit',
-                                      })}
-                                      disabled={controller.deletingIds.has(
-                                        child.id,
-                                      )}
-                                      onClick={() => controller.openEdit(child)}
-                                      type="button"
-                                    >
-                                      <Pencil
-                                        aria-hidden="true"
-                                        className="h-3 w-3"
-                                      />
-                                      <span className="sr-only">
-                                        {tc('edit')}
-                                      </span>
-                                    </button>
-                                    <button
-                                      className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                                      {...devMarker({
-                                        context: 'quality characteristics',
-                                        name: 'table action',
-                                        value: 'delete',
-                                      })}
-                                      disabled={controller.deletingIds.has(
-                                        child.id,
-                                      )}
-                                      onClick={event => {
-                                        void controller.remove(
-                                          child.id,
-                                          event.currentTarget,
-                                        )
-                                      }}
-                                      type="button"
-                                    >
-                                      <Trash2
-                                        aria-hidden="true"
-                                        className="h-3 w-3"
-                                      />
-                                      <span className="sr-only">
-                                        {tc('delete')}
-                                      </span>
-                                    </button>
-                                  </span>
-                                </li>
-                              ))}
+                              {children.map(child => {
+                                const childDeleting =
+                                  controller.deletingIds.has(child.id)
+                                const childActionDisabled =
+                                  controller.submitting || childDeleting
+
+                                return (
+                                  <li
+                                    className="group text-sm text-secondary-700 dark:text-secondary-300 pl-3 border-l-2 border-primary-200 dark:border-primary-800 flex items-center justify-between gap-1"
+                                    key={child.id}
+                                  >
+                                    <span>{getName(child)}</span>
+                                    <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                      <button
+                                        className="text-primary-700 dark:text-primary-300 hover:text-primary-900 dark:hover:text-primary-100 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                                        {...devMarker({
+                                          context: 'quality characteristics',
+                                          name: 'table action',
+                                          value: 'edit',
+                                        })}
+                                        disabled={childActionDisabled}
+                                        onClick={() =>
+                                          controller.openEdit(child)
+                                        }
+                                        type="button"
+                                      >
+                                        {renderEditActionContent('h-3 w-3')}
+                                      </button>
+                                      <button
+                                        className="text-red-700 dark:text-red-400 hover:text-red-900 dark:hover:text-red-200 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
+                                        {...devMarker({
+                                          context: 'quality characteristics',
+                                          name: 'table action',
+                                          value: 'delete',
+                                        })}
+                                        disabled={childActionDisabled}
+                                        onClick={event => {
+                                          void controller.remove(
+                                            child.id,
+                                            event.currentTarget,
+                                          )
+                                        }}
+                                        type="button"
+                                      >
+                                        {renderDeleteActionContent(
+                                          childDeleting,
+                                          'h-3 w-3',
+                                        )}
+                                      </button>
+                                    </span>
+                                  </li>
+                                )
+                              })}
                             </ul>
                           )}
                         </div>

@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
@@ -289,12 +290,12 @@ export default function UsageScenariosClient() {
                     {controller.editId ? tc('edit') : tc('create')}
                   </h2>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('nameSvHelp')}
                       htmlFor="scen-name-sv"
-                    >
-                      {t('name')} (SV) <span aria-hidden="true">*</span>
-                    </label>
+                      label={`${t('name')} (SV)`}
+                      required
+                    />
                     <input
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -310,12 +311,12 @@ export default function UsageScenariosClient() {
                     />
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('nameEnHelp')}
                       htmlFor="scen-name-en"
-                    >
-                      {t('name')} (EN) <span aria-hidden="true">*</span>
-                    </label>
+                      label={`${t('name')} (EN)`}
+                      required
+                    />
                     <input
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -331,12 +332,11 @@ export default function UsageScenariosClient() {
                     />
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('descriptionSvHelp')}
                       htmlFor="scen-desc-sv"
-                    >
-                      {t('description')} (SV)
-                    </label>
+                      label={`${t('description')} (SV)`}
+                    />
                     <textarea
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -351,12 +351,11 @@ export default function UsageScenariosClient() {
                     />
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('descriptionEnHelp')}
                       htmlFor="scen-desc-en"
-                    >
-                      {t('description')} (EN)
-                    </label>
+                      label={`${t('description')} (EN)`}
+                    />
                     <textarea
                       className={inputClassName}
                       disabled={controller.submitting}
@@ -371,12 +370,11 @@ export default function UsageScenariosClient() {
                     />
                   </div>
                   <div>
-                    <label
-                      className="block text-sm font-medium mb-1"
+                    <FieldLabelWithHelp
+                      help={t('ownerHelp')}
                       htmlFor="scen-owner"
-                    >
-                      {t('owner')}
-                    </label>
+                      label={t('owner')}
+                    />
                     <select
                       className={inputClassName}
                       disabled={controller.submitting}

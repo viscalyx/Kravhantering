@@ -38,7 +38,7 @@ interface Area {
 interface AreaForm {
   description: string
   name: string
-  ownerId: string
+  ownerId?: string
   prefix: string
 }
 
@@ -66,10 +66,17 @@ const toCreatePayload = (form: AreaForm) => ({
   ownerId: form.ownerId ? Number(form.ownerId) : undefined,
 })
 
+const toUpdateOwnerId = (
+  ownerId: AreaForm['ownerId'],
+): number | null | undefined => {
+  if (ownerId === undefined) return undefined
+  return ownerId === '' ? null : Number(ownerId)
+}
+
 const toUpdatePayload = (form: AreaForm) => ({
   description: form.description,
   name: form.name,
-  ownerId: form.ownerId ? Number(form.ownerId) : undefined,
+  ownerId: toUpdateOwnerId(form.ownerId),
 })
 
 export default function RequirementAreasClient() {
@@ -231,7 +238,7 @@ export default function RequirementAreasClient() {
                   ownerId: event.target.value,
                 }))
               }
-              value={form.ownerId}
+              value={form.ownerId ?? ''}
             >
               <option value="">{t('owner')}...</option>
               {owners.map(owner => (
