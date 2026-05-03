@@ -313,10 +313,10 @@ export async function DELETE(
     )
     return NextResponse.json({ ok: true, removedCount })
   } catch (error) {
-    const message =
-      error instanceof Error && error.message
-        ? error.message
-        : 'Failed to unlink requirements'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('Failed to unlink requirements from specification', error)
+    return NextResponse.json(
+      { error: 'Failed to unlink requirements' },
+      { status: 500 },
+    )
   }
 }

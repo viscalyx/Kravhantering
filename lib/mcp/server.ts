@@ -1324,7 +1324,7 @@ export function createKravhanteringMcpServer(
             .string()
             .optional()
             .describe(
-              'Case-insensitive substring filter applied to both Swedish and English specification names.',
+              'Case-insensitive substring filter applied to the specification primary name (p.name) only.',
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })

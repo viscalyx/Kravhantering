@@ -414,7 +414,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(500)
     await expect(response.json()).resolves.toEqual({
-      error: 'SQL unlink failed',
+      error: 'Failed to unlink requirements',
     })
     expect(mocks.unlinkRequirementsFromSpecification).toHaveBeenCalledWith(
       mockDb,

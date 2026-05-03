@@ -295,7 +295,7 @@ down.
   layout as the requirements catalog inline detail view: description first,
   acceptance criteria second, then the shared metadata grid, references, and
   scenarios.
-- When a library requirement is opened from the specification list `Krav i kravunderlag`,
+- When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
 - The specification-local content card uses the same section spacing and card chrome

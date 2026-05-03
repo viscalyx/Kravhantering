@@ -8,6 +8,7 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string; itemId: string }>
 
@@ -118,11 +119,21 @@ export async function PATCH(
       { status: 404 },
     )
   }
-  await updateSpecificationItemFieldsByItemRef(
-    db,
-    specificationId,
-    decodedItemRef,
-    body,
-  )
+  try {
+    await updateSpecificationItemFieldsByItemRef(
+      db,
+      specificationId,
+      decodedItemRef,
+      body,
+    )
+  } catch (error) {
+    if (isRequirementsServiceError(error) && error.code === 'not_found') {
+      return NextResponse.json(
+        { error: 'Item not found in specification' },
+        { status: 404 },
+      )
+    }
+    throw error
+  }
   return NextResponse.json({ ok: true })
 }

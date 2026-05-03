@@ -88,7 +88,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: publishe
 
 **What happened:** `initiateArchiving()` explicitly rejects archiving when a
 newer draft or review version exists in
-`lib/dal/requirements.ts:1107-1129`. Without that guard, a requirement can be
+`lib/dal/requirements.ts:960-971`. Without that guard, a requirement can be
 marked archived while replacement work is still open, causing non-archived
 views to lose the active item and leaving the lifecycle story contradictory.
 
@@ -112,7 +112,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending 
 
 **What happened:** `transitionStatus()` sets `publishedAt` for the new version
 and auto-archives any older published version in the same path at
-`lib/dal/requirements.ts:1452-1468`. If those actions ever drift apart, the
+`lib/dal/requirements.ts:1196-1207`. If those actions ever drift apart, the
 register can temporarily show two published versions or no published version at
 all, which breaks specification linking and external reads.
 

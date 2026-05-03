@@ -1292,9 +1292,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
           })
           // Ensure button is enabled (fill() should have updated React state)
           await expect(submitBtn).toBeEnabled({ timeout: 3_000 })
-          // Set up the response listener BEFORE clicking so we don't miss a fast response
+          // Set up the response listener BEFORE clicking so we don't miss a fast response.
+          // Predicate filters to the POST submit response so this doesn't resolve
+          // on an earlier GET against the same endpoint.
           const deviationResPromise = page.waitForResponse(
-            /\/api\/specification-item-deviations\//,
+            response =>
+              /\/api\/specification-item-deviations\//.test(response.url()) &&
+              response.request().method() === 'POST',
             { timeout: 15_000 },
           )
           await submitBtn.click()
