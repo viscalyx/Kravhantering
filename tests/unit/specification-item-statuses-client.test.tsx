@@ -53,7 +53,7 @@ const sampleStatuses = [
     nameSv: 'Inkluderad',
     nameEn: 'Included',
     descriptionSv: 'Kravet finns i underlaget',
-    descriptionEn: 'Requirement is in the package',
+    descriptionEn: 'Requirement is in the specification',
     color: '#94a3b8',
     sortOrder: 1,
     linkedItemCount: 5,
@@ -95,7 +95,7 @@ describe('SpecificationItemStatusesClient', () => {
     })
   })
 
-  it('fetches and displays package item statuses', async () => {
+  it('fetches and displays specification item statuses', async () => {
     render(<SpecificationItemStatusesClient />)
     await waitFor(() => {
       expect(screen.getAllByText('Included').length).toBeGreaterThanOrEqual(1)
@@ -112,7 +112,7 @@ describe('SpecificationItemStatusesClient', () => {
       screen.getByText('specificationItemStatusAdmin.definition'),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Requirement is in the package'),
+      screen.getByText('Requirement is in the specification'),
     ).toBeInTheDocument()
   })
 
@@ -185,7 +185,7 @@ describe('SpecificationItemStatusesClient', () => {
     })
   })
 
-  it('shows an error instead of an empty state when linked packages fail to load', async () => {
+  it('shows an error instead of an empty state when linked specifications fail to load', async () => {
     fetchMock
       .mockResolvedValueOnce(okResponse({ statuses: sampleStatuses }))
       .mockResolvedValueOnce(notOk())

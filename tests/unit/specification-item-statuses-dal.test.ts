@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  countLinkedPackageItems,
-  getLinkedPackageItems,
+  countLinkedSpecificationItems,
+  getLinkedSpecificationItems,
 } from '@/lib/dal/specification-item-statuses'
 
 function createSqlServerDb() {
   const query =
     vi.fn<(sql: string, parameters?: unknown[]) => Promise<unknown[]>>()
   const db = { query } as unknown as Parameters<
-    typeof countLinkedPackageItems
+    typeof countLinkedSpecificationItems
   >[0]
 
   return { db, query }
@@ -26,7 +26,7 @@ describe('specification item statuses DAL', () => {
       { count: 2, statusId: 5 },
     ])
 
-    await expect(countLinkedPackageItems(db)).resolves.toEqual({
+    await expect(countLinkedSpecificationItems(db)).resolves.toEqual({
       1: 3,
       5: 2,
     })
@@ -47,7 +47,7 @@ describe('specification item statuses DAL', () => {
       },
     ])
 
-    await expect(getLinkedPackageItems(db, 2)).resolves.toEqual([
+    await expect(getLinkedSpecificationItems(db, 2)).resolves.toEqual([
       {
         requirementCount: 4,
         specificationId: 7,

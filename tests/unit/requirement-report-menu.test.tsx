@@ -22,7 +22,7 @@ vi.mock('next-intl', () => ({
 }))
 
 describe('RequirementReportMenu', () => {
-  it('marks package report controls for Developer Mode', async () => {
+  it('marks specification report controls for Developer Mode', async () => {
     render(
       <RequirementReportMenu
         currentStatusId={0}
@@ -63,7 +63,7 @@ describe('RequirementReportMenu', () => {
     )
   })
 
-  it('marks package deviation review report options for Developer Mode', async () => {
+  it('marks specification deviation review report options for Developer Mode', async () => {
     render(
       <RequirementReportMenu
         currentStatusId={0}

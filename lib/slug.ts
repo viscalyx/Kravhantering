@@ -35,10 +35,10 @@ function transliterate(str: string): string {
 }
 
 /**
- * Generate a URL-safe uppercase slug from a Swedish package name.
+ * Generate a URL-safe uppercase slug from a Swedish specification name.
  * Max 20 characters. Example: "Säkerhetslyft Q2" → "SAKLYFT-INFOR-Q2"
  */
-export function generatePackageSlug(nameSv: string): string {
+export function generateSpecificationSlug(nameSv: string): string {
   const upper = transliterate(nameSv).toUpperCase()
 
   // Replace non-alphanumeric (except spaces) with space, then split into words

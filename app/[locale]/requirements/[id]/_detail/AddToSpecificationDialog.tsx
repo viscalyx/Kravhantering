@@ -20,7 +20,7 @@ export default function AddToSpecificationDialog({
   const tc = useTranslations('common')
   const tp = useTranslations('specification')
   const { state } = dialog
-  const titleId = 'add-to-package-dialog-title'
+  const titleId = 'add-to-specification-dialog-title'
 
   const helpButton = (field: string, label: string) => (
     <button
@@ -94,18 +94,18 @@ export default function AddToSpecificationDialog({
               <p className="py-2 text-sm text-green-600 dark:text-green-400">
                 {tp('addToSpecificationSuccess')}
               </p>
-            ) : state.packagesLoading ? (
+            ) : state.specificationsLoading ? (
               <p className="py-2 text-sm text-secondary-500 dark:text-secondary-400">
                 {tp('loadingSpecifications')}
               </p>
-            ) : state.packagesError ? (
+            ) : state.specificationsError ? (
               <p
                 className="py-2 text-sm text-red-600 dark:text-red-400"
                 role="alert"
               >
-                {state.packagesError}
+                {state.specificationsError}
               </p>
-            ) : state.packages.length === 0 ? (
+            ) : state.specifications.length === 0 ? (
               <p className="py-2 text-sm text-secondary-500 dark:text-secondary-400">
                 {tp('noSpecificationsAvailable')}
               </p>
@@ -115,26 +115,26 @@ export default function AddToSpecificationDialog({
                   <div className="mb-1 flex items-center gap-1.5">
                     <label
                       className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
-                      htmlFor="atp-package"
+                      htmlFor="atp-specification"
                     >
                       {tp('selectSpecification')}{' '}
                       <span aria-hidden="true">*</span>
                     </label>
-                    {helpButton('atp-package', tp('selectSpecification'))}
+                    {helpButton('atp-specification', tp('selectSpecification'))}
                   </div>
-                  {helpPanel('selectSpecificationHelp', 'atp-package')}
+                  {helpPanel('selectSpecificationHelp', 'atp-specification')}
                   <select
                     className="min-h-[44px] w-full rounded-xl border border-secondary-200 bg-white px-3.5 py-2.5 text-sm text-secondary-900 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:border-secondary-700 dark:bg-secondary-800/50 dark:text-secondary-100"
-                    id="atp-package"
+                    id="atp-specification"
                     onChange={event =>
-                      void dialog.handlePackageSelect(event.target.value)
+                      void dialog.handleSpecificationSelect(event.target.value)
                     }
                     value={state.specificationId}
                   >
                     <option value="">—</option>
-                    {state.packages.map(pkg => (
-                      <option key={pkg.id} value={pkg.id}>
-                        {pkg.name}
+                    {state.specifications.map(spec => (
+                      <option key={spec.id} value={spec.id}>
+                        {spec.name}
                       </option>
                     ))}
                   </select>

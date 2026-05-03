@@ -1086,7 +1086,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'kravunderlagslista-sok',
           'Sökning bland kravunderlag',
-          'Filtrera paket genom att skriva i sökrutan. Listan uppdateras i realtid.',
+          'Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.',
         )
         await searchInput.clear()
         await page.waitForTimeout(300)
@@ -1102,7 +1102,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'skapa-kravunderlag',
           'Skapa nytt kravunderlag',
-          'Klicka på **"Nytt kravunderlag"** för att skapa ett nytt paket. Ange ett namn — ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla krav som hör till ett specifikt projekt eller leverans.',
+          'Klicka på **"Nytt kravunderlag"** för att skapa ett nytt kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla krav som hör till ett specifikt projekt eller leverans.',
           { fullPage: false },
         )
         await page.keyboard.press('Escape')
@@ -1117,7 +1117,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'kravunderlagsdetalj',
         'Kravunderlagsdetalj — delad vy',
-        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både bibliotekskrav och eventuella pakets unika krav med deras implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta paket. Klicka på en rad för att se kravets fullständiga detaljer.',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både bibliotekskrav och eventuella kravunderlagets unika krav med deras implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
         { fullPage: false },
       )
     })
@@ -1203,7 +1203,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
       'Ett **avsteg** dokumenterar att ett krav i ett kravunderlag inte kan uppfyllas fullt ut som specificerat, och varför. Avstegsprocessen är trestegsbaserad: **Utkast** → **Granskning begärd** → **Beslutad** (godkänd eller avslagen). Nedan visas varje steg i processen.',
     )
 
-    await test.step('Paket med kravposter', async () => {
+    await test.step('Kravunderlag med kravposter', async () => {
       await page.goto('/sv/specifications/ETJANST-UPP-2026')
       await page.waitForLoadState('networkidle')
 
@@ -1218,15 +1218,15 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
     await test.step('Kravposter — expanderat krav', async () => {
       // The left panel only renders when specificationItems.length > 0 — wait for it to appear
-      // (it's absent while items are loading or if the package is empty)
+      // (it's absent while items are loading or if the specification is empty)
       await page
-        .locator('[data-package-detail-list-panel="items"]')
+        .locator('[data-specification-detail-list-panel="items"]')
         .waitFor({ state: 'visible', timeout: 15_000 })
         .catch(() => {})
 
-      // Scope to the left panel (items in package) — right panel is "available" requirements
+      // Scope to the left panel (items in specification) — right panel is "available" requirements
       const allRows = page.locator(
-        '[data-package-detail-list-panel="items"] tbody tr',
+        '[data-specification-detail-list-panel="items"] tbody tr',
       )
       const rowCount = await allRows.count()
 
@@ -1252,7 +1252,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         )
         await snap(
           page,
-          'krav-i-paket-expanderat',
+          'krav-i-kravunderlag-expanderat',
           'Krav expanderat i underlagskontext',
           '**Steg 2 — Expandera ett krav.** Klicka på en rad i listan för att öppna kravets detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** — klicka på den för att starta avstegsprocessen.',
           { fullPage: false },
@@ -1294,7 +1294,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
           await expect(submitBtn).toBeEnabled({ timeout: 3_000 })
           // Set up the response listener BEFORE clicking so we don't miss a fast response
           const deviationResPromise = page.waitForResponse(
-            /\/api\/package-item-deviations\//,
+            /\/api\/specification-item-deviations\//,
             { timeout: 15_000 },
           )
           await submitBtn.click()
@@ -1628,7 +1628,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         'Granskningsrapport för avsteg',
         'Granskar ett specifikt avsteg kopplat till ett krav i ett kravunderlag. Rapporten visar den kravversion som är kopplad till underlaget, avstegets motivering och kompletterande underlagskontext.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
-          '**Rutt:** `/requirements/reports/print/deviation-review/[id]?pkg={slug}&item={itemId}` (utskrift) · `.../pdf/...` (PDF)',
+          '**Rutt:** `/requirements/reports/print/deviation-review/[id]?spec={slug}&item={itemId}` (utskrift) · `.../pdf/...` (PDF)',
       )
 
       textEntry(

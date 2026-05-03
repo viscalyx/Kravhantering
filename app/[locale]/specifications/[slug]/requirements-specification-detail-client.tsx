@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import RequirementDetailClient from '@/app/[locale]/requirements/[id]/requirement-detail-client'
 import SpecificationEditPanel, {
-  PACKAGE_EDIT_FORM_ID,
+  SPECIFICATION_EDIT_FORM_ID,
 } from '@/app/[locale]/specifications/[slug]/specification-edit-panel'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
@@ -32,7 +32,7 @@ import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { exportToCsv } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
-import { fetchPackageItemsForReport } from '@/lib/reports/data/fetch-specification-items'
+import { fetchSpecificationItemsForReport } from '@/lib/reports/data/fetch-specification-items'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
 import {
@@ -47,7 +47,7 @@ import {
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
 
-const REQUIREMENT_PACKAGE_DETAIL_HELP: HelpContent = {
+const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
@@ -74,7 +74,7 @@ const REQUIREMENT_PACKAGE_DETAIL_HELP: HelpContent = {
   titleKey: 'requirementsSpecificationDetail.title',
 }
 
-interface PackageMeta {
+interface SpecificationMeta {
   businessNeedsReference: string | null
   id: number
   implementationType: { nameSv: string; nameEn: string } | null
@@ -87,20 +87,22 @@ interface PackageMeta {
   uniqueId: string
 }
 
-interface PackageTaxonomyItem {
+interface SpecificationTaxonomyItem {
   id: number
   nameEn: string
   nameSv: string
 }
 
-interface PackageItem extends RequirementRow {
+interface SpecificationListItem extends RequirementRow {
   needsReference?: string | null
 }
 
 const PAGE_SIZE = 200
 
-const LEFT_VISIBLE_COLS_KEY = 'requirement-packages.visibleColumns.left.v3'
-const RIGHT_VISIBLE_COLS_KEY = 'requirement-packages.visibleColumns.right.v3'
+const LEFT_VISIBLE_COLS_KEY =
+  'requirement-specifications.visibleColumns.left.v1'
+const RIGHT_VISIBLE_COLS_KEY =
+  'requirement-specifications.visibleColumns.right.v1'
 const DEFAULT_LEFT_COLS: RequirementColumnId[] = [
   'uniqueId',
   'description',
@@ -151,7 +153,7 @@ export default function KravunderlagDetailClient({
 }: {
   specificationSlug: string
 }) {
-  useHelpContent(REQUIREMENT_PACKAGE_DETAIL_HELP)
+  useHelpContent(REQUIREMENT_SPECIFICATION_DETAIL_HELP)
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const td = useTranslations('deviation')
@@ -164,8 +166,10 @@ export default function KravunderlagDetailClient({
     ? Number(searchParams.get('areaId'))
     : null
 
-  const [pkg, setPkg] = useState<PackageMeta | null>(null)
-  const [specificationItems, setPackageItems] = useState<PackageItem[]>([])
+  const [spec, setSpec] = useState<SpecificationMeta | null>(null)
+  const [specificationItems, setSpecificationItems] = useState<
+    SpecificationListItem[]
+  >([])
   const [availableRows, setAvailableRows] = useState<RequirementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [areas, setAreas] = useState<AreaOption[]>([])
@@ -173,22 +177,23 @@ export default function KravunderlagDetailClient({
   const [
     specificationResponsibilityAreas,
     setSpecificationResponsibilityAreas,
-  ] = useState<PackageTaxonomyItem[]>([])
+  ] = useState<SpecificationTaxonomyItem[]>([])
   const [
     specificationImplementationTypes,
     setSpecificationImplementationTypes,
-  ] = useState<PackageTaxonomyItem[]>([])
+  ] = useState<SpecificationTaxonomyItem[]>([])
   const [specificationLifecycleStatuses, setSpecificationLifecycleStatuses] =
-    useState<PackageTaxonomyItem[]>([])
+    useState<SpecificationTaxonomyItem[]>([])
   const [specificationItemStatuses, setSpecificationItemStatuses] = useState<
-    (PackageTaxonomyItem & {
+    (SpecificationTaxonomyItem & {
       color: string
       descriptionEn: string | null
       descriptionSv: string | null
       sortOrder: number
     })[]
   >([])
-  const [showEditPackageForm, setShowEditPackageForm] = useState(false)
+  const [showEditSpecificationForm, setShowEditSpecificationForm] =
+    useState(false)
   const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
   const [bulkDeviationSaving, setBulkDeviationSaving] = useState(false)
   const [bulkDeviationError, setBulkDeviationError] = useState<string | null>(
@@ -248,7 +253,9 @@ export default function KravunderlagDetailClient({
 
   // PDF export state
   const [pdfModel, setPdfModel] = useState<ReportModel | null>(null)
-  const [pdfFilename, setPdfFilename] = useState('requirement-package.pdf')
+  const [pdfFilename, setPdfFilename] = useState(
+    'requirement-specification.pdf',
+  )
   const { download: downloadPdf } = usePdfDownload({
     model: pdfModel,
     locale,
@@ -316,19 +323,19 @@ export default function KravunderlagDetailClient({
     [specificationItems],
   )
 
-  const selectedPackageItems = useMemo(
+  const selectedSpecificationItems = useMemo(
     () => specificationItems.filter(item => leftSelectedIds.has(item.id)),
     [leftSelectedIds, specificationItems],
   )
 
-  const fetchPackageMeta = useCallback(async () => {
+  const fetchSpecificationMeta = useCallback(async () => {
     const res = await apiFetch(`/api/specifications/${specificationSlug}`)
     if (res.ok) {
-      setPkg((await res.json()) as PackageMeta)
+      setSpec((await res.json()) as SpecificationMeta)
     }
   }, [specificationSlug])
 
-  const fetchPackageItems = useCallback(
+  const fetchSpecificationItems = useCallback(
     async ({
       throwOnError = false,
     }: {
@@ -343,8 +350,8 @@ export default function KravunderlagDetailClient({
         }
         return false
       }
-      const data = (await res.json()) as { items: PackageItem[] }
-      setPackageItems(data.items)
+      const data = (await res.json()) as { items: SpecificationListItem[] }
+      setSpecificationItems(data.items)
       return true
     },
     [specificationSlug],
@@ -428,11 +435,11 @@ export default function KravunderlagDetailClient({
   useEffect(() => {
     const init = async () => {
       setLoading(true)
-      await Promise.all([fetchPackageMeta(), fetchPackageItems()])
+      await Promise.all([fetchSpecificationMeta(), fetchSpecificationItems()])
       setLoading(false)
     }
     void init()
-  }, [fetchPackageMeta, fetchPackageItems])
+  }, [fetchSpecificationMeta, fetchSpecificationItems])
 
   useEffect(() => {
     void fetchAvailableRequirements()
@@ -444,9 +451,9 @@ export default function KravunderlagDetailClient({
         areasRes,
         scenariosRes,
         needsRefsRes,
-        packageAreasRes,
-        packageTypesRes,
-        packageStatusesRes,
+        specificationAreasRes,
+        specificationTypesRes,
+        specificationStatusesRes,
         specificationItemStatusesRes,
       ] = await Promise.allSettled([
         apiFetch('/api/requirement-areas'),
@@ -473,24 +480,30 @@ export default function KravunderlagDetailClient({
         }
         setAvailableNeedsRefs(data.needsReferences)
       }
-      if (packageAreasRes.status === 'fulfilled' && packageAreasRes.value.ok) {
-        const data = (await packageAreasRes.value.json()) as {
-          areas?: PackageTaxonomyItem[]
+      if (
+        specificationAreasRes.status === 'fulfilled' &&
+        specificationAreasRes.value.ok
+      ) {
+        const data = (await specificationAreasRes.value.json()) as {
+          areas?: SpecificationTaxonomyItem[]
         }
         setSpecificationResponsibilityAreas(data.areas ?? [])
       }
-      if (packageTypesRes.status === 'fulfilled' && packageTypesRes.value.ok) {
-        const data = (await packageTypesRes.value.json()) as {
-          types?: PackageTaxonomyItem[]
+      if (
+        specificationTypesRes.status === 'fulfilled' &&
+        specificationTypesRes.value.ok
+      ) {
+        const data = (await specificationTypesRes.value.json()) as {
+          types?: SpecificationTaxonomyItem[]
         }
         setSpecificationImplementationTypes(data.types ?? [])
       }
       if (
-        packageStatusesRes.status === 'fulfilled' &&
-        packageStatusesRes.value.ok
+        specificationStatusesRes.status === 'fulfilled' &&
+        specificationStatusesRes.value.ok
       ) {
-        const data = (await packageStatusesRes.value.json()) as {
-          statuses?: PackageTaxonomyItem[]
+        const data = (await specificationStatusesRes.value.json()) as {
+          statuses?: SpecificationTaxonomyItem[]
         }
         setSpecificationLifecycleStatuses(data.statuses ?? [])
       }
@@ -499,7 +512,7 @@ export default function KravunderlagDetailClient({
         specificationItemStatusesRes.value.ok
       ) {
         const data = (await specificationItemStatusesRes.value.json()) as {
-          statuses?: (PackageTaxonomyItem & {
+          statuses?: (SpecificationTaxonomyItem & {
             color: string
             descriptionEn: string | null
             descriptionSv: string | null
@@ -631,7 +644,7 @@ export default function KravunderlagDetailClient({
         return
       }
       await Promise.all([
-        fetchPackageItems({ throwOnError: true }),
+        fetchSpecificationItems({ throwOnError: true }),
         fetchAvailableRequirements({ throwOnError: true }),
       ])
       setAddModalError(null)
@@ -647,7 +660,7 @@ export default function KravunderlagDetailClient({
     addNeedsRefMode,
     addNeedsRefText,
     fetchAvailableRequirements,
-    fetchPackageItems,
+    fetchSpecificationItems,
     specificationSlug,
     pendingAddIds,
     tc,
@@ -672,17 +685,19 @@ export default function KravunderlagDetailClient({
       }
 
       setShowCreateLocalRequirementModal(false)
-      await fetchPackageItems({ throwOnError: true })
+      await fetchSpecificationItems({ throwOnError: true })
     },
-    [fetchPackageItems, specificationSlug, tc],
+    [fetchSpecificationItems, specificationSlug, tc],
   )
 
   const handleSpecificationItemStatusChange = useCallback(
     async (itemRef: string, statusId: number | null) => {
-      if (!pkg) return
-      const prev = specificationItems
-      // Optimistic update
-      setPackageItems(prev =>
+      if (!spec) return
+      const originalItem =
+        specificationItems.find(i => i.itemRef === itemRef) ?? null
+
+      // Optimistic update (single-row)
+      setSpecificationItems(prev =>
         prev.map(item => {
           if (item.itemRef !== itemRef) return item
           const status = statusId
@@ -697,9 +712,10 @@ export default function KravunderlagDetailClient({
           }
         }),
       )
+
       try {
         const res = await apiFetch(
-          `/api/specifications/${pkg.id}/items/${encodeURIComponent(itemRef)}`,
+          `/api/specifications/${spec.id}/items/${encodeURIComponent(itemRef)}`,
           {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -707,23 +723,42 @@ export default function KravunderlagDetailClient({
           },
         )
         if (!res.ok) {
-          setPackageItems(prev)
+          if (originalItem) {
+            setSpecificationItems(prev =>
+              prev.map(i => (i.itemRef === itemRef ? originalItem : i)),
+            )
+          } else {
+            // Fallback: refresh authoritative list
+            await fetchSpecificationItems()
+          }
         }
       } catch {
-        setPackageItems(prev)
+        if (originalItem) {
+          setSpecificationItems(prev =>
+            prev.map(i => (i.itemRef === itemRef ? originalItem : i)),
+          )
+        } else {
+          await fetchSpecificationItems()
+        }
       }
     },
-    [pkg, specificationItemStatuses, specificationItems],
+    [
+      spec,
+      specificationItemStatuses,
+      specificationItems,
+      fetchSpecificationItems,
+    ],
   )
 
   const handleRemoveSelected = useCallback(
     async (anchorEl?: HTMLElement) => {
-      if (selectedPackageItems.length === 0) return
+      if (selectedSpecificationItems.length === 0) return
 
-      const libraryCount = selectedPackageItems.filter(
+      const libraryCount = selectedSpecificationItems.filter(
         item => !item.isSpecificationLocal,
       ).length
-      const specificationLocalCount = selectedPackageItems.length - libraryCount
+      const specificationLocalCount =
+        selectedSpecificationItems.length - libraryCount
 
       const confirmed = await confirm({
         anchorEl,
@@ -751,7 +786,7 @@ export default function KravunderlagDetailClient({
 
       if (!confirmed) return
 
-      const itemRefs = selectedPackageItems
+      const itemRefs = selectedSpecificationItems
         .map(item => item.itemRef)
         .filter((value): value is string => typeof value === 'string')
 
@@ -772,17 +807,19 @@ export default function KravunderlagDetailClient({
             error?: string
           } | null
           console.error(
-            'Failed to remove items from package',
+            'Failed to remove items from specification',
             body?.error ?? response.statusText,
           )
           return
         }
       } catch (error) {
-        console.error('Failed to remove items from package', error)
+        console.error('Failed to remove items from specification', error)
         return
       }
 
-      const removedIds = new Set(selectedPackageItems.map(item => item.id))
+      const removedIds = new Set(
+        selectedSpecificationItems.map(item => item.id),
+      )
       setLeftSelectedIds(new Set())
       setLeftExpandedId(current =>
         current != null && removedIds.has(current) ? null : current,
@@ -811,15 +848,18 @@ export default function KravunderlagDetailClient({
         }
       })
 
-      await Promise.all([fetchPackageItems(), fetchAvailableRequirements()])
+      await Promise.all([
+        fetchSpecificationItems(),
+        fetchAvailableRequirements(),
+      ])
     },
     [
       confirm,
       fetchAvailableRequirements,
-      fetchPackageItems,
+      fetchSpecificationItems,
       specificationItems,
       specificationSlug,
-      selectedPackageItems,
+      selectedSpecificationItems,
       t,
       tc,
     ],
@@ -874,12 +914,12 @@ export default function KravunderlagDetailClient({
         } else {
           setShowBulkDeviationModal(false)
         }
-        await fetchPackageItems()
+        await fetchSpecificationItems()
       } finally {
         setBulkDeviationSaving(false)
       }
     },
-    [fetchPackageItems, leftSelectedIds, specificationItems, td],
+    [fetchSpecificationItems, leftSelectedIds, specificationItems, td],
   )
 
   const getName = (opt: { nameSv: string; nameEn: string }) =>
@@ -892,7 +932,7 @@ export default function KravunderlagDetailClient({
   )
 
   // Filter left panel rows client-side (all items loaded at once)
-  const filteredPackageItems = useMemo(() => {
+  const filteredSpecificationItems = useMemo(() => {
     let rows = specificationItems
     if (leftFilters.areaIds && leftFilters.areaIds.length > 0) {
       const areaSet = new Set(leftFilters.areaIds)
@@ -950,8 +990,8 @@ export default function KravunderlagDetailClient({
     return rows
   }, [specificationItems, leftFilters, areas, leftNormReferenceOptions])
 
-  // Only show usage scenarios that appear on at least one item in the package
-  const packageUsageScenarios = useMemo(() => {
+  // Only show usage scenarios that appear on at least one item in the specification
+  const specificationUsageScenarios = useMemo(() => {
     const usedIds = new Set(
       specificationItems.flatMap(r => r.usageScenarioIds ?? []),
     )
@@ -970,11 +1010,11 @@ export default function KravunderlagDetailClient({
       t('csvHeaders.qualityCharacteristic'),
       t('csvHeaders.specificationItemStatus'),
     ]
-    const csvRows = filteredPackageItems.map(r => ({
+    const csvRows = filteredSpecificationItems.map(r => ({
       [headers[0]]: r.uniqueId,
       [headers[1]]: r.version?.description ?? '',
       [headers[2]]: r.area?.name ?? '',
-      [headers[3]]: (r as PackageItem).needsReference ?? '',
+      [headers[3]]: (r as SpecificationListItem).needsReference ?? '',
       [headers[4]]:
         (locale === 'sv' ? r.version?.statusNameSv : r.version?.statusNameEn) ??
         '',
@@ -998,11 +1038,10 @@ export default function KravunderlagDetailClient({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download =
-      locale === 'sv' ? 'kravunderlag.csv' : 'requirement-package.csv'
+    a.download = t('downloadFilename')
     a.click()
     URL.revokeObjectURL(url)
-  }, [filteredPackageItems, locale, t])
+  }, [filteredSpecificationItems, locale, t])
 
   useEffect(() => {
     if (pdfModel) {
@@ -1012,18 +1051,18 @@ export default function KravunderlagDetailClient({
   }, [pdfModel, downloadPdf])
 
   const handleDownloadPdf = useCallback(async () => {
-    if (!pkg) return
-    const itemRefs = filteredPackageItems
+    if (!spec) return
+    const itemRefs = filteredSpecificationItems
       .map(row => row.itemRef)
       .filter((value): value is string => typeof value === 'string')
     if (itemRefs.length === 0) return
-    const requirements = await fetchPackageItemsForReport(
+    const requirements = await fetchSpecificationItemsForReport(
       specificationSlug,
       itemRefs,
       locale,
     )
     const label = tr('listPdfFilenameLabel')
-    const raw = `${label} ${pkg.name} ${pkg.uniqueId}.pdf`
+    const raw = `${label} ${spec.name} ${spec.uniqueId}.pdf`
     setPdfFilename(
       raw
         .replace(/[/\\:*?"<>|]+/g, '-')
@@ -1034,17 +1073,17 @@ export default function KravunderlagDetailClient({
       obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
     setPdfModel(
       buildListReport(requirements, locale, {
-        name: pkg.name,
-        uniqueId: pkg.uniqueId,
-        responsibilityArea: pickName(pkg.responsibilityArea),
-        implementationType: pickName(pkg.implementationType),
-        lifecycleStatus: pickName(pkg.lifecycleStatus),
-        businessNeedsReference: pkg.businessNeedsReference,
+        name: spec.name,
+        uniqueId: spec.uniqueId,
+        responsibilityArea: pickName(spec.responsibilityArea),
+        implementationType: pickName(spec.implementationType),
+        lifecycleStatus: pickName(spec.lifecycleStatus),
+        businessNeedsReference: spec.businessNeedsReference,
       }),
     )
-  }, [filteredPackageItems, locale, specificationSlug, pkg, tr])
+  }, [filteredSpecificationItems, locale, specificationSlug, spec, tr])
 
-  const pkgName = pkg ? pkg.name : '…'
+  const specName = spec ? spec.name : '…'
 
   const localName = (obj: { nameSv: string; nameEn: string } | null) =>
     obj ? (locale === 'sv' ? obj.nameSv : obj.nameEn) : null
@@ -1259,7 +1298,7 @@ export default function KravunderlagDetailClient({
     )
   }
 
-  if (!pkg) {
+  if (!spec) {
     return (
       <div className="section-padding px-4 sm:px-6 lg:px-8">
         <div className="container-custom">
@@ -1279,43 +1318,43 @@ export default function KravunderlagDetailClient({
 
   const desktopSplitPanelCardClassName =
     'bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:overscroll-contain'
-  const packageDetailStickyTopOffsetClassName = 'top-16 xl:top-0'
-  const packageDetailPagePaddingClassName =
+  const specificationDetailStickyTopOffsetClassName = 'top-16 xl:top-0'
+  const specificationDetailPagePaddingClassName =
     'px-4 pb-8 pt-6 sm:px-6 sm:pb-10 sm:pt-7 lg:px-8 lg:pt-8'
-  const packageDetailPageShellClassName = showEditPackageForm
-    ? packageDetailPagePaddingClassName
-    : `${packageDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
-  const packageDetailContainerClassName = showEditPackageForm
+  const specificationDetailPageShellClassName = showEditSpecificationForm
+    ? specificationDetailPagePaddingClassName
+    : `${specificationDetailPagePaddingClassName} xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-hidden`
+  const specificationDetailContainerClassName = showEditSpecificationForm
     ? 'container-custom max-w-none'
     : 'container-custom max-w-none xl:flex xl:min-h-0 xl:flex-1 xl:flex-col'
-  const packageDetailSplitPanelClassName = showEditPackageForm
+  const specificationDetailSplitPanelClassName = showEditSpecificationForm
     ? 'grid grid-cols-1 gap-6 items-start xl:grid-cols-2'
     : 'grid grid-cols-1 gap-6 items-start xl:-mx-8 xl:min-h-0 xl:flex-1 xl:grid-cols-2 xl:items-stretch xl:gap-4'
 
   return (
     <>
       <div
-        className={packageDetailPageShellClassName}
-        data-package-detail-page-shell="true"
+        className={specificationDetailPageShellClassName}
+        data-specification-detail-page-shell="true"
       >
-        <div className={packageDetailContainerClassName}>
+        <div className={specificationDetailContainerClassName}>
           {/* Header */}
           <div className="mb-5">
             <div
               className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,1fr)] xl:items-start xl:gap-5"
-              data-package-detail-header-summary="true"
+              data-specification-detail-header-summary="true"
             >
               <div className="min-w-0">
                 <div
                   className="flex items-start gap-3"
-                  data-package-detail-title-row="true"
+                  data-specification-detail-title-row="true"
                 >
                   <h1 className="min-w-0 text-2xl font-bold text-secondary-900 dark:text-secondary-100 xl:text-[2rem] xl:leading-tight">
-                    {pkgName}
+                    {specName}
                   </h1>
                   <button
-                    aria-controls={PACKAGE_EDIT_FORM_ID}
-                    aria-expanded={showEditPackageForm}
+                    aria-controls={SPECIFICATION_EDIT_FORM_ID}
+                    aria-expanded={showEditSpecificationForm}
                     aria-label={t('editSpecification')}
                     className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white/80 text-secondary-700 shadow-sm transition-colors hover:bg-secondary-50 focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-secondary-700 dark:bg-secondary-900/70 dark:text-secondary-200 dark:hover:bg-secondary-800"
                     {...devMarker({
@@ -1324,74 +1363,76 @@ export default function KravunderlagDetailClient({
                       priority: 350,
                       value: 'edit specification',
                     })}
-                    onClick={() => setShowEditPackageForm(current => !current)}
+                    onClick={() =>
+                      setShowEditSpecificationForm(current => !current)
+                    }
                     title={t('editSpecification')}
                     type="button"
                   >
                     <Pencil aria-hidden="true" className="h-4 w-4" />
                   </button>
                 </div>
-                {pkg.businessNeedsReference && (
+                {spec.businessNeedsReference && (
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary-700 dark:text-secondary-200">
-                    {pkg.businessNeedsReference}
+                    {spec.businessNeedsReference}
                   </p>
                 )}
               </div>
               <dl
                 className="grid gap-3 sm:grid-cols-2 xl:w-full xl:grid-cols-3"
-                data-package-detail-header-metadata="true"
+                data-specification-detail-header-metadata="true"
               >
-                {pkg.responsibilityArea && (
+                {spec.responsibilityArea && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('responsibilityArea')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
-                      {localName(pkg.responsibilityArea)}
+                      {localName(spec.responsibilityArea)}
                     </dd>
                   </div>
                 )}
-                {pkg.implementationType && (
+                {spec.implementationType && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('implementationType')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
-                      {localName(pkg.implementationType)}
+                      {localName(spec.implementationType)}
                     </dd>
                   </div>
                 )}
-                {pkg.lifecycleStatus && (
+                {spec.lifecycleStatus && (
                   <div className="min-w-0 rounded-xl border border-secondary-200/70 bg-white/50 px-3 py-2.5 backdrop-blur-sm dark:border-secondary-700/70 dark:bg-secondary-900/40">
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary-500 dark:text-secondary-400">
                       {t('lifecycleStatus')}
                     </dt>
                     <dd className="mt-1 text-sm font-medium leading-5 text-secondary-800 break-words dark:text-secondary-100">
-                      {localName(pkg.lifecycleStatus)}
+                      {localName(spec.lifecycleStatus)}
                     </dd>
                   </div>
                 )}
               </dl>
             </div>
-            {showEditPackageForm && (
+            {showEditSpecificationForm && (
               <div className="mt-4">
                 <SpecificationEditPanel
                   implementationTypes={specificationImplementationTypes}
                   lifecycleStatuses={specificationLifecycleStatuses}
-                  onCancel={() => setShowEditPackageForm(false)}
+                  onCancel={() => setShowEditSpecificationForm(false)}
                   onSaved={async result => {
-                    setShowEditPackageForm(false)
+                    setShowEditSpecificationForm(false)
                     if (
                       result.newUniqueId &&
                       result.newUniqueId !== specificationSlug
                     ) {
                       router.replace(`/specifications/${result.newUniqueId}`)
                     } else {
-                      await fetchPackageMeta()
+                      await fetchSpecificationMeta()
                     }
                   }}
-                  pkg={pkg}
                   responsibilityAreas={specificationResponsibilityAreas}
+                  spec={spec}
                   specificationSlug={specificationSlug}
                 />
               </div>
@@ -1400,8 +1441,8 @@ export default function KravunderlagDetailClient({
 
           {/* Split panel */}
           <div
-            className={packageDetailSplitPanelClassName}
-            data-package-detail-split-panel="true"
+            className={specificationDetailSplitPanelClassName}
+            data-specification-detail-split-panel="true"
           >
             {/* Left panel: Krav i underlaget */}
             <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
@@ -1449,7 +1490,7 @@ export default function KravunderlagDetailClient({
               ) : (
                 <div
                   className={desktopSplitPanelCardClassName}
-                  data-package-detail-list-panel="items"
+                  data-specification-detail-list-panel="items"
                 >
                   <RequirementsTable
                     areas={areas}
@@ -1478,7 +1519,7 @@ export default function KravunderlagDetailClient({
                         menuItems: [
                           {
                             href: `/specifications/${specificationSlug}/reports/print/list?refs=${buildItemRefsQuery(
-                              filteredPackageItems,
+                              filteredSpecificationItems,
                             )}`,
                             id: 'print-list',
                             label: t('printListReport'),
@@ -1523,7 +1564,7 @@ export default function KravunderlagDetailClient({
                           }
                           needsReferences={availableNeedsRefs}
                           onChange={async () => {
-                            await fetchPackageItems()
+                            await fetchSpecificationItems()
                           }}
                           specificationSlug={specificationSlug}
                         />
@@ -1531,7 +1572,7 @@ export default function KravunderlagDetailClient({
                         <RequirementDetailClient
                           inline
                           onChange={async () => {
-                            await fetchPackageItems()
+                            await fetchSpecificationItems()
                           }}
                           requirementId={id}
                           specificationItemId={item.specificationItemId}
@@ -1541,13 +1582,13 @@ export default function KravunderlagDetailClient({
                         <RequirementDetailClient
                           inline
                           onChange={async () => {
-                            await fetchPackageItems()
+                            await fetchSpecificationItems()
                           }}
                           requirementId={id}
                         />
                       )
                     }}
-                    rows={filteredPackageItems}
+                    rows={filteredSpecificationItems}
                     selectable
                     selectedIds={leftSelectedIds}
                     sortState={leftSort}
@@ -1597,9 +1638,9 @@ export default function KravunderlagDetailClient({
                       ) : null
                     }
                     stickyTopOffsetClassName={
-                      packageDetailStickyTopOffsetClassName
+                      specificationDetailStickyTopOffsetClassName
                     }
-                    usageScenarios={packageUsageScenarios}
+                    usageScenarios={specificationUsageScenarios}
                     visibleColumns={leftVisibleCols}
                     wrapDescription
                   />
@@ -1628,7 +1669,7 @@ export default function KravunderlagDetailClient({
             <div className="flex flex-col gap-3 xl:h-full xl:min-h-0">
               <div
                 className={desktopSplitPanelCardClassName}
-                data-package-detail-list-panel="available"
+                data-specification-detail-list-panel="available"
               >
                 <RequirementsTable
                   areas={areas}
@@ -1680,7 +1721,7 @@ export default function KravunderlagDetailClient({
                     ) : null
                   }
                   stickyTopOffsetClassName={
-                    packageDetailStickyTopOffsetClassName
+                    specificationDetailStickyTopOffsetClassName
                   }
                   usageScenarios={usageScenarios}
                   visibleColumns={rightVisibleCols}

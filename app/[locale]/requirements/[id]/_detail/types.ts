@@ -19,7 +19,7 @@ export interface TransitionTarget {
   nameSv: string
 }
 
-export interface PackageItemDetailContext {
+export interface SpecificationItemDetailContext {
   needsReference: string | null
   needsReferenceId: number | null
   specificationItemId: number

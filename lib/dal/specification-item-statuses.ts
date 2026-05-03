@@ -18,13 +18,13 @@ export interface SpecificationItemStatusRow {
   sortOrder: number
 }
 
-interface LinkedPackageRow {
+interface LinkedSpecificationRow {
   requirementCount: number
   specificationId: number
   specificationName: string
 }
 
-export type { LinkedPackageRow }
+export type { LinkedSpecificationRow }
 
 function map(row: SpecificationItemStatusEntity): SpecificationItemStatusRow {
   return {
@@ -57,7 +57,7 @@ export async function getSpecificationItemStatusById(
   return row ? map(row) : null
 }
 
-export async function countLinkedPackageItems(
+export async function countLinkedSpecificationItems(
   db: SqlServerDatabase,
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
@@ -95,10 +95,10 @@ export async function countLinkedPackageItems(
   return counts
 }
 
-export async function getLinkedPackageItems(
+export async function getLinkedSpecificationItems(
   db: SqlServerDatabase,
   statusId: number,
-): Promise<LinkedPackageRow[]> {
+): Promise<LinkedSpecificationRow[]> {
   return db.query(
     `
       SELECT
@@ -198,5 +198,12 @@ export async function deleteSpecificationItemStatus(
   db: SqlServerDatabase,
   id: number,
 ): Promise<void> {
+  if (
+    id === DEFAULT_SPECIFICATION_ITEM_STATUS_ID ||
+    id === DEVIATED_SPECIFICATION_ITEM_STATUS_ID
+  ) {
+    throw new Error('Cannot delete reserved specification item status')
+  }
+
   await db.getRepository(specificationItemStatusEntity).delete(id)
 }

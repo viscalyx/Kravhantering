@@ -100,7 +100,7 @@ export default function RequirementReportMenu(
                   })}
                   onClick={() =>
                     openReport(
-                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${props.specificationSlug}&item=${props.specificationItemId}`,
+                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
                     )
                   }
                   type="button"
@@ -118,7 +118,7 @@ export default function RequirementReportMenu(
                   })}
                   onClick={() =>
                     openReport(
-                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${props.specificationSlug}&item=${props.specificationItemId}`,
+                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?spec=${props.specificationSlug}&item=${props.specificationItemId}`,
                     )
                   }
                   type="button"

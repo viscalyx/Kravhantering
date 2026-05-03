@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 type Params = Promise<{ slug: string }>
 
-export default async function KravunderlagDetailPage({
+export default async function RequirementsSpecificationDetailPage({
   params,
 }: {
   params: Params

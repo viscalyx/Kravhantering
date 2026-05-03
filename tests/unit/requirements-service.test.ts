@@ -20,14 +20,14 @@ const mocks = vi.hoisted(() => ({
   listScenarios: vi.fn(),
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
-  listPackages: vi.fn(),
-  getPackageBySlug: vi.fn(),
-  listPackageItems: vi.fn(),
+  listSpecifications: vi.fn(),
+  getSpecificationBySlug: vi.fn(),
+  listSpecificationItems: vi.fn(),
   getPublishedVersionIdForRequirement: vi.fn(),
   getOrCreateSpecificationNeedsReference: vi.fn(),
-  linkRequirementsToPackageAtomically: vi.fn(),
-  linkRequirementsToPackage: vi.fn(),
-  unlinkRequirementsFromPackage: vi.fn(),
+  linkRequirementsToSpecificationAtomically: vi.fn(),
+  linkRequirementsToSpecification: vi.fn(),
+  unlinkRequirementsFromSpecification: vi.fn(),
   listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
   reactivateRequirement: vi.fn(),
@@ -47,15 +47,16 @@ vi.mock('@/lib/dal/requirement-categories', () => ({
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   getOrCreateSpecificationNeedsReference:
     mocks.getOrCreateSpecificationNeedsReference,
-  getPackageBySlug: mocks.getPackageBySlug,
+  getSpecificationBySlug: mocks.getSpecificationBySlug,
   getPublishedVersionIdForRequirement:
     mocks.getPublishedVersionIdForRequirement,
-  linkRequirementsToPackageAtomically:
-    mocks.linkRequirementsToPackageAtomically,
-  linkRequirementsToPackage: mocks.linkRequirementsToPackage,
-  listPackageItems: mocks.listPackageItems,
-  listPackages: mocks.listPackages,
-  unlinkRequirementsFromPackage: mocks.unlinkRequirementsFromPackage,
+  linkRequirementsToSpecificationAtomically:
+    mocks.linkRequirementsToSpecificationAtomically,
+  linkRequirementsToSpecification: mocks.linkRequirementsToSpecification,
+  listSpecificationItems: mocks.listSpecificationItems,
+  listSpecifications: mocks.listSpecifications,
+  unlinkRequirementsFromSpecification:
+    mocks.unlinkRequirementsFromSpecification,
 }))
 
 vi.mock('@/lib/dal/usage-scenarios', () => ({
@@ -229,18 +230,18 @@ describe('createRequirementsService', () => {
     })
     mocks.editRequirement.mockResolvedValue({ id: 10, versionNumber: 2 })
     mocks.getOrCreateSpecificationNeedsReference.mockResolvedValue(44)
-    mocks.getPackageBySlug.mockResolvedValue({
+    mocks.getSpecificationBySlug.mockResolvedValue({
       id: 7,
-      uniqueId: 'IAM-PACKAGE',
+      uniqueId: 'IAM-SPECIFICATION',
     })
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(101)
-    mocks.linkRequirementsToPackageAtomically.mockResolvedValue(0)
-    mocks.linkRequirementsToPackage.mockResolvedValue(0)
-    mocks.listPackageItems.mockResolvedValue([])
-    mocks.listPackages.mockResolvedValue([])
+    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
+    mocks.linkRequirementsToSpecification.mockResolvedValue(0)
+    mocks.listSpecificationItems.mockResolvedValue([])
+    mocks.listSpecifications.mockResolvedValue([])
     mocks.restoreVersion.mockResolvedValue({ id: 22, versionNumber: 4 })
     mocks.transitionStatus.mockResolvedValue({ id: 10, versionNumber: 1 })
-    mocks.unlinkRequirementsFromPackage.mockResolvedValue(0)
+    mocks.unlinkRequirementsFromSpecification.mockResolvedValue(0)
   })
 
   it('returns paginated requirement catalog results', async () => {
@@ -982,17 +983,17 @@ describe('createRequirementsService', () => {
     expect(mocks.transitionStatus).not.toHaveBeenCalled()
   })
 
-  it('authorizes and logs package listing operations', async () => {
-    mocks.listPackages.mockResolvedValue([
+  it('authorizes and logs specification listing operations', async () => {
+    mocks.listSpecifications.mockResolvedValue([
       {
         businessNeedsReference: null,
         id: 7,
         implementationType: null,
         itemCount: 2,
         lifecycleStatus: null,
-        name: 'IAM Package',
+        name: 'IAM Specification',
         responsibilityArea: null,
-        uniqueId: 'IAM-PACKAGE',
+        uniqueId: 'IAM-SPECIFICATION',
       },
     ])
     const authorization = {
@@ -1004,20 +1005,20 @@ describe('createRequirementsService', () => {
       uiSettings: makeUiSettings(),
     })
 
-    const result = await service.listPackages(makeContext(), {
+    const result = await service.listSpecifications(makeContext(), {
       locale: 'sv',
       responseFormat: 'json',
     })
 
     expect(authorization.assertAuthorized).toHaveBeenCalledWith(
-      { kind: 'list_packages', nameSearch: undefined },
+      { kind: 'list_specifications', nameSearch: undefined },
       expect.anything(),
     )
     expect(JSON.parse(result.message)).toMatchObject({
       title: 'Kravunderlag',
     })
     expect(logger.info).toHaveBeenCalledWith(
-      'requirements.list_packages',
+      'requirements.list_specifications',
       expect.objectContaining({
         actor_id: 'alice',
         source: 'rest',
@@ -1025,8 +1026,8 @@ describe('createRequirementsService', () => {
     )
   })
 
-  it('localizes package item labels using the requested locale', async () => {
-    mocks.listPackageItems.mockResolvedValue([
+  it('localizes specification item labels using the requested locale', async () => {
+    mocks.listSpecificationItems.mockResolvedValue([
       {
         area: { name: 'Identitet' },
         id: 101,
@@ -1054,9 +1055,9 @@ describe('createRequirementsService', () => {
       uiSettings: makeUiSettings(),
     })
 
-    const result = await service.getPackageItems(makeContext(), {
+    const result = await service.getSpecificationItems(makeContext(), {
       locale: 'sv',
-      specificationSlug: 'IAM-PACKAGE',
+      specificationSlug: 'IAM-SPECIFICATION',
       responseFormat: 'json',
     })
 
@@ -1075,11 +1076,11 @@ describe('createRequirementsService', () => {
     })
   })
 
-  it('uses actual inserted package link counts in addToSpecification', async () => {
+  it('uses actual inserted specification link counts in addToSpecification', async () => {
     mocks.getPublishedVersionIdForRequirement
       .mockResolvedValueOnce(201)
       .mockResolvedValueOnce(202)
-    mocks.linkRequirementsToPackageAtomically.mockResolvedValue(1)
+    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
@@ -1087,29 +1088,27 @@ describe('createRequirementsService', () => {
 
     const result = await service.addToSpecification(makeContext(), {
       locale: 'en',
-      specificationSlug: 'IAM-PACKAGE',
+      specificationSlug: 'IAM-SPECIFICATION',
       requirementIds: [10, 11],
       responseFormat: 'json',
     })
 
-    expect(mocks.linkRequirementsToPackageAtomically).toHaveBeenCalledWith(
-      expect.anything(),
-      7,
-      {
-        requirementIds: [10, 11],
-        needsReferenceText: undefined,
-      },
-    )
+    expect(
+      mocks.linkRequirementsToSpecificationAtomically,
+    ).toHaveBeenCalledWith(expect.anything(), 7, {
+      requirementIds: [10, 11],
+      needsReferenceText: undefined,
+    })
     expect(result.addedCount).toBe(1)
     expect(result.skippedCount).toBe(0)
     expect(JSON.parse(result.message)).toMatchObject({
-      lines: ['Added 1 requirement to specification IAM-PACKAGE.'],
+      lines: ['Added 1 requirement to specification IAM-SPECIFICATION.'],
       title: 'Requirements Added to Specification',
     })
   })
 
-  it('uses actual deleted package link counts in removeFromSpecification', async () => {
-    mocks.unlinkRequirementsFromPackage.mockResolvedValue(1)
+  it('uses actual deleted specification link counts in removeFromSpecification', async () => {
+    mocks.unlinkRequirementsFromSpecification.mockResolvedValue(1)
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
@@ -1117,14 +1116,14 @@ describe('createRequirementsService', () => {
 
     const result = await service.removeFromSpecification(makeContext(), {
       locale: 'en',
-      specificationSlug: 'IAM-PACKAGE',
+      specificationSlug: 'IAM-SPECIFICATION',
       requirementIds: [10, 11],
       responseFormat: 'json',
     })
 
     expect(result.removedCount).toBe(1)
     expect(JSON.parse(result.message)).toMatchObject({
-      lines: ['Removed 1 requirement from specification IAM-PACKAGE.'],
+      lines: ['Removed 1 requirement from specification IAM-SPECIFICATION.'],
       title: 'Requirements Removed from Specification',
     })
   })

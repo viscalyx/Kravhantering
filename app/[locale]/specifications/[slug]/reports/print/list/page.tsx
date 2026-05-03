@@ -5,12 +5,12 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import PrintReportRenderer from '@/components/reports/print/PrintReportRenderer'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { fetchPackageItemsForReport } from '@/lib/reports/data/fetch-specification-items'
+import { fetchSpecificationItemsForReport } from '@/lib/reports/data/fetch-specification-items'
 import { extractErrorDetails } from '@/lib/reports/extract-error-details'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
 
-interface PackageReportResponse {
+interface SpecificationReportResponse {
   businessNeedsReference: string | null
   implementationType: { nameSv: string; nameEn: string } | null
   lifecycleStatus: { nameSv: string; nameEn: string } | null
@@ -60,9 +60,9 @@ export default function PrintListReportPage() {
         }
         return
       }
-      const [requirements, pkgRes] = await Promise.all([
+      const [requirements, specRes] = await Promise.all([
         slug
-          ? fetchPackageItemsForReport(slug, itemRefs, locale)
+          ? fetchSpecificationItemsForReport(slug, itemRefs, locale)
           : Promise.resolve([]),
         slug
           ? fetch(`/api/specifications/${encodeURIComponent(slug)}`)
@@ -71,8 +71,8 @@ export default function PrintListReportPage() {
       if (!isLatestRequest()) {
         return
       }
-      if (slug && pkgRes && !pkgRes.ok) {
-        const details = extractErrorDetails((await pkgRes.text()).trim())
+      if (slug && specRes && !specRes.ok) {
+        const details = extractErrorDetails((await specRes.text()).trim())
         if (!isLatestRequest()) {
           return
         }
@@ -80,15 +80,15 @@ export default function PrintListReportPage() {
           details
             ? tRef.current('specificationFetchFailedWithDetails', {
                 details,
-                status: pkgRes.status,
+                status: specRes.status,
               })
             : tRef.current('specificationFetchFailed', {
-                status: pkgRes.status,
+                status: specRes.status,
               }),
         )
       }
-      const pkg = pkgRes
-        ? ((await pkgRes.json()) as PackageReportResponse)
+      const spec = specRes
+        ? ((await specRes.json()) as SpecificationReportResponse)
         : null
       if (!isLatestRequest()) {
         return
@@ -99,14 +99,14 @@ export default function PrintListReportPage() {
         buildListReport(
           requirements,
           locale,
-          pkg
+          spec
             ? {
-                name: pkg.name,
-                uniqueId: pkg.uniqueId,
-                responsibilityArea: pickName(pkg.responsibilityArea),
-                implementationType: pickName(pkg.implementationType),
-                lifecycleStatus: pickName(pkg.lifecycleStatus),
-                businessNeedsReference: pkg.businessNeedsReference,
+                name: spec.name,
+                uniqueId: spec.uniqueId,
+                responsibilityArea: pickName(spec.responsibilityArea),
+                implementationType: pickName(spec.implementationType),
+                lifecycleStatus: pickName(spec.lifecycleStatus),
+                businessNeedsReference: spec.businessNeedsReference,
               }
             : undefined,
         ),

@@ -11,7 +11,7 @@ The inline detail pane and the full-page requirement detail view share the same 
 1. Requirement text (description) — always first
 2. Acceptance criteria — always second
 3. Metadata grid (2–3 columns) — area (with owner), category, type, quality
-   characteristic, requires testing, verification method, package count
+   characteristic, requires testing, verification method, specification count
 4. References (if any)
 5. Scenarios
 

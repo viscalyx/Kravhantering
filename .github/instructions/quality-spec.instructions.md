@@ -5,18 +5,18 @@ applyTo: "{lib/dal/**/*.ts,lib/requirements/**/*.ts,lib/mcp/**/*.ts,lib/reports/
 # Quality Spec (QUALITY.md) Upkeep
 
 `tests/quality/QUALITY.md` is the spec for outward-facing invariants
-(lifecycle, package-item status, MCP tools, report columns, admin
+(lifecycle, specification-item status, MCP tools, report columns, admin
 defaults). `tests/quality/functional.test.ts` is the executable form of
 that spec. They must move together.
 
 ## When editing covered code
 
-1. Read `tests/quality/QUALITY.md` before changing lifecycle, package,
+1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification,
    MCP, report, or admin-default behavior.
 2. Classify the change:
    - **Refactor, no behavior change** — no QUALITY.md update needed.
    - **New outward-facing behavior** (new lifecycle branch, new
-     package-item status rule, new MCP tool, new report column, new
+     specification-item status rule, new MCP tool, new report column, new
      admin-default surface) — add a new Fitness Scenario to QUALITY.md
      and a matching test in `tests/quality/functional.test.ts`.
    - **Change to an existing covered invariant** — update the matching

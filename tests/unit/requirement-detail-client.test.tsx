@@ -393,8 +393,8 @@ function setupFetch({
   initialRequirement,
   needsReferencesHandler,
   specificationItemDetail,
-  packages = [],
-  packagesHandler,
+  specifications = [],
+  specificationsHandler,
   reactivateNextRequirement,
   restoreHandler,
   restoreNextRequirement,
@@ -423,8 +423,8 @@ function setupFetch({
     specificationItemStatusNameEn: string | null
     specificationItemStatusNameSv: string | null
   }
-  packages?: { id: number; name: string }[]
-  packagesHandler?: () => Promise<Response> | Response
+  specifications?: { id: number; name: string }[]
+  specificationsHandler?: () => Promise<Response> | Response
   reactivateNextRequirement?: ReturnType<typeof makeRequirement>
   restoreHandler?: (init?: RequestInit) => Promise<Response> | Response
   restoreNextRequirement?: ReturnType<typeof makeRequirement>
@@ -503,10 +503,10 @@ function setupFetch({
       }
 
       if (url === '/api/specifications' && method === 'GET') {
-        if (packagesHandler) {
-          return packagesHandler()
+        if (specificationsHandler) {
+          return specificationsHandler()
         }
-        return response({ packages })
+        return response({ specifications })
       }
 
       const needsReferencesMatch = url.match(
@@ -755,11 +755,11 @@ describe('RequirementDetailClient', () => {
     ).toHaveAttribute('data-developer-mode-value', 'quality characteristic')
   })
 
-  it('renders the package count in the detail view', async () => {
+  it('renders the specification count in the detail view', async () => {
     const requirement = makeRequirement(
       [
         makeVersion(1, {
-          description: 'Package count requirement',
+          description: 'Specification count requirement',
           publishedAt: '2026-03-01',
           status: 3,
           statusColor: '#22c55e',
@@ -774,7 +774,7 @@ describe('RequirementDetailClient', () => {
     renderSubject({ inline: true })
 
     expect(
-      await screen.findByText('Package count requirement'),
+      await screen.findByText('Specification count requirement'),
     ).toBeInTheDocument()
     expect(screen.getByText('Used in specification')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
@@ -785,10 +785,10 @@ describe('RequirementDetailClient', () => {
     ).toHaveAttribute('data-developer-mode-value', 'specification count')
   })
 
-  it('shows needs reference and usage status in package-context inline detail metadata', async () => {
+  it('shows needs reference and usage status in specification-context inline detail metadata', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
-        description: 'Package context requirement',
+        description: 'Specification context requirement',
         publishedAt: '2026-03-01',
         status: 3,
         statusColor: '#22c55e',
@@ -800,7 +800,7 @@ describe('RequirementDetailClient', () => {
     setupFetch({
       initialRequirement: requirement,
       specificationItemDetail: {
-        needsReference: 'Shared package need',
+        needsReference: 'Shared specification need',
         needsReferenceId: 81,
         specificationItemId: 31,
         specificationItemStatusColor: '#f59e0b',
@@ -818,10 +818,10 @@ describe('RequirementDetailClient', () => {
     })
 
     expect(
-      await screen.findByText('Package context requirement'),
+      await screen.findByText('Specification context requirement'),
     ).toBeInTheDocument()
     expect(screen.getByText('Needs reference')).toBeInTheDocument()
-    expect(screen.getByText('Shared package need')).toBeInTheDocument()
+    expect(screen.getByText('Shared specification need')).toBeInTheDocument()
     expect(screen.getByText('Usage status')).toBeInTheDocument()
     expect(screen.getByText('Pågående')).toBeInTheDocument()
     expect(
@@ -1549,11 +1549,11 @@ describe('RequirementDetailClient', () => {
     )
   })
 
-  it('opens package-context deviation review report URLs', async () => {
+  it('opens specification-context deviation review report URLs', async () => {
     const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
     const requirement = makeRequirement([
       makeVersion(1, {
-        description: 'Published package requirement',
+        description: 'Published specification requirement',
         publishedAt: '2026-03-01',
         status: 3,
         statusColor: '#22c55e',
@@ -1593,7 +1593,7 @@ describe('RequirementDetailClient', () => {
     )
 
     expect(openSpy).toHaveBeenCalledWith(
-      '/sv/requirements/reports/print/deviation-review/123?pkg=ETJANST-UPP-2026&item=31',
+      '/sv/requirements/reports/print/deviation-review/123?spec=ETJANST-UPP-2026&item=31',
       '_blank',
     )
   })
@@ -1657,7 +1657,7 @@ describe('RequirementDetailClient', () => {
     expect(screen.queryByText('Published suggestion')).toBeNull()
   })
 
-  it('shows help affordances in the add-to-package dialog', async () => {
+  it('shows help affordances in the add-to-specification dialog', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1671,7 +1671,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -1696,15 +1696,15 @@ describe('RequirementDetailClient', () => {
     })
     expect(dialog).toHaveAttribute(
       'aria-labelledby',
-      'add-to-package-dialog-title',
+      'add-to-specification-dialog-title',
     )
     const heading = screen.getByRole('heading', {
       name: 'specification.addToSpecification',
     })
-    expect(heading).toHaveAttribute('id', 'add-to-package-dialog-title')
+    expect(heading).toHaveAttribute('id', 'add-to-specification-dialog-title')
     const panel = dialog.querySelector('[role="document"]')
     if (!panel) {
-      throw new Error('Expected add-to-package dialog document panel')
+      throw new Error('Expected add-to-specification dialog document panel')
     }
     expect(panel).toHaveClass('max-h-[calc(100vh-2rem)]')
     expect(panel).toHaveClass('overflow-y-auto')
@@ -1726,7 +1726,7 @@ describe('RequirementDetailClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows an inline error when loading packages for the add-to-package dialog fails', async () => {
+  it('shows an inline error when loading specifications for the add-to-specification dialog fails', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1743,8 +1743,8 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packagesHandler: () =>
-        response({ error: 'Package lookup failed' }, false),
+      specificationsHandler: () =>
+        response({ error: 'Specification lookup failed' }, false),
     })
     renderSubject({ inline: true })
 
@@ -1756,7 +1756,7 @@ describe('RequirementDetailClient', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'specification.loadSpecificationsFailed: Package lookup failed',
+      'specification.loadSpecificationsFailed: Specification lookup failed',
     )
     expect(
       screen.queryByText('specification.noSpecificationsAvailable'),
@@ -1766,7 +1766,7 @@ describe('RequirementDetailClient', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('shows an inline error when loading packages for the add-to-package dialog fails with a plain-text response body', async () => {
+  it('shows an inline error when loading specifications for the add-to-specification dialog fails with a plain-text response body', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1783,8 +1783,8 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packagesHandler: () =>
-        new Response('Package lookup failed', {
+      specificationsHandler: () =>
+        new Response('Specification lookup failed', {
           headers: { 'content-type': 'text/plain' },
           status: 503,
           statusText: 'Service Unavailable',
@@ -1800,7 +1800,7 @@ describe('RequirementDetailClient', () => {
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'specification.loadSpecificationsFailed: Package lookup failed',
+      'specification.loadSpecificationsFailed: Specification lookup failed',
     )
     expect(
       screen.queryByText('specification.noSpecificationsAvailable'),
@@ -1810,7 +1810,7 @@ describe('RequirementDetailClient', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('renders the add-to-package close button with touch target and focus styles', async () => {
+  it('renders the add-to-specification close button with touch target and focus styles', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1824,7 +1824,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -1843,7 +1843,7 @@ describe('RequirementDetailClient', () => {
     expect(closeButton.className).toContain('focus-visible:ring-primary-500')
   })
 
-  it('keeps the add-to-package cancel button visible on dark-mode hover', async () => {
+  it('keeps the add-to-specification cancel button visible on dark-mode hover', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1857,7 +1857,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -1875,7 +1875,7 @@ describe('RequirementDetailClient', () => {
     expect(cancelButton.className).toContain('dark:hover:text-secondary-100')
   })
 
-  it('adds explicit dark-mode border and text classes to add-to-package form fields', async () => {
+  it('adds explicit dark-mode border and text classes to add-to-specification form fields', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1889,7 +1889,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -1900,7 +1900,7 @@ describe('RequirementDetailClient', () => {
       }),
     )
 
-    const packageSelect = await screen.findByRole('combobox', {
+    const specificationSelect = await screen.findByRole('combobox', {
       name: /specification\.selectSpecification/,
     })
     const needsReferenceSelect = screen.getByRole('combobox', {
@@ -1914,7 +1914,7 @@ describe('RequirementDetailClient', () => {
     })
 
     for (const field of [
-      packageSelect,
+      specificationSelect,
       needsReferenceSelect,
       needsReferenceText,
     ]) {
@@ -1923,11 +1923,11 @@ describe('RequirementDetailClient', () => {
       expect(field.className).toContain('dark:border-secondary-700')
       expect(field.className).toContain('dark:text-secondary-100')
     }
-    expect(packageSelect.className).toContain('min-h-[44px]')
+    expect(specificationSelect.className).toContain('min-h-[44px]')
     expect(needsReferenceSelect.className).toContain('min-h-[44px]')
   })
 
-  it('ignores stale needs-reference responses when switching packages quickly', async () => {
+  it('ignores stale needs-reference responses when switching specifications quickly', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -1952,9 +1952,9 @@ describe('RequirementDetailClient', () => {
           ? firstNeedsReferences.promise
           : secondNeedsReferences.promise
       },
-      packages: [
-        { id: 7, name: 'IAM Package' },
-        { id: 8, name: 'Security Package' },
+      specifications: [
+        { id: 7, name: 'IAM Specification' },
+        { id: 8, name: 'Security Specification' },
       ],
     })
     renderSubject({ inline: true })
@@ -1966,12 +1966,12 @@ describe('RequirementDetailClient', () => {
       }),
     )
 
-    const packageSelect = screen.getByRole('combobox', {
+    const specificationSelect = screen.getByRole('combobox', {
       name: /specification\.selectSpecification/,
     })
 
-    await userEvent.selectOptions(packageSelect, '7')
-    await userEvent.selectOptions(packageSelect, '8')
+    await userEvent.selectOptions(specificationSelect, '7')
+    await userEvent.selectOptions(specificationSelect, '8')
 
     await waitFor(() => {
       expect(signals).toHaveLength(2)
@@ -2018,7 +2018,7 @@ describe('RequirementDetailClient', () => {
     setupFetch({
       initialRequirement: requirement,
       needsReferencesHandler: () => response({ error: 'Lookup failed' }, false),
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -2042,7 +2042,7 @@ describe('RequirementDetailClient', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it('aborts pending needs-reference requests when cancelling the add-to-package dialog', async () => {
+  it('aborts pending needs-reference requests when cancelling the add-to-specification dialog', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -2064,7 +2064,7 @@ describe('RequirementDetailClient', () => {
         }
         return pendingNeedsReferences.promise
       },
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -2097,7 +2097,7 @@ describe('RequirementDetailClient', () => {
     pendingNeedsReferences.resolve(response({ needsReferences: [] }))
   })
 
-  it('ignores stale add-to-package submit responses after the dialog is reopened', async () => {
+  it('ignores stale add-to-specification submit responses after the dialog is reopened', async () => {
     try {
       const requirement = makeRequirement([
         makeVersion(1, {
@@ -2120,7 +2120,7 @@ describe('RequirementDetailClient', () => {
           return pendingAddToSpecification.promise
         },
         initialRequirement: requirement,
-        packages: [{ id: 7, name: 'IAM Package' }],
+        specifications: [{ id: 7, name: 'IAM Specification' }],
       })
       renderSubject({ inline: true })
 
@@ -2188,7 +2188,7 @@ describe('RequirementDetailClient', () => {
     }
   })
 
-  it('announces add-to-package submit failures as alerts', async () => {
+  it('announces add-to-specification submit failures as alerts', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -2204,7 +2204,7 @@ describe('RequirementDetailClient', () => {
       addToSpecificationHandler: () =>
         response({ error: 'Already linked' }, false),
       initialRequirement: requirement,
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -2233,7 +2233,7 @@ describe('RequirementDetailClient', () => {
     )
   })
 
-  it('closes the add-to-package dialog when Escape is pressed inside it', async () => {
+  it('closes the add-to-specification dialog when Escape is pressed inside it', async () => {
     const requirement = makeRequirement([
       makeVersion(1, {
         description: 'Published requirement',
@@ -2247,7 +2247,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packages: [{ id: 7, name: 'IAM Package' }],
+      specifications: [{ id: 7, name: 'IAM Specification' }],
     })
     renderSubject({ inline: true })
 
@@ -2258,17 +2258,17 @@ describe('RequirementDetailClient', () => {
       }),
     )
 
-    const packageSelect = screen.getByRole('combobox', {
+    const specificationSelect = screen.getByRole('combobox', {
       name: /specification\.selectSpecification/,
     })
-    fireEvent.keyDown(packageSelect, { key: 'Escape' })
+    fireEvent.keyDown(specificationSelect, { key: 'Escape' })
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 
-  it('hides add-to-package for historical published versions that cannot be persisted exactly', async () => {
+  it('hides add-to-specification for historical published versions that cannot be persisted exactly', async () => {
     const requirement = makeRequirement([
       makeVersion(4, {
         description: 'Draft replacement',

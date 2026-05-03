@@ -6,10 +6,10 @@ const viewports = [
 ]
 
 for (const viewport of viewports) {
-  test.describe(`Requirement packages list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
+  test.describe(`Requirement specifications list filter — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
 
-    test('filters the table by package name and clears the search', async ({
+    test('filters the table by specification name and clears the search', async ({
       page,
     }) => {
       await page.goto('/specifications')
@@ -29,7 +29,7 @@ for (const viewport of viewports) {
       })
       await expect(createButton).toBeVisible()
       const areaPill = page
-        .locator('[data-package-requirement-area-pill="true"]')
+        .locator('[data-specification-requirement-area-pill="true"]')
         .first()
       await expect(areaPill).toBeVisible()
       await expect(areaPill).toHaveJSProperty('tagName', 'SPAN')
@@ -61,19 +61,19 @@ for (const viewport of viewports) {
         )
       }
 
-      const hasMultiAreaPackage = await page.evaluate(() =>
+      const hasMultiAreaSpecification = await page.evaluate(() =>
         Array.from(
           document.querySelectorAll(
-            '[data-package-requirement-area-pills="true"]',
+            '[data-specification-requirement-area-pills="true"]',
           ),
         ).some(
           group =>
             group.querySelectorAll(
-              '[data-package-requirement-area-pill="true"]',
+              '[data-specification-requirement-area-pill="true"]',
             ).length > 1,
         ),
       )
-      expect(hasMultiAreaPackage).toBe(true)
+      expect(hasMultiAreaSpecification).toBe(true)
 
       await page.evaluate(() => {
         const descriptor = Object.getOwnPropertyDescriptor(
@@ -85,7 +85,9 @@ for (const viewport of viewports) {
           configurable: true,
           get() {
             const element = this as HTMLElement
-            if (element.dataset.packageRequirementAreaPillList === 'true') {
+            if (
+              element.dataset.specificationRequirementAreaPillList === 'true'
+            ) {
               return 48
             }
 
@@ -97,10 +99,10 @@ for (const viewport of viewports) {
       })
 
       const areaToggle = page
-        .locator('[data-package-requirement-area-pill-toggle="true"]')
+        .locator('[data-specification-requirement-area-pill-toggle="true"]')
         .first()
       const areaList = areaToggle.locator(
-        'xpath=../*[@data-package-requirement-area-pill-list="true"]',
+        'xpath=../*[@data-specification-requirement-area-pill-list="true"]',
       )
       await expect(areaToggle).toBeVisible()
       await expect(areaToggle).toHaveAttribute('aria-expanded', 'false')

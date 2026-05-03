@@ -32,12 +32,12 @@ describe('specifications pages', () => {
     ).toBeInTheDocument()
   })
 
-  it('KravunderlagDetailPage passes the slug to RequirementsSpecificationDetailClient', async () => {
-    const { default: KravunderlagDetailPage } = await import(
+  it('RequirementsSpecificationDetailPage passes the slug to RequirementsSpecificationDetailClient', async () => {
+    const { default: RequirementsSpecificationDetailPage } = await import(
       '@/app/[locale]/specifications/[slug]/page'
     )
 
-    const element = await KravunderlagDetailPage({
+    const element = await RequirementsSpecificationDetailPage({
       params: Promise.resolve({ slug: 'ETJANST-UPP-2026' }),
     })
 

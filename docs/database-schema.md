@@ -716,7 +716,7 @@ Förvaltning (Management).
 ### `specification_item_statuses`
 
 Lookup table for usage/implementation status of individual
-requirements within a package (e.g. included, in progress,
+requirements within a specification (e.g. included, in progress,
 implemented, verified).
 
 | Column | Type | Description |
@@ -953,8 +953,8 @@ specific procurement or project.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `unique_id` | text, unique | Stable package identifier used in URLs and APIs |
-| `name` | text | Display name for the package |
+| `unique_id` | text, unique | Stable specification identifier used in URLs and APIs |
+| `name` | text | Display name for the specification |
 | `local_requirement_next_sequence` | integer NOT NULL DEFAULT 1 | Next sequence number reserved for specification-local requirement IDs such as `KRAV0001` |
 | `specification_responsibility_area_id` | integer FK → `specification_responsibility_areas.id` | Responsibility area classification (nullable) |
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
@@ -964,7 +964,7 @@ specific procurement or project.
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
-**Seed note:** Package `ETJANST-UPP-2026` has
+**Seed note:** Specification `ETJANST-UPP-2026` has
 `local_requirement_next_sequence = 3` because the seed
 includes `KRAV0001` and `KRAV0002`.
 
@@ -972,13 +972,13 @@ includes `KRAV0001` and `KRAV0002`.
 
 ### `specification_needs_references`
 
-Reusable needs-reference texts stored per package.
+Reusable needs-reference texts stored per specification.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `specification_id` | integer FK → `requirements_specifications.id` | Owning package |
+| `specification_id` | integer FK → `requirements_specifications.id` | Owning specification |
 | `text` | text | Stored needs-reference label |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -991,19 +991,19 @@ Reusable needs-reference texts stored per package.
 
 ### `specification_local_requirements`
 
-Package-scoped requirements that are stored outside the
+Specification-scoped requirements that are stored outside the
 global requirements library. They share the same
 classification fields as library requirements but are
-edited directly in package context without the normal
+edited directly in specification context without the normal
 version/review/publication lifecycle.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE) | Owning package |
-| `unique_id` | text | Package-scoped visible requirement ID in the format `KRAV####`; duplicates across packages are allowed |
-| `sequence_number` | integer | Monotonic specification-local sequence number used to derive `unique_id` and never reused within the same package |
+| `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE) | Owning specification |
+| `unique_id` | text | Specification-scoped visible requirement ID in the format `KRAV####`; duplicates across specifications are allowed |
+| `sequence_number` | integer | Monotonic specification-local sequence number used to derive `unique_id` and never reused within the same specification |
 | `requirement_area_id` | integer FK → `requirement_areas.id` | Required area classification |
 | `description` | text NOT NULL | Requirement text |
 | `acceptance_criteria` | text | Acceptance criteria |
@@ -1013,9 +1013,9 @@ version/review/publication lifecycle.
 | `risk_level_id` | integer FK → `risk_levels.id` | Risk level (nullable) |
 | `is_testing_required` | integer NOT NULL DEFAULT 0 | Whether the requirement is marked as verifiable |
 | `verification_method` | text | Verification method |
-| `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional package-scoped needs reference |
+| `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
 | `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Usage/implementation status (nullable, SET NULL on status delete) |
-| `note` | text | Optional package-scoped note |
+| `note` | text | Optional specification-scoped note |
 | `status_updated_at` | text (ISO 8601) | When the usage status last changed |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
@@ -1143,16 +1143,16 @@ norm references.
 
 ### `requirements_specification_items`
 
-Links individual requirements (pinned to a specific version) into a package.
+Links individual requirements (pinned to a specific version) into a specification.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `requirements_specification_id` | integer FK → `requirements_specifications.id` | Parent package |
+| `requirements_specification_id` | integer FK → `requirements_specifications.id` | Parent specification |
 | `requirement_id` | integer FK → `requirements.id` | The requirement being included |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Pinned version snapshot |
-| `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional package-scoped needs reference |
+| `needs_reference_id` | integer FK → `specification_needs_references.(specification_id, id)` | Optional specification-scoped needs reference |
 | `specification_item_status_id` | integer FK → `specification_item_statuses.id` | Usage/implementation status (nullable) |
 | `note` | text | Optional free-text note (nullable) |
 | `status_updated_at` | text (ISO 8601) | When the usage status was last changed (nullable) |
@@ -1174,7 +1174,7 @@ Links individual requirements (pinned to a specific version) into a package.
 Formal deviations recorded against specification-local
 requirements. The workflow mirrors `deviations`, but the
 target is a specification-local requirement rather than a
-library requirement pinned into a package.
+library requirement pinned into a specification.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -1200,14 +1200,14 @@ library requirement pinned into a package.
 ### `deviations`
 
 Formal deviations from mandatory requirements within a
-package. Each deviation has a motivation and may receive
+specification. Each deviation has a motivation and may receive
 a decision (approved or rejected) with its own rationale.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `id` | integer PK | Auto-increment primary key |
-| `specification_item_id` | integer FK → `requirements_specification_items.id` (CASCADE DELETE) | The package item this deviation applies to |
+| `specification_item_id` | integer FK → `requirements_specification_items.id` (CASCADE DELETE) | The specification item this deviation applies to |
 | `motivation` | text NOT NULL | Why this mandatory requirement cannot be fulfilled |
 | `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
 | `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
@@ -1293,12 +1293,12 @@ its purpose and the table/column(s) it covers.
 | `uq_specification_lifecycle_statuses_name_en` | `specification_lifecycle_statuses` | `name_en` | Prevents duplicate English lifecycle status names |
 | `uq_specification_item_statuses_name_sv` | `specification_item_statuses` | `name_sv` | Prevents duplicate Swedish usage status names |
 | `uq_specification_item_statuses_name_en` | `specification_item_statuses` | `name_en` | Prevents duplicate English usage status names |
-| `uq_requirements_specifications_unique_id` | `requirements_specifications` | `unique_id` | Ensures each package has a stable unique identifier |
-| `uq_specification_needs_references_specification_text` | `specification_needs_references` | `(specification_id, text)` | Prevents duplicate needs-reference texts inside the same package |
-| `uq_specification_needs_references_specification_id_id` | `specification_needs_references` | `(specification_id, id)` | Supports composite foreign-key validation for package-scoped needs references |
-| `uq_specification_local_requirements_specification_id_unique_id` | `specification_local_requirements` | `(specification_id, unique_id)` | Ensures each specification-local requirement display ID stays unique within its package while allowing duplicates across packages |
-| `uq_specification_local_requirements_specification_id_sequence_number` | `specification_local_requirements` | `(specification_id, sequence_number)` | Prevents sequence reuse inside a package |
-| `uq_requirements_specification_items_specification_requirement` | `requirements_specification_items` | `(requirements_specification_id, requirement_id)` | Prevents linking the same requirement into a package more than once |
+| `uq_requirements_specifications_unique_id` | `requirements_specifications` | `unique_id` | Ensures each specification has a stable unique identifier |
+| `uq_specification_needs_references_specification_text` | `specification_needs_references` | `(specification_id, text)` | Prevents duplicate needs-reference texts inside the same specification |
+| `uq_specification_needs_references_specification_id_id` | `specification_needs_references` | `(specification_id, id)` | Supports composite foreign-key validation for specification-scoped needs references |
+| `uq_specification_local_requirements_specification_id_unique_id` | `specification_local_requirements` | `(specification_id, unique_id)` | Ensures each specification-local requirement display ID stays unique within its specification while allowing duplicates across specifications |
+| `uq_specification_local_requirements_specification_id_sequence_number` | `specification_local_requirements` | `(specification_id, sequence_number)` | Prevents sequence reuse inside a specification |
+| `uq_requirements_specification_items_specification_requirement` | `requirements_specification_items` | `(requirements_specification_id, requirement_id)` | Prevents linking the same requirement into a specification more than once |
 | `uq_norm_references_norm_reference_id` | `norm_references` | `norm_reference_id` | Ensures each norm reference has a distinct external identifier |
 <!-- markdownlint-enable MD013 -->
 
@@ -1312,17 +1312,17 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | Speed up listing requirements by area |
 | `idx_requirements_is_archived` | `requirements` | `is_archived` | Speed up filtering active vs archived requirements |
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
-| `idx_specification_local_requirements_specification_id` | `specification_local_requirements` | `specification_id` | Speed up listing specification-local requirements per package |
+| `idx_specification_local_requirements_specification_id` | `specification_local_requirements` | `specification_id` | Speed up listing specification-local requirements per specification |
 | `idx_specification_local_requirements_requirement_area_id` | `specification_local_requirements` | `requirement_area_id` | Speed up area-based summaries/filtering for specification-local requirements |
 | `idx_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | Speed up usage-status filtering for specification-local requirements |
-| `idx_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | Speed up listing items in a package |
-| `idx_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | Speed up finding which packages contain a requirement |
+| `idx_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | Speed up listing items in a specification |
+| `idx_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | Speed up finding which specifications contain a requirement |
 | `idx_requirements_specification_items_specification_item_status_id` | `requirements_specification_items` | `specification_item_status_id` | Speed up filtering items by usage status |
 | `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
 | `idx_specification_local_requirement_usage_scenarios_usage_scenario_id` | `specification_local_requirement_usage_scenarios` | `usage_scenario_id` | Speed up lookups of specification-local requirements by usage scenario |
 | `idx_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of specification-local requirements by norm reference |
-| `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by package item |
+| `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by specification item |
 | `idx_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | Speed up lookups of deviations by specification-local requirement |
 | `idx_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | Speed up lookups of suggestions by requirement |
 | `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
@@ -1417,7 +1417,7 @@ graph LR
         RV[requirement_versions]
     end
 
-    subgraph Packages
+    subgraph Specifications
         PRA[specification_responsibility_areas]
         PIT[specification_implementation_types]
         PLS[specification_lifecycle_statuses]
@@ -1461,7 +1461,7 @@ graph LR
     RL -- "uq_..._name_sv / name_en" --> RL
 
     RP -- "uq_requirements_specifications_unique_id\n(unique_id)" --> RP
-    PNR -- "uq_..._package_text\n(specification_id, text)" --> RP
+    PNR -- "uq_..._specification_text\n(specification_id, text)" --> RP
     PNR -- "uq_..._specification_id_id\n(specification_id, id)" --> RP
     PLR -- "uq_..._specification_id_unique_id\n(specification_id, unique_id)" --> RP
     PLR -- "uq_..._specification_id_sequence_number\n(specification_id, sequence_number)" --> RP

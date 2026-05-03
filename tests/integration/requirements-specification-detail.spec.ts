@@ -9,7 +9,7 @@ for (const viewport of viewports) {
   test.describe(`Requirements specification detail edit action — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
 
-    test('opens the package edit view from the title action', async ({
+    test('opens the specification edit view from the title action', async ({
       page,
     }) => {
       await page.goto('/sv/specifications/ETJANST-UPP-2026')
@@ -45,17 +45,17 @@ for (const viewport of viewports) {
         const activeViewportHeight = activeViewport?.height ?? 560
 
         const leftPanel = page.locator(
-          '[data-package-detail-list-panel="items"]',
+          '[data-specification-detail-list-panel="items"]',
         )
         const leftPanelHeading = page.getByRole('heading', {
           level: 2,
           name: /Krav i underlaget/,
         })
         const leftEmptyState = page.getByText(
-          'Det finns inga krav kopplade till detta paket.',
+          'Det finns inga krav kopplade till detta kravunderlag.',
         )
         const rightPanel = page.locator(
-          '[data-package-detail-list-panel="available"]',
+          '[data-specification-detail-list-panel="available"]',
         )
         const leftTopBar = leftPanel.locator(
           '[data-requirements-sticky-top-bar="true"]',

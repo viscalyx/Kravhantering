@@ -2,10 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import {
   createDeviation,
   createDeviationForItemRef,
-  listDeviationsForPackageItem,
+  listDeviationsForSpecificationItem,
   listDeviationsForSpecificationLocalRequirement,
 } from '@/lib/dal/deviations'
-import { parsePackageItemRef } from '@/lib/dal/requirements-specifications'
+import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
@@ -28,7 +28,7 @@ export async function GET(
   if (decodedItemId == null) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
-  const parsedItemRef = parsePackageItemRef(decodedItemId)
+  const parsedItemRef = parseSpecificationItemRef(decodedItemId)
   const numericItemId =
     parsedItemRef == null && /^\d+$/.test(decodedItemId)
       ? Number(decodedItemId)
@@ -47,10 +47,10 @@ export async function GET(
             db,
             parsedItemRef.id,
           )
-        : await listDeviationsForPackageItem(db, numericItemId ?? 0)
+        : await listDeviationsForSpecificationItem(db, numericItemId ?? 0)
     return NextResponse.json({ deviations })
   } catch (error) {
-    console.error('Failed to list deviations for package item', error)
+    console.error('Failed to list deviations for specification item', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -67,7 +67,7 @@ export async function POST(
   if (decodedItemId == null) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
-  const parsedItemRef = parsePackageItemRef(decodedItemId)
+  const parsedItemRef = parseSpecificationItemRef(decodedItemId)
   const numericItemId =
     parsedItemRef == null && /^\d+$/.test(decodedItemId)
       ? Number(decodedItemId)

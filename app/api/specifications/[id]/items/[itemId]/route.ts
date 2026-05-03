@@ -1,24 +1,24 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  getPackageById,
-  getPackageBySlug,
-  getPackageItemByRef,
-  listPackageItems,
-  updatePackageItemFieldsByItemRef,
+  getSpecificationById,
+  getSpecificationBySlug,
+  getSpecificationItemByRef,
+  listSpecificationItems,
+  updateSpecificationItemFieldsByItemRef,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string; itemId: string }>
 
-async function resolvePackageId(idOrSlug: string, db: SqlServerDatabase) {
-  const bySlug = await getPackageBySlug(db, idOrSlug)
+async function resolveSpecificationId(idOrSlug: string, db: SqlServerDatabase) {
+  const bySlug = await getSpecificationBySlug(db, idOrSlug)
   if (bySlug) {
     return bySlug.id
   }
 
   if (/^\d+$/.test(idOrSlug)) {
-    const byId = await getPackageById(db, Number(idOrSlug))
+    const byId = await getSpecificationById(db, Number(idOrSlug))
     return byId?.id ?? null
   }
 
@@ -36,13 +36,13 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
   }
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolvePackageId(id, db)
+  const specificationId = await resolveSpecificationId(id, db)
 
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const items = await listPackageItems(db, specificationId)
+  const items = await listSpecificationItems(db, specificationId)
   const item = items.find(
     candidate =>
       candidate.specificationItemId === numericItemId &&
@@ -51,7 +51,7 @@ export async function GET(
 
   if (!item) {
     return NextResponse.json(
-      { error: 'Item not found in package' },
+      { error: 'Item not found in specification' },
       { status: 404 },
     )
   }
@@ -102,19 +102,23 @@ export async function PATCH(
     return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
   }
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolvePackageId(id, db)
+  const specificationId = await resolveSpecificationId(id, db)
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
   const decodedItemRef = decodeURIComponent(itemId)
-  const item = await getPackageItemByRef(db, specificationId, decodedItemRef)
+  const item = await getSpecificationItemByRef(
+    db,
+    specificationId,
+    decodedItemRef,
+  )
   if (!item) {
     return NextResponse.json(
-      { error: 'Item not found in package' },
+      { error: 'Item not found in specification' },
       { status: 404 },
     )
   }
-  await updatePackageItemFieldsByItemRef(
+  await updateSpecificationItemFieldsByItemRef(
     db,
     specificationId,
     decodedItemRef,

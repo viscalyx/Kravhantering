@@ -305,6 +305,7 @@
     "noItems": "No requirements are linked to this specification.",
     "specificationNotFound": "Requirement specification not found.",
     "backToSpecifications": "Back to specifications",
+    "downloadFilename": "specification.csv",
     "newLocalRequirement": "New local requirement",
     "editLocalRequirement": "Edit local requirement",
     "localRequirementNotFound": "Local requirement not found in this specification.",

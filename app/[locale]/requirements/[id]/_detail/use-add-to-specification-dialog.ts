@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import type { AddToSpecificationNeedsRefMode } from './types'
 
-interface PackageOption {
+interface SpecificationOption {
   id: number
   name: string
 }
@@ -26,15 +26,18 @@ interface AddToSpecificationDialogState {
   needsReferencesLoading: boolean
   needsReferenceText: string
   openHelp: Set<string>
-  packages: PackageOption[]
-  packagesError: string | null
-  packagesLoading: boolean
   specificationId: string
+  specifications: SpecificationOption[]
+  specificationsError: string | null
+  specificationsLoading: boolean
 }
 
 type AddToSpecificationDialogAction =
-  | { packages: PackageOption[]; type: 'load_packages_success' }
-  | { specificationId: string; type: 'select_package_start' }
+  | {
+      specifications: SpecificationOption[]
+      type: 'load_specifications_success'
+    }
+  | { specificationId: string; type: 'select_specification_start' }
   | { refs: NeedsReferenceOption[]; type: 'load_needs_refs_success' }
   | { text: string; type: 'set_needs_reference_text' }
   | {
@@ -45,16 +48,16 @@ type AddToSpecificationDialogAction =
   | { type: 'close' }
   | { type: 'load_needs_refs_finish' }
   | { type: 'load_needs_refs_start' }
-  | { type: 'load_packages_start' }
+  | { type: 'load_specifications_start' }
   | { type: 'open' }
   | { type: 'submit_start' }
   | { type: 'submit_success' }
   | { error: string; type: 'load_needs_refs_error' }
-  | { error: string; type: 'load_packages_error' }
+  | { error: string; type: 'load_specifications_error' }
   | { error: string; type: 'submit_error' }
   | { field: string; type: 'toggle_help' }
 
-const closedState: Omit<AddToSpecificationDialogState, 'packages'> = {
+const closedState: Omit<AddToSpecificationDialogState, 'specifications'> = {
   addToSpecificationError: null,
   addToSpecificationStatus: 'idle',
   availableNeedsRefs: [],
@@ -66,13 +69,13 @@ const closedState: Omit<AddToSpecificationDialogState, 'packages'> = {
   needsReferencesLoading: false,
   openHelp: new Set(),
   specificationId: '',
-  packagesError: null,
-  packagesLoading: false,
+  specificationsError: null,
+  specificationsLoading: false,
 }
 
 const initialState: AddToSpecificationDialogState = {
   ...closedState,
-  packages: [],
+  specifications: [],
 }
 
 function resetOpenState(
@@ -81,7 +84,7 @@ function resetOpenState(
   return {
     ...closedState,
     isOpen: true,
-    packages: state.packages,
+    specifications: state.specifications,
   }
 }
 
@@ -94,23 +97,27 @@ function addToSpecificationDialogReducer(
       return resetOpenState(state)
     case 'close':
       return { ...resetOpenState(state), isOpen: false }
-    case 'load_packages_start':
-      return { ...state, packagesError: null, packagesLoading: true }
-    case 'load_packages_success':
+    case 'load_specifications_start':
       return {
         ...state,
-        packages: action.packages,
-        packagesError: null,
-        packagesLoading: false,
+        specificationsError: null,
+        specificationsLoading: true,
       }
-    case 'load_packages_error':
+    case 'load_specifications_success':
       return {
         ...state,
-        packages: [],
-        packagesError: action.error,
-        packagesLoading: false,
+        specifications: action.specifications,
+        specificationsError: null,
+        specificationsLoading: false,
       }
-    case 'select_package_start':
+    case 'load_specifications_error':
+      return {
+        ...state,
+        specifications: [],
+        specificationsError: action.error,
+        specificationsLoading: false,
+      }
+    case 'select_specification_start':
       return {
         ...state,
         availableNeedsRefs: [],
@@ -177,7 +184,7 @@ interface UseAddToSpecificationDialogOptions {
 
 export interface UseAddToSpecificationDialogResult {
   closeDialog: () => void
-  handlePackageSelect: (specificationId: string) => Promise<void>
+  handleSpecificationSelect: (specificationId: string) => Promise<void>
   handleSubmit: (event: FormEvent) => Promise<void>
   openDialog: () => Promise<void>
   setNeedsReferenceMode: (
@@ -246,8 +253,8 @@ export function useAddToSpecificationDialog({
     needsRefsRequestIdRef.current += 1
     dispatch({ type: 'open' })
 
-    if (state.packages.length === 0) {
-      dispatch({ type: 'load_packages_start' })
+    if (state.specifications.length === 0) {
+      dispatch({ type: 'load_specifications_start' })
       try {
         const res = await apiFetch('/api/specifications')
         if (!res.ok) {
@@ -259,15 +266,15 @@ export function useAddToSpecificationDialog({
           )
         }
         const data = (await res.json()) as {
-          packages?: PackageOption[]
+          specifications?: SpecificationOption[]
         }
         dispatch({
-          packages: data.packages ?? [],
-          type: 'load_packages_success',
+          specifications: data.specifications ?? [],
+          type: 'load_specifications_success',
         })
       } catch (error) {
         console.error(
-          'Failed to load packages for add-to-package dialog',
+          'Failed to load specifications for add-to-specification dialog',
           error,
         )
         dispatch({
@@ -275,19 +282,19 @@ export function useAddToSpecificationDialog({
             error instanceof Error
               ? error.message
               : tp('loadSpecificationsFailed'),
-          type: 'load_packages_error',
+          type: 'load_specifications_error',
         })
       }
     }
-  }, [resetSubmitSession, state.packages.length, tp])
+  }, [resetSubmitSession, state.specifications.length, tp])
 
-  const handlePackageSelect = useCallback(
+  const handleSpecificationSelect = useCallback(
     async (specificationId: string) => {
       needsRefsAbortRef.current?.abort()
       needsRefsAbortRef.current = null
       needsRefsRequestIdRef.current += 1
       const requestId = needsRefsRequestIdRef.current
-      dispatch({ specificationId, type: 'select_package_start' })
+      dispatch({ specificationId, type: 'select_specification_start' })
       if (!specificationId) {
         return
       }
@@ -323,7 +330,7 @@ export function useAddToSpecificationDialog({
       } catch (error) {
         if ((error as { name?: string }).name !== 'AbortError') {
           console.error(
-            'Failed to load needs references for add-to-package dialog',
+            'Failed to load needs references for add-to-specification dialog',
             error,
           )
           if (
@@ -451,7 +458,7 @@ export function useAddToSpecificationDialog({
 
   return {
     closeDialog,
-    handlePackageSelect,
+    handleSpecificationSelect,
     handleSubmit,
     openDialog,
     setNeedsReferenceMode,

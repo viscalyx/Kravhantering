@@ -255,7 +255,7 @@ describe('dogfood seed inventory', () => {
 })
 
 describe('appendDogfoodSeed', () => {
-  it('produces KH and KH-POC packages with expected items and all v1 Publicerad', () => {
+  it('produces KH and KH-POC specifications with expected items and all v1 Publicerad', () => {
     const seed = emptySeed()
     const summary = appendDogfoodSeed(seed)
 
@@ -269,8 +269,8 @@ describe('appendDogfoodSeed', () => {
     expect(khPoc).toBeDefined()
     expect(kh?.[6]).toBe('KH')
     expect(khPoc?.[6]).toBe('KH-POC')
-    expect(kh?.[8]).toBe(ID.pkgLifecycle.utveckling)
-    expect(khPoc?.[8]).toBe(ID.pkgLifecycle.inforande)
+    expect(kh?.[8]).toBe(ID.specLifecycle.utveckling)
+    expect(khPoc?.[8]).toBe(ID.specLifecycle.inforande)
 
     const items = seed.requirements_specification_items.rows
     expect(items.filter(r => r[1] === SPEC_KH)).toHaveLength(
@@ -290,7 +290,7 @@ describe('appendDogfoodSeed', () => {
       expect(v[14]).toBeNull() // archived_at
     }
 
-    // Every package item points to a published v1
+    // Every specification item points to a published v1
     const versionById = new Map(versions.map(v => [v[0], v]))
     for (const it of items) {
       const v = versionById.get(it[3])

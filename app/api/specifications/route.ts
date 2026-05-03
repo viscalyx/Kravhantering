@@ -1,20 +1,22 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  createPackage,
+  createSpecification,
   isSlugTaken,
-  listPackages,
+  listSpecifications,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
-  const packages = await listPackages(db)
-  return NextResponse.json({ packages })
+  const specifications = await listSpecifications(db)
+  return NextResponse.json({ specifications })
 }
 
 export async function POST(request: NextRequest) {
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Parameters<typeof createPackage>[1]
+  const body = (await request.json()) as Parameters<
+    typeof createSpecification
+  >[1]
 
   if (
     !body?.uniqueId ||
@@ -28,6 +30,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
   }
 
-  const pkg = await createPackage(db, body)
-  return NextResponse.json(pkg, { status: 201 })
+  const spec = await createSpecification(db, body)
+  return NextResponse.json(spec, { status: 201 })
 }

@@ -41,7 +41,7 @@ function deviationDialogReducer(
 }
 
 interface UseDeviationWorkflowOptions {
-  isPackageItemContext: boolean
+  isSpecificationItemContext: boolean
   onChange?: () => void | Promise<void>
   specificationItemId?: number
 }
@@ -77,7 +77,7 @@ export interface UseDeviationWorkflowResult {
 }
 
 export function useDeviationWorkflow({
-  isPackageItemContext,
+  isSpecificationItemContext,
   onChange,
   specificationItemId,
 }: UseDeviationWorkflowOptions): UseDeviationWorkflowResult {
@@ -142,10 +142,10 @@ export function useDeviationWorkflow({
   }, [specificationItemId, deviationFetchFailed])
 
   useEffect(() => {
-    if (isPackageItemContext) {
+    if (isSpecificationItemContext) {
       void fetchDeviations()
     }
-  }, [isPackageItemContext, fetchDeviations])
+  }, [isSpecificationItemContext, fetchDeviations])
 
   const closeDialog = useCallback(() => {
     dispatchDialog({ type: 'close' })

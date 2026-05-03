@@ -69,7 +69,7 @@ maintenance rule.
   requirement and deviation-gated status functions.
 - **Spec:** `docs/lifecycle-workflow.md`.
 - **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
-  "Deviation Effect on Package Item Status"]`
+  "Deviation Effect on Specification Item Status"]`
 - **Question:** Do library and specification-local items require an
   approved deviation before entering Deviated status?
 - **Verify:** `npm exec -- vitest run
@@ -81,9 +81,9 @@ maintenance rule.
   needs-reference linking and cleanup functions.
 - **Spec:** `docs/lifecycle-workflow.md`.
 - **Req tag:** `[Req: inferred — from
-  linkRequirementsToPackageAtomically() cleanup path]`
+  linkRequirementsToSpecificationAtomically() cleanup path]`
 - **Question:** Do needs-reference rows exist only when at least one
-  linked package item still points at them?
+  linked specification item still points at them?
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"`
 

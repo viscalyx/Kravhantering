@@ -1,27 +1,27 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  countDeviationsByPackage,
-  listDeviationsForPackage,
+  countDeviationsBySpecification,
+  listDeviationsForSpecification,
 } from '@/lib/dal/deviations'
 import {
-  getPackageById,
-  getPackageBySlug,
+  getSpecificationById,
+  getSpecificationBySlug,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
-async function resolvePackageId(
+async function resolveSpecificationId(
   db: SqlServerDatabase,
   idOrSlug: string,
 ): Promise<number | null> {
   if (/^\d+$/.test(idOrSlug)) {
-    const pkg = await getPackageById(db, Number(idOrSlug))
-    return pkg?.id ?? null
+    const spec = await getSpecificationById(db, Number(idOrSlug))
+    return spec?.id ?? null
   }
-  const pkg = await getPackageBySlug(db, idOrSlug)
-  return pkg?.id ?? null
+  const spec = await getSpecificationBySlug(db, idOrSlug)
+  return spec?.id ?? null
 }
 
 export async function GET(
@@ -31,13 +31,13 @@ export async function GET(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
 
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const deviations = await listDeviationsForPackage(db, specificationId)
-  const counts = await countDeviationsByPackage(db, specificationId)
+  const deviations = await listDeviationsForSpecification(db, specificationId)
+  const counts = await countDeviationsBySpecification(db, specificationId)
 
   return NextResponse.json({ counts, deviations })
 }

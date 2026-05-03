@@ -226,13 +226,14 @@ på ett underlag för att se dess detaljer.
 
 ### Sökning bland kravunderlag
 
-Filtrera paket genom att skriva i sökrutan. Listan uppdateras i realtid.
+Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.
 
 ![Sökning bland kravunderlag](images/022-kravunderlagslista-sok.png)
 
 ### Skapa nytt kravunderlag
 
-Klicka på **"Nytt kravunderlag"** för att skapa ett nytt paket. Ange ett namn —
+Klicka på **"Nytt kravunderlag"** för att skapa ett nytt kravunderlag. Ange
+ett namn —
 ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla
 krav som hör till ett specifikt projekt eller leverans.
 
@@ -241,7 +242,7 @@ krav som hör till ett specifikt projekt eller leverans.
 ### Kravunderlagsdetalj — delad vy
 
 Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar krav som
-ingår i underlaget, inklusive eventuella pakets unika krav, med deras
+ingår i underlaget, inklusive eventuella kravunderlagets unika krav, med deras
 implementationsstatus. **Höger panel** visar tillgängliga bibliotekskrav att
 lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i det
 aktuella underlaget. Klicka på en rad för att se kravets fullständiga detaljer.
@@ -295,7 +296,7 @@ underlaget".
 detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** —
 klicka på den för att starta avstegsprocessen.
 
-![Krav expanderat i underlagskontext](images/029-krav-i-paket-expanderat.png)
+![Krav expanderat i underlagskontext](images/029-krav-i-kravunderlag-expanderat.png)
 
 ### Formulär för avstegsansökan
 

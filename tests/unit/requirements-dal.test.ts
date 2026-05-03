@@ -53,7 +53,7 @@ describe('requirements DAL (SQL Server path)', () => {
     )
   })
 
-  it('hydrates the requirement, area, versions, joins and package count', async () => {
+  it('hydrates the requirement, area, versions, joins and specification count', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([

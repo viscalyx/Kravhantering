@@ -164,7 +164,7 @@ Current static headers and rationale:
   These probe destructively and require an isolated, throwaway
   environment.
 - **Authenticated coverage of every role.** Only the `Admin` realm
-  user is scanned; other roles (`Reviewer`, area owner, package
+  user is scanned; other roles (`Reviewer`, area owner, specification
   owner, etc.) are exercised by the Playwright integration tests but
   not separately scanned. Adding them would multiply CI time.
 - **Infrastructure / host scanning.** Out of scope. If host or

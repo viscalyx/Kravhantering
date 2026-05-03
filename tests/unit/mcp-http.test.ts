@@ -54,7 +54,7 @@ function createFakeService(
   return {
     addToSpecification: vi.fn().mockResolvedValue({
       addedCount: 1,
-      message: 'Requirement added to package',
+      message: 'Requirement added to specification',
       skippedCount: 0,
       skippedIds: [],
     }),
@@ -168,17 +168,17 @@ function createFakeService(
         total: 1,
       },
     }),
-    getPackageItems: vi.fn().mockResolvedValue({
+    getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
-      message: 'Package items',
+      message: 'Specification items',
       specificationId: 7,
     }),
-    listPackages: vi.fn().mockResolvedValue({
-      message: 'Packages',
-      packages: [],
+    listSpecifications: vi.fn().mockResolvedValue({
+      message: 'Specifications',
+      specifications: [],
     }),
     removeFromSpecification: vi.fn().mockResolvedValue({
-      message: 'Requirement removed from package',
+      message: 'Requirement removed from specification',
       removedCount: 1,
     }),
     transitionRequirement: vi.fn().mockResolvedValue({
@@ -516,7 +516,7 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('rejects package tools unless exactly one package identifier is provided', async () => {
+  it('rejects specification tools unless exactly one specification identifier is provided', async () => {
     const { client, transport } = await createClient()
 
     const missingIdentifier = await client.callTool({
@@ -537,7 +537,7 @@ describe('handleRequirementsMcpRequest', () => {
     const duplicateIdentifier = await client.callTool({
       arguments: {
         specificationId: 7,
-        specificationSlug: 'IAM-PACKAGE',
+        specificationSlug: 'IAM-SPECIFICATION',
       },
       name: 'requirements_get_specification_items',
     })

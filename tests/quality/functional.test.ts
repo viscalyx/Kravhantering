@@ -36,10 +36,10 @@ import {
   transitionStatus,
 } from '@/lib/dal/requirements'
 import {
-  createPackage,
+  createSpecification,
   createSpecificationLocalRequirement,
-  linkRequirementsToPackageAtomically,
-  updatePackageItemFields,
+  linkRequirementsToSpecificationAtomically,
+  updateSpecificationItemFields,
   updateSpecificationLocalRequirementFields,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
@@ -333,7 +333,7 @@ async function createPublishedRequirement(
   }
 }
 
-async function getSinglePackageItem(
+async function getSingleSpecificationItem(
   target: SqlServerDatabase,
   specificationId: number,
 ): Promise<{ id: number; specificationItemStatusId: number } | null> {
@@ -537,30 +537,30 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       area.id,
       'Shared requirement',
     )
-    const pkg = await createPackage(appDb(), {
-      name: 'Scenario package',
-      uniqueId: 'SCENARIO-PACKAGE',
+    const spec = await createSpecification(appDb(), {
+      name: 'Scenario specification',
+      uniqueId: 'SCENARIO-SPECIFICATION',
     })
 
-    await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
+    await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
       requirementIds: [published.requirementId],
     })
 
-    const libraryItem = await getSinglePackageItem(appDb(), pkg.id)
+    const libraryItem = await getSingleSpecificationItem(appDb(), spec.id)
     if (!libraryItem) {
-      throw new Error('Expected a library package item')
+      throw new Error('Expected a library specification item')
     }
 
     const localItem = await createSpecificationLocalRequirement(
       appDb(),
-      pkg.id,
+      spec.id,
       {
         description: 'Specification-local requirement',
       },
     )
 
     await expect(
-      updatePackageItemFields(appDb(), libraryItem.id, {
+      updateSpecificationItemFields(appDb(), libraryItem.id, {
         specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
       }),
     ).rejects.toMatchObject({ code: 'validation' })
@@ -592,14 +592,14 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       decisionMotivation: 'Approved local deviation',
     })
 
-    await updatePackageItemFields(appDb(), libraryItem.id, {
+    await updateSpecificationItemFields(appDb(), libraryItem.id, {
       specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     })
     await updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
       specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     })
 
-    const updatedLibrary = await getSinglePackageItem(appDb(), pkg.id)
+    const updatedLibrary = await getSingleSpecificationItem(appDb(), spec.id)
     const updatedLocalRows = (await appDb().query(
       `SELECT specification_item_status_id AS specificationItemStatusId
          FROM specification_local_requirements WHERE id = @0`,
@@ -622,18 +622,18 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       area.id,
       'Link me once',
     )
-    const pkg = await createPackage(appDb(), {
-      name: 'Link package',
-      uniqueId: 'LINK-PACKAGE',
+    const spec = await createSpecification(appDb(), {
+      name: 'Link specification',
+      uniqueId: 'LINK-SPECIFICATION',
     })
 
-    await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
+    await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
       requirementIds: [published.requirementId],
     })
 
-    const addedAgain = await linkRequirementsToPackageAtomically(
+    const addedAgain = await linkRequirementsToSpecificationAtomically(
       appDb(),
-      pkg.id,
+      spec.id,
       {
         requirementIds: [published.requirementId],
         needsReferenceText: '  Duplicate-only need  ',
@@ -642,7 +642,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const needsReferences = (await appDb().query(
       `SELECT text FROM specification_needs_references WHERE specification_id = @0`,
-      [pkg.id],
+      [spec.id],
     )) as Array<{ text: string }>
 
     expect(addedAgain).toBe(0)
@@ -699,18 +699,18 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       area.id,
       'Deviation source',
     )
-    const pkg = await createPackage(appDb(), {
-      name: 'Decision package',
-      uniqueId: 'DECISION-PACKAGE',
+    const spec = await createSpecification(appDb(), {
+      name: 'Decision specification',
+      uniqueId: 'DECISION-SPECIFICATION',
     })
 
-    await linkRequirementsToPackageAtomically(appDb(), pkg.id, {
+    await linkRequirementsToSpecificationAtomically(appDb(), spec.id, {
       requirementIds: [published.requirementId],
     })
 
-    const item = await getSinglePackageItem(appDb(), pkg.id)
+    const item = await getSingleSpecificationItem(appDb(), spec.id)
     if (!item) {
-      throw new Error('Expected package item')
+      throw new Error('Expected specification item')
     }
 
     const deviation = await createDeviation(appDb(), {
@@ -782,7 +782,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
   })
 
-  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
+  it('Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -812,7 +812,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(history[0]?.archiveInitiatedAt).not.toBeNull()
   })
 
-  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
+  it('Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -847,7 +847,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(Number(flagRows[0]?.isArchived)).toBe(1)
   })
 
-  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
+  it('Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -887,7 +887,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     }
   })
 
-  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
+  it('Scenario 12d: strict-target behavior with manual state manipulation', async () => {
     // Seed a state that cannot be reached through the public API after the
     // initiateArchiving fix: V1 is in Review with archive_initiated_at set,
     // V2 exists as a newer Draft. Approve/cancel must operate strictly on V1

@@ -26,9 +26,9 @@ import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import { generatePackageSlug, normalizeSlugInput } from '@/lib/slug'
+import { generateSpecificationSlug, normalizeSlugInput } from '@/lib/slug'
 
-const REQUIREMENT_PACKAGES_HELP: HelpContent = {
+const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
@@ -55,7 +55,7 @@ interface RequirementArea {
   name: string
 }
 
-interface Package {
+interface Specification {
   businessNeedsReference: string | null
   id: number
   implementationType: TaxonomyItem | null
@@ -122,17 +122,17 @@ function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
   return (
     <div
       className={`flex gap-1 ${expanded ? 'items-start' : 'items-center'}`}
-      data-package-requirement-area-pills="true"
+      data-specification-requirement-area-pills="true"
     >
       <div
         className={`flex min-w-0 flex-1 flex-wrap gap-1 ${expanded ? '' : 'max-h-6 overflow-hidden'}`}
-        data-package-requirement-area-pill-list="true"
+        data-specification-requirement-area-pill-list="true"
         ref={listRef}
       >
         {areas.map(area => (
           <span
             className="inline-flex h-6 items-center whitespace-nowrap rounded-full border border-primary-200/80 bg-primary-50/80 px-2 text-[11px] font-medium text-primary-700 dark:border-primary-800/60 dark:bg-primary-950/30 dark:text-primary-300"
-            data-package-requirement-area-pill="true"
+            data-specification-requirement-area-pill="true"
             key={area.id}
           >
             {area.name}
@@ -144,7 +144,7 @@ function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
           aria-expanded={expanded}
           aria-label={toggleLabel}
           className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
-          data-package-requirement-area-pill-toggle="true"
+          data-specification-requirement-area-pill-toggle="true"
           {...devMarker({
             context: 'specifications',
             name: 'table action',
@@ -176,7 +176,7 @@ function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
 }
 
 export default function RequirementsSpecificationsClient() {
-  useHelpContent(REQUIREMENT_PACKAGES_HELP)
+  useHelpContent(REQUIREMENT_SPECIFICATIONS_HELP)
   const t = useTranslations('specification')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
@@ -184,12 +184,12 @@ export default function RequirementsSpecificationsClient() {
   const tRef = useRef(t)
   tRef.current = t
 
-  const getName = (pkg: Package) => pkg.name
+  const getName = (spec: Specification) => spec.name
   const getTaxonomyName = (item: TaxonomyItem | null) =>
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
-  const packageTableColumnCount = 7
+  const specificationTableColumnCount = 7
 
-  const [packages, setPackages] = useState<Package[]>([])
+  const [specifications, setSpecifications] = useState<Specification[]>([])
   const [responsibilityAreas, setResponsibilityAreas] = useState<
     TaxonomyItem[]
   >([])
@@ -203,7 +203,7 @@ export default function RequirementsSpecificationsClient() {
   const fetchIdRef = useRef(0)
   const isMountedRef = useRef(true)
   const [showForm, setShowForm] = useState(false)
-  const [editPkg, setEditPkg] = useState<Package | null>(null)
+  const [editSpec, setEditSpec] = useState<Specification | null>(null)
   const [slugEdited, setSlugEdited] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
@@ -224,8 +224,8 @@ export default function RequirementsSpecificationsClient() {
     .trim()
     .toLocaleLowerCase(locale)
   const hasActiveNameFilter = nameFilter.trim().length > 0
-  const filteredPackages = packages.filter(pkg =>
-    getName(pkg).toLocaleLowerCase(locale).includes(normalizedNameFilter),
+  const filteredSpecifications = specifications.filter(spec =>
+    getName(spec).toLocaleLowerCase(locale).includes(normalizedNameFilter),
   )
 
   const resetForm = () => ({
@@ -268,7 +268,7 @@ export default function RequirementsSpecificationsClient() {
     </AnimatedHelpPanel>
   )
 
-  const fetchPackages = useCallback(async () => {
+  const fetchSpecifications = useCallback(async () => {
     const localFetchId = ++fetchIdRef.current
     setLoading(true)
     setFetchError(null)
@@ -290,15 +290,16 @@ export default function RequirementsSpecificationsClient() {
       }
 
       if (isMountedRef.current && localFetchId === fetchIdRef.current) {
-        setPackages(
-          ((await res.json()) as { packages?: Package[] }).packages ?? [],
+        setSpecifications(
+          ((await res.json()) as { specifications?: Specification[] })
+            .specifications ?? [],
         )
         setFetchError(null)
       }
     } catch (error) {
       console.error('Failed to load requirements specifications', error)
       if (isMountedRef.current && localFetchId === fetchIdRef.current) {
-        setPackages([])
+        setSpecifications([])
         setFetchError(
           error instanceof Error
             ? error.message
@@ -381,9 +382,9 @@ export default function RequirementsSpecificationsClient() {
   }, [])
 
   useEffect(() => {
-    void fetchPackages()
+    void fetchSpecifications()
     void fetchTaxonomies()
-  }, [fetchPackages, fetchTaxonomies])
+  }, [fetchSpecifications, fetchTaxonomies])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -392,9 +393,9 @@ export default function RequirementsSpecificationsClient() {
     setSlugError(null)
     setSaveError(null)
     try {
-      const method = editPkg ? 'PUT' : 'POST'
-      const url = editPkg
-        ? `/api/specifications/${editPkg.uniqueId}`
+      const method = editSpec ? 'PUT' : 'POST'
+      const url = editSpec
+        ? `/api/specifications/${editSpec.uniqueId}`
         : '/api/specifications'
       const res = await apiFetch(url, {
         method,
@@ -428,11 +429,11 @@ export default function RequirementsSpecificationsClient() {
         return
       }
       setShowForm(false)
-      setEditPkg(null)
+      setEditSpec(null)
       setOpenHelp(new Set())
       setSlugEdited(false)
       setForm(resetForm())
-      fetchPackages()
+      void fetchSpecifications()
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : t('saveFailed'))
     } finally {
@@ -440,29 +441,29 @@ export default function RequirementsSpecificationsClient() {
     }
   }
 
-  const handleEdit = (pkg: Package) => {
-    setEditPkg(pkg)
+  const handleEdit = (spec: Specification) => {
+    setEditSpec(spec)
     setOpenHelp(new Set())
     setSlugEdited(true)
     setSlugError(null)
     setSaveError(null)
     setForm({
-      name: pkg.name,
-      uniqueId: pkg.uniqueId,
+      name: spec.name,
+      uniqueId: spec.uniqueId,
       specificationResponsibilityAreaId:
-        pkg.specificationResponsibilityAreaId?.toString() ?? '',
+        spec.specificationResponsibilityAreaId?.toString() ?? '',
       specificationImplementationTypeId:
-        pkg.specificationImplementationTypeId?.toString() ?? '',
+        spec.specificationImplementationTypeId?.toString() ?? '',
       specificationLifecycleStatusId:
-        pkg.specificationLifecycleStatusId?.toString() ?? '',
-      businessNeedsReference: pkg.businessNeedsReference ?? '',
+        spec.specificationLifecycleStatusId?.toString() ?? '',
+      businessNeedsReference: spec.businessNeedsReference ?? '',
     })
     setShowForm(true)
   }
 
   const { confirm } = useConfirmModal()
 
-  const handleDelete = async (pkg: Package, anchorEl?: HTMLElement) => {
+  const handleDelete = async (spec: Specification, anchorEl?: HTMLElement) => {
     if (
       !(await confirm({
         message: tc('confirm'),
@@ -474,7 +475,7 @@ export default function RequirementsSpecificationsClient() {
       return
 
     try {
-      const res = await apiFetch(`/api/specifications/${pkg.uniqueId}`, {
+      const res = await apiFetch(`/api/specifications/${spec.uniqueId}`, {
         method: 'DELETE',
       })
 
@@ -492,7 +493,7 @@ export default function RequirementsSpecificationsClient() {
         return
       }
 
-      await fetchPackages()
+      await fetchSpecifications()
     } catch (error) {
       await confirm({
         anchorEl,
@@ -508,7 +509,7 @@ export default function RequirementsSpecificationsClient() {
 
   const openCreateForm = () => {
     setShowForm(true)
-    setEditPkg(null)
+    setEditSpec(null)
     setOpenHelp(new Set())
     setSlugEdited(false)
     setSlugError(null)
@@ -537,30 +538,30 @@ export default function RequirementsSpecificationsClient() {
                 context: 'specifications',
                 name: 'crud form',
                 priority: 340,
-                value: editPkg ? 'edit' : 'create',
+                value: editSpec ? 'edit' : 'create',
               })}
               onSubmit={handleSubmit}
             >
               <h2 className="text-lg font-semibold">
-                {editPkg ? t('editSpecification') : t('newSpecification')}
+                {editSpec ? t('editSpecification') : t('newSpecification')}
               </h2>
               <div>
                 <div className="mb-1 flex items-center gap-1.5">
                   <label
                     className="block text-sm font-medium"
-                    htmlFor="pkg-name"
+                    htmlFor="spec-name"
                   >
                     {t('name')} <span aria-hidden="true">*</span>
                   </label>
-                  {helpButton('pkg-name', t('name'))}
+                  {helpButton('spec-name', t('name'))}
                 </div>
-                {helpPanel('help.name', 'pkg-name')}
+                {helpPanel('help.name', 'spec-name')}
                 <input
                   className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="pkg-name"
+                  id="spec-name"
                   onBlur={() => {
                     if (!slugEdited && form.name) {
-                      const nextUniqueId = generatePackageSlug(form.name)
+                      const nextUniqueId = generateSpecificationSlug(form.name)
                       if (!nextUniqueId) {
                         setSlugError(t('uniqueIdGenerationFailed'))
                         return
@@ -583,20 +584,20 @@ export default function RequirementsSpecificationsClient() {
                 <div className="mb-1 flex items-center gap-1.5">
                   <label
                     className="block text-sm font-medium"
-                    htmlFor="pkg-unique-id"
+                    htmlFor="spec-unique-id"
                   >
                     {t('uniqueId')} <span aria-hidden="true">*</span>
                   </label>
-                  {helpButton('pkg-unique-id', t('uniqueId'))}
+                  {helpButton('spec-unique-id', t('uniqueId'))}
                 </div>
-                {helpPanel('uniqueIdHelp', 'pkg-unique-id')}
+                {helpPanel('uniqueIdHelp', 'spec-unique-id')}
                 <input
                   aria-describedby={
-                    slugError ? 'pkg-unique-id-error' : undefined
+                    slugError ? 'spec-unique-id-error' : undefined
                   }
                   aria-invalid={!!slugError}
                   className={`min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
-                  id="pkg-unique-id"
+                  id="spec-unique-id"
                   onChange={e => {
                     setSlugEdited(true)
                     setSlugError(null)
@@ -613,7 +614,7 @@ export default function RequirementsSpecificationsClient() {
                 {slugError ? (
                   <p
                     className="mt-1 text-xs text-red-600 dark:text-red-400"
-                    id="pkg-unique-id-error"
+                    id="spec-unique-id-error"
                     role="alert"
                   >
                     {slugError}
@@ -628,16 +629,16 @@ export default function RequirementsSpecificationsClient() {
                 <div className="mb-1 flex items-center gap-1.5">
                   <label
                     className="block text-sm font-medium"
-                    htmlFor="pkg-area"
+                    htmlFor="spec-area"
                   >
                     {t('responsibilityArea')}
                   </label>
-                  {helpButton('pkg-area', t('responsibilityArea'))}
+                  {helpButton('spec-area', t('responsibilityArea'))}
                 </div>
-                {helpPanel('responsibilityAreaHelp', 'pkg-area')}
+                {helpPanel('responsibilityAreaHelp', 'spec-area')}
                 <select
                   className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="pkg-area"
+                  id="spec-area"
                   onChange={e =>
                     setForm(f => ({
                       ...f,
@@ -658,16 +659,16 @@ export default function RequirementsSpecificationsClient() {
                 <div className="mb-1 flex items-center gap-1.5">
                   <label
                     className="block text-sm font-medium"
-                    htmlFor="pkg-impl-type"
+                    htmlFor="spec-impl-type"
                   >
                     {t('implementationType')}
                   </label>
-                  {helpButton('pkg-impl-type', t('implementationType'))}
+                  {helpButton('spec-impl-type', t('implementationType'))}
                 </div>
-                {helpPanel('implementationTypeHelp', 'pkg-impl-type')}
+                {helpPanel('implementationTypeHelp', 'spec-impl-type')}
                 <select
                   className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="pkg-impl-type"
+                  id="spec-impl-type"
                   onChange={e =>
                     setForm(f => ({
                       ...f,
@@ -688,16 +689,16 @@ export default function RequirementsSpecificationsClient() {
                 <div className="mb-1 flex items-center gap-1.5">
                   <label
                     className="block text-sm font-medium"
-                    htmlFor="pkg-lifecycle-status"
+                    htmlFor="spec-lifecycle-status"
                   >
                     {t('lifecycleStatus')}
                   </label>
-                  {helpButton('pkg-lifecycle-status', t('lifecycleStatus'))}
+                  {helpButton('spec-lifecycle-status', t('lifecycleStatus'))}
                 </div>
-                {helpPanel('lifecycleStatusHelp', 'pkg-lifecycle-status')}
+                {helpPanel('lifecycleStatusHelp', 'spec-lifecycle-status')}
                 <select
                   className="min-h-[44px] w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="pkg-lifecycle-status"
+                  id="spec-lifecycle-status"
                   onChange={e =>
                     setForm(f => ({
                       ...f,
@@ -718,16 +719,16 @@ export default function RequirementsSpecificationsClient() {
                 <div className="mb-1 flex items-center gap-1.5">
                   <label
                     className="block text-sm font-medium"
-                    htmlFor="pkg-business-ref"
+                    htmlFor="spec-business-ref"
                   >
                     {t('businessNeedsReference')}
                   </label>
-                  {helpButton('pkg-business-ref', t('businessNeedsReference'))}
+                  {helpButton('spec-business-ref', t('businessNeedsReference'))}
                 </div>
-                {helpPanel('businessNeedsReferenceHelp', 'pkg-business-ref')}
+                {helpPanel('businessNeedsReferenceHelp', 'spec-business-ref')}
                 <textarea
                   className="min-h-[44px] w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-                  id="pkg-business-ref"
+                  id="spec-business-ref"
                   onChange={e =>
                     setForm(f => ({
                       ...f,
@@ -773,11 +774,11 @@ export default function RequirementsSpecificationsClient() {
         </AnimatePresence>
 
         <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          {!loading && packages.length > 0 && (
+          {!loading && specifications.length > 0 && (
             <div className="w-full max-w-lg">
               <label
                 className="mb-1.5 block text-sm font-medium text-secondary-700 dark:text-secondary-300"
-                htmlFor="package-name-filter"
+                htmlFor="specification-name-filter"
               >
                 {t('filterByName')}
               </label>
@@ -796,7 +797,7 @@ export default function RequirementsSpecificationsClient() {
                       priority: 330,
                       value: 'name filter',
                     })}
-                    id="package-name-filter"
+                    id="specification-name-filter"
                     onChange={e => setNameFilter(e.target.value)}
                     placeholder={t('filterByNamePlaceholder')}
                     type="text"
@@ -836,7 +837,7 @@ export default function RequirementsSpecificationsClient() {
           <div
             aria-live="polite"
             className="flex min-h-80 flex-col items-center justify-center gap-3 px-6 py-16"
-            data-testid="requirement-packages-loading"
+            data-testid="requirement-specifications-loading"
             role="status"
           >
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-200 border-t-primary-600 dark:border-primary-700 dark:border-t-primary-400" />
@@ -876,35 +877,35 @@ export default function RequirementsSpecificationsClient() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPackages.map(pkg => (
+                  {filteredSpecifications.map(spec => (
                     <tr
                       className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                      key={pkg.id}
+                      key={spec.id}
                     >
                       <td className="py-3 px-4 font-medium">
                         <Link
                           className="text-primary-700 dark:text-primary-300 hover:underline"
-                          href={`/specifications/${pkg.uniqueId}`}
+                          href={`/specifications/${spec.uniqueId}`}
                         >
-                          {getName(pkg)}
+                          {getName(spec)}
                         </Link>
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(pkg.responsibilityArea)}
+                        {getTaxonomyName(spec.responsibilityArea)}
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(pkg.implementationType)}
+                        {getTaxonomyName(spec.implementationType)}
                       </td>
                       <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                        {getTaxonomyName(pkg.lifecycleStatus)}
+                        {getTaxonomyName(spec.lifecycleStatus)}
                       </td>
                       <td className="py-3 px-4">
-                        {pkg.itemCount > 0 ? (
+                        {spec.itemCount > 0 ? (
                           <Link
                             className="text-primary-700 dark:text-primary-300 hover:underline font-medium"
-                            href={`/specifications/${pkg.uniqueId}`}
+                            href={`/specifications/${spec.uniqueId}`}
                           >
-                            {pkg.itemCount}
+                            {spec.itemCount}
                           </Link>
                         ) : (
                           <span className="text-secondary-400">0</span>
@@ -912,8 +913,8 @@ export default function RequirementsSpecificationsClient() {
                       </td>
                       <td className="py-3 px-4">
                         <RequirementAreaPills
-                          areas={pkg.requirementAreas}
-                          key={pkg.requirementAreas
+                          areas={spec.requirementAreas}
+                          key={spec.requirementAreas
                             .map(area => `${area.id}:${area.name}`)
                             .join('|')}
                         />
@@ -928,7 +929,7 @@ export default function RequirementsSpecificationsClient() {
                               name: 'table action',
                               value: 'edit',
                             })}
-                            onClick={() => handleEdit(pkg)}
+                            onClick={() => handleEdit(spec)}
                             title={tc('edit')}
                             type="button"
                           >
@@ -947,7 +948,7 @@ export default function RequirementsSpecificationsClient() {
                               value: 'delete',
                             })}
                             onClick={e =>
-                              handleDelete(pkg, e.currentTarget as HTMLElement)
+                              handleDelete(spec, e.currentTarget as HTMLElement)
                             }
                             title={tc('delete')}
                             type="button"
@@ -966,7 +967,7 @@ export default function RequirementsSpecificationsClient() {
                     <tr>
                       <td
                         className="px-4 py-10 text-center"
-                        colSpan={packageTableColumnCount}
+                        colSpan={specificationTableColumnCount}
                       >
                         <p
                           className="text-sm text-red-600 dark:text-red-400"
@@ -976,20 +977,21 @@ export default function RequirementsSpecificationsClient() {
                         </p>
                       </td>
                     </tr>
-                  ) : packages.length === 0 ? (
+                  ) : specifications.length === 0 ? (
                     <tr>
                       <td
                         className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
-                        colSpan={packageTableColumnCount}
+                        colSpan={specificationTableColumnCount}
                       >
                         {t('emptyState')}
                       </td>
                     </tr>
-                  ) : packages.length > 0 && filteredPackages.length === 0 ? (
+                  ) : specifications.length > 0 &&
+                    filteredSpecifications.length === 0 ? (
                     <tr>
                       <td
                         className="px-4 py-10 text-center text-secondary-500 dark:text-secondary-400"
-                        colSpan={packageTableColumnCount}
+                        colSpan={specificationTableColumnCount}
                       >
                         {tc('noResults')}
                       </td>

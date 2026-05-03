@@ -6,7 +6,7 @@
 This suite verifies the developer-mode overlay feature: the keyboard shortcut
 that activates it, the hover chip that appears over annotated elements, the
 clipboard copy behaviour, and the persistence of developer mode across client-
-side navigation. It also confirms that package-context report controls and
+side navigation. It also confirms that specification-context report controls and
 sticky table headers remain annotated and referenceable.
 
 ## Overview Flowchart
@@ -23,10 +23,10 @@ flowchart TD
     C -- navigation --> I[Activate developer mode on /sv/requirements]
     I --> J[Navigate to /sv/admin]
     J --> K[Assert badge and chip survive navigation]
-    C -- package reports --> L[Open package detail and expand package item]
+    C -- specification reports --> L[Open spec detail and expand spec item]
     L --> M[Activate developer mode]
-    M --> N[Hover package report control]
-    N --> O[Assert package report chip]
+    M --> N[Hover specification report control]
+    N --> O[Assert specification report chip]
     C -- sticky header --> P[Expand INT0001 and scroll down]
     P --> Q[Activate developer mode]
     Q --> R[Hover sticky column header]
@@ -131,24 +131,24 @@ sequenceDiagram
     Note over O: ✓ Chip visible on admin page
 ```
 
-## exposes package report controls in developer mode
+## exposes specification report controls in developer mode
 
-### Purpose: Package Report Reference
+### Purpose: Specification Report Reference
 
-Verifies that the report trigger inside a package-context inline requirement
+Verifies that the report trigger inside a specification-context inline requirement
 detail has a curated Developer Mode marker instead of relying on fallback
 scanning.
 
-### Step-by-Step Flow: Package Report Reference
+### Step-by-Step Flow: Specification Report Reference
 
 1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
-2. Locate the package item table panel.
-3. Expand the first package item row.
-4. Find the package report trigger marked as
+2. Locate the specification item table panel.
+3. Expand the first specification item row.
+4. Find the specification report trigger marked as
    `data-developer-mode-value="specification reports"`.
 5. Focus that trigger and activate Developer Mode.
-6. Hover over the package report trigger.
-7. Assert the chip contains `"report print button: package reports"`.
+6. Hover over the specification report trigger.
+7. Assert the chip contains `"report print button: specification reports"`.
 
 ## keeps sticky table headers referenceable in developer mode
 

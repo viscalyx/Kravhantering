@@ -55,7 +55,8 @@ For admin-managed UI terminology and default column settings, see
   Persistence logic for requirement lifecycle, versioning, transitions,
   restore, and paging counts.
 - `lib/dal/requirements-specifications.ts`
-  Persistence logic for requirements specifications: listing packages and items,
+  Persistence logic for requirements specifications: listing specifications and
+  items,
   linking and unlinking requirements, and needs reference management.
 - `lib/dal/improvement-suggestions.ts`
   Persistence logic for improvement suggestion CRUD, lifecycle
@@ -139,17 +140,17 @@ Transitions a requirement through the lifecycle using `toStatusId`.
 ### `requirements_list_specifications`
 
 Lists all requirements specifications with optional name filtering. Returns the
-numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-INFOR-Q2`) for each package.
+numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-INFOR-Q2`) for each specification.
 
 ### `requirements_get_specification_items`
 
-Lists requirements linked to a specific package. Accepts `specificationId`
+Lists requirements linked to a specific specification. Accepts `specificationId`
 (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Supports optional
 `descriptionSearch` for client-side filtering.
 
 ### `requirements_add_to_specification`
 
-Links requirements to a package. Accepts `specificationId` (numeric) or
+Links requirements to a specification. Accepts `specificationId` (numeric) or
 `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Requirements without a published
 version are skipped and returned in `skippedIds` rather than causing an error —
 this lets an agent batch-add requirements without needing to pre-filter by
@@ -159,10 +160,10 @@ items.
 
 ### `requirements_remove_from_specification`
 
-Unlinks requirements from a package. Accepts `specificationId` (numeric) or
+Unlinks requirements from a specification. Accepts `specificationId` (numeric) or
 `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). The requirements themselves are not
 deleted. The operation is idempotent — removing an ID that is not in the
-package produces no error.
+specification produces no error.
 
 ### `requirements_list_improvement_suggestions`
 
@@ -238,7 +239,7 @@ It owns:
 - detail and version-history lookup
 - create, edit, archive, delete draft, reactivate, and restore flows
 - lifecycle transitions
-- package listing, item lookup, link, and unlink flows
+- specification listing, item lookup, link, and unlink flows
 - response formatting
 - logging
 - authorization hook calls
@@ -393,7 +394,8 @@ Manual verification should still include:
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support
-- verifying package tools: list packages, get items for a package, add a
+- verifying specification tools: list specifications, get items for a
+  specification, add a
   requirement, and remove it again
 
 ## Local Development Notes

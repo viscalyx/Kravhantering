@@ -29,7 +29,7 @@ import {
 import { useAddToSpecificationDialog } from './_detail/use-add-to-specification-dialog'
 import { useDeviationWorkflow } from './_detail/use-deviation-workflow'
 import { useRequirementDetailData } from './_detail/use-requirement-detail-data'
-import { usePackageItemContext } from './_detail/use-specification-item-context'
+import { useSpecificationItemContext } from './_detail/use-specification-item-context'
 import { useSuggestionWorkflow } from './_detail/use-suggestion-workflow'
 import { useVersionPillConnector } from './_detail/use-version-pill-connector'
 import {
@@ -72,7 +72,7 @@ interface RequirementDetailClientStandalone
   specificationSlug?: undefined
 }
 
-interface RequirementDetailClientPackageItem
+interface RequirementDetailClientSpecificationItem
   extends RequirementDetailClientPropsBase {
   specificationItemId: number
   specificationSlug: string
@@ -80,7 +80,7 @@ interface RequirementDetailClientPackageItem
 
 type RequirementDetailClientProps =
   | RequirementDetailClientStandalone
-  | RequirementDetailClientPackageItem
+  | RequirementDetailClientSpecificationItem
 
 export default function RequirementDetailClient({
   defaultVersion,
@@ -106,8 +106,8 @@ export default function RequirementDetailClient({
     statuses,
     transitions,
   } = useRequirementDetailData({ requirementId })
-  const { isPackageItemContext, specificationItemDetail } =
-    usePackageItemContext({
+  const { isSpecificationItemContext, specificationItemDetail } =
+    useSpecificationItemContext({
       specificationItemId,
       specificationSlug,
     })
@@ -129,7 +129,7 @@ export default function RequirementDetailClient({
   }, [displayVersionNumber])
 
   const deviationWorkflow = useDeviationWorkflow({
-    isPackageItemContext,
+    isSpecificationItemContext,
     onChange,
     specificationItemId,
   })
@@ -354,7 +354,7 @@ export default function RequirementDetailClient({
       markerValue: 'verification method',
       value: selectedVersion?.verificationMethod || '—',
     },
-    ...(isPackageItemContext
+    ...(isSpecificationItemContext
       ? [
           {
             id: 'needs-reference',
@@ -363,7 +363,7 @@ export default function RequirementDetailClient({
             value: specificationItemDetail?.needsReference ?? '—',
           },
           {
-            id: 'package-item-status',
+            id: 'specification-item-status',
             label: t('specificationItemStatus'),
             markerValue: 'specification item status',
             value:
@@ -392,7 +392,7 @@ export default function RequirementDetailClient({
         ]
       : []),
     {
-      id: 'package-count',
+      id: 'specification-count',
       label: t('specificationCount'),
       markerValue: 'specification count',
       value: req.specificationCount,
@@ -744,12 +744,12 @@ export default function RequirementDetailClient({
                 </span>
               </div>
             )}
-          {isPackageItemContext && deviationWorkflow.deviationStep ? (
+          {isSpecificationItemContext && deviationWorkflow.deviationStep ? (
             <DeviationStepper
               currentStep={deviationWorkflow.deviationStep}
               developerModeContext={detailContext}
             />
-          ) : !isPackageItemContext ? (
+          ) : !isSpecificationItemContext ? (
             <StatusStepper
               currentStatusId={currentStatusId}
               developerModeContext={detailContext}
@@ -770,7 +770,7 @@ export default function RequirementDetailClient({
           ) : null}
         </div>
 
-        {isPackageItemContext && deviationWorkflow.latestDeviation && (
+        {isSpecificationItemContext && deviationWorkflow.latestDeviation && (
           <div className="mb-4">
             <DeviationPill
               developerModeContext={detailContext}
@@ -831,7 +831,7 @@ export default function RequirementDetailClient({
                   />
                 )}
 
-              {isPackageItemContext &&
+              {isSpecificationItemContext &&
               specificationItemId != null &&
               specificationSlug ? (
                 <SpecificationDeviationRail

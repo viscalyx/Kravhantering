@@ -62,24 +62,27 @@ vi.mock('@/lib/dal/owners', () => ({
 const mockListSpecItemStatuses = vi.fn(async (..._args: unknown[]) => [
   { id: 5, nameEn: 'Deviated', nameSv: 'Avviken' },
 ])
-const mockCountLinkedPackageItems = vi.fn(async (..._args: unknown[]) => ({
-  5: 3,
-}))
+const mockCountLinkedSpecificationItems = vi.fn(
+  async (..._args: unknown[]) => ({
+    5: 3,
+  }),
+)
 const mockCreateSpecItemStatus = vi.fn(async (..._args: unknown[]) => ({
   id: 6,
 }))
 const mockGetSpecItemStatus = vi.fn(async (..._args: unknown[]) => ({ id: 5 }))
-const mockGetLinkedPackageItems = vi.fn(async (..._args: unknown[]) => [])
+const mockGetLinkedSpecificationItems = vi.fn(async (..._args: unknown[]) => [])
 const mockUpdateSpecItemStatus = vi.fn()
 const mockDeleteSpecItemStatus = vi.fn()
 vi.mock('@/lib/dal/specification-item-statuses', () => ({
-  countLinkedPackageItems: (...a: unknown[]) =>
-    mockCountLinkedPackageItems(...a),
+  countLinkedSpecificationItems: (...a: unknown[]) =>
+    mockCountLinkedSpecificationItems(...a),
   createSpecificationItemStatus: (...a: unknown[]) =>
     mockCreateSpecItemStatus(...a),
   deleteSpecificationItemStatus: (...a: unknown[]) =>
     mockDeleteSpecItemStatus(...a),
-  getLinkedPackageItems: (...a: unknown[]) => mockGetLinkedPackageItems(...a),
+  getLinkedSpecificationItems: (...a: unknown[]) =>
+    mockGetLinkedSpecificationItems(...a),
   getSpecificationItemStatusById: (...a: unknown[]) =>
     mockGetSpecItemStatus(...a),
   listSpecificationItemStatuses: (...a: unknown[]) =>
@@ -91,12 +94,12 @@ vi.mock('@/lib/dal/specification-item-statuses', () => ({
 const mockUpdatePkg = vi.fn()
 const mockDeletePkg = vi.fn()
 vi.mock('@/lib/dal/requirements-specifications', () => ({
-  listPackages: async () => [{ id: 1 }],
-  createPackage: async () => ({ id: 2 }),
-  updatePackage: (...a: unknown[]) => mockUpdatePkg(...a),
-  deletePackage: (...a: unknown[]) => mockDeletePkg(...a),
-  getPackageById: async (_db: unknown, id: number) => ({ id }),
-  getPackageBySlug: async () => null,
+  listSpecifications: async () => [{ id: 1 }],
+  createSpecification: async () => ({ id: 2 }),
+  updateSpecification: (...a: unknown[]) => mockUpdatePkg(...a),
+  deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
+  getSpecificationById: async (_db: unknown, id: number) => ({ id }),
+  getSpecificationBySlug: async () => null,
   isSlugTaken: async () => false,
 }))
 
@@ -199,7 +202,7 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
 
 /* ── tests ───────────────────────────────────────────────────────── */
 
-describe('package-implementation-types routes', () => {
+describe('specification-implementation-types routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -237,7 +240,7 @@ describe('package-implementation-types routes', () => {
   })
 })
 
-describe('package-lifecycle-statuses routes', () => {
+describe('specification-lifecycle-statuses routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -275,7 +278,7 @@ describe('package-lifecycle-statuses routes', () => {
   })
 })
 
-describe('package-responsibility-areas routes', () => {
+describe('specification-responsibility-areas routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -369,7 +372,7 @@ describe('specification-item-statuses catalog routes', () => {
     expect(r.status).toBe(201)
   })
 
-  it('GET by id returns linked package items', async () => {
+  it('GET by id returns linked specification items', async () => {
     const r = await getSpecItemStatus(
       new NextRequest('http://l', { method: 'GET' }),
       makeParams('5'),
@@ -457,15 +460,15 @@ describe('requirement-areas/[id] routes', () => {
   })
 })
 
-describe('requirement-packages routes', () => {
+describe('requirement-specifications routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('GET returns packages', async () => {
+  it('GET returns specifications', async () => {
     const r = await getPkgs()
-    const j = (await r.json()) as { packages: { id: number }[] }
-    expect(j.packages).toHaveLength(1)
+    const j = (await r.json()) as { specifications: { id: number }[] }
+    expect(j.specifications).toHaveLength(1)
   })
   it('POST creates with 201', async () => {
     const r = await postPkg(

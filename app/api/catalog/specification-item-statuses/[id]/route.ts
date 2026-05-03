@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deleteSpecificationItemStatus,
-  getLinkedPackageItems,
+  getLinkedSpecificationItems,
   getSpecificationItemStatusById,
   updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
@@ -21,7 +21,7 @@ export async function GET(
   const db = await getRequestSqlServerDataSource()
   const [status, linkedItems] = await Promise.all([
     getSpecificationItemStatusById(db, numericId),
-    getLinkedPackageItems(db, numericId),
+    getLinkedSpecificationItems(db, numericId),
   ])
   if (!status) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })

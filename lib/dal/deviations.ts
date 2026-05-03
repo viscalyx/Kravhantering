@@ -1,7 +1,7 @@
 import {
   createLibraryItemRef,
   createSpecificationLocalItemRef,
-  parsePackageItemRef,
+  parseSpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
@@ -178,7 +178,7 @@ async function findSqlServerSpecificationLocalDeviationState(
   }
 }
 
-export async function listDeviationsForPackageItem(
+export async function listDeviationsForSpecificationItem(
   db: SqlServerDatabase,
   specificationItemId: number,
 ): Promise<DeviationRow[]> {
@@ -198,20 +198,20 @@ export async function listDeviationsForPackageItem(
         deviation.updated_at AS updatedAt,
         requirement.unique_id AS requirementUniqueId,
         requirement_version.description AS requirementDescription,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_record.name AS specificationName,
-        package_record.unique_id AS specificationUniqueId,
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
         CAST(0 AS int) AS isSpecificationLocal,
         CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
-      INNER JOIN requirements_specification_items package_item
-        ON package_item.id = deviation.specification_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
       INNER JOIN requirements requirement
-        ON requirement.id = package_item.requirement_id
+        ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version
-        ON requirement_version.id = package_item.requirement_version_id
-      INNER JOIN requirements_specifications package_record
-        ON package_record.id = package_item.requirements_specification_id
+        ON requirement_version.id = specification_item.requirement_version_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_item.requirements_specification_id
       WHERE deviation.specification_item_id = @0
       ORDER BY deviation.created_at ASC, deviation.id ASC
     `,
@@ -221,7 +221,7 @@ export async function listDeviationsForPackageItem(
   return rows.map(mapSqlServerDeviationRow)
 }
 
-export async function listDeviationsForPackage(
+export async function listDeviationsForSpecification(
   db: SqlServerDatabase,
   specificationId: number,
 ): Promise<DeviationRow[]> {
@@ -241,21 +241,21 @@ export async function listDeviationsForPackage(
         deviation.updated_at AS updatedAt,
         requirement.unique_id AS requirementUniqueId,
         requirement_version.description AS requirementDescription,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_record.name AS specificationName,
-        package_record.unique_id AS specificationUniqueId,
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
         CAST(0 AS int) AS isSpecificationLocal,
         CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
-      INNER JOIN requirements_specification_items package_item
-        ON package_item.id = deviation.specification_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
       INNER JOIN requirements requirement
-        ON requirement.id = package_item.requirement_id
+        ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version
-        ON requirement_version.id = package_item.requirement_version_id
-      INNER JOIN requirements_specifications package_record
-        ON package_record.id = package_item.requirements_specification_id
-      WHERE package_item.requirements_specification_id = @0
+        ON requirement_version.id = specification_item.requirement_version_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_item.requirements_specification_id
+      WHERE specification_item.requirements_specification_id = @0
 
       UNION ALL
 
@@ -274,15 +274,15 @@ export async function listDeviationsForPackage(
         specification_local_requirement.unique_id AS requirementUniqueId,
         specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
-        package_record.name AS specificationName,
-        package_record.unique_id AS specificationUniqueId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
         CAST(1 AS int) AS isSpecificationLocal,
         specification_local_requirement.id AS specificationLocalRequirementId
       FROM specification_local_requirement_deviations deviation
       INNER JOIN specification_local_requirements specification_local_requirement
         ON specification_local_requirement.id = deviation.specification_local_requirement_id
-      INNER JOIN requirements_specifications package_record
-        ON package_record.id = specification_local_requirement.specification_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_local_requirement.specification_id
       WHERE specification_local_requirement.specification_id = @0
 
       ORDER BY requirementUniqueId ASC, createdAt ASC, id ASC
@@ -313,20 +313,20 @@ export async function getDeviation(
         deviation.updated_at AS updatedAt,
         requirement.unique_id AS requirementUniqueId,
         requirement_version.description AS requirementDescription,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_record.name AS specificationName,
-        package_record.unique_id AS specificationUniqueId,
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
         CAST(0 AS int) AS isSpecificationLocal,
         CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
-      INNER JOIN requirements_specification_items package_item
-        ON package_item.id = deviation.specification_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
       INNER JOIN requirements requirement
-        ON requirement.id = package_item.requirement_id
+        ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version
-        ON requirement_version.id = package_item.requirement_version_id
-      INNER JOIN requirements_specifications package_record
-        ON package_record.id = package_item.requirements_specification_id
+        ON requirement_version.id = specification_item.requirement_version_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_item.requirements_specification_id
       WHERE deviation.id = @0
     `,
     [deviationId],
@@ -353,15 +353,17 @@ export async function createDeviation(
 
   const itemRows = (await db.query(
     `
-      SELECT TOP (1) package_item.id AS id
-      FROM requirements_specification_items package_item
-      WHERE package_item.id = @0
+      SELECT TOP (1) specification_item.id AS id
+      FROM requirements_specification_items specification_item
+      WHERE specification_item.id = @0
     `,
     [data.specificationItemId],
   )) as Array<Record<string, unknown>>
 
   if (itemRows.length === 0) {
-    throw notFoundError(`Package item ${data.specificationItemId} not found`)
+    throw notFoundError(
+      `Specification item ${data.specificationItemId} not found`,
+    )
   }
 
   const now = new Date()
@@ -408,15 +410,15 @@ export async function listDeviationsForSpecificationLocalRequirement(
         specification_local_requirement.unique_id AS requirementUniqueId,
         specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
-        package_record.name AS specificationName,
-        package_record.unique_id AS specificationUniqueId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
         CAST(1 AS int) AS isSpecificationLocal,
         specification_local_requirement.id AS specificationLocalRequirementId
       FROM specification_local_requirement_deviations deviation
       INNER JOIN specification_local_requirements specification_local_requirement
         ON specification_local_requirement.id = deviation.specification_local_requirement_id
-      INNER JOIN requirements_specifications package_record
-        ON package_record.id = specification_local_requirement.specification_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_local_requirement.specification_id
       WHERE deviation.specification_local_requirement_id = @0
       ORDER BY deviation.created_at ASC, deviation.id ASC
     `,
@@ -484,7 +486,7 @@ export async function createDeviationForItemRef(
     motivation: string
   },
 ): Promise<{ id: number }> {
-  const parsed = parsePackageItemRef(data.itemRef)
+  const parsed = parseSpecificationItemRef(data.itemRef)
   if (!parsed) {
     throw validationError('Invalid itemRef', { itemRef: data.itemRef })
   }
@@ -525,15 +527,15 @@ export async function getSpecificationLocalDeviation(
         specification_local_requirement.unique_id AS requirementUniqueId,
         specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
-        package_record.name AS specificationName,
-        package_record.unique_id AS specificationUniqueId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
         CAST(1 AS int) AS isSpecificationLocal,
         specification_local_requirement.id AS specificationLocalRequirementId
       FROM specification_local_requirement_deviations deviation
       INNER JOIN specification_local_requirements specification_local_requirement
         ON specification_local_requirement.id = deviation.specification_local_requirement_id
-      INNER JOIN requirements_specifications package_record
-        ON package_record.id = specification_local_requirement.specification_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_local_requirement.specification_id
       WHERE deviation.id = @0
     `,
     [deviationId],
@@ -910,7 +912,7 @@ export async function deleteSpecificationLocalDeviation(
   return
 }
 
-export async function countDeviationsByPackage(
+export async function countDeviationsBySpecification(
   db: SqlServerDatabase,
   specificationId: number,
 ): Promise<DeviationCounts> {
@@ -922,9 +924,9 @@ export async function countDeviationsByPackage(
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM deviations deviation
-      INNER JOIN requirements_specification_items package_item
-        ON package_item.id = deviation.specification_item_id
-      WHERE package_item.requirements_specification_id = @0
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
+      WHERE specification_item.requirements_specification_id = @0
 
       UNION ALL
 
@@ -961,9 +963,9 @@ export async function countDeviationsPerItem(
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
       FROM deviations deviation
-      INNER JOIN requirements_specification_items package_item
-        ON package_item.id = deviation.specification_item_id
-      WHERE package_item.requirements_specification_id = @0
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
+      WHERE specification_item.requirements_specification_id = @0
       GROUP BY deviation.specification_item_id
     `,
     [specificationId, DEVIATION_APPROVED],
@@ -996,9 +998,9 @@ export async function countDeviationsPerItemRef(
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
       FROM deviations deviation
-      INNER JOIN requirements_specification_items package_item
-        ON package_item.id = deviation.specification_item_id
-      WHERE package_item.requirements_specification_id = @0
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
+      WHERE specification_item.requirements_specification_id = @0
       GROUP BY deviation.specification_item_id
 
       UNION ALL

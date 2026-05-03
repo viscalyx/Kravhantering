@@ -33,7 +33,7 @@ export function buildDeviationReviewReport(
     })
   }
 
-  // Requirement version connected to the package — blue border
+  // Requirement version connected to the specification — blue border
   const v = data.version
   const versionSummary: VersionSummaryData = {
     versionNumber: v.versionNumber,

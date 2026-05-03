@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { getRequirementById, STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import {
-  getPackageById,
-  getPackageBySlug,
-  getPackageItemById,
+  getSpecificationById,
+  getSpecificationBySlug,
+  getSpecificationItemById,
   getSpecificationLocalRequirementDetail,
-  parsePackageItemRef,
+  parseSpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
@@ -119,18 +119,18 @@ export async function GET(
     return NextResponse.json({ error: 'Missing refs' }, { status: 400 })
   }
   const db = await getRequestSqlServerDataSource()
-  const pkg = /^\d+$/.test(id)
-    ? await getPackageById(db, Number(id))
-    : await getPackageBySlug(db, id)
+  const spec = /^\d+$/.test(id)
+    ? await getSpecificationById(db, Number(id))
+    : await getSpecificationBySlug(db, id)
 
-  if (!pkg) {
+  if (!spec) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const reportItems: RequirementReportData[] = []
 
   for (const itemRef of itemRefs) {
-    const parsed = parsePackageItemRef(itemRef)
+    const parsed = parseSpecificationItemRef(itemRef)
     if (!parsed) {
       return NextResponse.json(
         { error: `Invalid item ref: ${itemRef}` },
@@ -139,10 +139,10 @@ export async function GET(
     }
 
     if (parsed.kind === 'library') {
-      const specificationItem = await getPackageItemById(db, parsed.id)
-      if (!specificationItem || specificationItem.specificationId !== pkg.id) {
+      const specificationItem = await getSpecificationItemById(db, parsed.id)
+      if (!specificationItem || specificationItem.specificationId !== spec.id) {
         return NextResponse.json(
-          { error: `Item not found in package: ${itemRef}` },
+          { error: `Item not found in specification: ${itemRef}` },
           { status: 404 },
         )
       }
@@ -173,12 +173,12 @@ export async function GET(
 
     const localRequirement = await getSpecificationLocalRequirementDetail(
       db,
-      pkg.id,
+      spec.id,
       parsed.id,
     )
     if (!localRequirement) {
       return NextResponse.json(
-        { error: `Item not found in package: ${itemRef}` },
+        { error: `Item not found in specification: ${itemRef}` },
         { status: 404 },
       )
     }

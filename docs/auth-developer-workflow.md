@@ -125,7 +125,7 @@ All accounts use the password `devpass` (clearly dev-only, do not reuse).
 | --- | --- | --- |
 | `olle.areaowner` | _(none)_ | `SE2321000032-areaowner1` |
 | `cora.coauthor` | _(none)_ | `SE2321000032-areaco1` |
-| `petra.packageresp` | _(none)_ | `SE2321000032-pkgresp1` |
+| `petra.specresp` | _(none)_ | `SE2321000032-specresp1` |
 | `paul.pkgcoauthor` | _(none)_ | `SE2321000032-pkgco1` |
 | `rita.reviewer` | `Reviewer` | `SE2321000032-reviewer1` |
 | `ada.admin` | `Admin` | `SE2321000032-admin1` |

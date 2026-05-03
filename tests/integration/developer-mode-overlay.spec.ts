@@ -97,7 +97,9 @@ for (const viewport of viewports) {
 
       await page.goto('/sv/specifications/ETJANST-UPP-2026')
 
-      const itemPanel = page.locator('[data-package-detail-list-panel="items"]')
+      const itemPanel = page.locator(
+        '[data-specification-detail-list-panel="items"]',
+      )
       await expect(itemPanel).toBeVisible()
       await itemPanel.locator('tbody tr', { hasText: 'BEH0002' }).click()
 
@@ -106,19 +108,19 @@ for (const viewport of viewports) {
         .first()
       await expect(expandedDetail).toBeVisible()
 
-      const packageReportButton = expandedDetail
+      const specificationReportButton = expandedDetail
         .locator(
           '[data-developer-mode-name="report print button"][data-developer-mode-value="specification reports"]',
         )
         .first()
-      await packageReportButton.scrollIntoViewIfNeeded()
-      await expect(packageReportButton).toBeVisible()
+      await specificationReportButton.scrollIntoViewIfNeeded()
+      await expect(specificationReportButton).toBeVisible()
 
-      await packageReportButton.focus()
+      await specificationReportButton.focus()
       await page.keyboard.press('Control+Alt+Shift+H')
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
 
-      await packageReportButton.hover()
+      await specificationReportButton.hover()
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
       await expect(chip).toBeVisible()
       await expect(chip).toContainText(

@@ -727,7 +727,7 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Hög')).toBeTruthy()
   })
 
-  it('hides the read-only package item status color dot from assistive tech', () => {
+  it('hides the read-only specification item status color dot from assistive tech', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: '#f59e0b',
@@ -758,7 +758,7 @@ describe('RequirementsTable', () => {
     expect(statusDot).toHaveStyle({ backgroundColor: '#f59e0b' })
   })
 
-  it('renders read-only package item status labels without a color dot', () => {
+  it('renders read-only specification item status labels without a color dot', () => {
     const rows = [
       makeRow({
         specificationItemStatusColor: null,
@@ -785,6 +785,68 @@ describe('RequirementsTable', () => {
     const statusWrapper = statusLabel.closest('span')
 
     expect(statusWrapper?.querySelector('span[aria-hidden="true"]')).toBeNull()
+  })
+
+  it('renders the editable specification item status select and forwards changes', () => {
+    const onSpecificationItemStatusChange = vi.fn()
+    const rows = [
+      makeRow({
+        hasApprovedDeviation: false,
+        itemRef: 'lib:42',
+        specificationItemStatusColor: '#f59e0b',
+        specificationItemStatusDescriptionEn: 'In progress',
+        specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
+      }),
+    ]
+
+    render(
+      <RequirementsTable
+        locale="sv"
+        onSpecificationItemStatusChange={onSpecificationItemStatusChange}
+        rows={rows}
+        specificationItemStatuses={[
+          {
+            color: '#a3a3a3',
+            descriptionEn: null,
+            descriptionSv: null,
+            id: 1,
+            nameEn: 'Open',
+            nameSv: 'Öppen',
+            sortOrder: 1,
+          },
+          {
+            color: '#f59e0b',
+            descriptionEn: 'In progress',
+            descriptionSv: 'Pågående',
+            id: 2,
+            nameEn: 'Ongoing',
+            nameSv: 'Pågående',
+            sortOrder: 2,
+          },
+        ]}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'specificationItemStatus',
+        ]}
+      />,
+    )
+
+    const select = screen.getByRole('combobox', {
+      name: 'specificationItemStatus',
+    }) as HTMLSelectElement
+    expect(select.value).toBe('2')
+
+    fireEvent.change(select, { target: { value: '1' } })
+    expect(onSpecificationItemStatusChange).toHaveBeenCalledWith('lib:42', 1)
+
+    fireEvent.change(select, { target: { value: '' } })
+    expect(onSpecificationItemStatusChange).toHaveBeenLastCalledWith(
+      'lib:42',
+      null,
+    )
   })
 
   it('toggles sorting from the header button and updates aria-sort', () => {
@@ -1082,7 +1144,7 @@ describe('RequirementsTable', () => {
         floatingActionRailPlacement="inline-top"
         locale="sv"
         rows={[makeRow()]}
-        stickyTitle={<h2>Package items</h2>}
+        stickyTitle={<h2>Specification items</h2>}
         stickyTitleActions={<button type="button">Remove selected</button>}
       />,
     )
@@ -1096,7 +1158,7 @@ describe('RequirementsTable', () => {
     const actionGroup = stickyTopBar?.lastElementChild as HTMLDivElement | null
 
     expect(stickyTopBar).toBeTruthy()
-    expect(stickyTopBar).toHaveTextContent('Package items')
+    expect(stickyTopBar).toHaveTextContent('Specification items')
     expect(stickyTopBar).toHaveTextContent('Remove selected')
     expect(stickyTopBar?.className).toContain('flex-wrap')
     expect(stickyTopBar?.className).toContain('sm:flex-nowrap')

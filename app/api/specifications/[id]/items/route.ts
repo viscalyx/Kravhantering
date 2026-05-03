@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
-  deletePackageItemsByRefs,
-  getPackageById,
-  getPackageBySlug,
-  linkRequirementsToPackageAtomically,
-  listPackageItems,
-  unlinkRequirementsFromPackage,
+  deleteSpecificationItemsByRefs,
+  getSpecificationById,
+  getSpecificationBySlug,
+  linkRequirementsToSpecificationAtomically,
+  listSpecificationItems,
+  unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -170,11 +170,11 @@ function parsePostBody(body: unknown): ParseResult<ParsedPostBody> {
   }
 }
 
-async function resolvePackageId(db: SqlServerDatabase, idOrSlug: string) {
-  const bySlug = await getPackageBySlug(db, idOrSlug)
+async function resolveSpecificationId(db: SqlServerDatabase, idOrSlug: string) {
+  const bySlug = await getSpecificationBySlug(db, idOrSlug)
   if (bySlug) return bySlug.id
   if (/^\d+$/.test(idOrSlug)) {
-    const byId = await getPackageById(db, Number(idOrSlug))
+    const byId = await getSpecificationById(db, Number(idOrSlug))
     return byId?.id ?? null
   }
   return null
@@ -186,10 +186,10 @@ export async function GET(
 ) {
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const items = await listPackageItems(db, specificationId)
+  const items = await listSpecificationItems(db, specificationId)
   const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
   const enrichedItems = items.map(item => {
     const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
@@ -210,7 +210,7 @@ export async function POST(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
 
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -228,7 +228,7 @@ export async function POST(
     parsedBody.value
 
   try {
-    const addedCount = await linkRequirementsToPackageAtomically(
+    const addedCount = await linkRequirementsToSpecificationAtomically(
       db,
       specificationId,
       {
@@ -263,7 +263,7 @@ export async function DELETE(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
 
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -281,7 +281,7 @@ export async function DELETE(
   if (parsedBody.value.itemRefs?.length) {
     try {
       const { deletedLibraryCount, deletedSpecificationLocalCount } =
-        await deletePackageItemsByRefs(
+        await deleteSpecificationItemsByRefs(
           db,
           specificationId,
           parsedBody.value.itemRefs,
@@ -297,7 +297,7 @@ export async function DELETE(
         return NextResponse.json({ error: error.message }, { status: 400 })
       }
 
-      console.error('Failed to delete package items by refs', error)
+      console.error('Failed to delete specification items by refs', error)
       return NextResponse.json(
         { error: 'Failed to remove items' },
         { status: 500 },
@@ -306,7 +306,7 @@ export async function DELETE(
   }
 
   try {
-    const removedCount = await unlinkRequirementsFromPackage(
+    const removedCount = await unlinkRequirementsFromSpecification(
       db,
       specificationId,
       parsedBody.value.requirementIds,

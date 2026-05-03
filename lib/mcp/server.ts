@@ -1316,7 +1316,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each package.',
+        'List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each specification.',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1324,7 +1324,7 @@ export function createKravhanteringMcpServer(
             .string()
             .optional()
             .describe(
-              'Case-insensitive substring filter applied to both Swedish and English package names.',
+              'Case-insensitive substring filter applied to both Swedish and English specification names.',
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
@@ -1332,7 +1332,7 @@ export function createKravhanteringMcpServer(
       outputSchema: z
         .object({
           message: z.string(),
-          packages: z.array(
+          specifications: z.array(
             z
               .object({
                 businessNeedsReference: z.string().nullable(),
@@ -1355,7 +1355,7 @@ export function createKravhanteringMcpServer(
     },
     async input => {
       try {
-        const payload = await service.listPackages(
+        const payload = await service.listSpecifications(
           await getBaseContext(request, 'requirements_list_specifications'),
           {
             locale: toResponseLocale(input.locale),
@@ -1383,7 +1383,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the package with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2") from requirements_list_specifications.',
+        'List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2") from requirements_list_specifications.',
       inputSchema: z
         .object({
           descriptionSearch: z
@@ -1440,11 +1440,11 @@ export function createKravhanteringMcpServer(
           specificationId: z.number(),
         })
         .strict(),
-      title: 'Get Package Items',
+      title: 'Get Specification Items',
     },
     async input => {
       try {
-        const payload = await service.getPackageItems(
+        const payload = await service.getSpecificationItems(
           await getBaseContext(request, 'requirements_get_specification_items'),
           {
             descriptionSearch: input.descriptionSearch,
@@ -1474,7 +1474,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the package with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
+        'Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1500,7 +1500,7 @@ export function createKravhanteringMcpServer(
             .array(z.number().int().positive())
             .min(1)
             .describe(
-              'Numeric requirement IDs (not uniqueId strings) to add to the package.',
+              'Numeric requirement IDs (not uniqueId strings) to add to the specification.',
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
@@ -1525,7 +1525,7 @@ export function createKravhanteringMcpServer(
           skippedIds: z.array(z.number()),
         })
         .strict(),
-      title: 'Add Requirements to Package',
+      title: 'Add Requirements to Specification',
     },
     async input => {
       try {
@@ -1560,7 +1560,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the package with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
+        'Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1579,7 +1579,9 @@ export function createKravhanteringMcpServer(
           requirementIds: z
             .array(z.number().int().positive())
             .min(1)
-            .describe('Numeric requirement IDs to remove from the package.'),
+            .describe(
+              'Numeric requirement IDs to remove from the specification.',
+            ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict()
@@ -1601,7 +1603,7 @@ export function createKravhanteringMcpServer(
           removedCount: z.number(),
         })
         .strict(),
-      title: 'Remove Requirements from Package',
+      title: 'Remove Requirements from Specification',
     },
     async input => {
       try {

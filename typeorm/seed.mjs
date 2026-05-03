@@ -182,7 +182,7 @@ const SEED_DATA = {
         'Inkluderad',
         'Included',
         'Kravet finns i underlaget men inget arbete påbörjat',
-        'Requirement is in the package but no work started',
+        'Requirement is in the specification but no work started',
         '#94a3b8',
         1,
       ],

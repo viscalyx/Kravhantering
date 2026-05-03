@@ -1,6 +1,6 @@
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 
-export async function fetchPackageItemsForReport(
+export async function fetchSpecificationItemsForReport(
   specificationIdOrSlug: number | string,
   itemRefs: string[],
   locale: string,
@@ -15,7 +15,7 @@ export async function fetchPackageItemsForReport(
 
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch report items for package ${specificationIdOrSlug}: ${response.status}`,
+      `Failed to fetch report items for specification ${specificationIdOrSlug}: ${response.status}`,
     )
   }
 

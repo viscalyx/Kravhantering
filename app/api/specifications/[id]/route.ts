@@ -1,19 +1,19 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  deletePackage,
-  getPackageById,
-  getPackageBySlug,
+  deleteSpecification,
+  getSpecificationById,
+  getSpecificationBySlug,
   isSlugTaken,
-  updatePackage,
+  updateSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
 
-async function resolvePackage(db: SqlServerDatabase, idOrSlug: string) {
-  if (/^\d+$/.test(idOrSlug)) return getPackageById(db, Number(idOrSlug))
-  return getPackageBySlug(db, idOrSlug)
+async function resolveSpecification(db: SqlServerDatabase, idOrSlug: string) {
+  if (/^\d+$/.test(idOrSlug)) return getSpecificationById(db, Number(idOrSlug))
+  return getSpecificationBySlug(db, idOrSlug)
 }
 
 export async function GET(
@@ -22,9 +22,9 @@ export async function GET(
 ) {
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
-  const pkg = await resolvePackage(db, id)
-  if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(pkg)
+  const spec = await resolveSpecification(db, id)
+  if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  return NextResponse.json(spec)
 }
 
 export async function PUT(
@@ -34,8 +34,8 @@ export async function PUT(
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
 
-  const pkg = await resolvePackage(db, id)
-  if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const spec = await resolveSpecification(db, id)
+  if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = (await request.json()) as {
     businessNeedsReference?: string | null
@@ -46,11 +46,11 @@ export async function PUT(
     uniqueId?: string
   }
 
-  if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, pkg.id))) {
+  if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, spec.id))) {
     return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
   }
 
-  const updated = await updatePackage(db, pkg.id, body)
+  const updated = await updateSpecification(db, spec.id, body)
   return NextResponse.json(updated)
 }
 
@@ -60,8 +60,8 @@ export async function DELETE(
 ) {
   const { id } = await params
   const db = await getRequestSqlServerDataSource()
-  const pkg = await resolvePackage(db, id)
-  if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await deletePackage(db, pkg.id)
+  const spec = await resolveSpecification(db, id)
+  if (!spec) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  await deleteSpecification(db, spec.id)
   return NextResponse.json({ ok: true })
 }

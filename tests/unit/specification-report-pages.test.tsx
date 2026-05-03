@@ -6,9 +6,9 @@ let currentRefs: string | null = null
 let currentLocale = 'en'
 let currentSlug: string | null = 'ETJANST-UPP-2026'
 
-const fetchPackageItemsForReportMock = vi.fn()
+const fetchSpecificationItemsForReportMock = vi.fn()
 const buildListReportMock = vi.fn()
-const packageFetchMock = vi.fn()
+const specificationFetchMock = vi.fn()
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void
@@ -32,13 +32,13 @@ vi.mock('next-intl', () => ({
     (namespace?: string) =>
     (key: string, values?: Record<string, string | number>) => {
       if (namespace === 'reports' && key === 'specificationFetchFailed') {
-        return `Package fetch failed (${values?.status})`
+        return `Specification fetch failed (${values?.status})`
       }
       if (
         namespace === 'reports' &&
         key === 'specificationFetchFailedWithDetails'
       ) {
-        return `Package fetch failed (${values?.status}): ${values?.details}`
+        return `Specification fetch failed (${values?.status}): ${values?.details}`
       }
       return namespace ? `${namespace}.${key}` : key
     },
@@ -51,8 +51,8 @@ vi.mock('@/components/reports/print/PrintReportRenderer', () => ({
 }))
 
 vi.mock('@/lib/reports/data/fetch-specification-items', () => ({
-  fetchPackageItemsForReport: (...args: unknown[]) =>
-    fetchPackageItemsForReportMock(...args),
+  fetchSpecificationItemsForReport: (...args: unknown[]) =>
+    fetchSpecificationItemsForReportMock(...args),
 }))
 
 vi.mock('@/lib/reports/templates/list-template', () => ({
@@ -63,12 +63,12 @@ describe('requirements specification report pages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('print', vi.fn())
-    vi.stubGlobal('fetch', packageFetchMock)
+    vi.stubGlobal('fetch', specificationFetchMock)
     currentRefs = null
     currentLocale = 'en'
     currentSlug = 'ETJANST-UPP-2026'
     buildListReportMock.mockReturnValue({ title: 'Report' })
-    packageFetchMock.mockResolvedValue({
+    specificationFetchMock.mockResolvedValue({
       json: async () => ({
         businessNeedsReference: 'Shared IAM business case',
         implementationType: { nameEn: 'Program', nameSv: 'Program' },
@@ -89,7 +89,7 @@ describe('requirements specification report pages', () => {
 
   it('marks the print loading state while the report is being fetched', () => {
     currentRefs = 'lib:1'
-    fetchPackageItemsForReportMock.mockReturnValue(new Promise(() => {}))
+    fetchSpecificationItemsForReportMock.mockReturnValue(new Promise(() => {}))
 
     const { container } = render(<PrintListReportPage />)
 
@@ -101,7 +101,10 @@ describe('requirements specification report pages', () => {
   })
 
   it('clears previous print errors, trims ids, and marks the renderer state', async () => {
-    fetchPackageItemsForReportMock.mockResolvedValue([{ id: 1 }, { id: 2 }])
+    fetchSpecificationItemsForReportMock.mockResolvedValue([
+      { id: 1 },
+      { id: 2 },
+    ])
 
     const { container, rerender } = render(<PrintListReportPage />)
 
@@ -116,7 +119,7 @@ describe('requirements specification report pages', () => {
     rerender(<PrintListReportPage />)
 
     await waitFor(() => {
-      expect(fetchPackageItemsForReportMock).toHaveBeenCalledWith(
+      expect(fetchSpecificationItemsForReportMock).toHaveBeenCalledWith(
         'ETJANST-UPP-2026',
         ['lib:1', 'local:2'],
         'en',
@@ -140,7 +143,7 @@ describe('requirements specification report pages', () => {
     const firstRequest = createDeferred<{ id: number }[]>()
     const secondRequest = createDeferred<{ id: number }[]>()
 
-    fetchPackageItemsForReportMock
+    fetchSpecificationItemsForReportMock
       .mockImplementationOnce(() => firstRequest.promise)
       .mockImplementationOnce(() => secondRequest.promise)
     buildListReportMock.mockImplementation(
@@ -173,14 +176,14 @@ describe('requirements specification report pages', () => {
     ).not.toHaveTextContent('Report 1')
   })
 
-  it('extracts readable package error details from JSON responses', async () => {
+  it('extracts readable specification error details from JSON responses', async () => {
     currentRefs = 'lib:1'
-    currentSlug = 'pkg/with slash'
-    fetchPackageItemsForReportMock.mockResolvedValue([{ id: 1 }])
+    currentSlug = 'spec/with slash'
+    fetchSpecificationItemsForReportMock.mockResolvedValue([{ id: 1 }])
     const failingFetchMock = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
-      text: async () => JSON.stringify({ error: 'Package missing' }),
+      text: async () => JSON.stringify({ error: 'Specification missing' }),
     })
     vi.stubGlobal('fetch', failingFetchMock)
 
@@ -188,10 +191,12 @@ describe('requirements specification report pages', () => {
 
     expect(await screen.findByText('reports.errorTitle')).toBeInTheDocument()
     expect(failingFetchMock).toHaveBeenCalledWith(
-      '/api/specifications/pkg%2F' + 'with%20slash',
+      '/api/specifications/spec%2F' + 'with%20slash',
     )
     expect(
-      screen.getByText('Package fetch failed (500): Package missing'),
+      screen.getByText(
+        'Specification fetch failed (500): Specification missing',
+      ),
     ).toBeInTheDocument()
   })
 })

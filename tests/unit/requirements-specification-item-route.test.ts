@@ -4,12 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockDb = {}
 
 const mocks = {
-  getPackageById: vi.fn(),
-  getPackageByRef: vi.fn(),
-  getPackageBySlug: vi.fn(),
-  getPackageItemByRef: vi.fn(),
-  listPackageItems: vi.fn(),
-  updatePackageItemFieldsByItemRef: vi.fn(),
+  getSpecificationById: vi.fn(),
+  getSpecificationByRef: vi.fn(),
+  getSpecificationBySlug: vi.fn(),
+  getSpecificationItemByRef: vi.fn(),
+  listSpecificationItems: vi.fn(),
+  updateSpecificationItemFieldsByItemRef: vi.fn(),
 }
 
 vi.mock('@/lib/db', () => ({
@@ -17,13 +17,16 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
-  getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
-  getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
-  getPackageItemByRef: (...args: unknown[]) =>
-    mocks.getPackageItemByRef(...args),
-  listPackageItems: (...args: unknown[]) => mocks.listPackageItems(...args),
-  updatePackageItemFieldsByItemRef: (...args: unknown[]) =>
-    mocks.updatePackageItemFieldsByItemRef(...args),
+  getSpecificationById: (...args: unknown[]) =>
+    mocks.getSpecificationById(...args),
+  getSpecificationBySlug: (...args: unknown[]) =>
+    mocks.getSpecificationBySlug(...args),
+  getSpecificationItemByRef: (...args: unknown[]) =>
+    mocks.getSpecificationItemByRef(...args),
+  listSpecificationItems: (...args: unknown[]) =>
+    mocks.listSpecificationItems(...args),
+  updateSpecificationItemFieldsByItemRef: (...args: unknown[]) =>
+    mocks.updateSpecificationItemFieldsByItemRef(...args),
 }))
 
 import { GET, PATCH } from '@/app/api/specifications/[id]/items/[itemId]/route'
@@ -32,17 +35,17 @@ function makeParams(id: string, itemId: string) {
   return { params: Promise.resolve({ id, itemId }) }
 }
 
-describe('requirement-packages/[id]/items/[itemId] route', () => {
+describe('requirements-specifications/[id]/items/[itemId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getPackageBySlug.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
   })
 
-  it('returns package-specific metadata for a library requirement item', async () => {
-    mocks.listPackageItems.mockResolvedValue([
+  it('returns specification-specific metadata for a library requirement item', async () => {
+    mocks.listSpecificationItems.mockResolvedValue([
       {
         kind: 'library',
-        needsReference: 'Shared package need',
+        needsReference: 'Shared specification need',
         needsReferenceId: 81,
         specificationItemId: 31,
         specificationItemStatusColor: '#f59e0b',
@@ -60,7 +63,7 @@ describe('requirement-packages/[id]/items/[itemId] route', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({
-      needsReference: 'Shared package need',
+      needsReference: 'Shared specification need',
       needsReferenceId: 81,
       specificationItemId: 31,
       specificationItemStatusColor: '#f59e0b',
@@ -68,12 +71,12 @@ describe('requirement-packages/[id]/items/[itemId] route', () => {
       specificationItemStatusNameEn: 'Ongoing',
       specificationItemStatusNameSv: 'Pågående',
     })
-    expect(mocks.listPackageItems).toHaveBeenCalledWith(mockDb, 5)
+    expect(mocks.listSpecificationItems).toHaveBeenCalledWith(mockDb, 5)
   })
 
   it('updates specification item status by item ref within the specification', async () => {
-    mocks.getPackageBySlug.mockResolvedValue({ id: 7 })
-    mocks.getPackageItemByRef.mockResolvedValue({
+    mocks.getSpecificationBySlug.mockResolvedValue({ id: 7 })
+    mocks.getSpecificationItemByRef.mockResolvedValue({
       itemRef: 'lib:31',
       specificationId: 7,
       specificationItemId: 31,
@@ -95,8 +98,12 @@ describe('requirement-packages/[id]/items/[itemId] route', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(mocks.getPackageItemByRef).toHaveBeenCalledWith(mockDb, 7, 'lib:31')
-    expect(mocks.updatePackageItemFieldsByItemRef).toHaveBeenCalledWith(
+    expect(mocks.getSpecificationItemByRef).toHaveBeenCalledWith(
+      mockDb,
+      7,
+      'lib:31',
+    )
+    expect(mocks.updateSpecificationItemFieldsByItemRef).toHaveBeenCalledWith(
       mockDb,
       7,
       'lib:31',
@@ -125,7 +132,7 @@ describe('requirement-packages/[id]/items/[itemId] route', () => {
     await expect(response.json()).resolves.toEqual({
       error: 'Malformed payload',
     })
-    expect(mocks.getPackageBySlug).not.toHaveBeenCalled()
-    expect(mocks.updatePackageItemFieldsByItemRef).not.toHaveBeenCalled()
+    expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
+    expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
   })
 })

@@ -41,7 +41,7 @@ const translations: Record<string, string> = {
   'requirement.category': 'Category',
   'requirement.description': 'Description',
   'requirement.normReferences': 'Norm references',
-  'requirement.specificationItemStatus': 'Package item status',
+  'requirement.specificationItemStatus': 'Specification item status',
   'requirement.specificationLocalBadge': 'Unique',
   'requirement.specificationLocalTooltip':
     'This row is a specification-local requirement.',
@@ -199,7 +199,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     expect(screen.getByRole('button', { name: 'Print' })).toBeInTheDocument()
     expect(screen.queryByText('Deviation')).not.toBeInTheDocument()
     expect(
-      screen.queryByText('Only exists in this package.'),
+      screen.queryByText('Only exists in this specification.'),
     ).not.toBeInTheDocument()
 
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveAttribute(

@@ -62,7 +62,7 @@ Source: `lib/requirements/types.ts`
 | `versionNumber` | `number` | Version sequence |
 | `versionScenarios` | `RequirementVersionScenario[]` | Scenarios |
 
-## REST: Package Detail `/api/specifications/[id]`
+## REST: Specification Detail `/api/specifications/[id]`
 
 Source: `app/api/specifications/[id]/route.ts`
 
@@ -70,11 +70,10 @@ Source: `app/api/specifications/[id]/route.ts`
 |---|---|---|
 | `businessNeedsReference` | `string \| null` | Business note |
 | `createdAt` | `string` | ISO timestamp |
-| `id` | `number` | Package id |
+| `id` | `number` | Specification id |
 | `implementationType` | `{ id, nameSv, nameEn } \| null` | Taxonomy |
 | `lifecycleStatus` | `{ id, nameSv, nameEn } \| null` | Taxonomy |
-| `localRequirementNextSequence` | `number` | Next local seq |
-| `name` | `string` | Package name |
+| `name` | `string` | Specification name |
 | `specificationImplementationTypeId` | `number \| null` | FK |
 | `specificationLifecycleStatusId` | `number \| null` | FK |
 | `specificationResponsibilityAreaId` | `number \| null` | FK |
@@ -82,7 +81,7 @@ Source: `app/api/specifications/[id]/route.ts`
 | `uniqueId` | `string` | Slug e.g. `ETJANST-UPP-2026` |
 | `updatedAt` | `string` | ISO timestamp |
 
-## REST: Package Items `/api/specifications/[id]/items`
+## REST: Specification Items `/api/specifications/[id]/items`
 
 Source: `app/api/specifications/[id]/items/route.ts`
 

@@ -15,7 +15,7 @@ interface TaxonomyItem {
   nameSv: string
 }
 
-interface PackageMeta {
+interface SpecificationMeta {
   businessNeedsReference: string | null
   name: string
   specificationImplementationTypeId: number | null
@@ -29,12 +29,12 @@ interface SpecificationEditPanelProps {
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
   onSaved: (result: { newUniqueId: string }) => Promise<void> | void
-  pkg: PackageMeta
   responsibilityAreas: TaxonomyItem[]
+  spec: SpecificationMeta
   specificationSlug: string
 }
 
-interface PackageFormState {
+interface SpecificationFormState {
   businessNeedsReference: string
   name: string
   specificationImplementationTypeId: string
@@ -43,19 +43,19 @@ interface PackageFormState {
   uniqueId: string
 }
 
-export const PACKAGE_EDIT_FORM_ID = 'requirement-package-edit-form'
+export const SPECIFICATION_EDIT_FORM_ID = 'requirement-specification-edit-form'
 
-function buildFormState(pkg: PackageMeta): PackageFormState {
+function buildFormState(spec: SpecificationMeta): SpecificationFormState {
   return {
-    businessNeedsReference: pkg.businessNeedsReference ?? '',
-    name: pkg.name,
+    businessNeedsReference: spec.businessNeedsReference ?? '',
+    name: spec.name,
     specificationImplementationTypeId:
-      pkg.specificationImplementationTypeId?.toString() ?? '',
+      spec.specificationImplementationTypeId?.toString() ?? '',
     specificationLifecycleStatusId:
-      pkg.specificationLifecycleStatusId?.toString() ?? '',
+      spec.specificationLifecycleStatusId?.toString() ?? '',
     specificationResponsibilityAreaId:
-      pkg.specificationResponsibilityAreaId?.toString() ?? '',
-    uniqueId: pkg.uniqueId,
+      spec.specificationResponsibilityAreaId?.toString() ?? '',
+    uniqueId: spec.uniqueId,
   }
 }
 
@@ -65,7 +65,7 @@ export default function SpecificationEditPanel({
   onCancel,
   onSaved,
   specificationSlug,
-  pkg,
+  spec,
   responsibilityAreas,
 }: SpecificationEditPanelProps) {
   const t = useTranslations('specification')
@@ -75,12 +75,14 @@ export default function SpecificationEditPanel({
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [slugError, setSlugError] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [form, setForm] = useState<PackageFormState>(() => buildFormState(pkg))
+  const [form, setForm] = useState<SpecificationFormState>(() =>
+    buildFormState(spec),
+  )
 
   useEffect(() => {
-    setForm(buildFormState(pkg))
+    setForm(buildFormState(spec))
     setOpenHelp(new Set())
-  }, [pkg])
+  }, [spec])
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -180,7 +182,7 @@ export default function SpecificationEditPanel({
       animate={{ opacity: 1, y: 0 }}
       aria-busy={isSubmitting}
       className="glass max-w-lg space-y-5 rounded-2xl p-6"
-      id={PACKAGE_EDIT_FORM_ID}
+      id={SPECIFICATION_EDIT_FORM_ID}
       initial={{ opacity: 0, y: 8 }}
       transition={{ duration: 0.15 }}
       {...devMarker({
@@ -195,15 +197,15 @@ export default function SpecificationEditPanel({
 
       <div>
         <div className="mb-1 flex items-center gap-1.5">
-          <label className="block text-sm font-medium" htmlFor="pkg-name">
+          <label className="block text-sm font-medium" htmlFor="spec-name">
             {t('name')} <span aria-hidden="true">*</span>
           </label>
-          {helpButton('pkg-name', t('name'))}
+          {helpButton('spec-name', t('name'))}
         </div>
-        {helpPanel('help.name', 'pkg-name')}
+        {helpPanel('help.name', 'spec-name')}
         <input
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-          id="pkg-name"
+          id="spec-name"
           onChange={event =>
             setForm(current => ({ ...current, name: event.target.value }))
           }
@@ -214,15 +216,15 @@ export default function SpecificationEditPanel({
 
       <div>
         <div className="mb-1 flex items-center gap-1.5">
-          <label className="block text-sm font-medium" htmlFor="pkg-unique-id">
+          <label className="block text-sm font-medium" htmlFor="spec-unique-id">
             {t('uniqueId')} <span aria-hidden="true">*</span>
           </label>
-          {helpButton('pkg-unique-id', t('uniqueId'))}
+          {helpButton('spec-unique-id', t('uniqueId'))}
         </div>
-        {helpPanel('uniqueIdHelp', 'pkg-unique-id')}
+        {helpPanel('uniqueIdHelp', 'spec-unique-id')}
         <input
           className={`w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm font-mono transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50${slugError ? ' border-red-500 focus:ring-red-400/50' : ''}`}
-          id="pkg-unique-id"
+          id="spec-unique-id"
           onChange={event => {
             setSlugError(null)
             setForm(current => ({
@@ -247,15 +249,15 @@ export default function SpecificationEditPanel({
 
       <div>
         <div className="mb-1 flex items-center gap-1.5">
-          <label className="block text-sm font-medium" htmlFor="pkg-area">
+          <label className="block text-sm font-medium" htmlFor="spec-area">
             {t('responsibilityArea')}
           </label>
-          {helpButton('pkg-area', t('responsibilityArea'))}
+          {helpButton('spec-area', t('responsibilityArea'))}
         </div>
-        {helpPanel('responsibilityAreaHelp', 'pkg-area')}
+        {helpPanel('responsibilityAreaHelp', 'spec-area')}
         <select
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-          id="pkg-area"
+          id="spec-area"
           onChange={event =>
             setForm(current => ({
               ...current,
@@ -275,15 +277,15 @@ export default function SpecificationEditPanel({
 
       <div>
         <div className="mb-1 flex items-center gap-1.5">
-          <label className="block text-sm font-medium" htmlFor="pkg-impl-type">
+          <label className="block text-sm font-medium" htmlFor="spec-impl-type">
             {t('implementationType')}
           </label>
-          {helpButton('pkg-impl-type', t('implementationType'))}
+          {helpButton('spec-impl-type', t('implementationType'))}
         </div>
-        {helpPanel('implementationTypeHelp', 'pkg-impl-type')}
+        {helpPanel('implementationTypeHelp', 'spec-impl-type')}
         <select
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-          id="pkg-impl-type"
+          id="spec-impl-type"
           onChange={event =>
             setForm(current => ({
               ...current,
@@ -307,16 +309,16 @@ export default function SpecificationEditPanel({
         <div className="mb-1 flex items-center gap-1.5">
           <label
             className="block text-sm font-medium"
-            htmlFor="pkg-lifecycle-status"
+            htmlFor="spec-lifecycle-status"
           >
             {t('lifecycleStatus')}
           </label>
-          {helpButton('pkg-lifecycle-status', t('lifecycleStatus'))}
+          {helpButton('spec-lifecycle-status', t('lifecycleStatus'))}
         </div>
-        {helpPanel('lifecycleStatusHelp', 'pkg-lifecycle-status')}
+        {helpPanel('lifecycleStatusHelp', 'spec-lifecycle-status')}
         <select
           className="w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-          id="pkg-lifecycle-status"
+          id="spec-lifecycle-status"
           onChange={event =>
             setForm(current => ({
               ...current,
@@ -338,16 +340,16 @@ export default function SpecificationEditPanel({
         <div className="mb-1 flex items-center gap-1.5">
           <label
             className="block text-sm font-medium"
-            htmlFor="pkg-business-ref"
+            htmlFor="spec-business-ref"
           >
             {t('businessNeedsReference')}
           </label>
-          {helpButton('pkg-business-ref', t('businessNeedsReference'))}
+          {helpButton('spec-business-ref', t('businessNeedsReference'))}
         </div>
-        {helpPanel('businessNeedsReferenceHelp', 'pkg-business-ref')}
+        {helpPanel('businessNeedsReferenceHelp', 'spec-business-ref')}
         <textarea
           className="w-full resize-none rounded-xl border bg-white px-3.5 py-2.5 text-sm transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 dark:bg-secondary-800/50"
-          id="pkg-business-ref"
+          id="spec-business-ref"
           onChange={event =>
             setForm(current => ({
               ...current,

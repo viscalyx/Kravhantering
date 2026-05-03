@@ -4,7 +4,7 @@ import {
   Archive,
   Check,
   Edit,
-  PackagePlus,
+  FolderPlus,
   RotateCcw,
   Share2,
   Trash2,
@@ -189,7 +189,7 @@ export default function RequirementActionRail({
           title={tp('addToSpecification')}
           type="button"
         >
-          <PackagePlus aria-hidden="true" className="h-4 w-4" />
+          <FolderPlus aria-hidden="true" className="h-4 w-4" />
           {tp('addToSpecification')}
         </button>
       )}

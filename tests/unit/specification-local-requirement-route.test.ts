@@ -5,8 +5,8 @@ const mockDb = {}
 
 const mocks = {
   deleteSpecificationLocalRequirement: vi.fn(),
-  getPackageById: vi.fn(),
-  getPackageBySlug: vi.fn(),
+  getSpecificationById: vi.fn(),
+  getSpecificationBySlug: vi.fn(),
 }
 
 vi.mock('@/lib/db', () => ({
@@ -16,8 +16,10 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/dal/requirements-specifications', () => ({
   deleteSpecificationLocalRequirement: (...args: unknown[]) =>
     mocks.deleteSpecificationLocalRequirement(...args),
-  getPackageById: (...args: unknown[]) => mocks.getPackageById(...args),
-  getPackageBySlug: (...args: unknown[]) => mocks.getPackageBySlug(...args),
+  getSpecificationById: (...args: unknown[]) =>
+    mocks.getSpecificationById(...args),
+  getSpecificationBySlug: (...args: unknown[]) =>
+    mocks.getSpecificationBySlug(...args),
   getSpecificationLocalRequirementDetail: vi.fn(),
   updateSpecificationLocalRequirement: vi.fn(),
 }))
@@ -31,7 +33,7 @@ function makeParams(id: string, localRequirementId: string) {
 describe('specifications/[id]/local-requirements/[localRequirementId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getPackageBySlug.mockResolvedValue({ id: 5 })
+    mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
   })
 
   it('returns a JSON 500 when deleting a specification-local requirement fails', async () => {
@@ -45,9 +47,9 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     try {
       const response = await DELETE(
         new NextRequest(
-          'http://localhost/api/specifications/pkg/local-requirements/41',
+          'http://localhost/api/specifications/spec/local-requirements/41',
         ),
-        makeParams('pkg', '41'),
+        makeParams('spec', '41'),
       )
 
       expect(response.status).toBe(500)
@@ -66,5 +68,73 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     } finally {
       consoleErrorSpy.mockRestore()
     }
+  })
+
+  it('returns 400 when localRequirementId is not a positive integer', async () => {
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/specifications/spec/local-requirements/abc',
+      ),
+      makeParams('spec', 'abc'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Invalid localRequirementId',
+    })
+    expect(mocks.deleteSpecificationLocalRequirement).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when the specification slug does not resolve', async () => {
+    mocks.getSpecificationBySlug.mockResolvedValueOnce(null)
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/specifications/missing/local-requirements/41',
+      ),
+      makeParams('missing', '41'),
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
+    expect(mocks.deleteSpecificationLocalRequirement).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when the requirement was not deleted', async () => {
+    mocks.deleteSpecificationLocalRequirement.mockResolvedValueOnce(false)
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/specifications/spec/local-requirements/41',
+      ),
+      makeParams('spec', '41'),
+    )
+
+    expect(response.status).toBe(404)
+    await expect(response.json()).resolves.toEqual({ error: 'Not found' })
+    expect(mocks.deleteSpecificationLocalRequirement).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      41,
+    )
+  })
+
+  it('returns 200 when the requirement was deleted', async () => {
+    mocks.deleteSpecificationLocalRequirement.mockResolvedValueOnce(true)
+
+    const response = await DELETE(
+      new NextRequest(
+        'http://localhost/api/specifications/spec/local-requirements/41',
+      ),
+      makeParams('spec', '41'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(mocks.deleteSpecificationLocalRequirement).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      41,
+    )
   })
 })

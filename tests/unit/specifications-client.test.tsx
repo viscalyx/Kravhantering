@@ -51,7 +51,7 @@ function mockPillListScrollHeight(height: number) {
   Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
     configurable: true,
     get: function (this: HTMLElement) {
-      if (this.dataset.packageRequirementAreaPillList === 'true') {
+      if (this.dataset.specificationRequirementAreaPillList === 'true') {
         return height
       }
 
@@ -76,11 +76,11 @@ import RequirementsSpecificationsClient from '@/app/[locale]/specifications/spec
 const sampleAreas = [{ id: 1, nameSv: 'Område', nameEn: 'Area' }]
 const sampleTypes = [{ id: 1, nameSv: 'Typ', nameEn: 'Type' }]
 const sampleStatuses = [{ id: 1, nameSv: 'Utveckling', nameEn: 'Development' }]
-const samplePackages = [
+const sampleSpecifications = [
   {
     id: 1,
-    name: 'Paket sv',
-    uniqueId: 'PAKET-SV',
+    name: 'Kravunderlag sv',
+    uniqueId: 'KRAVUNDERLAG-SV',
     specificationResponsibilityAreaId: 1,
     specificationImplementationTypeId: 1,
     specificationLifecycleStatusId: 1,
@@ -107,7 +107,7 @@ describe('RequirementsSpecificationsClient', () => {
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -124,21 +124,21 @@ describe('RequirementsSpecificationsClient', () => {
       'nav.specifications',
     )
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
   })
 
-  it('fetches and displays packages', async () => {
+  it('fetches and displays kravunderlag', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Development')).toBeInTheDocument()
   })
 
-  it('fetches and displays packages after strict-mode effect replays', async () => {
+  it('fetches and displays kravunderlag after strict-mode effect replays', async () => {
     render(
       <StrictMode>
         <RequirementsSpecificationsClient />
@@ -146,7 +146,7 @@ describe('RequirementsSpecificationsClient', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     expect(screen.getByText('Area')).toBeInTheDocument()
@@ -160,7 +160,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -187,20 +187,20 @@ describe('RequirementsSpecificationsClient', () => {
     }
   })
 
-  it('filters packages by the name column and clears the search', async () => {
+  it('filters specifications by the name column and clears the search', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
         return Promise.resolve(
           okJson({
-            packages: [
+            specifications: [
               {
-                ...samplePackages[0],
+                ...sampleSpecifications[0],
                 id: 1,
                 name: 'Upphandling av e-tjänstplattform',
                 uniqueId: 'ETJANST-UPP-2026',
               },
               {
-                ...samplePackages[0],
+                ...sampleSpecifications[0],
                 id: 2,
                 name: 'Införande av säkerhetslyft Q2',
                 uniqueId: 'SAKLYFT-INFOR-Q2',
@@ -255,14 +255,14 @@ describe('RequirementsSpecificationsClient', () => {
     })
   })
 
-  it('shows a no-results row when the name filter matches no packages', async () => {
+  it('shows a no-results row when the name filter matches no specifications', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
         return Promise.resolve(
           okJson({
-            packages: [
+            specifications: [
               {
-                ...samplePackages[0],
+                ...sampleSpecifications[0],
                 id: 1,
                 name: 'Upphandling av e-tjänstplattform',
                 uniqueId: 'ETJANST-UPP-2026',
@@ -296,10 +296,10 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.queryByText('specification.emptyState')).toBeNull()
   })
 
-  it('renders an empty-state row when there are no packages', async () => {
+  it('renders an empty-state row when there are no specifications', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: [] }))
+        return Promise.resolve(okJson({ specifications: [] }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -321,9 +321,9 @@ describe('RequirementsSpecificationsClient', () => {
       if (url === '/api/specifications')
         return Promise.resolve(
           okJson({
-            packages: [
+            specifications: [
               {
-                ...samplePackages[0],
+                ...sampleSpecifications[0],
                 requirementAreas: [{ id: 9, name: 'Identity' }],
               },
             ],
@@ -357,9 +357,9 @@ describe('RequirementsSpecificationsClient', () => {
         if (url === '/api/specifications')
           return Promise.resolve(
             okJson({
-              packages: [
+              specifications: [
                 {
-                  ...samplePackages[0],
+                  ...sampleSpecifications[0],
                   requirementAreas: [
                     { id: 9, name: 'Identity' },
                     { id: 10, name: 'Integration' },
@@ -382,12 +382,14 @@ describe('RequirementsSpecificationsClient', () => {
 
       const list = await waitFor(() => {
         const node = document.querySelector(
-          '[data-package-requirement-area-pill-list="true"]',
+          '[data-specification-requirement-area-pill-list="true"]',
         )
         expect(node).not.toBeNull()
         return node as HTMLElement
       })
-      const group = list.closest('[data-package-requirement-area-pills="true"]')
+      const group = list.closest(
+        '[data-specification-requirement-area-pills="true"]',
+      )
       const expandButton = await screen.findByRole('button', {
         name: 'common.showMore',
       })
@@ -419,11 +421,11 @@ describe('RequirementsSpecificationsClient', () => {
     }
   })
 
-  it('renders package row actions as compact icon buttons', async () => {
+  it('renders specification row actions as compact icon buttons', async () => {
     render(<RequirementsSpecificationsClient />)
 
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     const [editButton] = screen.getAllByRole('button', {
@@ -454,7 +456,7 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
     render(<RequirementsSpecificationsClient />)
     expect(
-      screen.queryByTestId('requirement-packages-loading'),
+      screen.queryByTestId('requirement-specifications-loading'),
     ).not.toBeInTheDocument()
   })
 
@@ -466,7 +468,7 @@ describe('RequirementsSpecificationsClient', () => {
       vi.advanceTimersByTime(200)
     })
     expect(
-      screen.getByTestId('requirement-packages-loading'),
+      screen.getByTestId('requirement-specifications-loading'),
     ).toBeInTheDocument()
   })
 
@@ -484,7 +486,7 @@ describe('RequirementsSpecificationsClient', () => {
   it('opens create form with fields', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     fireEvent.click(
       screen.getByRole('button', { name: /specification\.newSpecification/i }),
@@ -494,10 +496,10 @@ describe('RequirementsSpecificationsClient', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows inline help for package form fields', async () => {
+  it('shows inline help for specification form fields', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     fireEvent.click(
@@ -510,10 +512,10 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.getByText('specification.help.name')).toBeInTheDocument()
   })
 
-  it('renders package form controls with a 44px minimum height', async () => {
+  it('renders specification form controls with a 44px minimum height', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     const filterInput = screen.getByRole('textbox', {
@@ -545,7 +547,7 @@ describe('RequirementsSpecificationsClient', () => {
   it('submits create form', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     fireEvent.click(
       screen.getByRole('button', { name: /specification\.newSpecification/i }),
@@ -562,7 +564,7 @@ describe('RequirementsSpecificationsClient', () => {
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (opts?.method === 'POST') return Promise.resolve(okJson({ id: 2 }))
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -585,7 +587,7 @@ describe('RequirementsSpecificationsClient', () => {
   it('shows an inline save error for non-conflict failures', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     fireEvent.click(
@@ -595,7 +597,7 @@ describe('RequirementsSpecificationsClient', () => {
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
     })
-    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
@@ -607,7 +609,7 @@ describe('RequirementsSpecificationsClient', () => {
         })
       }
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -630,7 +632,7 @@ describe('RequirementsSpecificationsClient', () => {
   it('opens edit form with existing data', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
@@ -642,13 +644,13 @@ describe('RequirementsSpecificationsClient', () => {
           name: /specification\.name/,
         }) as HTMLInputElement
       ).value,
-    ).toBe('Paket sv')
+    ).toBe('Kravunderlag sv')
   })
 
   it('closes form on cancel', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
     fireEvent.click(
       screen.getByRole('button', { name: /specification\.newSpecification/i }),
@@ -661,13 +663,13 @@ describe('RequirementsSpecificationsClient', () => {
     confirmMock.mockResolvedValue(true)
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
       if (opts?.method === 'DELETE') return Promise.resolve(okJson({}))
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: [] }))
+        return Promise.resolve(okJson({ specifications: [] }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -687,7 +689,7 @@ describe('RequirementsSpecificationsClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specifications/PAKET-SV',
+        '/api/specifications/KRAVUNDERLAG-SV',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
@@ -696,7 +698,7 @@ describe('RequirementsSpecificationsClient', () => {
   it('marks slug conflicts as alerts and clears stale errors when auto-generating a new slug', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
@@ -707,7 +709,7 @@ describe('RequirementsSpecificationsClient', () => {
         })
       }
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -728,32 +730,32 @@ describe('RequirementsSpecificationsClient', () => {
       name: /specification\.uniqueId/,
     })
 
-    fireEvent.change(nameInput, { target: { value: 'Paket sv' } })
+    fireEvent.change(nameInput, { target: { value: 'Kravunderlag sv' } })
     fireEvent.blur(nameInput)
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     const slugError = await screen.findByRole('alert')
     expect(uniqueIdInput).toHaveAttribute(
       'aria-describedby',
-      'pkg-unique-id-error',
+      'spec-unique-id-error',
     )
     expect(uniqueIdInput).toHaveAttribute('aria-invalid', 'true')
-    expect(slugError).toHaveAttribute('id', 'pkg-unique-id-error')
+    expect(slugError).toHaveAttribute('id', 'spec-unique-id-error')
 
-    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
 
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
-    expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
+    expect(uniqueIdInput).toHaveValue('NYTT-KRAVUNDERLAG')
     expect(uniqueIdInput).not.toHaveAttribute('aria-invalid', 'true')
   })
 
   it('keeps the previous slug and shows an inline error when slug generation returns empty', async () => {
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     fireEvent.click(
@@ -767,9 +769,9 @@ describe('RequirementsSpecificationsClient', () => {
       name: /specification\.uniqueId/,
     })
 
-    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
-    expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
+    expect(uniqueIdInput).toHaveValue('NYTT-KRAVUNDERLAG')
 
     fireEvent.change(nameInput, { target: { value: 'och i' } })
     fireEvent.blur(nameInput)
@@ -778,7 +780,7 @@ describe('RequirementsSpecificationsClient', () => {
     expect(slugError).toHaveTextContent(
       'specification.uniqueIdGenerationFailed',
     )
-    expect(uniqueIdInput).toHaveValue('NYTT-PAKET')
+    expect(uniqueIdInput).toHaveValue('NYTT-KRAVUNDERLAG')
   })
 
   it('shows saving state and keeps cancel disabled while submitting', async () => {
@@ -789,7 +791,7 @@ describe('RequirementsSpecificationsClient', () => {
         return postRequest.promise
       }
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -801,7 +803,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     fireEvent.click(
@@ -811,7 +813,7 @@ describe('RequirementsSpecificationsClient', () => {
     const nameInput = screen.getByRole('textbox', {
       name: /specification\.name/,
     })
-    fireEvent.change(nameInput, { target: { value: 'Nytt paket' } })
+    fireEvent.change(nameInput, { target: { value: 'Nytt kravunderlag' } })
     fireEvent.blur(nameInput)
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
@@ -835,7 +837,7 @@ describe('RequirementsSpecificationsClient', () => {
     })
   })
 
-  it('shows an alert dialog when deleting a package fails', async () => {
+  it('shows an alert dialog when deleting a specification fails', async () => {
     confirmMock.mockResolvedValueOnce(true).mockResolvedValueOnce(true)
 
     fetchMock.mockImplementation((url: string, opts?: RequestInit) => {
@@ -846,7 +848,7 @@ describe('RequirementsSpecificationsClient', () => {
         })
       }
       if (url === '/api/specifications')
-        return Promise.resolve(okJson({ packages: samplePackages }))
+        return Promise.resolve(okJson({ specifications: sampleSpecifications }))
       if (url === '/api/specification-responsibility-areas')
         return Promise.resolve(okJson({ areas: sampleAreas }))
       if (url === '/api/specification-implementation-types')
@@ -858,7 +860,7 @@ describe('RequirementsSpecificationsClient', () => {
 
     render(<RequirementsSpecificationsClient />)
     await waitFor(() => {
-      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+      expect(screen.getByText('Kravunderlag sv')).toBeInTheDocument()
     })
 
     const [deleteButton] = screen.getAllByRole('button', {
@@ -881,7 +883,7 @@ describe('RequirementsSpecificationsClient', () => {
     })
   })
 
-  it('shows a visible error when loading packages fails', async () => {
+  it('shows a visible error when loading specifications fails', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)

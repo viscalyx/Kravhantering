@@ -88,7 +88,7 @@ afterEach(() => {
 })
 
 describe('useDeviationWorkflow', () => {
-  it('clears the previous deviation while a new package item fetch is pending', async () => {
+  it('clears the previous deviation while a new specification item fetch is pending', async () => {
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
@@ -104,7 +104,7 @@ describe('useDeviationWorkflow', () => {
               decisionMotivation: null,
               id: 11,
               isReviewRequested: 1,
-              motivation: 'Old package deviation',
+              motivation: 'Old specification deviation',
             },
           ],
         })
@@ -119,7 +119,7 @@ describe('useDeviationWorkflow', () => {
     const { result, rerender } = renderHook(
       ({ specificationItemId }: { specificationItemId: number }) =>
         useDeviationWorkflow({
-          isPackageItemContext: true,
+          isSpecificationItemContext: true,
           specificationItemId,
         }),
       {
@@ -145,7 +145,7 @@ describe('useDeviationWorkflow', () => {
     expect(result.current.latestDeviation).toBeNull()
   })
 
-  it('ignores stale deviation responses after a newer package item fetch wins', async () => {
+  it('ignores stale deviation responses after a newer specification item fetch wins', async () => {
     const firstFetch = createDeferred<Response>()
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -163,7 +163,7 @@ describe('useDeviationWorkflow', () => {
     const { result, rerender } = renderHook(
       ({ specificationItemId }: { specificationItemId: number }) =>
         useDeviationWorkflow({
-          isPackageItemContext: true,
+          isSpecificationItemContext: true,
           specificationItemId,
         }),
       {
@@ -199,7 +199,7 @@ describe('useDeviationWorkflow', () => {
               decisionMotivation: null,
               id: 22,
               isReviewRequested: 1,
-              motivation: 'New package deviation',
+              motivation: 'New specification deviation',
             },
           ],
         }),
@@ -221,7 +221,7 @@ describe('useDeviationWorkflow', () => {
               decisionMotivation: null,
               id: 11,
               isReviewRequested: 0,
-              motivation: 'Old package deviation',
+              motivation: 'Old specification deviation',
             },
           ],
         }),

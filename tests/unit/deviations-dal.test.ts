@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   countDeviationsPerItemRef,
   createDeviation,
-  listDeviationsForPackage,
-  listDeviationsForPackageItem,
+  listDeviationsForSpecification,
+  listDeviationsForSpecificationItem,
   requestReview,
 } from '@/lib/dal/deviations'
 
@@ -14,7 +14,7 @@ function createSqlServerDb() {
   const db = {
     getRepository,
     query,
-  } as unknown as Parameters<typeof listDeviationsForPackageItem>[0]
+  } as unknown as Parameters<typeof listDeviationsForSpecificationItem>[0]
 
   return { db, getRepository, query }
 }
@@ -24,7 +24,7 @@ describe('deviations DAL (SQL Server path)', () => {
     vi.clearAllMocks()
   })
 
-  it('lists package-item deviations and normalizes SQL Server row values', async () => {
+  it('lists specification-item deviations and normalizes SQL Server row values', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValue([
       {
@@ -42,14 +42,14 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'REQ-001',
         requirementDescription: 'Example requirement',
         requirementVersionId: 11,
-        specificationName: 'Package A',
+        specificationName: 'Specification A',
         specificationUniqueId: 'PKG-001',
         isSpecificationLocal: 0,
         specificationLocalRequirementId: null,
       },
     ])
 
-    const result = await listDeviationsForPackageItem(db, 3)
+    const result = await listDeviationsForSpecificationItem(db, 3)
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('FROM deviations deviation'),
@@ -72,7 +72,7 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'REQ-001',
         requirementDescription: 'Example requirement',
         requirementVersionId: 11,
-        specificationName: 'Package A',
+        specificationName: 'Specification A',
         specificationUniqueId: 'PKG-001',
         isSpecificationLocal: false,
         itemRef: 'lib:3',
@@ -80,7 +80,7 @@ describe('deviations DAL (SQL Server path)', () => {
     ])
   })
 
-  it('creates a deviation after validating package item existence', async () => {
+  it('creates a deviation after validating specification item existence', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 3 }]).mockResolvedValueOnce([{ id: 42 }])
 
@@ -98,7 +98,7 @@ describe('deviations DAL (SQL Server path)', () => {
     )
   })
 
-  it('lists both library and specification-local deviations for a package', async () => {
+  it('lists both library and specification-local deviations for a specification', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValue([
       {
@@ -116,7 +116,7 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'PKG-L-001',
         requirementDescription: 'Local requirement',
         requirementVersionId: null,
-        specificationName: 'Package A',
+        specificationName: 'Specification A',
         specificationUniqueId: 'PKG-001',
         isSpecificationLocal: 1,
         specificationLocalRequirementId: 9,
@@ -136,14 +136,14 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'REQ-001',
         requirementDescription: 'Library requirement',
         requirementVersionId: 6,
-        specificationName: 'Package A',
+        specificationName: 'Specification A',
         specificationUniqueId: 'PKG-001',
         isSpecificationLocal: 0,
         specificationLocalRequirementId: null,
       },
     ])
 
-    const result = await listDeviationsForPackage(db, 1)
+    const result = await listDeviationsForSpecification(db, 1)
 
     expect(result).toHaveLength(2)
     expect(result[0].itemRef).toBe('local:9')

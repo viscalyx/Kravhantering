@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import {
-  countLinkedPackageItems,
+  countLinkedSpecificationItems,
   createSpecificationItemStatus,
   listSpecificationItemStatuses,
 } from '@/lib/dal/specification-item-statuses'
@@ -11,7 +11,7 @@ export async function GET() {
   const db = await getRequestSqlServerDataSource()
   const [statuses, counts] = await Promise.all([
     listSpecificationItemStatuses(db),
-    countLinkedPackageItems(db),
+    countLinkedSpecificationItems(db),
   ])
   return NextResponse.json({
     statuses: statuses.map(s => ({

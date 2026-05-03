@@ -61,17 +61,17 @@ const DEFAULT_USERS: Record<string, MockUser> = {
     employeeHsaId: 'SE2321000032-areaco1',
     roles: [],
   },
-  PackageResp: {
-    sub: 'mock-pkgresp-sub',
+  SpecificationResp: {
+    sub: 'mock-specresp-sub',
     given_name: 'Petra',
-    family_name: 'PackageResp',
-    name: 'Petra PackageResp',
-    email: 'petra.packageresp@example.test',
-    preferred_username: 'petra.packageresp',
-    employeeHsaId: 'SE2321000032-pkgresp1',
+    family_name: 'SpecificationResp',
+    name: 'Petra SpecificationResp',
+    email: 'petra.specresp@example.test',
+    preferred_username: 'petra.specresp',
+    employeeHsaId: 'SE2321000032-specresp1',
     roles: [],
   },
-  PackageCoauthor: {
+  SpecificationCoauthor: {
     sub: 'mock-pkgco-sub',
     given_name: 'Paul',
     family_name: 'PkgCoAuthor',

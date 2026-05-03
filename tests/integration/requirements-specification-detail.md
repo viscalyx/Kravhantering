@@ -15,8 +15,8 @@ requirements that exist only inside the current requirements specification.
 <!-- markdownlint-disable MD013 -->
 | Locator | Description |
 | --- | --- |
-| `[data-package-detail-list-panel="items"]` | Left panel — requirements already in the package. |
-| `[data-package-detail-list-panel="available"]` | Right panel — requirements available to add. |
+| `[data-specification-detail-list-panel="items"]` | Left panel — requirements already in the specification. |
+| `[data-specification-detail-list-panel="available"]` | Right panel — requirements available to add. |
 | `[data-requirements-sticky-top-bar="true"]` | Sticky title bar inside each panel. |
 | `[data-column-picker-trigger="true"]` | Column-picker pill inside each panel. |
 | `[data-requirement-header-label="uniqueId"]` | Krav-ID column header label. |
@@ -89,8 +89,9 @@ sequenceDiagram
     Note over F: ✓ Name input = "Upphandling av e-tjänstplattform"
 ```
 
-## lets the package-detail lists scroll independently and keeps the title bar sticky
-
+<!-- markdownlint-disable MD013 -->
+## lets the specification-detail lists scroll independently and keeps the title bar sticky
+<!-- markdownlint-enable MD013 -->
 ### Purpose: Independent Panel Scroll
 
 Confirms that the left and right panels each scroll their own content without
@@ -103,8 +104,8 @@ fixed at the same vertical position while the panel scrolls beneath it.
 2. Assert the available-requirements panel, its sticky bar, trigger, title,
    and Krav-ID header are visible, and `scrollY` is 0.
 3. Assert the left side shows either the `items` list panel with its own
-   sticky controls or the empty-state heading/message when the package has no
-   linked requirements.
+   sticky controls or the empty-state heading/message when the specification
+   has no linked requirements.
 4. Measure initial overflow, starting with the available-requirements panel.
 5. If neither side overflows and the left list panel exists, expand the first
    left row to add content height and re-measure.

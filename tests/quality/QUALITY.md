@@ -4,16 +4,16 @@
 
 Kravhantering is a Next.js and TypeScript application built on
 SQL Server + TypeORM. Quality in this project means every surface tells the
-same lifecycle truth: REST, MCP, package views, exports, and admin defaults
+same lifecycle truth: REST, MCP, specification views, exports, and admin defaults
 must agree on what is draft, under review, published, archived, deviated, or
 pending review. A route returning `200` is not enough if it exposes the wrong
-version or lets package status drift from the audit trail.
+version or lets specification status drift from the audit trail.
 
 Deming applies here as "quality is built into the workflow." The shared
 service in `lib/requirements/service.ts`, the lifecycle DAL in
 `lib/dal/requirements.ts`. Juran applies as
 "fitness for use": a requirement register is fit only when lifecycle dates,
-effective status, package inclusion, and decision history stay trustworthy
+effective status, specification inclusion, and decision history stay trustworthy
 under editing, publishing, archiving, exporting, and lookup fallback paths.
 Crosby applies because the cost of defining these invariants now is far lower
 than debugging a quietly wrong compliance report or a leaked draft later.
@@ -29,7 +29,7 @@ recorded production incident.
 | Subsystem | Target | Why |
 | --- | --- | --- |
 | `lib/dal/requirements.ts` | 92-95% | Lifecycle transitions, effective status, delete/restore, and auto-archive rules are the core register invariants. A regression here can make the same requirement appear published, draft, or archived depending on the surface. |
-| `lib/dal/requirements-specifications.ts` | 90-95% | Package linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong package status. |
+| `lib/dal/requirements-specifications.ts` | 90-95% | Specification linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong specification status. |
 | `lib/requirements/service.ts` and `app/api/requirements/[id]/route.ts` | 88-92% | These are the public truth layer for REST and MCP. The highest-risk failure is published-detail reads leaking draft or review content. |
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
@@ -42,7 +42,7 @@ The following do **not** count as meaningful coverage for this project:
 
 - Checking a requirements route returned `200` without asserting that published
   detail excluded newer draft or review data.
-- Checking a package link call returned a count without verifying
+- Checking a specification link call returned a count without verifying
   `specificationItemStatusId` defaulting, needs-reference trimming, or orphan cleanup.
 - Rendering the requirements table and only asserting headers are visible
   without proving hidden-column filters were cleared.
@@ -65,8 +65,8 @@ The following do **not** count as meaningful coverage for this project:
 published version for `view: "detail"` in
 `lib/requirements/service.ts:1088-1147`. If that selection ever falls back to
 the newest draft or review row, MCP and REST consumers can act on unpublished
-edits, attach the wrong package state to a requirement, or quote future text as
-current truth.
+edits, attach the wrong specification state to a requirement, or quote future
+text as current truth.
 
 **The requirement:** Default detail reads must expose only the latest published
 version. Draft, review, and archived versions are visible only through
@@ -114,7 +114,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending 
 and auto-archives any older published version in the same path at
 `lib/dal/requirements.ts:1452-1468`. If those actions ever drift apart, the
 register can temporarily show two published versions or no published version at
-all, which breaks package linking and external reads.
+all, which breaks specification linking and external reads.
 
 **The requirement:** A requirement may have exactly one published version at a
 time, and publishing a successor must archive the predecessor atomically from
@@ -192,15 +192,15 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 
 <!-- markdownlint-disable MD013 -->
 ```text
-[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Package Item Status"]
+[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Specification Item Status"]
 ```
 <!-- markdownlint-enable MD013 -->
 
-**What happened:** Both `updatePackageItemFields()` and
+**What happened:** Both `updateSpecificationItemFields()` and
 `updateSpecificationLocalRequirementFields()` block
 `specificationItemStatusId = 5` without an approved deviation at
 `lib/dal/requirements-specifications.ts:1860-2001`. If the UI or API can set
-"Deviated" directly, package dashboards and reports imply an approved risk
+"Deviated" directly, specification dashboards and reports imply an approved risk
 exception that never happened.
 
 **The requirement:** Library items and specification-local requirements
@@ -220,17 +220,17 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated
 ### Scenario 7: needs-reference linking never leaks orphan metadata
 
 **Requirement tag:**
-`[Req: inferred — from linkRequirementsToPackageAtomically() cleanup path]`
+`[Req: inferred — from linkRequirementsToSpecificationAtomically() cleanup path]`
 
-**What happened:** `linkRequirementsToPackageAtomically()` trims
+**What happened:** `linkRequirementsToSpecificationAtomically()` trims
 `needsReferenceText`, creates or reuses the metadata row, and deletes a newly
-created row when no package items were actually inserted at
-`lib/dal/requirements-specifications.ts:1447-1512`. Without that cleanup, the package
+created row when no specification items were actually inserted at
+`lib/dal/requirements-specifications.ts:1447-1512`. Without that cleanup, the specification
 administration views accumulate business-need entries that look real but are
 not attached to any requirement.
 
 **The requirement:** `specification_needs_references` rows must exist only when
-at least one linked package item still points at them.
+at least one linked specification item still points at them.
 
 **How to verify:**
 
@@ -385,14 +385,14 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12: concurr
 
 ## AI Session Quality Discipline
 
-1. Read `tests/quality/QUALITY.md` before changing lifecycle, package, MCP,
+1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,
    report, or admin-default code.
-1. When editing lifecycle or package logic, run
+1. When editing lifecycle or specification logic, run
    `npm exec -- vitest run tests/quality/functional.test.ts` before declaring done.
 1. Treat `docs/` as the current spec source. If code disagrees, document
    whether the defect is in code, documentation, or an inferred requirement.
-1. Add or update tests for every new lifecycle branch, package-status rule, or
-   outward-facing contract change.
+1. Add or update tests for every new lifecycle branch, specification-status
+   rule, or outward-facing contract change.
 1. Preserve audit immutability: decisions, resolutions, and archived history
    should become more traceable over time, never less.
 1. Update this file whenever a new silent-failure mode is discovered.

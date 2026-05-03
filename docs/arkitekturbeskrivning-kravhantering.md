@@ -326,7 +326,7 @@ Kravunderlag samlar ett urval av krav för en viss
 användning — t.ex. en upphandling, ett projekt
 eller en förvaltningsperiod. Processen omfattar:
 
-1. **Skapa paket** — Namn, beskrivning och slug
+1. **Skapa kravunderlag** — Namn, beskrivning och slug
    (URL-vänligt ID) anges.
 2. **Lägga till kravposter** — Krav läggs till i
    underlaget med en specifik kravversion.
@@ -548,8 +548,7 @@ Administrationscentret (`/admin`) erbjuder tre flikar:
    för kravlistan organisationsövergripande.
 3. **Referensdata** — Navigeringsnav till alla
    referensdatasidor (områden, typer, kategorier,
-   kvalitetskaraktäristiker, statusar, scenarier,
-   paket).
+   kvalitetskaraktäristiker, statusar, scenarier).
 
 ### Export och rapporter
 
@@ -786,7 +785,7 @@ erDiagram
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
-    requirements_specifications ||--o{ specification_local_requirements : "innehåller pakets unika krav"
+    requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
     requirements_specification_items }o--|| requirements : "pekar på krav"
     requirements_specification_items }o--o| specification_item_statuses : "användningsstatus"
     requirements_specification_items ||--o{ deviations : "har avsteg"

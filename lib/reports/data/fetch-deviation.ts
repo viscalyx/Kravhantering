@@ -110,7 +110,7 @@ export async function fetchDeviationForReport(
     throw new Error('No deviation in review found')
   }
 
-  // Find the specific version connected to the package item
+  // Find the specific version connected to the specification item
   const version =
     requirement.versions.find(v => v.id === inReview.requirementVersionId) ??
     requirement.versions[requirement.versions.length - 1]

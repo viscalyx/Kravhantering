@@ -305,6 +305,7 @@
     "noItems": "Det finns inga krav kopplade till detta underlag.",
     "specificationNotFound": "Kravunderlaget hittades inte.",
     "backToSpecifications": "Tillbaka till kravunderlag",
+    "downloadFilename": "kravunderlag.csv",
     "newLocalRequirement": "Nytt unikt krav",
     "editLocalRequirement": "Redigera unikt krav",
     "localRequirementNotFound": "Det unika kravet hittades inte i detta kravunderlag.",

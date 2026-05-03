@@ -5,7 +5,7 @@
 
 This suite verifies that the requirements specifications list page renders correctly,
 that compact static requirement-area pills are present, that the name filter
-narrows the visible packages, that row actions render as icon-only buttons,
+narrows the visible specifications, that row actions render as icon-only buttons,
 that overflowing requirement-area pills can be expanded on demand, and that the
 clear-search action restores the full list. On desktop it additionally asserts
 that the filter field and the create button are horizontally aligned.
@@ -35,12 +35,12 @@ No `beforeEach` hooks. The suite iterates over two viewport definitions
 (`375×812` mobile and `1280×720` desktop) so the same scenario runs at both
 sizes.
 
-## filters the table by package name and clears the search
+## filters the table by specification name and clears the search
 
 ### Purpose
 
-Confirms that typing in the name filter hides non-matching packages and that
-clicking the clear button restores all packages. On desktop it also verifies
+Confirms that typing in the name filter hides non-matching specifications and that
+clicking the clear button restores all specifications. On desktop it also verifies
 that the filter input and the "Nytt kravunderlag" button share the same row.
 
 ### Step-by-Step Flow
@@ -89,7 +89,7 @@ sequenceDiagram
     U->>F: Click clear search
     F->>P: Reset filter
     Note over P: ✓ Input empty
-    Note over P: ✓ Both packages visible
+    Note over P: ✓ Both specifications visible
 ```
 
 ### Supplementary Flowchart

@@ -20,8 +20,8 @@ interface RequirementsSpecificationLinkItem {
   requirementVersionId: number
 }
 
-export type PackageItemKind = 'library' | 'specificationLocal'
-export type PackageItemRef = `lib:${number}` | `local:${number}`
+export type SpecificationItemKind = 'library' | 'specificationLocal'
+export type SpecificationItemRef = `lib:${number}` | `local:${number}`
 
 interface SpecificationLocalRequirementMutationInput {
   acceptanceCriteria?: string | null
@@ -44,7 +44,7 @@ export interface SpecificationLocalRequirementDetail {
   description: string
   id: number
   isSpecificationLocal: true
-  itemRef: PackageItemRef
+  itemRef: SpecificationItemRef
   kind: 'specificationLocal'
   needsReference: string | null
   needsReferenceId: number | null
@@ -123,17 +123,17 @@ function buildInClause(startIndex: number, values: number[]): string {
 
 export function createLibraryItemRef(
   specificationItemId: number,
-): PackageItemRef {
+): SpecificationItemRef {
   return `lib:${specificationItemId}`
 }
 
 export function createSpecificationLocalItemRef(
   specificationLocalRequirementId: number,
-): PackageItemRef {
+): SpecificationItemRef {
   return `local:${specificationLocalRequirementId}`
 }
 
-export function parsePackageItemRef(
+export function parseSpecificationItemRef(
   value: string,
 ):
   | { kind: 'library'; id: number }
@@ -199,35 +199,35 @@ function parseCsvTextList(value: string | null): string[] {
     .filter(Boolean)
 }
 
-// ─── Packages ────────────────────────────────────────────────────────────────
+// ─── Specifications ──────────────────────────────────────────────────────────
 
-export async function listPackages(db: SqlServerDatabase) {
+export async function listSpecifications(db: SqlServerDatabase) {
   const rows = (await db.query(
     `
       SELECT
-        package_record.id AS id,
-        package_record.unique_id AS uniqueId,
-        package_record.name AS name,
-        package_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
-        package_record.specification_implementation_type_id AS specificationImplementationTypeId,
-        package_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
-        package_record.business_needs_reference AS businessNeedsReference,
-        package_record.created_at AS createdAt,
-        package_record.updated_at AS updatedAt,
+        specification_record.id AS id,
+        specification_record.unique_id AS uniqueId,
+        specification_record.name AS name,
+        specification_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+        specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
+        specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
+        specification_record.business_needs_reference AS businessNeedsReference,
+        specification_record.created_at AS createdAt,
+        specification_record.updated_at AS updatedAt,
         responsibility_area.name_sv AS responsibilityAreaNameSv,
         responsibility_area.name_en AS responsibilityAreaNameEn,
         implementation_type.name_sv AS implementationTypeNameSv,
         implementation_type.name_en AS implementationTypeNameEn,
         lifecycle_status.name_sv AS lifecycleStatusNameSv,
         lifecycle_status.name_en AS lifecycleStatusNameEn
-      FROM requirements_specifications package_record
+      FROM requirements_specifications specification_record
       LEFT JOIN specification_responsibility_areas responsibility_area
-        ON responsibility_area.id = package_record.specification_responsibility_area_id
+        ON responsibility_area.id = specification_record.specification_responsibility_area_id
       LEFT JOIN specification_implementation_types implementation_type
-        ON implementation_type.id = package_record.specification_implementation_type_id
+        ON implementation_type.id = specification_record.specification_implementation_type_id
       LEFT JOIN specification_lifecycle_statuses lifecycle_status
-        ON lifecycle_status.id = package_record.specification_lifecycle_status_id
-      ORDER BY package_record.name
+        ON lifecycle_status.id = specification_record.specification_lifecycle_status_id
+      ORDER BY specification_record.name
     `,
   )) as Row[]
 
@@ -250,15 +250,15 @@ export async function listPackages(db: SqlServerDatabase) {
       db.query(
         `
           SELECT
-            package_item.requirements_specification_id AS specificationId,
+            specification_item.requirements_specification_id AS specificationId,
             requirement_area.id AS areaId,
             requirement_area.name AS areaName
-          FROM requirements_specification_items package_item
+          FROM requirements_specification_items specification_item
           INNER JOIN requirements requirement
-            ON requirement.id = package_item.requirement_id
+            ON requirement.id = specification_item.requirement_id
           INNER JOIN requirement_areas requirement_area
             ON requirement_area.id = requirement.requirement_area_id
-          GROUP BY package_item.requirements_specification_id, requirement_area.id, requirement_area.name
+          GROUP BY specification_item.requirements_specification_id, requirement_area.id, requirement_area.name
         `,
       ) as Promise<Row[]>,
       db.query(
@@ -285,14 +285,15 @@ export async function listPackages(db: SqlServerDatabase) {
     )
   }
 
-  const requirementAreasByPackage = new Map<number, Map<number, string>>()
+  const requirementAreasBySpecification = new Map<number, Map<number, string>>()
   for (const row of [...libraryAreas, ...localAreas]) {
     const specificationId = Number(row.specificationId)
     const areaId = Number(row.areaId)
     const areaName = String(row.areaName ?? '')
-    const existing = requirementAreasByPackage.get(specificationId) ?? new Map()
+    const existing =
+      requirementAreasBySpecification.get(specificationId) ?? new Map()
     existing.set(areaId, areaName)
-    requirementAreasByPackage.set(specificationId, existing)
+    requirementAreasBySpecification.set(specificationId, existing)
   }
 
   return rows.map(row => {
@@ -308,7 +309,7 @@ export async function listPackages(db: SqlServerDatabase) {
     )
 
     const requirementAreas = [
-      ...(requirementAreasByPackage.get(id)?.entries() ?? []),
+      ...(requirementAreasBySpecification.get(id)?.entries() ?? []),
     ]
       .map(([areaId, name]) => ({ id: areaId, name }))
       .sort((left, right) => left.name.localeCompare(right.name, 'sv'))
@@ -361,7 +362,7 @@ export async function listPackages(db: SqlServerDatabase) {
   })
 }
 
-interface PackageRecord {
+interface SpecificationRecord {
   businessNeedsReference: string | null
   createdAt: string
   id: number
@@ -376,7 +377,7 @@ interface PackageRecord {
   updatedAt: string
 }
 
-function mapPackageRow(row: Row | undefined): PackageRecord | null {
+function mapSpecificationRow(row: Row | undefined): SpecificationRecord | null {
   if (!row) return null
   const specificationResponsibilityAreaId = toNum(
     row.specificationResponsibilityAreaId,
@@ -430,46 +431,49 @@ function mapPackageRow(row: Row | undefined): PackageRecord | null {
   }
 }
 
-const PACKAGE_SELECT_WITH_JOINS = `
+const SPECIFICATION_SELECT_WITH_JOINS = `
   SELECT TOP (1)
-    package_record.id AS id,
-    package_record.unique_id AS uniqueId,
-    package_record.name AS name,
-    package_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
-    package_record.specification_implementation_type_id AS specificationImplementationTypeId,
-    package_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
-    package_record.business_needs_reference AS businessNeedsReference,
-    package_record.created_at AS createdAt,
-    package_record.updated_at AS updatedAt,
+    specification_record.id AS id,
+    specification_record.unique_id AS uniqueId,
+    specification_record.name AS name,
+    specification_record.specification_responsibility_area_id AS specificationResponsibilityAreaId,
+    specification_record.specification_implementation_type_id AS specificationImplementationTypeId,
+    specification_record.specification_lifecycle_status_id AS specificationLifecycleStatusId,
+    specification_record.business_needs_reference AS businessNeedsReference,
+    specification_record.created_at AS createdAt,
+    specification_record.updated_at AS updatedAt,
     responsibility_area.name_sv AS responsibilityAreaNameSv,
     responsibility_area.name_en AS responsibilityAreaNameEn,
     implementation_type.name_sv AS implementationTypeNameSv,
     implementation_type.name_en AS implementationTypeNameEn,
     lifecycle_status.name_sv AS lifecycleStatusNameSv,
     lifecycle_status.name_en AS lifecycleStatusNameEn
-  FROM requirements_specifications package_record
+  FROM requirements_specifications specification_record
   LEFT JOIN specification_responsibility_areas responsibility_area
-    ON responsibility_area.id = package_record.specification_responsibility_area_id
+    ON responsibility_area.id = specification_record.specification_responsibility_area_id
   LEFT JOIN specification_implementation_types implementation_type
-    ON implementation_type.id = package_record.specification_implementation_type_id
+    ON implementation_type.id = specification_record.specification_implementation_type_id
   LEFT JOIN specification_lifecycle_statuses lifecycle_status
-    ON lifecycle_status.id = package_record.specification_lifecycle_status_id
+    ON lifecycle_status.id = specification_record.specification_lifecycle_status_id
 `
 
-export async function getPackageById(db: SqlServerDatabase, id: number) {
+export async function getSpecificationById(db: SqlServerDatabase, id: number) {
   const rows = (await db.query(
-    `${PACKAGE_SELECT_WITH_JOINS} WHERE package_record.id = @0`,
+    `${SPECIFICATION_SELECT_WITH_JOINS} WHERE specification_record.id = @0`,
     [id],
   )) as Row[]
-  return mapPackageRow(rows[0])
+  return mapSpecificationRow(rows[0])
 }
 
-export async function getPackageBySlug(db: SqlServerDatabase, slug: string) {
+export async function getSpecificationBySlug(
+  db: SqlServerDatabase,
+  slug: string,
+) {
   const rows = (await db.query(
-    `${PACKAGE_SELECT_WITH_JOINS} WHERE package_record.unique_id = @0`,
+    `${SPECIFICATION_SELECT_WITH_JOINS} WHERE specification_record.unique_id = @0`,
     [slug],
   )) as Row[]
-  return mapPackageRow(rows[0])
+  return mapSpecificationRow(rows[0])
 }
 
 export async function isSlugTaken(
@@ -486,7 +490,7 @@ export async function isSlugTaken(
   return true
 }
 
-export async function createPackage(
+export async function createSpecification(
   db: SqlServerDatabase,
   data: {
     uniqueId: string
@@ -554,7 +558,7 @@ export async function createPackage(
   }
 }
 
-export async function updatePackage(
+export async function updateSpecification(
   db: SqlServerDatabase,
   id: number,
   data: {
@@ -638,7 +642,7 @@ export async function updatePackage(
   }
 }
 
-export async function deletePackage(db: SqlServerDatabase, id: number) {
+export async function deleteSpecification(db: SqlServerDatabase, id: number) {
   await db.transaction(async (manager: SqlExecutor) => {
     await manager.query(
       `DELETE FROM specification_local_requirements WHERE specification_id = @0`,
@@ -692,7 +696,7 @@ async function resolveRequirementsSpecificationLinkItems(
     )
     if (requirementVersionId == null) {
       throw validationError(
-        `Requirement ${requirementId} has no published version and cannot be added to a package`,
+        `Requirement ${requirementId} has no published version and cannot be added to a specification`,
         {
           httpStatus: 422,
           requirementId,
@@ -706,7 +710,7 @@ async function resolveRequirementsSpecificationLinkItems(
   return items
 }
 
-// ─── Package needs references ────────────────────────────────────────────────
+// ─── Specification needs references ────────────────────────────────────────────────
 
 export async function listSpecificationNeedsReferences(
   db: SqlServerDatabase,
@@ -776,7 +780,7 @@ async function getOrCreateSpecificationNeedsReferenceWithMetadata(
   )) as Array<{ id: number }>
 
   if (!existingRows[0]) {
-    throw new Error('Failed to resolve package needs reference')
+    throw new Error('Failed to resolve specification needs reference')
   }
   return { created: false, id: Number(existingRows[0].id) }
 }
@@ -932,11 +936,11 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
     local_requirement.needs_reference_id AS needsReferenceId,
     needs_reference.text AS needsReference,
     local_requirement.specification_item_status_id AS specificationItemStatusId,
-    package_item_status.color AS specificationItemStatusColor,
-    package_item_status.description_en AS specificationItemStatusDescriptionEn,
-    package_item_status.description_sv AS specificationItemStatusDescriptionSv,
-    package_item_status.name_en AS specificationItemStatusNameEn,
-    package_item_status.name_sv AS specificationItemStatusNameSv,
+    specification_item_status.color AS specificationItemStatusColor,
+    specification_item_status.description_en AS specificationItemStatusDescriptionEn,
+    specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
+    specification_item_status.name_en AS specificationItemStatusNameEn,
+    specification_item_status.name_sv AS specificationItemStatusNameSv,
     local_requirement.quality_characteristic_id AS qualityCharacteristicId,
     quality_characteristic.name_en AS qualityCharacteristicNameEn,
     quality_characteristic.name_sv AS qualityCharacteristicNameSv,
@@ -956,8 +960,8 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
   FROM specification_local_requirements local_requirement
   LEFT JOIN specification_needs_references needs_reference
     ON needs_reference.id = local_requirement.needs_reference_id
-  LEFT JOIN specification_item_statuses package_item_status
-    ON package_item_status.id = local_requirement.specification_item_status_id
+  LEFT JOIN specification_item_statuses specification_item_status
+    ON specification_item_status.id = local_requirement.specification_item_status_id
   LEFT JOIN quality_characteristics quality_characteristic
     ON quality_characteristic.id = local_requirement.quality_characteristic_id
   LEFT JOIN requirement_areas requirement_area
@@ -1193,7 +1197,9 @@ export async function createSpecificationLocalRequirement(
 
     const sequenceRow = sequenceRows[0]
     if (!sequenceRow) {
-      throw notFoundError(`Requirement package ${specificationId} not found`)
+      throw notFoundError(
+        `Requirement specification ${specificationId} not found`,
+      )
     }
 
     const sequenceNumber = Math.max(1, Number(sequenceRow.nextSequence) - 1)
@@ -1381,7 +1387,7 @@ export async function deleteSpecificationLocalRequirement(
 
 // ─── Library item linking ────────────────────────────────────────────────────
 
-export async function linkRequirementsToPackage(
+export async function linkRequirementsToSpecification(
   db: SqlExecutor,
   specificationId: number,
   items: {
@@ -1427,7 +1433,7 @@ export async function linkRequirementsToPackage(
   return inserted
 }
 
-export async function linkRequirementsToPackageAtomically(
+export async function linkRequirementsToSpecificationAtomically(
   db: SqlServerDatabase,
   specificationId: number,
   {
@@ -1465,7 +1471,7 @@ export async function linkRequirementsToPackageAtomically(
           normalizedNeedsReferenceText,
         )
 
-      const addedCount = await linkRequirementsToPackage(
+      const addedCount = await linkRequirementsToSpecification(
         manager,
         specificationId,
         items.map(item => ({
@@ -1496,7 +1502,7 @@ export async function linkRequirementsToPackageAtomically(
             needsReferenceId,
           )
 
-    return linkRequirementsToPackage(
+    return linkRequirementsToSpecification(
       manager,
       specificationId,
       items.map(item => ({
@@ -1507,7 +1513,7 @@ export async function linkRequirementsToPackageAtomically(
   })
 }
 
-export async function unlinkRequirementsFromPackage(
+export async function unlinkRequirementsFromSpecification(
   db: SqlServerDatabase,
   specificationId: number,
   requirementIds: number[],
@@ -1530,9 +1536,9 @@ export async function unlinkRequirementsFromPackage(
   return deleted.length
 }
 
-// ─── Listing items in a package ──────────────────────────────────────────────
+// ─── Listing items in a specification ──────────────────────────────────────────────
 
-interface LibraryPackageItemFlatRow {
+interface LibrarySpecificationItemFlatRow {
   areaName: string | null
   categoryNameEn: string | null
   categoryNameSv: string | null
@@ -1568,8 +1574,8 @@ interface LibraryPackageItemFlatRow {
   versionNumber: number
 }
 
-function mapLibraryPackageItemRow(
-  row: LibraryPackageItemFlatRow,
+function mapLibrarySpecificationItemRow(
+  row: LibrarySpecificationItemFlatRow,
 ): RequirementRow {
   return {
     area: row.areaName ? { name: row.areaName } : null,
@@ -1693,7 +1699,7 @@ function mapSpecificationLocalRequirementListRow(
   }
 }
 
-export async function listPackageItems(
+export async function listSpecificationItems(
   db: SqlServerDatabase,
   specificationId: number,
 ): Promise<RequirementRow[]> {
@@ -1706,7 +1712,7 @@ export async function listPackageItems(
           requirement_category.name_sv AS categoryNameSv,
           requirement_version.description AS description,
           requirement.is_archived AS isArchived,
-          package_item.needs_reference_id AS needsReferenceId,
+          specification_item.needs_reference_id AS needsReferenceId,
           needs_reference.text AS needsReferenceText,
           (
             SELECT STRING_AGG(norm_reference.norm_reference_id, ',') WITHIN GROUP (ORDER BY norm_reference.norm_reference_id)
@@ -1714,13 +1720,13 @@ export async function listPackageItems(
             INNER JOIN norm_references norm_reference ON norm_reference.id = vnr.norm_reference_id
             WHERE vnr.requirement_version_id = requirement_version.id
           ) AS normReferenceIds,
-          package_item.id AS specificationItemId,
-          package_item_status.color AS specificationItemStatusColor,
-          package_item_status.description_en AS specificationItemStatusDescriptionEn,
-          package_item_status.description_sv AS specificationItemStatusDescriptionSv,
-          package_item.specification_item_status_id AS specificationItemStatusId,
-          package_item_status.name_en AS specificationItemStatusNameEn,
-          package_item_status.name_sv AS specificationItemStatusNameSv,
+          specification_item.id AS specificationItemId,
+          specification_item_status.color AS specificationItemStatusColor,
+          specification_item_status.description_en AS specificationItemStatusDescriptionEn,
+          specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
+          specification_item.specification_item_status_id AS specificationItemStatusId,
+          specification_item_status.name_en AS specificationItemStatusNameEn,
+          specification_item_status.name_sv AS specificationItemStatusNameSv,
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           requirement.id AS requirementId,
@@ -1743,11 +1749,11 @@ export async function listPackageItems(
             WHERE rvus.requirement_version_id = requirement_version.id
           ) AS usageScenarioIds,
           requirement_version.version_number AS versionNumber
-        FROM requirements_specification_items package_item
+        FROM requirements_specification_items specification_item
         INNER JOIN requirements requirement
-          ON requirement.id = package_item.requirement_id
+          ON requirement.id = specification_item.requirement_id
         INNER JOIN requirement_versions requirement_version
-          ON requirement_version.id = package_item.requirement_version_id
+          ON requirement_version.id = specification_item.requirement_version_id
         LEFT JOIN requirement_areas requirement_area
           ON requirement_area.id = requirement.requirement_area_id
         LEFT JOIN requirement_statuses requirement_status
@@ -1761,10 +1767,10 @@ export async function listPackageItems(
         LEFT JOIN risk_levels risk_level
           ON risk_level.id = requirement_version.risk_level_id
         LEFT JOIN specification_needs_references needs_reference
-          ON needs_reference.id = package_item.needs_reference_id
-        LEFT JOIN specification_item_statuses package_item_status
-          ON package_item_status.id = package_item.specification_item_status_id
-        WHERE package_item.requirements_specification_id = @0
+          ON needs_reference.id = specification_item.needs_reference_id
+        LEFT JOIN specification_item_statuses specification_item_status
+          ON specification_item_status.id = specification_item.specification_item_status_id
+        WHERE specification_item.requirements_specification_id = @0
         ORDER BY requirement.unique_id
       `,
       [specificationId],
@@ -1783,12 +1789,12 @@ export async function listPackageItems(
             INNER JOIN norm_references norm_reference ON norm_reference.id = plrnr.norm_reference_id
             WHERE plrnr.specification_local_requirement_id = local_requirement.id
           ) AS normReferenceIds,
-          package_item_status.color AS specificationItemStatusColor,
-          package_item_status.description_en AS specificationItemStatusDescriptionEn,
-          package_item_status.description_sv AS specificationItemStatusDescriptionSv,
+          specification_item_status.color AS specificationItemStatusColor,
+          specification_item_status.description_en AS specificationItemStatusDescriptionEn,
+          specification_item_status.description_sv AS specificationItemStatusDescriptionSv,
           local_requirement.specification_item_status_id AS specificationItemStatusId,
-          package_item_status.name_en AS specificationItemStatusNameEn,
-          package_item_status.name_sv AS specificationItemStatusNameSv,
+          specification_item_status.name_en AS specificationItemStatusNameEn,
+          specification_item_status.name_sv AS specificationItemStatusNameSv,
           quality_characteristic.name_en AS qualityCharacteristicNameEn,
           quality_characteristic.name_sv AS qualityCharacteristicNameSv,
           requirement_area.name AS requirementAreaName,
@@ -1810,8 +1816,8 @@ export async function listPackageItems(
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = local_requirement.needs_reference_id
-        LEFT JOIN specification_item_statuses package_item_status
-          ON package_item_status.id = local_requirement.specification_item_status_id
+        LEFT JOIN specification_item_statuses specification_item_status
+          ON specification_item_status.id = local_requirement.specification_item_status_id
         LEFT JOIN quality_characteristics quality_characteristic
           ON quality_characteristic.id = local_requirement.quality_characteristic_id
         LEFT JOIN requirement_areas requirement_area
@@ -1830,8 +1836,8 @@ export async function listPackageItems(
   ])
 
   return [
-    ...(libraryRows as unknown as LibraryPackageItemFlatRow[]).map(
-      mapLibraryPackageItemRow,
+    ...(libraryRows as unknown as LibrarySpecificationItemFlatRow[]).map(
+      mapLibrarySpecificationItemRow,
     ),
     ...(localRows as unknown as SpecificationLocalListFlatRow[]).map(
       mapSpecificationLocalRequirementListRow,
@@ -1841,24 +1847,24 @@ export async function listPackageItems(
 
 // ─── Item lookup & updates ───────────────────────────────────────────────────
 
-export async function getPackageItemById(
+export async function getSpecificationItemById(
   db: SqlServerDatabase,
   itemId: number,
 ) {
   const rows = (await db.query(
     `
       SELECT TOP (1)
-        package_item.id AS id,
-        package_item.requirements_specification_id AS specificationId,
-        package_item.requirement_id AS requirementId,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_item.needs_reference_id AS needsReferenceId,
-        package_item.specification_item_status_id AS specificationItemStatusId,
-        package_item.note AS note,
-        package_item.status_updated_at AS statusUpdatedAt,
-        package_item.created_at AS createdAt
-      FROM requirements_specification_items package_item
-      WHERE package_item.id = @0
+        specification_item.id AS id,
+        specification_item.requirements_specification_id AS specificationId,
+        specification_item.requirement_id AS requirementId,
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_item.needs_reference_id AS needsReferenceId,
+        specification_item.specification_item_status_id AS specificationItemStatusId,
+        specification_item.note AS note,
+        specification_item.status_updated_at AS statusUpdatedAt,
+        specification_item.created_at AS createdAt
+      FROM requirements_specification_items specification_item
+      WHERE specification_item.id = @0
     `,
     [itemId],
   )) as Row[]
@@ -1878,18 +1884,18 @@ export async function getPackageItemById(
   }
 }
 
-export async function getPackageItemByRef(
+export async function getSpecificationItemByRef(
   db: SqlServerDatabase,
   specificationId: number,
   itemRef: string,
 ) {
-  const parsed = parsePackageItemRef(itemRef)
+  const parsed = parseSpecificationItemRef(itemRef)
   if (!parsed) {
     return null
   }
 
   if (parsed.kind === 'library') {
-    const specificationItem = await getPackageItemById(db, parsed.id)
+    const specificationItem = await getSpecificationItemById(db, parsed.id)
     if (
       !specificationItem ||
       specificationItem.specificationId !== specificationId
@@ -1926,21 +1932,21 @@ async function validateSpecificationItemStatus(
 ): Promise<void> {
   const rows = (await db.query(
     `
-      SELECT TOP (1) package_item_status.id AS id
-      FROM specification_item_statuses package_item_status
-      WHERE package_item_status.id = @0
+      SELECT TOP (1) specification_item_status.id AS id
+      FROM specification_item_statuses specification_item_status
+      WHERE specification_item_status.id = @0
     `,
     [statusId],
   )) as Array<{ id: number }>
 
   if (!rows[0]) {
-    throw validationError('Invalid package item status ID', {
+    throw validationError('Invalid specification item status ID', {
       specificationItemStatusId: statusId,
     })
   }
 }
 
-export async function updatePackageItemFields(
+export async function updateSpecificationItemFields(
   db: SqlServerDatabase,
   itemId: number,
   data: { specificationItemStatusId?: number | null; note?: string | null },
@@ -2057,22 +2063,22 @@ export async function updateSpecificationLocalRequirementFields(
   )
 }
 
-export async function updatePackageItemFieldsByItemRef(
+export async function updateSpecificationItemFieldsByItemRef(
   db: SqlServerDatabase,
   specificationId: number,
   itemRef: string,
   data: { specificationItemStatusId?: number | null; note?: string | null },
 ) {
-  const item = await getPackageItemByRef(db, specificationId, itemRef)
+  const item = await getSpecificationItemByRef(db, specificationId, itemRef)
   if (!item) {
-    throw notFoundError('Item not found in package', {
+    throw notFoundError('Item not found in specification', {
       itemRef,
       specificationId,
     })
   }
 
   if (item.kind === 'library') {
-    await updatePackageItemFields(db, item.id, data)
+    await updateSpecificationItemFields(db, item.id, data)
     return
   }
 
@@ -2081,7 +2087,7 @@ export async function updatePackageItemFieldsByItemRef(
 
 // ─── Bulk delete by refs ─────────────────────────────────────────────────────
 
-async function deleteLibraryPackageItemsByIds(
+async function deleteLibrarySpecificationItemsByIds(
   db: SqlExecutor,
   specificationId: number,
   libraryIds: number[],
@@ -2119,7 +2125,7 @@ async function deleteSpecificationLocalRequirementsByIds(
   return rows.length
 }
 
-export async function deletePackageItemsByRefs(
+export async function deleteSpecificationItemsByRefs(
   db: SqlServerDatabase,
   specificationId: number,
   itemRefs: string[],
@@ -2128,7 +2134,7 @@ export async function deletePackageItemsByRefs(
   const specificationLocalRequirementIds: number[] = []
 
   for (const itemRef of itemRefs) {
-    const parsed = parsePackageItemRef(itemRef)
+    const parsed = parseSpecificationItemRef(itemRef)
     if (!parsed) {
       throw validationError('Invalid itemRef', { itemRef })
     }
@@ -2144,7 +2150,7 @@ export async function deletePackageItemsByRefs(
     libraryIds.length === 0 ||
     specificationLocalRequirementIds.length === 0
   ) {
-    const deletedLibraryCount = await deleteLibraryPackageItemsByIds(
+    const deletedLibraryCount = await deleteLibrarySpecificationItemsByIds(
       db,
       specificationId,
       libraryIds,
@@ -2159,7 +2165,7 @@ export async function deletePackageItemsByRefs(
   }
 
   return db.transaction(async (manager: SqlExecutor) => {
-    const deletedLibraryCount = await deleteLibraryPackageItemsByIds(
+    const deletedLibraryCount = await deleteLibrarySpecificationItemsByIds(
       manager,
       specificationId,
       libraryIds,

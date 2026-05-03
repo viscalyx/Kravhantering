@@ -2,9 +2,9 @@
 
 import {
   ClipboardList,
+  FileStack,
   HelpCircle,
   Menu,
-  Package,
   Settings2,
   X,
 } from 'lucide-react'
@@ -23,7 +23,7 @@ const primaryNavItems = [
   {
     href: '/specifications' as const,
     labelKey: 'specifications',
-    icon: Package,
+    icon: FileStack,
   },
 ]
 

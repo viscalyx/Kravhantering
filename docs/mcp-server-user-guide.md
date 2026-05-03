@@ -43,20 +43,20 @@ agents can use it reliably.
 - `requirements_list_specifications`
   List all requirements specifications, optionally filtered by name. Returns id,
   `uniqueId` (slug), Swedish and English names, item count, responsibility
-  area, and implementation type for each package.
+  area, and implementation type for each specification.
 - `requirements_get_specification_items`
-  List requirements linked to a specific package, with optional description
+  List requirements linked to a specific specification, with optional description
   search. Use `specificationId` (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`)
   from `requirements_list_specifications`.
 - `requirements_add_to_specification`
-  Link one or more requirements to a package. Requirements must have a
+  Link one or more requirements to a specification. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
   Optionally attach a `needsReferenceText` to all added items. Use
-  `specificationId` or `specificationSlug` to identify the package.
+  `specificationId` or `specificationSlug` to identify the specification.
 - `requirements_remove_from_specification`
-  Unlink one or more requirements from a package. The requirements themselves
+  Unlink one or more requirements from a specification. The requirements themselves
   are not deleted. Use `specificationId` or `specificationSlug` to identify the
-  package.
+  specification.
 
 #### Improvement Suggestions
 
@@ -425,18 +425,18 @@ tool. For requirement lists, it supports:
 ### Requirements Specifications
 
 - `List all requirements specifications.`
-- `List packages whose name contains "säkerhet".`
-- `Show all requirements in package SAKLYFT-INFOR-Q2.`
-- `Search for requirements about login in package SAKLYFT-INFOR-Q2.`
-- `Add requirements INT0001 and INT0002 to package SAKLYFT-INFOR-Q2.`
-- `Add requirement INT0005 to package GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
-- `Remove requirement INT0003 from package SAKLYFT-INFOR-Q2.`
+- `List specifications whose name contains "säkerhet".`
+- `Show all requirements in specification SAKLYFT-INFOR-Q2.`
+- `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
+- `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
+- `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
+- `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
-> **Note:** Packages can be identified by `specificationId` (numeric) or
+> **Note:** Specifications can be identified by `specificationId` (numeric) or
 > `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`) — use whichever is available from
 > `requirements_list_specifications`. `requirementIds` are numeric IDs; use
 > `requirements_query_catalog` or `requirements_get_specification_items` to find
-> them. Requirements must have a published version to be added to a package.
+> them. Requirements must have a published version to be added to a specification.
 
 ## Limitations
 

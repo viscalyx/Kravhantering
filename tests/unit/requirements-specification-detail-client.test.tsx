@@ -112,7 +112,7 @@ const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 let addRequirementsResponse: { body: unknown; ok: boolean }
 let failNextAvailableRequirementsFetch = false
-let failNextPackageItemsFetch = false
+let failNextSpecificationItemsFetch = false
 
 function renderRequirementsSpecificationDetailClient() {
   return render(
@@ -128,7 +128,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     requirementsTableMock.mockReset()
     addRequirementsResponse = { body: { ok: true }, ok: true }
     failNextAvailableRequirementsFetch = false
-    failNextPackageItemsFetch = false
+    failNextSpecificationItemsFetch = false
     fetchMock.mockImplementation(
       (input: string | Request, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input.url
@@ -166,8 +166,8 @@ describe('RequirementsSpecificationDetailClient', () => {
           url === '/api/specifications/ETJANST-UPP-2026/items' &&
           method === 'GET'
         ) {
-          if (failNextPackageItemsFetch) {
-            failNextPackageItemsFetch = false
+          if (failNextSpecificationItemsFetch) {
+            failNextSpecificationItemsFetch = false
             return Promise.resolve({
               json: async () => ({}),
               ok: false,
@@ -227,7 +227,7 @@ describe('RequirementsSpecificationDetailClient', () => {
                   version: {
                     categoryNameEn: 'Business requirement',
                     categoryNameSv: 'Verksamhetskrav',
-                    description: 'Allow package-level linking.',
+                    description: 'Allow specification-level linking.',
                     qualityCharacteristicNameEn: null,
                     qualityCharacteristicNameSv: null,
                     requiresTesting: true,
@@ -313,7 +313,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     window.localStorage.clear()
   })
 
-  it('opens and closes the package edit view from the title action', async () => {
+  it('opens and closes the specification edit view from the title action', async () => {
     const { container } = renderRequirementsSpecificationDetailClient()
 
     await waitFor(() => {
@@ -326,19 +326,19 @@ describe('RequirementsSpecificationDetailClient', () => {
     })
 
     const headerSummary = container.querySelector(
-      '[data-package-detail-header-summary="true"]',
+      '[data-specification-detail-header-summary="true"]',
     )
     const headerMetadata = container.querySelector(
-      '[data-package-detail-header-metadata="true"]',
+      '[data-specification-detail-header-metadata="true"]',
     )
     const pageShell = container.querySelector(
-      '[data-package-detail-page-shell="true"]',
+      '[data-specification-detail-page-shell="true"]',
     ) as HTMLDivElement | null
     const splitPanel = container.querySelector(
-      '[data-package-detail-split-panel="true"]',
+      '[data-specification-detail-split-panel="true"]',
     ) as HTMLDivElement | null
     const titleRow = container.querySelector(
-      '[data-package-detail-title-row="true"]',
+      '[data-specification-detail-title-row="true"]',
     )
     expect(headerSummary).toBeTruthy()
     expect(headerMetadata).toBeTruthy()
@@ -407,12 +407,12 @@ describe('RequirementsSpecificationDetailClient', () => {
 
   it('ignores stale and invalid stored detail column ids', async () => {
     window.localStorage.setItem(
-      'requirement-packages.visibleColumns.left.v2',
+      'requirements-specifications.visibleColumns.left.v2',
       JSON.stringify(['uniqueId']),
     )
     window.localStorage.setItem(
-      'requirement-packages.visibleColumns.left.v3',
-      JSON.stringify(['uniqueId', 'legacyPackageColumn']),
+      'requirements-specifications.visibleColumns.left.v3',
+      JSON.stringify(['uniqueId', 'legacySpecificationColumn']),
     )
 
     renderRequirementsSpecificationDetailClient()
@@ -464,10 +464,12 @@ describe('RequirementsSpecificationDetailClient', () => {
       ),
     ).toBe(true)
     expect(
-      container.querySelector('[data-package-detail-list-panel="items"]'),
+      container.querySelector('[data-specification-detail-list-panel="items"]'),
     ).toBeTruthy()
     expect(
-      container.querySelector('[data-package-detail-list-panel="available"]'),
+      container.querySelector(
+        '[data-specification-detail-list-panel="available"]',
+      ),
     ).toBeTruthy()
   })
 
@@ -625,7 +627,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
 
     const dialog = await screen.findByRole('dialog')
-    failNextPackageItemsFetch = true
+    failNextSpecificationItemsFetch = true
 
     fireEvent.click(
       screen.getByRole('button', { name: 'specification.confirmAdd' }),

@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
   deleteSpecificationLocalRequirement,
-  getPackageById,
-  getPackageBySlug,
+  getSpecificationById,
+  getSpecificationBySlug,
   getSpecificationLocalRequirementDetail,
   updateSpecificationLocalRequirement,
 } from '@/lib/dal/requirements-specifications'
@@ -43,15 +43,15 @@ function parseOptionalIntegerArray(value: unknown): number[] {
   return value.map(entry => Number(entry))
 }
 
-async function resolvePackageId(
+async function resolveSpecificationId(
   db: SqlServerDatabase,
   idOrSlug: string,
 ): Promise<number | null> {
   if (/^\d+$/.test(idOrSlug)) {
-    return (await getPackageById(db, Number(idOrSlug)))?.id ?? null
+    return (await getSpecificationById(db, Number(idOrSlug)))?.id ?? null
   }
 
-  return (await getPackageBySlug(db, idOrSlug))?.id ?? null
+  return (await getSpecificationBySlug(db, idOrSlug))?.id ?? null
 }
 
 export async function GET(
@@ -70,7 +70,7 @@ export async function GET(
     )
   }
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -103,7 +103,7 @@ export async function PUT(
     )
   }
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -198,7 +198,7 @@ export async function DELETE(
     )
   }
   const db = await getRequestSqlServerDataSource()
-  const specificationId = await resolvePackageId(db, id)
+  const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }

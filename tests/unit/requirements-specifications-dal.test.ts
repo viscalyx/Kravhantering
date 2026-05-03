@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  createPackage,
+  createSpecification,
   createSpecificationLocalRequirement,
-  deletePackage,
-  deletePackageItemsByRefs,
+  deleteSpecification,
+  deleteSpecificationItemsByRefs,
   deleteSpecificationLocalRequirement,
   getOrCreateSpecificationNeedsReference,
-  getPackageById,
+  getSpecificationById,
   getSpecificationLocalRequirementDetail,
   isSlugTaken,
-  linkRequirementsToPackageAtomically,
-  listPackageItems,
-  listPackages,
+  linkRequirementsToSpecificationAtomically,
+  listSpecificationItems,
   listSpecificationNeedsReferences,
-  unlinkRequirementsFromPackage,
-  updatePackage,
-  updatePackageItemFieldsByItemRef,
+  listSpecifications,
+  unlinkRequirementsFromSpecification,
+  updateSpecification,
+  updateSpecificationItemFieldsByItemRef,
   updateSpecificationLocalRequirement,
 } from '@/lib/dal/requirements-specifications'
 
@@ -30,24 +30,24 @@ function createSqlServerDb() {
     getRepository,
     query,
     transaction,
-  } as unknown as Parameters<typeof listPackages>[0]
+  } as unknown as Parameters<typeof listSpecifications>[0]
 
   return { db, query, transaction }
 }
 
-describe('requirement-packages DAL (SQL Server path)', () => {
+describe('requirements-specifications DAL (SQL Server path)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('lists packages with combined item counts and sorted requirement areas', async () => {
+  it('lists specifications with combined item counts and sorted requirement areas', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
         {
           id: 1,
           uniqueId: 'PKG-001',
-          name: 'Package A',
+          name: 'Specification A',
           specificationResponsibilityAreaId: 4,
           specificationImplementationTypeId: 2,
           specificationLifecycleStatusId: 3,
@@ -71,18 +71,18 @@ describe('requirement-packages DAL (SQL Server path)', () => {
         { specificationId: 1, areaId: 4, areaName: 'Accessibility' },
       ])
 
-    const result = await listPackages(db)
+    const result = await listSpecifications(db)
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining(
-        'FROM requirements_specifications package_record',
+        'FROM requirements_specifications specification_record',
       ),
     )
     expect(result).toEqual([
       {
         id: 1,
         uniqueId: 'PKG-001',
-        name: 'Package A',
+        name: 'Specification A',
         specificationResponsibilityAreaId: 4,
         specificationImplementationTypeId: 2,
         specificationLifecycleStatusId: 3,
@@ -113,13 +113,13 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     ])
   })
 
-  it('gets a package by id with nested metadata', async () => {
+  it('gets a specification by id with nested metadata', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
         id: 2,
         uniqueId: 'PKG-002',
-        name: 'Package B',
+        name: 'Specification B',
         specificationResponsibilityAreaId: 1,
         specificationImplementationTypeId: 5,
         specificationLifecycleStatusId: 7,
@@ -138,12 +138,12 @@ describe('requirement-packages DAL (SQL Server path)', () => {
       },
     ])
 
-    const result = await getPackageById(db, 2)
+    const result = await getSpecificationById(db, 2)
 
     expect(result).toEqual({
       id: 2,
       uniqueId: 'PKG-002',
-      name: 'Package B',
+      name: 'Specification B',
       specificationResponsibilityAreaId: 1,
       specificationImplementationTypeId: 5,
       specificationLifecycleStatusId: 7,
@@ -172,7 +172,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     await expect(isSlugTaken(db, 'PKG-009', 9)).resolves.toBe(false)
   })
 
-  it('lists package needs references on the SQL Server path', async () => {
+  it('lists specification needs references on the SQL Server path', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       { id: 4, text: 'Accessibility need' },
@@ -193,14 +193,14 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     ])
   })
 
-  it('creates and updates packages using OUTPUT on SQL Server', async () => {
+  it('creates and updates specifications using OUTPUT on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'PKG-011',
-          name: 'Package Eleven',
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven',
           specificationResponsibilityAreaId: 2,
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
@@ -212,8 +212,8 @@ describe('requirement-packages DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           id: 11,
-          uniqueId: 'PKG-011',
-          name: 'Package Eleven Updated',
+          uniqueId: 'SPEC-011',
+          name: 'Specification Eleven Updated',
           specificationResponsibilityAreaId: 2,
           specificationImplementationTypeId: null,
           specificationLifecycleStatusId: 4,
@@ -223,47 +223,55 @@ describe('requirement-packages DAL (SQL Server path)', () => {
         },
       ])
 
-    const created = await createPackage(db, {
-      uniqueId: 'PKG-011',
-      name: 'Package Eleven',
+    const created = await createSpecification(db, {
+      uniqueId: 'SPEC-011',
+      name: 'Specification Eleven',
       specificationResponsibilityAreaId: 2,
       specificationLifecycleStatusId: 4,
       businessNeedsReference: 'Need',
     })
-    const updated = await updatePackage(db, 11, {
-      name: 'Package Eleven Updated',
+    const updated = await updateSpecification(db, 11, {
+      name: 'Specification Eleven Updated',
       businessNeedsReference: null,
     })
 
     expect(created).toMatchObject({
       id: 11,
-      uniqueId: 'PKG-011',
-      name: 'Package Eleven',
+      uniqueId: 'SPEC-011',
+      name: 'Specification Eleven',
       specificationResponsibilityAreaId: 2,
       specificationLifecycleStatusId: 4,
     })
     expect(updated).toMatchObject({
       id: 11,
-      name: 'Package Eleven Updated',
+      name: 'Specification Eleven Updated',
       businessNeedsReference: null,
     })
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining('INSERT INTO requirements_specifications'),
-      ['PKG-011', 'Package Eleven', 2, null, 4, 'Need', expect.any(Date)],
+      [
+        'SPEC-011',
+        'Specification Eleven',
+        2,
+        null,
+        4,
+        'Need',
+        expect.any(Date),
+      ],
     )
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('UPDATE requirements_specifications'),
-      ['Package Eleven Updated', null, expect.any(Date), 11],
+      ['Specification Eleven Updated', null, expect.any(Date), 11],
     )
   })
 
-  it('deletes package records inside a SQL Server transaction', async () => {
+  it('deletes specification records inside a SQL Server transaction', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValue([])
 
-    await deletePackage(db, 7)
+    await deleteSpecification(db, 7)
 
     expect(transaction).toHaveBeenCalledTimes(1)
     expect(query).toHaveBeenNthCalledWith(
@@ -288,20 +296,20 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     )
   })
 
-  it('gets or creates a package needs reference on SQL Server', async () => {
+  it('gets or creates a specification needs reference on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 33 }])
 
     const result = await getOrCreateSpecificationNeedsReference(
       db,
       5,
-      'Shared package need',
+      'Shared specification need',
     )
 
     expect(result).toBe(33)
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO specification_needs_references'),
-      [5, 'Shared package need', expect.any(Date)],
+      [5, 'Shared specification need', expect.any(Date)],
     )
   })
 
@@ -534,7 +542,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     )
   })
 
-  it('links requirements to a package atomically on SQL Server', async () => {
+  it('links requirements to a specification atomically on SQL Server', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query
       .mockResolvedValueOnce([{ id: 101 }])
@@ -542,7 +550,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([{ id: 33 }])
       .mockResolvedValueOnce([{ id: 55 }])
 
-    const addedCount = await linkRequirementsToPackageAtomically(db, 5, {
+    const addedCount = await linkRequirementsToSpecificationAtomically(db, 5, {
       requirementIds: [7],
       needsReferenceText: 'Shared need',
     })
@@ -561,7 +569,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     )
   })
 
-  it('lists package items on SQL Server', async () => {
+  it('lists specification items on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -605,7 +613,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
         {
           id: 41,
           uniqueId: 'KRAV0001',
-          description: 'Local package requirement',
+          description: 'Local specification requirement',
           needsReferenceId: null,
           needsReferenceText: null,
           normReferenceIds: 'LOK-REF',
@@ -632,12 +640,12 @@ describe('requirement-packages DAL (SQL Server path)', () => {
         },
       ])
 
-    const result = await listPackageItems(db, 5)
+    const result = await listSpecificationItems(db, 5)
 
     expect(query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining(
-        'FROM requirements_specification_items package_item',
+        'FROM requirements_specification_items specification_item',
       ),
       [5],
     )
@@ -664,7 +672,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     ])
   })
 
-  it('updates package item fields by item ref on SQL Server', async () => {
+  it('updates specification item fields by item ref on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -684,7 +692,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([{ id: 2 }])
       .mockResolvedValueOnce([])
 
-    await updatePackageItemFieldsByItemRef(db, 5, 'lib:31', {
+    await updateSpecificationItemFieldsByItemRef(db, 5, 'lib:31', {
       note: 'Follow-up',
       specificationItemStatusId: 2,
     })
@@ -692,7 +700,7 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining(
-        'FROM specification_item_statuses package_item_status',
+        'FROM specification_item_statuses specification_item_status',
       ),
       [2],
     )
@@ -703,11 +711,15 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     )
   })
 
-  it('unlinks requirements from a package on SQL Server', async () => {
+  it('unlinks requirements from a specification on SQL Server', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 31 }, { id: 32 }])
 
-    const removedCount = await unlinkRequirementsFromPackage(db, 5, [7, 8])
+    const removedCount = await unlinkRequirementsFromSpecification(
+      db,
+      5,
+      [7, 8],
+    )
 
     expect(removedCount).toBe(2)
     expect(query).toHaveBeenCalledWith(
@@ -716,11 +728,14 @@ describe('requirement-packages DAL (SQL Server path)', () => {
     )
   })
 
-  it('deletes mixed package items by refs on SQL Server inside one transaction', async () => {
+  it('deletes mixed specification items by refs on SQL Server inside one transaction', async () => {
     const { db, query, transaction } = createSqlServerDb()
     query.mockResolvedValueOnce([{ id: 31 }]).mockResolvedValueOnce([{ id: 4 }])
 
-    const result = await deletePackageItemsByRefs(db, 5, ['lib:31', 'local:4'])
+    const result = await deleteSpecificationItemsByRefs(db, 5, [
+      'lib:31',
+      'local:4',
+    ])
 
     expect(result).toEqual({
       deletedLibraryCount: 1,

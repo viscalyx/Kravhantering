@@ -20,7 +20,7 @@ const lifecycleStatuses = [
   { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
 ]
 const responsibilityAreas = [{ id: 1, nameEn: 'Platform', nameSv: 'Plattform' }]
-const pkg = {
+const spec = {
   businessNeedsReference: 'Current business need',
   name: 'Upphandling av e-tjänstplattform',
   specificationImplementationTypeId: 2,
@@ -41,15 +41,15 @@ describe('SpecificationEditPanel', () => {
     vi.unstubAllGlobals()
   })
 
-  it('prefills the package edit form and exposes developer-mode metadata', () => {
+  it('prefills the specification edit form and exposes developer-mode metadata', () => {
     const { container } = render(
       <SpecificationEditPanel
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        pkg={pkg}
         responsibilityAreas={responsibilityAreas}
+        spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -73,8 +73,8 @@ describe('SpecificationEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={onCancel}
         onSaved={() => {}}
-        pkg={pkg}
         responsibilityAreas={responsibilityAreas}
+        spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -83,15 +83,15 @@ describe('SpecificationEditPanel', () => {
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it('shows contextual help for package fields', () => {
+  it('shows contextual help for specification fields', () => {
     render(
       <SpecificationEditPanel
         implementationTypes={implementationTypes}
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        pkg={pkg}
         responsibilityAreas={responsibilityAreas}
+        spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -103,7 +103,7 @@ describe('SpecificationEditPanel', () => {
     expect(screen.getByText('specification.help.name')).toBeInTheDocument()
   })
 
-  it('submits the updated package information', async () => {
+  it('submits the updated specification information', async () => {
     const onSaved = vi.fn((_result: { newUniqueId: string }) => {})
 
     render(
@@ -112,8 +112,8 @@ describe('SpecificationEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={onSaved}
-        pkg={pkg}
         responsibilityAreas={responsibilityAreas}
+        spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )
@@ -121,7 +121,7 @@ describe('SpecificationEditPanel', () => {
     fireEvent.change(
       screen.getByRole('textbox', { name: /specification\.name/ }),
       {
-        target: { value: 'Nytt paketnamn' },
+        target: { value: 'Nytt kravunderlagsnamn' },
       },
     )
 
@@ -146,7 +146,7 @@ describe('SpecificationEditPanel', () => {
     })
     expect(JSON.parse((requestInit?.body as string) ?? '{}')).toMatchObject({
       businessNeedsReference: 'Current business need',
-      name: 'Nytt paketnamn',
+      name: 'Nytt kravunderlagsnamn',
       specificationImplementationTypeId: 2,
       specificationLifecycleStatusId: 3,
       specificationResponsibilityAreaId: 1,
@@ -163,8 +163,8 @@ describe('SpecificationEditPanel', () => {
         lifecycleStatuses={lifecycleStatuses}
         onCancel={() => {}}
         onSaved={() => {}}
-        pkg={pkg}
         responsibilityAreas={responsibilityAreas}
+        spec={spec}
         specificationSlug="ETJANST-UPP-2026"
       />,
     )

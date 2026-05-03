@@ -589,7 +589,7 @@ export default function SpecificationLocalRequirementDetailClient({
       value: requirement.needsReference ?? '—',
     },
     {
-      id: 'package-item-status',
+      id: 'specification-item-status',
       label: t('specificationItemStatus'),
       markerValue: 'specification item status',
       value:

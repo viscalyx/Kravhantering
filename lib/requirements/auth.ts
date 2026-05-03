@@ -54,22 +54,22 @@ export type RequirementsAction =
       catalog: string
     }
   | {
-      kind: 'list_packages'
+      kind: 'list_specifications'
       nameSearch?: string
     }
   | {
-      kind: 'get_package_items'
+      kind: 'get_specification_items'
       specificationId?: number
       specificationSlug?: string
     }
   | {
-      kind: 'add_to_package'
+      kind: 'add_to_specification'
       specificationId?: number
       specificationSlug?: string
       requirementIds: number[]
     }
   | {
-      kind: 'remove_from_package'
+      kind: 'remove_from_specification'
       specificationId?: number
       specificationSlug?: string
       requirementIds: number[]

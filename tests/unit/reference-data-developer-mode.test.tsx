@@ -185,7 +185,7 @@ const pages: MarkerSpec[] = [
       }>,
     fetchResponse: () => [
       okJson({
-        packages: [
+        specifications: [
           {
             id: 1,
             name: 'P',
@@ -211,7 +211,7 @@ const pages: MarkerSpec[] = [
 
       if (url === '/api/specifications') {
         return okJson({
-          packages: [
+          specifications: [
             {
               id: 1,
               name: 'P',

@@ -1,38 +1,43 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/http/api-fetch'
-import type { PackageItemDetailContext } from './types'
+import type { SpecificationItemDetailContext } from './types'
 
-interface UsePackageItemContextOptions {
+interface UseSpecificationItemContextOptions {
   specificationItemId?: number
   specificationSlug?: string
 }
 
-interface UsePackageItemContextResult {
-  isPackageItemContext: boolean
-  refreshPackageItemDetail: () => Promise<void>
-  specificationItemDetail: PackageItemDetailContext | null
+interface UseSpecificationItemContextResult {
+  isSpecificationItemContext: boolean
+  refreshSpecificationItemDetail: () => Promise<void>
+  specificationItemDetail: SpecificationItemDetailContext | null
 }
 
-export function usePackageItemContext({
+export function useSpecificationItemContext({
   specificationItemId,
   specificationSlug,
-}: UsePackageItemContextOptions): UsePackageItemContextResult {
-  const isPackageItemContext = !!specificationItemId && !!specificationSlug
-  const [specificationItemDetail, setPackageItemDetail] =
-    useState<PackageItemDetailContext | null>(null)
+}: UseSpecificationItemContextOptions): UseSpecificationItemContextResult {
+  const isSpecificationItemContext =
+    !!specificationItemId && !!specificationSlug
+  const [specificationItemDetail, setSpecificationItemDetail] =
+    useState<SpecificationItemDetailContext | null>(null)
   const specificationItemDetailAbortRef = useRef<AbortController | null>(null)
 
-  const refreshPackageItemDetail = useCallback(async () => {
+  const refreshSpecificationItemDetail = useCallback(async () => {
     specificationItemDetailAbortRef.current?.abort()
 
-    if (!isPackageItemContext || !specificationItemId || !specificationSlug) {
-      setPackageItemDetail(null)
+    if (
+      !isSpecificationItemContext ||
+      !specificationItemId ||
+      !specificationSlug
+    ) {
+      setSpecificationItemDetail(null)
       return
     }
 
     const controller = new AbortController()
     specificationItemDetailAbortRef.current = controller
-    setPackageItemDetail(null)
+    setSpecificationItemDetail(null)
 
     try {
       const res = await apiFetch(
@@ -44,29 +49,31 @@ export function usePackageItemContext({
 
       if (!controller.signal.aborted) {
         if (res.ok) {
-          setPackageItemDetail((await res.json()) as PackageItemDetailContext)
+          setSpecificationItemDetail(
+            (await res.json()) as SpecificationItemDetailContext,
+          )
         } else {
-          setPackageItemDetail(null)
+          setSpecificationItemDetail(null)
         }
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       if (!controller.signal.aborted) {
-        setPackageItemDetail(null)
+        setSpecificationItemDetail(null)
       }
     }
-  }, [isPackageItemContext, specificationItemId, specificationSlug])
+  }, [isSpecificationItemContext, specificationItemId, specificationSlug])
 
   useEffect(() => {
-    void refreshPackageItemDetail()
+    void refreshSpecificationItemDetail()
     return () => {
       specificationItemDetailAbortRef.current?.abort()
     }
-  }, [refreshPackageItemDetail])
+  }, [refreshSpecificationItemDetail])
 
   return {
-    isPackageItemContext,
+    isSpecificationItemContext,
     specificationItemDetail,
-    refreshPackageItemDetail,
+    refreshSpecificationItemDetail,
   }
 }
