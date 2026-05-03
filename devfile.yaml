@@ -15,6 +15,13 @@ metadata:
     - Keycloak
   version: 0.1.0
 
+attributes:
+  pod-overrides:
+    spec:
+      securityContext:
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+
 # All `container` components in a Devfile share a single Kubernetes pod.
 # That means the `tools` container can reach `db` and `idp` over
 # `localhost`, so the `socat` Keycloak forwarder used by the

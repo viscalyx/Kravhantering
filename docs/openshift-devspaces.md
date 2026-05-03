@@ -247,6 +247,21 @@ Red Hat environments:
 image: mcr.microsoft.com/mssql/rhel/server:2025-latest
 ```
 
+The devfile also sets a pod-level file-system group for the workspace:
+
+```yaml
+attributes:
+  pod-overrides:
+    spec:
+      securityContext:
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+```
+
+SQL Server runs as the `mssql` user/group in the container. Microsoft
+Kubernetes examples use `fsGroup: 10001` so the mounted
+`/var/opt/mssql` volume is writable by that group.
+
 SQL Server still has stricter startup requirements than the `tools`
 container. If the `db` container enters `CrashLoopBackOff`, get the
 container log first:
@@ -272,6 +287,10 @@ Common causes are:
   digits, and symbols.
 - The OpenShift cluster's SCC and storage settings do not allow SQL
   Server to write to `/var/opt/mssql`.
+- The OpenShift cluster's SCC rejects the configured `fsGroup: 10001`.
+  In that case the deployment may fail before the `db` container starts;
+  ask a cluster administrator which `fsGroup` range is allowed for the
+  Dev Spaces namespace.
 
 Verify that the Secret has the expected keys without printing values:
 
