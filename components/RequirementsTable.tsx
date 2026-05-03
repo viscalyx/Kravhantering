@@ -2934,14 +2934,14 @@ export default function RequirementsTable({
             <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
               {t('scenario')}:
             </span>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
               {usageScenarios.map(s => {
                 const active = (fv.usageScenarioIds ?? []).includes(s.id)
                 return (
                   <button
                     aria-label={getName(s)}
                     aria-pressed={active}
-                    className={`min-h-[44px] min-w-[44px] px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                    className={`min-h-[44px] min-w-[44px] shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                       active
                         ? 'bg-primary-600 text-white'
                         : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
@@ -2966,7 +2966,7 @@ export default function RequirementsTable({
             {(fv.usageScenarioIds ?? []).length > 0 && (
               <button
                 aria-label={tc('clearFilters')}
-                className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                 onClick={() => updateFilter({ usageScenarioIds: undefined })}
                 type="button"
               >
@@ -2981,14 +2981,14 @@ export default function RequirementsTable({
               <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
                 {t('normReferences')}:
               </span>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
                 {normReferences.map(nr => {
                   const active = (fv.normReferenceIds ?? []).includes(nr.id)
                   return (
                     <button
                       aria-label={`${nr.normReferenceId} ${nr.name}`}
                       aria-pressed={active}
-                      className={`min-h-11 min-w-11 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                      className={`min-h-11 min-w-11 shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                         active
                           ? 'bg-primary-600 text-white'
                           : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
@@ -3014,7 +3014,7 @@ export default function RequirementsTable({
               {(fv.normReferenceIds ?? []).length > 0 && (
                 <button
                   aria-label={tc('clearFilters')}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                   onClick={() => updateFilter({ normReferenceIds: undefined })}
                   type="button"
                 >

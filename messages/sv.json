@@ -56,6 +56,8 @@
     "selectRow": "Markera {id}",
     "showShortText": "Visa kortad text",
     "showFullText": "Visa fullständig text",
+    "showMore": "Visa mer",
+    "showLess": "Visa mindre",
     "deleting": "Tar bort…",
     "deletingInProgress": "Borttagning pågår…",
     "unexpectedError": "Ett oväntat fel uppstod"

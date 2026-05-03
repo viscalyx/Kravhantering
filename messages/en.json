@@ -56,6 +56,8 @@
     "selectRow": "Select {id}",
     "showShortText": "Show short text",
     "showFullText": "Show full text",
+    "showMore": "Show more",
+    "showLess": "Show less",
     "deleting": "Deleting…",
     "deletingInProgress": "Deleting in progress…",
     "unexpectedError": "An unexpected error occurred"

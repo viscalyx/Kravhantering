@@ -112,6 +112,15 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   the table, while the package create trigger keeps the existing
   `packages > create button` marker when it shares that toolbar row on
   wide screens.
+- Requirement package list requirement-area labels render as compact,
+  non-interactive pills inside the existing `packages > crud table`
+  surface; they do not add separate developer-mode marker names.
+- Requirement package list edit and delete row actions render as icon-only
+  buttons, but keep the existing `packages > table action: edit` and
+  `packages > table action: delete` markers.
+- Requirement package list requirement-area overflow toggles use
+  `packages > table action: expand requirement areas` and
+  `packages > table action: collapse requirement areas`.
 - Requirement package detail header edit affordances use the
   `requirement package detail` context with
   `detail action: edit package` on the icon trigger and

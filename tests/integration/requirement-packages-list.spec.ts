@@ -24,6 +24,20 @@ for (const viewport of viewports) {
       await expect(nameFilter).toBeVisible()
       const createButton = page.getByRole('button', { name: 'Nytt kravpaket' })
       await expect(createButton).toBeVisible()
+      const areaPill = page
+        .locator('[data-package-requirement-area-pill="true"]')
+        .first()
+      await expect(areaPill).toBeVisible()
+      await expect(areaPill).toHaveJSProperty('tagName', 'SPAN')
+      await expect(areaPill).toHaveClass(/text-\[11px\]/)
+      const editAction = page.getByRole('button', { name: 'Redigera' }).first()
+      const deleteAction = page.getByRole('button', { name: 'Ta bort' }).first()
+      await expect(editAction).toBeVisible()
+      await expect(deleteAction).toBeVisible()
+      await expect(editAction).not.toContainText('Redigera')
+      await expect(deleteAction).not.toContainText('Ta bort')
+      await expect(editAction.locator('svg')).toBeVisible()
+      await expect(deleteAction.locator('svg')).toBeVisible()
 
       if (viewport.name === 'desktop') {
         const filterBox = await nameFilter.boundingBox()
@@ -42,6 +56,44 @@ for (const viewport of viewports) {
           (filterBox?.x ?? 0) + (filterBox?.width ?? 0),
         )
       }
+
+      const hasMultiAreaPackage = await page.evaluate(() =>
+        Array.from(
+          document.querySelectorAll(
+            '[data-package-requirement-area-pills="true"]',
+          ),
+        ).some(
+          group =>
+            group.querySelectorAll(
+              '[data-package-requirement-area-pill="true"]',
+            ).length > 1,
+        ),
+      )
+      expect(hasMultiAreaPackage).toBe(true)
+
+      await page.addStyleTag({
+        content:
+          '[data-package-requirement-area-pill-list="true"] { max-width: 72px !important; }',
+      })
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')))
+
+      const areaToggle = page
+        .locator('[data-package-requirement-area-pill-toggle="true"]')
+        .first()
+      const areaList = areaToggle.locator(
+        'xpath=../*[@data-package-requirement-area-pill-list="true"]',
+      )
+      await expect(areaToggle).toBeVisible()
+      await expect(areaToggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(areaList).toHaveClass(/max-h-6/)
+
+      await areaToggle.click()
+      await expect(areaToggle).toHaveAttribute('aria-expanded', 'true')
+      await expect(areaList).not.toHaveClass(/max-h-6/)
+
+      await areaToggle.click()
+      await expect(areaToggle).toHaveAttribute('aria-expanded', 'false')
+      await expect(areaList).toHaveClass(/max-h-6/)
 
       await nameFilter.fill('e-tjänst')
 
