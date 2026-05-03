@@ -25,14 +25,13 @@ metadata:
 # Spaces. UDI runs cleanly under the `restricted-v2` SCC (arbitrary
 # UID), already includes git, gh, zsh, podman, python3, ripgrep, and
 # nvm — so we don't need to maintain a custom Dockerfile here. The
-# correct Node.js major version (24) is provisioned at workspace
-# startup by the `install` command via the bundled nvm.
+# correct Node.js major version (24) is provisioned by the `install`
+# command via the bundled nvm after the workspace opens.
 #
 # Secrets (MSSQL_SA_PASSWORD, KEYCLOAK_ADMIN_PASSWORD,
 # OPENROUTER_API_KEY, AUTH_*) must be supplied via Dev Spaces
-# user-namespace Secrets annotated with
-# `controller.devfile.io/mount-as: env`. See
-# docs/openshift-devspaces.md for setup.
+# user-namespace Secrets labeled/annotated for DevWorkspace injection.
+# See docs/openshift-devspaces.md for setup.
 components:
   - name: tools
     container:
@@ -211,10 +210,15 @@ components:
     volume:
       size: 5Gi
 
+# Keep setup commands available from the Dev Spaces command palette, but
+# do not bind them to `events.postStart`. Dev Spaces treats a non-zero
+# postStart lifecycle hook as a workspace deployment failure, which makes
+# transient npm, browser-download, SQL Server, or secret setup errors
+# prevent the IDE from opening.
 commands:
   - id: install
     exec:
-      label: Install Node 24 + npm + Playwright dependencies
+      label: Install Node 24 + npm + Playwright browser
       component: tools
       workingDir: ${PROJECT_SOURCE}
       # UDI ships nvm but no preselected Node major. Install/activate
@@ -235,7 +239,7 @@ commands:
         nvm use 24
         npm install -g npm@latest
         npm install
-        npx playwright install --with-deps
+        npx playwright install chromium
       group:
         kind: build
         isDefault: true
@@ -302,8 +306,3 @@ commands:
         npm run check
       group:
         kind: test
-
-events:
-  postStart:
-    - install
-    - db-setup

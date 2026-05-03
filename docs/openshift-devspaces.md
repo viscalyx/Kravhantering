@@ -17,10 +17,15 @@ on `localhost`.
    of this repo (or click a factory link, see below).
 3. Pick an editor in the **Choose an Editor** dialog (see
    [Choosing the editor](#choosing-the-editor)).
-4. Wait for the `postStart` events `install` and `db-setup` to finish
-   in the workspace logs. First start downloads Node 24 via `nvm` and
-   runs `npm install` — expect 5–10 minutes.
-5. Run the **dev** command from the Dev Spaces command palette to start
+4. Ensure the required Secret exists in the same OpenShift project as
+   the workspace (see [Required Secrets](#required-secrets)).
+5. Start the workspace and wait for the IDE to open.
+6. Run the **install** command from the Dev Spaces command palette. The
+   first run downloads Node 24 via `nvm`, installs npm packages, and
+   downloads the Playwright Chromium browser — expect 5–10 minutes.
+7. Run the **db-setup** command from the Dev Spaces command palette to
+   migrate and seed SQL Server.
+8. Run the **dev** command from the Dev Spaces command palette to start
    `next dev` on the public `next-dev` route.
 
 ## Components
@@ -261,9 +266,9 @@ Two options:
 | Aspect           | Devcontainer (`.devcontainer/`)                                | Dev Spaces (`devfile.yaml`)                            |
 | ---------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
 | Tools image      | Custom `Dockerfile`                                            | `udi-rhel9` (UDI, prebuilt)                            |
-| Node install     | `devcontainers/features/node`                                  | `nvm install 24` in `install` cmd                      |
+| Node install     | `devcontainers/features/node`                                  | Manual `install` cmd with `nvm install 24`             |
 | Service network  | Compose service names (`db`, `idp`) + socat forwarder for OIDC | Shared pod, all on `localhost`                         |
-| Secrets          | `.env.development.local` (host)                                | Annotated Kubernetes `Secret`                          |
+| Secrets          | `.env.development.local` (host)                                | Labeled/annotated Kubernetes `Secret`                  |
 | Codex bind mount | `~/.codex` from host                                           | Not available                                          |
 | HTTPS for `dev`  | `mkcert` + `next dev --experimental-https`                     | Dev Spaces ingress terminates TLS on the public route  |
 
@@ -271,6 +276,13 @@ Two options:
 
 ## Troubleshooting
 
+- **Workspace fails with `postStart hook` or exit code 243** — make sure
+  the workspace was created from the current `devfile.yaml`. Older
+  versions bound `install` and `db-setup` to `events.postStart`; Dev
+  Spaces treats a non-zero `postStart` lifecycle command as a deployment
+  failure. Delete and recreate the workspace if Dev Spaces cached the old
+  devfile, then run **install** and **db-setup** manually from the command
+  palette.
 - **`install` fails with "engine 'node' is incompatible"** — open a
   terminal in the `tools` container and run `nvm use 24` before
   retrying. The default-alias is set on first run, so this usually
