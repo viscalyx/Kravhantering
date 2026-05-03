@@ -72,7 +72,7 @@
     "framer-motion": "^12.38.0",
     "iron-session": "^8.0.4",
     "jose": "^6.2.3",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.14.0",
     "mssql": "^12.5.0",
     "next": "^16.2.4",
     "next-intl": "^4.9.1",
