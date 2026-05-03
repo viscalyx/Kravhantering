@@ -29,7 +29,7 @@ describe('deviations DAL (SQL Server path)', () => {
     query.mockResolvedValue([
       {
         id: 7,
-        packageItemId: 3,
+        specificationItemId: 3,
         motivation: 'Needs waiver',
         isReviewRequested: true,
         decision: null,
@@ -42,10 +42,10 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'REQ-001',
         requirementDescription: 'Example requirement',
         requirementVersionId: 11,
-        packageName: 'Package A',
-        packageUniqueId: 'PKG-001',
-        isPackageLocal: 0,
-        packageLocalRequirementId: null,
+        specificationName: 'Package A',
+        specificationUniqueId: 'PKG-001',
+        isSpecificationLocal: 0,
+        specificationLocalRequirementId: null,
       },
     ])
 
@@ -58,8 +58,8 @@ describe('deviations DAL (SQL Server path)', () => {
     expect(result).toEqual([
       {
         id: 7,
-        packageItemId: 3,
-        packageLocalRequirementId: null,
+        specificationItemId: 3,
+        specificationLocalRequirementId: null,
         motivation: 'Needs waiver',
         isReviewRequested: 1,
         decision: null,
@@ -72,9 +72,9 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'REQ-001',
         requirementDescription: 'Example requirement',
         requirementVersionId: 11,
-        packageName: 'Package A',
-        packageUniqueId: 'PKG-001',
-        isPackageLocal: false,
+        specificationName: 'Package A',
+        specificationUniqueId: 'PKG-001',
+        isSpecificationLocal: false,
         itemRef: 'lib:3',
       },
     ])
@@ -85,7 +85,7 @@ describe('deviations DAL (SQL Server path)', () => {
     query.mockResolvedValueOnce([{ id: 3 }]).mockResolvedValueOnce([{ id: 42 }])
 
     const result = await createDeviation(db, {
-      packageItemId: 3,
+      specificationItemId: 3,
       motivation: '  Legacy exception  ',
       createdBy: 'tester',
     })
@@ -98,12 +98,12 @@ describe('deviations DAL (SQL Server path)', () => {
     )
   })
 
-  it('lists both library and package-local deviations for a package', async () => {
+  it('lists both library and specification-local deviations for a package', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValue([
       {
         id: 2,
-        packageItemId: null,
+        specificationItemId: null,
         motivation: 'Local deviation',
         isReviewRequested: 1,
         decision: null,
@@ -116,14 +116,14 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'PKG-L-001',
         requirementDescription: 'Local requirement',
         requirementVersionId: null,
-        packageName: 'Package A',
-        packageUniqueId: 'PKG-001',
-        isPackageLocal: 1,
-        packageLocalRequirementId: 9,
+        specificationName: 'Package A',
+        specificationUniqueId: 'PKG-001',
+        isSpecificationLocal: 1,
+        specificationLocalRequirementId: 9,
       },
       {
         id: 3,
-        packageItemId: 4,
+        specificationItemId: 4,
         motivation: 'Library deviation',
         isReviewRequested: 0,
         decision: null,
@@ -136,10 +136,10 @@ describe('deviations DAL (SQL Server path)', () => {
         requirementUniqueId: 'REQ-001',
         requirementDescription: 'Library requirement',
         requirementVersionId: 6,
-        packageName: 'Package A',
-        packageUniqueId: 'PKG-001',
-        isPackageLocal: 0,
-        packageLocalRequirementId: null,
+        specificationName: 'Package A',
+        specificationUniqueId: 'PKG-001',
+        isSpecificationLocal: 0,
+        specificationLocalRequirementId: null,
       },
     ])
 
@@ -147,9 +147,9 @@ describe('deviations DAL (SQL Server path)', () => {
 
     expect(result).toHaveLength(2)
     expect(result[0].itemRef).toBe('local:9')
-    expect(result[0].isPackageLocal).toBe(true)
+    expect(result[0].isSpecificationLocal).toBe(true)
     expect(result[1].itemRef).toBe('lib:4')
-    expect(result[1].isPackageLocal).toBe(false)
+    expect(result[1].isSpecificationLocal).toBe(false)
   })
 
   it('requests review using an OUTPUT-based SQL Server update', async () => {
@@ -164,19 +164,19 @@ describe('deviations DAL (SQL Server path)', () => {
     )
   })
 
-  it('counts deviations per itemRef across library and package-local items', async () => {
+  it('counts deviations per itemRef across library and specification-local items', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValue([
       {
         itemId: 4,
-        isPackageLocal: 0,
+        isSpecificationLocal: 0,
         total: 2,
         pending: 1,
         approved: 1,
       },
       {
         itemId: 9,
-        isPackageLocal: 1,
+        isSpecificationLocal: 1,
         total: 1,
         pending: 1,
         approved: 0,

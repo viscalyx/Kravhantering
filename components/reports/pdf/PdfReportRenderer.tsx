@@ -266,8 +266,8 @@ function PdfSectionRenderer({
       return <PdfRequirementTable section={section} />
     case 'toc':
       return <PdfToc section={section} />
-    case 'package-cover':
-      return <PdfPackageCover section={section} />
+    case 'specification-cover':
+      return <PdfSpecificationCover section={section} />
     case 'page-break':
       return null
     case 'deviation-summary':
@@ -279,10 +279,10 @@ function PdfSectionRenderer({
   }
 }
 
-function PdfPackageCover({
+function PdfSpecificationCover({
   section,
 }: {
-  section: Extract<ReportSection, { type: 'package-cover' }>
+  section: Extract<ReportSection, { type: 'specification-cover' }>
 }) {
   const sv = section.locale === 'sv'
   return (
@@ -293,7 +293,7 @@ function PdfPackageCover({
       <View style={styles.metadataGrid}>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {sv ? 'Kravpaket-ID' : 'Package ID'}
+            {sv ? 'Kravunderlag-ID' : 'Specification ID'}
           </Text>
           <Text style={[styles.fieldValue, { fontFamily: 'Helvetica-Bold' }]}>
             {section.uniqueId}

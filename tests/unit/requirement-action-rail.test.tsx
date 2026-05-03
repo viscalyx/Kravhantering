@@ -30,7 +30,7 @@ function renderRequirementActionRail(
   props: Partial<RequirementActionRailProps> = {},
 ) {
   const defaultProps: RequirementActionRailProps = {
-    canAddToPackage: false,
+    canAddToSpecification: false,
     currentStatusId: 3,
     detailContext: 'requirement detail: REQ-123',
     displayVersionNumber: 3,
@@ -48,7 +48,7 @@ function renderRequirementActionRail(
     onArchive: vi.fn(async () => {}),
     onCancelArchiving: vi.fn(async () => {}),
     onDeleteDraft: vi.fn(async () => {}),
-    onOpenAddToPackage: vi.fn(async () => {}),
+    onOpenAddToSpecification: vi.fn(async () => {}),
     onRestore: vi.fn(async () => {}),
     onTransition: vi.fn(async () => {}),
     onVersionSelect: vi.fn(),

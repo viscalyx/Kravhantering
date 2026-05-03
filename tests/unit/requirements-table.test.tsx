@@ -670,16 +670,16 @@ describe('RequirementsTable', () => {
     expect(screen.queryByText('Arkiveringsgranskning')).toBeNull()
   })
 
-  it('renders a package-local marker icon for package-local rows', () => {
+  it('renders a specification-local marker icon for specification-local rows', () => {
     render(
       <RequirementsTable
         locale="sv"
         rows={[
           makeRow({
-            isPackageLocal: true,
+            isSpecificationLocal: true,
             itemRef: 'local:1',
-            kind: 'packageLocal',
-            packageLocalRequirementId: 1,
+            kind: 'specificationLocal',
+            specificationLocalRequirementId: 1,
             uniqueId: 'KRAV0001',
           }),
         ]}
@@ -687,7 +687,7 @@ describe('RequirementsTable', () => {
     )
 
     expect(
-      document.querySelector('[data-package-local-marker="true"]'),
+      document.querySelector('[data-specification-local-marker="true"]'),
     ).toBeInTheDocument()
   })
 
@@ -730,12 +730,12 @@ describe('RequirementsTable', () => {
   it('hides the read-only package item status color dot from assistive tech', () => {
     const rows = [
       makeRow({
-        packageItemStatusColor: '#f59e0b',
-        packageItemStatusDescriptionEn: 'In progress',
-        packageItemStatusDescriptionSv: 'Pågående',
-        packageItemStatusId: 2,
-        packageItemStatusNameEn: 'Ongoing',
-        packageItemStatusNameSv: 'Pågående',
+        specificationItemStatusColor: '#f59e0b',
+        specificationItemStatusDescriptionEn: 'In progress',
+        specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
       }),
     ]
 
@@ -745,7 +745,7 @@ describe('RequirementsTable', () => {
         rows={rows}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
-          'packageItemStatus',
+          'specificationItemStatus',
         ]}
       />,
     )

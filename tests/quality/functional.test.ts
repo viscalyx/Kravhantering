@@ -8,9 +8,9 @@ import {
   DEVIATION_REJECTED,
   deleteDeviation,
   recordDecision,
-  recordPackageLocalDecision,
+  recordSpecificationLocalDecision,
   requestReview as requestDeviationReview,
-  requestPackageLocalReview,
+  requestSpecificationLocalReview,
   updateDeviation,
 } from '@/lib/dal/deviations'
 import {
@@ -20,13 +20,6 @@ import {
   SUGGESTION_DISMISSED,
   SUGGESTION_RESOLVED,
 } from '@/lib/dal/improvement-suggestions'
-import {
-  createPackage,
-  createPackageLocalRequirement,
-  linkRequirementsToPackageAtomically,
-  updatePackageItemFields,
-  updatePackageLocalRequirementFields,
-} from '@/lib/dal/requirement-packages'
 import {
   approveArchiving,
   cancelArchiving,
@@ -42,17 +35,24 @@ import {
   STATUS_REVIEW,
   transitionStatus,
 } from '@/lib/dal/requirements'
-import type { SqlServerDatabase } from '@/lib/db'
 import {
-  DEFAULT_PACKAGE_ITEM_STATUS_ID,
-  DEVIATED_PACKAGE_ITEM_STATUS_ID,
-} from '@/lib/package-item-status-constants'
+  createPackage,
+  createSpecificationLocalRequirement,
+  linkRequirementsToPackageAtomically,
+  updatePackageItemFields,
+  updateSpecificationLocalRequirementFields,
+} from '@/lib/dal/requirements-specifications'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   attachVerifiedActor,
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
 import { createRequirementsService } from '@/lib/requirements/service'
+import {
+  DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+  DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
+} from '@/lib/specification-item-status-constants'
 import { createAppDataSource } from '@/lib/typeorm/data-source'
 import { tryGetSqlServerDatabaseUrl } from '@/lib/typeorm/sqlserver-config'
 import {
@@ -158,17 +158,17 @@ const FUNCTIONAL_TESTS_URL = resolveFunctionalTestsUrl()
 const TRANSACTIONAL_TABLES = [
   'requirement_version_usage_scenarios',
   'requirement_version_norm_references',
-  'package_local_requirement_usage_scenarios',
-  'package_local_requirement_norm_references',
-  'package_local_requirement_deviations',
+  'specification_local_requirement_usage_scenarios',
+  'specification_local_requirement_norm_references',
+  'specification_local_requirement_deviations',
   'deviations',
   'improvement_suggestions',
-  'requirement_package_items',
-  'package_local_requirements',
-  'package_needs_references',
+  'requirements_specification_items',
+  'specification_local_requirements',
+  'specification_needs_references',
   'requirement_versions',
   'requirements',
-  'requirement_packages',
+  'requirements_specifications',
   'requirement_areas',
   'usage_scenarios',
   'norm_references',
@@ -218,17 +218,29 @@ async function seedLookups(target: SqlServerDatabase): Promise<void> {
   }
 
   const itemStatuses: Array<[number, string, string, string, number]> = [
-    [DEFAULT_PACKAGE_ITEM_STATUS_ID, 'Inkluderad', 'Included', '#94a3b8', 1],
-    [DEVIATED_PACKAGE_ITEM_STATUS_ID, 'Avviken', 'Deviated', '#ef4444', 5],
+    [
+      DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
+      'Inkluderad',
+      'Included',
+      '#94a3b8',
+      1,
+    ],
+    [
+      DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
+      'Avviken',
+      'Deviated',
+      '#ef4444',
+      5,
+    ],
   ]
   for (const [id, nameSv, nameEn, color, sortOrder] of itemStatuses) {
     await target.query(
-      `IF NOT EXISTS (SELECT 1 FROM package_item_statuses WHERE id = @0)
+      `IF NOT EXISTS (SELECT 1 FROM specification_item_statuses WHERE id = @0)
          BEGIN
-           SET IDENTITY_INSERT package_item_statuses ON;
-           INSERT INTO package_item_statuses (id, name_sv, name_en, color, sort_order)
+           SET IDENTITY_INSERT specification_item_statuses ON;
+           INSERT INTO specification_item_statuses (id, name_sv, name_en, color, sort_order)
              VALUES (@0, @1, @2, @3, @4);
-           SET IDENTITY_INSERT package_item_statuses OFF;
+           SET IDENTITY_INSERT specification_item_statuses OFF;
          END`,
       [id, nameSv, nameEn, color, sortOrder],
     )
@@ -323,13 +335,13 @@ async function createPublishedRequirement(
 
 async function getSinglePackageItem(
   target: SqlServerDatabase,
-  packageId: number,
-): Promise<{ id: number; packageItemStatusId: number } | null> {
+  specificationId: number,
+): Promise<{ id: number; specificationItemStatusId: number } | null> {
   const rows = (await target.query(
-    `SELECT TOP (1) id, package_item_status_id AS packageItemStatusId
-       FROM requirement_package_items WHERE requirement_package_id = @0`,
-    [packageId],
-  )) as Array<{ id: number; packageItemStatusId: number }>
+    `SELECT TOP (1) id, specification_item_status_id AS specificationItemStatusId
+       FROM requirements_specification_items WHERE requirements_specification_id = @0`,
+    [specificationId],
+  )) as Array<{ id: number; specificationItemStatusId: number }>
   return rows[0] ?? null
 }
 
@@ -518,7 +530,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
   })
 
-  it('Scenario 6: deviated status requires an approved deviation for both library and package-local items', async () => {
+  it('Scenario 6: deviated status requires an approved deviation for both library and specification-local items', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -539,18 +551,22 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       throw new Error('Expected a library package item')
     }
 
-    const localItem = await createPackageLocalRequirement(appDb(), pkg.id, {
-      description: 'Package-local requirement',
-    })
+    const localItem = await createSpecificationLocalRequirement(
+      appDb(),
+      pkg.id,
+      {
+        description: 'Specification-local requirement',
+      },
+    )
 
     await expect(
       updatePackageItemFields(appDb(), libraryItem.id, {
-        packageItemStatusId: DEVIATED_PACKAGE_ITEM_STATUS_ID,
+        specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
       }),
     ).rejects.toMatchObject({ code: 'validation' })
     await expect(
-      updatePackageLocalRequirementFields(appDb(), localItem.id, {
-        packageItemStatusId: DEVIATED_PACKAGE_ITEM_STATUS_ID,
+      updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
+        specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
       }),
     ).rejects.toMatchObject({ code: 'validation' })
 
@@ -569,33 +585,33 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       itemRef: `local:${localItem.id}`,
       motivation: 'Approved local deviation',
     })
-    await requestPackageLocalReview(appDb(), localDeviation.id)
-    await recordPackageLocalDecision(appDb(), localDeviation.id, {
+    await requestSpecificationLocalReview(appDb(), localDeviation.id)
+    await recordSpecificationLocalDecision(appDb(), localDeviation.id, {
       decidedBy: 'reviewer',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved local deviation',
     })
 
     await updatePackageItemFields(appDb(), libraryItem.id, {
-      packageItemStatusId: DEVIATED_PACKAGE_ITEM_STATUS_ID,
+      specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     })
-    await updatePackageLocalRequirementFields(appDb(), localItem.id, {
-      packageItemStatusId: DEVIATED_PACKAGE_ITEM_STATUS_ID,
+    await updateSpecificationLocalRequirementFields(appDb(), localItem.id, {
+      specificationItemStatusId: DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     })
 
     const updatedLibrary = await getSinglePackageItem(appDb(), pkg.id)
     const updatedLocalRows = (await appDb().query(
-      `SELECT package_item_status_id AS packageItemStatusId
-         FROM package_local_requirements WHERE id = @0`,
+      `SELECT specification_item_status_id AS specificationItemStatusId
+         FROM specification_local_requirements WHERE id = @0`,
       [localItem.id],
-    )) as Array<{ packageItemStatusId: number }>
+    )) as Array<{ specificationItemStatusId: number }>
     const updatedLocal = updatedLocalRows[0]
 
-    expect(updatedLibrary?.packageItemStatusId).toBe(
-      DEVIATED_PACKAGE_ITEM_STATUS_ID,
+    expect(updatedLibrary?.specificationItemStatusId).toBe(
+      DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     )
-    expect(updatedLocal?.packageItemStatusId).toBe(
-      DEVIATED_PACKAGE_ITEM_STATUS_ID,
+    expect(updatedLocal?.specificationItemStatusId).toBe(
+      DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
     )
   })
 
@@ -625,7 +641,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     )
 
     const needsReferences = (await appDb().query(
-      `SELECT text FROM package_needs_references WHERE package_id = @0`,
+      `SELECT text FROM specification_needs_references WHERE specification_id = @0`,
       [pkg.id],
     )) as Array<{ text: string }>
 
@@ -699,7 +715,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
 
     const deviation = await createDeviation(appDb(), {
       motivation: 'One final decision only',
-      packageItemId: item.id,
+      specificationItemId: item.id,
     })
     await requestDeviationReview(appDb(), deviation.id)
     await recordDecision(appDb(), deviation.id, {

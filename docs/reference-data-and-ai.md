@@ -79,9 +79,9 @@ No business validation beyond database schema constraints.
 
 ## 3 — Package Taxonomy Lookups
 
-Sources: `lib/dal/package-implementation-types.ts`,
-`lib/dal/package-lifecycle-statuses.ts`,
-`lib/dal/package-responsibility-areas.ts`
+Sources: `lib/dal/specification-implementation-types.ts`,
+`lib/dal/specification-lifecycle-statuses.ts`,
+`lib/dal/specification-responsibility-areas.ts`
 
 ### Shared Pattern
 
@@ -90,7 +90,7 @@ All three DALs follow the same structure:
 - Bilingual columns: `nameSv` and `nameEn`.
 - List ordering: `ORDER BY nameSv` ascending.
 - CRUD operations: `list`, `create`, `update`, `delete`.
-- All linked from `requirement_packages` via foreign keys.
+- All linked from `requirements_specifications` via foreign keys.
 
 ### Validation Variance
 

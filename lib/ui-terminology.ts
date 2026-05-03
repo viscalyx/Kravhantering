@@ -98,21 +98,21 @@ const MESSAGE_BINDINGS: Record<
       ['nav', 'responsibilityAreas'],
       ['responsibilityAreaMgmt', 'title'],
     ],
-    singular: [['package', 'responsibilityArea']],
+    singular: [['specification', 'responsibilityArea']],
   },
   implementationType: {
     plural: [
       ['nav', 'implementationTypes'],
       ['implementationTypeMgmt', 'title'],
     ],
-    singular: [['package', 'implementationType']],
+    singular: [['specification', 'implementationType']],
   },
   lifecycleStatus: {
     plural: [
       ['nav', 'lifecycleStatuses'],
       ['lifecycleStatusMgmt', 'title'],
     ],
-    singular: [['package', 'lifecycleStatus']],
+    singular: [['specification', 'lifecycleStatus']],
   },
   referenceData: {
     plural: [

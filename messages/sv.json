@@ -65,7 +65,7 @@
   "nav": {
     "catalog": "Kravkatalog",
     "areas": "Områden",
-    "packages": "Kravpaket",
+    "specifications": "Kravunderlag",
     "scenarios": "Användningsscenarier",
     "statuses": "Statusar",
     "types": "Typer",
@@ -78,7 +78,7 @@
     "lifecycleStatuses": "Livscykelstatusar",
     "areaOwners": "Områdesägare",
     "normReferences": "Normreferenser",
-    "packageItemStatuses": "Användningsstatusar",
+    "specificationItemStatuses": "Användningsstatusar",
     "admin": "Administration",
     "openMenu": "Öppna meny",
     "closeMenu": "Stäng meny",
@@ -118,10 +118,10 @@
     "qualityCharacteristic": "Kvalitetsegenskap",
     "riskLevel": "Risknivå",
     "riskLevelHelp": "<strong>Välj risknivå för detta krav.</strong>\nRisknivån anger den potentiella påverkan om kravet inte uppfylls.",
-    "packageItemStatus": "Användningsstatus",
+    "specificationItemStatus": "Användningsstatus",
     "requiresTesting": "Verifierbar",
     "requiresTestingOff": "Inte verifierbar",
-    "packageCount": "Används i kravpaket",
+    "specificationCount": "Används i kravunderlag",
     "verificationMethod": "Verifieringsmetod",
     "verificationMethodHelp": "<strong>Ange hur det ska verifieras att acceptanskriterierna är uppfyllda.</strong>\nVälj eller beskriv lämplig metod, till exempel inspektion, analys/simulering, demonstration eller test, i linje med ISO/IEC/IEEE 29148:2018.",
     "areaHelp": "<strong>Välj det område som kravet tillhör.</strong>\nOmrådet styr prefix för krav-ID och kopplar kravet till en ansvarig ägare.",
@@ -232,8 +232,8 @@
     "normRefTypeSuggestionStandard": "Standard",
     "normRefTypeSuggestionStrategicGuideline": "Strategisk riktlinje",
     "typePlaceholder": "T.ex. Lag, Standard, Förordning",
-    "packageLocalBadge": "Unik",
-    "packageLocalTooltip": "Den här raden är ett unikt krav i kravpaketet. Det finns bara i detta paket och visas inte i kravbiblioteket."
+    "specificationLocalBadge": "Unik",
+    "specificationLocalTooltip": "Den här raden är ett unikt krav i kravunderlaget. Det finns bara i detta kravunderlag och visas inte i kravbiblioteket."
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -263,77 +263,74 @@
     "functional": "Funktionellt",
     "nonFunctional": "Icke-funktionellt"
   },
-  "package": {
+  "specification": {
     "name": "Namn",
     "help": {
-      "name": "Ange ett tydligt namn som gör paketet lätt att känna igen och återanvända."
+      "name": "Ange ett tydligt namn som gör underlaget lätt att känna igen och återanvända."
     },
     "responsibilityArea": "Verksamhetsobjekt",
-    "responsibilityAreaHelp": "Välj det verksamhetsobjekt som paketet hör till, eller lämna tomt om paketet spänner över flera verksamhetsobjekt.",
+    "responsibilityAreaHelp": "Välj det verksamhetsobjekt som underlaget hör till, eller lämna tomt om underlaget spänner över flera verksamhetsobjekt.",
     "implementationType": "Genomförandeform",
-    "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur paketet ska levereras.",
+    "implementationTypeHelp": "Välj den genomförandeform som bäst beskriver hur underlaget ska levereras.",
     "lifecycleStatus": "Livscykelstatus",
-    "lifecycleStatusHelp": "Välj den livscykelstatus som bäst beskriver paketets nuvarande fas.",
+    "lifecycleStatusHelp": "Välj den livscykelstatus som bäst beskriver underlagets nuvarande fas.",
     "needsReference": "Behovsreferens",
-    "needsReferenceHelp": "Lägg vid behov till en befintlig eller ny behovsreferens när kravet kopplas till ett paket.",
-    "newPackage": "Nytt kravpaket",
-    "editPackage": "Redigera kravpaket",
+    "needsReferenceHelp": "Lägg vid behov till en befintlig eller ny behovsreferens när kravet kopplas till ett underlag.",
+    "newSpecification": "Nytt kravunderlag",
+    "editSpecification": "Redigera kravunderlag",
     "filterByName": "Filtrera på namn",
-    "filterByNamePlaceholder": "Sök namn på kravpaket",
+    "filterByNamePlaceholder": "Sök namn på kravunderlag",
     "linkedRequirements": "Kopplade krav",
     "businessNeedsReference": "Verksamhetsbehovsreferens",
-    "businessNeedsReferencePlaceholder": "Fritext för att koppla paketet till ett verksamhetsbehov eller funktionellt krav",
-    "businessNeedsReferenceHelp": "Använd fältet för att ange det verksamhetsbehov, initiativ eller den funktionella referens som paketet stödjer.",
-    "uniqueId": "Kravpaket-ID",
-    "uniqueIdPlaceholder": "T.ex. MITT-PAKET",
+    "businessNeedsReferencePlaceholder": "Fritext för att koppla underlaget till ett verksamhetsbehov eller funktionellt krav",
+    "businessNeedsReferenceHelp": "Använd fältet för att ange det verksamhetsbehov, initiativ eller den funktionella referens som underlaget stödjer.",
+    "uniqueId": "Kravunderlag-ID",
+    "uniqueIdPlaceholder": "T.ex. MITT-UNDERLAG",
     "uniqueIdHelp": "Används i URL och som kortidentifierare",
-    "uniqueIdRequired": "Ange ett kravpaket-ID.",
-    "uniqueIdGenerationFailed": "Det gick inte att skapa ett kravpaket-ID från namnet. Ange ett manuellt.",
-    "uniqueIdTaken": "Detta Kravpaket-ID används redan",
+    "uniqueIdRequired": "Ange ett kravunderlag-ID.",
+    "uniqueIdGenerationFailed": "Det gick inte att skapa ett kravunderlag-ID från namnet. Ange ett manuellt.",
+    "uniqueIdTaken": "Detta Kravunderlag-ID används redan",
     "itemCount": "Antal krav",
     "requirementAreas": "Kravområden",
     "addRequirements": "Lägg till krav",
-    "addToPackage": "Lägg till i kravpaket",
-    "selectPackage": "Välj kravpaket",
-    "selectPackageHelp": "Välj det kravpaket som kravet ska läggas till i.",
+    "addToSpecification": "Lägg till i kravunderlag",
+    "selectSpecification": "Välj kravunderlag",
+    "selectSpecificationHelp": "Välj det kravunderlag som kravet ska läggas till i.",
     "removeSelected": "Ta bort valda ({count})",
-    "removeConfirm": "Är du säker på att du vill ta bort {count, plural, one {1 krav} other {# krav}} från paketet?",
-    "removePackageLocalConfirmTitle": "Ta bort unika krav",
-    "removePackageLocalConfirm": "Är du säker på att du vill radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravpaket? De kan inte återskapas.",
+    "removeConfirm": "Är du säker på att du vill ta bort {count, plural, one {1 krav} other {# krav}} från underlaget?",
+    "removeSpecificationLocalConfirmTitle": "Ta bort unika krav",
+    "removeSpecificationLocalConfirm": "Är du säker på att du vill radera {count, plural, one {1 unikt krav} other {# unika krav}} permanent från detta kravunderlag? De kan inte återskapas.",
     "removeMixedConfirmTitle": "Ta bort valda objekt",
-    "removeMixedConfirm": "Är du säker på att du vill ta bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} från paketet och radera {packageLocalCount, plural, one {1 unikt krav} other {# unika krav}} permanent? Raderade unika krav kan inte återskapas.",
-    "noItems": "Det finns inga krav kopplade till detta paket.",
-    "packageNotFound": "Kravpaketet hittades inte.",
-    "backToPackages": "Tillbaka till kravpaket",
+    "removeMixedConfirm": "Är du säker på att du vill ta bort {libraryCount, plural, one {1 bibliotekskrav} other {# bibliotekskrav}} från underlaget och radera {specificationLocalCount, plural, one {1 unikt krav} other {# unika krav}} permanent? Raderade unika krav kan inte återskapas.",
+    "noItems": "Det finns inga krav kopplade till detta underlag.",
+    "specificationNotFound": "Kravunderlaget hittades inte.",
+    "backToSpecifications": "Tillbaka till kravunderlag",
     "newLocalRequirement": "Nytt unikt krav",
     "editLocalRequirement": "Redigera unikt krav",
-    "localRequirementNotFound": "Det unika kravet hittades inte i detta kravpaket.",
+    "localRequirementNotFound": "Det unika kravet hittades inte i detta kravunderlag.",
     "localRequirementActionDisabledTooltip": "Det unika kravet kan bara redigeras eller tas bort när användningsstatus är Inkluderad och ingen avvikelse väntar.",
     "deleteLocalRequirementConfirmTitle": "Ta bort unikt krav",
     "deleteLocalRequirementConfirm": "Är du säker på att du vill radera detta unika krav permanent? Det går inte att återskapa.",
     "versionPinned": "Version {version} (publicerad)",
-    "addToPackageSuccess": "Kravet har lagts till i kravpaketet.",
-    "alreadyInPackage": "Kravet finns redan i kravpaketet.",
-    "noPublishedVersionError": "Kravet saknar publicerad version och kan inte läggas till i ett kravpaket.",
-    "itemsInPackage": "Krav i paketet",
+    "addToSpecificationSuccess": "Kravet har lagts till i kravunderlaget.",
+    "alreadyInSpecification": "Kravet finns redan i kravunderlaget.",
+    "noPublishedVersionError": "Kravet saknar publicerad version och kan inte läggas till i ett kravunderlag.",
+    "itemsInSpecification": "Krav i underlaget",
     "availableRequirements": "Tillgängliga krav",
     "alreadyAdded": "Redan tillagd",
-    "addToPaket": "Lägg till i paket",
-    "removeFromPackage": "Ta bort från paketet",
-    "searchPackages": "Sök kravpaket",
     "needsReferenceLabel": "Behovsreferens (valfri)",
-    "addSelectedToPackage": "Lägg till valda ({count})",
-    "packageInfo": "Paketinformation",
-    "packageDetails": "Detaljer",
-    "emptyState": "Det finns inga kravpaket än. Skapa ditt första kravpaket.",
-    "loadPackagesFailed": "Det gick inte att läsa in kravpaket.",
-    "noPackagesAvailable": "Det finns inga kravpaket att lägga till kravet i. Skapa ett kravpaket först.",
-    "loadingPackages": "Hämtar kravpaket…",
+    "addSelectedToSpecification": "Lägg till valda ({count})",
+    "specificationInfo": "Underlagsinformation",
+    "specificationDetails": "Detaljer",
+    "emptyState": "Det finns inga kravunderlag än. Skapa ditt första kravunderlag.",
+    "loadSpecificationsFailed": "Det gick inte att läsa in kravunderlag.",
+    "noSpecificationsAvailable": "Det finns inga kravunderlag att lägga till kravet i. Skapa ett kravunderlag först.",
+    "loadingSpecifications": "Hämtar kravunderlag…",
     "loadingNeedsReferences": "Hämtar behovsreferenser…",
     "failedToLoadNeedsReferences": "Det gick inte att läsa in behovsreferenser.",
-    "saveFailed": "Det gick inte att spara kravpaketet.",
+    "saveFailed": "Det gick inte att spara kravunderlaget.",
     "addNeedsRef": "Behovsreferens (valfri)",
-    "addNeedsRefHelp": "Lägg vid behov till en behovsreferens som ska gälla för alla valda krav när de läggs till i paketet.",
+    "addNeedsRefHelp": "Lägg vid behov till en behovsreferens som ska gälla för alla valda krav när de läggs till i underlaget.",
     "addNeedsRefTextLabel": "Ny behovsreferens",
     "addNeedsRefTextHelp": "Beskriv den gemensamma behovsreferens som ska sparas och kopplas till de valda kraven.",
     "addNeedsRefPlaceholder": "Ange en behovsreferens som gäller för alla valda krav",
@@ -341,7 +338,7 @@
     "newNeedsRef": "+ Skriv ny behovsreferens…",
     "existingNeedsRefs": "Välj behovsreferens",
     "confirmAdd": "Lägg till",
-    "addingCount": "Lägger till {count, plural, one {1 krav} other {# krav}} i paketet",
+    "addingCount": "Lägger till {count, plural, one {1 krav} other {# krav}} i underlaget",
     "csvHeaders": {
       "uniqueId": "Krav-ID",
       "description": "Kravtext",
@@ -352,7 +349,7 @@
       "type": "Typ",
       "qualityCharacteristic": "Kvalitetsegenskap",
       "riskLevel": "Risknivå",
-      "packageItemStatus": "Användningsstatus"
+      "specificationItemStatus": "Användningsstatus"
     },
     "printListReport": "Skriv ut kravlista",
     "downloadListReportPdf": "Ladda ner kravlista (PDF)"
@@ -411,7 +408,7 @@
     "decisionMotivationPlaceholder": "Ange resonemanget för beslutet",
     "decidedByPlaceholder": "Ange namnet på beslutsfattaren",
     "createdByLabel": "Ansvarig för kravställning",
-    "createdByHelp": "Ange namnet på den person som ansvarar för kravställningen i detta paket.",
+    "createdByHelp": "Ange namnet på den person som ansvarar för kravställningen i detta kravunderlag.",
     "createdByPlaceholder": "Ange namn",
     "reviewFailed": "Kunde inte begära granskning.",
     "revertFailed": "Kunde inte återställa till utkast.",
@@ -480,13 +477,13 @@
     "noRequirementIds": "Inga krav-ID:n angavs",
     "noRequirementsSelected": "Inga krav valda",
     "failedToLoadReport": "Det gick inte att läsa in rapporten",
-    "packageFetchFailed": "Det gick inte att läsa in kravpaketet för rapporten (status {status}).",
-    "packageFetchFailedWithDetails": "Det gick inte att läsa in kravpaketet för rapporten (status {status}): {details}",
+    "specificationFetchFailed": "Det gick inte att läsa in kravunderlaget för rapporten (status {status}).",
+    "specificationFetchFailedWithDetails": "Det gick inte att läsa in kravunderlaget för rapporten (status {status}): {details}",
     "listPdfFilename": "Kravlista {stamp}.pdf",
     "listPdfFilenameLabel": "Kravlista",
     "suggestionHistoryFilenameLabel": "Ändringsförslagshistorik",
-    "packageCover": {
-      "packageId": "Kravpaket-ID",
+    "specificationCover": {
+      "specificationId": "Kravunderlag-ID",
       "responsibilityArea": "Verksamhetsobjekt",
       "implementationType": "Genomförandeform",
       "lifecycleStatus": "Livscykelstatus",
@@ -596,7 +593,7 @@
     "editStatus": "Redigera status",
     "preview": "Förhandsvisning",
     "cannotDeleteSystem": "Systemstatusar kan inte tas bort",
-    "cannotDeleteInUse": "Går inte att ta bort – statusen används av befintliga krav"
+    "cannotDeleteInUse": "Går inte att ta bort - statusen används av befintliga krav"
   },
   "reference": {
     "name": "Namn",
@@ -687,13 +684,13 @@
     "scenariosDescription": "Hantera användningsscenarier som kan kopplas till krav.",
     "statusesDescription": "Hantera livscykelstatusar och deras ordning.",
     "qualityAttributesDescription": "Hantera kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
-    "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravpaket.",
-    "implementationTypesDescription": "Hantera genomförandeformer för kravpaket.",
-    "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravpaket.",
+    "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravunderlag.",
+    "implementationTypesDescription": "Hantera genomförandeformer för kravunderlag.",
+    "lifecycleStatusesDescription": "Hantera livscykelstatusar för kravunderlag.",
     "areaOwnersDescription": "Hantera ägare som kan tilldelas kravområden.",
     "normReferencesDescription": "Hantera normreferenser (lagar, förordningar, standarder m.m.) som kan kopplas till krav.",
     "riskLevelsDescription": "Hantera risknivåer som kan tilldelas krav.",
-    "packageItemStatusesDescription": "Hantera användningsstatusar för krav i paket."
+    "specificationItemStatusesDescription": "Hantera användningsstatusar för krav i underlag."
   },
   "terminology": {
     "description": {
@@ -811,7 +808,7 @@
         "body": "Varje krav har en uppsättning egenskaper som beskriver vad det ställer för krav, hur det klassificeras och var det passar in i organisationens processer. Nedan följer en översikt av varje egenskap och hur den stödjer kravets livscykel.",
         "requirementId": {
           "heading": "Krav-ID",
-          "body": "Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravpaket, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas."
+          "body": "Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas."
         },
         "area": {
           "heading": "Område",
@@ -839,19 +836,19 @@
         },
         "riskLevel": {
           "heading": "Risknivå",
-          "body": "Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravpaket — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen."
+          "body": "Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen."
         },
         "verifiable": {
           "heading": "Verifierbar",
-          "body": "Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravpaket där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning."
+          "body": "Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning."
         },
         "verificationMethod": {
           "heading": "Verifieringsmetod",
-          "body": "Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravpaket där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang."
+          "body": "Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang."
         },
         "scenarios": {
           "heading": "Användningsscenarier",
-          "body": "Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravpaket och filtrera krav efter de sammanhang som är relevanta för en viss leverans."
+          "body": "Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravunderlag och filtrera krav efter de sammanhang som är relevanta för en viss leverans."
         },
         "normReferences": {
           "heading": "Normreferenser",
@@ -909,22 +906,22 @@
       },
       "lifecycle": {
         "heading": "Kravets process",
-        "body": "Utkast: du kan skriva, redigera, ta bort det senaste utkastet och skicka det till granskning. Granskning: innehållet är låst för redigering tills du skickar tillbaka det till Utkast eller publicerar det. Publicerad: detta är den aktiva versionen; du kan lägga till den i kravpaket, dela eller skriva ut den och starta redigering, vilket skapar ett nytt utkast medan den publicerade versionen fortsätter att gälla. När du väljer Arkivera går kravet först in i en arkiveringsgranskning där du kan godkänna eller avbryta arkiveringen. Arkiverad: kravet är skrivskyddat och kan inte redigeras eller läggas till i kravpaket; återställ det för att skapa ett nytt utkast."
+        "body": "Utkast: du kan skriva, redigera, ta bort det senaste utkastet och skicka det till granskning. Granskning: innehållet är låst för redigering tills du skickar tillbaka det till Utkast eller publicerar det. Publicerad: detta är den aktiva versionen; du kan lägga till den i kravunderlag, dela eller skriva ut den och starta redigering, vilket skapar ett nytt utkast medan den publicerade versionen fortsätter att gälla. När du väljer Arkivera går kravet först in i en arkiveringsgranskning där du kan godkänna eller avbryta arkiveringen. Arkiverad: kravet är skrivskyddat och kan inte redigeras eller läggas till i kravunderlag; återställ det för att skapa ett nytt utkast."
       },
       "actions": {
         "heading": "Åtgärder",
-        "body": "Använd verktygsfältet för att skapa ett nytt krav, exportera den synliga listan till CSV eller PDF eller skriva ut. Markera rader med kryssrutorna när du vill lägga till flera krav i ett kravpaket eller skapa en kombinerad granskningsrapport."
+        "body": "Använd verktygsfältet för att skapa ett nytt krav, exportera den synliga listan till CSV eller PDF eller skriva ut. Markera rader med kryssrutorna när du vill lägga till flera krav i ett kravunderlag eller skapa en kombinerad granskningsrapport."
       }
     },
     "newRequirement": {
       "title": "Nytt krav",
       "form": {
         "heading": "Fylla i formuläret",
-        "body": "Välj ett område först – det bestämmer krav-ID-prefixet och ansvarig ägare. Varje fält med en frågeteckensikon har inline-vägledning. Obligatoriska fält är markerade."
+        "body": "Välj ett område först - det bestämmer krav-ID-prefixet och ansvarig ägare. Varje fält med en frågeteckensikon har inline-vägledning. Obligatoriska fält är markerade."
       },
       "lifecycle": {
         "heading": "Livscykel",
-        "body": "Ett nyskapat krav startar som Utkast. Det måste skickas för granskning och sedan publiceras innan det kan läggas till i ett kravpaket."
+        "body": "Ett nyskapat krav startar som Utkast. Det måste skickas för granskning och sedan publiceras innan det kan läggas till i ett kravunderlag."
       }
     },
     "requirementDetail": {
@@ -950,7 +947,7 @@
       },
       "form": {
         "heading": "Spara",
-        "body": "Använd \"Gå till efter sparning\" för att välja var du hamnar efter att ha sparat – listvyn eller detaljsidan. Ändringar sparas inte automatiskt; klicka Spara för att bekräfta dem."
+        "body": "Använd \"Gå till efter sparning\" för att välja var du hamnar efter att ha sparat - listvyn eller detaljsidan. Ändringar sparas inte automatiskt; klicka Spara för att bekräfta dem."
       }
     },
     "versionDetail": {
@@ -964,67 +961,67 @@
         "body": "Klicka på Återskapa för att skapa ett nytt Utkast baserat på den här versionens innehåll. Den aktuella publicerade versionen förblir aktiv tills det nya utkastet har granskats och publicerats."
       }
     },
-    "requirementPackages": {
-      "title": "Kravpaket",
+    "requirementsSpecifications": {
+      "title": "Kravunderlag",
       "overview": {
-        "heading": "Vad är ett kravpaket?",
-        "body": "Kravpaket grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje paket kan kopplas till ett verksamhetsobjekt och en genomförandeform."
+        "heading": "Vad är ett kravunderlag?",
+        "body": "Kravunderlag grupperar publicerade krav för en specifik leverans, upphandling eller verksamhetskontext. Varje underlag kan kopplas till ett verksamhetsobjekt och en genomförandeform."
       },
       "create": {
         "heading": "Skapa och redigera",
-        "body": "Klicka på \"Nytt kravpaket\" för att skapa ett. Klicka på paketnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera paketets metadata."
+        "body": "Klicka på \"Nytt kravunderlag\" för att skapa ett. Klicka på underlagsnamnet för att öppna detaljvyn. Använd redigeringsikonen för att uppdatera underlagets metadata."
       }
     },
-    "requirementPackageDetail": {
-      "title": "Kravpaketdetalj",
+    "requirementsSpecificationDetail": {
+      "title": "Kravunderlagsdetalj",
       "requirements": {
         "heading": "Hantera krav",
-        "body": "Klicka på \"Lägg till krav\" för att öppna väljaren och lägga till publicerade krav i paketet. Markera en eller flera rader och klicka på \"Ta bort valda\" för att ta bort dem."
+        "body": "Klicka på \"Lägg till krav\" för att öppna väljaren och lägga till publicerade krav i underlaget. Markera en eller flera rader och klicka på \"Ta bort valda\" för att ta bort dem."
       },
       "needsReference": {
         "heading": "Behovsreferens",
-        "body": "Varje krav i paketet kan ha en behovsreferens – en fritext som kopplar kravet till det övergripande verksamhetsbehov eller funktionella krav det uppfyller. Ange den när du lägger till krav eller redigera den inline."
+        "body": "Varje krav i underlaget kan ha en behovsreferens - en fritext som kopplar kravet till det övergripande verksamhetsbehov eller funktionella krav det uppfyller. Ange den när du lägger till krav eller redigera den inline."
       },
       "export": {
         "heading": "Exportera",
-        "body": "Använd utskrifts- och PDF-knapparna för att exportera paketets kravlista som en rapport."
+        "body": "Använd utskrifts- och PDF-knapparna för att exportera underlagets kravlista som en rapport."
       },
-      "packageItemStatus": {
+      "specificationItemStatus": {
         "heading": "Användningsstatus",
-        "body": "Spåra hur långt varje krav har kommit i paketet: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
+        "body": "Spåra hur långt varje krav har kommit i underlaget: inkluderad, pågående, implementerad, verifierad eller ej tillämpbar. Ändra statusen direkt i tabellen."
       }
     },
     "responsibilityAreas": {
       "title": "Verksamhetsobjekt",
       "overview": {
         "heading": "Vad är verksamhetsobjekt?",
-        "body": "Verksamhetsobjekt kategoriserar kravpaket efter den del av verksamheten de tillhör. Tilldela ett verksamhetsobjekt när du skapar eller redigerar ett paket."
+        "body": "Verksamhetsobjekt kategoriserar kravunderlag efter den del av verksamheten de tillhör. Tilldela ett verksamhetsobjekt när du skapar eller redigerar ett underlag."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Klicka på redigeringsikonen på en rad för att byta namn på ett verksamhetsobjekt. Använd borttagningsikonen för att ta bort det – enbart verksamhetsobjekt som inte är kopplade till några paket kan tas bort."
+        "body": "Klicka på redigeringsikonen på en rad för att byta namn på ett verksamhetsobjekt. Använd borttagningsikonen för att ta bort det - enbart verksamhetsobjekt som inte är kopplade till några kravunderlag kan tas bort."
       }
     },
     "implementationTypes": {
       "title": "Genomförandeformer",
       "overview": {
         "heading": "Vad är genomförandeformer?",
-        "body": "Genomförandeformer beskriver hur ett kravpaket ska levereras, t.ex. upphandling, intern utveckling eller integration. Tilldela en genomförandeform när du skapar eller redigerar ett paket."
+        "body": "Genomförandeformer beskriver hur ett kravunderlag ska levereras, t.ex. upphandling, intern utveckling eller integration. Tilldela en genomförandeform när du skapar eller redigerar ett underlag."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Klicka på redigeringsikonen för att byta namn på en genomförandeform. Använd borttagningsikonen för att ta bort den – enbart former som inte är kopplade till några paket kan tas bort."
+        "body": "Klicka på redigeringsikonen för att byta namn på en genomförandeform. Använd borttagningsikonen för att ta bort den - enbart former som inte är kopplade till några kravunderlag kan tas bort."
       }
     },
     "lifecycleStatuses": {
       "title": "Livscykelstatusar",
       "overview": {
         "heading": "Vad är livscykelstatusar?",
-        "body": "Livscykelstatusar beskriver den aktuella fasen för ett kravpaket, t.ex. upphandling, införande, utveckling eller förvaltning. Tilldela en livscykelstatus när du skapar eller redigerar ett paket."
+        "body": "Livscykelstatusar beskriver den aktuella fasen för ett kravunderlag, t.ex. upphandling, införande, utveckling eller förvaltning. Tilldela en livscykelstatus när du skapar eller redigerar ett underlag."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Klicka på redigeringsikonen för att byta namn på en livscykelstatus. Använd borttagningsikonen för att ta bort den – enbart statusar som inte är kopplade till några paket kan tas bort."
+        "body": "Klicka på redigeringsikonen för att byta namn på en livscykelstatus. Använd borttagningsikonen för att ta bort den - enbart statusar som inte är kopplade till några kravunderlag kan tas bort."
       }
     },
     "admin": {
@@ -1072,22 +1069,22 @@
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa och redigera scenarier med verktygsfältet. Ett scenario kan kopplas till flera krav. Att ta bort ett scenario tar bara bort scenarioposten – kopplade krav påverkas inte."
+        "body": "Skapa och redigera scenarier med verktygsfältet. Ett scenario kan kopplas till flera krav. Att ta bort ett scenario tar bara bort scenarioposten - kopplade krav påverkas inte."
       }
     },
     "normReferences": {
       "title": "Normreferenser",
       "overview": {
         "heading": "Vad är normreferenser?",
-        "body": "Normreferenser är de styrande dokument – lagar, förordningar, föreskrifter, standarder och riktlinjer – som ett krav härleds från eller måste uppfylla. Exempel: Dataskyddsförordningen (GDPR), ISO/IEC 27001:2022 eller MSBFS 2020:6.\n\nEn normreferens är ett delat objekt i systemet och kan kopplas till hur många krav som helst. Det innebär att om du uppdaterar en normreferens påverkar det alla krav som är kopplade till den."
+        "body": "Normreferenser är de styrande dokument - lagar, förordningar, föreskrifter, standarder och riktlinjer - som ett krav härleds från eller måste uppfylla. Exempel: Dataskyddsförordningen (GDPR), ISO/IEC 27001:2022 eller MSBFS 2020:6.\n\nEn normreferens är ett delat objekt i systemet och kan kopplas till hur många krav som helst. Det innebär att om du uppdaterar en normreferens påverkar det alla krav som är kopplade till den."
       },
       "idGeneration": {
         "heading": "Hur Normreferens-ID genereras automatiskt",
-        "body": "Om du lämnar ID-fältet tomt genereras ett ID automatiskt enligt följande prioritetsordning:\n\n1. Naturligt ID ur referensfältet – systemet försöker extrahera ett strukturerat ID ur referensfältet. Exempel: \"SFS 2018:218\" ger ID:t SFS-2018-218 och \"ISO 27001:2022\" ger ISO-27001-2022.\n2. Slug ur benämningen – om inget naturligt ID kan utläsas används benämningen som grund. Texten konverteras till versaler, diakritiska tecken normaliseras och resultatet trunkeras till 20 tecken. Exempel: \"Dataskyddsförordningen\" ger DATASKYDDSFORORDNINGEN.\n3. Sekvens som sista utväg – om ingen av ovanstående metoder ger ett användbart ID tilldelas ett sekvens-ID på formen NR-001, NR-002 och så vidare.\n4. Kollisionshantering – om det genererade ID:t redan används läggs ett suffix till: -2, -3 osv., tills ett unikt ID hittas."
+        "body": "Om du lämnar ID-fältet tomt genereras ett ID automatiskt enligt följande prioritetsordning:\n\n1. Naturligt ID ur referensfältet - systemet försöker extrahera ett strukturerat ID ur referensfältet. Exempel: \"SFS 2018:218\" ger ID:t SFS-2018-218 och \"ISO 27001:2022\" ger ISO-27001-2022.\n2. Slug ur benämningen - om inget naturligt ID kan utläsas används benämningen som grund. Texten konverteras till versaler, diakritiska tecken normaliseras och resultatet trunkeras till 20 tecken. Exempel: \"Dataskyddsförordningen\" ger DATASKYDDSFORORDNINGEN.\n3. Sekvens som sista utväg - om ingen av ovanstående metoder ger ett användbart ID tilldelas ett sekvens-ID på formen NR-001, NR-002 och så vidare.\n4. Kollisionshantering - om det genererade ID:t redan används läggs ett suffix till: -2, -3 osv., tills ett unikt ID hittas."
       },
       "manage": {
         "heading": "Hantera normreferenser",
-        "body": "Skapa normreferenser via knappen Skapa eller direkt i kravformuläret. Fyll i benämning, typ (t.ex. Lag, Standard), referens, valfri version och utfärdare.\n\nEn normreferens kan inte tas bort om den är kopplad till ett eller flera krav – ta bort kopplingarna från respektive krav först. Kopplade krav visas i tabellen när du redigerar en normreferens."
+        "body": "Skapa normreferenser via knappen Skapa eller direkt i kravformuläret. Fyll i benämning, typ (t.ex. Lag, Standard), referens, valfri version och utfärdare.\n\nEn normreferens kan inte tas bort om den är kopplad till ett eller flera krav - ta bort kopplingarna från respektive krav först. Kopplade krav visas i tabellen när du redigerar en normreferens."
       }
     },
     "requirementStatuses": {
@@ -1134,15 +1131,15 @@
         "body": "Lägg till nya risknivåer med Skapa-knappen. Redigera befintliga nivåer för att ändra namn, färg eller sorteringsordning. Risknivåer som är kopplade till befintliga krav kan inte tas bort."
       }
     },
-    "packageItemStatuses": {
+    "specificationItemStatuses": {
       "title": "Hjälp för användningsstatusar",
       "overview": {
         "heading": "Om användningsstatusar",
-        "body": "Användningsstatusar spårar hur långt ett krav har kommit inom ett paket — från inkluderad till implementerad och verifierad. Varje status har ett namn, en färg och en sorteringsordning."
+        "body": "Användningsstatusar spårar hur långt ett krav har kommit inom ett underlag — från inkluderad till implementerad och verifierad. Varje status har ett namn, en färg och en sorteringsordning."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Lägg till nya statusar med Skapa-knappen. Redigera befintliga statusar för att ändra namn, färg eller sorteringsordning. Statusar som är kopplade till paketposter kan inte tas bort."
+        "body": "Lägg till nya statusar med Skapa-knappen. Redigera befintliga statusar för att ändra namn, färg eller sorteringsordning. Statusar som är kopplade till underlagsposter kan inte tas bort."
       }
     }
   },
@@ -1154,13 +1151,13 @@
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
   },
-  "packageItemStatusAdmin": {
+  "specificationItemStatusAdmin": {
     "title": "Användningsstatusar",
     "name": "Namn",
     "color": "Färg",
     "colorHex": "Färgkod (hex)",
     "sortOrder": "Sorteringsordning",
-    "linkedPackages": "Kopplade kravpaket",
+    "linkedSpecifications": "Kopplade kravunderlag",
     "linkedItemCount": "Kopplade poster",
     "itemCount": "{count, plural, =0 {0 poster} one {1 post} other {# poster}}",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}",
@@ -1173,7 +1170,7 @@
     "definitionEnHelp": "Ange en engelsk definition som beskriver vad denna status innebär. Den visas som en tooltip där statusen används.",
     "noStatus": "— Ingen status —",
     "sortOrderLocked": "Sorteringsordningen för denna systemstatus kan inte ändras.",
-    "package": "Paket",
+    "specification": "Underlag",
     "requirement": "Krav"
   },
   "ai": {

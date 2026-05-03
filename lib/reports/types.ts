@@ -72,7 +72,7 @@ export type ReportSection =
   | { type: 'timeline-entry'; entry: TimelineEntryData }
   | { type: 'page-break' }
   | {
-      type: 'package-cover'
+      type: 'specification-cover'
       name: string
       uniqueId: string
       responsibilityArea: string | null
@@ -102,8 +102,8 @@ export type ReportSection =
       motivation: string
       createdBy: string | null
       createdAt: string
-      packageName: string | null
-      packageUniqueId: string | null
+      specificationName: string | null
+      specificationUniqueId: string | null
       riskLevel: { nameSv: string; nameEn: string } | null
       locale: string
     }

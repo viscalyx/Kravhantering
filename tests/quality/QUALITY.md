@@ -29,7 +29,7 @@ recorded production incident.
 | Subsystem | Target | Why |
 | --- | --- | --- |
 | `lib/dal/requirements.ts` | 92-95% | Lifecycle transitions, effective status, delete/restore, and auto-archive rules are the core register invariants. A regression here can make the same requirement appear published, draft, or archived depending on the surface. |
-| `lib/dal/requirement-packages.ts` | 90-95% | Package linking, needs-reference ownership, package-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong package status. |
+| `lib/dal/requirements-specifications.ts` | 90-95% | Package linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong package status. |
 | `lib/requirements/service.ts` and `app/api/requirements/[id]/route.ts` | 88-92% | These are the public truth layer for REST and MCP. The highest-risk failure is published-detail reads leaking draft or review content. |
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
@@ -43,7 +43,7 @@ The following do **not** count as meaningful coverage for this project:
 - Checking a requirements route returned `200` without asserting that published
   detail excluded newer draft or review data.
 - Checking a package link call returned a count without verifying
-  `packageItemStatusId` defaulting, needs-reference trimming, or orphan cleanup.
+  `specificationItemStatusId` defaulting, needs-reference trimming, or orphan cleanup.
 - Rendering the requirements table and only asserting headers are visible
   without proving hidden-column filters were cleared.
 - Mocking deviation or suggestion approval paths so the test never exercises
@@ -195,21 +195,21 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 <!-- markdownlint-enable MD013 -->
 
 **What happened:** Both `updatePackageItemFields()` and
-`updatePackageLocalRequirementFields()` block `packageItemStatusId = 5`
-without an approved deviation at
-`lib/dal/requirement-packages.ts:1860-2001`. If the UI or API can set
+`updateSpecificationLocalRequirementFields()` block
+`specificationItemStatusId = 5` without an approved deviation at
+`lib/dal/requirements-specifications.ts:1860-2001`. If the UI or API can set
 "Deviated" directly, package dashboards and reports imply an approved risk
 exception that never happened.
 
-**The requirement:** Library items and package-local requirements may enter the
-Deviated state only after an approved deviation decision exists for that exact
-item kind.
+**The requirement:** Library items and specification-local requirements
+may enter the Deviated state only after an approved deviation decision
+exists for that exact item kind.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and package-local items"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and specification-local items"
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -223,12 +223,12 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated
 **What happened:** `linkRequirementsToPackageAtomically()` trims
 `needsReferenceText`, creates or reuses the metadata row, and deletes a newly
 created row when no package items were actually inserted at
-`lib/dal/requirement-packages.ts:1447-1512`. Without that cleanup, the package
+`lib/dal/requirements-specifications.ts:1447-1512`. Without that cleanup, the package
 administration views accumulate business-need entries that look real but are
 not attached to any requirement.
 
-**The requirement:** `package_needs_references` rows must exist only when at
-least one linked package item still points at them.
+**The requirement:** `specification_needs_references` rows must exist only when
+at least one linked package item still points at them.
 
 **How to verify:**
 
@@ -274,7 +274,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggesti
 [Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]
 ```
 
-**What happened:** Both library and package-local deviation decisions
+**What happened:** Both library and specification-local deviation decisions
 are guarded by `isReviewRequested` checks in
 `lib/dal/deviations.ts:521-693`. Decisions can only be recorded
 when a deviation has been submitted for review

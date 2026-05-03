@@ -16,9 +16,9 @@ interface RequirementReportMenuBaseProps {
 type RequirementReportMenuProps =
   | (RequirementReportMenuBaseProps & {
       deviationStep: DeviationStep | null
-      packageItemId: number
-      packageSlug: string
-      variant: 'package'
+      specificationItemId: number
+      specificationSlug: string
+      variant: 'specification'
     })
   | (RequirementReportMenuBaseProps & {
       variant: 'standalone'
@@ -49,7 +49,7 @@ export default function RequirementReportMenu(
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showReportMenu])
 
-  if (variant === 'package' && props.deviationStep === 'draft') {
+  if (variant === 'specification' && props.deviationStep === 'draft') {
     return null
   }
 
@@ -70,7 +70,7 @@ export default function RequirementReportMenu(
           context: detailContext,
           name: 'report print button',
           priority: 290,
-          value: 'package reports',
+          value: 'specification reports',
         })
 
   return (
@@ -87,7 +87,7 @@ export default function RequirementReportMenu(
       </button>
       {showReportMenu && (
         <div className="absolute right-0 z-20 mt-1 w-64 rounded-xl border bg-white dark:bg-secondary-800 shadow-lg py-1">
-          {variant === 'package' ? (
+          {variant === 'specification' ? (
             props.deviationStep === 'review_requested' ? (
               <>
                 <button
@@ -100,7 +100,7 @@ export default function RequirementReportMenu(
                   })}
                   onClick={() =>
                     openReport(
-                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${props.packageSlug}&item=${props.packageItemId}`,
+                      `/${locale}/requirements/reports/print/deviation-review/${requirementId}?pkg=${props.specificationSlug}&item=${props.specificationItemId}`,
                     )
                   }
                   type="button"
@@ -118,7 +118,7 @@ export default function RequirementReportMenu(
                   })}
                   onClick={() =>
                     openReport(
-                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${props.packageSlug}&item=${props.packageItemId}`,
+                      `/${locale}/requirements/reports/pdf/deviation-review/${requirementId}?pkg=${props.specificationSlug}&item=${props.specificationItemId}`,
                     )
                   }
                   type="button"

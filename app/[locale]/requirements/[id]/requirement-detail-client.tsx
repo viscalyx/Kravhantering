@@ -15,21 +15,21 @@ import VersionHistory from '@/components/VersionHistory'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import AddToPackageDialog from './_detail/AddToPackageDialog'
+import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
 import ImprovementSuggestionsSection from './_detail/ImprovementSuggestionsSection'
 import { getLocalizedName } from './_detail/localized-name'
-import PackageDeviationRail from './_detail/PackageDeviationRail'
 import RequirementActionRail from './_detail/RequirementActionRail'
+import SpecificationDeviationRail from './_detail/SpecificationDeviationRail'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
 } from './_detail/types'
-import { useAddToPackageDialog } from './_detail/use-add-to-package-dialog'
+import { useAddToSpecificationDialog } from './_detail/use-add-to-specification-dialog'
 import { useDeviationWorkflow } from './_detail/use-deviation-workflow'
-import { usePackageItemContext } from './_detail/use-package-item-context'
 import { useRequirementDetailData } from './_detail/use-requirement-detail-data'
+import { usePackageItemContext } from './_detail/use-specification-item-context'
 import { useSuggestionWorkflow } from './_detail/use-suggestion-workflow'
 import { useVersionPillConnector } from './_detail/use-version-pill-connector'
 import {
@@ -68,14 +68,14 @@ interface RequirementDetailClientPropsBase {
 
 interface RequirementDetailClientStandalone
   extends RequirementDetailClientPropsBase {
-  packageItemId?: undefined
-  packageSlug?: undefined
+  specificationItemId?: undefined
+  specificationSlug?: undefined
 }
 
 interface RequirementDetailClientPackageItem
   extends RequirementDetailClientPropsBase {
-  packageItemId: number
-  packageSlug: string
+  specificationItemId: number
+  specificationSlug: string
 }
 
 type RequirementDetailClientProps =
@@ -87,14 +87,14 @@ export default function RequirementDetailClient({
   inline,
   onChange,
   onClose,
-  packageItemId,
-  packageSlug,
+  specificationItemId,
+  specificationSlug,
   requirementId,
 }: RequirementDetailClientProps) {
   useHelpContent(inline ? null : REQUIREMENT_DETAIL_HELP)
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
-  const tp = useTranslations('package')
+  const tp = useTranslations('specification')
   const router = useRouter()
   const locale = useLocale()
   const { confirm } = useConfirmModal()
@@ -106,10 +106,11 @@ export default function RequirementDetailClient({
     statuses,
     transitions,
   } = useRequirementDetailData({ requirementId })
-  const { isPackageItemContext, packageItemDetail } = usePackageItemContext({
-    packageItemId,
-    packageSlug,
-  })
+  const { isPackageItemContext, specificationItemDetail } =
+    usePackageItemContext({
+      specificationItemId,
+      specificationSlug,
+    })
 
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [selectedVersionNumber, setSelectedVersionNumber] = useState<
@@ -130,7 +131,7 @@ export default function RequirementDetailClient({
   const deviationWorkflow = useDeviationWorkflow({
     isPackageItemContext,
     onChange,
-    packageItemId,
+    specificationItemId,
   })
   const suggestionWorkflow = useSuggestionWorkflow({
     onChange,
@@ -138,7 +139,7 @@ export default function RequirementDetailClient({
     requirementId,
     selectedVersionNumber,
   })
-  const addToPackageDialog = useAddToPackageDialog({
+  const addToSpecificationDialog = useAddToSpecificationDialog({
     requirementInternalId: req?.id ?? null,
   })
   const { cardRef, connectorHeight, triangleLeft, versionHistoryRef } =
@@ -270,7 +271,7 @@ export default function RequirementDetailClient({
       ? selectedVersion?.statusNameSv
       : selectedVersion?.statusNameEn) ?? ''
   const currentStatusColor = selectedVersion?.statusColor ?? null
-  const canAddToPackage =
+  const canAddToSpecification =
     currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
   const detailContext = inline
     ? `requirements table > inline detail pane: ${req.uniqueId}`
@@ -359,30 +360,30 @@ export default function RequirementDetailClient({
             id: 'needs-reference',
             label: tp('needsReference'),
             markerValue: 'needs reference',
-            value: packageItemDetail?.needsReference ?? '—',
+            value: specificationItemDetail?.needsReference ?? '—',
           },
           {
             id: 'package-item-status',
-            label: t('packageItemStatus'),
-            markerValue: 'package item status',
+            label: t('specificationItemStatus'),
+            markerValue: 'specification item status',
             value:
-              packageItemDetail?.packageItemStatusNameEn ||
-              packageItemDetail?.packageItemStatusNameSv ? (
+              specificationItemDetail?.specificationItemStatusNameEn ||
+              specificationItemDetail?.specificationItemStatusNameSv ? (
                 <span className="inline-flex items-center gap-1.5">
-                  {packageItemDetail.packageItemStatusColor ? (
+                  {specificationItemDetail.specificationItemStatusColor ? (
                     <span
                       className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                       style={{
                         backgroundColor:
-                          packageItemDetail.packageItemStatusColor,
+                          specificationItemDetail.specificationItemStatusColor,
                       }}
                     />
                   ) : null}
                   {locale === 'sv'
-                    ? (packageItemDetail.packageItemStatusNameSv ??
-                      packageItemDetail.packageItemStatusNameEn)
-                    : (packageItemDetail.packageItemStatusNameEn ??
-                      packageItemDetail.packageItemStatusNameSv)}
+                    ? (specificationItemDetail.specificationItemStatusNameSv ??
+                      specificationItemDetail.specificationItemStatusNameEn)
+                    : (specificationItemDetail.specificationItemStatusNameEn ??
+                      specificationItemDetail.specificationItemStatusNameSv)}
                 </span>
               ) : (
                 '—'
@@ -392,9 +393,9 @@ export default function RequirementDetailClient({
       : []),
     {
       id: 'package-count',
-      label: t('packageCount'),
-      markerValue: 'package count',
-      value: req.packageCount,
+      label: t('specificationCount'),
+      markerValue: 'specification count',
+      value: req.specificationCount,
     },
   ]
 
@@ -830,19 +831,21 @@ export default function RequirementDetailClient({
                   />
                 )}
 
-              {isPackageItemContext && packageItemId != null && packageSlug ? (
-                <PackageDeviationRail
+              {isPackageItemContext &&
+              specificationItemId != null &&
+              specificationSlug ? (
+                <SpecificationDeviationRail
                   detailContext={detailContext}
                   locale={locale}
-                  packageItemId={packageItemId}
-                  packageSlug={packageSlug}
                   requirementId={requirementId}
                   riskLevel={riskLevelForDeviation}
+                  specificationItemId={specificationItemId}
+                  specificationSlug={specificationSlug}
                   workflow={deviationWorkflow}
                 />
               ) : (
                 <RequirementActionRail
-                  canAddToPackage={canAddToPackage}
+                  canAddToSpecification={canAddToSpecification}
                   currentStatusId={currentStatusId}
                   detailContext={detailContext}
                   displayVersionNumber={displayVersion?.versionNumber}
@@ -860,7 +863,7 @@ export default function RequirementDetailClient({
                   onArchive={handleArchive}
                   onCancelArchiving={handleCancelArchiving}
                   onDeleteDraft={handleDeleteDraft}
-                  onOpenAddToPackage={addToPackageDialog.openDialog}
+                  onOpenAddToSpecification={addToSpecificationDialog.openDialog}
                   onRestore={handleRestore}
                   onTransition={handleTransition}
                   onVersionSelect={handleVersionSelect}
@@ -899,8 +902,8 @@ export default function RequirementDetailClient({
     return (
       <>
         {content}
-        <AddToPackageDialog
-          dialog={addToPackageDialog}
+        <AddToSpecificationDialog
+          dialog={addToSpecificationDialog}
           onDocumentKeyDown={handleModalDocumentKeyDown}
         />
       </>
@@ -937,8 +940,8 @@ export default function RequirementDetailClient({
             {content}
           </div>
         </div>
-        <AddToPackageDialog
-          dialog={addToPackageDialog}
+        <AddToSpecificationDialog
+          dialog={addToSpecificationDialog}
           onDocumentKeyDown={handleModalDocumentKeyDown}
         />
       </>
@@ -948,8 +951,8 @@ export default function RequirementDetailClient({
   return (
     <>
       {content}
-      <AddToPackageDialog
-        dialog={addToPackageDialog}
+      <AddToSpecificationDialog
+        dialog={addToSpecificationDialog}
         onDocumentKeyDown={handleModalDocumentKeyDown}
       />
     </>

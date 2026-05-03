@@ -15,29 +15,35 @@ vi.mock('@/lib/db', () => ({
 
 const mockUpdateImpl = vi.fn()
 const mockDeleteImpl = vi.fn()
-vi.mock('@/lib/dal/package-implementation-types', () => ({
-  listPackageImplementationTypes: async () => [{ id: 1 }],
-  createPackageImplementationType: async () => ({ id: 2 }),
-  updatePackageImplementationType: (...a: unknown[]) => mockUpdateImpl(...a),
-  deletePackageImplementationType: (...a: unknown[]) => mockDeleteImpl(...a),
+vi.mock('@/lib/dal/specification-implementation-types', () => ({
+  listSpecificationImplementationTypes: async () => [{ id: 1 }],
+  createSpecificationImplementationType: async () => ({ id: 2 }),
+  updateSpecificationImplementationType: (...a: unknown[]) =>
+    mockUpdateImpl(...a),
+  deleteSpecificationImplementationType: (...a: unknown[]) =>
+    mockDeleteImpl(...a),
 }))
 
 const mockUpdateLifecycle = vi.fn()
 const mockDeleteLifecycle = vi.fn()
-vi.mock('@/lib/dal/package-lifecycle-statuses', () => ({
-  listPackageLifecycleStatuses: async () => [{ id: 1 }],
-  createPackageLifecycleStatus: async () => ({ id: 2 }),
-  updatePackageLifecycleStatus: (...a: unknown[]) => mockUpdateLifecycle(...a),
-  deletePackageLifecycleStatus: (...a: unknown[]) => mockDeleteLifecycle(...a),
+vi.mock('@/lib/dal/specification-lifecycle-statuses', () => ({
+  listSpecificationLifecycleStatuses: async () => [{ id: 1 }],
+  createSpecificationLifecycleStatus: async () => ({ id: 2 }),
+  updateSpecificationLifecycleStatus: (...a: unknown[]) =>
+    mockUpdateLifecycle(...a),
+  deleteSpecificationLifecycleStatus: (...a: unknown[]) =>
+    mockDeleteLifecycle(...a),
 }))
 
 const mockUpdateArea = vi.fn()
 const mockDeleteArea = vi.fn()
-vi.mock('@/lib/dal/package-responsibility-areas', () => ({
-  listPackageResponsibilityAreas: async () => [{ id: 1 }],
-  createPackageResponsibilityArea: async () => ({ id: 2 }),
-  updatePackageResponsibilityArea: (...a: unknown[]) => mockUpdateArea(...a),
-  deletePackageResponsibilityArea: (...a: unknown[]) => mockDeleteArea(...a),
+vi.mock('@/lib/dal/specification-responsibility-areas', () => ({
+  listSpecificationResponsibilityAreas: async () => [{ id: 1 }],
+  createSpecificationResponsibilityArea: async () => ({ id: 2 }),
+  updateSpecificationResponsibilityArea: (...a: unknown[]) =>
+    mockUpdateArea(...a),
+  deleteSpecificationResponsibilityArea: (...a: unknown[]) =>
+    mockDeleteArea(...a),
 }))
 
 const mockUpdateReqArea = vi.fn()
@@ -55,7 +61,7 @@ vi.mock('@/lib/dal/owners', () => ({
 
 const mockUpdatePkg = vi.fn()
 const mockDeletePkg = vi.fn()
-vi.mock('@/lib/dal/requirement-packages', () => ({
+vi.mock('@/lib/dal/requirements-specifications', () => ({
   listPackages: async () => [{ id: 1 }],
   createPackage: async () => ({ id: 2 }),
   updatePackage: (...a: unknown[]) => mockUpdatePkg(...a),
@@ -88,30 +94,6 @@ vi.mock('@/lib/dal/requirement-categories', () => ({
 /* ── imports ─────────────────────────────────────────────────────── */
 
 import {
-  DELETE as deleteImplType,
-  PUT as putImplType,
-} from '@/app/api/package-implementation-types/[id]/route'
-import {
-  GET as getImplTypes,
-  POST as postImplType,
-} from '@/app/api/package-implementation-types/route'
-import {
-  DELETE as deleteLifecycle,
-  PUT as putLifecycle,
-} from '@/app/api/package-lifecycle-statuses/[id]/route'
-import {
-  GET as getLifecycleStatuses,
-  POST as postLifecycle,
-} from '@/app/api/package-lifecycle-statuses/route'
-import {
-  DELETE as deleteRespArea,
-  PUT as putRespArea,
-} from '@/app/api/package-responsibility-areas/[id]/route'
-import {
-  GET as getAreas,
-  POST as postArea,
-} from '@/app/api/package-responsibility-areas/route'
-import {
   GET as getTypeCats,
   POST as postTypeCat,
 } from '@/app/api/quality-characteristics/route'
@@ -124,15 +106,36 @@ import {
   POST as postReqArea,
 } from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
+import { GET as getTypes } from '@/app/api/requirement-types/route'
+import {
+  DELETE as deleteImplType,
+  PUT as putImplType,
+} from '@/app/api/specification-implementation-types/[id]/route'
+import {
+  GET as getImplTypes,
+  POST as postImplType,
+} from '@/app/api/specification-implementation-types/route'
+import {
+  DELETE as deleteLifecycle,
+  PUT as putLifecycle,
+} from '@/app/api/specification-lifecycle-statuses/[id]/route'
+import {
+  GET as getLifecycleStatuses,
+  POST as postLifecycle,
+} from '@/app/api/specification-lifecycle-statuses/route'
+import {
+  DELETE as deleteRespArea,
+  PUT as putRespArea,
+} from '@/app/api/specification-responsibility-areas/[id]/route'
+import {
+  GET as getAreas,
+  POST as postArea,
+} from '@/app/api/specification-responsibility-areas/route'
 import {
   DELETE as deletePkg,
   PUT as putPkg,
-} from '@/app/api/requirement-packages/[id]/route'
-import {
-  GET as getPkgs,
-  POST as postPkg,
-} from '@/app/api/requirement-packages/route'
-import { GET as getTypes } from '@/app/api/requirement-types/route'
+} from '@/app/api/specifications/[id]/route'
+import { GET as getPkgs, POST as postPkg } from '@/app/api/specifications/route'
 import {
   DELETE as deleteScen,
   PUT as putScen,

@@ -22,13 +22,13 @@ export function buildDeviationReviewReport(
     generatedAt: now,
   })
 
-  if (data.packageName) {
+  if (data.specificationName) {
     sections.push({
       type: 'notice',
       message:
         locale === 'sv'
-          ? `Kravpaket: ${data.packageName} (${data.packageUniqueId})`
-          : `Requirement Package: ${data.packageName} (${data.packageUniqueId})`,
+          ? `Kravunderlag: ${data.specificationName} (${data.specificationUniqueId})`
+          : `Requirements Specification: ${data.specificationName} (${data.specificationUniqueId})`,
       severity: 'info',
     })
   }
@@ -74,8 +74,8 @@ export function buildDeviationReviewReport(
     motivation: data.deviation.motivation,
     createdBy: data.deviation.createdBy,
     createdAt: data.deviation.createdAt,
-    packageName: data.packageName,
-    packageUniqueId: data.packageUniqueId,
+    specificationName: data.specificationName,
+    specificationUniqueId: data.specificationUniqueId,
     riskLevel: v.riskLevel,
     locale,
   })

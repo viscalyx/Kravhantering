@@ -26,20 +26,20 @@ describe('RequirementReportMenu', () => {
     render(
       <RequirementReportMenu
         currentStatusId={0}
-        detailContext="requirement package detail > inline detail pane: REQ-123"
+        detailContext="requirements specification detail > inline detail pane: REQ-123"
         deviationStep={null}
         locale="sv"
-        packageItemId={31}
-        packageSlug="ETJANSTPLATT"
         requirementId={123}
-        variant="package"
+        specificationItemId={31}
+        specificationSlug="ETJANST-UPP-2026"
+        variant="specification"
       />,
     )
 
     const trigger = screen.getByRole('button', { name: 'Print' })
     expect(trigger).toHaveAttribute(
       'data-developer-mode-context',
-      'requirement package detail > inline detail pane: REQ-123',
+      'requirements specification detail > inline detail pane: REQ-123',
     )
     expect(trigger).toHaveAttribute(
       'data-developer-mode-name',
@@ -47,7 +47,7 @@ describe('RequirementReportMenu', () => {
     )
     expect(trigger).toHaveAttribute(
       'data-developer-mode-value',
-      'package reports',
+      'specification reports',
     )
 
     await userEvent.click(trigger)
@@ -67,13 +67,13 @@ describe('RequirementReportMenu', () => {
     render(
       <RequirementReportMenu
         currentStatusId={0}
-        detailContext="requirement package detail > inline detail pane: REQ-123"
+        detailContext="requirements specification detail > inline detail pane: REQ-123"
         deviationStep="review_requested"
         locale="sv"
-        packageItemId={31}
-        packageSlug="ETJANSTPLATT"
         requirementId={123}
-        variant="package"
+        specificationItemId={31}
+        specificationSlug="ETJANST-UPP-2026"
+        variant="specification"
       />,
     )
 

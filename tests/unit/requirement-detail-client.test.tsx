@@ -66,12 +66,12 @@ vi.mock('next-intl', () => ({
       'requirement.displayedVersion': 'Displayed version',
       'requirement.pendingVersionBanner': values =>
         `Pending version v${values?.version} ${values?.status}`,
-      'requirement.packageItemStatus': 'Usage status',
+      'requirement.specificationItemStatus': 'Usage status',
       'requirement.publishedVersionAvailableBanner': values =>
         `Published version v${values?.version} is available`,
       'requirement.noPublishedVersion':
         'There is no published version of this requirement.',
-      'requirement.packageCount': 'Used in packages',
+      'requirement.specificationCount': 'Used in packages',
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm': 'Reactivate this requirement?',
       'requirement.reference': 'Reference',
@@ -90,7 +90,7 @@ vi.mock('next-intl', () => ({
       'requirement.qualityCharacteristic': 'Quality characteristic',
       'requirement.viewingOlderVersion': values =>
         `Viewing older version v${values?.version}`,
-      'package.needsReference': 'Needs reference',
+      'specification.needsReference': 'Needs reference',
     }
 
     return (key: string, values?: Record<string, string>) => {
@@ -296,7 +296,7 @@ function makeRequirement(
     createdAt: '2026-03-01T00:00:00Z',
     id: 123,
     isArchived: false,
-    packageCount: 0,
+    specificationCount: 0,
     uniqueId: 'REQ-123',
     versions,
     ...rest,
@@ -385,14 +385,14 @@ type RequirementDetailTestSuggestion = {
 }
 
 function setupFetch({
-  addToPackageHandler,
+  addToSpecificationHandler,
   archiveHandler,
   deleteDraftNextRequirement,
   deleteDraftResponse = { deleted: 'version' },
   deviations = [],
   initialRequirement,
   needsReferencesHandler,
-  packageItemDetail,
+  specificationItemDetail,
   packages = [],
   packagesHandler,
   reactivateNextRequirement,
@@ -401,8 +401,8 @@ function setupFetch({
   suggestions = [],
   transitionNextRequirement,
 }: {
-  addToPackageHandler?: (
-    packageId: string,
+  addToSpecificationHandler?: (
+    specificationId: string,
     init?: RequestInit,
   ) => Promise<Response> | Response
   archiveHandler?: (init?: RequestInit) => Promise<Response> | Response
@@ -411,17 +411,17 @@ function setupFetch({
   deviations?: RequirementDetailTestDeviation[]
   initialRequirement: ReturnType<typeof makeRequirement>
   needsReferencesHandler?: (
-    packageId: string,
+    specificationId: string,
     signal?: AbortSignal,
   ) => Promise<Response> | Response
-  packageItemDetail?: {
+  specificationItemDetail?: {
     needsReference: string | null
     needsReferenceId: number | null
-    packageItemId: number
-    packageItemStatusColor: string | null
-    packageItemStatusId: number | null
-    packageItemStatusNameEn: string | null
-    packageItemStatusNameSv: string | null
+    specificationItemId: number
+    specificationItemStatusColor: string | null
+    specificationItemStatusId: number | null
+    specificationItemStatusNameEn: string | null
+    specificationItemStatusNameSv: string | null
   }
   packages?: { id: number; name: string }[]
   packagesHandler?: () => Promise<Response> | Response
@@ -502,7 +502,7 @@ function setupFetch({
         return response({})
       }
 
-      if (url === '/api/requirement-packages' && method === 'GET') {
+      if (url === '/api/specifications' && method === 'GET') {
         if (packagesHandler) {
           return packagesHandler()
         }
@@ -510,7 +510,7 @@ function setupFetch({
       }
 
       const needsReferencesMatch = url.match(
-        /^\/api\/requirement-packages\/([^/]+)\/needs-references$/,
+        /^\/api\/specifications\/([^/]+)\/needs-references$/,
       )
       if (needsReferencesMatch) {
         if (needsReferencesHandler) {
@@ -522,36 +522,39 @@ function setupFetch({
         return response({ needsReferences: [] })
       }
 
-      const packageItemDetailMatch = url.match(
-        /^\/api\/requirement-packages\/([^/]+)\/items\/(\d+)$/,
+      const specificationItemDetailMatch = url.match(
+        /^\/api\/specifications\/([^/]+)\/items\/(\d+)$/,
       )
-      if (method === 'GET' && packageItemDetailMatch) {
+      if (method === 'GET' && specificationItemDetailMatch) {
         return response(
-          packageItemDetail ?? {
+          specificationItemDetail ?? {
             needsReference: null,
             needsReferenceId: null,
-            packageItemId: Number(packageItemDetailMatch[2] ?? 0),
-            packageItemStatusColor: null,
-            packageItemStatusId: null,
-            packageItemStatusNameEn: null,
-            packageItemStatusNameSv: null,
+            specificationItemId: Number(specificationItemDetailMatch[2] ?? 0),
+            specificationItemStatusColor: null,
+            specificationItemStatusId: null,
+            specificationItemStatusNameEn: null,
+            specificationItemStatusNameSv: null,
           },
         )
       }
 
-      const packageItemDeviationsMatch = url.match(
-        /^\/api\/package-item-deviations\/(\d+)$/,
+      const specificationItemDeviationsMatch = url.match(
+        /^\/api\/specification-item-deviations\/(\d+)$/,
       )
-      if (method === 'GET' && packageItemDeviationsMatch) {
+      if (method === 'GET' && specificationItemDeviationsMatch) {
         return response({ deviations })
       }
 
-      const addToPackageMatch = url.match(
-        /^\/api\/requirement-packages\/([^/]+)\/items$/,
+      const addToSpecificationMatch = url.match(
+        /^\/api\/specifications\/([^/]+)\/items$/,
       )
-      if (method === 'POST' && addToPackageMatch) {
-        if (addToPackageHandler) {
-          return addToPackageHandler(addToPackageMatch[1] ?? '', init)
+      if (method === 'POST' && addToSpecificationMatch) {
+        if (addToSpecificationHandler) {
+          return addToSpecificationHandler(
+            addToSpecificationMatch[1] ?? '',
+            init,
+          )
         }
         return response({})
       }
@@ -764,7 +767,7 @@ describe('RequirementDetailClient', () => {
           statusNameSv: 'Publicerad',
         }),
       ],
-      { packageCount: 5 },
+      { specificationCount: 5 },
     )
 
     setupFetch({ initialRequirement: requirement })
@@ -779,7 +782,7 @@ describe('RequirementDetailClient', () => {
       screen
         .getByText('Used in packages')
         .closest('[data-developer-mode-name="detail section"]'),
-    ).toHaveAttribute('data-developer-mode-value', 'package count')
+    ).toHaveAttribute('data-developer-mode-value', 'specification count')
   })
 
   it('shows needs reference and usage status in package-context inline detail metadata', async () => {
@@ -796,21 +799,21 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      packageItemDetail: {
+      specificationItemDetail: {
         needsReference: 'Shared package need',
         needsReferenceId: 81,
-        packageItemId: 31,
-        packageItemStatusColor: '#f59e0b',
-        packageItemStatusId: 2,
-        packageItemStatusNameEn: 'Ongoing',
-        packageItemStatusNameSv: 'Pågående',
+        specificationItemId: 31,
+        specificationItemStatusColor: '#f59e0b',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
       },
     })
 
     renderSubject({
       inline: true,
-      packageItemId: 31,
-      packageSlug: 'ETJANSTPLATT',
+      specificationItemId: 31,
+      specificationSlug: 'ETJANST-UPP-2026',
       requirementId: 123,
     })
 
@@ -830,7 +833,7 @@ describe('RequirementDetailClient', () => {
       screen
         .getByText('Usage status')
         .closest('[data-developer-mode-name="detail section"]'),
-    ).toHaveAttribute('data-developer-mode-value', 'package item status')
+    ).toHaveAttribute('data-developer-mode-value', 'specification item status')
   })
 
   it('falls back to the alternate locale label when localized taxonomy names are missing', async () => {
@@ -1577,8 +1580,8 @@ describe('RequirementDetailClient', () => {
     })
     renderSubject({
       inline: true,
-      packageItemId: 31,
-      packageSlug: 'ETJANSTPLATT',
+      specificationItemId: 31,
+      specificationSlug: 'ETJANST-UPP-2026',
     })
 
     await screen.findByText('Deviation under review')
@@ -1590,7 +1593,7 @@ describe('RequirementDetailClient', () => {
     )
 
     expect(openSpy).toHaveBeenCalledWith(
-      '/sv/requirements/reports/print/deviation-review/123?pkg=ETJANSTPLATT&item=31',
+      '/sv/requirements/reports/print/deviation-review/123?pkg=ETJANST-UPP-2026&item=31',
       '_blank',
     )
   })
@@ -1674,29 +1677,29 @@ describe('RequirementDetailClient', () => {
 
     await screen.findByText('Published requirement')
 
-    const addToPackageButton = screen.getByRole('button', {
-      name: 'package.addToPackage',
+    const addToSpecificationButton = screen.getByRole('button', {
+      name: 'specification.addToSpecification',
     })
-    expect(addToPackageButton).toHaveAttribute(
+    expect(addToSpecificationButton).toHaveAttribute(
       'data-developer-mode-name',
       'detail action',
     )
-    expect(addToPackageButton).toHaveAttribute(
+    expect(addToSpecificationButton).toHaveAttribute(
       'data-developer-mode-value',
       'add to package',
     )
 
-    await userEvent.click(addToPackageButton)
+    await userEvent.click(addToSpecificationButton)
 
     const dialog = await screen.findByRole('dialog', {
-      name: 'package.addToPackage',
+      name: 'specification.addToSpecification',
     })
     expect(dialog).toHaveAttribute(
       'aria-labelledby',
       'add-to-package-dialog-title',
     )
     const heading = screen.getByRole('heading', {
-      name: 'package.addToPackage',
+      name: 'specification.addToSpecification',
     })
     expect(heading).toHaveAttribute('id', 'add-to-package-dialog-title')
     const panel = dialog.querySelector('[role="document"]')
@@ -1708,17 +1711,19 @@ describe('RequirementDetailClient', () => {
 
     expect(
       await screen.findByRole('button', {
-        name: 'common.help: package.selectPackage',
+        name: 'common.help: specification.selectSpecification',
       }),
     ).toBeInTheDocument()
 
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'common.help: package.selectPackage',
+        name: 'common.help: specification.selectSpecification',
       }),
     )
 
-    expect(screen.getByText('package.selectPackageHelp')).toBeInTheDocument()
+    expect(
+      screen.getByText('specification.selectSpecificationHelp'),
+    ).toBeInTheDocument()
   })
 
   it('shows an inline error when loading packages for the add-to-package dialog fails', async () => {
@@ -1746,14 +1751,16 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'package.loadPackagesFailed: Package lookup failed',
+      'specification.loadSpecificationsFailed: Package lookup failed',
     )
-    expect(screen.queryByText('package.noPackagesAvailable')).toBeNull()
+    expect(
+      screen.queryByText('specification.noSpecificationsAvailable'),
+    ).toBeNull()
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()
@@ -1788,14 +1795,16 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'package.loadPackagesFailed: Package lookup failed',
+      'specification.loadSpecificationsFailed: Package lookup failed',
     )
-    expect(screen.queryByText('package.noPackagesAvailable')).toBeNull()
+    expect(
+      screen.queryByText('specification.noSpecificationsAvailable'),
+    ).toBeNull()
     expect(consoleErrorSpy).toHaveBeenCalled()
 
     consoleErrorSpy.mockRestore()
@@ -1822,7 +1831,7 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
@@ -1855,7 +1864,7 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
@@ -1887,21 +1896,21 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     const packageSelect = await screen.findByRole('combobox', {
-      name: /package\.selectPackage/,
+      name: /specification\.selectSpecification/,
     })
     const needsReferenceSelect = screen.getByRole('combobox', {
-      name: /package\.needsReferenceLabel/,
+      name: /specification\.needsReferenceLabel/,
     })
 
     await userEvent.selectOptions(needsReferenceSelect, 'new')
 
     const needsReferenceText = screen.getByRole('textbox', {
-      name: /package\.addNeedsRefTextLabel/,
+      name: /specification\.addNeedsRefTextLabel/,
     })
 
     for (const field of [
@@ -1935,11 +1944,11 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      needsReferencesHandler: (packageId, signal) => {
+      needsReferencesHandler: (specificationId, signal) => {
         if (signal) {
           signals.push(signal)
         }
-        return packageId === '7'
+        return specificationId === '7'
           ? firstNeedsReferences.promise
           : secondNeedsReferences.promise
       },
@@ -1953,12 +1962,12 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     const packageSelect = screen.getByRole('combobox', {
-      name: /package\.selectPackage/,
+      name: /specification\.selectSpecification/,
     })
 
     await userEvent.selectOptions(packageSelect, '7')
@@ -2016,13 +2025,13 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     await userEvent.selectOptions(
       screen.getByRole('combobox', {
-        name: /package\.selectPackage/,
+        name: /specification\.selectSpecification/,
       }),
       '7',
     )
@@ -2049,7 +2058,7 @@ describe('RequirementDetailClient', () => {
 
     setupFetch({
       initialRequirement: requirement,
-      needsReferencesHandler: (_packageId, signal) => {
+      needsReferencesHandler: (_specificationId, signal) => {
         if (signal) {
           signals.push(signal)
         }
@@ -2062,13 +2071,13 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     await userEvent.selectOptions(
       screen.getByRole('combobox', {
-        name: /package\.selectPackage/,
+        name: /specification\.selectSpecification/,
       }),
       '7',
     )
@@ -2100,15 +2109,15 @@ describe('RequirementDetailClient', () => {
           statusNameSv: 'Publicerad',
         }),
       ])
-      const pendingAddToPackage = createDeferred<Response>()
+      const pendingAddToSpecification = createDeferred<Response>()
       const submitSignals: AbortSignal[] = []
 
       setupFetch({
-        addToPackageHandler: (_packageId, init) => {
+        addToSpecificationHandler: (_specificationId, init) => {
           if (init?.signal) {
             submitSignals.push(init.signal)
           }
-          return pendingAddToPackage.promise
+          return pendingAddToSpecification.promise
         },
         initialRequirement: requirement,
         packages: [{ id: 7, name: 'IAM Package' }],
@@ -2118,20 +2127,20 @@ describe('RequirementDetailClient', () => {
       await screen.findByText('Published requirement')
       await userEvent.click(
         screen.getByRole('button', {
-          name: 'package.addToPackage',
+          name: 'specification.addToSpecification',
         }),
       )
 
       let dialog = await screen.findByRole('dialog')
       await userEvent.selectOptions(
         within(dialog).getByRole('combobox', {
-          name: /package\.selectPackage/,
+          name: /specification\.selectSpecification/,
         }),
         '7',
       )
       await userEvent.click(
         within(dialog).getByRole('button', {
-          name: 'package.addToPackage',
+          name: 'specification.addToSpecification',
         }),
       )
 
@@ -2151,14 +2160,14 @@ describe('RequirementDetailClient', () => {
 
       await userEvent.click(
         screen.getByRole('button', {
-          name: 'package.addToPackage',
+          name: 'specification.addToSpecification',
         }),
       )
       dialog = await screen.findByRole('dialog')
 
       vi.useFakeTimers()
       await act(async () => {
-        pendingAddToPackage.resolve(response({}))
+        pendingAddToSpecification.resolve(response({}))
         await Promise.resolve()
       })
       await act(async () => {
@@ -2168,10 +2177,12 @@ describe('RequirementDetailClient', () => {
       expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(
         within(dialog).getByRole('combobox', {
-          name: /package\.selectPackage/,
+          name: /specification\.selectSpecification/,
         }),
       ).toHaveValue('')
-      expect(screen.queryByText('package.addToPackageSuccess')).toBeNull()
+      expect(
+        screen.queryByText('specification.addToSpecificationSuccess'),
+      ).toBeNull()
     } finally {
       vi.useRealTimers()
     }
@@ -2190,7 +2201,8 @@ describe('RequirementDetailClient', () => {
     ])
 
     setupFetch({
-      addToPackageHandler: () => response({ error: 'Already linked' }, false),
+      addToSpecificationHandler: () =>
+        response({ error: 'Already linked' }, false),
       initialRequirement: requirement,
       packages: [{ id: 7, name: 'IAM Package' }],
     })
@@ -2199,20 +2211,20 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     const dialog = await screen.findByRole('dialog')
     await userEvent.selectOptions(
       within(dialog).getByRole('combobox', {
-        name: /package\.selectPackage/,
+        name: /specification\.selectSpecification/,
       }),
       '7',
     )
     await userEvent.click(
       within(dialog).getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
@@ -2242,12 +2254,12 @@ describe('RequirementDetailClient', () => {
     await screen.findByText('Published requirement')
     await userEvent.click(
       screen.getByRole('button', {
-        name: 'package.addToPackage',
+        name: 'specification.addToSpecification',
       }),
     )
 
     const packageSelect = screen.getByRole('combobox', {
-      name: /package\.selectPackage/,
+      name: /specification\.selectSpecification/,
     })
     fireEvent.keyDown(packageSelect, { key: 'Escape' })
 
@@ -2290,7 +2302,7 @@ describe('RequirementDetailClient', () => {
       await screen.findByText('Current published requirement'),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'package.addToPackage' }),
+      screen.getByRole('button', { name: 'specification.addToSpecification' }),
     ).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'v2' }))
@@ -2299,7 +2311,9 @@ describe('RequirementDetailClient', () => {
       await screen.findByText('Historical published requirement'),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'package.addToPackage' }),
+      screen.queryByRole('button', {
+        name: 'specification.addToSpecification',
+      }),
     ).not.toBeInTheDocument()
   })
 

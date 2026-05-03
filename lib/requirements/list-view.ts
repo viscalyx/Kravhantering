@@ -4,10 +4,10 @@ export interface FilterValues {
   descriptionSearch?: string
   needsReferenceIds?: number[]
   normReferenceIds?: number[]
-  packageItemStatusIds?: number[]
   qualityCharacteristicIds?: number[]
   requiresTesting?: string[]
   riskLevelIds?: number[]
+  specificationItemStatusIds?: number[]
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
@@ -48,7 +48,7 @@ export interface RiskLevelOption {
   sortOrder: number
 }
 
-export interface PackageItemStatusOption {
+export interface SpecificationItemStatusOption {
   color: string
   descriptionEn: string | null
   descriptionSv: string | null
@@ -69,22 +69,22 @@ export interface RequirementRow {
   hasPendingVersion?: boolean
   id: number
   isArchived: boolean
-  isPackageLocal?: boolean
+  isSpecificationLocal?: boolean
   itemRef?: string
-  kind?: 'library' | 'packageLocal'
+  kind?: 'library' | 'specificationLocal'
   needsReference?: string | null
   needsReferenceId?: number | null
   normReferenceIds?: string[]
-  packageItemId?: number
-  packageItemStatusColor?: string | null
-  packageItemStatusDescriptionEn?: string | null
-  packageItemStatusDescriptionSv?: string | null
-  packageItemStatusId?: number | null
-  packageItemStatusNameEn?: string | null
-  packageItemStatusNameSv?: string | null
-  packageLocalRequirementId?: number
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
+  specificationItemId?: number
+  specificationItemStatusColor?: string | null
+  specificationItemStatusDescriptionEn?: string | null
+  specificationItemStatusDescriptionSv?: string | null
+  specificationItemStatusId?: number | null
+  specificationItemStatusNameEn?: string | null
+  specificationItemStatusNameSv?: string | null
+  specificationLocalRequirementId?: number
   suggestionCount?: number
   uniqueId: string
   usageScenarioIds?: number[]
@@ -133,7 +133,8 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.qualityCharacteristicIds &&
       values.qualityCharacteristicIds.length > 0) ||
     (values.riskLevelIds && values.riskLevelIds.length > 0) ||
-    (values.packageItemStatusIds && values.packageItemStatusIds.length > 0) ||
+    (values.specificationItemStatusIds &&
+      values.specificationItemStatusIds.length > 0) ||
     (values.needsReferenceIds && values.needsReferenceIds.length > 0) ||
     (values.normReferenceIds && values.normReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
@@ -155,7 +156,7 @@ export const REQUIREMENT_COLUMN_ORDER = [
   'requiresTesting',
   'version',
   'needsReference',
-  'packageItemStatus',
+  'specificationItemStatus',
   'normReferences',
   'suggestionCount',
 ] as const
@@ -368,8 +369,8 @@ export const REQUIREMENT_LIST_COLUMNS: RequirementColumnDefinition[] = [
     canSort: false,
     defaultVisible: false,
     defaultWidthPx: 180,
-    id: 'packageItemStatus',
-    labelKey: 'packageItemStatus',
+    id: 'specificationItemStatus',
+    labelKey: 'specificationItemStatus',
     labelNamespace: 'requirement',
     maxWidthPx: 260,
     minWidthPx: 110,
@@ -648,7 +649,7 @@ export function clearRequirementFiltersForHiddenColumns(
   clearIfHidden('type', 'typeIds')
   clearIfHidden('qualityCharacteristic', 'qualityCharacteristicIds')
   clearIfHidden('riskLevel', 'riskLevelIds')
-  clearIfHidden('packageItemStatus', 'packageItemStatusIds')
+  clearIfHidden('specificationItemStatus', 'specificationItemStatusIds')
   clearIfHidden('status', 'statuses')
   clearIfHidden('requiresTesting', 'requiresTesting')
   clearIfHidden('needsReference', 'needsReferenceIds')
@@ -829,9 +830,9 @@ export function buildRequirementListParams({
       params.append('usageScenarioIds', String(id))
     }
   }
-  if (filters.packageItemStatusIds) {
-    for (const id of filters.packageItemStatusIds) {
-      params.append('packageItemStatusIds', String(id))
+  if (filters.specificationItemStatusIds) {
+    for (const id of filters.specificationItemStatusIds) {
+      params.append('specificationItemStatusIds', String(id))
     }
   }
 

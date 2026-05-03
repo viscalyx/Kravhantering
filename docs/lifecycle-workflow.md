@@ -165,8 +165,8 @@ stateDiagram-v2
 
 ## Deviation Lifecycle
 
-Deviations are linked to requirement package items
-(`requirement_package_items`). They record a request to
+Deviations are linked to requirements specification items
+(`requirements_specification_items`). They record a request to
 deviate from a requirement within a specific package. A
 single package item can have multiple deviations over
 time.
@@ -205,7 +205,7 @@ least one approved deviation exists for the item.
 
 ## Package Item Status
 
-When a requirement is included in a requirement package
+When a requirement is included in a requirements specification
 it becomes a **package item** with a manually managed
 status. There is no enforced state machine — users can
 set any status at any time, with one exception.
@@ -234,7 +234,7 @@ set any status at any time, with one exception.
 ### Deviation-in-Package Process
 
 The end-to-end process for handling deviations within a
-requirement package:
+requirements specification:
 
 1. A package item exists in the package (status defaults
    to Included).

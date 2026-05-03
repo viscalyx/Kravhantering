@@ -71,8 +71,8 @@ function SectionRenderer({
       return <MetadataChangesSection section={section} />
     case 'timeline-entry':
       return <TimelineEntrySection locale={locale} section={section} />
-    case 'package-cover':
-      return <PackageCoverSection section={section} />
+    case 'specification-cover':
+      return <SpecificationCoverSection section={section} />
     case 'page-break':
       return <div className="print-page-break" />
     case 'requirement-table':
@@ -88,10 +88,10 @@ function SectionRenderer({
   }
 }
 
-function PackageCoverSection({
+function SpecificationCoverSection({
   section,
 }: {
-  section: Extract<ReportSection, { type: 'package-cover' }>
+  section: Extract<ReportSection, { type: 'specification-cover' }>
 }) {
   const t = useTranslations('reports')
   return (
@@ -117,7 +117,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {t('packageCover.packageId')}
+            {t('specificationCover.specificationId')}
           </dt>
           <dd
             style={{ fontSize: '0.875rem', fontFamily: 'monospace', margin: 0 }}
@@ -134,7 +134,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {t('packageCover.responsibilityArea')}
+            {t('specificationCover.responsibilityArea')}
           </dt>
           <dd style={{ fontSize: '0.875rem', margin: 0 }}>
             {section.responsibilityArea ?? '—'}
@@ -149,7 +149,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {t('packageCover.implementationType')}
+            {t('specificationCover.implementationType')}
           </dt>
           <dd style={{ fontSize: '0.875rem', margin: 0 }}>
             {section.implementationType ?? '—'}
@@ -164,7 +164,7 @@ function PackageCoverSection({
               marginBottom: '0.25rem',
             }}
           >
-            {t('packageCover.lifecycleStatus')}
+            {t('specificationCover.lifecycleStatus')}
           </dt>
           <dd style={{ fontSize: '0.875rem', margin: 0 }}>
             {section.lifecycleStatus ?? '—'}
@@ -180,7 +180,7 @@ function PackageCoverSection({
                 marginBottom: '0.25rem',
               }}
             >
-              {t('packageCover.businessNeedsReference')}
+              {t('specificationCover.businessNeedsReference')}
             </dt>
             <dd style={{ fontSize: '0.875rem', margin: 0 }}>
               {section.businessNeedsReference}

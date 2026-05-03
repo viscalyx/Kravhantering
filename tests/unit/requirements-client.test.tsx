@@ -272,7 +272,7 @@ function makeRequirementDetail(
     createdAt: '2026-03-01T00:00:00Z',
     id,
     isArchived: false,
-    packageCount: 0,
+    specificationCount: 0,
     uniqueId: `INT${String(id).padStart(4, '0')}`,
     versions: [
       {

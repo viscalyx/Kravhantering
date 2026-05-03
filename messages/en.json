@@ -65,7 +65,7 @@
   "nav": {
     "catalog": "Requirements Catalog",
     "areas": "Areas",
-    "packages": "Requirement Packages",
+    "specifications": "Requirements Specifications",
     "scenarios": "Usage Scenarios",
     "statuses": "Statuses",
     "types": "Types",
@@ -78,7 +78,7 @@
     "lifecycleStatuses": "Lifecycle statuses",
     "areaOwners": "Area owners",
     "normReferences": "Norm references",
-    "packageItemStatuses": "Usage statuses",
+    "specificationItemStatuses": "Usage statuses",
     "admin": "Admin",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
@@ -118,10 +118,10 @@
     "qualityCharacteristic": "Quality characteristic",
     "riskLevel": "Risk level",
     "riskLevelHelp": "<strong>Select the risk level for this requirement.</strong>\nThe risk level indicates the potential impact if the requirement is not met.",
-    "packageItemStatus": "Usage status",
+    "specificationItemStatus": "Usage status",
     "requiresTesting": "Verifiable",
     "requiresTestingOff": "Not verifiable",
-    "packageCount": "Used in packages",
+    "specificationCount": "Used in specification",
     "verificationMethod": "Verification method",
     "verificationMethodHelp": "<strong>Specify how the acceptance criteria will be verified.</strong>\nChoose or describe an appropriate method, such as inspection, analysis/simulation, demonstration, or test, in line with ISO/IEC/IEEE 29148:2018.",
     "areaHelp": "<strong>Select the area this requirement belongs to.</strong>\nThe area controls the requirement ID prefix and links the requirement to a responsible owner.",
@@ -232,8 +232,8 @@
     "normRefTypeSuggestionStandard": "Standard",
     "normRefTypeSuggestionStrategicGuideline": "Strategic guideline",
     "typePlaceholder": "E.g. Law, Standard, Regulation",
-    "packageLocalBadge": "Unique",
-    "packageLocalTooltip": "This row is a package-local requirement. It exists only in this package and does not appear in the requirements catalog."
+    "specificationLocalBadge": "Unique",
+    "specificationLocalTooltip": "This row is a specification-local requirement. It exists only in this requirements specification and does not appear in the requirements catalog."
   },
   "requirementsTable": {
     "clear": "Clear",
@@ -263,77 +263,74 @@
     "functional": "Functional",
     "nonFunctional": "Non-functional"
   },
-  "package": {
+  "specification": {
     "name": "Name",
     "help": {
-      "name": "Provide a clear name that makes the package easy to recognize and reuse."
+      "name": "Provide a clear name that makes the specification easy to recognize and reuse."
     },
     "responsibilityArea": "Business object",
-    "responsibilityAreaHelp": "Choose the business object the package belongs to, or leave it blank if the package spans multiple business objects.",
+    "responsibilityAreaHelp": "Choose the business object the specification belongs to, or leave it blank if the specification spans multiple business objects.",
     "implementationType": "Implementation type",
-    "implementationTypeHelp": "Choose the implementation type that best describes how this package will be delivered.",
+    "implementationTypeHelp": "Choose the implementation type that best describes how this specification will be delivered.",
     "lifecycleStatus": "Lifecycle status",
-    "lifecycleStatusHelp": "Choose the lifecycle status that best describes the current phase of the package.",
+    "lifecycleStatusHelp": "Choose the lifecycle status that best describes the current phase of the specification.",
     "needsReference": "Needs reference",
-    "needsReferenceHelp": "Optionally attach an existing or new needs reference when linking the requirement to a package.",
-    "newPackage": "New requirement package",
-    "editPackage": "Edit requirement package",
+    "needsReferenceHelp": "Optionally attach an existing or new needs reference when linking the requirement to a specification.",
+    "newSpecification": "New requirements specification",
+    "editSpecification": "Edit requirements specification",
     "filterByName": "Filter by name",
-    "filterByNamePlaceholder": "Search package name",
+    "filterByNamePlaceholder": "Search specification name",
     "linkedRequirements": "Linked requirements",
     "businessNeedsReference": "Business needs reference",
-    "businessNeedsReferencePlaceholder": "Free text linking the package to a business need or functional requirement",
-    "businessNeedsReferenceHelp": "Use this field to capture the business need, initiative, or functional reference that this package supports.",
-    "uniqueId": "Package ID",
-    "uniqueIdPlaceholder": "E.g. MY-PACKAGE",
+    "businessNeedsReferencePlaceholder": "Free text linking the specification to a business need or functional requirement",
+    "businessNeedsReferenceHelp": "Use this field to capture the business need, initiative, or functional reference that this specification supports.",
+    "uniqueId": "Specification ID",
+    "uniqueIdPlaceholder": "E.g. MY-SPECIFICATION",
     "uniqueIdHelp": "Used in URL and as short identifier",
-    "uniqueIdRequired": "Enter a package ID.",
-    "uniqueIdGenerationFailed": "Could not generate a package ID from the name. Enter one manually.",
-    "uniqueIdTaken": "This Package ID is already taken",
+    "uniqueIdRequired": "Enter a specification ID.",
+    "uniqueIdGenerationFailed": "Could not generate a specification ID from the name. Enter one manually.",
+    "uniqueIdTaken": "This Specification ID is already taken",
     "itemCount": "Requirements",
     "requirementAreas": "Requirement areas",
     "addRequirements": "Add requirements",
-    "addToPackage": "Add to requirement package",
-    "selectPackage": "Select requirement package",
-    "selectPackageHelp": "Choose the requirement package that should receive this requirement.",
+    "addToSpecification": "Add to requirements specification",
+    "selectSpecification": "Select requirements specification",
+    "selectSpecificationHelp": "Choose the requirements specification that should receive this requirement.",
     "removeSelected": "Remove selected ({count})",
-    "removeConfirm": "Are you sure you want to remove {count, plural, one {1 requirement} other {# requirements}} from this package?",
-    "removePackageLocalConfirmTitle": "Delete local requirements",
-    "removePackageLocalConfirm": "Are you sure you want to permanently delete {count, plural, one {1 local requirement} other {# local requirements}} from this package? They cannot be restored.",
+    "removeConfirm": "Are you sure you want to remove {count, plural, one {1 requirement} other {# requirements}} from this specification?",
+    "removeSpecificationLocalConfirmTitle": "Delete local requirements",
+    "removeSpecificationLocalConfirm": "Are you sure you want to permanently delete {count, plural, one {1 local requirement} other {# local requirements}} from this specification? They cannot be restored.",
     "removeMixedConfirmTitle": "Remove selected items",
-    "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this package and permanently delete {packageLocalCount, plural, one {1 local requirement} other {# local requirements}}? Deleted local requirements cannot be restored.",
-    "noItems": "No requirements are linked to this package.",
-    "packageNotFound": "Requirement package not found.",
-    "backToPackages": "Back to packages",
+    "removeMixedConfirm": "Are you sure you want to remove {libraryCount, plural, one {1 library requirement} other {# library requirements}} from this specification and permanently delete {specificationLocalCount, plural, one {1 local requirement} other {# local requirements}}? Deleted local requirements cannot be restored.",
+    "noItems": "No requirements are linked to this specification.",
+    "specificationNotFound": "Requirement specification not found.",
+    "backToSpecifications": "Back to specifications",
     "newLocalRequirement": "New local requirement",
     "editLocalRequirement": "Edit local requirement",
-    "localRequirementNotFound": "Local requirement not found in this package.",
+    "localRequirementNotFound": "Local requirement not found in this specification.",
     "localRequirementActionDisabledTooltip": "This local requirement can only be edited or removed when Usage status is Included and no deviation is pending.",
     "deleteLocalRequirementConfirmTitle": "Delete local requirement",
     "deleteLocalRequirementConfirm": "Are you sure you want to permanently delete this local requirement? It cannot be restored.",
     "versionPinned": "Version {version} (published)",
-    "addToPackageSuccess": "The requirement has been added to the package.",
-    "alreadyInPackage": "This requirement is already in the package.",
-    "noPublishedVersionError": "This requirement has no published version and cannot be added to a package.",
-    "itemsInPackage": "Requirements in package",
+    "addToSpecificationSuccess": "The requirement has been added to the specification.",
+    "alreadyInSpecification": "This requirement is already in the specification.",
+    "noPublishedVersionError": "This requirement has no published version and cannot be added to a specification.",
+    "itemsInSpecification": "Requirements in specification",
     "availableRequirements": "Available requirements",
     "alreadyAdded": "Already added",
-    "addToPaket": "Add to package",
-    "removeFromPackage": "Remove from package",
-    "searchPackages": "Search packages",
     "needsReferenceLabel": "Needs reference (optional)",
-    "addSelectedToPackage": "Add selected ({count})",
-    "packageInfo": "Package information",
-    "packageDetails": "Details",
-    "emptyState": "No requirement packages yet. Create your first package.",
-    "loadPackagesFailed": "Could not load requirement packages.",
-    "noPackagesAvailable": "There are no requirement packages to add this requirement to. Create a package first.",
-    "loadingPackages": "Loading packages…",
+    "addSelectedToSpecification": "Add selected ({count})",
+    "specificationInfo": "Specification information",
+    "specificationDetails": "Details",
+    "emptyState": "No requirements specifications yet. Create your first specification.",
+    "loadSpecificationsFailed": "Could not load requirements specifications.",
+    "noSpecificationsAvailable": "There are no requirements specifications to add this requirement to. Create a specification first.",
+    "loadingSpecifications": "Loading specifications…",
     "loadingNeedsReferences": "Loading needs references…",
     "failedToLoadNeedsReferences": "Failed to load needs references.",
-    "saveFailed": "Could not save the requirement package.",
+    "saveFailed": "Could not save the requirements specification.",
     "addNeedsRef": "Needs reference (optional)",
-    "addNeedsRefHelp": "Optionally apply a needs reference to all selected requirements when adding them to the package.",
+    "addNeedsRefHelp": "Optionally apply a needs reference to all selected requirements when adding them to the specification.",
     "addNeedsRefTextLabel": "New needs reference",
     "addNeedsRefTextHelp": "Describe the shared needs reference that should be stored and linked to the selected requirements.",
     "addNeedsRefPlaceholder": "Enter a needs reference that applies to all selected requirements",
@@ -341,7 +338,7 @@
     "newNeedsRef": "+ Write new needs reference…",
     "existingNeedsRefs": "Select needs reference",
     "confirmAdd": "Add",
-    "addingCount": "Adding {count, plural, one {1 requirement} other {# requirements}} to package",
+    "addingCount": "Adding {count, plural, one {1 requirement} other {# requirements}} to specification",
     "csvHeaders": {
       "uniqueId": "Requirement ID",
       "description": "Description",
@@ -352,7 +349,7 @@
       "type": "Type",
       "qualityCharacteristic": "Quality characteristic",
       "riskLevel": "Risk level",
-      "packageItemStatus": "Usage status"
+      "specificationItemStatus": "Usage status"
     },
     "printListReport": "Print requirement list",
     "downloadListReportPdf": "Download requirement list (PDF)"
@@ -411,7 +408,7 @@
     "decisionMotivationPlaceholder": "Enter the reasoning for the decision",
     "decidedByPlaceholder": "Enter the name of the decision maker",
     "createdByLabel": "Responsible for requirements",
-    "createdByHelp": "Enter the name of the person responsible for the requirement specification in this package.",
+    "createdByHelp": "Enter the name of the person responsible for the requirement specification.",
     "createdByPlaceholder": "Enter name",
     "reviewFailed": "Could not request review.",
     "revertFailed": "Could not revert to draft.",
@@ -480,13 +477,13 @@
     "noRequirementIds": "No requirement IDs provided",
     "noRequirementsSelected": "No requirements selected",
     "failedToLoadReport": "Failed to load report",
-    "packageFetchFailed": "Could not load the requirement package for this report (status {status}).",
-    "packageFetchFailedWithDetails": "Could not load the requirement package for this report (status {status}): {details}",
+    "specificationFetchFailed": "Could not load the requirements specification for this report (status {status}).",
+    "specificationFetchFailedWithDetails": "Could not load the requirements specification for this report (status {status}): {details}",
     "listPdfFilename": "Requirements List {stamp}.pdf",
     "listPdfFilenameLabel": "Requirements List",
     "suggestionHistoryFilenameLabel": "Improvement Suggestion History",
-    "packageCover": {
-      "packageId": "Package ID",
+    "specificationCover": {
+      "specificationId": "Specification ID",
       "responsibilityArea": "Responsibility area",
       "implementationType": "Implementation type",
       "lifecycleStatus": "Lifecycle status",
@@ -687,13 +684,13 @@
     "scenariosDescription": "Manage usage scenarios linked to requirements.",
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
     "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
-    "responsibilityAreasDescription": "Manage business objects for requirement packages.",
-    "implementationTypesDescription": "Manage implementation types for requirement packages.",
-    "lifecycleStatusesDescription": "Manage lifecycle statuses for requirement packages.",
+    "responsibilityAreasDescription": "Manage business objects for requirements specifications.",
+    "implementationTypesDescription": "Manage implementation types for requirements specifications.",
+    "lifecycleStatusesDescription": "Manage lifecycle statuses for requirements specifications.",
     "areaOwnersDescription": "Manage owners that can be assigned to requirement areas.",
     "normReferencesDescription": "Manage norm references (laws, regulations, standards, etc.) that can be linked to requirements.",
     "riskLevelsDescription": "Manage risk levels that can be assigned to requirements.",
-    "packageItemStatusesDescription": "Manage usage statuses for requirements in packages."
+    "specificationItemStatusesDescription": "Manage usage statuses for requirements in specification."
   },
   "terminology": {
     "description": {
@@ -811,7 +808,7 @@
         "body": "Each requirement carries a set of properties that describe what it demands, how it is classified, and where it fits in the organization's processes. Below is an overview of every property and how it supports the requirement lifecycle.",
         "requirementId": {
           "heading": "Requirement ID",
-          "body": "Generated automatically from the area prefix and a sequence number. This is the stable identifier used for traceability across requirement packages, reports, and cross-references. You cannot edit it directly — it is assigned when the requirement is created."
+          "body": "Generated automatically from the area prefix and a sequence number. This is the stable identifier used for traceability across requirements specifications, reports, and cross-references. You cannot edit it directly — it is assigned when the requirement is created."
         },
         "area": {
           "heading": "Area",
@@ -839,19 +836,19 @@
         },
         "riskLevel": {
           "heading": "Risk level",
-          "body": "Marks the requirement as Low, Medium, or High risk. Higher risk levels signal that the requirement needs more thorough review, more rigorous testing, and closer follow-up during implementation. The risk level also plays a role when a deviation is requested within a requirement package — a deviation for a high-risk requirement carries greater potential impact and therefore demands stricter scrutiny during the deviation review."
+          "body": "Marks the requirement as Low, Medium, or High risk. Higher risk levels signal that the requirement needs more thorough review, more rigorous testing, and closer follow-up during implementation. The risk level also plays a role when a deviation is requested within a requirements specification — a deviation for a high-risk requirement carries greater potential impact and therefore demands stricter scrutiny during the deviation review."
         },
         "verifiable": {
           "heading": "Verifiable",
-          "body": "Indicates whether the requirement can be tested. When you enable this toggle, you must also specify a verification method. The verification method is used within requirement packages where the requirement is included, for example in connection with a procurement, implementation, or management process."
+          "body": "Indicates whether the requirement can be tested. When you enable this toggle, you must also specify a verification method. The verification method is used within requirements specifications where the requirement is included, for example in connection with a procurement, implementation, or management process."
         },
         "verificationMethod": {
           "heading": "Verification method",
-          "body": "Describes exactly how the requirement will be verified — for example through automated tests, manual inspection, or user acceptance testing. This field is required when Verifiable is turned on. The method is applied within the requirement packages where the requirement is used, providing concrete guidance for how verification should be carried out in each context."
+          "body": "Describes exactly how the requirement will be verified — for example through automated tests, manual inspection, or user acceptance testing. This field is required when Verifiable is turned on. The method is applied within the requirements specifications where the requirement is used, providing concrete guidance for how verification should be carried out in each context."
         },
         "scenarios": {
           "heading": "Usage scenarios",
-          "body": "Describes the contexts or situations where the requirement applies. Scenarios can for example represent operational conditions such as high load or disaster recovery, group functional requirements that belong together, or gather requirements tied to a specific legal framework. Each scenario has an owner who is responsible for the requirements within that context. Linking scenarios helps scope requirement packages and lets you filter requirements by the contexts that matter for a particular delivery."
+          "body": "Describes the contexts or situations where the requirement applies. Scenarios can for example represent operational conditions such as high load or disaster recovery, group functional requirements that belong together, or gather requirements tied to a specific legal framework. Each scenario has an owner who is responsible for the requirements within that context. Linking scenarios helps scope requirements specifications and lets you filter requirements by the contexts that matter for a particular delivery."
         },
         "normReferences": {
           "heading": "Norm references",
@@ -909,11 +906,11 @@
       },
       "lifecycle": {
         "heading": "Requirement process",
-        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the active version; you can add it to packages, share or print it, and start editing, which creates a new draft while the published version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to packages; restore it to create a new draft."
+        "body": "Draft: you can write, edit, delete the latest draft, and send it to review. Review: the content is locked for editing until you send it back to Draft or publish it. Published: this is the active version; you can add it to specifications, share or print it, and start editing, which creates a new draft while the published version stays in effect. When you choose Archive, the requirement first enters an archiving review where you can approve or cancel the archiving. Archived: the requirement is read-only and cannot be edited or added to specifications; restore it to create a new draft."
       },
       "actions": {
         "heading": "Actions",
-        "body": "Use the toolbar to create a new requirement, export the visible list to CSV or PDF, or print it. Select rows with the checkboxes when you want to add multiple requirements to a requirement package or generate a combined review report."
+        "body": "Use the toolbar to create a new requirement, export the visible list to CSV or PDF, or print it. Select rows with the checkboxes when you want to add multiple requirements to a requirements specification or generate a combined review report."
       }
     },
     "newRequirement": {
@@ -924,7 +921,7 @@
       },
       "lifecycle": {
         "heading": "Lifecycle",
-        "body": "A newly created requirement starts as a Draft. It must be submitted for review and then published before it can be added to a requirement package."
+        "body": "A newly created requirement starts as a Draft. It must be submitted for review and then published before it can be added to a requirements specification."
       }
     },
     "requirementDetail": {
@@ -964,67 +961,67 @@
         "body": "Click Restore to create a new Draft based on this version's content. The current published version remains active until the new draft is reviewed and published."
       }
     },
-    "requirementPackages": {
-      "title": "Requirement Packages",
+    "requirementsSpecifications": {
+      "title": "Requirements Specifications",
       "overview": {
-        "heading": "What is a requirement package?",
-        "body": "Packages group published requirements for a specific delivery, procurement, or business context. Each package can be linked to a business object and an implementation type."
+        "heading": "What is a requirements specification?",
+        "body": "Specifications group published requirements for a specific delivery, procurement, or business context. Each specification can be linked to a business object and an implementation type."
       },
       "create": {
         "heading": "Creating and editing",
-        "body": "Click \"New requirement package\" to create one. Click the package name to open its detail view. Use the edit icon to update the package metadata."
+        "body": "Click \"New requirements specification\" to create one. Click the specification name to open its detail view. Use the edit icon to update the specification metadata."
       }
     },
-    "requirementPackageDetail": {
-      "title": "Package Detail",
+    "requirementsSpecificationDetail": {
+      "title": "Specification Detail",
       "requirements": {
         "heading": "Managing requirements",
-        "body": "Click \"Add requirements\" to open the picker and add published requirements to this package. Select one or more rows and click \"Remove selected\" to remove them."
+        "body": "Click \"Add requirements\" to open the picker and add published requirements to this specification. Select one or more rows and click \"Remove selected\" to remove them."
       },
       "needsReference": {
         "heading": "Needs reference",
-        "body": "Each requirement in the package can have a needs reference — a free-text link to the overarching business need or functional requirement it fulfils. Set it when adding requirements or edit it inline."
+        "body": "Each requirement in the specification can have a needs reference — a free-text link to the overarching business need or functional requirement it fulfils. Set it when adding requirements or edit it inline."
       },
       "export": {
         "heading": "Exporting",
-        "body": "Use the print and PDF buttons to export the package's requirement list as a report."
+        "body": "Use the print and PDF buttons to export the specification's requirement list as a report."
       },
-      "packageItemStatus": {
+      "specificationItemStatus": {
         "heading": "Usage status",
-        "body": "Track how far each requirement has progressed within this package: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
+        "body": "Track how far each requirement has progressed within this specification: included, in progress, implemented, verified, or not applicable. Change the status inline in the table."
       }
     },
     "responsibilityAreas": {
       "title": "Business Objects",
       "overview": {
         "heading": "What are business objects?",
-        "body": "Business objects categorize requirement packages by the part of the business they belong to. Assign a business object when creating or editing a package."
+        "body": "Business objects categorize requirements specifications by the part of the business they belong to. Assign a business object when creating or editing a specification."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Click the edit icon on a row to rename a business object. Use the delete icon to remove it — only business objects not linked to any package can be deleted."
+        "body": "Click the edit icon on a row to rename a business object. Use the delete icon to remove it — only business objects not linked to any specification can be deleted."
       }
     },
     "implementationTypes": {
       "title": "Implementation Types",
       "overview": {
         "heading": "What are implementation types?",
-        "body": "Implementation types describe how a requirement package will be delivered, for example procurement, in-house development, or integration. Assign one when creating or editing a package."
+        "body": "Implementation types describe how a requirements specification will be delivered, for example procurement, in-house development, or integration. Assign one when creating or editing a specification."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Click the edit icon to rename an implementation type. Use the delete icon to remove it — only types not linked to any package can be deleted."
+        "body": "Click the edit icon to rename an implementation type. Use the delete icon to remove it — only types not linked to any specification can be deleted."
       }
     },
     "lifecycleStatuses": {
       "title": "Lifecycle Statuses",
       "overview": {
         "heading": "What are lifecycle statuses?",
-        "body": "Lifecycle statuses describe the current phase of a requirement package, for example procurement, implementation, development, or management. Assign one when creating or editing a package."
+        "body": "Lifecycle statuses describe the current phase of a requirements specification, for example procurement, implementation, development, or management. Assign one when creating or editing a specification."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Click the edit icon to rename a lifecycle status. Use the delete icon to remove it — only statuses not linked to any package can be deleted."
+        "body": "Click the edit icon to rename a lifecycle status. Use the delete icon to remove it — only statuses not linked to any specification can be deleted."
       }
     },
     "admin": {
@@ -1134,15 +1131,15 @@
         "body": "Add new risk levels using the Create button. Edit existing levels to change name, color, or sort order. Risk levels linked to existing requirements cannot be deleted."
       }
     },
-    "packageItemStatuses": {
+    "specificationItemStatuses": {
       "title": "Usage Statuses Help",
       "overview": {
         "heading": "About usage statuses",
-        "body": "Usage statuses track how far a requirement has progressed within a package — from included to implemented and verified. Each status has a name, color, and sort order."
+        "body": "Usage statuses track how far a requirement has progressed within a specification — from included to implemented and verified. Each status has a name, color, and sort order."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Add new statuses using the Create button. Edit existing statuses to change name, color, or sort order. Statuses linked to package items cannot be deleted."
+        "body": "Add new statuses using the Create button. Edit existing statuses to change name, color, or sort order. Statuses linked to specification items cannot be deleted."
       }
     }
   },
@@ -1154,13 +1151,13 @@
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
   },
-  "packageItemStatusAdmin": {
+  "specificationItemStatusAdmin": {
     "title": "Usage statuses",
     "name": "Name",
     "color": "Color",
     "colorHex": "Color hex code",
     "sortOrder": "Sort order",
-    "linkedPackages": "Linked requirement packages",
+    "linkedSpecifications": "Linked requirements specifications",
     "linkedItemCount": "Linked items",
     "itemCount": "{count, plural, =0 {0 items} one {1 item} other {# items}}",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}",
@@ -1173,7 +1170,7 @@
     "definitionEnHelp": "Enter an English definition that describes what this status means. It is shown as a tooltip where the status is used.",
     "noStatus": "— No status —",
     "sortOrderLocked": "The sort order for this system status cannot be changed.",
-    "package": "Package",
+    "specification": "Specification",
     "requirement": "Requirement"
   },
   "ai": {

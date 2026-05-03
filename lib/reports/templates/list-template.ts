@@ -1,7 +1,7 @@
 import type { RequirementReportData } from '../data/fetch-requirement'
 import type { ReportModel, ReportSection } from '../types'
 
-export interface PackageCoverInfo {
+export interface SpecificationCoverInfo {
   businessNeedsReference: string | null
   implementationType: string | null
   lifecycleStatus: string | null
@@ -13,12 +13,12 @@ export interface PackageCoverInfo {
 export function buildListReport(
   requirements: RequirementReportData[],
   locale: string,
-  packageInfo?: PackageCoverInfo,
+  specificationInfo?: SpecificationCoverInfo,
 ): ReportModel {
   const sections: ReportSection[] = []
 
-  if (packageInfo) {
-    sections.push({ type: 'package-cover', locale, ...packageInfo })
+  if (specificationInfo) {
+    sections.push({ type: 'specification-cover', locale, ...specificationInfo })
     sections.push({ type: 'page-break' })
   }
   const now = new Date().toISOString()

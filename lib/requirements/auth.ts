@@ -59,19 +59,19 @@ export type RequirementsAction =
     }
   | {
       kind: 'get_package_items'
-      packageId?: number
-      packageSlug?: string
+      specificationId?: number
+      specificationSlug?: string
     }
   | {
       kind: 'add_to_package'
-      packageId?: number
-      packageSlug?: string
+      specificationId?: number
+      specificationSlug?: string
       requirementIds: number[]
     }
   | {
       kind: 'remove_from_package'
-      packageId?: number
-      packageSlug?: string
+      specificationId?: number
+      specificationSlug?: string
       requirementIds: number[]
     }
   | {
@@ -94,14 +94,14 @@ export type RequirementsAction =
     }
   | {
       kind: 'list_deviations'
-      packageId?: number
-      packageSlug?: string
+      specificationId?: number
+      specificationSlug?: string
     }
   | {
       kind: 'manage_deviation'
       operation: string
       deviationId?: number
-      packageItemId?: number
+      specificationItemId?: number
     }
   | {
       kind: 'list_suggestions'

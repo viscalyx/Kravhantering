@@ -30,14 +30,6 @@ import {
   type RequirementCategoryRow,
 } from '@/lib/dal/requirement-categories'
 import {
-  getPackageBySlug,
-  getPublishedVersionIdForRequirement,
-  linkRequirementsToPackageAtomically,
-  listPackageItems,
-  listPackages,
-  unlinkRequirementsFromPackage,
-} from '@/lib/dal/requirement-packages'
-import {
   listStatuses,
   listTransitions,
   type RequirementStatusRecord,
@@ -65,6 +57,14 @@ import {
   restoreVersion,
   transitionStatus,
 } from '@/lib/dal/requirements'
+import {
+  getPackageBySlug,
+  getPublishedVersionIdForRequirement,
+  linkRequirementsToPackageAtomically,
+  listPackageItems,
+  listPackages,
+  unlinkRequirementsFromPackage,
+} from '@/lib/dal/requirements-specifications'
 import { listRiskLevels } from '@/lib/dal/risk-levels'
 import {
   createUiSettingsLoader,
@@ -209,9 +209,9 @@ export interface GenerateRequirementsOutput {
   thinking: string
 }
 
-export interface PackageRefInput {
-  packageId?: number
-  packageSlug?: string
+export interface SpecificationRefInput {
+  specificationId?: number
+  specificationSlug?: string
 }
 
 export interface ListPackagesInput {
@@ -220,20 +220,20 @@ export interface ListPackagesInput {
   responseFormat?: ResponseFormat
 }
 
-export interface GetPackageItemsInput extends PackageRefInput {
+export interface GetPackageItemsInput extends SpecificationRefInput {
   descriptionSearch?: string
   locale?: ResponseLocale
   responseFormat?: ResponseFormat
 }
 
-export interface AddToPackageInput extends PackageRefInput {
+export interface AddToSpecificationInput extends SpecificationRefInput {
   locale?: ResponseLocale
   needsReferenceText?: string | null
   requirementIds: number[]
   responseFormat?: ResponseFormat
 }
 
-export interface RemoveFromPackageInput extends PackageRefInput {
+export interface RemoveFromPackageInput extends SpecificationRefInput {
   locale?: ResponseLocale
   requirementIds: number[]
   responseFormat?: ResponseFormat
@@ -299,10 +299,10 @@ function getRequirementWord(locale: ResponseLocale, count: number) {
 
 function getPackageWord(locale: ResponseLocale, count: number) {
   if (locale === 'sv') {
-    return 'kravpaket'
+    return 'kravunderlag'
   }
 
-  return count === 1 ? 'package' : 'packages'
+  return count === 1 ? 'specification' : 'specifications'
 }
 
 function getPackageServiceTitle(
@@ -312,13 +312,13 @@ function getPackageServiceTitle(
   if (locale === 'sv') {
     switch (kind) {
       case 'add':
-        return 'Krav tillagda i paket'
+        return 'Krav tillagda i underlag'
       case 'items':
-        return 'Krav i paket'
+        return 'Krav i underlag'
       case 'remove':
         return 'Krav borttagna fran paket'
       default:
-        return 'Kravpaket'
+        return 'Kravunderlag'
     }
   }
 
@@ -330,7 +330,7 @@ function getPackageServiceTitle(
     case 'remove':
       return 'Requirements Removed from Package'
     default:
-      return 'Requirement Packages'
+      return 'Requirements Specifications'
   }
 }
 
@@ -412,7 +412,7 @@ function formatRequirementDetail(
     createdAt: requirement.createdAt,
     id: requirement.id,
     isArchived: requirement.isArchived,
-    packageCount: requirement.packageCount,
+    specificationCount: requirement.specificationCount,
     uniqueId: requirement.uniqueId,
     versions: requirement.versions.map(version => ({
       acceptanceCriteria: version.acceptanceCriteria,
@@ -523,10 +523,10 @@ export interface GetPackageItemsOutput {
     type: string | null
   }[]
   message: string
-  packageId: number
+  specificationId: number
 }
 
-export interface AddToPackageOutput {
+export interface AddToSpecificationOutput {
   addedCount: number
   message: string
   skippedCount: number
@@ -554,7 +554,7 @@ export interface ListDeviationsOutput {
     decisionMotivation: string | null
     id: number
     motivation: string
-    packageItemId: number
+    specificationItemId: number
     requirementDescription: string | null
     requirementUniqueId: string | null
   }[]
@@ -596,10 +596,10 @@ export interface ManageSuggestionOutput {
 }
 
 export interface RequirementsService {
-  addToPackage(
+  addToSpecification(
     context: RequestContext,
-    input: AddToPackageInput,
-  ): Promise<AddToPackageOutput>
+    input: AddToSpecificationInput,
+  ): Promise<AddToSpecificationOutput>
 
   generateRequirements(
     context: RequestContext,
@@ -624,8 +624,8 @@ export interface RequirementsService {
     context: RequestContext,
     input: {
       locale?: ResponseLocale
-      packageId?: number
-      packageSlug?: string
+      specificationId?: number
+      specificationSlug?: string
       responseFormat?: ResponseFormat
     },
   ): Promise<ListDeviationsOutput>
@@ -651,7 +651,7 @@ export interface RequirementsService {
       locale?: ResponseLocale
       motivation?: string
       operation: 'create' | 'delete' | 'edit' | 'record_decision'
-      packageItemId?: number
+      specificationItemId?: number
       responseFormat?: ResponseFormat
     },
   ): Promise<ManageDeviationOutput>
@@ -703,7 +703,7 @@ export interface RequirementsService {
       total: number
     } | null
   }>
-  removeFromPackage(
+  removeFromSpecification(
     context: RequestContext,
     input: RemoveFromPackageInput,
   ): Promise<RemoveFromPackageOutput>
@@ -766,27 +766,30 @@ async function ensureAreaExists(
 
 async function resolvePackageIdOrThrow(
   db: SqlServerDatabase,
-  input: PackageRefInput,
+  input: SpecificationRefInput,
 ) {
-  const packageId =
-    input.packageId != null
-      ? input.packageId
-      : input.packageSlug
-        ? (await getPackageBySlug(db, input.packageSlug))?.id
+  const specificationId =
+    input.specificationId != null
+      ? input.specificationId
+      : input.specificationSlug
+        ? (await getPackageBySlug(db, input.specificationSlug))?.id
         : undefined
 
-  if (packageId == null) {
-    throw notFoundError('Package not found.', {
-      packageId: input.packageId,
-      packageSlug: input.packageSlug,
+  if (specificationId == null) {
+    throw notFoundError('Specification not found.', {
+      specificationId: input.specificationId,
+      specificationSlug: input.specificationSlug,
     })
   }
 
-  return packageId
+  return specificationId
 }
 
-function getPackageReferenceLabel(input: PackageRefInput, packageId: number) {
-  return input.packageSlug ?? String(packageId)
+function getSpecificationReferenceLabel(
+  input: SpecificationRefInput,
+  specificationId: number,
+) {
+  return input.specificationSlug ?? String(specificationId)
 }
 
 function getLatestOverallVersion(
@@ -1632,7 +1635,7 @@ export function createRequirementsService(
           const summary =
             locale === 'sv'
               ? packages.length === 0
-                ? 'Inga kravpaket hittades.'
+                ? 'Inga kravunderlag hittades.'
                 : `Hittade ${packages.length} ${getPackageWord(locale, packages.length)}.`
               : packages.length === 0
                 ? 'No packages found.'
@@ -1676,8 +1679,8 @@ export function createRequirementsService(
         authorization,
         {
           kind: 'get_package_items',
-          packageId: input.packageId,
-          packageSlug: input.packageSlug,
+          specificationId: input.specificationId,
+          specificationSlug: input.specificationSlug,
         },
         context,
       )
@@ -1688,12 +1691,12 @@ export function createRequirementsService(
         'requirements.get_package_items',
         {
           description_search: input.descriptionSearch,
-          package_id: input.packageId,
-          package_slug: input.packageSlug,
+          specification_id: input.specificationId,
+          package_slug: input.specificationSlug,
         },
         async () => {
-          const packageId = await resolvePackageIdOrThrow(db, input)
-          let items = await listPackageItems(db, packageId)
+          const specificationId = await resolvePackageIdOrThrow(db, input)
+          let items = await listPackageItems(db, specificationId)
           if (input.descriptionSearch) {
             const q = input.descriptionSearch.toLowerCase()
             items = items.filter(
@@ -1702,10 +1705,10 @@ export function createRequirementsService(
             )
           }
 
-          const ref = getPackageReferenceLabel(input, packageId)
+          const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary =
             locale === 'sv'
-              ? `Hittade ${items.length} ${getRequirementWord(locale, items.length)} i paket ${ref}.`
+              ? `Hittade ${items.length} ${getRequirementWord(locale, items.length)} i underlag ${ref}.`
               : `Found ${items.length} ${getRequirementWord(locale, items.length)} in package ${ref}.`
 
           return {
@@ -1742,13 +1745,13 @@ export function createRequirementsService(
               [summary],
               responseFormat,
             ),
-            packageId,
+            specificationId,
           }
         },
       )
     },
 
-    async addToPackage(context, input) {
+    async addToSpecification(context, input) {
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
 
@@ -1756,8 +1759,8 @@ export function createRequirementsService(
         authorization,
         {
           kind: 'add_to_package',
-          packageId: input.packageId,
-          packageSlug: input.packageSlug,
+          specificationId: input.specificationId,
+          specificationSlug: input.specificationSlug,
           requirementIds: input.requirementIds,
         },
         context,
@@ -1768,12 +1771,12 @@ export function createRequirementsService(
         context,
         'requirements.add_to_package',
         {
-          package_id: input.packageId,
-          package_slug: input.packageSlug,
+          specification_id: input.specificationId,
+          package_slug: input.specificationSlug,
           requirement_count: input.requirementIds.length,
         },
         async () => {
-          const packageId = await resolvePackageIdOrThrow(db, input)
+          const specificationId = await resolvePackageIdOrThrow(db, input)
           const versionResults = await Promise.all(
             input.requirementIds.map(async id => ({
               id,
@@ -1790,7 +1793,7 @@ export function createRequirementsService(
           if (succeeded.length > 0) {
             addedCount = await linkRequirementsToPackageAtomically(
               db,
-              packageId,
+              specificationId,
               {
                 requirementIds: succeeded.map(r => r.id),
                 needsReferenceText: input.needsReferenceText,
@@ -1798,11 +1801,11 @@ export function createRequirementsService(
             )
           }
 
-          const ref = getPackageReferenceLabel(input, packageId)
+          const ref = getSpecificationReferenceLabel(input, specificationId)
           const skippedIds = skipped.map(r => r.id)
           const lines: string[] = [
             locale === 'sv'
-              ? `Lade till ${addedCount} ${getRequirementWord(locale, addedCount)} i paket ${ref}.`
+              ? `Lade till ${addedCount} ${getRequirementWord(locale, addedCount)} i underlag ${ref}.`
               : `Added ${addedCount} ${getRequirementWord(locale, addedCount)} to package ${ref}.`,
           ]
           if (skippedIds.length > 0) {
@@ -1826,7 +1829,7 @@ export function createRequirementsService(
       )
     },
 
-    async removeFromPackage(context, input) {
+    async removeFromSpecification(context, input) {
       const responseFormat = input.responseFormat ?? 'markdown'
       const locale = input.locale ?? 'en'
 
@@ -1834,8 +1837,8 @@ export function createRequirementsService(
         authorization,
         {
           kind: 'remove_from_package',
-          packageId: input.packageId,
-          packageSlug: input.packageSlug,
+          specificationId: input.specificationId,
+          specificationSlug: input.specificationSlug,
           requirementIds: input.requirementIds,
         },
         context,
@@ -1846,18 +1849,18 @@ export function createRequirementsService(
         context,
         'requirements.remove_from_package',
         {
-          package_id: input.packageId,
-          package_slug: input.packageSlug,
+          specification_id: input.specificationId,
+          package_slug: input.specificationSlug,
           requirement_count: input.requirementIds.length,
         },
         async () => {
-          const packageId = await resolvePackageIdOrThrow(db, input)
+          const specificationId = await resolvePackageIdOrThrow(db, input)
           const removedCount = await unlinkRequirementsFromPackage(
             db,
-            packageId,
+            specificationId,
             input.requirementIds,
           )
-          const ref = getPackageReferenceLabel(input, packageId)
+          const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary =
             locale === 'sv'
               ? `Tog bort ${removedCount} ${getRequirementWord(locale, removedCount)} fran paket ${ref}.`
@@ -1882,8 +1885,8 @@ export function createRequirementsService(
         authorization,
         {
           kind: 'list_deviations',
-          packageId: input.packageId,
-          packageSlug: input.packageSlug,
+          specificationId: input.specificationId,
+          specificationSlug: input.specificationSlug,
         } as RequirementsAction,
         context,
       )
@@ -1893,13 +1896,13 @@ export function createRequirementsService(
         context,
         'requirements.list_deviations',
         {
-          package_id: input.packageId ?? null,
-          package_slug: input.packageSlug ?? null,
+          specification_id: input.specificationId ?? null,
+          package_slug: input.specificationSlug ?? null,
         },
         async () => {
-          const packageId = await resolvePackageIdOrThrow(db, input)
-          const rows = await listDeviationsForPackage(db, packageId)
-          const counts = await countDeviationsByPackage(db, packageId)
+          const specificationId = await resolvePackageIdOrThrow(db, input)
+          const rows = await listDeviationsForPackage(db, specificationId)
+          const counts = await countDeviationsByPackage(db, specificationId)
 
           const title = locale === 'sv' ? 'Avvikelser' : 'Deviations'
           const summary =
@@ -1918,10 +1921,10 @@ export function createRequirementsService(
               decisionMotivation: r.decisionMotivation,
               id: r.id,
               motivation: r.motivation,
-              packageItemId:
-                r.packageItemId ??
-                (r.packageLocalRequirementId != null
-                  ? -r.packageLocalRequirementId
+              specificationItemId:
+                r.specificationItemId ??
+                (r.specificationLocalRequirementId != null
+                  ? -r.specificationLocalRequirementId
                   : -r.id),
               requirementDescription: r.requirementDescription,
               requirementUniqueId: r.requirementUniqueId,
@@ -1942,7 +1945,7 @@ export function createRequirementsService(
           kind: 'manage_deviation',
           operation: input.operation,
           deviationId: input.deviationId,
-          packageItemId: input.packageItemId,
+          specificationItemId: input.specificationItemId,
         } as RequirementsAction,
         context,
       )
@@ -1954,11 +1957,11 @@ export function createRequirementsService(
         {
           operation: input.operation,
           deviation_id: input.deviationId ?? null,
-          package_item_id: input.packageItemId ?? null,
+          specification_item_id: input.specificationItemId ?? null,
         },
         async () => {
           if (input.operation === 'create') {
-            if (!input.packageItemId) {
+            if (!input.specificationItemId) {
               throw validationError('Package item ID is required')
             }
             const trimmedMotivation = input.motivation?.trim()
@@ -1966,7 +1969,7 @@ export function createRequirementsService(
               throw validationError('Motivation is required')
             }
             const result = await createDeviation(db, {
-              packageItemId: input.packageItemId,
+              specificationItemId: input.specificationItemId,
               motivation: trimmedMotivation,
               createdBy: context.actor.id,
             })

@@ -122,37 +122,37 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `packages > table action: expand requirement areas` and
   `packages > table action: collapse requirement areas`.
 - Requirement package detail header edit affordances use the
-  `requirement package detail` context with
+  `requirements specification detail` context with
   `detail action: edit package` on the icon trigger and
   `crud form: edit` on the opened editor.
 - Requirement package detail left-panel create affordance for
-  package-local requirements uses the `requirement package detail`
+  specification-local requirements uses the `requirements specification detail`
   context with `table action: create local requirement`.
-- Package-local inline detail views in package context use the
-  `requirement package detail` context with
-  `detail pane: package local requirement`.
+- Specification-local inline detail views in package context use the
+  `requirements specification detail` context with
+  `detail pane: specification-local requirement`.
 - The shared requirement-content card inside both catalog requirement
-  details and package-local inline details exposes the same
+  details and specification-local inline details exposes the same
   `detail section` markers for requirement text, acceptance criteria,
-  metadata, references, and scenarios. Package-local scenario and
+  metadata, references, and scenarios. Specification-local scenario and
   reference chips also inherit the same marker naming pattern as the
   catalog detail card.
-- Package-local inline detail views also expose the same
+- Specification-local inline detail views also expose the same
   `report print button` surface on the right-side action rail as the
   package-item detail layout, while their local edit/delete controls
   continue to use `detail action`.
-- Package-local inline detail actions now use `detail action` markers
+- Specification-local inline detail actions now use `detail action` markers
   for the right-side edit and delete buttons, mirroring the catalog
   detail-card action column pattern.
-- The package-local right-side action rail now mirrors the package-item
+- The specification-local right-side action rail now mirrors the package-item
   rail's stacked button sizing and spacing, but it does not introduce
   any new developer-mode marker names beyond the existing
   print/deviation/detail action surfaces.
-- Those existing package-local edit/delete `detail action` controls may
+- Those existing specification-local edit/delete `detail action` controls may
   render disabled when usage status is not Included or when a deviation
   is still pending. In that state they are visually muted, but this
   state change does not add any new developer-mode markers.
-- Package-local inline details now also use the same outer inset as the
+- Specification-local inline details now also use the same outer inset as the
   catalog inline detail surface; this is a layout-only alignment change
   and does not add any new developer-mode markers.
 - Package-context catalog requirement details expose the package report
@@ -163,7 +163,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `download deviation review pdf` when those report paths are available.
 - Package-context catalog requirement details may expose the extra
   `detail section` values `needs reference` and `package item status`
-  when the requirement is opened from `Krav i kravpaket`.
+  when the requirement is opened from `Krav i kravunderlag`.
 - The package-detail header may visually regroup the title,
   business-needs reference, and short metadata summary into a compact
   layout, including a wide-screen variant where the metadata sits

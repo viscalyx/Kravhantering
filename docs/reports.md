@@ -53,12 +53,12 @@ Generates a multi-requirement review report from the list view.
 
 ### 5. Package List Report
 
-Prints the requirements contained in a specific requirement package as a
+Prints the requirements contained in a specific requirements specification as a
 formatted table.
 
 - Available from the print dropdown in the package detail view
 - Includes both library requirements linked into the package and
-  package-local requirements created only for that package
+  specification-local requirements created only for that package
 - Includes package metadata in the header: package name, unique ID,
   responsibility area, implementation type, and business needs reference
 - Shows Krav-ID, description (truncated), area, and status columns
@@ -103,13 +103,13 @@ Shared Layer (engine-agnostic)
 Browser Print Engine
   components/reports/print/            PrintReportRenderer + CSS
   app/[locale]/requirements/reports/print/     Route pages
-  app/[locale]/requirement-packages/[slug]/reports/print/
+  app/[locale]/specifications/[slug]/reports/print/
                                        Package route pages
 
 react-pdf Engine
   components/reports/pdf/              PdfReportRenderer + download hook
   app/[locale]/requirements/reports/pdf/       Route pages
-  (package PDF generated inline in requirement-package-detail-client)
+  (package PDF generated inline in requirements-specification-detail-client)
 ```
 
 ### Data Flow
@@ -152,14 +152,14 @@ under `.../reports/pdf/`.
 All routes above are prefixed with `/[locale]/requirements/reports`.
 
 Package list reports use a separate prefix
-`/[locale]/requirement-packages/[slug]/reports`:
+`/[locale]/specifications/[slug]/reports`:
 
 - **Package List**: `.../print/list?refs=…`
   (PDF is generated inline — no separate PDF route)
 
 For package list reports, `refs` contains package-context item references such
-as `lib:<packageItemId>` for library requirements and
-`local:<packageLocalRequirementId>` for package-local requirements.
+as `lib:<specificationItemId>` for library requirements and
+`local:<specificationLocalRequirementId>` for specification-local requirements.
 
 ## Engines
 
@@ -184,7 +184,7 @@ library's `Document`, `Page`, `View`, `Text` primitives with `StyleSheet`.
   (e.g., `Granskningsrapport ANV0022.pdf`)
 - Combined: `{localized label} {YYYY-MM-DD HH.MM}.pdf`
   (e.g., `Kombinerad granskningsrapport 2026-03-17 16.35.pdf`)
-- List (package): `{localized label} {package name} {package ID}.pdf`
+- List (package): `{localized label} {package name} {specification ID}.pdf`
   (e.g., `Kravlista Tillgänglighet PKG001.pdf`)
 - Suggestion History:
   `{localized label} {uniqueId}.pdf`

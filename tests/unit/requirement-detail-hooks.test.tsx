@@ -40,7 +40,7 @@ function makeRequirement(versionId: number): RequirementDetailResponse {
     area: null,
     createdAt: '2026-03-01T00:00:00Z',
     isArchived: false,
-    packageCount: 0,
+    specificationCount: 0,
     versions: [
       {
         id: versionId,
@@ -92,7 +92,7 @@ describe('useDeviationWorkflow', () => {
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/package-item-deviations/1') {
+      if (url === '/api/specification-item-deviations/1') {
         return response({
           deviations: [
             {
@@ -109,7 +109,7 @@ describe('useDeviationWorkflow', () => {
           ],
         })
       }
-      if (url === '/api/package-item-deviations/2') {
+      if (url === '/api/specification-item-deviations/2') {
         return secondFetch.promise
       }
       throw new Error(`Unhandled fetch: ${url}`)
@@ -117,20 +117,20 @@ describe('useDeviationWorkflow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result, rerender } = renderHook(
-      ({ packageItemId }: { packageItemId: number }) =>
+      ({ specificationItemId }: { specificationItemId: number }) =>
         useDeviationWorkflow({
           isPackageItemContext: true,
-          packageItemId,
+          specificationItemId,
         }),
       {
-        initialProps: { packageItemId: 1 },
+        initialProps: { specificationItemId: 1 },
         wrapper,
       },
     )
 
     await waitFor(() => expect(result.current.latestDeviation?.id).toBe(11))
 
-    rerender({ packageItemId: 2 })
+    rerender({ specificationItemId: 2 })
 
     await waitFor(() => expect(result.current.latestDeviation).toBeNull())
     expect(result.current.deviationError).toBeNull()
@@ -150,10 +150,10 @@ describe('useDeviationWorkflow', () => {
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
-      if (url === '/api/package-item-deviations/1') {
+      if (url === '/api/specification-item-deviations/1') {
         return firstFetch.promise
       }
-      if (url === '/api/package-item-deviations/2') {
+      if (url === '/api/specification-item-deviations/2') {
         return secondFetch.promise
       }
       throw new Error(`Unhandled fetch: ${url}`)
@@ -161,25 +161,29 @@ describe('useDeviationWorkflow', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { result, rerender } = renderHook(
-      ({ packageItemId }: { packageItemId: number }) =>
+      ({ specificationItemId }: { specificationItemId: number }) =>
         useDeviationWorkflow({
           isPackageItemContext: true,
-          packageItemId,
+          specificationItemId,
         }),
       {
-        initialProps: { packageItemId: 1 },
+        initialProps: { specificationItemId: 1 },
         wrapper,
       },
     )
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/package-item-deviations/1'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specification-item-deviations/1',
+      ),
     )
 
-    rerender({ packageItemId: 2 })
+    rerender({ specificationItemId: 2 })
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/package-item-deviations/2'),
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specification-item-deviations/2',
+      ),
     )
 
     await act(async () => {
