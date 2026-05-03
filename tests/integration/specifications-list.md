@@ -1,9 +1,9 @@
-# Requirement Packages List Integration Tests
+# Requirements Specifications List Integration Tests
 
 > Test flow documentation for
-> [`requirement-packages-list.spec.ts`](tests/integration/requirement-packages-list.spec.ts)
+> [`specifications-list.spec.ts`](tests/integration/specifications-list.spec.ts)
 
-This suite verifies that the requirement packages list page renders correctly,
+This suite verifies that the requirements specifications list page renders correctly,
 that compact static requirement-area pills are present, that the name filter
 narrows the visible packages, that row actions render as icon-only buttons,
 that overflowing requirement-area pills can be expanded on demand, and that the
@@ -14,7 +14,8 @@ that the filter field and the create button are horizontally aligned.
 
 ```mermaid
 flowchart TD
-    A[Open /sv/requirement-packages] --> B[Assert heading and controls visible]
+    A[Open /specifications] --> A1[Assert redirect to /sv/specifications]
+    A1 --> B[Assert title, heading, and controls visible]
     B --> B1[Assert static requirement-area pill]
     B1 --> B2[Assert icon-only edit and delete actions]
     B2 --> C{Desktop?}
@@ -40,13 +41,15 @@ sizes.
 
 Confirms that typing in the name filter hides non-matching packages and that
 clicking the clear button restores all packages. On desktop it also verifies
-that the filter input and the "Nytt kravpaket" button share the same row.
+that the filter input and the "Nytt kravunderlag" button share the same row.
 
 ### Step-by-Step Flow
 
-1. Navigate to `/sv/requirement-packages`.
-1. Assert the `h1` "Kravpaket" heading is visible.
-1. Assert the name-filter text input and "Nytt kravpaket" button are visible.
+1. Navigate to `/specifications`.
+1. Assert the browser is on `/sv/specifications`.
+1. Assert the page title contains "Kravunderlag".
+1. Assert the `h1` "Kravunderlag" heading is visible.
+1. Assert the name-filter text input and "Nytt kravunderlag" button are visible.
 1. Assert the first requirement-area pill is a compact static `span`, not a
    link.
 1. Assert the row edit/delete actions are icon-only buttons with accessible
@@ -57,12 +60,12 @@ that the filter input and the "Nytt kravpaket" button share the same row.
 1. Force a narrow requirement-area pill list and assert the chevron toggle
    expands and collapses the hidden pills.
 1. Type `e-tjänst` into the name filter.
-1. Assert "Införande av e-tjänstplattform" link is visible.
-1. Assert "Säkerhetslyft Q2" link is hidden.
+1. Assert "Upphandling av e-tjänstplattform" link is visible.
+1. Assert "Införande av säkerhetslyft Q2" link is hidden.
 1. Click "Rensa sökning".
 1. Assert the filter input value is empty.
-1. Assert "Införande av e-tjänstplattform" is visible again.
-1. Verify "Säkerhetslyft Q2" is visible again.
+1. Assert "Upphandling av e-tjänstplattform" is visible again.
+1. Verify "Införande av säkerhetslyft Q2" is visible again.
 
 ### Sequence Diagram
 
@@ -72,16 +75,17 @@ sequenceDiagram
     participant P as Page
     participant F as Filter
 
-    U->>P: Open /sv/requirement-packages
-    Note over P: ✓ Heading and controls visible
+    U->>P: Open /specifications
+    Note over P: ✓ Redirected to /sv/specifications
+    Note over P: ✓ Title, heading, and controls visible
     Note over P: ✓ Requirement-area pill is static and compact
     Note over P: ✓ Edit and delete actions are icon-only
     U->>P: Toggle overflowing requirement-area pills
     Note over P: ✓ Hidden pills expand and collapse
     U->>F: Fill "e-tjänst"
     F->>P: Filter list
-    Note over P: ✓ "Införande av e-tjänstplattform" visible
-    Note over P: ✓ "Säkerhetslyft Q2" hidden
+    Note over P: ✓ "Upphandling av e-tjänstplattform" visible
+    Note over P: ✓ "Införande av säkerhetslyft Q2" hidden
     U->>F: Click clear search
     F->>P: Reset filter
     Note over P: ✓ Input empty

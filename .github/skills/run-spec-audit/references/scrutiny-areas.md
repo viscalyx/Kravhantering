@@ -7,7 +7,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`
 fitness-to-purpose scenarios. See `tests/quality/AGENTS.md` for the
 maintenance rule.
 
-## 1. Detail-Read Version Exposure — Scenario 1
+## 1. Scenario 1: published detail never leaks draft content
 
 - **Code:** `lib/requirements/service.ts` — detail-read logic.
 - **Spec:** Docs say default detail reads expose the latest published
@@ -17,36 +17,31 @@ maintenance rule.
 - **Question:** Does any path return draft, review, or archived
   content for `view: "detail"`?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 1"`
+  -t "Scenario 1: published detail never leaks draft content"`
 
-## 2. Lifecycle Transitions — Scenario 2, 3
+## 2. Scenario 2: pending replacement blocks archiving
 
 - **Code:** `lib/dal/requirements.ts` — lifecycle transition functions.
 - **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag (S2):** `[Req: formal — docs/lifecycle-workflow.md
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
   "Initiate archiving"]`
-- **Req tag (S3):** `[Req: formal — docs/lifecycle-workflow.md
+- **Question:** Does archive initiation fail while replacement draft or
+  review work is pending?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 2: pending replacement blocks archiving"`
+
+## 3. Scenario 3: publishing a successor auto-archives its predecessor at the same instant
+
+- **Code:** `lib/dal/requirements.ts` — lifecycle transition functions.
+- **Spec:** `docs/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
   "Review -> Published"]`
-- **Question:** Are all lifecycle transitions valid, especially archive
-  initiation, archive approval, archive cancel, restore, and
-  publish-time auto-archiving?
-- **Verify (S2):** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 2"`
-- **Verify (S3):** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 3"`
+- **Question:** Does publishing a successor atomically archive the
+  predecessor so there is only one published version?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 3: publishing a successor auto-archives its predecessor at the same instant"`
 
-## 3. Effective Status and Archived Visibility — Scenario 5
-
-- **Code:** `lib/dal/requirements.ts` — effective-status logic.
-- **Spec:** `docs/version-lifecycle-dates.md`.
-- **Req tag:** `[Req: formal — docs/version-lifecycle-dates.md
-  "Effective Status"]`
-- **Question:** Does effective status preserve archived visibility
-  while a replacement draft or review exists?
-- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 5"`
-
-## 4. Version Immutability — Scenario 4
+## 4. Scenario 4: review and archived versions are immutable until the state changes
 
 - **Code:** `lib/dal/requirements.ts` — edit guards for review and
   archived versions.
@@ -55,37 +50,55 @@ maintenance rule.
   "Published -> Draft : New version created"]`
 - **Question:** Can review or archived versions be edited in place?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 4"`
+  -t "Scenario 4: review and archived versions are immutable until the state changes"`
 
-## 5. Draft Edit Concurrency — Scenario 11
+## 5. Scenario 5: archived requirements stay visible while a replacement draft exists
 
-- **Code:** `lib/dal/requirements.ts` and
-  `lib/requirements/service.ts` — `baseVersionId`/`baseRevisionToken`
-  optimistic edit preconditions.
-- **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
-- **Question:** Are stale draft edits rejected before content or joins are
-  rewritten?
+- **Code:** `lib/dal/requirements.ts` — effective-status logic.
+- **Spec:** `docs/version-lifecycle-dates.md`.
+- **Req tag:** `[Req: formal — docs/version-lifecycle-dates.md
+  "Effective Status"]`
+- **Question:** Does effective status preserve archived visibility
+  while a replacement draft or review exists?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 11"`
+  -t "Scenario 5: archived requirements stay visible while a replacement draft exists"`
 
-## 6. Package-Local Requirements and Deviations — Scenario 6, 7
+## 6. Scenario 6: deviated status requires an approved deviation for both library and specification-local items
 
-- **Code:** `lib/dal/requirement-packages.ts` — package-local
-  requirement, needs-reference, and deviation-gated status functions.
+- **Code:** `lib/dal/requirements-specifications.ts` — specification-local
+  requirement and deviation-gated status functions.
 - **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag (S6):** `[Req: formal — docs/lifecycle-workflow.md
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
   "Deviation Effect on Package Item Status"]`
-- **Req tag (S7):** `[Req: inferred — from
-  linkRequirementsToPackageAtomically() cleanup path]`
-- **Question:** Do package-local requirements, needs references, and
-  deviation-gated statuses behave exactly as the docs imply?
-- **Verify (S6):** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 6"`
-- **Verify (S7):** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 7"`
+- **Question:** Do library and specification-local items require an
+  approved deviation before entering Deviated status?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and specification-local items"`
 
-## 7. Deviation Lifecycle Guards and Decision Immutability — Scenario 9
+## 7. Scenario 7: needs-reference linking never leaks orphan metadata
+
+- **Code:** `lib/dal/requirements-specifications.ts` —
+  needs-reference linking and cleanup functions.
+- **Spec:** `docs/lifecycle-workflow.md`.
+- **Req tag:** `[Req: inferred — from
+  linkRequirementsToPackageAtomically() cleanup path]`
+- **Question:** Do needs-reference rows exist only when at least one
+  linked package item still points at them?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 7: needs-reference linking never leaks orphan metadata"`
+
+## 8. Scenario 8: suggestion resolution is impossible without review
+
+- **Code:** `lib/dal/improvement-suggestions.ts` — resolution logic.
+- **Spec:** `docs/lifecycle-workflow.md`.
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+  "Improvement Suggestion Lifecycle"]`
+- **Question:** Can suggestions be resolved or dismissed without
+  review, or edited after a terminal decision?
+- **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
+  -t "Scenario 8: suggestion resolution is impossible without review"`
+
+## 9. Scenario 9: deviation decisions are write-once audit events
 
 - **Code:** `lib/dal/deviations.ts` — approval/rejection logic,
   review-requested guards, edit/delete guards.
@@ -97,20 +110,21 @@ maintenance rule.
   deviations that haven't been submitted for review? Can deviations
   be edited or deleted while in review-requested state?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 9"`
+  -t "Scenario 9: deviation decisions are write-once audit events"`
 
-## 8. Suggestion Terminal State — Scenario 8
+## 10. Scenario 11: stale draft edits are rejected before replacing latest content
 
-- **Code:** `lib/dal/improvement-suggestions.ts` — resolution logic.
+- **Code:** `lib/dal/requirements.ts` and
+  `lib/requirements/service.ts` — `baseVersionId`/`baseRevisionToken`
+  optimistic edit preconditions.
 - **Spec:** `docs/lifecycle-workflow.md`.
-- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
-  "Improvement Suggestion Lifecycle"]`
-- **Question:** Can suggestions be resolved or dismissed without
-  review, or edited after a terminal decision?
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md "Draft"]`
+- **Question:** Are stale draft edits rejected before content or joins are
+  rewritten?
 - **Verify:** `npm exec -- vitest run tests/quality/functional.test.ts
-  -t "Scenario 8"`
+  -t "Scenario 11: stale draft edits are rejected before replacing latest content"`
 
-## 9. List View Defensive Parsing
+## 11. List View Defensive Parsing
 
 - **Code:** `lib/requirements/list-view.ts`.
 - **Spec:** `docs/requirements-ui-behaviour.md` and
@@ -118,11 +132,11 @@ maintenance rule.
 - **Question:** Do malformed admin defaults, invalid visible-column
   JSON, hidden filters, or bad widths fail safely?
 
-## 10. REST and MCP Output Consistency
+## 12. REST and MCP Output Consistency
 
 - **Code:** `lib/mcp/http.ts`, `lib/mcp/server.ts`,
   `app/api/requirements/[id]/route.ts`,
-  `app/api/requirement-packages/[id]/items/[itemId]/route.ts`.
+  `app/api/specifications/[id]/items/[itemId]/route.ts`.
 - **Spec:** `docs/mcp-server-user-guide.md` and
   `docs/mcp-server-contributor-guide.md`.
 - **Field contracts:** `references/integration-contracts.md` — use
@@ -130,7 +144,7 @@ maintenance rule.
 - **Question:** Do REST and MCP outputs, transport rules, and field
   names match the documentation and field contracts?
 
-## 11. CSV Export
+## 13. CSV Export
 
 - **Code:** `lib/export-csv.ts`.
 - **Spec:** `docs/reports.md`.
@@ -139,7 +153,7 @@ maintenance rule.
 - **Question:** Does export behavior match the documented CSV
   expectations for separators and escaping?
 
-## 12. Coverage Target Alignment
+## 14. Coverage Target Alignment
 
 - **Source:** `tests/quality/QUALITY.md` — Coverage Targets table.
 - **Question:** Do the subsystems and file paths listed in the
@@ -147,7 +161,7 @@ maintenance rule.
   Flag new DAL files, renamed modules, or removed subsystems that
   make the targets stale.
 
-## 13. MCP Tool Inventory Parity — Scenario 10
+## 15. Scenario 10: MCP tool inventory matches documentation
 
 - **Code:** `lib/mcp/server.ts`.
 - **Spec:** `docs/mcp-server-contributor-guide.md` ("Server Contract",
@@ -159,9 +173,9 @@ maintenance rule.
   the documented tool count in the contributor guide and the explicit
   tool listing in the user guide?
 - **Verify:** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 10"`
+  tests/quality/functional.test.ts -t "Scenario 10: MCP tool inventory matches documentation"`
 
-## 14. Two-Step Archiving Atomicity And Strict Targeting — Scenario 12
+## 16. Scenario 12: concurrent archiving attempts are atomic and strictly targeted
 
 - **Code:** `lib/dal/requirements.ts` — `initiateArchiving`,
   `approveArchiving`, `cancelArchiving` (`SERIALIZABLE` transactions
@@ -176,7 +190,7 @@ maintenance rule.
   version with `archive_initiated_at` set (never a newer
   Draft/Review)?
 - **Verify:** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 12"`
+  tests/quality/functional.test.ts -t "Scenario 12: concurrent archiving attempts are atomic and strictly targeted"`
 
 ## Maintenance
 
@@ -190,12 +204,12 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 15. Reference Data Behavioral Contracts
+## 17. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
-  `lib/dal/package-implementation-types.ts`,
-  `lib/dal/package-lifecycle-statuses.ts`,
-  `lib/dal/package-responsibility-areas.ts`.
+  `lib/dal/specification-implementation-types.ts`,
+  `lib/dal/specification-lifecycle-statuses.ts`,
+  `lib/dal/specification-responsibility-areas.ts`.
 - **Spec:** `docs/reference-data-and-ai.md` §1–3,
   `docs/database-schema.md`.
 - **Question:** Does norm-reference ID derivation follow the
@@ -205,7 +219,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 16. AI Generation Contracts
+## 18. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.

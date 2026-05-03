@@ -83,19 +83,19 @@ for (const viewport of viewports) {
       ).toBeVisible()
     })
 
-    test('exposes package report controls in developer mode', async ({
+    test('exposes specification report controls in developer mode', async ({
       page,
       request,
     }) => {
       const response = await request.post(
-        '/api/requirement-packages/ETJANSTPLATT/items',
+        '/api/specifications/ETJANST-UPP-2026/items',
         {
           data: { requirementIds: [39] },
         },
       )
       expect(response.ok()).toBe(true)
 
-      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+      await page.goto('/sv/specifications/ETJANST-UPP-2026')
 
       const itemPanel = page.locator('[data-package-detail-list-panel="items"]')
       await expect(itemPanel).toBeVisible()
@@ -108,7 +108,7 @@ for (const viewport of viewports) {
 
       const packageReportButton = expandedDetail
         .locator(
-          '[data-developer-mode-name="report print button"][data-developer-mode-value="package reports"]',
+          '[data-developer-mode-name="report print button"][data-developer-mode-value="specification reports"]',
         )
         .first()
       await packageReportButton.scrollIntoViewIfNeeded()
@@ -121,7 +121,9 @@ for (const viewport of viewports) {
       await packageReportButton.hover()
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
       await expect(chip).toBeVisible()
-      await expect(chip).toContainText('report print button: package reports')
+      await expect(chip).toContainText(
+        'report print button: specification reports',
+      )
     })
 
     test('keeps sticky table headers referenceable in developer mode', async ({

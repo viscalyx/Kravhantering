@@ -141,11 +141,11 @@ scanning.
 
 ### Step-by-Step Flow: Package Report Reference
 
-1. Navigate to `/sv/requirement-packages/ETJANSTPLATT`.
+1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
 2. Locate the package item table panel.
 3. Expand the first package item row.
 4. Find the package report trigger marked as
-   `data-developer-mode-value="package reports"`.
+   `data-developer-mode-value="specification reports"`.
 5. Focus that trigger and activate Developer Mode.
 6. Hover over the package report trigger.
 7. Assert the chip contains `"report print button: package reports"`.

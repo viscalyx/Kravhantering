@@ -12,17 +12,21 @@ for (const viewport of viewports) {
     test('filters the table by package name and clears the search', async ({
       page,
     }) => {
-      await page.goto('/sv/requirement-packages')
+      await page.goto('/specifications')
 
+      await expect(page).toHaveURL(/\/sv\/specifications$/)
+      await expect(page).toHaveTitle(/Kravunderlag/)
       await expect(
-        page.getByRole('heading', { level: 1, name: 'Kravpaket' }),
+        page.getByRole('heading', { level: 1, name: 'Kravunderlag' }),
       ).toBeVisible()
 
       const nameFilter = page.getByRole('textbox', {
         name: 'Filtrera på namn',
       })
       await expect(nameFilter).toBeVisible()
-      const createButton = page.getByRole('button', { name: 'Nytt kravpaket' })
+      const createButton = page.getByRole('button', {
+        name: 'Nytt kravunderlag',
+      })
       await expect(createButton).toBeVisible()
       const areaPill = page
         .locator('[data-package-requirement-area-pill="true"]')
@@ -117,20 +121,20 @@ for (const viewport of viewports) {
       await nameFilter.fill('e-tjänst')
 
       await expect(
-        page.getByRole('link', { name: 'Införande av e-tjänstplattform' }),
+        page.getByRole('link', { name: 'Upphandling av e-tjänstplattform' }),
       ).toBeVisible()
       await expect(
-        page.getByRole('link', { name: 'Säkerhetslyft Q2' }),
+        page.getByRole('link', { name: 'Införande av säkerhetslyft Q2' }),
       ).toBeHidden()
 
       await page.getByRole('button', { name: 'Rensa sökning' }).click()
 
       await expect(nameFilter).toHaveValue('')
       await expect(
-        page.getByRole('link', { name: 'Införande av e-tjänstplattform' }),
+        page.getByRole('link', { name: 'Upphandling av e-tjänstplattform' }),
       ).toBeVisible()
       await expect(
-        page.getByRole('link', { name: 'Säkerhetslyft Q2' }),
+        page.getByRole('link', { name: 'Införande av säkerhetslyft Q2' }),
       ).toBeVisible()
     })
   })

@@ -1,14 +1,14 @@
-# Requirement Package Detail Integration Tests
+# Requirements Specification Detail Integration Tests
 
 > Test flow documentation for
-> [`requirement-package-detail.spec.ts`](tests/integration/requirement-package-detail.spec.ts)
+> [`requirements-specification-detail.spec.ts`](tests/integration/requirements-specification-detail.spec.ts)
 
-This suite verifies the requirement package detail page: that the edit form
+This suite verifies the requirements specification detail page: that the edit form
 opens from the title action and that the two side-by-side requirement lists
-("Krav i paketet" and "Tillgängliga krav") scroll independently without moving
+("Krav i underlaget" and "Tillgängliga krav") scroll independently without moving
 the page, while keeping the sticky title bar fixed at the top of each panel.
-The page also exposes a left-panel action for creating package-local
-requirements that exist only inside the current package.
+The page also exposes a left-panel action for creating specification-local
+requirements that exist only inside the current requirements specification.
 
 ## Data Model
 
@@ -27,9 +27,9 @@ requirements that exist only inside the current package.
 
 ```mermaid
 flowchart TD
-    A[Start viewport variant] --> B[Open /sv/requirement-packages/ETJANSTPLATT]
+    A[Start viewport variant] --> B[Open /sv/specifications/ETJANST-UPP-2026]
     B --> C[Assert heading visible]
-    C --> D[Click Redigera kravpaket]
+    C --> D[Click Redigera kravunderlag]
     D --> E[Assert edit form visible with prefilled name]
     B --> F{Desktop?}
     F -- Yes --> G[Set viewport to 560 px height]
@@ -57,21 +57,21 @@ flowchart TD
   If neither panel overflows even after expanding a row, the scroll-sync
   assertion is skipped (see inline comment in the spec).
 
-## opens the package edit view from the title action
+## opens the requirements specification edit view from the title action
 
 ### Purpose
 
-Verifies that clicking "Redigera kravpaket" opens the edit form and pre-fills
-the package name, confirming the edit action is correctly wired to the detail
-page title.
+Verifies that clicking "Redigera kravunderlag" opens the edit form and pre-fills
+the specification name, confirming the edit action is correctly wired to the
+detail page title.
 
 ### Step-by-Step Flow
 
-1. Navigate to `/sv/requirement-packages/ETJANSTPLATT`.
-2. Assert the `h1` "Införande av e-tjänstplattform" heading is visible.
-3. Click "Redigera kravpaket".
-4. Assert the `h2` "Redigera kravpaket" heading is visible.
-5. Assert the name text input has value `"Införande av e-tjänstplattform"`.
+1. Navigate to `/sv/specifications/ETJANST-UPP-2026`.
+2. Assert the `h1` "Upphandling av e-tjänstplattform" heading is visible.
+3. Click "Redigera kravunderlag".
+4. Assert the `h2` "Redigera kravunderlag" heading is visible.
+5. Assert the name text input has value `"Upphandling av e-tjänstplattform"`.
 
 ### Sequence Diagram
 
@@ -81,12 +81,12 @@ sequenceDiagram
     participant P as Page
     participant F as EditForm
 
-    U->>P: Open /sv/requirement-packages/ETJANSTPLATT
-    Note over P: ✓ h1 "Införande av e-tjänstplattform" visible
-    U->>P: Click "Redigera kravpaket"
+    U->>P: Open /sv/specifications/ETJANST-UPP-2026
+    Note over P: ✓ h1 "Upphandling av e-tjänstplattform" visible
+    U->>P: Click "Redigera kravunderlag"
     P->>F: Open edit form
-    Note over F: ✓ h2 "Redigera kravpaket" visible
-    Note over F: ✓ Name input = "Införande av e-tjänstplattform"
+    Note over F: ✓ h2 "Redigera kravunderlag" visible
+    Note over F: ✓ Name input = "Upphandling av e-tjänstplattform"
 ```
 
 ## lets the package-detail lists scroll independently and keeps the title bar sticky
@@ -99,7 +99,7 @@ fixed at the same vertical position while the panel scrolls beneath it.
 
 ### Step-by-Step Flow: Independent Panel Scroll
 
-1. Navigate to `/sv/requirement-packages/ETJANSTPLATT` at 560 px height.
+1. Navigate to `/sv/specifications/ETJANST-UPP-2026` at 560 px height.
 2. Assert the available-requirements panel, its sticky bar, trigger, title,
    and Krav-ID header are visible, and `scrollY` is 0.
 3. Assert the left side shows either the `items` list panel with its own
@@ -132,8 +132,8 @@ sequenceDiagram
     participant R as RightPanel
     participant Bar as RightStickyTitleBar
 
-    U->>P: Open ETJANSTPLATT at height 560px
-    P->>L: Render "Krav i paketet" panel or empty state
+    U->>P: Open ETJANST-UPP-2026 at height 560px
+    P->>L: Render "Krav i underlaget" panel or empty state
     P->>R: Render "Tillgängliga krav"
     Note over L,R: ✓ Right panel visible, left side may be empty
     P->>R: Measure overflow

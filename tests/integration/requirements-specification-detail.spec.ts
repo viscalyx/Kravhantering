@@ -6,40 +6,40 @@ const viewports = [
 ]
 
 for (const viewport of viewports) {
-  test.describe(`Requirement package detail edit action — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
+  test.describe(`Requirements specification detail edit action — ${viewport.name} (${viewport.width}×${viewport.height})`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } })
 
     test('opens the package edit view from the title action', async ({
       page,
     }) => {
-      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+      await page.goto('/sv/specifications/ETJANST-UPP-2026')
 
       await expect(
         page.getByRole('heading', {
           level: 1,
-          name: 'Införande av e-tjänstplattform',
+          name: 'Upphandling av e-tjänstplattform',
         }),
       ).toBeVisible()
       await expect(
         page.getByRole('button', { name: 'Nytt unikt krav' }),
       ).toBeVisible()
 
-      await page.getByRole('button', { name: 'Redigera kravpaket' }).click()
+      await page.getByRole('button', { name: 'Redigera kravunderlag' }).click()
 
       await expect(
-        page.getByRole('heading', { level: 2, name: 'Redigera kravpaket' }),
+        page.getByRole('heading', { level: 2, name: 'Redigera kravunderlag' }),
       ).toBeVisible()
       await expect(page.getByRole('textbox', { name: /^Namn/ })).toHaveValue(
-        'Införande av e-tjänstplattform',
+        'Upphandling av e-tjänstplattform',
       )
     })
 
     if (viewport.name === 'desktop') {
-      test('lets the package-detail lists scroll independently while keeping the right title bar sticky', async ({
+      test('lets the specification-detail lists scroll independently while keeping the right title bar sticky', async ({
         page,
       }) => {
         await page.setViewportSize({ width: viewport.width, height: 560 })
-        await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+        await page.goto('/sv/specifications/ETJANST-UPP-2026')
         const activeViewport = page.viewportSize()
         const activeViewportWidth = activeViewport?.width ?? viewport.width
         const activeViewportHeight = activeViewport?.height ?? 560
@@ -49,7 +49,7 @@ for (const viewport of viewports) {
         )
         const leftPanelHeading = page.getByRole('heading', {
           level: 2,
-          name: /Krav i paketet/,
+          name: /Krav i underlaget/,
         })
         const leftEmptyState = page.getByText(
           'Det finns inga krav kopplade till detta paket.',
@@ -65,7 +65,7 @@ for (const viewport of viewports) {
         )
         const leftTitle = leftPanel.getByRole('heading', {
           level: 2,
-          name: /Krav i paketet/,
+          name: /Krav i underlaget/,
         })
         const leftHeaderLabel = leftPanel.locator(
           '[data-requirement-header-label="uniqueId"]',
