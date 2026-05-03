@@ -1,0 +1,283 @@
+schemaVersion: 2.2.2
+metadata:
+  name: kravhantering
+  displayName: Kravhantering
+  description: Next.js + TypeORM requirements management app (Dev Spaces workspace)
+  language: TypeScript
+  projectType: Node.js
+  provider: Viscalyx
+  tags:
+    - Next.js
+    - React
+    - TypeScript
+    - TypeORM
+    - SQL Server
+    - Keycloak
+  version: 0.1.0
+
+# All `container` components in a Devfile share a single Kubernetes pod.
+# That means the `tools` container can reach `db` and `idp` over
+# `localhost`, so the `socat` Keycloak forwarder used by the
+# docker-compose devcontainer is not required here.
+#
+# The tools container uses Red Hat's Universal Developer Image (UDI),
+# which is the standard prebuilt image shipped with OpenShift Dev
+# Spaces. UDI runs cleanly under the `restricted-v2` SCC (arbitrary
+# UID), already includes git, gh, zsh, podman, python3, ripgrep, and
+# nvm — so we don't need to maintain a custom Dockerfile here. The
+# correct Node.js major version (24) is provisioned at workspace
+# startup by the `install` command via the bundled nvm.
+#
+# Secrets (MSSQL_SA_PASSWORD, KEYCLOAK_ADMIN_PASSWORD,
+# OPENROUTER_API_KEY, AUTH_*) must be supplied via Dev Spaces
+# user-namespace Secrets annotated with
+# `controller.devfile.io/mount-as: env`. See
+# docs/openshift-devspaces.md for setup.
+components:
+  - name: tools
+    container:
+      image: registry.redhat.io/devspaces/udi-rhel9:latest
+      memoryRequest: 2Gi
+      memoryLimit: 6Gi
+      cpuRequest: 500m
+      cpuLimit: 2000m
+      mountSources: true
+      sourceMapping: /projects
+      env:
+        - name: DB_HOST
+          value: localhost
+        - name: DB_PORT
+          value: '1433'
+        - name: DB_NAME
+          value: kravhantering
+        - name: DB_ENCRYPT
+          value: 'true'
+        - name: DB_TRUST_SERVER_CERTIFICATE
+          value: 'true'
+        - name: DATABASE_READONLY_PASSWORD_ENV
+          value: DB_READONLY_PASSWORD
+        - name: DB_READONLY_USER
+          value: readonly
+        - name: NODE_ENV
+          value: development
+        - name: NEXT_TELEMETRY_DISABLED
+          value: '1'
+        # Persist nvm + the active Node toolchain on a workspace volume
+        # so the install step doesn't re-download Node on every restart.
+        - name: NVM_DIR
+          value: /home/user/.nvm
+        # The Keycloak sidecar publishes its issuer on the public Dev
+        # Spaces route, not on localhost. AUTH_ISSUER and related vars
+        # should be injected via a Dev Spaces Secret per workspace —
+        # see docs/openshift-devspaces.md.
+      volumeMounts:
+        - name: node-modules
+          path: /projects/kravhantering/node_modules
+        - name: next-cache
+          path: /projects/kravhantering/.next
+        - name: nvm-data
+          path: /home/user/.nvm
+      endpoints:
+        - name: next-dev
+          targetPort: 3000
+          exposure: public
+          protocol: https
+          secure: true
+        - name: next-dev-alt
+          targetPort: 3001
+          exposure: public
+          protocol: https
+          secure: true
+        - name: next-dev-https
+          targetPort: 4443
+          exposure: public
+          protocol: https
+          secure: true
+        - name: playwright-report
+          targetPort: 9323
+          exposure: public
+          protocol: https
+          secure: true
+        - name: vitest-ui
+          targetPort: 51204
+          exposure: public
+          protocol: https
+          secure: true
+
+  - name: db
+    container:
+      # SQL Server 2025 Developer edition — same image as
+      # .devcontainer/docker-compose.yml. Note: this image runs as the
+      # `mssql` user (UID 10001) and requires the `anyuid` SCC on
+      # OpenShift. See docs/openshift-devspaces.md for the workaround
+      # (or swap to mcr.microsoft.com/azure-sql-edge:latest as a
+      # fallback in restricted-v2 namespaces).
+      image: mcr.microsoft.com/mssql/server:2025-latest
+      memoryRequest: 2Gi
+      memoryLimit: 4Gi
+      cpuRequest: 500m
+      cpuLimit: 2000m
+      mountSources: false
+      env:
+        - name: ACCEPT_EULA
+          value: 'Y'
+        - name: MSSQL_PID
+          value: Developer
+        # MSSQL_SA_PASSWORD must be provided via a Dev Spaces Secret.
+      volumeMounts:
+        - name: mssql-data
+          path: /var/opt/mssql
+      endpoints:
+        - name: sqlserver
+          targetPort: 1433
+          exposure: internal
+
+  - name: idp
+    container:
+      # Keycloak realm `kravhantering-dev` is imported on every start
+      # from dev/keycloak/realm-kravhantering-dev.json — same as the
+      # devcontainer compose service.
+      image: quay.io/keycloak/keycloak:26.6
+      memoryRequest: 512Mi
+      memoryLimit: 1Gi
+      cpuRequest: 200m
+      cpuLimit: 1000m
+      mountSources: true
+      sourceMapping: /projects
+      command:
+        - /opt/keycloak/bin/kc.sh
+      args:
+        - start-dev
+        - --import-realm
+        - --http-port=8080
+      env:
+        - name: KC_HTTP_PORT
+          value: '8080'
+        - name: KEYCLOAK_ADMIN
+          value: admin
+        # KEYCLOAK_ADMIN_PASSWORD should be provided via a Dev Spaces
+        # Secret. The default `admin` is acceptable for ephemeral
+        # workspaces only.
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: admin
+        - name: KC_IMPORT_REALM_DIR
+          value: /projects/kravhantering/dev/keycloak
+      endpoints:
+        - name: keycloak
+          targetPort: 8080
+          exposure: public
+          protocol: https
+          secure: true
+
+  - name: node-modules
+    volume:
+      size: 3Gi
+
+  - name: next-cache
+    volume:
+      size: 2Gi
+
+  - name: nvm-data
+    volume:
+      size: 2Gi
+
+  - name: mssql-data
+    volume:
+      size: 5Gi
+
+commands:
+  - id: install
+    exec:
+      label: Install Node 24 + npm + Playwright dependencies
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      # UDI ships nvm but no preselected Node major. Install/activate
+      # the version pinned in package.json `engines.node` (24), then
+      # run npm install. The default-alias keeps subsequent shells on
+      # Node 24 without having to re-run nvm install.
+      commandLine: |
+        set -e
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+          mkdir -p "$NVM_DIR"
+          curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+        fi
+        # shellcheck disable=SC1091
+        . "$NVM_DIR/nvm.sh"
+        nvm install 24
+        nvm alias default 24
+        nvm use 24
+        npm install -g npm@latest
+        npm install
+        npx playwright install --with-deps
+      group:
+        kind: build
+        isDefault: true
+
+  - id: db-setup
+    exec:
+      label: Initialize SQL Server database (migrate + seed)
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      # Mirrors the devcontainer postStartCommand retry behaviour: SQL
+      # Server can take ~10s to accept connections after the pod
+      # starts.
+      commandLine: |
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        # shellcheck disable=SC1091
+        . "$NVM_DIR/nvm.sh"
+        npm run db:setup || {
+          echo "Automatic db:setup failed; retrying once after 10 seconds..." >&2
+          sleep 10
+          npm run db:setup || {
+            echo "Automatic db:setup still failed. Inspect the db container logs." >&2
+            exit 1
+          }
+        }
+
+  - id: dev
+    exec:
+      label: Start Next.js dev server
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: |
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        # shellcheck disable=SC1091
+        . "$NVM_DIR/nvm.sh"
+        npm run dev
+      hotReloadCapable: true
+      group:
+        kind: run
+        isDefault: true
+
+  - id: test
+    exec:
+      label: Run unit tests (vitest)
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: |
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        # shellcheck disable=SC1091
+        . "$NVM_DIR/nvm.sh"
+        npm test
+      group:
+        kind: test
+        isDefault: true
+
+  - id: check
+    exec:
+      label: Run all checks (type-check, lint, format, spell, test)
+      component: tools
+      workingDir: ${PROJECT_SOURCE}
+      commandLine: |
+        export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+        # shellcheck disable=SC1091
+        . "$NVM_DIR/nvm.sh"
+        npm run check
+      group:
+        kind: test
+
+events:
+  postStart:
+    - install
+    - db-setup
