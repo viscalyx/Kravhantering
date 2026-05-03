@@ -129,34 +129,34 @@ components:
           protocol: https
           secure: true
 
-  - name: db
-    container:
-      # SQL Server 2025 Developer edition. Use Microsoft's RHEL image in
-      # Dev Spaces because it is certified for Red Hat environments.
-      # The database uses container-local storage because Developer
-      # Sandbox-style SCCs reject fsGroup 10001 for a writable PVC.
-      image: mcr.microsoft.com/mssql/rhel/server:2025-latest
-      memoryRequest: 1Gi
-      memoryLimit: 2Gi
-      cpuRequest: 500m
-      cpuLimit: 2000m
-      mountSources: false
-      env:
-        - name: ACCEPT_EULA
-          value: 'Y'
-        - name: MSSQL_PID
-          value: Developer
-        # Dev-only fallback matching .env.development. Do not use for
-        # shared, production-like, or externally reachable SQL Server.
-        - name: MSSQL_SA_PASSWORD
-          value: YourStrong!Passw0rd
-        # Cap SQL Server memory inside the container (e.g. 1024 MB)
-        - name: MSSQL_MEMORY_LIMIT_MB
-          value: "1024"
-      endpoints:
-        - name: sqlserver
-          targetPort: 1433
-          exposure: internal
+  # - name: db
+  #   container:
+  #     # SQL Server 2025 Developer edition. Use Microsoft's RHEL image in
+  #     # Dev Spaces because it is certified for Red Hat environments.
+  #     # The database uses container-local storage because Developer
+  #     # Sandbox-style SCCs reject fsGroup 10001 for a writable PVC.
+  #     image: mcr.microsoft.com/mssql/rhel/server:2025-latest
+  #     memoryRequest: 1Gi
+  #     memoryLimit: 2Gi
+  #     cpuRequest: 500m
+  #     cpuLimit: 2000m
+  #     mountSources: false
+  #     env:
+  #       - name: ACCEPT_EULA
+  #         value: 'Y'
+  #       - name: MSSQL_PID
+  #         value: Developer
+  #       # Dev-only fallback matching .env.development. Do not use for
+  #       # shared, production-like, or externally reachable SQL Server.
+  #       - name: MSSQL_SA_PASSWORD
+  #         value: YourStrong!Passw0rd
+  #       # Cap SQL Server memory inside the container (e.g. 1024 MB)
+  #       - name: MSSQL_MEMORY_LIMIT_MB
+  #         value: "1024"
+  #     endpoints:
+  #       - name: sqlserver
+  #         targetPort: 1433
+  #         exposure: internal
 
   - name: idp
     container:
