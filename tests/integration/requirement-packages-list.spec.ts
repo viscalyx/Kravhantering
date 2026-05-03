@@ -71,11 +71,26 @@ for (const viewport of viewports) {
       )
       expect(hasMultiAreaPackage).toBe(true)
 
-      await page.addStyleTag({
-        content:
-          '[data-package-requirement-area-pill-list="true"] { max-width: 72px !important; }',
+      await page.evaluate(() => {
+        const descriptor = Object.getOwnPropertyDescriptor(
+          HTMLElement.prototype,
+          'scrollHeight',
+        )
+
+        Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+          configurable: true,
+          get() {
+            const element = this as HTMLElement
+            if (element.dataset.packageRequirementAreaPillList === 'true') {
+              return 48
+            }
+
+            return descriptor?.get?.call(this) ?? 0
+          },
+        })
+
+        window.dispatchEvent(new Event('resize'))
       })
-      await page.evaluate(() => window.dispatchEvent(new Event('resize')))
 
       const areaToggle = page
         .locator('[data-package-requirement-area-pill-toggle="true"]')
