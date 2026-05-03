@@ -83,21 +83,23 @@ for (const viewport of viewports) {
       ).toBeVisible()
     })
 
-    test('exposes package report controls in developer mode', async ({
+    test('exposes specification report controls in developer mode', async ({
       page,
       request,
     }) => {
       const response = await request.post(
-        '/api/requirement-packages/ETJANSTPLATT/items',
+        '/api/specifications/ETJANST-UPP-2026/items',
         {
           data: { requirementIds: [39] },
         },
       )
       expect(response.ok()).toBe(true)
 
-      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+      await page.goto('/sv/specifications/ETJANST-UPP-2026')
 
-      const itemPanel = page.locator('[data-package-detail-list-panel="items"]')
+      const itemPanel = page.locator(
+        '[data-specification-detail-list-panel="items"]',
+      )
       await expect(itemPanel).toBeVisible()
       await itemPanel.locator('tbody tr', { hasText: 'BEH0002' }).click()
 
@@ -106,22 +108,24 @@ for (const viewport of viewports) {
         .first()
       await expect(expandedDetail).toBeVisible()
 
-      const packageReportButton = expandedDetail
+      const specificationReportButton = expandedDetail
         .locator(
-          '[data-developer-mode-name="report print button"][data-developer-mode-value="package reports"]',
+          '[data-developer-mode-name="report print button"][data-developer-mode-value="specification reports"]',
         )
         .first()
-      await packageReportButton.scrollIntoViewIfNeeded()
-      await expect(packageReportButton).toBeVisible()
+      await specificationReportButton.scrollIntoViewIfNeeded()
+      await expect(specificationReportButton).toBeVisible()
 
-      await packageReportButton.focus()
+      await specificationReportButton.focus()
       await page.keyboard.press('Control+Alt+Shift+H')
       await expect(page.getByTestId('developer-mode-badge')).toBeVisible()
 
-      await packageReportButton.hover()
+      await specificationReportButton.hover()
       const chip = page.locator('[data-developer-mode-overlay-chip="true"]')
       await expect(chip).toBeVisible()
-      await expect(chip).toContainText('report print button: package reports')
+      await expect(chip).toContainText(
+        'report print button: specification reports',
+      )
     })
 
     test('keeps sticky table headers referenceable in developer mode', async ({

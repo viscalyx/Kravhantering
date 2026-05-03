@@ -217,6 +217,17 @@ prompt to "Reopen in Container". The devcontainer includes the local
 *SQL Server Developer* container, so you can run the full application and
 database stack without any additional setup.
 
+### Cloud development with Red Hat OpenShift Dev Spaces
+
+The repository ships a [`devfile.yaml`](devfile.yaml) for [Red Hat
+OpenShift Dev
+Spaces](https://developers.redhat.com/products/openshift-dev-spaces/overview).
+Create a workspace from this Git URL in your Dev Spaces dashboard and the
+same SQL Server + Keycloak stack is provisioned as sidecar containers in a
+single pod. See
+[docs/openshift-devspaces.md](docs/openshift-devspaces.md) for required
+secrets, editor selection, and SCC requirements.
+
 ### Local development without devcontainers
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full local setup, including

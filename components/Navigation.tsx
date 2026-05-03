@@ -2,9 +2,9 @@
 
 import {
   ClipboardList,
+  FileStack,
   HelpCircle,
   Menu,
-  Package,
   Settings2,
   X,
 } from 'lucide-react'
@@ -21,9 +21,9 @@ import { devMarker } from '@/lib/developer-mode-markers'
 const primaryNavItems = [
   { href: '/requirements' as const, labelKey: 'catalog', icon: ClipboardList },
   {
-    href: '/requirement-packages' as const,
-    labelKey: 'packages',
-    icon: Package,
+    href: '/specifications' as const,
+    labelKey: 'specifications',
+    icon: FileStack,
   },
 ]
 

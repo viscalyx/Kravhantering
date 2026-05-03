@@ -2,29 +2,29 @@ import { deviationEntity } from '@/lib/typeorm/entities/deviation'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 import { ownerEntity } from '@/lib/typeorm/entities/owner'
-import { packageImplementationTypeEntity } from '@/lib/typeorm/entities/package-implementation-type'
-import { packageItemStatusEntity } from '@/lib/typeorm/entities/package-item-status'
-import { packageLifecycleStatusEntity } from '@/lib/typeorm/entities/package-lifecycle-status'
-import { packageLocalRequirementEntity } from '@/lib/typeorm/entities/package-local-requirement'
-import { packageLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/package-local-requirement-deviation'
-import { packageLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/package-local-requirement-norm-reference'
-import { packageLocalRequirementUsageScenarioEntity } from '@/lib/typeorm/entities/package-local-requirement-usage-scenario'
-import { packageNeedsReferenceEntity } from '@/lib/typeorm/entities/package-needs-reference'
-import { packageResponsibilityAreaEntity } from '@/lib/typeorm/entities/package-responsibility-area'
 import { qualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 import { requirementEntity } from '@/lib/typeorm/entities/requirement'
 import { requirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
 import { requirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import { requirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
-import { requirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
-import { requirementPackageItemEntity } from '@/lib/typeorm/entities/requirement-package-item'
 import { requirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 import { requirementStatusTransitionEntity } from '@/lib/typeorm/entities/requirement-status-transition'
 import { requirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
 import { requirementVersionEntity } from '@/lib/typeorm/entities/requirement-version'
 import { requirementVersionNormReferenceEntity } from '@/lib/typeorm/entities/requirement-version-norm-reference'
 import { requirementVersionUsageScenarioEntity } from '@/lib/typeorm/entities/requirement-version-usage-scenario'
+import { requirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
+import { requirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 import { riskLevelEntity } from '@/lib/typeorm/entities/risk-level'
+import { specificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
+import { specificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
+import { specificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
+import { specificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
+import { specificationLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/specification-local-requirement-deviation'
+import { specificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
+import { specificationLocalRequirementUsageScenarioEntity } from '@/lib/typeorm/entities/specification-local-requirement-usage-scenario'
+import { specificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
+import { specificationResponsibilityAreaEntity } from '@/lib/typeorm/entities/specification-responsibility-area'
 import { uiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 import { usageScenarioEntity } from '@/lib/typeorm/entities/usage-scenario'
 
@@ -33,22 +33,22 @@ export const sqlServerEntities = [
   improvementSuggestionEntity,
   normReferenceEntity,
   ownerEntity,
-  packageImplementationTypeEntity,
-  packageItemStatusEntity,
-  packageLifecycleStatusEntity,
-  packageLocalRequirementEntity,
-  packageLocalRequirementDeviationEntity,
-  packageLocalRequirementNormReferenceEntity,
-  packageLocalRequirementUsageScenarioEntity,
-  packageNeedsReferenceEntity,
-  packageResponsibilityAreaEntity,
+  specificationImplementationTypeEntity,
+  specificationItemStatusEntity,
+  specificationLifecycleStatusEntity,
+  specificationLocalRequirementEntity,
+  specificationLocalRequirementDeviationEntity,
+  specificationLocalRequirementNormReferenceEntity,
+  specificationLocalRequirementUsageScenarioEntity,
+  specificationNeedsReferenceEntity,
+  specificationResponsibilityAreaEntity,
   qualityCharacteristicEntity,
   requirementEntity,
   requirementAreaEntity,
   requirementCategoryEntity,
   requirementListColumnDefaultEntity,
-  requirementPackageEntity,
-  requirementPackageItemEntity,
+  requirementsSpecificationEntity,
+  requirementsSpecificationItemEntity,
   requirementStatusEntity,
   requirementStatusTransitionEntity,
   requirementTypeEntity,
@@ -64,29 +64,29 @@ export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
 export type { OwnerEntity } from '@/lib/typeorm/entities/owner'
-export type { PackageImplementationTypeEntity } from '@/lib/typeorm/entities/package-implementation-type'
-export type { PackageItemStatusEntity } from '@/lib/typeorm/entities/package-item-status'
-export type { PackageLifecycleStatusEntity } from '@/lib/typeorm/entities/package-lifecycle-status'
-export type { PackageLocalRequirementEntity } from '@/lib/typeorm/entities/package-local-requirement'
-export type { PackageLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/package-local-requirement-deviation'
-export type { PackageLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/package-local-requirement-norm-reference'
-export type { PackageLocalRequirementUsageScenarioEntity } from '@/lib/typeorm/entities/package-local-requirement-usage-scenario'
-export type { PackageNeedsReferenceEntity } from '@/lib/typeorm/entities/package-needs-reference'
-export type { PackageResponsibilityAreaEntity } from '@/lib/typeorm/entities/package-responsibility-area'
 export type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 export type { RequirementEntity } from '@/lib/typeorm/entities/requirement'
 export type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
 export type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 export type { RequirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
-export type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
-export type { RequirementPackageItemEntity } from '@/lib/typeorm/entities/requirement-package-item'
 export type { RequirementStatusEntity } from '@/lib/typeorm/entities/requirement-status'
 export type { RequirementStatusTransitionEntity } from '@/lib/typeorm/entities/requirement-status-transition'
 export type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
 export type { RequirementVersionEntity } from '@/lib/typeorm/entities/requirement-version'
 export type { RequirementVersionNormReferenceEntity } from '@/lib/typeorm/entities/requirement-version-norm-reference'
 export type { RequirementVersionUsageScenarioEntity } from '@/lib/typeorm/entities/requirement-version-usage-scenario'
+export type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
+export type { RequirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 export type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
+export type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
+export type { SpecificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
+export type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
+export type { SpecificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
+export type { SpecificationLocalRequirementDeviationEntity } from '@/lib/typeorm/entities/specification-local-requirement-deviation'
+export type { SpecificationLocalRequirementNormReferenceEntity } from '@/lib/typeorm/entities/specification-local-requirement-norm-reference'
+export type { SpecificationLocalRequirementUsageScenarioEntity } from '@/lib/typeorm/entities/specification-local-requirement-usage-scenario'
+export type { SpecificationNeedsReferenceEntity } from '@/lib/typeorm/entities/specification-needs-reference'
+export type { SpecificationResponsibilityAreaEntity } from '@/lib/typeorm/entities/specification-responsibility-area'
 export type { UiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 export type { UsageScenarioEntity } from '@/lib/typeorm/entities/usage-scenario'
 
@@ -95,29 +95,29 @@ export {
   improvementSuggestionEntity,
   normReferenceEntity,
   ownerEntity,
-  packageImplementationTypeEntity,
-  packageItemStatusEntity,
-  packageLifecycleStatusEntity,
-  packageLocalRequirementDeviationEntity,
-  packageLocalRequirementEntity,
-  packageLocalRequirementNormReferenceEntity,
-  packageLocalRequirementUsageScenarioEntity,
-  packageNeedsReferenceEntity,
-  packageResponsibilityAreaEntity,
   qualityCharacteristicEntity,
   requirementAreaEntity,
   requirementCategoryEntity,
   requirementEntity,
   requirementListColumnDefaultEntity,
-  requirementPackageEntity,
-  requirementPackageItemEntity,
   requirementStatusEntity,
   requirementStatusTransitionEntity,
+  requirementsSpecificationEntity,
+  requirementsSpecificationItemEntity,
   requirementTypeEntity,
   requirementVersionEntity,
   requirementVersionNormReferenceEntity,
   requirementVersionUsageScenarioEntity,
   riskLevelEntity,
+  specificationImplementationTypeEntity,
+  specificationItemStatusEntity,
+  specificationLifecycleStatusEntity,
+  specificationLocalRequirementDeviationEntity,
+  specificationLocalRequirementEntity,
+  specificationLocalRequirementNormReferenceEntity,
+  specificationLocalRequirementUsageScenarioEntity,
+  specificationNeedsReferenceEntity,
+  specificationResponsibilityAreaEntity,
   uiTerminologyEntity,
   usageScenarioEntity,
 }

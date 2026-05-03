@@ -16,17 +16,17 @@ import {
   DOGFOOD_NEEDS_REFS,
   DOGFOOD_NORMS,
   DOGFOOD_OWNERS,
-  DOGFOOD_PACKAGE_LOCALS,
-  DOGFOOD_PACKAGES,
   DOGFOOD_SCENARIOS,
+  DOGFOOD_SPECIFICATION_LOCALS,
+  DOGFOOD_SPECIFICATIONS,
   ID,
   NEEDS_REF_ID_BASE,
-  PACKAGE_ITEM_ID_BASE,
-  PACKAGE_LOCAL_ID_BASE,
-  PKG_KH,
-  PKG_KH_POC,
   REQUIREMENT_ID_BASE,
   SEED_TS,
+  SPEC_KH,
+  SPEC_KH_POC,
+  SPECIFICATION_ITEM_ID_BASE,
+  SPECIFICATION_LOCAL_ID_BASE,
   VERSION_ID_BASE,
 } from './seed-dogfood.mjs'
 
@@ -107,7 +107,7 @@ export function appendDogfoodSeed(SEED_DATA) {
     )
   }
 
-  // ---- Mint Krav, versions, junctions, and packages ----------------------
+  // ---- Mint Krav, versions, junctions, and specifications ----------------------
   // Per-area Krav counts so we can patch the area's next_sequence at the end
   // (existing areas) and set it correctly on first creation (new areas).
   const dogfoodSeqUsed = {}
@@ -231,11 +231,11 @@ export function appendDogfoodSeed(SEED_DATA) {
     }
   }
 
-  // ---- requirement_packages ----------------------------------------------
-  const packages = tableSection(SEED_DATA, 'requirement_packages')
-  for (const p of DOGFOOD_PACKAGES) {
-    // local_requirement_next_sequence will be patched after package locals.
-    packages.rows.push([
+  // ---- requirements_specifications ----------------------------------------------
+  const specifications = tableSection(SEED_DATA, 'requirements_specifications')
+  for (const p of DOGFOOD_SPECIFICATIONS) {
+    // local_requirement_next_sequence will be patched after specification locals.
+    specifications.rows.push([
       p.id,
       p.responsibility,
       p.impl,
@@ -249,41 +249,41 @@ export function appendDogfoodSeed(SEED_DATA) {
     ])
   }
 
-  // ---- package_needs_references ------------------------------------------
-  const needsRefs = tableSection(SEED_DATA, 'package_needs_references')
+  // ---- specification_needs_references ------------------------------------------
+  const needsRefs = tableSection(SEED_DATA, 'specification_needs_references')
   const needsRefIds = []
   for (let i = 0; i < DOGFOOD_NEEDS_REFS.length; i += 1) {
     const nr = DOGFOOD_NEEDS_REFS[i]
     const id = NEEDS_REF_ID_BASE + i + 1
     needsRefIds.push(id)
-    needsRefs.rows.push([id, nr.pkg, nr.text, SEED_TS])
+    needsRefs.rows.push([id, nr.spec, nr.text, SEED_TS])
   }
 
-  // ---- package_local_requirements + their junctions -----------------------
-  const locals = tableSection(SEED_DATA, 'package_local_requirements')
+  // ---- specification_local_requirements + their junctions -----------------------
+  const locals = tableSection(SEED_DATA, 'specification_local_requirements')
   const localNorms = tableSection(
     SEED_DATA,
-    'package_local_requirement_norm_references',
+    'specification_local_requirement_norm_references',
   )
   const localScn = tableSection(
     SEED_DATA,
-    'package_local_requirement_usage_scenarios',
+    'specification_local_requirement_usage_scenarios',
   )
-  // Track per-package local sequence
-  const pkgLocalSeq = {}
-  const pkgLocalRows = {}
-  for (let i = 0; i < DOGFOOD_PACKAGE_LOCALS.length; i += 1) {
-    const pl = DOGFOOD_PACKAGE_LOCALS[i]
+  // Track per-specification local sequence
+  const specLocalSeq = {}
+  const specLocalRows = {}
+  for (let i = 0; i < DOGFOOD_SPECIFICATION_LOCALS.length; i += 1) {
+    const pl = DOGFOOD_SPECIFICATION_LOCALS[i]
     const k = DOGFOOD_KRAV[pl.kravIdx]
     if (!k) {
       throw new Error(
-        `Dogfood seed: package-local refers to unknown krav idx ${pl.kravIdx}`,
+        `Dogfood seed: specification-local refers to unknown krav idx ${pl.kravIdx}`,
       )
     }
-    const localId = PACKAGE_LOCAL_ID_BASE + i + 1
-    pkgLocalSeq[pl.pkg] = (pkgLocalSeq[pl.pkg] || 0) + 1
-    const seq = pkgLocalSeq[pl.pkg]
-    pkgLocalRows[pl.pkg] = (pkgLocalRows[pl.pkg] || 0) + 1
+    const localId = SPECIFICATION_LOCAL_ID_BASE + i + 1
+    specLocalSeq[pl.spec] = (specLocalSeq[pl.spec] || 0) + 1
+    const seq = specLocalSeq[pl.spec]
+    specLocalRows[pl.spec] = (specLocalRows[pl.spec] || 0) + 1
     const uniqueId = `KRAV${String(seq).padStart(4, '0')}`
     const needsRefId =
       pl.needsRefOffset != null && pl.needsRefOffset < needsRefIds.length
@@ -291,7 +291,7 @@ export function appendDogfoodSeed(SEED_DATA) {
         : null
     locals.rows.push([
       localId,
-      pl.pkg,
+      pl.spec,
       uniqueId,
       seq,
       k.area,
@@ -318,36 +318,39 @@ export function appendDogfoodSeed(SEED_DATA) {
     }
   }
 
-  // Patch local_requirement_next_sequence on each package row
-  const pkgIdIdx = packages.columns.indexOf('id')
-  const pkgSeqIdx = packages.columns.indexOf('local_requirement_next_sequence')
-  for (const row of packages.rows) {
-    const id = row[pkgIdIdx]
-    if (id === PKG_KH || id === PKG_KH_POC) {
-      row[pkgSeqIdx] = (pkgLocalSeq[id] || 0) + 1
+  // Patch local_requirement_next_sequence on each specification row
+  const specIdIdx = specifications.columns.indexOf('id')
+  const specSeqIdx = specifications.columns.indexOf(
+    'local_requirement_next_sequence',
+  )
+  for (const row of specifications.rows) {
+    const id = row[specIdIdx]
+    if (id === SPEC_KH || id === SPEC_KH_POC) {
+      row[specSeqIdx] = (specLocalSeq[id] || 0) + 1
     }
   }
 
-  // ---- requirement_package_items -----------------------------------------
+  // ---- requirements_specification_items -----------------------------------------
   // Every Krav gets linked to KH; a curated subset is also linked to KH-POC.
-  const items = tableSection(SEED_DATA, 'requirement_package_items')
+  const items = tableSection(SEED_DATA, 'requirements_specification_items')
   const pocIndexSet = new Set(DOGFOOD_KH_POC_INDEXES)
-  // Needs-references are package-scoped: an item's needs_reference_id must
-  // belong to the same package. Build per-package lists.
+  // Needs-references are specification-scoped: an item's needs_reference_id must
+  // belong to the same specification. Build per-specification lists.
   const khNeedsRefIds = []
   const khPocNeedsRefIds = []
   for (let i = 0; i < DOGFOOD_NEEDS_REFS.length; i += 1) {
     const id = needsRefIds[i]
-    if (DOGFOOD_NEEDS_REFS[i].pkg === PKG_KH) khNeedsRefIds.push(id)
-    else if (DOGFOOD_NEEDS_REFS[i].pkg === PKG_KH_POC) khPocNeedsRefIds.push(id)
+    if (DOGFOOD_NEEDS_REFS[i].spec === SPEC_KH) khNeedsRefIds.push(id)
+    else if (DOGFOOD_NEEDS_REFS[i].spec === SPEC_KH_POC)
+      khPocNeedsRefIds.push(id)
   }
-  let nextItemId = PACKAGE_ITEM_ID_BASE + 1
+  let nextItemId = SPECIFICATION_ITEM_ID_BASE + 1
   for (let i = 0; i < minted.length; i += 1) {
     const m = minted[i]
     const k = DOGFOOD_KRAV[m.idx]
     items.rows.push([
       nextItemId++,
-      PKG_KH,
+      SPEC_KH,
       m.requirementId,
       m.versionId,
       // Loosely tie a few items to a KH needs-ref to exercise that field
@@ -356,7 +359,7 @@ export function appendDogfoodSeed(SEED_DATA) {
         : null,
       null, // unused_1
       SEED_TS, // created_at
-      k.item, // package_item_status_id
+      k.item, // specification_item_status_id
       null, // note
       SEED_TS, // status_updated_at
     ])
@@ -371,14 +374,14 @@ export function appendDogfoodSeed(SEED_DATA) {
     }
     items.rows.push([
       nextItemId++,
-      PKG_KH_POC,
+      SPEC_KH_POC,
       m.requirementId,
       m.versionId,
       null,
       null,
       SEED_TS,
       // For PoC we mark most items as "Inkluderad" since work hasn't started
-      // there yet; the package locals override with their own status.
+      // there yet; the specification locals override with their own status.
       ID.itemStatus.inkluderad,
       null,
       SEED_TS,
@@ -387,9 +390,9 @@ export function appendDogfoodSeed(SEED_DATA) {
 
   return {
     requirementsAdded: minted.length,
-    packagesAdded: DOGFOOD_PACKAGES.length,
-    packageLocalsAdded: DOGFOOD_PACKAGE_LOCALS.length,
-    packageItemsAdded: minted.length + DOGFOOD_KH_POC_INDEXES.length,
+    specificationsAdded: DOGFOOD_SPECIFICATIONS.length,
+    specificationLocalsAdded: DOGFOOD_SPECIFICATION_LOCALS.length,
+    specificationItemsAdded: minted.length + DOGFOOD_KH_POC_INDEXES.length,
     needsRefsAdded: DOGFOOD_NEEDS_REFS.length,
   }
 }

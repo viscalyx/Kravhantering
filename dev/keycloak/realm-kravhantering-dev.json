@@ -50,14 +50,14 @@
       "realmRoles": []
     },
     {
-      "username": "petra.packageresp",
+      "username": "petra.specresp",
       "enabled": true,
-      "email": "petra.packageresp@example.test",
+      "email": "petra.specresp@example.test",
       "emailVerified": true,
       "firstName": "Petra",
-      "lastName": "PackageResp",
+      "lastName": "SpecificationResp",
       "attributes": {
-        "hsaId": ["SE2321000032-pkgresp1"]
+        "hsaId": ["SE2321000032-specresp1"]
       },
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }

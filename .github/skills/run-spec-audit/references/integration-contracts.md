@@ -16,7 +16,7 @@ Source: `lib/requirements/types.ts`
 | `createdAt` | `string` | ISO timestamp |
 | `id` | `number` | Internal requirement id |
 | `isArchived` | `boolean` | Archive flag |
-| `packageCount` | `number` | Linked packages |
+| `specificationCount` | `number` | Linked specifications |
 | `uniqueId` | `string` | Public id e.g. `IDN0001` |
 | `versions` | `RequirementVersionDetail[]` | Full history |
 
@@ -62,29 +62,28 @@ Source: `lib/requirements/types.ts`
 | `versionNumber` | `number` | Version sequence |
 | `versionScenarios` | `RequirementVersionScenario[]` | Scenarios |
 
-## REST: Package Detail `/api/requirement-packages/[id]`
+## REST: Specification Detail `/api/specifications/[id]`
 
-Source: `app/api/requirement-packages/[id]/route.ts`
+Source: `app/api/specifications/[id]/route.ts`
 
 | Field | Type | Notes |
 |---|---|---|
 | `businessNeedsReference` | `string \| null` | Business note |
 | `createdAt` | `string` | ISO timestamp |
-| `id` | `number` | Package id |
+| `id` | `number` | Specification id |
 | `implementationType` | `{ id, nameSv, nameEn } \| null` | Taxonomy |
 | `lifecycleStatus` | `{ id, nameSv, nameEn } \| null` | Taxonomy |
-| `localRequirementNextSequence` | `number` | Next local seq |
-| `name` | `string` | Package name |
-| `packageImplementationTypeId` | `number \| null` | FK |
-| `packageLifecycleStatusId` | `number \| null` | FK |
-| `packageResponsibilityAreaId` | `number \| null` | FK |
+| `name` | `string` | Specification name |
+| `specificationImplementationTypeId` | `number \| null` | FK |
+| `specificationLifecycleStatusId` | `number \| null` | FK |
+| `specificationResponsibilityAreaId` | `number \| null` | FK |
 | `responsibilityArea` | `{ id, nameSv, nameEn } \| null` | Taxonomy |
-| `uniqueId` | `string` | Slug e.g. `ETJANSTPLATT` |
+| `uniqueId` | `string` | Slug e.g. `ETJANST-UPP-2026` |
 | `updatedAt` | `string` | ISO timestamp |
 
-## REST: Package Items `/api/requirement-packages/[id]/items`
+## REST: Specification Items `/api/specifications/[id]/items`
 
-Source: `app/api/requirement-packages/[id]/items/route.ts`
+Source: `app/api/specifications/[id]/items/route.ts`
 
 Top-level: `{ items: RequirementRow[] }`
 
@@ -98,20 +97,20 @@ Top-level: `{ items: RequirementRow[] }`
 | `hasPendingDeviation` | `boolean` | Route enrichment |
 | `id` | `number` | Req id or negative local id |
 | `isArchived` | `boolean` | Archive flag |
-| `isPackageLocal` | `boolean` | Kind discriminator |
+| `isSpecificationLocal` | `boolean` | Kind discriminator |
 | `itemRef` | `lib:N` or `local:N` | Stable ref |
-| `kind` | `library` or `packageLocal` | Item kind |
+| `kind` | `library` or `specificationLocal` | Item kind |
 | `needsReference` | `string \| null` | Needs text |
 | `needsReferenceId` | `number \| null` | FK |
 | `normReferenceIds` | `string[]` | Norm ids |
-| `packageItemId` | `number` | Library rows |
-| `packageItemStatusColor` | `string \| null` | Status color |
-| `packageItemStatusDescriptionEn` | `string \| null` | English desc |
-| `packageItemStatusDescriptionSv` | `string \| null` | Swedish desc |
-| `packageItemStatusId` | `number \| null` | Status id |
-| `packageItemStatusNameEn` | `string \| null` | English status |
-| `packageItemStatusNameSv` | `string \| null` | Swedish status |
-| `packageLocalRequirementId` | `number` | Package-local rows |
+| `specificationItemId` | `number` | Library rows |
+| `specificationItemStatusColor` | `string \| null` | Status color |
+| `specificationItemStatusDescriptionEn` | `string \| null` | English desc |
+| `specificationItemStatusDescriptionSv` | `string \| null` | Swedish desc |
+| `specificationItemStatusId` | `number \| null` | Status id |
+| `specificationItemStatusNameEn` | `string \| null` | English status |
+| `specificationItemStatusNameSv` | `string \| null` | Swedish status |
+| `specificationLocalRequirementId` | `number` | Specification-local rows |
 | `uniqueId` | `string` | Req or local id |
 | `usageScenarioIds` | `number[]` | Scenario ids |
 | `version` | `object` | Published snapshot |

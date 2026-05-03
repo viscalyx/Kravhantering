@@ -77,11 +77,11 @@ Source: `lib/dal/owners.ts`
 
 No business validation beyond database schema constraints.
 
-## 3 — Package Taxonomy Lookups
+## 3 — Specification Taxonomy Lookups
 
-Sources: `lib/dal/package-implementation-types.ts`,
-`lib/dal/package-lifecycle-statuses.ts`,
-`lib/dal/package-responsibility-areas.ts`
+Sources: `lib/dal/specification-implementation-types.ts`,
+`lib/dal/specification-lifecycle-statuses.ts`,
+`lib/dal/specification-responsibility-areas.ts`
 
 ### Shared Pattern
 
@@ -90,7 +90,7 @@ All three DALs follow the same structure:
 - Bilingual columns: `nameSv` and `nameEn`.
 - List ordering: `ORDER BY nameSv` ascending.
 - CRUD operations: `list`, `create`, `update`, `delete`.
-- All linked from `requirement_packages` via foreign keys.
+- All linked from `requirements_specifications` via foreign keys.
 
 ### Validation Variance
 
@@ -98,22 +98,22 @@ All three DALs follow the same structure:
 
 | DAL | Create validation | Update validation |
 | --- | --- | --- |
-| `package-lifecycle-statuses.ts` | Trims both `nameSv`/`nameEn`; throws if either is empty | Trims each provided field; throws if empty |
-| `package-implementation-types.ts` | None | None |
-| `package-responsibility-areas.ts` | None | None |
+| `specification-lifecycle-statuses.ts` | Trims both `nameSv`/`nameEn`; throws if either is empty | Trims each provided field; throws if empty |
+| `specification-implementation-types.ts` | None | None |
+| `specification-responsibility-areas.ts` | None | None |
 
 <!-- markdownlint-enable MD013 -->
 
 This variance is intentional. Lifecycle statuses are
-safety-critical (they determine package workflow gates), while
+safety-critical (they determine specification workflow gates), while
 implementation types and responsibility areas are informational
 taxonomy values.
 
 ### Delete Return Values
 
-- `package-lifecycle-statuses`: returns row count (number).
-- `package-implementation-types`: returns `void`.
-- `package-responsibility-areas`: returns `void`.
+- `specification-lifecycle-statuses`: returns row count (number).
+- `specification-implementation-types`: returns `void`.
+- `specification-responsibility-areas`: returns `void`.
 
 ## 4 — AI Requirement Generation
 

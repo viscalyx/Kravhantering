@@ -27,7 +27,7 @@ function okJson(body: unknown) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import LifecycleStatusesClient from '@/app/[locale]/requirement-packages/lifecycle-statuses/lifecycle-statuses-client'
+import LifecycleStatusesClient from '@/app/[locale]/specifications/lifecycle-statuses/lifecycle-statuses-client'
 
 const sampleItems = [{ id: 1, nameSv: 'Utveckling', nameEn: 'Development' }]
 
@@ -127,7 +127,7 @@ describe('LifecycleStatusesClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-lifecycle-statuses',
+        '/api/specification-lifecycle-statuses',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -182,7 +182,7 @@ describe('LifecycleStatusesClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-lifecycle-statuses/1',
+        '/api/specification-lifecycle-statuses/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

@@ -177,24 +177,22 @@ const pages: MarkerSpec[] = [
     expectedMarkers: ['create button', 'crud table', 'table action'],
   },
   {
-    label: 'KravpaketClient (packages)',
-    context: 'packages',
+    label: 'KravunderlagClient (specifications)',
+    context: 'specifications',
     factory: () =>
-      import(
-        '@/app/[locale]/requirement-packages/requirement-packages-client'
-      ) as Promise<{
+      import('@/app/[locale]/specifications/specifications-client') as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () => [
       okJson({
-        packages: [
+        specifications: [
           {
             id: 1,
             name: 'P',
             uniqueId: 'P',
-            packageResponsibilityAreaId: null,
-            packageImplementationTypeId: null,
-            packageLifecycleStatusId: null,
+            specificationResponsibilityAreaId: null,
+            specificationImplementationTypeId: null,
+            specificationLifecycleStatusId: null,
             responsibilityArea: null,
             implementationType: null,
             lifecycleStatus: null,
@@ -211,16 +209,16 @@ const pages: MarkerSpec[] = [
     fetchHandler: input => {
       const url = String(input)
 
-      if (url === '/api/requirement-packages') {
+      if (url === '/api/specifications') {
         return okJson({
-          packages: [
+          specifications: [
             {
               id: 1,
               name: 'P',
               uniqueId: 'P',
-              packageResponsibilityAreaId: null,
-              packageImplementationTypeId: null,
-              packageLifecycleStatusId: null,
+              specificationResponsibilityAreaId: null,
+              specificationImplementationTypeId: null,
+              specificationLifecycleStatusId: null,
               responsibilityArea: null,
               implementationType: null,
               lifecycleStatus: null,
@@ -232,15 +230,15 @@ const pages: MarkerSpec[] = [
         }) as Response
       }
 
-      if (url === '/api/package-responsibility-areas') {
+      if (url === '/api/specification-responsibility-areas') {
         return okJson({ areas: [] }) as Response
       }
 
-      if (url === '/api/package-implementation-types') {
+      if (url === '/api/specification-implementation-types') {
         return okJson({ types: [] }) as Response
       }
 
-      if (url === '/api/package-lifecycle-statuses') {
+      if (url === '/api/specification-lifecycle-statuses') {
         return okJson({ statuses: [] }) as Response
       }
 
@@ -259,7 +257,7 @@ const pages: MarkerSpec[] = [
     context: 'responsibility areas',
     factory: () =>
       import(
-        '@/app/[locale]/requirement-packages/responsibility-areas/responsibility-areas-client'
+        '@/app/[locale]/specifications/responsibility-areas/responsibility-areas-client'
       ) as Promise<{ default: React.ComponentType }>,
     fetchResponse: () =>
       okJson({
@@ -272,7 +270,7 @@ const pages: MarkerSpec[] = [
     context: 'implementation types',
     factory: () =>
       import(
-        '@/app/[locale]/requirement-packages/implementation-types/implementation-types-client'
+        '@/app/[locale]/specifications/implementation-types/implementation-types-client'
       ) as Promise<{ default: React.ComponentType }>,
     fetchResponse: () =>
       okJson({

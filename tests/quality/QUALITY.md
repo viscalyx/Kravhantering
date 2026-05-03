@@ -4,16 +4,16 @@
 
 Kravhantering is a Next.js and TypeScript application built on
 SQL Server + TypeORM. Quality in this project means every surface tells the
-same lifecycle truth: REST, MCP, package views, exports, and admin defaults
+same lifecycle truth: REST, MCP, specification views, exports, and admin defaults
 must agree on what is draft, under review, published, archived, deviated, or
 pending review. A route returning `200` is not enough if it exposes the wrong
-version or lets package status drift from the audit trail.
+version or lets specification status drift from the audit trail.
 
 Deming applies here as "quality is built into the workflow." The shared
 service in `lib/requirements/service.ts`, the lifecycle DAL in
 `lib/dal/requirements.ts`. Juran applies as
 "fitness for use": a requirement register is fit only when lifecycle dates,
-effective status, package inclusion, and decision history stay trustworthy
+effective status, specification inclusion, and decision history stay trustworthy
 under editing, publishing, archiving, exporting, and lookup fallback paths.
 Crosby applies because the cost of defining these invariants now is far lower
 than debugging a quietly wrong compliance report or a leaked draft later.
@@ -29,7 +29,7 @@ recorded production incident.
 | Subsystem | Target | Why |
 | --- | --- | --- |
 | `lib/dal/requirements.ts` | 92-95% | Lifecycle transitions, effective status, delete/restore, and auto-archive rules are the core register invariants. A regression here can make the same requirement appear published, draft, or archived depending on the surface. |
-| `lib/dal/requirement-packages.ts` | 90-95% | Package linking, needs-reference ownership, package-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong package status. |
+| `lib/dal/requirements-specifications.ts` | 90-95% | Specification linking, needs-reference ownership, specification-local sequencing, and deviation gating determine what compliance reports say about real work. Silent drift here produces plausible but wrong specification status. |
 | `lib/requirements/service.ts` and `app/api/requirements/[id]/route.ts` | 88-92% | These are the public truth layer for REST and MCP. The highest-risk failure is published-detail reads leaking draft or review content. |
 | `lib/dal/deviations.ts` and `lib/dal/improvement-suggestions.ts` | 88-92% | These modules hold the project's write-once audit trail. Mutability after approval, rejection, resolution, or dismissal breaks traceability instead of throwing obvious errors. |
 | `lib/requirements/list-view.ts` and requirements-table UI consumers | 82-88% | Admin defaults, visible-column persistence, filter clearing, and width clamps are fail-safe logic. Bad fallback behavior leaves the UI looking normal while applying stale filters. |
@@ -42,8 +42,8 @@ The following do **not** count as meaningful coverage for this project:
 
 - Checking a requirements route returned `200` without asserting that published
   detail excluded newer draft or review data.
-- Checking a package link call returned a count without verifying
-  `packageItemStatusId` defaulting, needs-reference trimming, or orphan cleanup.
+- Checking a specification link call returned a count without verifying
+  `specificationItemStatusId` defaulting, needs-reference trimming, or orphan cleanup.
 - Rendering the requirements table and only asserting headers are visible
   without proving hidden-column filters were cleared.
 - Mocking deviation or suggestion approval paths so the test never exercises
@@ -57,7 +57,7 @@ The following do **not** count as meaningful coverage for this project:
 
 ## Fitness-to-Purpose Scenarios
 
-### Scenario 1: Published Detail Never Leaks Draft Content
+### Scenario 1: published detail never leaks draft content
 
 **Requirement tag:** `[Req: formal — docs/mcp-server-contributor-guide.md "requirements_get_requirement"]`
 
@@ -65,8 +65,8 @@ The following do **not** count as meaningful coverage for this project:
 published version for `view: "detail"` in
 `lib/requirements/service.ts:1088-1147`. If that selection ever falls back to
 the newest draft or review row, MCP and REST consumers can act on unpublished
-edits, attach the wrong package state to a requirement, or quote future text as
-current truth.
+edits, attach the wrong specification state to a requirement, or quote future
+text as current truth.
 
 **The requirement:** Default detail reads must expose only the latest published
 version. Draft, review, and archived versions are visible only through
@@ -82,13 +82,13 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: publishe
 
 ---
 
-### Scenario 2: Pending Replacement Blocks Archiving
+### Scenario 2: pending replacement blocks archiving
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Initiate archiving"]`
 
 **What happened:** `initiateArchiving()` explicitly rejects archiving when a
 newer draft or review version exists in
-`lib/dal/requirements.ts:1107-1129`. Without that guard, a requirement can be
+`lib/dal/requirements.ts:960-971`. Without that guard, a requirement can be
 marked archived while replacement work is still open, causing non-archived
 views to lose the active item and leaving the lifecycle story contradictory.
 
@@ -105,15 +105,16 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending 
 
 ---
 
-### Scenario 3: Publishing A Successor Auto-Archives Its Predecessor
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 3: publishing a successor auto-archives its predecessor at the same instant
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Review -> Published"]`
 
 **What happened:** `transitionStatus()` sets `publishedAt` for the new version
 and auto-archives any older published version in the same path at
-`lib/dal/requirements.ts:1452-1468`. If those actions ever drift apart, the
+`lib/dal/requirements.ts:1196-1207`. If those actions ever drift apart, the
 register can temporarily show two published versions or no published version at
-all, which breaks package linking and external reads.
+all, which breaks specification linking and external reads.
 
 **The requirement:** A requirement may have exactly one published version at a
 time, and publishing a successor must archive the predecessor atomically from
@@ -129,7 +130,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishi
 
 ---
 
-### Scenario 4: Review And Archived Versions Are Immutable Until The State Changes
+### Scenario 4: review and archived versions are immutable until the state changes
 
 **Requirement tag:**
 
@@ -159,7 +160,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review a
 
 ---
 
-### Scenario 5: Archived Requirements Stay Visible While A Replacement Draft Exists
+### Scenario 5: archived requirements stay visible while a replacement draft exists
 
 **Requirement tag:**
 `[Req: formal — docs/version-lifecycle-dates.md "Effective Status"]`
@@ -184,51 +185,52 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 
 ---
 
-### Scenario 6: Deviated Status Requires An Approved Deviation
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 6: deviated status requires an approved deviation for both library and specification-local items
 
 **Requirement tag:**
 
 <!-- markdownlint-disable MD013 -->
 ```text
-[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Package Item Status"]
+[Req: formal — docs/lifecycle-workflow.md "Deviation Effect on Specification Item Status"]
 ```
 <!-- markdownlint-enable MD013 -->
 
-**What happened:** Both `updatePackageItemFields()` and
-`updatePackageLocalRequirementFields()` block `packageItemStatusId = 5`
-without an approved deviation at
-`lib/dal/requirement-packages.ts:1860-2001`. If the UI or API can set
-"Deviated" directly, package dashboards and reports imply an approved risk
+**What happened:** Both `updateSpecificationItemFields()` and
+`updateSpecificationLocalRequirementFields()` block
+`specificationItemStatusId = 5` without an approved deviation at
+`lib/dal/requirements-specifications.ts:1860-2001`. If the UI or API can set
+"Deviated" directly, specification dashboards and reports imply an approved risk
 exception that never happened.
 
-**The requirement:** Library items and package-local requirements may enter the
-Deviated state only after an approved deviation decision exists for that exact
-item kind.
+**The requirement:** Library items and specification-local requirements
+may enter the Deviated state only after an approved deviation decision
+exists for that exact item kind.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and package-local items"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated status requires an approved deviation for both library and specification-local items"
 ```
 <!-- markdownlint-enable MD013 -->
 
 ---
 
-### Scenario 7: Needs-Reference Linking Never Leaks Orphan Metadata
+### Scenario 7: needs-reference linking never leaks orphan metadata
 
 **Requirement tag:**
-`[Req: inferred — from linkRequirementsToPackageAtomically() cleanup path]`
+`[Req: inferred — from linkRequirementsToSpecificationAtomically() cleanup path]`
 
-**What happened:** `linkRequirementsToPackageAtomically()` trims
+**What happened:** `linkRequirementsToSpecificationAtomically()` trims
 `needsReferenceText`, creates or reuses the metadata row, and deletes a newly
-created row when no package items were actually inserted at
-`lib/dal/requirement-packages.ts:1447-1512`. Without that cleanup, the package
+created row when no specification items were actually inserted at
+`lib/dal/requirements-specifications.ts:1447-1512`. Without that cleanup, the specification
 administration views accumulate business-need entries that look real but are
 not attached to any requirement.
 
-**The requirement:** `package_needs_references` rows must exist only when at
-least one linked package item still points at them.
+**The requirement:** `specification_needs_references` rows must exist only when
+at least one linked specification item still points at them.
 
 **How to verify:**
 
@@ -240,7 +242,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-re
 
 ---
 
-### Scenario 8: Suggestion Resolution Is Impossible Without Review
+### Scenario 8: suggestion resolution is impossible without review
 
 **Requirement tag:**
 `[Req: formal — docs/lifecycle-workflow.md "Improvement Suggestion Lifecycle"]`
@@ -266,7 +268,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggesti
 
 ---
 
-### Scenario 9: Deviation Decisions Are Write-Once Audit Events
+### Scenario 9: deviation decisions are write-once audit events
 
 **Requirement tag:**
 
@@ -274,7 +276,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggesti
 [Req: formal — docs/lifecycle-workflow.md "Deviation Lifecycle"]
 ```
 
-**What happened:** Both library and package-local deviation decisions
+**What happened:** Both library and specification-local deviation decisions
 are guarded by `isReviewRequested` checks in
 `lib/dal/deviations.ts:521-693`. Decisions can only be recorded
 when a deviation has been submitted for review
@@ -296,7 +298,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviatio
 
 ---
 
-### Scenario 10: MCP Tool Inventory Matches Documentation
+### Scenario 10: MCP tool inventory matches documentation
 
 **Requirement tag:**
 `[Req: formal — docs/mcp-server-contributor-guide.md "Server Contract"]`
@@ -349,48 +351,117 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 11: stale d
 
 ---
 
-### Scenario 12: Concurrent Archiving Attempts Are Atomic And Strictly Targeted
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
 
-**What happened:** `initiateArchiving()`, `approveArchiving()`, and
-`cancelArchiving()` in `lib/dal/requirements.ts` now run their precondition
-reads and writes inside a single `SERIALIZABLE` transaction with
-`UPDLOCK, HOLDLOCK` precondition selects and conditional `UPDATE … WHERE`
-clauses guarded by an affected-row check. `approveArchiving()` and
-`cancelArchiving()` additionally target **only the single version that has
-`archive_initiated_at` set** (the formerly-published version). They never
-operate on a newer Draft or Review version that may exist for the same
-requirement; such newer versions can never be archived through this flow.
-Without these guarantees, two concurrent admin requests can both pass the
-precondition select before either `UPDATE` runs and produce contradictory
-state (e.g. both initiating, or one approving while the other cancels), or a
-successor Draft/Review can be silently flipped to Archived.
+**What happened:** `initiateArchiving()` in `lib/dal/requirements.ts` runs its
+precondition reads and writes inside a single `SERIALIZABLE` transaction with
+`UPDLOCK, HOLDLOCK` precondition selects and a conditional `UPDATE … WHERE`
+guarded by an affected-row check. Without that, two concurrent admin requests
+can both pass the precondition select before either `UPDATE` runs and produce
+contradictory state.
 
-**The requirement:** Archiving operations are serialized: at most one
-concurrent attempt succeeds. The losing attempt fails with a `conflict` error
-and leaves the requirement in a consistent lifecycle state. Approve and cancel
-target strictly the version with `archive_initiated_at` set; a newer
-Draft/Review version is never the target.
+**The requirement:** Concurrent `initiateArchiving` attempts on the same
+requirement are serialized: at most one succeeds; the loser fails with a
+`conflict` error and the requirement is left in a consistent lifecycle state.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** `approveArchiving()` uses the same `SERIALIZABLE` +
+`UPDLOCK, HOLDLOCK` + conditional-update pattern and additionally targets
+**only the single version that has `archive_initiated_at` set**. Without
+serialization, two approvers can both believe they completed the archival.
+
+**The requirement:** Concurrent `approveArchiving` attempts on the same
+requirement are serialized: at most one succeeds, and the archived flag plus
+`archivedAt` are set exactly once on the formerly-published version.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** When `approveArchiving()` and `cancelArchiving()` race for
+the same requirement, the same serialization guards ensure exactly one
+operation wins and `archive_initiated_at` is cleared on the targeted version.
+Without the guards, the requirement could end up archived but still flagged as
+"archive in progress", or vice versa.
+
+**The requirement:** A concurrent approve/cancel pair on the same requirement
+must produce a single consistent outcome: either Archived (with
+`isArchived = 1`) or Published (with `isArchived = 0`); the other call must
+fail with a `conflict` error and `archive_initiated_at` must be cleared.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12d: strict-target behavior with manual state manipulation
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** `approveArchiving()` and `cancelArchiving()` filter on
+`archive_initiated_at IS NOT NULL`, so even if a newer Draft or Review version
+exists for the same requirement (a state that the public API now rejects in
+`initiateArchiving()`, but which can exist in legacy data), only the version
+that was put into archiving review is touched. The newer Draft or Review
+version is never silently flipped to Archived or Published.
+
+**The requirement:** Approve and cancel target strictly the version with
+`archive_initiated_at` set; a newer Draft or Review version on the same
+requirement is never the target and its status, content, and revision token
+remain untouched.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"
 ```
 <!-- markdownlint-enable MD013 -->
 
 ## AI Session Quality Discipline
 
-1. Read `tests/quality/QUALITY.md` before changing lifecycle, package, MCP,
+1. Read `tests/quality/QUALITY.md` before changing lifecycle, specification, MCP,
    report, or admin-default code.
-1. When editing lifecycle or package logic, run
+1. When editing lifecycle or specification logic, run
    `npm exec -- vitest run tests/quality/functional.test.ts` before declaring done.
 1. Treat `docs/` as the current spec source. If code disagrees, document
    whether the defect is in code, documentation, or an inferred requirement.
-1. Add or update tests for every new lifecycle branch, package-status rule, or
-   outward-facing contract change.
+1. Add or update tests for every new lifecycle branch, specification-status
+   rule, or outward-facing contract change.
 1. Preserve audit immutability: decisions, resolutions, and archived history
    should become more traceable over time, never less.
 1. Update this file whenever a new silent-failure mode is discovered.

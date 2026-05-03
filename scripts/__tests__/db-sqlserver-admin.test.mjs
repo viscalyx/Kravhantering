@@ -6,6 +6,9 @@ import {
   formatReadonlyBrowseConfig,
   getSqlServerDatabaseUrl,
   healthCheckSqlServer,
+  listMigrationFilenames,
+  loadMigrationClasses,
+  MIGRATIONS_DIR,
   main,
   parseSqlServerConnectionString,
   resetSqlServerDatabase,
@@ -320,13 +323,13 @@ describe('db-sqlserver-admin.mjs', () => {
     )
 
     expect(initialize).toHaveBeenCalled()
+    const expectedMigrationNames = (await loadMigrationClasses()).map(
+      migration => migration.name,
+    )
+    expect(expectedMigrationNames.length).toBeGreaterThanOrEqual(4)
     expect(
       dataSourceOptions.migrations.map(migration => migration.name),
-    ).toEqual([
-      'InitialSqlServerSchema1713720000000',
-      'RequirementVersionRevisionToken1713800000000',
-      'ExplicitFkActions1714000000000',
-    ])
+    ).toEqual(expectedMigrationNames)
     expect(runMigrations).toHaveBeenCalled()
     expect(destroy).toHaveBeenCalled()
     expect(result).toEqual({
@@ -401,5 +404,18 @@ describe('db-sqlserver-admin.mjs', () => {
     expect(error).toHaveBeenCalledWith(
       'Usage: node scripts/db-sqlserver-admin.mjs <health|wait|reset|migrate|seed|setup|browse-config>',
     )
+  })
+
+  it('registers every migration file from typeorm/migrations/ (no manual list to drift)', async () => {
+    const filenames = listMigrationFilenames(MIGRATIONS_DIR)
+    expect(filenames.length).toBeGreaterThanOrEqual(4)
+    expect(filenames).toEqual([...filenames].sort())
+
+    const loaded = await loadMigrationClasses()
+    expect(loaded.length).toBe(filenames.length)
+    for (const migration of loaded) {
+      expect(typeof migration).toBe('function')
+      expect(migration.name).toMatch(/\d{13}$/)
+    }
   })
 })

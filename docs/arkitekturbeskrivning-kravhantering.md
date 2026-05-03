@@ -1,7 +1,7 @@
 # Arkitekturbeskrivning — Kravhantering
 
 <!-- markdownlint-disable MD013 -->
-<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravpakethantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Paketvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
+<!-- cSpell:words Archi applikationskomponenter applikationskod applikationssamband applikationsstruktur applikationstjänster Affärslogiklager Avsteghantering avsteghistorik avstegsstatus batchoperationer behörighetskontroll beslutsfattare Beslutsfattande datan Dataåtkomstlager detaljvy detaljvyn detaljvyer Enkelkolumnssortering Feedbackhantering feedbackhistorik feedbackstatus Flerkravsrapport Förbättringsförslag förbättringsförslag Förbättringsförslagen granskningsrapport helsidevy historiksektion Huvudvyn infrastrukturanvändning informationsklassning infrastrukturarkitekt Kalkylbladsliknande kantterminering kodtäckning Kolumnbreddsjustering kombinerad kravförfattare Kravdata Kravfrågor kravinnehåll Kravlistrapport Kravlivscykel Kravlivscykeln kravmetadata kravnamn kravunderlagshantering kravpost kravposter kravpostens kravrelaterade livscykeldatum livscykelhantering Läsåtkomst Navigeringsnav ordnivådifferenser Underlagsvyn Parameteriserade parameteriserade Pluggbart rapportgenerering referensdatahantering referensdatasidor säkerhetsrubrik statusövergång statusövergångar säkerhetsperspektiv terminologihantering tillståndsmaskin trestegsmodell tvåstegs -->
 <!-- markdownlint-enable MD013 -->
 
 ## Innehållsförteckning
@@ -16,7 +16,7 @@
   - [Tvåstegs arkivering](#tvåstegs-arkivering)
   - [Versionshantering](#versionshantering)
   - [Aktörer och roller](#aktörer-och-roller)
-  - [Kravpakethantering](#kravpakethantering)
+  - [Kravunderlagshantering](#kravunderlagshantering)
   - [Avsteghantering](#avsteghantering)
   - [Förbättringsförslag](#förbättringsförslag)
   - [Rapportprocesser](#rapportprocesser)
@@ -25,7 +25,7 @@
   - [Hur applikationen används](#hur-applikationen-används)
   - [Kravkatalogen — listvyn](#kravkatalogen--listvyn)
   - [Detaljvyn](#detaljvyn)
-  - [Paketvyn](#paketvyn)
+  - [Underlagsvyn](#underlagsvyn)
   - [Administrationscenter](#administrationscenter)
   - [Export och rapporter](#export-och-rapporter)
   - [Språkväxling](#språkväxling)
@@ -174,7 +174,7 @@ graph TB
 │              << Business Layer >>                       │
 │                                                         │
 │  [Business Process]     [Business Process]              │
-│   Kravlivscykel          Kravpakethantering             │
+│   Kravlivscykel          Kravunderlagshantering         │
 │                                                         │
 │  [Business Process]     [Business Process]              │
 │   Avsteghantering        Rapportgenerering              │
@@ -320,22 +320,22 @@ flowchart TD
 | Administratör | Konfigurerar taxonomi, terminologi, kolumnstandard |
 <!-- markdownlint-enable MD013 -->
 
-### Kravpakethantering
+### Kravunderlagshantering
 
-Kravpaket samlar ett urval av krav för en viss
+Kravunderlag samlar ett urval av krav för en viss
 användning — t.ex. en upphandling, ett projekt
 eller en förvaltningsperiod. Processen omfattar:
 
-1. **Skapa paket** — Namn, beskrivning och slug
+1. **Skapa kravunderlag** — Namn, beskrivning och slug
    (URL-vänligt ID) anges.
 2. **Lägga till kravposter** — Krav läggs till i
-   paketet med en specifik kravversion.
+   underlaget med en specifik kravversion.
    Varje post får automatiskt statusen
    *Inkluderad* (`Included`).
 3. **Statushantering per post** — Varje kravpost
-   i paketet har en egen användningsstatus.
+   i underlaget har en egen användningsstatus.
    Tillgängliga statusar hanteras i
-   uppslagstabellen `package_item_statuses`.
+   uppslagstabellen `specification_item_statuses`.
 4. **Spåra avsteg** — Om ett krav inte kan uppfyllas
    helt kan ett avsteg registreras (se
    *Avsteghantering* nedan).
@@ -343,7 +343,7 @@ eller en förvaltningsperiod. Processen omfattar:
 ### Avsteghantering
 
 Avsteg (deviations) dokumenterar och beslutar om
-undantag från enskilda krav i ett kravpaket.
+undantag från enskilda krav i ett kravunderlag.
 Processen följer en trestegsmodell:
 
 ```mermaid
@@ -504,10 +504,21 @@ Från detaljvyn kan användaren:
 - Generera och ladda ner rapporter (PDF eller utskrift)
 - Visa versionshistorik i sidopanel
 
-### Paketvyn
+### Underlagsvyn
 
-Kravpaket nås via `/requirement-packages/[slug]`
-och visar samtliga kravposter i paketet med:
+Kravunderlag nås via `/specifications/[slug]`
+och visar samtliga kravposter i underlaget med:
+
+> **Begreppet kravunderlag.** Ett kravunderlag
+> är en gemensam paraply för krav som hör ihop
+> i ett sammanhang. Det kan vara en
+> **upphandling**, ett **uppdrag**, ett
+> **projekt**, en **utvecklingsinsats** eller
+> ett **förvaltningsobjekt** — alltså inte
+> enbart leveranser. Livscykelstatusen
+> (*Upphandling, Införande, Utveckling,
+> Förvaltning*) signalerar var i kedjan
+> underlaget befinner sig.
 
 - **Postöversikt** — Tabell med kravnamn,
   kravversion, risknivå och användningsstatus.
@@ -537,8 +548,7 @@ Administrationscentret (`/admin`) erbjuder tre flikar:
    för kravlistan organisationsövergripande.
 3. **Referensdata** — Navigeringsnav till alla
    referensdatasidor (områden, typer, kategorier,
-   kvalitetskaraktäristiker, statusar, scenarier,
-   paket).
+   kvalitetskaraktäristiker, statusar, scenarier).
 
 ### Export och rapporter
 
@@ -701,7 +711,7 @@ app/
       reports/           Rapportrendering (print/pdf)
     admin/               Administrationscenter
     requirement-areas/         Områdeshantering (CRUD)
-    requirement-packages/           Pakethantering
+    specifications/           Underlagshantering
     usage-scenarios/       Scenariohantering
     requirement-statuses/        Statushantering
     requirement-types/           Typhantering
@@ -774,23 +784,23 @@ erDiagram
     usage_scenarios }o--o| owners : "ägs av"
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
-    requirement_packages ||--o{ requirement_package_items : "innehåller"
-    requirement_packages ||--o{ package_local_requirements : "innehåller pakets unika krav"
-    requirement_package_items }o--|| requirements : "pekar på krav"
-    requirement_package_items }o--o| package_item_statuses : "användningsstatus"
-    requirement_package_items ||--o{ deviations : "har avsteg"
-    package_local_requirements }o--|| requirement_areas : "klassificerat i område"
-    package_local_requirements }o--o| requirement_categories : "klassificerat som"
-    package_local_requirements }o--o| requirement_types : "av typ"
-    package_local_requirements }o--o| quality_characteristics : "kvalitetskaraktäristik"
-    package_local_requirements }o--o| risk_levels : "risknivå"
-    package_local_requirements }o--o| package_item_statuses : "användningsstatus"
-    package_local_requirements }o--o| package_needs_references : "behovsreferens"
-    package_local_requirements ||--o{ package_local_requirement_usage_scenarios : "kopplade scenarier"
-    package_local_requirement_usage_scenarios }o--|| usage_scenarios : "refererar scenario"
-    package_local_requirements ||--o{ package_local_requirement_norm_references : "kopplade normreferenser"
-    package_local_requirement_norm_references }o--|| norm_references : "refererar normreferens"
-    package_local_requirements ||--o{ package_local_requirement_deviations : "har avsteg"
+    requirements_specifications ||--o{ requirements_specification_items : "innehåller"
+    requirements_specifications ||--o{ specification_local_requirements : "innehåller kravunderlagets unika krav"
+    requirements_specification_items }o--|| requirements : "pekar på krav"
+    requirements_specification_items }o--o| specification_item_statuses : "användningsstatus"
+    requirements_specification_items ||--o{ deviations : "har avsteg"
+    specification_local_requirements }o--|| requirement_areas : "klassificerat i område"
+    specification_local_requirements }o--o| requirement_categories : "klassificerat som"
+    specification_local_requirements }o--o| requirement_types : "av typ"
+    specification_local_requirements }o--o| quality_characteristics : "kvalitetskaraktäristik"
+    specification_local_requirements }o--o| risk_levels : "risknivå"
+    specification_local_requirements }o--o| specification_item_statuses : "användningsstatus"
+    specification_local_requirements }o--o| specification_needs_references : "behovsreferens"
+    specification_local_requirements ||--o{ specification_local_requirement_usage_scenarios : "kopplade scenarier"
+    specification_local_requirement_usage_scenarios }o--|| usage_scenarios : "refererar scenario"
+    specification_local_requirements ||--o{ specification_local_requirement_norm_references : "kopplade normreferenser"
+    specification_local_requirement_norm_references }o--|| norm_references : "refererar normreferens"
+    specification_local_requirements ||--o{ specification_local_requirement_deviations : "har avsteg"
     requirements ||--o{ improvement_suggestions : "har förbättringsförslag"
 ```
 

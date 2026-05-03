@@ -426,7 +426,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'navigering',
         'Navigationsfält',
-        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravkatalogen** (Krav), **Kravpaket**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
+        'Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravkatalogen** (Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt language-väljare och tema (ljust/mörkt läge).',
         { selector: 'nav[aria-label="Huvudnavigation"]' },
       )
     })
@@ -1056,24 +1056,24 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
     })
 
-    // ── Sektion 5: Kravpaket ──────────────────────────────────────────────
-    currentSection = 'Kravpaket'
+    // ── Sektion 5: Kravunderlag ──────────────────────────────────────────────
+    currentSection = 'Kravunderlag'
     setSectionIntro(
-      'Ett **kravpaket** samlar en uppsättning krav som hör ihop inom ramen för ett specifikt projekt, en leverans eller ett verksamhetsområde. Paketet fungerar som en spårbar enhet — du kan följa implementationsstatus per krav, begära avsteg och generera granskningsrapporter direkt från paketet.',
+      'Ett **kravunderlag** samlar en uppsättning krav som hör ihop inom ramen för ett specifikt projekt, en leverans eller ett verksamhetsområde. Underlaget fungerar som en spårbar enhet — du kan följa implementationsstatus per krav, begära avsteg och generera granskningsrapporter direkt från underlaget.',
     )
 
-    await test.step('Kravpaketslista', async () => {
-      await page.goto('/sv/requirement-packages')
+    await test.step('Kravunderlagslista', async () => {
+      await page.goto('/sv/specifications')
       await page.waitForLoadState('networkidle')
       await snap(
         page,
-        'kravpaketslista',
-        'Kravpaketslista',
-        'Listan visar paketens namn, ID, livscykelstatus och genomförandeform. Klicka på ett paket för att se dess detaljer.',
+        'kravunderlagslista',
+        'Kravunderlagslista',
+        'Listan visar underlagens namn, ID, livscykelstatus och genomförandeform. Klicka på ett underlag för att se dess detaljer.',
       )
     })
 
-    await test.step('Sök kravpaket', async () => {
+    await test.step('Sök kravunderlag', async () => {
       const searchInput = page
         .locator(
           'input[type="search"], input[placeholder*="Sök"], input[placeholder*="namn"]',
@@ -1084,25 +1084,25 @@ test.describe('Kravhantering — Guidegenerering', () => {
         await page.waitForTimeout(500)
         await snap(
           page,
-          'kravpaketslista-sok',
-          'Sökning bland kravpaket',
-          'Filtrera paket genom att skriva i sökrutan. Listan uppdateras i realtid.',
+          'kravunderlagslista-sok',
+          'Sökning bland kravunderlag',
+          'Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.',
         )
         await searchInput.clear()
         await page.waitForTimeout(300)
       }
     })
 
-    await test.step('Skapa nytt kravpaket', async () => {
-      const newPkgBtn = page.getByRole('button', { name: 'Nytt kravpaket' })
+    await test.step('Skapa nytt kravunderlag', async () => {
+      const newPkgBtn = page.getByRole('button', { name: 'Nytt kravunderlag' })
       if ((await newPkgBtn.count()) > 0) {
         await newPkgBtn.click()
         await page.waitForTimeout(400)
         await snap(
           page,
-          'skapa-kravpaket',
-          'Skapa nytt kravpaket',
-          'Klicka på **"Nytt kravpaket"** för att skapa ett nytt paket. Ange ett namn — ett unikt ID (slug) genereras automatiskt. Kravpaket används för att samla krav som hör till ett specifikt projekt eller leverans.',
+          'skapa-kravunderlag',
+          'Skapa nytt kravunderlag',
+          'Klicka på **"Nytt kravunderlag"** för att skapa ett nytt kravunderlag. Ange ett namn — ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla krav som hör till ett specifikt projekt eller leverans.',
           { fullPage: false },
         )
         await page.keyboard.press('Escape')
@@ -1110,19 +1110,19 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Kravpaketdetalj', async () => {
-      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+    await test.step('Kravunderlagsdetalj', async () => {
+      await page.goto('/sv/specifications/ETJANST-UPP-2026')
       await page.waitForLoadState('networkidle')
       await snap(
         page,
-        'kravpaketdetalj',
-        'Kravpaketdetalj — delad vy',
-        'Kravpaketdetaljsidan har en delad layout: **vänster panel** listar både bibliotekskrav och eventuella pakets unika krav med deras implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta paket. Klicka på en rad för att se kravets fullständiga detaljer.',
+        'kravunderlagsdetalj',
+        'Kravunderlagsdetalj — delad vy',
+        'Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar både bibliotekskrav och eventuella kravunderlagets unika krav med deras implementationsstatus, och **höger panel** visar tillgängliga bibliotekskrav att lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i detta kravunderlag. Klicka på en rad för att se kravets fullständiga detaljer.',
         { fullPage: false },
       )
     })
 
-    await test.step('Lägg till krav i paket', async () => {
+    await test.step('Lägg till krav i underlag', async () => {
       // The page has two tables side by side; right panel = second tbody.
       const rightRows = page.locator('tbody').nth(1).locator('tr')
       const hasRightRows = (await rightRows.count()) > 0
@@ -1163,7 +1163,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
             page,
             'lagg-till-krav-modal',
             'Lägg till krav — behovsreferens',
-            'När du lägger till krav i ett paket kan du koppla en **behovsreferens** till dem. En behovsreferens är en fritext som beskriver det verksamhetsbehov eller funktionella krav som kravet ska uppfylla i det här paketet — t.ex. ett ärendenummer, ett mål eller ett avsnitt i en kravspecifikation. Du kan välja en befintlig referens eller skriva en ny. Fältet är valfritt.',
+            'När du lägger till krav i ett underlag kan du koppla en **behovsreferens** till dem. En behovsreferens är en fritext som beskriver det verksamhetsbehov eller funktionella krav som kravet ska uppfylla i det här underlaget — t.ex. ett ärendenummer, ett mål eller ett avsnitt i en kravspecifikation. Du kan välja en befintlig referens eller skriva en ny. Fältet är valfritt.',
             { fullPage: false },
           )
 
@@ -1178,16 +1178,16 @@ test.describe('Kravhantering — Guidegenerering', () => {
       }
     })
 
-    await test.step('Redigera kravpaket', async () => {
+    await test.step('Redigera kravunderlag', async () => {
       const editBtn = page.getByRole('button', { name: /Redigera/i }).first()
       if ((await editBtn.count()) > 0) {
         await editBtn.click()
         await page.waitForTimeout(400)
         await snap(
           page,
-          'redigera-kravpaket',
-          'Redigera kravpaket',
-          'Redigeringspanelen låter dig uppdatera paketets namn, verksamhetsreferens, livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för att tillämpa ändringarna.',
+          'redigera-kravunderlag',
+          'Redigera kravunderlag',
+          'Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens, livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för att tillämpa ändringarna.',
           { fullPage: false },
         )
         const cancelBtn = page
@@ -1200,33 +1200,33 @@ test.describe('Kravhantering — Guidegenerering', () => {
     // ── Sektion 6: Avsteg ─────────────────────────────────────────────────
     currentSection = 'Avsteg'
     setSectionIntro(
-      'Ett **avsteg** dokumenterar att ett krav i ett kravpaket inte kan uppfyllas fullt ut som specificerat, och varför. Avstegsprocessen är trestegsbaserad: **Utkast** → **Granskning begärd** → **Beslutad** (godkänd eller avslagen). Nedan visas varje steg i processen.',
+      'Ett **avsteg** dokumenterar att ett krav i ett kravunderlag inte kan uppfyllas fullt ut som specificerat, och varför. Avstegsprocessen är trestegsbaserad: **Utkast** → **Granskning begärd** → **Beslutad** (godkänd eller avslagen). Nedan visas varje steg i processen.',
     )
 
-    await test.step('Paket med kravposter', async () => {
-      await page.goto('/sv/requirement-packages/ETJANSTPLATT')
+    await test.step('Kravunderlag med kravposter', async () => {
+      await page.goto('/sv/specifications/ETJANST-UPP-2026')
       await page.waitForLoadState('networkidle')
 
       await snap(
         page,
-        'paket-for-avsteg',
-        'Kravpaket — avstegskontext',
-        '**Steg 1 — Navigera till kravpaketet.** Avsteg hanteras i kontexten av ett kravpaket. Klicka på ett paket för att öppna detaljvyn med listan "Krav i paketet".',
+        'underlag-for-avsteg',
+        'Kravunderlag — avstegskontext',
+        '**Steg 1 — Navigera till kravunderlaget.** Avsteg hanteras i kontexten av ett kravunderlag. Klicka på ett underlag för att öppna detaljvyn med listan "Krav i underlaget".',
         { fullPage: false },
       )
     })
 
     await test.step('Kravposter — expanderat krav', async () => {
-      // The left panel only renders when packageItems.length > 0 — wait for it to appear
-      // (it's absent while items are loading or if the package is empty)
+      // The left panel only renders when specificationItems.length > 0 — wait for it to appear
+      // (it's absent while items are loading or if the specification is empty)
       await page
-        .locator('[data-package-detail-list-panel="items"]')
+        .locator('[data-specification-detail-list-panel="items"]')
         .waitFor({ state: 'visible', timeout: 15_000 })
         .catch(() => {})
 
-      // Scope to the left panel (items in package) — right panel is "available" requirements
+      // Scope to the left panel (items in specification) — right panel is "available" requirements
       const allRows = page.locator(
-        '[data-package-detail-list-panel="items"] tbody tr',
+        '[data-specification-detail-list-panel="items"] tbody tr',
       )
       const rowCount = await allRows.count()
 
@@ -1252,8 +1252,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
         )
         await snap(
           page,
-          'krav-i-paket-expanderat',
-          'Krav expanderat i paketkontext',
+          'krav-i-kravunderlag-expanderat',
+          'Krav expanderat i underlagskontext',
           '**Steg 2 — Expandera ett krav.** Klicka på en rad i listan för att öppna kravets detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** — klicka på den för att starta avstegsprocessen.',
           { fullPage: false },
         )
@@ -1292,9 +1292,13 @@ test.describe('Kravhantering — Guidegenerering', () => {
           })
           // Ensure button is enabled (fill() should have updated React state)
           await expect(submitBtn).toBeEnabled({ timeout: 3_000 })
-          // Set up the response listener BEFORE clicking so we don't miss a fast response
+          // Set up the response listener BEFORE clicking so we don't miss a fast response.
+          // Predicate filters to the POST submit response so this doesn't resolve
+          // on an earlier GET against the same endpoint.
           const deviationResPromise = page.waitForResponse(
-            /\/api\/package-item-deviations\//,
+            response =>
+              /\/api\/specification-item-deviations\//.test(response.url()) &&
+              response.request().method() === 'POST',
             { timeout: 15_000 },
           )
           await submitBtn.click()
@@ -1403,7 +1407,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'forslag-sektion-tom',
         'Förbättringsförslag — tom sektion',
-        'Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En ansvarig för ett kravpaket (upphandling, projekt, förvaltning) kan lämna ett förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna formuläret.',
+        'Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En ansvarig för ett kravunderlag (upphandling, projekt, förvaltning) kan lämna ett förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att öppna formuläret.',
         { fullPage: false },
       )
     })
@@ -1626,9 +1630,9 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       textEntry(
         'Granskningsrapport för avsteg',
-        'Granskar ett specifikt avsteg kopplat till ett krav i ett kravpaket. Rapporten visar den kravversion som är kopplad till paketet, avstegets motivering och kompletterande paketkontext.\n\n' +
-          '**Åtkomst:** Rapportmenyn i kravdetaljvyn i paketkontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
-          '**Rutt:** `/requirements/reports/print/deviation-review/[id]?pkg={slug}&item={itemId}` (utskrift) · `.../pdf/...` (PDF)',
+        'Granskar ett specifikt avsteg kopplat till ett krav i ett kravunderlag. Rapporten visar den kravversion som är kopplad till underlaget, avstegets motivering och kompletterande underlagskontext.\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när avsteget är i status *Granskning begärd* eller *Beslutad*).\n\n' +
+          '**Rutt:** `/requirements/reports/print/deviation-review/[id]?spec={slug}&item={itemId}` (utskrift) · `.../pdf/...` (PDF)',
       )
 
       textEntry(
@@ -1639,16 +1643,16 @@ test.describe('Kravhantering — Guidegenerering', () => {
       )
 
       textEntry(
-        'Kravlista — Kravpaket',
-        'Skriver ut kraven som ingår i ett specifikt kravpaket som en formaterad tabell. Rapporten inkluderar paketets metadata (namn, ID, verksamhetsområde, genomförandeform, behovsreferens) som rubrik.\n\n' +
-          '**Åtkomst:** Utskriftsknappen i kravpaketdetaljvyns verktygsfält.\n\n' +
-          '**Rutt:** `/requirement-packages/[slug]/reports/print/list?refs=...` (utskrift) · PDF genereras direkt i vyn.',
+        'Kravlista — Kravunderlag',
+        'Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad tabell. Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde, genomförandeform, behovsreferens) som rubrik.\n\n' +
+          '**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.\n\n' +
+          '**Rutt:** `/specifications/[slug]/reports/print/list?refs=...` (utskrift) · PDF genereras direkt i vyn.',
       )
 
       textEntry(
         'Ändringsförslagshistorik',
         'Listar alla förbättringsförslag grupperade per kravversion i fallande versionsordning. Varje förslag visar status, innehåll, författare, datum och eventuella beslutsmotiveringar. Statusfärger: *Utkast* (blå), *Granskning begärd* (gul), *Beslutad* (grön), *Avvisad* (röd).\n\n' +
-          '**Åtkomst:** Rapportmenyn i kravdetaljvyn eller paketkravdetaljvyn.\n\n' +
+          '**Åtkomst:** Rapportmenyn i kravdetaljvyn eller underlagskravdetaljvyn.\n\n' +
           '**Rutt:** `/requirements/reports/print/suggestion-history/[id]` (utskrift) · `/requirements/reports/pdf/suggestion-history/[id]` (PDF)',
       )
     })

@@ -53,7 +53,7 @@ describe('requirements DAL (SQL Server path)', () => {
     )
   })
 
-  it('hydrates the requirement, area, versions, joins and package count', async () => {
+  it('hydrates the requirement, area, versions, joins and specification count', async () => {
     const { db, query } = createSqlServerDb()
     query
       .mockResolvedValueOnce([
@@ -149,7 +149,7 @@ describe('requirements DAL (SQL Server path)', () => {
           scUpdatedAt: new Date('2026-03-02T00:00:00.000Z'),
         },
       ])
-      .mockResolvedValueOnce([{ packageCount: 2 }])
+      .mockResolvedValueOnce([{ specificationCount: 2 }])
 
     const result = await getRequirementById(db, 7)
 
@@ -157,7 +157,7 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(result?.id).toBe(7)
     expect(result?.uniqueId).toBe('SEC-0001')
     expect(result?.isArchived).toBe(false)
-    expect(result?.packageCount).toBe(2)
+    expect(result?.specificationCount).toBe(2)
     expect(result?.area).toEqual({
       id: 3,
       prefix: 'SEC-',

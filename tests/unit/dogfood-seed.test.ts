@@ -6,12 +6,12 @@ import {
   DOGFOOD_KRAV,
   DOGFOOD_NORMS,
   DOGFOOD_OWNERS,
-  DOGFOOD_PACKAGE_LOCALS,
-  DOGFOOD_PACKAGES,
   DOGFOOD_SCENARIOS,
+  DOGFOOD_SPECIFICATION_LOCALS,
+  DOGFOOD_SPECIFICATIONS,
   ID,
-  PKG_KH,
-  PKG_KH_POC,
+  SPEC_KH,
+  SPEC_KH_POC,
 } from '../../typeorm/seed-dogfood.mjs'
 import { appendDogfoodSeed } from '../../typeorm/seed-dogfood-build.mjs'
 
@@ -130,31 +130,31 @@ function emptySeed() {
       pk: ['requirement_version_id', 'usage_scenario_id'],
       rows: [],
     },
-    requirement_packages: {
+    requirements_specifications: {
       columns: [
         'id',
-        'package_responsibility_area_id',
-        'package_implementation_type_id',
+        'specification_responsibility_area_id',
+        'specification_implementation_type_id',
         'created_at',
         'updated_at',
         'business_needs_reference',
         'unique_id',
         'name',
-        'package_lifecycle_status_id',
+        'specification_lifecycle_status_id',
         'local_requirement_next_sequence',
       ],
       pk: ['id'],
       rows: [],
     },
-    package_needs_references: {
-      columns: ['id', 'package_id', 'text', 'created_at'],
+    specification_needs_references: {
+      columns: ['id', 'specification_id', 'text', 'created_at'],
       pk: ['id'],
       rows: [],
     },
-    package_local_requirements: {
+    specification_local_requirements: {
       columns: [
         'id',
-        'package_id',
+        'specification_id',
         'unique_id',
         'sequence_number',
         'requirement_area_id',
@@ -167,7 +167,7 @@ function emptySeed() {
         'is_testing_required',
         'verification_method',
         'needs_reference_id',
-        'package_item_status_id',
+        'specification_item_status_id',
         'note',
         'status_updated_at',
         'created_at',
@@ -176,26 +176,26 @@ function emptySeed() {
       pk: ['id'],
       rows: [],
     },
-    package_local_requirement_norm_references: {
-      columns: ['package_local_requirement_id', 'norm_reference_id'],
-      pk: ['package_local_requirement_id', 'norm_reference_id'],
+    specification_local_requirement_norm_references: {
+      columns: ['specification_local_requirement_id', 'norm_reference_id'],
+      pk: ['specification_local_requirement_id', 'norm_reference_id'],
       rows: [],
     },
-    package_local_requirement_usage_scenarios: {
-      columns: ['package_local_requirement_id', 'usage_scenario_id'],
-      pk: ['package_local_requirement_id', 'usage_scenario_id'],
+    specification_local_requirement_usage_scenarios: {
+      columns: ['specification_local_requirement_id', 'usage_scenario_id'],
+      pk: ['specification_local_requirement_id', 'usage_scenario_id'],
       rows: [],
     },
-    requirement_package_items: {
+    requirements_specification_items: {
       columns: [
         'id',
-        'requirement_package_id',
+        'requirements_specification_id',
         'requirement_id',
         'requirement_version_id',
         'needs_reference_id',
         'unused_1',
         'created_at',
-        'package_item_status_id',
+        'specification_item_status_id',
         'note',
         'status_updated_at',
       ],
@@ -237,17 +237,17 @@ describe('dogfood seed inventory', () => {
     expect(DOGFOOD_AREAS).toHaveLength(6)
     expect(DOGFOOD_NORMS).toHaveLength(6)
     expect(DOGFOOD_SCENARIOS).toHaveLength(12)
-    expect(DOGFOOD_PACKAGES).toHaveLength(2)
+    expect(DOGFOOD_SPECIFICATIONS).toHaveLength(2)
   })
 
-  it('package-local entries reference Krav that are also in KH-POC', () => {
+  it('specification-local entries reference Krav that are also in KH-POC', () => {
     const poc = new Set(DOGFOOD_KH_POC_INDEXES)
     expect(poc.size).toBe(DOGFOOD_KH_POC_INDEXES.length)
     for (const idx of DOGFOOD_KH_POC_INDEXES) {
       expect(idx).toBeGreaterThanOrEqual(0)
       expect(idx).toBeLessThan(DOGFOOD_KRAV.length)
     }
-    for (const pl of DOGFOOD_PACKAGE_LOCALS) {
+    for (const pl of DOGFOOD_SPECIFICATION_LOCALS) {
       expect(poc.has(pl.kravIdx)).toBe(true)
       expect(DOGFOOD_KRAV[pl.kravIdx]).toBeDefined()
     }
@@ -255,26 +255,28 @@ describe('dogfood seed inventory', () => {
 })
 
 describe('appendDogfoodSeed', () => {
-  it('produces KH and KH-POC packages with expected items and all v1 Publicerad', () => {
+  it('produces KH and KH-POC specifications with expected items and all v1 Publicerad', () => {
     const seed = emptySeed()
     const summary = appendDogfoodSeed(seed)
 
     expect(summary.requirementsAdded).toBe(DOGFOOD_KRAV.length)
-    expect(summary.packagesAdded).toBe(2)
+    expect(summary.specificationsAdded).toBe(2)
 
-    const pkgs = seed.requirement_packages.rows
-    const kh = pkgs.find(r => r[0] === PKG_KH)
-    const khPoc = pkgs.find(r => r[0] === PKG_KH_POC)
+    const pkgs = seed.requirements_specifications.rows
+    const kh = pkgs.find(r => r[0] === SPEC_KH)
+    const khPoc = pkgs.find(r => r[0] === SPEC_KH_POC)
     expect(kh).toBeDefined()
     expect(khPoc).toBeDefined()
     expect(kh?.[6]).toBe('KH')
     expect(khPoc?.[6]).toBe('KH-POC')
-    expect(kh?.[8]).toBe(ID.pkgLifecycle.utveckling)
-    expect(khPoc?.[8]).toBe(ID.pkgLifecycle.inforande)
+    expect(kh?.[8]).toBe(ID.specLifecycle.utveckling)
+    expect(khPoc?.[8]).toBe(ID.specLifecycle.inforande)
 
-    const items = seed.requirement_package_items.rows
-    expect(items.filter(r => r[1] === PKG_KH)).toHaveLength(DOGFOOD_KRAV.length)
-    expect(items.filter(r => r[1] === PKG_KH_POC)).toHaveLength(
+    const items = seed.requirements_specification_items.rows
+    expect(items.filter(r => r[1] === SPEC_KH)).toHaveLength(
+      DOGFOOD_KRAV.length,
+    )
+    expect(items.filter(r => r[1] === SPEC_KH_POC)).toHaveLength(
       DOGFOOD_KH_POC_INDEXES.length,
     )
 
@@ -288,7 +290,7 @@ describe('appendDogfoodSeed', () => {
       expect(v[14]).toBeNull() // archived_at
     }
 
-    // Every package item points to a published v1
+    // Every specification item points to a published v1
     const versionById = new Map(versions.map(v => [v[0], v]))
     for (const it of items) {
       const v = versionById.get(it[3])
@@ -301,11 +303,11 @@ describe('appendDogfoodSeed', () => {
     const intCount = DOGFOOD_KRAV.filter(k => k.area === 1).length
     expect(intArea?.[5]).toBe(39 + intCount)
 
-    // Package locals appended for KH-POC only
-    const locals = seed.package_local_requirements.rows
-    expect(locals.filter(r => r[1] === PKG_KH)).toHaveLength(0)
-    expect(locals.filter(r => r[1] === PKG_KH_POC)).toHaveLength(
-      DOGFOOD_PACKAGE_LOCALS.length,
+    // Specification locals appended for KH-POC only
+    const locals = seed.specification_local_requirements.rows
+    expect(locals.filter(r => r[1] === SPEC_KH)).toHaveLength(0)
+    expect(locals.filter(r => r[1] === SPEC_KH_POC)).toHaveLength(
+      DOGFOOD_SPECIFICATION_LOCALS.length,
     )
   })
 

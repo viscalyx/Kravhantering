@@ -10,7 +10,7 @@
 2. [Kravkatalogen](#kravkatalogen)
 3. [Skapa ett nytt krav](#skapa-ett-nytt-krav)
 4. [Kravdetaljer och statusövergångar](#kravdetaljer-och-statusövergångar)
-5. [Kravpaket](#kravpaket)
+5. [Kravunderlag](#kravunderlag)
 6. [Avsteg](#avsteg)
 7. [Förbättringsförslag](#förbättringsförslag)
 8. [Administrationscenter](#administrationscenter)
@@ -29,7 +29,7 @@ kan du söka, filtrera och hantera alla krav i systemet.
 ### Navigationsfält
 
 Det övre navigationsfältet ger åtkomst till alla huvuddelar: **Kravkatalogen**
-(Krav), **Kravpaket**, **Admininställningar** (kugghjulsikonen) samt
+(Krav), **Kravunderlag**, **Admininställningar** (kugghjulsikonen) samt
 language-väljare och tema (ljust/mörkt läge).
 
 ![Navigationsfält](images/002-navigering.png)
@@ -95,17 +95,17 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 <!-- markdownlint-disable MD013 -->
 | Egenskap | Beskrivning |
 | --- | --- |
-| **Krav-ID** | Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravpaket, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas. |
+| **Krav-ID** | Genereras automatiskt utifrån områdets prefix och ett löpnummer. Det är den stabila identifieraren som används för spårbarhet i kravunderlag, rapporter och korsreferenser. Du kan inte redigera det direkt — det tilldelas när kravet skapas. |
 | **Område** | Grupperar krav efter domän, till exempel Integration eller Ärendehantering. Området styr ID-prefixet och avgör vilket team som ansvarar för kravet. Det måste anges när kravet skapas och kan inte ändras efteråt. |
 | **Kravtext** | Den centrala beskrivningen av vad som ska uppfyllas. Det är huvudinnehållet som intressenter granskar under granskningsfasen och som blir bindande när kravet publiceras. Håll texten tydlig och testbar. |
 | **Acceptanskriterier** | Mätbara villkor som måste vara uppfyllda för att kravet ska anses vara uppnått. De är viktiga vid verifiering och testning och hjälper granskare att förstå den exakta avsikten bakom kravtexten. |
 | **Kategori** | Klassificerar kravet som Verksamhet, IT eller Leverantör. Det underlättar filtrering i katalogen och gör det enklare att tilldela ansvar till rätt team eller intressentgrupp. |
 | **Typ** | Anger om kravet är Funktionellt eller Icke-funktionellt. Båda typerna låser upp fältet för kvalitetsegenskap, men icke-funktionella krav erbjuder ett bredare urval av egenskaper från standarden ISO/IEC 25010 medan funktionella krav har en mindre delmängd. |
 | **Kvalitetsegenskap** | Följer standarden ISO/IEC 25010 och låter dig klassificera krav med egenskaper som Säkerhet, Prestandaeffektivitet eller Användbarhet. Icke-funktionella krav har tillgång till hela uppsättningen egenskaper, medan funktionella krav erbjuder en mindre delmängd. Det hjälper till att prioritera och gruppera relaterade krav under granskning och implementeringsplanering. |
-| **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravpaket — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
-| **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravpaket där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
-| **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravpaket där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
-| **Användningsscenarier** | Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravpaket och filtrera krav efter de sammanhang som är relevanta för en viss leverans. |
+| **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
+| **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
+| **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
+| **Användningsscenarier** | Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravunderlag och filtrera krav efter de sammanhang som är relevanta för en viss leverans. |
 | **Normreferenser** | Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung. |
 | **Status** | Visar kravets aktuella livscykelfas — Utkast, Granskning, Publicerad eller Arkiverad. Status hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer. |
 <!-- markdownlint-enable MD013 -->
@@ -210,43 +210,44 @@ granskningsprocessen.
 
 ![Status: Publicerad](images/020-overgang-publicerad.png)
 
-## Kravpaket
+## Kravunderlag
 
-Ett **kravpaket** samlar en uppsättning krav som hör ihop inom ramen för ett
-specifikt projekt, en leverans eller ett verksamhetsområde. Paketet fungerar som
-en spårbar enhet — du kan följa implementationsstatus per krav, begära avsteg
-och generera granskningsrapporter direkt från paketet.
+Ett **kravunderlag** samlar en uppsättning krav som hör ihop inom ramen för ett
+specifikt projekt, en leverans eller ett verksamhetsområde. Underlaget fungerar
+som en spårbar enhet — du kan följa implementationsstatus per krav, begära
+avsteg och generera granskningsrapporter direkt från underlaget.
 
-### Kravpaketslista
+### Kravunderlagslista
 
-Listan visar paketens namn, ID, livscykelstatus och genomförandeform. Klicka på
-ett paket för att se dess detaljer.
+Listan visar underlagens namn, ID, livscykelstatus och genomförandeform. Klicka
+på ett underlag för att se dess detaljer.
 
-![Kravpaketslista](images/021-kravpaketslista.png)
+![Kravunderlagslista](images/021-kravunderlagslista.png)
 
-### Sökning bland kravpaket
+### Sökning bland kravunderlag
 
-Filtrera paket genom att skriva i sökrutan. Listan uppdateras i realtid.
+Filtrera kravunderlag genom att skriva i sökrutan. Listan uppdateras i realtid.
 
-![Sökning bland kravpaket](images/022-kravpaketslista-sok.png)
+![Sökning bland kravunderlag](images/022-kravunderlagslista-sok.png)
 
-### Skapa nytt kravpaket
+### Skapa nytt kravunderlag
 
-Klicka på **"Nytt kravpaket"** för att skapa ett nytt paket. Ange ett namn — ett
-unikt ID (slug) genereras automatiskt. Kravpaket används för att samla krav som
-hör till ett specifikt projekt eller leverans.
+Klicka på **"Nytt kravunderlag"** för att skapa ett nytt kravunderlag. Ange
+ett namn —
+ett unikt ID (slug) genereras automatiskt. Kravunderlag används för att samla
+krav som hör till ett specifikt projekt eller leverans.
 
-![Skapa nytt kravpaket](images/023-skapa-kravpaket.png)
+![Skapa nytt kravunderlag](images/023-skapa-kravunderlag.png)
 
-### Kravpaketdetalj — delad vy
+### Kravunderlagsdetalj — delad vy
 
-Kravpaketdetaljsidan har en delad layout: **vänster panel** listar krav som
-ingår i paketet, inklusive eventuella pakets unika krav, med deras
+Kravunderlagsdetaljsidan har en delad layout: **vänster panel** listar krav som
+ingår i underlaget, inklusive eventuella kravunderlagets unika krav, med deras
 implementationsstatus. **Höger panel** visar tillgängliga bibliotekskrav att
 lägga till. Knappen **"Nytt unikt krav"** skapar krav som bara finns i det
-aktuella paketet. Klicka på en rad för att se kravets fullständiga detaljer.
+aktuella underlaget. Klicka på en rad för att se kravets fullständiga detaljer.
 
-![Kravpaketdetalj — delad vy](images/024-kravpaketdetalj.png)
+![Kravunderlagsdetalj — delad vy](images/024-kravunderlagsdetalj.png)
 
 ### Välj krav att lägga till
 
@@ -258,44 +259,44 @@ markerat.
 
 ### Lägg till krav — behovsreferens
 
-När du lägger till krav i ett paket kan du koppla en **behovsreferens** till
+När du lägger till krav i ett underlag kan du koppla en **behovsreferens** till
 dem. En behovsreferens är en fritext som beskriver det verksamhetsbehov eller
-funktionella krav som kravet ska uppfylla i det här paketet — t.ex. ett
+funktionella krav som kravet ska uppfylla i det här underlaget — t.ex. ett
 ärendenummer, ett mål eller ett avsnitt i en kravspecifikation. Du kan välja en
 befintlig referens eller skriva en ny. Fältet är valfritt.
 
 ![Lägg till krav — behovsreferens](images/026-lagg-till-krav-modal.png)
 
-### Redigera kravpaket
+### Redigera kravunderlag
 
-Redigeringspanelen låter dig uppdatera paketets namn, verksamhetsreferens,
+Redigeringspanelen låter dig uppdatera underlagets namn, verksamhetsreferens,
 livscykelstatus, genomförandeform och verksamhetsobjekt. Klicka på "Spara" för
 att tillämpa ändringarna.
 
-![Redigera kravpaket](images/027-redigera-kravpaket.png)
+![Redigera kravunderlag](images/027-redigera-kravunderlag.png)
 
 ## Avsteg
 
-Ett **avsteg** dokumenterar att ett krav i ett kravpaket inte kan uppfyllas
+Ett **avsteg** dokumenterar att ett krav i ett kravunderlag inte kan uppfyllas
 fullt ut som specificerat, och varför. Avstegsprocessen är trestegsbaserad:
 **Utkast** → **Granskning begärd** → **Beslutad** (godkänd eller avslagen).
 Nedan visas varje steg i processen.
 
-### Kravpaket — avstegskontext
+### Kravunderlag — avstegskontext
 
-**Steg 1 — Navigera till kravpaketet.** Avsteg hanteras i kontexten av ett
-kravpaket. Klicka på ett paket för att öppna detaljvyn med listan "Krav i
-paketet".
+**Steg 1 — Navigera till kravunderlaget.** Avsteg hanteras i kontexten av ett
+kravunderlag. Klicka på ett underlag för att öppna detaljvyn med listan "Krav i
+underlaget".
 
-![Kravpaket — avstegskontext](images/028-paket-for-avsteg.png)
+![Kravunderlag — avstegskontext](images/028-underlag-for-avsteg.png)
 
-### Krav expanderat i paketkontext
+### Krav expanderat i underlagskontext
 
 **Steg 2 — Expandera ett krav.** Klicka på en rad i listan för att öppna kravets
 detaljpanel. Om inget aktivt avsteg finns visas knappen **"Begär ett avsteg"** —
 klicka på den för att starta avstegsprocessen.
 
-![Krav expanderat i paketkontext](images/029-krav-i-paket-expanderat.png)
+![Krav expanderat i underlagskontext](images/029-krav-i-kravunderlag-expanderat.png)
 
 ### Formulär för avstegsansökan
 
@@ -341,7 +342,7 @@ att slutföra beslutet.
 ### Förbättringsförslag — tom sektion
 
 Längst ned i inline-detaljvyn finns sektionen **Förbättringsförslag**. En
-ansvarig för ett kravpaket (upphandling, projekt, förvaltning) kan lämna ett
+ansvarig för ett kravunderlag (upphandling, projekt, förvaltning) kan lämna ett
 förslag på förbättring av kravet. Klicka på **"+ Registrera förslag"** för att
 öppna formuläret.
 
@@ -509,11 +510,11 @@ har status *Granskning*.
 
 ### Granskningsrapport för avsteg
 
-Granskar ett specifikt avsteg kopplat till ett krav i ett kravpaket. Rapporten
-visar den kravversion som är kopplad till paketet, avstegets motivering och
-kompletterande paketkontext.
+Granskar ett specifikt avsteg kopplat till ett krav i ett kravunderlag. Rapporten
+visar den kravversion som är kopplad till underlaget, avstegets motivering och
+kompletterande underlagskontext.
 
-**Åtkomst:** Rapportmenyn i kravdetaljvyn i paketkontexten (visas när avsteget
+**Åtkomst:** Rapportmenyn i kravdetaljvyn i underlagskontexten (visas när avsteget
 är i status *Granskning begärd* eller *Beslutad*).
 
 **Rutt:**
@@ -532,15 +533,15 @@ tillgänglig).
 **Rutt:** `/requirements/reports/print/list?ids=...` (utskrift) ·
 `/requirements/reports/pdf/list?ids=...` (PDF)
 
-### Kravlista — Kravpaket
+### Kravlista — Kravunderlag
 
-Skriver ut kraven som ingår i ett specifikt kravpaket som en formaterad tabell.
-Rapporten inkluderar paketets metadata (namn, ID, verksamhetsområde,
+Skriver ut kraven som ingår i ett specifikt kravunderlag som en formaterad tabell.
+Rapporten inkluderar underlagets metadata (namn, ID, verksamhetsområde,
 genomförandeform, behovsreferens) som rubrik.
 
-**Åtkomst:** Utskriftsknappen i kravpaketdetaljvyns verktygsfält.
+**Åtkomst:** Utskriftsknappen i kravunderlagsdetaljvyns verktygsfält.
 
-**Rutt:** `/requirement-packages/[slug]/reports/print/list?refs=...`
+**Rutt:** `/specifications/[slug]/reports/print/list?refs=...`
 (utskrift) · PDF genereras direkt i vyn.
 
 ### Ändringsförslagshistorik
@@ -550,7 +551,7 @@ versionsordning. Varje förslag visar status, innehåll, författare, datum och
 eventuella beslutsmotiveringar. Statusfärger: *Utkast* (blå), *Granskning
 begärd* (gul), *Beslutad* (grön), *Avvisad* (röd).
 
-**Åtkomst:** Rapportmenyn i kravdetaljvyn eller paketkravdetaljvyn.
+**Åtkomst:** Rapportmenyn i kravdetaljvyn eller underlagskravdetaljvyn.
 
 **Rutt:** `/requirements/reports/print/suggestion-history/[id]` (utskrift) ·
 `/requirements/reports/pdf/suggestion-history/[id]` (PDF)

@@ -7,6 +7,19 @@ import type {
   SuggestionReportItem,
   TimelineEntryData,
 } from '@/lib/reports/types'
+import enMessages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
+
+type SpecificationCoverLabelKey =
+  keyof typeof enMessages.reports.specificationCover
+
+function getSpecificationCoverLabel(
+  locale: string,
+  key: SpecificationCoverLabelKey,
+): string {
+  const messages = locale === 'sv' ? svMessages : enMessages
+  return messages.reports.specificationCover[key]
+}
 
 const styles = StyleSheet.create({
   page: {
@@ -266,8 +279,8 @@ function PdfSectionRenderer({
       return <PdfRequirementTable section={section} />
     case 'toc':
       return <PdfToc section={section} />
-    case 'package-cover':
-      return <PdfPackageCover section={section} />
+    case 'specification-cover':
+      return <PdfSpecificationCover section={section} />
     case 'page-break':
       return null
     case 'deviation-summary':
@@ -279,12 +292,11 @@ function PdfSectionRenderer({
   }
 }
 
-function PdfPackageCover({
+function PdfSpecificationCover({
   section,
 }: {
-  section: Extract<ReportSection, { type: 'package-cover' }>
+  section: Extract<ReportSection, { type: 'specification-cover' }>
 }) {
-  const sv = section.locale === 'sv'
   return (
     <View style={{ marginBottom: 24 }}>
       <Text style={[styles.headerTitle, { fontSize: 22, marginBottom: 8 }]}>
@@ -293,7 +305,7 @@ function PdfPackageCover({
       <View style={styles.metadataGrid}>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {sv ? 'Kravpaket-ID' : 'Package ID'}
+            {getSpecificationCoverLabel(section.locale, 'specificationId')}
           </Text>
           <Text style={[styles.fieldValue, { fontFamily: 'Helvetica-Bold' }]}>
             {section.uniqueId}
@@ -301,7 +313,7 @@ function PdfPackageCover({
         </View>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {sv ? 'Verksamhetsobjekt' : 'Responsibility area'}
+            {getSpecificationCoverLabel(section.locale, 'responsibilityArea')}
           </Text>
           <Text style={styles.fieldValue}>
             {section.responsibilityArea ?? '—'}
@@ -309,7 +321,7 @@ function PdfPackageCover({
         </View>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {sv ? 'Genomförandeform' : 'Implementation type'}
+            {getSpecificationCoverLabel(section.locale, 'implementationType')}
           </Text>
           <Text style={styles.fieldValue}>
             {section.implementationType ?? '—'}
@@ -317,7 +329,7 @@ function PdfPackageCover({
         </View>
         <View style={styles.metadataItem}>
           <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-            {sv ? 'Livscykelstatus' : 'Lifecycle status'}
+            {getSpecificationCoverLabel(section.locale, 'lifecycleStatus')}
           </Text>
           <Text style={styles.fieldValue}>
             {section.lifecycleStatus ?? '—'}
@@ -326,7 +338,10 @@ function PdfPackageCover({
         {section.businessNeedsReference && (
           <View style={{ width: '100%' }}>
             <Text style={[styles.fieldLabel, { fontSize: 8 }]}>
-              {sv ? 'Verksamhetsbehovsreferens' : 'Business needs reference'}
+              {getSpecificationCoverLabel(
+                section.locale,
+                'businessNeedsReference',
+              )}
             </Text>
             <Text style={styles.fieldValue}>
               {section.businessNeedsReference}

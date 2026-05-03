@@ -29,7 +29,7 @@ function errJson(body: unknown, statusText = 'Server Error') {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import ImplementationTypesClient from '@/app/[locale]/requirement-packages/implementation-types/implementation-types-client'
+import ImplementationTypesClient from '@/app/[locale]/specifications/implementation-types/implementation-types-client'
 
 const sampleItems = [{ id: 1, nameSv: 'Typ sv', nameEn: 'Type en' }]
 
@@ -112,7 +112,7 @@ describe('ImplementationTypesClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-implementation-types',
+        '/api/specification-implementation-types',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -170,7 +170,7 @@ describe('ImplementationTypesClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/package-implementation-types/1',
+        '/api/specification-implementation-types/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

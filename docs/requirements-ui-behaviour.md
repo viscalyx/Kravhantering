@@ -68,7 +68,7 @@ The behaviors below apply to the requirement list rendered by:
   - `beforeColumns` floating actions
   - the columns pill
   - trailing floating actions
-- Package-detail split tables keep the same pill order but render the rail
+- Specification-detail split tables keep the same pill order but render the rail
   inline in a sticky top bar above each table instead of as a fixed right rail.
 
 ## Sticky Header
@@ -78,22 +78,26 @@ The behaviors below apply to the requirement list rendered by:
   offset.
 - The sticky table chrome keeps the usage-scenario chips visible together with
   the header when those chips are present.
-- Package-detail split tables also keep their list title bar sticky in that
+- Sticky usage-scenario and norm-reference chip rows stay single-line and
+  horizontally scrollable on all viewport sizes so the sticky chrome does not
+  cover the table body or inline detail pane.
+- Specification-detail split tables also keep their list title bar sticky in that
   same chrome so the section title and top rail stay visible with the headers.
-- On `xl` and wider package-detail layouts, the `Krav i paketet` and
+- On `xl` and wider specification-detail layouts, the `Krav i underlaget` and
   `Tillgängliga krav` cards each become their own vertically scrollable region
   and stay pinned below the site navigation while the user scrolls inside a
   list.
-- In the normal desktop package-detail state, the page shell itself stays
+- In the normal desktop specification-detail state, the page shell itself stays
   viewport-locked so the two list panels fit inside the visible window without
   requiring page-level vertical scrolling.
 - Those desktop list panels stretch to the padded page edges and use the full
   available width under the header instead of sitting inside an additional
   inset content column.
-- In that desktop split-panel mode, the package-detail sticky chrome uses the
+- In that desktop split-panel mode, the specification-detail sticky chrome
+  uses the
   card’s own top edge instead of the global `top-16` viewport offset so the
   title bar, scenario chips, and header stay visually attached to the table.
-- The package-detail bulk-add dialog keeps API failures inline inside the
+- The specification-detail bulk-add dialog keeps API failures inline inside the
   modal and leaves the current selection in place so the user can adjust the
   needs-reference choice or retry without rebuilding the selection.
 - The sticky header lives in a synced header viewport above the horizontal body
@@ -201,27 +205,28 @@ The behaviors below apply to the requirement list rendered by:
 - The left fade appears after the user has scrolled horizontally.
 - The fades must remain subtle enough to act as a cue, not as a primary visual element.
 
-## Package Item Usage Status Column
+## Specification Item Usage Status Column
 
-- The `packageItemStatus` column is hidden by default (`defaultVisible: false`).
+- The `specificationItemStatus` column is hidden by default (`defaultVisible: false`).
 - It is **excluded** from the main requirements catalog and the available-
-  requirements panel (right side) in the package detail view via
-  `excludeColumns`. It is only selectable in the package-items panel (left
-  side) of the package detail view.
-- In the **package detail** left panel (items in package), the column renders
-  an inline `<select>` dropdown for each item that has a `packageItemId`.
-  Changing the dropdown value calls `PATCH /api/requirement-packages/{id}/items/{itemId}`
+  requirements panel (right side) in the specification detail view via
+  `excludeColumns`. It is only selectable in the specification-items panel (left
+  side) of the specification detail view.
+- In the **specification detail** left panel (items in specification), the
+  column renders
+  an inline `<select>` dropdown for each item that has a `specificationItemId`.
+  Changing the dropdown value calls `PATCH /api/specifications/{id}/items/{itemId}`
   and applies an optimistic update to the local row state.
-- The same inline status control is also available for package-local
-  requirements via package-context item refs (`lib:*` / `local:*`) even though
-  package-local rows do not have a library-backed `requirementPackageItemId`.
-- When a requirement is **added** to a package, its usage status is
+- The same inline status control is also available for specification-local
+  requirements via specification-context item refs (`lib:*` / `local:*`) even though
+  specification-local rows do not have a library-backed `requirementsSpecificationItemId`.
+- When a requirement is **added** to a specification, its usage status is
   automatically set to **Included** (ID 1). The user can change it once
   work on the requirement begins.
-- Outside the package detail context (e.g. the main requirements catalog),
+- Outside the specification detail context (e.g. the main requirements catalog),
   the column renders a read-only color dot + label or an em dash if unset.
-- The column supports multi-select filtering via `packageItemStatusIds`.
-- Client-side filtering in the package detail matches on `packageItemStatusId`.
+- The column supports multi-select filtering via `specificationItemStatusIds`.
+- Client-side filtering in the specification detail matches on `specificationItemStatusId`.
 - Sorting is disabled for this column (`canSort: false`).
 - Each status has an optional **definition** (bilingual `description_sv` /
   `description_en`), editable from the admin panel under Usage Statuses.
@@ -241,7 +246,7 @@ The detail card renders sections in this fixed order:
 1. **Requirement text** (description) — always first
 2. **Acceptance criteria** — always second
 3. **Area** with owner — shown after the primary text sections
-4. **Package count** — read-only count of how many requirement packages
+4. **Specification count** — read-only count of how many requirements specifications
    include this requirement (always shown, displays 0 when unused)
 5. **References** — if any exist
 6. **Scenarios** — if any exist
@@ -276,40 +281,41 @@ down.
 - Individual row checkboxes toggle selection without triggering row click.
 - Selection is cleared when filters change.
 - Selection state is managed in `requirements-client.tsx` via `selectedIds`.
-- In the package-detail left panel, package-local rows are visually marked with
-  a dedicated icon marker so they can be distinguished from library
-  requirements pinned into the package.
+- In the specification-detail left panel, specification-local rows are visually
+  marked with a dedicated icon marker so they can be distinguished from
+  library requirements pinned into the specification.
 - The current marker uses a compact `DiamondPlus` icon without a pill/badge
   container, while the label text remains hidden for accessibility and fallback
   evaluation.
-- Hovering the icon shows a tooltip that explains the row is a package-local
-  requirement that exists only in the current package.
-- Package-local rows use short package-scoped Krav-ID values such as
-  `KRAV0001`; the package context itself disambiguates them.
-- The package-local inline detail pane now reuses the same core content-card
+- Hovering the icon shows a tooltip that explains the row is a specification-local
+  requirement that exists only in the current specification.
+- Specification-local rows use short specification-scoped Krav-ID values such as
+  `KRAV0001`; the specification context itself disambiguates them.
+- The specification-local inline detail pane now reuses the same core content-card
   layout as the requirements catalog inline detail view: description first,
   acceptance criteria second, then the shared metadata grid, references, and
   scenarios.
-- When a library requirement is opened from the package list `Krav i kravpaket`,
-  its inline detail metadata also includes the package-specific fields
+- When a library requirement is opened from the specification list `Krav i underlaget`,
+  its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.
-- The package-local content card uses the same section spacing and card chrome
-  as the catalog requirement detail card in package context, so the properties
+- The specification-local content card uses the same section spacing and card chrome
+  as the catalog requirement detail card in specification context, so the properties
   block reads with the same vertical rhythm and grouping.
-- The expanded package-local inline pane also uses the same outer inline inset
+- The expanded specification-local inline pane also uses the same outer inline inset
   as the catalog requirement detail (`px-6 py-4`), so the properties card and
   right-side rail do not sit flush against the expanded row edges.
-- The package-local inline detail pane does not repeat the row's package-local
+- The specification-local inline detail pane does not repeat the row's specification-local
   Krav-ID or unique marker icon in its own header area; that identity stays in
   the table row above the expanded pane.
-- Package-local inline detail now follows the package-item detail chrome more
+- Specification-local inline detail now follows the specification-item detail
+  chrome more
   closely: deviation pills sit above the card, the right-side action rail
   starts with print and deviation controls, and local edit/delete actions are
   appended in the same vertical rail.
-- That package-local action rail also uses the same full-width button sizing
-  rhythm as the catalog requirement package-item rail, including the shared
+- That specification-local action rail also uses the same full-width button sizing
+  rhythm as the catalog requirements specification-item rail, including the shared
   44px minimum touch target and stacked spacing.
-- Edit and Delete for package-local requirements are only enabled when
+- Edit and Delete for specification-local requirements are only enabled when
   **Användningsstatus** is **Inkluderad** and there is no pending deviation
   draft or review request. Otherwise the buttons stay disabled and expose a
   tooltip explaining why the action is blocked, while the controls are also
@@ -324,15 +330,15 @@ down.
 - Passes the IDs of all currently visible rows as `?ids=` query params.
 - The report shows Krav-ID, description, area, and status columns.
 
-## Package Print List Report
+## Specification Print List Report
 
-- The package-detail print dropdown uses `?refs=` query params instead of
+- The specification-detail print dropdown uses `?refs=` query params instead of
   `?ids=`.
-- Each value is a package-context item reference:
-  - `lib:<packageItemId>` for a library requirement in the package
-  - `local:<packageLocalRequirementId>` for a package-local requirement
-- This allows the report to include both library and package-local
-  requirements in one package list export.
+- Each value is a specification-context item reference:
+  - `lib:<specificationItemId>` for a library requirement in the specification
+  - `local:<specificationLocalRequirementId>` for a specification-local requirement
+- This allows the report to include both library and specification-local
+  requirements in one specification list export.
 
 ## Combined Review Report Floating Pill
 

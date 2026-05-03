@@ -7,14 +7,14 @@ describe('extractErrorDetails', () => {
   })
 
   it('extracts an error field from JSON responses', () => {
-    expect(extractErrorDetails('{"error":"Package missing"}')).toBe(
-      'Package missing',
+    expect(extractErrorDetails('{"error":"Specification missing"}')).toBe(
+      'Specification missing',
     )
   })
 
   it('extracts a message field from JSON responses', () => {
-    expect(extractErrorDetails('{"message":"Package missing"}')).toBe(
-      'Package missing',
+    expect(extractErrorDetails('{"message":"Specification missing"}')).toBe(
+      'Specification missing',
     )
   })
 

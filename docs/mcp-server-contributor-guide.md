@@ -54,8 +54,9 @@ For admin-managed UI terminology and default column settings, see
 - `lib/dal/requirements.ts`
   Persistence logic for requirement lifecycle, versioning, transitions,
   restore, and paging counts.
-- `lib/dal/requirement-packages.ts`
-  Persistence logic for requirement packages: listing packages and items,
+- `lib/dal/requirements-specifications.ts`
+  Persistence logic for requirements specifications: listing specifications and
+  items,
   linking and unlinking requirements, and needs reference management.
 - `lib/dal/improvement-suggestions.ts`
   Persistence logic for improvement suggestion CRUD, lifecycle
@@ -81,7 +82,7 @@ keeps lifecycle behavior aligned between REST and MCP.
 ## Tool Design
 
 The MCP surface is split into four areas: individual requirements (four
-tools), requirement packages (four tools), improvement suggestions (two
+tools), requirements specifications (four tools), improvement suggestions (two
 tools), and AI generation (one tool).
 
 ### `requirements_query_catalog`
@@ -136,33 +137,33 @@ operation is intentionally not exposed as an MCP tool operation in v1.
 
 Transitions a requirement through the lifecycle using `toStatusId`.
 
-### `requirements_list_packages`
+### `requirements_list_specifications`
 
-Lists all requirement packages with optional name filtering. Returns the
-numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-Q2`) for each package.
+Lists all requirements specifications with optional name filtering. Returns the
+numeric `id` and `uniqueId` (slug, e.g. `SAKLYFT-INFOR-Q2`) for each specification.
 
-### `requirements_get_package_items`
+### `requirements_get_specification_items`
 
-Lists requirements linked to a specific package. Accepts `packageId`
-(numeric) or `packageSlug` (e.g. `SAKLYFT-Q2`). Supports optional
+Lists requirements linked to a specific specification. Accepts `specificationId`
+(numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Supports optional
 `descriptionSearch` for client-side filtering.
 
-### `requirements_add_to_package`
+### `requirements_add_to_specification`
 
-Links requirements to a package. Accepts `packageId` (numeric) or
-`packageSlug` (e.g. `SAKLYFT-Q2`). Requirements without a published version
-are skipped and returned in `skippedIds` rather than causing an error — this
-lets an agent batch-add requirements without needing to pre-filter by publish
-state. An optional `needsReferenceText` is resolved to a
-`package_needs_references` row (created if needed) and linked to all added
+Links requirements to a specification. Accepts `specificationId` (numeric) or
+`specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). Requirements without a published
+version are skipped and returned in `skippedIds` rather than causing an error —
+this lets an agent batch-add requirements without needing to pre-filter by
+publish state. An optional `needsReferenceText` is resolved to a
+`specification_needs_references` row (created if needed) and linked to all added
 items.
 
-### `requirements_remove_from_package`
+### `requirements_remove_from_specification`
 
-Unlinks requirements from a package. Accepts `packageId` (numeric) or
-`packageSlug` (e.g. `SAKLYFT-Q2`). The requirements themselves are not
+Unlinks requirements from a specification. Accepts `specificationId` (numeric) or
+`specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`). The requirements themselves are not
 deleted. The operation is idempotent — removing an ID that is not in the
-package produces no error.
+specification produces no error.
 
 ### `requirements_list_improvement_suggestions`
 
@@ -238,7 +239,7 @@ It owns:
 - detail and version-history lookup
 - create, edit, archive, delete draft, reactivate, and restore flows
 - lifecycle transitions
-- package listing, item lookup, link, and unlink flows
+- specification listing, item lookup, link, and unlink flows
 - response formatting
 - logging
 - authorization hook calls
@@ -393,7 +394,8 @@ Manual verification should still include:
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
   support
-- verifying package tools: list packages, get items for a package, add a
+- verifying specification tools: list specifications, get items for a
+  specification, add a
   requirement, and remove it again
 
 ## Local Development Notes

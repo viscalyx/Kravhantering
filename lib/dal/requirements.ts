@@ -1635,9 +1635,9 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
       )) as Array<Record<string, unknown>>)
     : []
 
-  const packageRows = (await db.query(
-    `SELECT COUNT(DISTINCT requirement_package_id) AS packageCount
-      FROM requirement_package_items
+  const specificationRows = (await db.query(
+    `SELECT COUNT(DISTINCT requirements_specification_id) AS specificationCount
+      FROM requirements_specification_items
       WHERE requirement_id = @0`,
     [id],
   )) as Array<Record<string, unknown>>
@@ -1785,7 +1785,7 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
             updatedAt: toIso(req.areaUpdatedAt) ?? '',
           },
     versions,
-    packageCount: Number(packageRows[0]?.packageCount ?? 0),
+    specificationCount: Number(specificationRows[0]?.specificationCount ?? 0),
   }
 }
 

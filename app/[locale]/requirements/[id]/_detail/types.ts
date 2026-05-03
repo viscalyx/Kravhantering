@@ -19,14 +19,14 @@ export interface TransitionTarget {
   nameSv: string
 }
 
-export interface PackageItemDetailContext {
+export interface SpecificationItemDetailContext {
   needsReference: string | null
   needsReferenceId: number | null
-  packageItemId: number
-  packageItemStatusColor: string | null
-  packageItemStatusId: number | null
-  packageItemStatusNameEn: string | null
-  packageItemStatusNameSv: string | null
+  specificationItemId: number
+  specificationItemStatusColor: string | null
+  specificationItemStatusId: number | null
+  specificationItemStatusNameEn: string | null
+  specificationItemStatusNameSv: string | null
 }
 
 export interface DeviationData {
@@ -54,6 +54,6 @@ export interface SuggestionData {
   resolvedBy: string | null
 }
 
-export type AddToPackageNeedsRefMode = 'existing' | 'new' | 'none'
+export type AddToSpecificationNeedsRefMode = 'existing' | 'new' | 'none'
 
 export type { DeviationStep, SuggestionStep }

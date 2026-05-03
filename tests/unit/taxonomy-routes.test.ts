@@ -15,29 +15,35 @@ vi.mock('@/lib/db', () => ({
 
 const mockUpdateImpl = vi.fn()
 const mockDeleteImpl = vi.fn()
-vi.mock('@/lib/dal/package-implementation-types', () => ({
-  listPackageImplementationTypes: async () => [{ id: 1 }],
-  createPackageImplementationType: async () => ({ id: 2 }),
-  updatePackageImplementationType: (...a: unknown[]) => mockUpdateImpl(...a),
-  deletePackageImplementationType: (...a: unknown[]) => mockDeleteImpl(...a),
+vi.mock('@/lib/dal/specification-implementation-types', () => ({
+  listSpecificationImplementationTypes: async () => [{ id: 1 }],
+  createSpecificationImplementationType: async () => ({ id: 2 }),
+  updateSpecificationImplementationType: (...a: unknown[]) =>
+    mockUpdateImpl(...a),
+  deleteSpecificationImplementationType: (...a: unknown[]) =>
+    mockDeleteImpl(...a),
 }))
 
 const mockUpdateLifecycle = vi.fn()
 const mockDeleteLifecycle = vi.fn()
-vi.mock('@/lib/dal/package-lifecycle-statuses', () => ({
-  listPackageLifecycleStatuses: async () => [{ id: 1 }],
-  createPackageLifecycleStatus: async () => ({ id: 2 }),
-  updatePackageLifecycleStatus: (...a: unknown[]) => mockUpdateLifecycle(...a),
-  deletePackageLifecycleStatus: (...a: unknown[]) => mockDeleteLifecycle(...a),
+vi.mock('@/lib/dal/specification-lifecycle-statuses', () => ({
+  listSpecificationLifecycleStatuses: async () => [{ id: 1 }],
+  createSpecificationLifecycleStatus: async () => ({ id: 2 }),
+  updateSpecificationLifecycleStatus: (...a: unknown[]) =>
+    mockUpdateLifecycle(...a),
+  deleteSpecificationLifecycleStatus: (...a: unknown[]) =>
+    mockDeleteLifecycle(...a),
 }))
 
 const mockUpdateArea = vi.fn()
 const mockDeleteArea = vi.fn()
-vi.mock('@/lib/dal/package-responsibility-areas', () => ({
-  listPackageResponsibilityAreas: async () => [{ id: 1 }],
-  createPackageResponsibilityArea: async () => ({ id: 2 }),
-  updatePackageResponsibilityArea: (...a: unknown[]) => mockUpdateArea(...a),
-  deletePackageResponsibilityArea: (...a: unknown[]) => mockDeleteArea(...a),
+vi.mock('@/lib/dal/specification-responsibility-areas', () => ({
+  listSpecificationResponsibilityAreas: async () => [{ id: 1 }],
+  createSpecificationResponsibilityArea: async () => ({ id: 2 }),
+  updateSpecificationResponsibilityArea: (...a: unknown[]) =>
+    mockUpdateArea(...a),
+  deleteSpecificationResponsibilityArea: (...a: unknown[]) =>
+    mockDeleteArea(...a),
 }))
 
 const mockUpdateReqArea = vi.fn()
@@ -53,15 +59,47 @@ vi.mock('@/lib/dal/owners', () => ({
   listOwners: async () => [],
 }))
 
+const mockListSpecItemStatuses = vi.fn(async (..._args: unknown[]) => [
+  { id: 5, nameEn: 'Deviated', nameSv: 'Avviken' },
+])
+const mockCountLinkedSpecificationItems = vi.fn(
+  async (..._args: unknown[]) => ({
+    5: 3,
+  }),
+)
+const mockCreateSpecItemStatus = vi.fn(async (..._args: unknown[]) => ({
+  id: 6,
+}))
+const mockGetSpecItemStatus = vi.fn(async (..._args: unknown[]) => ({ id: 5 }))
+const mockGetLinkedSpecificationItems = vi.fn(async (..._args: unknown[]) => [])
+const mockUpdateSpecItemStatus = vi.fn()
+const mockDeleteSpecItemStatus = vi.fn()
+vi.mock('@/lib/dal/specification-item-statuses', () => ({
+  countLinkedSpecificationItems: (...a: unknown[]) =>
+    mockCountLinkedSpecificationItems(...a),
+  createSpecificationItemStatus: (...a: unknown[]) =>
+    mockCreateSpecItemStatus(...a),
+  deleteSpecificationItemStatus: (...a: unknown[]) =>
+    mockDeleteSpecItemStatus(...a),
+  getLinkedSpecificationItems: (...a: unknown[]) =>
+    mockGetLinkedSpecificationItems(...a),
+  getSpecificationItemStatusById: (...a: unknown[]) =>
+    mockGetSpecItemStatus(...a),
+  listSpecificationItemStatuses: (...a: unknown[]) =>
+    mockListSpecItemStatuses(...a),
+  updateSpecificationItemStatus: (...a: unknown[]) =>
+    mockUpdateSpecItemStatus(...a),
+}))
+
 const mockUpdatePkg = vi.fn()
 const mockDeletePkg = vi.fn()
-vi.mock('@/lib/dal/requirement-packages', () => ({
-  listPackages: async () => [{ id: 1 }],
-  createPackage: async () => ({ id: 2 }),
-  updatePackage: (...a: unknown[]) => mockUpdatePkg(...a),
-  deletePackage: (...a: unknown[]) => mockDeletePkg(...a),
-  getPackageById: async (_db: unknown, id: number) => ({ id }),
-  getPackageBySlug: async () => null,
+vi.mock('@/lib/dal/requirements-specifications', () => ({
+  listSpecifications: async () => [{ id: 1 }],
+  createSpecification: async () => ({ id: 2 }),
+  updateSpecification: (...a: unknown[]) => mockUpdatePkg(...a),
+  deleteSpecification: (...a: unknown[]) => mockDeletePkg(...a),
+  getSpecificationById: async (_db: unknown, id: number) => ({ id }),
+  getSpecificationBySlug: async () => null,
   isSlugTaken: async () => false,
 }))
 
@@ -88,29 +126,14 @@ vi.mock('@/lib/dal/requirement-categories', () => ({
 /* ── imports ─────────────────────────────────────────────────────── */
 
 import {
-  DELETE as deleteImplType,
-  PUT as putImplType,
-} from '@/app/api/package-implementation-types/[id]/route'
+  DELETE as deleteSpecItemStatus,
+  GET as getSpecItemStatus,
+  PUT as putSpecItemStatus,
+} from '@/app/api/catalog/specification-item-statuses/[id]/route'
 import {
-  GET as getImplTypes,
-  POST as postImplType,
-} from '@/app/api/package-implementation-types/route'
-import {
-  DELETE as deleteLifecycle,
-  PUT as putLifecycle,
-} from '@/app/api/package-lifecycle-statuses/[id]/route'
-import {
-  GET as getLifecycleStatuses,
-  POST as postLifecycle,
-} from '@/app/api/package-lifecycle-statuses/route'
-import {
-  DELETE as deleteRespArea,
-  PUT as putRespArea,
-} from '@/app/api/package-responsibility-areas/[id]/route'
-import {
-  GET as getAreas,
-  POST as postArea,
-} from '@/app/api/package-responsibility-areas/route'
+  GET as getSpecItemStatuses,
+  POST as postSpecItemStatus,
+} from '@/app/api/catalog/specification-item-statuses/route'
 import {
   GET as getTypeCats,
   POST as postTypeCat,
@@ -124,15 +147,36 @@ import {
   POST as postReqArea,
 } from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
+import { GET as getTypes } from '@/app/api/requirement-types/route'
+import {
+  DELETE as deleteImplType,
+  PUT as putImplType,
+} from '@/app/api/specification-implementation-types/[id]/route'
+import {
+  GET as getImplTypes,
+  POST as postImplType,
+} from '@/app/api/specification-implementation-types/route'
+import {
+  DELETE as deleteLifecycle,
+  PUT as putLifecycle,
+} from '@/app/api/specification-lifecycle-statuses/[id]/route'
+import {
+  GET as getLifecycleStatuses,
+  POST as postLifecycle,
+} from '@/app/api/specification-lifecycle-statuses/route'
+import {
+  DELETE as deleteRespArea,
+  PUT as putRespArea,
+} from '@/app/api/specification-responsibility-areas/[id]/route'
+import {
+  GET as getAreas,
+  POST as postArea,
+} from '@/app/api/specification-responsibility-areas/route'
 import {
   DELETE as deletePkg,
   PUT as putPkg,
-} from '@/app/api/requirement-packages/[id]/route'
-import {
-  GET as getPkgs,
-  POST as postPkg,
-} from '@/app/api/requirement-packages/route'
-import { GET as getTypes } from '@/app/api/requirement-types/route'
+} from '@/app/api/specifications/[id]/route'
+import { GET as getPkgs, POST as postPkg } from '@/app/api/specifications/route'
 import {
   DELETE as deleteScen,
   PUT as putScen,
@@ -158,7 +202,7 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
 
 /* ── tests ───────────────────────────────────────────────────────── */
 
-describe('package-implementation-types routes', () => {
+describe('specification-implementation-types routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -196,7 +240,7 @@ describe('package-implementation-types routes', () => {
   })
 })
 
-describe('package-lifecycle-statuses routes', () => {
+describe('specification-lifecycle-statuses routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -234,7 +278,7 @@ describe('package-lifecycle-statuses routes', () => {
   })
 })
 
-describe('package-responsibility-areas routes', () => {
+describe('specification-responsibility-areas routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -280,6 +324,86 @@ describe('package-responsibility-areas routes', () => {
     expect(r.status).toBe(400)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(mockUpdateArea).not.toHaveBeenCalled()
+  })
+
+  it('returns 404 when updating a missing responsibility area', async () => {
+    mockUpdateArea.mockResolvedValue(undefined)
+    const r = await putRespArea(
+      jsonReq('PUT', { nameEn: 'Missing' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ message: 'Not found' })
+  })
+})
+
+describe('specification-item-statuses catalog routes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('GET returns catalog statuses with linked item counts', async () => {
+    const r = await getSpecItemStatuses()
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toEqual({
+      statuses: [
+        {
+          id: 5,
+          isDeviationStatus: true,
+          linkedItemCount: 3,
+          nameEn: 'Deviated',
+          nameSv: 'Avviken',
+        },
+      ],
+    })
+  })
+
+  it('POST creates a catalog status with 201', async () => {
+    const r = await postSpecItemStatus(
+      new Request('http://l', {
+        body: '{"nameSv":"Ny","nameEn":"New"}',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      }),
+    )
+
+    expect(r.status).toBe(201)
+  })
+
+  it('GET by id returns linked specification items', async () => {
+    const r = await getSpecItemStatus(
+      new NextRequest('http://l', { method: 'GET' }),
+      makeParams('5'),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toEqual({
+      linkedItems: [],
+      status: { id: 5 },
+    })
+  })
+
+  it('PUT returns 404 when the catalog status is missing', async () => {
+    mockUpdateSpecItemStatus.mockResolvedValue(undefined)
+    const r = await putSpecItemStatus(
+      jsonReq('PUT', { nameEn: 'Missing' }),
+      makeParams('404'),
+    )
+
+    expect(r.status).toBe(404)
+    await expect(r.json()).resolves.toEqual({ error: 'Not found' })
+  })
+
+  it('DELETE removes a catalog status', async () => {
+    const r = await deleteSpecItemStatus(
+      new NextRequest('http://l', { method: 'DELETE' }),
+      makeParams('5'),
+    )
+
+    expect(r.status).toBe(200)
+    await expect(r.json()).resolves.toEqual({ ok: true })
   })
 })
 
@@ -336,15 +460,15 @@ describe('requirement-areas/[id] routes', () => {
   })
 })
 
-describe('requirement-packages routes', () => {
+describe('requirement-specifications routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('GET returns packages', async () => {
+  it('GET returns specifications', async () => {
     const r = await getPkgs()
-    const j = (await r.json()) as { packages: { id: number }[] }
-    expect(j.packages).toHaveLength(1)
+    const j = (await r.json()) as { specifications: { id: number }[] }
+    expect(j.specifications).toHaveLength(1)
   })
   it('POST creates with 201', async () => {
     const r = await postPkg(

@@ -114,4 +114,4 @@ Run `npm run db:setup` to reset to seed state afterward.
 Seeded requirements useful for guide steps:
 - `IDN0001` — has multiple improvement suggestions; good for showing suggestion lists.
 - `ANV0002` — clean requirement with no suggestions; good for "create first suggestion" demo.
-- `/sv/requirement-packages/ETJANSTPLATT` — has package items; good for deviation flow.
+- `/sv/specifications/ETJANST-UPP-2026` — has specification items; good for deviation flow.

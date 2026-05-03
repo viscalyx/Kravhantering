@@ -52,9 +52,9 @@ function createFakeService(
   requiresTesting = true,
 ) {
   return {
-    addToPackage: vi.fn().mockResolvedValue({
+    addToSpecification: vi.fn().mockResolvedValue({
       addedCount: 1,
-      message: 'Requirement added to package',
+      message: 'Requirement added to specification',
       skippedCount: 0,
       skippedIds: [],
     }),
@@ -65,7 +65,7 @@ function createFakeService(
         createdAt: '2026-03-08T00:00:00.000Z',
         id: 1,
         isArchived: false,
-        packageCount: 2,
+        specificationCount: 2,
         uniqueId: 'INT0001',
         versions: [
           {
@@ -168,17 +168,17 @@ function createFakeService(
         total: 1,
       },
     }),
-    getPackageItems: vi.fn().mockResolvedValue({
+    getSpecificationItems: vi.fn().mockResolvedValue({
       items: [],
-      message: 'Package items',
-      packageId: 7,
+      message: 'Specification items',
+      specificationId: 7,
     }),
-    listPackages: vi.fn().mockResolvedValue({
-      message: 'Packages',
-      packages: [],
+    listSpecifications: vi.fn().mockResolvedValue({
+      message: 'Specifications',
+      specifications: [],
     }),
-    removeFromPackage: vi.fn().mockResolvedValue({
-      message: 'Requirement removed from package',
+    removeFromSpecification: vi.fn().mockResolvedValue({
+      message: 'Requirement removed from specification',
       removedCount: 1,
     }),
     transitionRequirement: vi.fn().mockResolvedValue({
@@ -409,7 +409,7 @@ describe('handleRequirementsMcpRequest', () => {
     expect(viewText).toContain('MCP Requirement View')
     expect(viewText).toContain('Requirement text')
     expect(viewText).toContain('References')
-    expect(viewText).toContain('Used in packages')
+    expect(viewText).toContain('Used in specification')
     expect(viewText).toContain('>2<')
     expect(fakeService.getRequirement).toHaveBeenCalledWith(
       expect.anything(),
@@ -516,19 +516,19 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('rejects package tools unless exactly one package identifier is provided', async () => {
+  it('rejects specification tools unless exactly one specification identifier is provided', async () => {
     const { client, transport } = await createClient()
 
     const missingIdentifier = await client.callTool({
       arguments: {},
-      name: 'requirements_get_package_items',
+      name: 'requirements_get_specification_items',
     })
     expect(missingIdentifier.isError).toBe(true)
     expect(missingIdentifier.content).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           text: expect.stringContaining(
-            'Provide exactly one of packageId or packageSlug.',
+            'Provide exactly one of specificationId or specificationSlug.',
           ),
         }),
       ]),
@@ -536,17 +536,17 @@ describe('handleRequirementsMcpRequest', () => {
 
     const duplicateIdentifier = await client.callTool({
       arguments: {
-        packageId: 7,
-        packageSlug: 'IAM-PACKAGE',
+        specificationId: 7,
+        specificationSlug: 'IAM-SPECIFICATION',
       },
-      name: 'requirements_get_package_items',
+      name: 'requirements_get_specification_items',
     })
     expect(duplicateIdentifier.isError).toBe(true)
     expect(duplicateIdentifier.content).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           text: expect.stringContaining(
-            'Provide exactly one of packageId or packageSlug.',
+            'Provide exactly one of specificationId or specificationSlug.',
           ),
         }),
       ]),

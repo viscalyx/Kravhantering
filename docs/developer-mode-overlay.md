@@ -15,7 +15,7 @@ fallback rules are defined and maintained upstream in
   [react README][upstream-react].
 
 This document is the **consumer-side spec** for how Kravhantering wires
-those packages in, which marker names are canonical for our UI surfaces,
+those specifications in, which marker names are canonical for our UI surfaces,
 and which tests cover the integration.
 
 ## Activation
@@ -31,9 +31,9 @@ the full contract.
 ## Build wiring
 
 - Local development enables Developer Mode automatically.
-- Non-development builds alias both packages to first-party noop stubs in
+- Non-development builds alias both specifications to first-party noop stubs in
   [`lib/runtime/`](../lib/runtime/) so neither the overlay runtime nor
-  any reference to the upstream packages is shipped to clients.
+  any reference to the upstream specifications is shipped to clients.
 - Tailwind v4 source detection ignores `node_modules`; the overlay's
   utility classes are opted back in by importing the published
   `@viscalyx/developer-mode-react/safelist.css` artifact from
@@ -59,7 +59,7 @@ drift-guard test pattern, see the upstream
 ## App contract
 
 - App code creates markers through [`lib/developer-mode-markers.ts`](../lib/developer-mode-markers.ts)
-  rather than calling the package's `devMarker(...)` directly. This
+  rather than calling the specification's `devMarker(...)` directly. This
   keeps a single host-side place for naming policy and any future no-op
   behavior. See the upstream [Marker API][upstream-core] for the field
   shapes (`name`, `context?`, `value?`, `priority?`) and the four
@@ -86,8 +86,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Keep the control `name` stable and move runtime identity into `value`,
   for example `sort button: requirement id`, `filter button: status`, or
   theme state values like `light`, `dark`, and `auto`.
-- Requirement package create/edit forms continue to use the `crud form`
-  marker; their package-field help toggles are part of that same form
+- Requirement specification create/edit forms continue to use the `crud form`
+  marker; their specification-field help toggles are part of that same form
   surface rather than separate developer-mode markers.
 - Reference-data CRUD forms may use shared field help toggles; those
   triggers stay inside the existing `crud form` surface rather than
@@ -100,81 +100,82 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   localized.
 - Auth logout failures use the stable `text: logout error` marker so the
   localized alert text does not become the developer-mode identifier.
-- Requirement package form save errors and package-list load errors stay
-  inside the existing `packages` form/table surfaces; they do not add
+- Requirement specification form save errors and specification-list load errors
+  stay
+  inside the existing `specifications` form/table surfaces; they do not add
   separate developer-mode markers.
 - Shared CRUD admin panel load/delete errors expose
   `crud-admin-visible-error` in the affected admin page context so
   scanner checks can distinguish the visible banner from row/form
   controls.
-- Requirement package list filtering exposes
-  `packages > text field: name filter` on the Name search input above
-  the table, while the package create trigger keeps the existing
-  `packages > create button` marker when it shares that toolbar row on
+- Requirement specification list filtering exposes
+  `specifications > text field: name filter` on the Name search input above
+  the table, while the specification create trigger keeps the existing
+  `specifications > create button` marker when it shares that toolbar row on
   wide screens.
-- Requirement package list requirement-area labels render as compact,
-  non-interactive pills inside the existing `packages > crud table`
+- Requirement specification list requirement-area labels render as compact,
+  non-interactive pills inside the existing `specifications > crud table`
   surface; they do not add separate developer-mode marker names.
-- Requirement package list edit and delete row actions render as icon-only
-  buttons, but keep the existing `packages > table action: edit` and
-  `packages > table action: delete` markers.
-- Requirement package list requirement-area overflow toggles use
-  `packages > table action: expand requirement areas` and
-  `packages > table action: collapse requirement areas`.
-- Requirement package detail header edit affordances use the
-  `requirement package detail` context with
-  `detail action: edit package` on the icon trigger and
+- Requirement specification list edit and delete row actions render as icon-only
+  buttons, but keep the existing `specifications > table action: edit` and
+  `specifications > table action: delete` markers.
+- Requirement specification list requirement-area overflow toggles use
+  `specifications > table action: expand requirement areas` and
+  `specifications > table action: collapse requirement areas`.
+- Requirement specification detail header edit affordances use the
+  `requirements specification detail` context with
+  `detail action: edit specification` on the icon trigger and
   `crud form: edit` on the opened editor.
-- Requirement package detail left-panel create affordance for
-  package-local requirements uses the `requirement package detail`
+- Requirement specification detail left-panel create affordance for
+  specification-local requirements uses the `requirements specification detail`
   context with `table action: create local requirement`.
-- Package-local inline detail views in package context use the
-  `requirement package detail` context with
-  `detail pane: package local requirement`.
+- Specification-local inline detail views in specification context use the
+  `requirements specification detail` context with
+  `detail pane: specification-local requirement`.
 - The shared requirement-content card inside both catalog requirement
-  details and package-local inline details exposes the same
+  details and specification-local inline details exposes the same
   `detail section` markers for requirement text, acceptance criteria,
-  metadata, references, and scenarios. Package-local scenario and
+  metadata, references, and scenarios. Specification-local scenario and
   reference chips also inherit the same marker naming pattern as the
   catalog detail card.
-- Package-local inline detail views also expose the same
+- Specification-local inline detail views also expose the same
   `report print button` surface on the right-side action rail as the
-  package-item detail layout, while their local edit/delete controls
+  specification-item detail layout, while their local edit/delete controls
   continue to use `detail action`.
-- Package-local inline detail actions now use `detail action` markers
+- Specification-local inline detail actions now use `detail action` markers
   for the right-side edit and delete buttons, mirroring the catalog
   detail-card action column pattern.
-- The package-local right-side action rail now mirrors the package-item
+- The specification-local right-side action rail now mirrors the specification-item
   rail's stacked button sizing and spacing, but it does not introduce
   any new developer-mode marker names beyond the existing
   print/deviation/detail action surfaces.
-- Those existing package-local edit/delete `detail action` controls may
+- Those existing specification-local edit/delete `detail action` controls may
   render disabled when usage status is not Included or when a deviation
   is still pending. In that state they are visually muted, but this
   state change does not add any new developer-mode markers.
-- Package-local inline details now also use the same outer inset as the
+- Specification-local inline details now also use the same outer inset as the
   catalog inline detail surface; this is a layout-only alignment change
   and does not add any new developer-mode markers.
-- Package-context catalog requirement details expose the package report
-  trigger as `report print button: package reports`. Its package menu
+- Specification-context catalog requirement details expose the specification report
+  trigger as `report print button: specification reports`. Its specification menu
   entries use `report option` values `print history`,
   `download history pdf`, `print suggestion history`,
   `download suggestion history pdf`, `print deviation review`, and
   `download deviation review pdf` when those report paths are available.
-- Package-context catalog requirement details may expose the extra
-  `detail section` values `needs reference` and `package item status`
-  when the requirement is opened from `Krav i kravpaket`.
-- The package-detail header may visually regroup the title,
+- Specification-context catalog requirement details may expose the extra
+  `detail section` values `needs reference` and `specification item status`
+  when the requirement is opened from `Krav i kravunderlag`.
+- The specification-detail header may visually regroup the title,
   business-needs reference, and short metadata summary into a compact
   layout, including a wide-screen variant where the metadata sits
   beside the title. That layout does not introduce any separate
   developer-mode marker beyond the existing edit action.
-- The package-detail page no longer renders a separate breadcrumb-style
+- The specification-detail page no longer renders a separate breadcrumb-style
   back control in that header area; browser navigation is the supported
   way back from this compact header.
-- Published requirement detail views expose the package-link control as
-  `detail action: add to package` when the currently displayed
-  published version is the one that can be added to a package.
+- Published requirement detail views expose the specification-link control as
+  `detail action: add to specification` when the currently displayed
+  published version is the one that can be added to a specification.
 - Sticky requirements table headers keep their existing
   `requirements table > column header: ...` references while pinned;
   the sticky state does not introduce a separate developer-mode
@@ -183,22 +184,22 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `resize handle` markers continue to describe the shared live divider
   positions while the sticky header and scrolling body stay aligned
   during drag preview.
-- Requirement package detail tables may render the
+- Requirement specification detail tables may render the
   `floating action rail` inline inside their sticky title bar; the
   marker name stays the same in both the fixed-right and inline-top
   layouts. On narrow screens, that sticky title bar and inline rail may
   wrap across multiple lines without changing marker names.
-- On desktop package-detail split views, those inline rails live inside
+- On desktop specification-detail split views, those inline rails live inside
   independently scrollable table cards; the marker names stay the same
   even though each table now scrolls within its own panel.
-- The desktop package-detail split view may expand those list panels
+- The desktop specification-detail split view may expand those list panels
   into a viewport-locked full-width shell, but that layout change does
   not add any new developer-mode markers beyond the existing table
   surfaces.
 - The fixed-right rail on the main requirements catalog can also expose
   a `requirements table` marker for `table action: scroll to top`; it
   remains the last grouped pill in that rail when shown.
-- Bulk-add failures from the package-detail available-requirements
+- Bulk-add failures from the specification-detail available-requirements
   dialog now stay inline inside that existing modal; they do not add a
   separate developer-mode marker beyond the surrounding table and
   dialog surfaces.
@@ -209,15 +210,15 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   - `type card: <type name>` on the card container
   - `iso badge` on the ISO/IEC 25010:2023 badge span
   - `quality heading` on the quality-characteristics section heading
-- Needs-reference controls and inline loading or failure messages
-  inside the add-to-package dialog remain part of that same
-  `detail action: add to package` flow rather than introducing extra
-  markers, including when those controls are temporarily disabled
-  during submission.
-- Requirement package list print pages expose `report state` markers
+- Needs-reference controls and inline loading or failure messages inside the
+  add-to-specification dialog remain part of that same
+  `detail action: add to specification` flow rather than introducing extra
+  markers, including when those controls are temporarily disabled during
+  submission.
+- Requirement specification list print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.
-- Requirement package list PDF pages expose `report state` markers with
+- Requirement specification list PDF pages expose `report state` markers with
   values `report-pdf:error`, `report-pdf:loading`, and
   `report-pdf:ready`.
 - AI Requirement Generator dialog uses the `ai-requirement-generator`
@@ -289,7 +290,7 @@ Developer Mode is covered by:
 - `tests/unit/requirements-table.test.tsx`
 - `tests/unit/reference-data-developer-mode.test.tsx`
 - `tests/unit/requirement-types-client.test.tsx`
-- `tests/unit/requirement-package-detail-client.test.tsx`
+- `tests/unit/requirement-specification-detail-client.test.tsx`
 - `tests/unit/navigation.test.tsx`
 - `tests/unit/theme-toggle.test.tsx`
 - `tests/unit/ai-requirement-generator-dev-markers.test.tsx`
@@ -308,7 +309,7 @@ that a human or AI might need to reference:
 - update the affected unit and integration tests
 - update repo instructions if the maintenance rule itself changes
 
-[upstream-core]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-core/README.md
-[upstream-react]: https://github.com/viscalyx/developer-mode/blob/main/packages/developer-mode-react/README.md
+[upstream-core]: https://github.com/viscalyx/developer-mode/blob/main/specifications/developer-mode-core/README.md
+[upstream-react]: https://github.com/viscalyx/developer-mode/blob/main/specifications/developer-mode-react/README.md
 [upstream-noop-guide]: https://github.com/viscalyx/developer-mode/blob/main/docs/production-noop-guide.md
 [upstream-safelist]: https://github.com/viscalyx/developer-mode/blob/main/docs/safelist.md

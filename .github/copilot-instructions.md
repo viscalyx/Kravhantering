@@ -34,7 +34,7 @@
 - Follow `docs/sql-server-developer-workflow.md` for database setup, migrations, seeding, and developer browse workflow expectations.
 - For visible UI element, label, role, or layout surface changes, see `.github/instructions/developer-mode.instructions.md`.
 - Developer Mode is a desktop-only developer tool. Its overlay, chips, badge, and toast do **not** need to follow WCAG touch-target sizes, mobile responsiveness, or accessibility guidelines. Keep chips compact so they don't obscure the underlying UI.
-- When adding or changing outward-facing lifecycle, package-item status, MCP tool, report column, or admin-default behavior, update `tests/quality/QUALITY.md` and add a matching scenario in `tests/quality/functional.test.ts`. See `.github/instructions/quality-spec.instructions.md`.
+- When adding, renaming, or removing outward-facing lifecycle, specification-item status, MCP tool, report column, or admin-default behavior, update all three Fitness-Scenario siblings together: the heading/body in `tests/quality/QUALITY.md`, the matching `it(...)` case in `tests/quality/functional.test.ts`, and the matching scrutiny entry in `.github/skills/run-spec-audit/references/scrutiny-areas.md`. See `.github/instructions/quality-spec.instructions.md`.
 
 ## Database Schema Changes
 

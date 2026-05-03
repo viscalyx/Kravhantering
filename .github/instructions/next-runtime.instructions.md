@@ -20,11 +20,11 @@ applyTo: "{app/api/**/*.ts,package.json}"
 - Safe patterns:
   - `app/api/requirement-transitions/[id]/route.ts`
   - `app/api/requirement-suggestions/[id]/route.ts`
-  - `app/api/package-item-deviations/[itemId]/route.ts`
+  - `app/api/specification-item-deviations/[itemId]/route.ts`
 - Unsafe patterns:
   - `app/api/requirements/[id]/transition/route.ts`
   - `app/api/requirements/[id]/improvement-suggestions/route.ts`
-  - `app/api/requirement-packages/[id]/items/[itemId]/deviations/route.ts`
+  - `app/api/specifications/[id]/items/[itemId]/deviations/route.ts`
 - When moving or creating a route, verify its URL cannot be matched by any `app/[locale]/**` page. Use a conflict-free top-level noun if there is overlap.
 
 ## Local And Prod-Like Scripts

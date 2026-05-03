@@ -31,7 +31,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import PackageItemStatusSelect from '@/components/_requirements-table/PackageItemStatusSelect'
+import SpecificationItemStatusSelect from '@/components/_requirements-table/SpecificationItemStatusSelect'
 import {
   POPOVER_VIEWPORT_MARGIN,
   type ResizeHandleSegmentKey,
@@ -58,7 +58,6 @@ import {
   getRequirementColumnWidth,
   normalizeRequirementListColumnDefaults,
   orderRequirementVisibleColumns,
-  type PackageItemStatusOption,
   type QualityCharacteristicOption,
   type RequirementColumnId,
   type RequirementColumnWidths,
@@ -67,6 +66,7 @@ import {
   type RequirementSortField,
   type RequirementSortState,
   type RiskLevelOption,
+  type SpecificationItemStatusOption,
   type StatusOption,
 } from '@/lib/requirements/list-view'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
@@ -92,12 +92,14 @@ export interface RequirementsTableProps {
   onColumnWidthsChange?: (value: RequirementColumnWidths) => void
   onFilterChange?: (values: FilterValues) => void
   onLoadMore?: () => void
-  onPackageItemStatusChange?: (itemRef: string, statusId: number | null) => void
   onRowClick?: (id: number) => void
   onSelectionChange?: (ids: Set<number>) => void
   onSortChange?: (value: RequirementSortState) => void
+  onSpecificationItemStatusChange?: (
+    itemRef: string,
+    statusId: number | null,
+  ) => void
   onVisibleColumnsChange?: (value: RequirementColumnId[]) => void
-  packageItemStatuses?: PackageItemStatusOption[]
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
@@ -106,6 +108,7 @@ export interface RequirementsTableProps {
   selectable?: boolean
   selectedIds?: Set<number>
   sortState?: RequirementSortState
+  specificationItemStatuses?: SpecificationItemStatusOption[]
   statusOptions?: StatusOption[]
   stickyTitle?: ReactNode
   stickyTitleActions?: ReactNode
@@ -1324,14 +1327,14 @@ export default function RequirementsTable({
   normReferences = [],
   onFilterChange,
   onLoadMore,
-  onPackageItemStatusChange,
+  onSpecificationItemStatusChange,
   onRowClick,
   onColumnWidthsChange,
   onSelectionChange,
   onSortChange,
   onVisibleColumnsChange,
   pinnedIds,
-  packageItemStatuses = [],
+  specificationItemStatuses = [],
   renderExpanded,
   riskLevels = [],
   rows,
@@ -1594,12 +1597,12 @@ export default function RequirementsTable({
     const rl = riskLevels.find(rl => rl.id === id)
     return rl ? getName(rl) : String(id)
   }
-  const packageItemStatusLabel = (id: number) => {
-    const s = packageItemStatuses.find(s => s.id === id)
+  const specificationItemStatusLabel = (id: number) => {
+    const s = specificationItemStatuses.find(s => s.id === id)
     return s ? getName(s) : String(id)
   }
-  const packageItemStatusDescription = (id: number) => {
-    const s = packageItemStatuses.find(s => s.id === id)
+  const specificationItemStatusDescription = (id: number) => {
+    const s = specificationItemStatuses.find(s => s.id === id)
     if (!s) return undefined
     const desc = locale === 'sv' ? s.descriptionSv : s.descriptionEn
     return desc || undefined
@@ -1970,21 +1973,21 @@ export default function RequirementsTable({
             value={fv.needsReferenceIds ?? []}
           />
         )
-      case 'packageItemStatus':
-        if (packageItemStatuses.length === 0) return null
+      case 'specificationItemStatus':
+        if (specificationItemStatuses.length === 0) return null
         return (
           <MultiSelectFilterPopover
-            activeCount={(fv.packageItemStatusIds ?? []).length}
+            activeCount={(fv.specificationItemStatusIds ?? []).length}
             developerModeValue={developerModeValue}
-            getLabel={option => packageItemStatusLabel(option.id)}
-            label={t('packageItemStatus')}
+            getLabel={option => specificationItemStatusLabel(option.id)}
+            label={t('specificationItemStatus')}
             onChange={ids =>
               updateFilter({
-                packageItemStatusIds: ids.length > 0 ? ids : undefined,
+                specificationItemStatusIds: ids.length > 0 ? ids : undefined,
               })
             }
-            options={packageItemStatuses}
-            value={fv.packageItemStatusIds ?? []}
+            options={specificationItemStatuses}
+            value={fv.specificationItemStatusIds ?? []}
           />
         )
       case 'normReferences':
@@ -2126,20 +2129,20 @@ export default function RequirementsTable({
             values={fv.needsReferenceIds ?? []}
           />
         )
-      case 'packageItemStatus':
-        if (packageItemStatuses.length === 0) return null
+      case 'specificationItemStatus':
+        if (specificationItemStatuses.length === 0) return null
         return (
           <FilterChips
             developerModeContext={developerModeContext}
-            getLabel={packageItemStatusLabel}
+            getLabel={specificationItemStatusLabel}
             onRemove={id =>
               updateFilter({
-                packageItemStatusIds: (fv.packageItemStatusIds ?? []).filter(
-                  v => v !== id,
-                ),
+                specificationItemStatusIds: (
+                  fv.specificationItemStatusIds ?? []
+                ).filter(v => v !== id),
               })
             }
-            values={fv.packageItemStatusIds ?? []}
+            values={fv.specificationItemStatusIds ?? []}
           />
         )
       case 'normReferences':
@@ -2191,14 +2194,16 @@ export default function RequirementsTable({
                 )
               ) : null}
               <span>{row.uniqueId}</span>
-              {row.isPackageLocal ? (
+              {row.isSpecificationLocal ? (
                 <span
                   className="inline-flex items-center text-amber-700 dark:text-amber-300"
-                  data-package-local-marker="true"
-                  title={t('packageLocalTooltip')}
+                  data-specification-local-marker="true"
+                  title={t('specificationLocalTooltip')}
                 >
                   <DiamondPlus aria-hidden="true" className="h-3.5 w-3.5" />
-                  <span className="sr-only">{t('packageLocalBadge')}</span>
+                  <span className="sr-only">
+                    {t('specificationLocalBadge')}
+                  </span>
                 </span>
               ) : null}
             </button>
@@ -2352,34 +2357,34 @@ export default function RequirementsTable({
             {row.needsReference ?? '—'}
           </td>
         )
-      case 'packageItemStatus': {
-        const statusId = row.packageItemStatusId
-        const statusColor = row.packageItemStatusColor
+      case 'specificationItemStatus': {
+        const statusId = row.specificationItemStatusId
+        const statusColor = row.specificationItemStatusColor
         const statusLabel =
           (locale === 'sv'
-            ? row.packageItemStatusNameSv
-            : row.packageItemStatusNameEn) ?? null
+            ? row.specificationItemStatusNameSv
+            : row.specificationItemStatusNameEn) ?? null
         const statusDescription =
           (locale === 'sv'
-            ? row.packageItemStatusDescriptionSv
-            : row.packageItemStatusDescriptionEn) ?? undefined
+            ? row.specificationItemStatusDescriptionSv
+            : row.specificationItemStatusDescriptionEn) ?? undefined
 
-        if (onPackageItemStatusChange && row.itemRef) {
+        if (onSpecificationItemStatusChange && row.itemRef) {
           const selectTooltip = statusId
-            ? packageItemStatusDescription(statusId)
+            ? specificationItemStatusDescription(statusId)
             : undefined
           return (
             <td
               className={`py-1 px-1 ${archivedContentClass} ${dividerClass}`}
               title={selectTooltip}
             >
-              <PackageItemStatusSelect
-                ariaLabel={t('packageItemStatus')}
+              <SpecificationItemStatusSelect
+                ariaLabel={t('specificationItemStatus')}
                 hasApprovedDeviation={Boolean(row.hasApprovedDeviation)}
                 itemRef={row.itemRef}
                 locale={locale}
-                onChange={onPackageItemStatusChange}
-                statuses={packageItemStatuses}
+                onChange={onSpecificationItemStatusChange}
+                statuses={specificationItemStatuses}
                 statusId={statusId}
                 tooltip={selectTooltip}
               />
@@ -2392,14 +2397,16 @@ export default function RequirementsTable({
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
             title={statusDescription}
           >
-            {statusColor ? (
+            {statusLabel ? (
               <span className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: statusColor }}
-                />
-                {statusLabel ?? '—'}
+                {statusColor ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: statusColor }}
+                  />
+                ) : null}
+                {statusLabel}
               </span>
             ) : (
               '—'
