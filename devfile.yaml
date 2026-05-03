@@ -66,6 +66,32 @@ components:
         # so the install step doesn't re-download Node on every restart.
         - name: NVM_DIR
           value: /home/user/.nvm
+        - name: NEXT_PUBLIC_SITE_URL
+          value: http://localhost:3000
+        - name: OWNERS_API_URL
+          value: ''
+        - name: NEXT_PUBLIC_DEFAULT_MODEL
+          value: ''
+        - name: AUTH_OIDC_CLIENT_ID
+          value: kravhantering-app
+        - name: AUTH_OIDC_ISSUER_URL
+          value: http://localhost:8080/realms/kravhantering-dev
+        - name: AUTH_OIDC_POST_LOGOUT_REDIRECT_URI
+          value: http://localhost:3000/
+        - name: AUTH_OIDC_REDIRECT_URI
+          value: http://localhost:3000/api/auth/callback
+        - name: AUTH_OIDC_API_AUDIENCE
+          value: ''
+        - name: AUTH_OIDC_ROLES_CLAIM
+          value: roles
+        - name: AUTH_OIDC_SCOPES
+          value: "openid profile email"
+        - name: AUTH_SESSION_COOKIE_NAME
+          value: kravhantering_session
+        - name: AUTH_SESSION_TTL_SECONDS
+          value: '28800'
+        - name: AUTH_TRUST_PROXY
+          value: 'true'
         # The Keycloak sidecar publishes its issuer on the public Dev
         # Spaces route, not on localhost. AUTH_ISSUER and related vars
         # should be injected via a Dev Spaces Secret per workspace —

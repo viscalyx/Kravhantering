@@ -92,8 +92,9 @@ spec:
 ## Required Secrets
 
 App-level credentials must **not** be committed. Provide them as Dev
-Spaces user-namespace `Secret`s annotated so the DevWorkspace operator
-mounts them as environment variables in the `tools` container.
+Spaces user-namespace `Secret`s labeled and annotated so the
+DevWorkspace operator mounts them as environment variables in the
+workspace containers.
 
 Create a manifest like this in your developer namespace
 (`<user>-devspaces`):
@@ -106,9 +107,9 @@ metadata:
   labels:
     app.kubernetes.io/part-of: che.eclipse.org
     controller.devfile.io/watch-secret: 'true'
+    controller.devfile.io/mount-to-devworkspace: 'true'
   annotations:
     controller.devfile.io/mount-as: env
-    controller.devfile.io/mount-to-devworkspace: 'true'
 type: Opaque
 stringData:
   MSSQL_SA_PASSWORD: 'YourStrong!Passw0rd'
@@ -121,15 +122,92 @@ stringData:
   GH_TOKEN: ''
 ```
 
-Apply once per developer namespace:
+The repository template lives at
+[`dev/devspaces/kravhantering-secrets.yaml`](../dev/devspaces/kravhantering-secrets.yaml).
+Copy or edit it with your own per-developer values before applying it.
+
+You can create the Secret before or after creating the workspace. The
+important part is that the Secret exists in the same OpenShift project
+as the Dev Spaces workspace before the workspace containers start. If
+your Dev Spaces project already exists, apply the Secret first and then
+create or start the workspace. If the project is only created when your
+first workspace is created, create the workspace once, add the Secret to
+that project, then restart the workspace. If you add or change the
+Secret after the workspace is already running, restart the workspace so
+the environment variables are injected.
+
+### CLI setup
+
+Find the OpenShift API URL from the web console before applying the
+Secret. Open the OpenShift console, use the account menu to choose
+**Copy login command**, then select **Display Token**. The generated
+command includes both the token and API URL:
 
 ```bash
-oc apply -n <user>-devspaces -f kravhantering-secrets.yaml
+oc login --token=<token> --server=https://api.<cluster-domain>:6443
+```
+
+The API URL is the `--server` value. It is **not** the Dev Spaces
+dashboard URL and is usually different from the OpenShift console URL.
+If `oc` is already logged in, print the current API URL with:
+
+```bash
+oc whoami --show-server
+```
+
+Log in, select your Dev Spaces namespace, then apply the Secret:
+
+```bash
+oc login --token=<token> --server=<openshift-api-url>
+oc project <user>-devspaces # or <user>-dev
+# copy from the dev/devspaces/kravhantering-secrets-example.yaml
+oc apply -f dev/devspaces/kravhantering-secrets.yaml
+```
+
+Ensure the Secret has the Dev Spaces mount label and env annotation.
+This is harmless if the manifest already contains them:
+
+```bash
+oc label secret kravhantering-secrets \
+  controller.devfile.io/mount-to-devworkspace=true \
+  controller.devfile.io/watch-secret=true \
+  --overwrite
+
+oc annotate secret kravhantering-secrets \
+  controller.devfile.io/mount-as=env \
+  --overwrite
+```
+
+Restart the Dev Spaces workspace after applying or changing the Secret.
+Environment variables are injected when the workspace containers start,
+and changing mounted DevWorkspace Secrets can restart running workspaces
+in the same project. Save work before updating the Secret.
+
+After the workspace restarts, verify that values are present without
+printing the secrets:
+
+```bash
+test -n "$MSSQL_SA_PASSWORD" && echo "MSSQL_SA_PASSWORD is set"
+test -n "$AUTH_SESSION_COOKIE_PASSWORD" && \
+  echo "AUTH_SESSION_COOKIE_PASSWORD is set"
 ```
 
 The DevWorkspace operator injects every key in the secret as an env var
 in `tools`, `db`, and `idp` (so `MSSQL_SA_PASSWORD` reaches both the
 client and the server side).
+
+### Web console setup
+
+You can also create the Secret without the `oc` CLI:
+
+1. Open the OpenShift web console.
+2. Select your `<user>-devspaces` project.
+3. Choose **+Add** or **Import YAML**.
+4. Paste the Secret manifest.
+5. Create the resource.
+6. Confirm that the labels and annotation from the CLI setup are
+   present on the Secret.
+7. Restart the Dev Spaces workspace.
 
 ## Auth on Dev Spaces
 
