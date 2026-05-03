@@ -83,17 +83,17 @@ components:
           exposure: public
           protocol: https
           secure: true
-        - name: next-dev-alt
+        - name: next-alt
           targetPort: 3001
           exposure: public
           protocol: https
           secure: true
-        - name: next-dev-https
+        - name: next-https
           targetPort: 4443
           exposure: public
           protocol: https
           secure: true
-        - name: playwright-report
+        - name: pw-report
           targetPort: 9323
           exposure: public
           protocol: https
