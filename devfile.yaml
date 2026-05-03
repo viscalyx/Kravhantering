@@ -15,13 +15,6 @@ metadata:
     - Keycloak
   version: 0.1.0
 
-attributes:
-  pod-overrides:
-    spec:
-      securityContext:
-        fsGroup: 10001
-        fsGroupChangePolicy: OnRootMismatch
-
 # All `container` components in a Devfile share a single Kubernetes pod.
 # That means the `tools` container can reach `db` and `idp` over
 # `localhost`, so the `socat` Keycloak forwarder used by the
@@ -140,8 +133,8 @@ components:
     container:
       # SQL Server 2025 Developer edition. Use Microsoft's RHEL image in
       # Dev Spaces because it is certified for Red Hat environments.
-      # If the db container CrashLoops, inspect its logs first; common
-      # causes are missing MSSQL_SA_PASSWORD or SCC/volume permissions.
+      # The database uses container-local storage because Developer
+      # Sandbox-style SCCs reject fsGroup 10001 for a writable PVC.
       image: mcr.microsoft.com/mssql/rhel/server:2025-latest
       memoryRequest: 2Gi
       memoryLimit: 4Gi
@@ -157,9 +150,6 @@ components:
         # shared, production-like, or externally reachable SQL Server.
         - name: MSSQL_SA_PASSWORD
           value: YourStrong!Passw0rd
-      volumeMounts:
-        - name: mssql-data
-          path: /var/opt/mssql
       endpoints:
         - name: sqlserver
           targetPort: 1433
@@ -213,10 +203,6 @@ components:
   - name: nvm-data
     volume:
       size: 2Gi
-
-  - name: mssql-data
-    volume:
-      size: 5Gi
 
 # Keep setup commands available from the Dev Spaces command palette, but
 # do not bind them to `events.postStart`. Dev Spaces treats a non-zero

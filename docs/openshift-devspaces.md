@@ -42,12 +42,14 @@ The devfile defines three containers in a single pod:
 
 <!-- markdownlint-enable MD013 -->
 
-Persistent volumes:
+Storage behavior:
 
 - `node-modules` (3 Gi) — `node_modules`
 - `next-cache` (2 Gi) — `.next`
 - `nvm-data` (2 Gi) — `~/.nvm` (so Node 24 survives restarts)
-- `mssql-data` (5 Gi) — `/var/opt/mssql`
+- SQL Server data is container-local in Dev Spaces. It is recreated when
+  the workspace pod is recreated; run **db-setup** after starting a fresh
+  workspace.
 
 Plan for **at least 12 Gi RAM and 4 vCPU** of namespace quota per
 workspace.
@@ -247,20 +249,12 @@ Red Hat environments:
 image: mcr.microsoft.com/mssql/rhel/server:2025-latest
 ```
 
-The devfile also sets a pod-level file-system group for the workspace:
-
-```yaml
-attributes:
-  pod-overrides:
-    spec:
-      securityContext:
-        fsGroup: 10001
-        fsGroupChangePolicy: OnRootMismatch
-```
-
-SQL Server runs as the `mssql` user/group in the container. Microsoft
-Kubernetes examples use `fsGroup: 10001` so the mounted
-`/var/opt/mssql` volume is writable by that group.
+SQL Server data is not mounted on a Dev Spaces PVC by default. Developer
+Sandbox-style SCCs commonly reject `fsGroup: 10001`, and SQL Server
+needs that group to write a mounted `/var/opt/mssql` volume. The sidecar
+therefore uses container-local storage so the workspace can start under
+the default Dev Spaces permissions. Data is recreated when the workspace
+pod is recreated; run **db-setup** after starting a fresh workspace.
 
 SQL Server still has stricter startup requirements than the `tools`
 container. If the `db` container enters `CrashLoopBackOff`, get the
@@ -285,12 +279,10 @@ Common causes are:
 - `MSSQL_SA_PASSWORD` does not satisfy SQL Server complexity rules:
   at least 8 characters and at least three of uppercase, lowercase,
   digits, and symbols.
-- The OpenShift cluster's SCC and storage settings do not allow SQL
-  Server to write to `/var/opt/mssql`.
-- The OpenShift cluster's SCC rejects the configured `fsGroup: 10001`.
-  In that case the deployment may fail before the `db` container starts;
-  ask a cluster administrator which `fsGroup` range is allowed for the
-  Dev Spaces namespace.
+- The OpenShift cluster's SCC and storage settings do not allow the SQL
+  Server image to start. If the error mentions `fsGroup: 10001 is not an
+  allowed group`, recreate the workspace from the current devfile, which
+  intentionally does not set `fsGroup`.
 
 Verify that the Secret has the expected keys without printing values:
 
@@ -316,18 +308,22 @@ annotations:
   controller.devfile.io/mount-as: env
 ```
 
-If the SQL Server log shows permission errors for `/var/opt/mssql`,
-ask a cluster administrator for one of these OpenShift-side fixes:
+If your team needs persistent SQL Server data in Dev Spaces, ask a
+cluster administrator for one of these OpenShift-side fixes:
 
-1. **Grant `anyuid` to the workspace ServiceAccount** (cluster-admin):
+1. **Grant a suitable SCC to the workspace ServiceAccount**
+   (cluster-admin):
 
    ```bash
    oc adm policy add-scc-to-user anyuid \
      -z <workspace-sa> -n <user>-devspaces
    ```
 
-2. Configure an SCC or storage class policy that lets SQL Server run
-   with a writable `/var/opt/mssql` volume.
+2. Configure an SCC or storage policy that allows `fsGroup: 10001` and a
+   writable `/var/opt/mssql` volume for the SQL Server sidecar.
+
+3. Use an external development SQL Server instead of the sidecar, then
+   point `DB_HOST`, `DB_PORT`, and related `DB_*` variables at it.
 
 ## Differences vs. the devcontainer
 
