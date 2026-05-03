@@ -121,7 +121,7 @@ function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
 
   return (
     <div
-      className="flex items-start gap-1"
+      className={`flex gap-1 ${expanded ? 'items-start' : 'items-center'}`}
       data-package-requirement-area-pills="true"
     >
       <div
@@ -143,7 +143,7 @@ function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
         <button
           aria-expanded={expanded}
           aria-label={toggleLabel}
-          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
+          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
           data-package-requirement-area-pill-toggle="true"
           {...devMarker({
             context: 'packages',
@@ -885,7 +885,7 @@ export default function RequirementPackagesClient() {
                             .join('|')}
                         />
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-4 align-top">
                         <div className="flex justify-end gap-1">
                           <button
                             aria-label={tc('edit')}

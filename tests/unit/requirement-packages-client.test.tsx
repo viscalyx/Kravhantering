@@ -345,11 +345,15 @@ describe('RequirementPackagesClient', () => {
         expect(node).not.toBeNull()
         return node as HTMLElement
       })
+      const group = list.closest('[data-package-requirement-area-pills="true"]')
       const expandButton = await screen.findByRole('button', {
         name: 'common.showMore',
       })
 
+      expect(group?.className).toContain('items-center')
       expect(expandButton).toHaveAttribute('aria-expanded', 'false')
+      expect(expandButton.className).toContain('min-h-[44px]')
+      expect(expandButton.className).toContain('min-w-[44px]')
       expect(list.className).toContain('max-h-6')
       expect(list.className).toContain('overflow-hidden')
 
@@ -359,6 +363,7 @@ describe('RequirementPackagesClient', () => {
         name: 'common.showLess',
       })
       expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
+      expect(group?.className).toContain('items-start')
       expect(list.className).not.toContain('max-h-6')
       expect(list.className).not.toContain('overflow-hidden')
 
@@ -387,13 +392,16 @@ describe('RequirementPackagesClient', () => {
     })
 
     expect(editButton).toHaveAttribute('title', 'common.edit')
-    expect(editButton).toHaveTextContent('')
+    expect(editButton.closest('td')?.className).toContain('align-top')
+    expect(editButton.textContent?.trim()).toBe('')
+    expect(editButton).toHaveAccessibleName('common.edit')
     expect(editButton.className).toContain('h-11')
     expect(editButton.className).toContain('w-11')
     expect(editButton.querySelector('svg')).not.toBeNull()
 
     expect(deleteButton).toHaveAttribute('title', 'common.delete')
-    expect(deleteButton).toHaveTextContent('')
+    expect(deleteButton.textContent?.trim()).toBe('')
+    expect(deleteButton).toHaveAccessibleName('common.delete')
     expect(deleteButton.className).toContain('h-11')
     expect(deleteButton.className).toContain('w-11')
     expect(deleteButton.querySelector('svg')).not.toBeNull()

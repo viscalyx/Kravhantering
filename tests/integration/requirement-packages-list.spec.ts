@@ -86,6 +86,10 @@ for (const viewport of viewports) {
       await expect(areaToggle).toBeVisible()
       await expect(areaToggle).toHaveAttribute('aria-expanded', 'false')
       await expect(areaList).toHaveClass(/max-h-6/)
+      const areaToggleBox = await areaToggle.boundingBox()
+      expect(areaToggleBox).not.toBeNull()
+      expect(areaToggleBox?.height ?? 0).toBeGreaterThanOrEqual(44)
+      expect(areaToggleBox?.width ?? 0).toBeGreaterThanOrEqual(44)
 
       await areaToggle.click()
       await expect(areaToggle).toHaveAttribute('aria-expanded', 'true')

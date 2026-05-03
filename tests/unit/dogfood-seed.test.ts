@@ -207,7 +207,7 @@ function emptySeed() {
 
 describe('dogfood seed inventory', () => {
   it('every Krav fills all required properties', () => {
-    expect(DOGFOOD_KRAV.length).toBeGreaterThanOrEqual(50)
+    expect(DOGFOOD_KRAV).toHaveLength(59)
     for (const k of DOGFOOD_KRAV) {
       expect(typeof k.area).toBe('number')
       expect(AREA_PREFIX_BY_ID[k.area]).toBeTruthy()
@@ -242,6 +242,11 @@ describe('dogfood seed inventory', () => {
 
   it('package-local entries reference Krav that are also in KH-POC', () => {
     const poc = new Set(DOGFOOD_KH_POC_INDEXES)
+    expect(poc.size).toBe(DOGFOOD_KH_POC_INDEXES.length)
+    for (const idx of DOGFOOD_KH_POC_INDEXES) {
+      expect(idx).toBeGreaterThanOrEqual(0)
+      expect(idx).toBeLessThan(DOGFOOD_KRAV.length)
+    }
     for (const pl of DOGFOOD_PACKAGE_LOCALS) {
       expect(poc.has(pl.kravIdx)).toBe(true)
       expect(DOGFOOD_KRAV[pl.kravIdx]).toBeDefined()
