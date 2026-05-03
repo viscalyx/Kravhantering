@@ -131,13 +131,11 @@ components:
 
   - name: db
     container:
-      # SQL Server 2025 Developer edition — same image as
-      # .devcontainer/docker-compose.yml. Note: this image runs as the
-      # `mssql` user (UID 10001) and requires the `anyuid` SCC on
-      # OpenShift. See docs/openshift-devspaces.md for the workaround
-      # (or swap to mcr.microsoft.com/azure-sql-edge:latest as a
-      # fallback in restricted-v2 namespaces).
-      image: mcr.microsoft.com/mssql/server:2025-latest
+      # SQL Server 2025 Developer edition. Use Microsoft's RHEL image in
+      # Dev Spaces because it is certified for Red Hat environments.
+      # If the db container CrashLoops, inspect its logs first; common
+      # causes are missing MSSQL_SA_PASSWORD or SCC/volume permissions.
+      image: mcr.microsoft.com/mssql/rhel/server:2025-latest
       memoryRequest: 2Gi
       memoryLimit: 4Gi
       cpuRequest: 500m

@@ -34,11 +34,11 @@ The devfile defines three containers in a single pod:
 
 <!-- markdownlint-disable MD013 -->
 
-| Component | Image                                           | Purpose                                                                      |
-| --------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| `tools`   | `registry.redhat.io/devspaces/udi-rhel9:latest` | Universal Developer Image with git, gh, zsh, podman, python3, ripgrep, nvm.  |
-| `db`      | `mcr.microsoft.com/mssql/server:2025-latest`    | SQL Server 2025 Developer edition. Same image as the devcontainer.           |
-| `idp`     | `quay.io/keycloak/keycloak:26.6`                | Keycloak with the `kravhantering-dev` realm imported on every start.         |
+| Component | Image                                                  | Purpose                                                                      |
+| --------- | ------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `tools`   | `registry.redhat.io/devspaces/udi-rhel9:latest`        | Universal Developer Image with git, gh, zsh, podman, python3, ripgrep, nvm.  |
+| `db`      | `mcr.microsoft.com/mssql/rhel/server:2025-latest`      | SQL Server 2025 Developer edition for Red Hat environments.                  |
+| `idp`     | `quay.io/keycloak/keycloak:26.6`                       | Keycloak with the `kravhantering-dev` realm imported on every start.         |
 
 <!-- markdownlint-enable MD013 -->
 
@@ -234,11 +234,66 @@ The route hostnames are visible in the Dev Spaces dashboard under
 **Endpoints** for each workspace. If the workspace is recreated, update
 the secret with the new hostnames.
 
-## SQL Server SCC requirement
+## SQL Server on OpenShift
 
-The official `mcr.microsoft.com/mssql/server` image runs as the `mssql`
-user (UID 10001) and **fails under the default `restricted-v2` SCC**.
-Two options:
+The Dev Spaces workspace uses Microsoft's certified SQL Server image for
+Red Hat environments:
+
+```yaml
+image: mcr.microsoft.com/mssql/rhel/server:2025-latest
+```
+
+SQL Server still has stricter startup requirements than the `tools`
+container. If the `db` container enters `CrashLoopBackOff`, get the
+container log first:
+
+```bash
+oc logs -n <user>-devspaces <workspace-pod-name> -c db --previous
+```
+
+If you do not know the pod name, list pods in the Dev Spaces project:
+
+```bash
+oc get pods -n <user>-devspaces
+```
+
+Common causes are:
+
+- `MSSQL_SA_PASSWORD` is missing because the Secret was not created in
+  the same project as the workspace, or the workspace was not restarted
+  after the Secret was added.
+- `MSSQL_SA_PASSWORD` does not satisfy SQL Server complexity rules:
+  at least 8 characters and at least three of uppercase, lowercase,
+  digits, and symbols.
+- The OpenShift cluster's SCC and storage settings do not allow SQL
+  Server to write to `/var/opt/mssql`.
+
+Verify that the Secret has the expected keys without printing values:
+
+```bash
+oc get secret kravhantering-secrets -n <user>-devspaces \
+  -o go-template='{{range $k, $_ := .data}}{{println $k}}{{end}}'
+```
+
+Verify the Dev Spaces mount label and env annotation:
+
+```bash
+oc get secret kravhantering-secrets -n <user>-devspaces --show-labels
+oc annotate secret kravhantering-secrets -n <user>-devspaces --list
+```
+
+The metadata should include:
+
+```yaml
+labels:
+  controller.devfile.io/mount-to-devworkspace: 'true'
+  controller.devfile.io/watch-secret: 'true'
+annotations:
+  controller.devfile.io/mount-as: env
+```
+
+If the SQL Server log shows permission errors for `/var/opt/mssql`,
+ask a cluster administrator for one of these OpenShift-side fixes:
 
 1. **Grant `anyuid` to the workspace ServiceAccount** (cluster-admin):
 
@@ -247,17 +302,8 @@ Two options:
      -z <workspace-sa> -n <user>-devspaces
    ```
 
-2. **Swap the image** to
-   [Azure SQL Edge](https://mcr.microsoft.com/product/azure-sql-edge/about),
-   which is more permissive and ARM-friendly. Edit the `db` component
-   in [`devfile.yaml`](../devfile.yaml):
-
-   ```yaml
-   image: mcr.microsoft.com/azure-sql-edge:latest
-   ```
-
-   Note: Azure SQL Edge is not 100 % feature-compatible with SQL
-   Server 2025; use it for development only.
+2. Configure an SCC or storage class policy that lets SQL Server run
+   with a writable `/var/opt/mssql` volume.
 
 ## Differences vs. the devcontainer
 
