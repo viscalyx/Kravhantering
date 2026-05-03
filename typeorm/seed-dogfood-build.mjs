@@ -9,7 +9,6 @@
 // further changes.
 
 import {
-  AREA_NEXT_SEQ,
   AREA_PREFIX_BY_ID,
   DOGFOOD_AREAS,
   DOGFOOD_KH_POC_INDEXES,
@@ -114,10 +113,21 @@ export function appendDogfoodSeed(SEED_DATA) {
   const dogfoodSeqUsed = {}
   // Map dogfood Krav index -> assigned (requirementId, versionId, areaSeqUsed)
   const minted = []
+  const areas = tableSection(SEED_DATA, 'requirement_areas')
+  const areaIdIdx = areas.columns.indexOf('id')
+  const areaSeqIdx = areas.columns.indexOf('next_sequence')
+  const existingAreaIds = new Set(areas.rows.map(r => r[areaIdIdx]))
+  const nextSeqByArea = {}
+  for (const row of areas.rows) {
+    nextSeqByArea[row[areaIdIdx]] = row[areaSeqIdx]
+  }
+  for (const [id] of DOGFOOD_AREAS) {
+    if (!existingAreaIds.has(id)) nextSeqByArea[id] = 1
+  }
 
   for (let idx = 0; idx < DOGFOOD_KRAV.length; idx += 1) {
     const k = DOGFOOD_KRAV[idx]
-    const seq = AREA_NEXT_SEQ[k.area]
+    const seq = nextSeqByArea[k.area]
     if (seq === undefined) {
       throw new Error(`Dogfood seed: unknown area id ${k.area}`)
     }
@@ -125,40 +135,33 @@ export function appendDogfoodSeed(SEED_DATA) {
     const uniqueId = `${prefix}${String(seq).padStart(4, '0')}`
     const requirementId = REQUIREMENT_ID_BASE + idx + 1
     const versionId = VERSION_ID_BASE + idx + 1
-    AREA_NEXT_SEQ[k.area] = seq + 1
+    nextSeqByArea[k.area] = seq + 1
     dogfoodSeqUsed[k.area] = (dogfoodSeqUsed[k.area] || 0) + 1
     minted.push({ idx, requirementId, versionId, uniqueId, seq })
   }
 
   // ---- Requirement areas (new ones + bump existing next_sequence) --------
-  const areas = tableSection(SEED_DATA, 'requirement_areas')
   // New areas
-  const existingAreaIds = new Set(
-    areas.rows.map(r => r[areas.columns.indexOf('id')]),
-  )
   for (const [id, prefix, name, description, ownerId] of DOGFOOD_AREAS) {
     if (existingAreaIds.has(id)) continue
-    const used = dogfoodSeqUsed[id] || 0
     areas.rows.push([
       id,
       prefix,
       name,
       description,
       ownerId,
-      used + 1,
+      nextSeqByArea[id],
       SEED_TS,
       SEED_TS,
     ])
   }
   // Bump existing-area next_sequence to reflect newly minted Krav
-  const idIdx = areas.columns.indexOf('id')
-  const seqIdx = areas.columns.indexOf('next_sequence')
   const updIdx = areas.columns.indexOf('updated_at')
   for (const row of areas.rows) {
-    const aId = row[idIdx]
+    const aId = row[areaIdIdx]
     const used = dogfoodSeqUsed[aId] || 0
     if (used > 0 && existingAreaIds.has(aId)) {
-      row[seqIdx] = row[seqIdx] + used
+      row[areaSeqIdx] = nextSeqByArea[aId]
       row[updIdx] = SEED_TS
     }
   }

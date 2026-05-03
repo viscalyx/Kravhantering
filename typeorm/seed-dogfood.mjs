@@ -38,8 +38,8 @@ const ID = {
     tjansteomrade: 5,
   },
   pkgImpl: { upphandling: 1, utveckling: 2 },
-  // Existing requirement areas (id -> prefix). Sequence offsets are tracked
-  // below in AREA_NEXT_SEQ and advanced as we create Krav.
+  // Existing requirement areas (id -> prefix). Sequence offsets are read from
+  // SEED_DATA.requirement_areas when the dogfood rows are appended.
   area: {
     INT: 1,
     SAK: 2,
@@ -142,30 +142,6 @@ const VERSION_ID_BASE = 10000
 const PACKAGE_ITEM_ID_BASE = 10000
 const PACKAGE_LOCAL_ID_BASE = 1000
 const NEEDS_REF_ID_BASE = 1000
-
-// Next sequence per area, taken from the base seed's `next_sequence` column.
-// We advance these as we mint new Krav so each area's sequence stays
-// contiguous and matches what the area row claims (we patch the base row's
-// next_sequence at the end).
-const AREA_NEXT_SEQ = {
-  [ID.area.INT]: 39,
-  [ID.area.SAK]: 41,
-  [ID.area.PRE]: 38,
-  [ID.area.ANV]: 37,
-  [ID.area.LAG]: 38,
-  [ID.area.BEH]: 37,
-  [ID.area.IDN]: 37,
-  [ID.area.LOG]: 38,
-  [ID.area.DRF]: 36,
-  [ID.area.DAT]: 36,
-  // New areas start at 1
-  [ID.area.TIL]: 1,
-  [ID.area.KVA]: 1,
-  [ID.area.SPR]: 1,
-  [ID.area.RAP]: 1,
-  [ID.area.UTV]: 1,
-  [ID.area.ARK]: 1,
-}
 
 const AREA_PREFIX_BY_ID = {
   [ID.area.INT]: 'INT',
@@ -1377,7 +1353,6 @@ const DOGFOOD_KH_POC_INDEXES = [
 ]
 
 export {
-  AREA_NEXT_SEQ,
   AREA_PREFIX_BY_ID,
   DOGFOOD_AREAS,
   DOGFOOD_KH_POC_INDEXES,

@@ -225,7 +225,7 @@ describe('dogfood seed inventory', () => {
     }
   })
 
-  it('Krav reference Swedish terms only (not English)', () => {
+  it('Krav descriptions and acceptance criteria meet minimum lengths', () => {
     for (const k of DOGFOOD_KRAV) {
       expect(k.desc.length).toBeGreaterThan(20)
       expect(k.ac.length).toBeGreaterThan(20)
@@ -298,8 +298,26 @@ describe('appendDogfoodSeed', () => {
 
     // Package locals appended for KH-POC only
     const locals = seed.package_local_requirements.rows
+    expect(locals.filter(r => r[1] === PKG_KH)).toHaveLength(0)
     expect(locals.filter(r => r[1] === PKG_KH_POC)).toHaveLength(
       DOGFOOD_PACKAGE_LOCALS.length,
     )
+  })
+
+  it('mints unique IDs from current area next_sequence rows', () => {
+    const seed = emptySeed()
+    const intArea = seed.requirement_areas.rows.find(r => r[0] === ID.area.INT)
+    if (!intArea) throw new Error('Expected INT area in test seed')
+
+    intArea[5] = 99
+    appendDogfoodSeed(seed)
+
+    const intRequirements = seed.requirements.rows.filter(
+      r => r[2] === ID.area.INT,
+    )
+    const intCount = DOGFOOD_KRAV.filter(k => k.area === ID.area.INT).length
+    expect(intRequirements[0]?.[1]).toBe('INT0099')
+    expect(intRequirements[0]?.[3]).toBe(99)
+    expect(intArea[5]).toBe(99 + intCount)
   })
 })

@@ -83,8 +83,9 @@ as version 1 with status **Publicerad**. Distribution per area:
 
 Every Krav fills `description`, `acceptance_criteria`, `verification_method`,
 `requirement_category_id`, `requirement_type_id`, `quality_characteristic_id`,
-`risk_level_id`, `is_testing_required`, plus at least one usage scenario and
-norm reference.
+`risk_level_id`, `is_testing_required`, and at least one usage scenario. Norm
+references are optional and added only where a Krav maps to an applicable law,
+standard or framework.
 
 ## Kravpaket
 
