@@ -146,7 +146,10 @@ components:
           value: 'Y'
         - name: MSSQL_PID
           value: Developer
-        # MSSQL_SA_PASSWORD must be provided via a Dev Spaces Secret.
+        # Dev-only fallback matching .env.development. Do not use for
+        # shared, production-like, or externally reachable SQL Server.
+        - name: MSSQL_SA_PASSWORD
+          value: YourStrong!Passw0rd
       volumeMounts:
         - name: mssql-data
           path: /var/opt/mssql
@@ -178,9 +181,9 @@ components:
           value: '8080'
         - name: KEYCLOAK_ADMIN
           value: admin
-        # KEYCLOAK_ADMIN_PASSWORD should be provided via a Dev Spaces
-        # Secret. The default `admin` is acceptable for ephemeral
-        # workspaces only.
+        # Dev-only fallback matching the imported local realm workflow.
+        # Do not use for shared, production-like, or externally
+        # reachable Keycloak.
         - name: KEYCLOAK_ADMIN_PASSWORD
           value: admin
         - name: KC_IMPORT_REALM_DIR
