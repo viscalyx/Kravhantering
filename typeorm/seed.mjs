@@ -11793,6 +11793,12 @@ const SEED_DATA = {
   },
 }
 
+// Append the dogfood dataset (Krav for Kravhantering itself) onto SEED_DATA.
+// See typeorm/seed-dogfood.mjs for the source data and
+// typeorm/seed-dogfood-build.mjs for the builder logic.
+const { appendDogfoodSeed } = await import('./seed-dogfood-build.mjs')
+appendDogfoodSeed(SEED_DATA)
+
 export async function seedDatabase(executor) {
   // SQL Server's SET IDENTITY_INSERT is connection-scoped. When `executor` is
   // a DataSource, each .query() call may be served by a different pooled

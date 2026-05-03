@@ -1,7 +1,16 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { HelpCircle, Plus, Search, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  HelpCircle,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   useCallback,
@@ -59,6 +68,111 @@ interface Package {
   requirementAreas: RequirementArea[]
   responsibilityArea: TaxonomyItem | null
   uniqueId: string
+}
+
+const REQUIREMENT_AREA_PILL_ROW_HEIGHT = 24
+
+function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
+  const tc = useTranslations('common')
+  const [expanded, setExpanded] = useState(false)
+  const [canExpand, setCanExpand] = useState(false)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const updateCanExpand = useCallback(() => {
+    const list = listRef.current
+    if (!list) {
+      return
+    }
+
+    const nextCanExpand =
+      list.scrollHeight > REQUIREMENT_AREA_PILL_ROW_HEIGHT + 1
+    setCanExpand(nextCanExpand)
+    if (!nextCanExpand) {
+      setExpanded(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const list = listRef.current
+    if (!list) {
+      return
+    }
+
+    updateCanExpand()
+    const frame = window.requestAnimationFrame(updateCanExpand)
+
+    const handleResize = () => updateCanExpand()
+    window.addEventListener('resize', handleResize)
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(updateCanExpand)
+    resizeObserver?.observe(list)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', handleResize)
+      resizeObserver?.disconnect()
+    }
+  }, [updateCanExpand])
+
+  const toggleLabel = expanded ? tc('showLess') : tc('showMore')
+
+  return (
+    <div
+      className={`flex gap-1 ${expanded ? 'items-start' : 'items-center'}`}
+      data-package-requirement-area-pills="true"
+    >
+      <div
+        className={`flex min-w-0 flex-1 flex-wrap gap-1 ${expanded ? '' : 'max-h-6 overflow-hidden'}`}
+        data-package-requirement-area-pill-list="true"
+        ref={listRef}
+      >
+        {areas.map(area => (
+          <span
+            className="inline-flex h-6 items-center whitespace-nowrap rounded-full border border-primary-200/80 bg-primary-50/80 px-2 text-[11px] font-medium text-primary-700 dark:border-primary-800/60 dark:bg-primary-950/30 dark:text-primary-300"
+            data-package-requirement-area-pill="true"
+            key={area.id}
+          >
+            {area.name}
+          </span>
+        ))}
+      </div>
+      {canExpand ? (
+        <button
+          aria-expanded={expanded}
+          aria-label={toggleLabel}
+          className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 dark:text-primary-300 dark:hover:bg-primary-950/30"
+          data-package-requirement-area-pill-toggle="true"
+          {...devMarker({
+            context: 'packages',
+            name: 'table action',
+            value: expanded
+              ? 'collapse requirement areas'
+              : 'expand requirement areas',
+          })}
+          onClick={() => setExpanded(value => !value)}
+          title={toggleLabel}
+          type="button"
+        >
+          {expanded ? (
+            <ChevronUp
+              aria-hidden="true"
+              className="h-3.5 w-3.5"
+              focusable={false}
+            />
+          ) : (
+            <ChevronDown
+              aria-hidden="true"
+              className="h-3.5 w-3.5"
+              focusable={false}
+            />
+          )}
+        </button>
+      ) : null}
+    </div>
+  )
 }
 
 export default function RequirementPackagesClient() {
@@ -764,45 +878,54 @@ export default function RequirementPackagesClient() {
                         )}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {pkg.requirementAreas.map(area => (
-                            <Link
-                              className="inline-flex min-h-[44px] items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:border-primary-800/60 dark:bg-primary-950/30 dark:text-primary-300 dark:hover:bg-primary-900/40 dark:focus-visible:ring-offset-secondary-900"
-                              href={`/requirement-packages/${pkg.uniqueId}?areaId=${area.id}`}
-                              key={area.id}
-                            >
-                              {area.name}
-                            </Link>
-                          ))}
-                        </div>
+                        <RequirementAreaPills
+                          areas={pkg.requirementAreas}
+                          key={pkg.requirementAreas
+                            .map(area => `${area.id}:${area.name}`)
+                            .join('|')}
+                        />
                       </td>
-                      <td className="py-3 px-4 text-right">
-                        <button
-                          className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                          {...devMarker({
-                            context: 'packages',
-                            name: 'table action',
-                            value: 'edit',
-                          })}
-                          onClick={() => handleEdit(pkg)}
-                          type="button"
-                        >
-                          {tc('edit')}
-                        </button>
-                        <button
-                          className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
-                          {...devMarker({
-                            context: 'packages',
-                            name: 'table action',
-                            value: 'delete',
-                          })}
-                          onClick={e =>
-                            handleDelete(pkg, e.currentTarget as HTMLElement)
-                          }
-                          type="button"
-                        >
-                          {tc('delete')}
-                        </button>
+                      <td className="py-3 px-4 align-top">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            aria-label={tc('edit')}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-primary-700 transition-colors hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-primary-300 dark:hover:bg-primary-950/30"
+                            {...devMarker({
+                              context: 'packages',
+                              name: 'table action',
+                              value: 'edit',
+                            })}
+                            onClick={() => handleEdit(pkg)}
+                            title={tc('edit')}
+                            type="button"
+                          >
+                            <Pencil
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                              focusable={false}
+                            />
+                          </button>
+                          <button
+                            aria-label={tc('delete')}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 dark:text-red-400 dark:hover:bg-red-950/30"
+                            {...devMarker({
+                              context: 'packages',
+                              name: 'table action',
+                              value: 'delete',
+                            })}
+                            onClick={e =>
+                              handleDelete(pkg, e.currentTarget as HTMLElement)
+                            }
+                            title={tc('delete')}
+                            type="button"
+                          >
+                            <Trash2
+                              aria-hidden="true"
+                              className="h-4 w-4"
+                              focusable={false}
+                            />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

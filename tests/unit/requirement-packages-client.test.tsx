@@ -42,6 +42,33 @@ function createDeferred<T>() {
   return { promise, resolve }
 }
 
+function mockPillListScrollHeight(height: number) {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    'scrollHeight',
+  )
+
+  Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+    configurable: true,
+    get: function (this: HTMLElement) {
+      if (this.dataset.packageRequirementAreaPillList === 'true') {
+        return height
+      }
+
+      return descriptor?.get?.call(this) ?? 0
+    },
+  })
+
+  return () => {
+    if (descriptor) {
+      Object.defineProperty(HTMLElement.prototype, 'scrollHeight', descriptor)
+      return
+    }
+
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollHeight')
+  }
+}
+
 let fetchMock: ReturnType<typeof vi.fn>
 
 import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requirement-packages-client'
@@ -247,7 +274,7 @@ describe('RequirementPackagesClient', () => {
     expect(emptyState.closest('td')).toHaveAttribute('colspan', '7')
   })
 
-  it('renders requirement-area badges with a 44px minimum touch target', async () => {
+  it('renders requirement-area badges as compact static pills', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/requirement-packages')
         return Promise.resolve(
@@ -271,10 +298,113 @@ describe('RequirementPackagesClient', () => {
 
     render(<RequirementPackagesClient />)
 
-    const areaBadge = await screen.findByRole('link', { name: 'Identity' })
-    expect(areaBadge.className).toContain('min-h-[44px]')
-    expect(areaBadge.className).toContain('focus-visible:ring-2')
-    expect(areaBadge.className).toContain('focus-visible:ring-offset-2')
+    const areaBadge = await screen.findByText('Identity')
+    expect(areaBadge.tagName).toBe('SPAN')
+    expect(areaBadge.closest('a')).toBeNull()
+    expect(areaBadge.className).toContain('text-[11px]')
+    expect(areaBadge.className).toContain('h-6')
+    expect(areaBadge.className).not.toContain('min-h')
+    expect(areaBadge.className).not.toContain('focus-visible:ring')
+  })
+
+  it('collapses overflowing requirement-area pills and expands them on demand', async () => {
+    const restoreScrollHeight = mockPillListScrollHeight(56)
+
+    try {
+      fetchMock.mockImplementation((url: string) => {
+        if (url === '/api/requirement-packages')
+          return Promise.resolve(
+            okJson({
+              packages: [
+                {
+                  ...samplePackages[0],
+                  requirementAreas: [
+                    { id: 9, name: 'Identity' },
+                    { id: 10, name: 'Integration' },
+                    { id: 11, name: 'Security' },
+                  ],
+                },
+              ],
+            }),
+          )
+        if (url === '/api/package-responsibility-areas')
+          return Promise.resolve(okJson({ areas: sampleAreas }))
+        if (url === '/api/package-implementation-types')
+          return Promise.resolve(okJson({ types: sampleTypes }))
+        if (url === '/api/package-lifecycle-statuses')
+          return Promise.resolve(okJson({ statuses: sampleStatuses }))
+        return Promise.resolve(okJson({}))
+      })
+
+      render(<RequirementPackagesClient />)
+
+      const list = await waitFor(() => {
+        const node = document.querySelector(
+          '[data-package-requirement-area-pill-list="true"]',
+        )
+        expect(node).not.toBeNull()
+        return node as HTMLElement
+      })
+      const group = list.closest('[data-package-requirement-area-pills="true"]')
+      const expandButton = await screen.findByRole('button', {
+        name: 'common.showMore',
+      })
+
+      expect(group?.className).toContain('items-center')
+      expect(expandButton).toHaveAttribute('aria-expanded', 'false')
+      expect(expandButton.className).toContain('min-h-[44px]')
+      expect(expandButton.className).toContain('min-w-[44px]')
+      expect(list.className).toContain('max-h-6')
+      expect(list.className).toContain('overflow-hidden')
+
+      fireEvent.click(expandButton)
+
+      const collapseButton = screen.getByRole('button', {
+        name: 'common.showLess',
+      })
+      expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
+      expect(group?.className).toContain('items-start')
+      expect(list.className).not.toContain('max-h-6')
+      expect(list.className).not.toContain('overflow-hidden')
+
+      fireEvent.click(collapseButton)
+      expect(
+        screen.getByRole('button', { name: 'common.showMore' }),
+      ).toHaveAttribute('aria-expanded', 'false')
+      expect(list.className).toContain('max-h-6')
+    } finally {
+      restoreScrollHeight()
+    }
+  })
+
+  it('renders package row actions as compact icon buttons', async () => {
+    render(<RequirementPackagesClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Paket sv')).toBeInTheDocument()
+    })
+
+    const [editButton] = screen.getAllByRole('button', {
+      name: /common\.edit/i,
+    })
+    const [deleteButton] = screen.getAllByRole('button', {
+      name: /common\.delete/i,
+    })
+
+    expect(editButton).toHaveAttribute('title', 'common.edit')
+    expect(editButton.closest('td')?.className).toContain('align-top')
+    expect(editButton.textContent?.trim()).toBe('')
+    expect(editButton).toHaveAccessibleName('common.edit')
+    expect(editButton.className).toContain('h-11')
+    expect(editButton.className).toContain('w-11')
+    expect(editButton.querySelector('svg')).not.toBeNull()
+
+    expect(deleteButton).toHaveAttribute('title', 'common.delete')
+    expect(deleteButton.textContent?.trim()).toBe('')
+    expect(deleteButton).toHaveAccessibleName('common.delete')
+    expect(deleteButton.className).toContain('h-11')
+    expect(deleteButton.className).toContain('w-11')
+    expect(deleteButton.querySelector('svg')).not.toBeNull()
   })
 
   it('does not show spinner immediately while loading', () => {
