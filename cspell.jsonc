@@ -4,6 +4,7 @@
   "import": ["@cspell/dict-sv/cspell-ext.json"],
   "words": [
     "auditflöde",
+    "dogfood",
     "areaco",
     "areaowner",
     "Archi",
