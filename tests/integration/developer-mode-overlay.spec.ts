@@ -85,12 +85,21 @@ for (const viewport of viewports) {
 
     test('exposes package report controls in developer mode', async ({
       page,
+      request,
     }) => {
+      const response = await request.post(
+        '/api/requirement-packages/ETJANSTPLATT/items',
+        {
+          data: { requirementIds: [39] },
+        },
+      )
+      expect(response.ok()).toBe(true)
+
       await page.goto('/sv/requirement-packages/ETJANSTPLATT')
 
       const itemPanel = page.locator('[data-package-detail-list-panel="items"]')
       await expect(itemPanel).toBeVisible()
-      await itemPanel.locator('tbody tr').first().click()
+      await itemPanel.locator('tbody tr', { hasText: 'BEH0002' }).click()
 
       const expandedDetail = itemPanel
         .locator('[data-expanded-detail-cell="true"]')
