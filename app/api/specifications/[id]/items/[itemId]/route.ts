@@ -107,7 +107,15 @@ export async function PATCH(
   if (specificationId === null) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-  const decodedItemRef = decodeURIComponent(itemId)
+  let decodedItemRef: string
+  try {
+    decodedItemRef = decodeURIComponent(itemId)
+  } catch (decodeError) {
+    if (decodeError instanceof URIError) {
+      return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+    }
+    throw decodeError
+  }
   const item = await getSpecificationItemByRef(
     db,
     specificationId,

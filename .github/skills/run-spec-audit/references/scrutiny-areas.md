@@ -175,22 +175,65 @@ maintenance rule.
 - **Verify:** `npm exec -- vitest run
   tests/quality/functional.test.ts -t "Scenario 10: MCP tool inventory matches documentation"`
 
-## 16. Scenario 12: concurrent archiving attempts are atomic and strictly targeted
+## 16. Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted
 
-- **Code:** `lib/dal/requirements.ts` — `initiateArchiving`,
-  `approveArchiving`, `cancelArchiving` (`SERIALIZABLE` transactions
-  with `UPDLOCK, HOLDLOCK` precondition reads, conditional `UPDATE`
-  with row-count guard, strict-target filter on
+- **Code:** `lib/dal/requirements.ts` — `initiateArchiving`
+  (`SERIALIZABLE` transaction with `UPDLOCK, HOLDLOCK` precondition
+  read and conditional `UPDATE` with row-count guard).
+- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+  "Two-Step Archiving"]`
+- **Question:** Are concurrent `initiateArchiving` calls on the same
+  requirement serialized so at most one succeeds and the loser fails
+  with a `conflict` error?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted"`
+
+## 17. Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted
+
+- **Code:** `lib/dal/requirements.ts` — `approveArchiving`
+  (`SERIALIZABLE` transaction with `UPDLOCK, HOLDLOCK` precondition
+  read, conditional `UPDATE` with row-count guard, strict-target
+  filter on `archive_initiated_at IS NOT NULL`).
+- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+  "Two-Step Archiving"]`
+- **Question:** Are concurrent `approveArchiving` calls on the same
+  requirement serialized, and does the archived flag plus
+  `archivedAt` end up set exactly once on the formerly-published
+  version?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted"`
+
+## 18. Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted
+
+- **Code:** `lib/dal/requirements.ts` — `approveArchiving`,
+  `cancelArchiving` (shared serialization guards, conditional
+  `UPDATE` with row-count guard).
+- **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
+- **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
+  "Two-Step Archiving"]`
+- **Question:** When approve and cancel race for the same
+  requirement, does exactly one win, the other fail with `conflict`,
+  and `archive_initiated_at` end up cleared on the targeted version?
+- **Verify:** `npm exec -- vitest run
+  tests/quality/functional.test.ts -t "Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted"`
+
+## 19. Scenario 12d: strict-target behavior with manual state manipulation
+
+- **Code:** `lib/dal/requirements.ts` — `approveArchiving`,
+  `cancelArchiving` (strict-target filter on
   `archive_initiated_at IS NOT NULL`).
 - **Spec:** `docs/lifecycle-workflow.md` ("Two-Step Archiving").
 - **Req tag:** `[Req: formal — docs/lifecycle-workflow.md
   "Two-Step Archiving"]`
-- **Question:** Are concurrent archiving attempts serialized so at
-  most one succeeds, and do approve/cancel only ever target the
-  version with `archive_initiated_at` set (never a newer
-  Draft/Review)?
+- **Question:** When a newer Draft or Review version exists for the
+  same requirement (legacy state), do `approveArchiving` and
+  `cancelArchiving` only ever touch the version with
+  `archive_initiated_at` set and leave the newer version's status,
+  content, and revision token untouched?
 - **Verify:** `npm exec -- vitest run
-  tests/quality/functional.test.ts -t "Scenario 12: concurrent archiving attempts are atomic and strictly targeted"`
+  tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"`
 
 ## Maintenance
 
@@ -204,7 +247,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   references here.
 - See `tests/quality/AGENTS.md` for the authoritative sync rule.
 
-## 17. Reference Data Behavioral Contracts
+## 20. Reference Data Behavioral Contracts
 
 - **Code:** `lib/dal/norm-references.ts`, `lib/dal/owners.ts`,
   `lib/dal/specification-implementation-types.ts`,
@@ -219,7 +262,7 @@ This file must stay in sync with `tests/quality/QUALITY.md`:
   (`nameSv` for taxonomy, `normReferenceId` for norm
   references, `lastName`/`firstName` for owners)?
 
-## 18. AI Generation Contracts
+## 21. AI Generation Contracts
 
 - **Code:** `lib/ai/openrouter-client.ts`,
   `lib/ai/requirement-prompt.ts`, `lib/ai/taxonomy.ts`.

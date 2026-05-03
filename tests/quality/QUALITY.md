@@ -351,35 +351,104 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 11: stale d
 
 ---
 
-### Scenario 12: concurrent archiving attempts are atomic and strictly targeted
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
 
-**What happened:** `initiateArchiving()`, `approveArchiving()`, and
-`cancelArchiving()` in `lib/dal/requirements.ts` now run their precondition
-reads and writes inside a single `SERIALIZABLE` transaction with
-`UPDLOCK, HOLDLOCK` precondition selects and conditional `UPDATE … WHERE`
-clauses guarded by an affected-row check. `approveArchiving()` and
-`cancelArchiving()` additionally target **only the single version that has
-`archive_initiated_at` set** (the formerly-published version). They never
-operate on a newer Draft or Review version that may exist for the same
-requirement; such newer versions can never be archived through this flow.
-Without these guarantees, two concurrent admin requests can both pass the
-precondition select before either `UPDATE` runs and produce contradictory
-state (e.g. both initiating, or one approving while the other cancels), or a
-successor Draft/Review can be silently flipped to Archived.
+**What happened:** `initiateArchiving()` in `lib/dal/requirements.ts` runs its
+precondition reads and writes inside a single `SERIALIZABLE` transaction with
+`UPDLOCK, HOLDLOCK` precondition selects and a conditional `UPDATE … WHERE`
+guarded by an affected-row check. Without that, two concurrent admin requests
+can both pass the precondition select before either `UPDATE` runs and produce
+contradictory state.
 
-**The requirement:** Archiving operations are serialized: at most one
-concurrent attempt succeeds. The losing attempt fails with a `conflict` error
-and leaves the requirement in a consistent lifecycle state. Approve and cancel
-target strictly the version with `archive_initiated_at` set; a newer
-Draft/Review version is never the target.
+**The requirement:** Concurrent `initiateArchiving` attempts on the same
+requirement are serialized: at most one succeeds; the loser fails with a
+`conflict` error and the requirement is left in a consistent lifecycle state.
 
 **How to verify:**
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12: concurrent archiving attempts are atomic and strictly targeted"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12a: concurrent initiateArchiving attempts are atomic and strictly targeted"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** `approveArchiving()` uses the same `SERIALIZABLE` +
+`UPDLOCK, HOLDLOCK` + conditional-update pattern and additionally targets
+**only the single version that has `archive_initiated_at` set**. Without
+serialization, two approvers can both believe they completed the archival.
+
+**The requirement:** Concurrent `approveArchiving` attempts on the same
+requirement are serialized: at most one succeeds, and the archived flag plus
+`archivedAt` are set exactly once on the formerly-published version.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12b: concurrent approveArchiving attempts are atomic and strictly targeted"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** When `approveArchiving()` and `cancelArchiving()` race for
+the same requirement, the same serialization guards ensure exactly one
+operation wins and `archive_initiated_at` is cleared on the targeted version.
+Without the guards, the requirement could end up archived but still flagged as
+"archive in progress", or vice versa.
+
+**The requirement:** A concurrent approve/cancel pair on the same requirement
+must produce a single consistent outcome: either Archived (with
+`isArchived = 1`) or Published (with `isArchived = 0`); the other call must
+fail with a `conflict` error and `archive_initiated_at` must be cleared.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12c: concurrent approveArchiving vs cancelArchiving are atomic and strictly targeted"
+```
+<!-- markdownlint-enable MD013 -->
+
+---
+
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 12d: strict-target behavior with manual state manipulation
+
+**Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
+
+**What happened:** `approveArchiving()` and `cancelArchiving()` filter on
+`archive_initiated_at IS NOT NULL`, so even if a newer Draft or Review version
+exists for the same requirement (a state that the public API now rejects in
+`initiateArchiving()`, but which can exist in legacy data), only the version
+that was put into archiving review is touched. The newer Draft or Review
+version is never silently flipped to Archived or Published.
+
+**The requirement:** Approve and cancel target strictly the version with
+`archive_initiated_at` set; a newer Draft or Review version on the same
+requirement is never the target and its status, content, and revision token
+remain untouched.
+
+**How to verify:**
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12d: strict-target behavior with manual state manipulation"
 ```
 <!-- markdownlint-enable MD013 -->
 
