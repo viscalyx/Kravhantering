@@ -117,8 +117,12 @@ metadata:
     controller.devfile.io/mount-as: env
 type: Opaque
 stringData:
+  # Optional: the devfile already provides dev-only fallbacks for the
+  # SQL Server and Keycloak sidecars. Keep these here only if you want
+  # the same values available in every workspace container through
+  # Secret injection.
   MSSQL_SA_PASSWORD: 'YourStrong!Passw0rd'
-  KEYCLOAK_ADMIN_PASSWORD: 'change-me'
+  KEYCLOAK_ADMIN_PASSWORD: 'admin'
   DB_READONLY_PASSWORD: 'BrowseOnly!Passw0rd7'
   # Optional per-developer secrets normally placed in
   # .env.development.local on a workstation:
@@ -259,9 +263,10 @@ oc get pods -n <user>-devspaces
 
 Common causes are:
 
-- `MSSQL_SA_PASSWORD` is missing because the Secret was not created in
-  the same project as the workspace, or the workspace was not restarted
-  after the Secret was added.
+- `MSSQL_SA_PASSWORD` is missing from the generated `db` container.
+  The devfile includes a dev-only fallback; if the resolved
+  `DevWorkspace` does not show it, recreate the workspace from the
+  current `devfile.yaml`.
 - `MSSQL_SA_PASSWORD` does not satisfy SQL Server complexity rules:
   at least 8 characters and at least three of uppercase, lowercase,
   digits, and symbols.
