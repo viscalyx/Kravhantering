@@ -758,6 +758,35 @@ describe('RequirementsTable', () => {
     expect(statusDot).toHaveStyle({ backgroundColor: '#f59e0b' })
   })
 
+  it('renders read-only package item status labels without a color dot', () => {
+    const rows = [
+      makeRow({
+        specificationItemStatusColor: null,
+        specificationItemStatusDescriptionEn: 'In progress',
+        specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
+      }),
+    ]
+
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'specificationItemStatus',
+        ]}
+      />,
+    )
+
+    const statusLabel = screen.getByText('Pågående')
+    const statusWrapper = statusLabel.closest('span')
+
+    expect(statusWrapper?.querySelector('span[aria-hidden="true"]')).toBeNull()
+  })
+
   it('toggles sorting from the header button and updates aria-sort', () => {
     const onSortChange = vi.fn()
 

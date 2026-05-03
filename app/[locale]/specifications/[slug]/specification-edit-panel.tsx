@@ -115,6 +115,7 @@ export default function SpecificationEditPanel({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (isSubmitting) return
     setIsSubmitting(true)
     setSlugError(null)
     setSubmitError(null)

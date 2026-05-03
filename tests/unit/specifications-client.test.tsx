@@ -153,6 +153,40 @@ describe('RequirementsSpecificationsClient', () => {
     expect(screen.getByText('Type')).toBeInTheDocument()
   })
 
+  it('keeps available taxonomy data when one taxonomy endpoint fails', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/specifications')
+        return Promise.resolve(okJson({ packages: samplePackages }))
+      if (url === '/api/specification-responsibility-areas')
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url === '/api/specification-implementation-types')
+        return Promise.reject(new Error('implementation types unavailable'))
+      if (url === '/api/specification-lifecycle-statuses')
+        return Promise.resolve(okJson({ statuses: sampleStatuses }))
+      return Promise.resolve(okJson({}))
+    })
+
+    try {
+      render(<RequirementsSpecificationsClient />)
+
+      await waitFor(() => {
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          'Failed to load specification implementation types',
+          expect.any(Error),
+        )
+      })
+
+      expect(screen.getByText('Area')).toBeInTheDocument()
+      expect(screen.getByText('Development')).toBeInTheDocument()
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it('filters packages by the name column and clears the search', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')

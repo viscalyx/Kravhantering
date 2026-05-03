@@ -91,8 +91,8 @@ standard or framework.
 
 ### `KH` — Kravhantering (lifecycle: Utveckling)
 
-The main package containing all 59 Krav from the dogfood inventory. Each item
-gets a status that reflects current implementation: most are **Verifierad**,
+The main specification containing all 59 Krav from the dogfood inventory. Each
+item gets a status that reflects current implementation: most are **Verifierad**,
 some **Implementerad**, and a few that describe newer features remain
 **Pågående**.
 
@@ -100,10 +100,10 @@ some **Implementerad**, and a few that describe newer features remain
 
 A smaller curated subset (17 Krav) that demonstrates the *Införande*
 lifecycle. All items default to **Inkluderad**. Two `specification_local_requirements`
-sit on top of this package to demonstrate PoC-specific divergence from the
-shared Krav (one **Avviken**, one **Pågående**). They reuse the originating
-Krav's category/type/quality-characteristic and append PoC-specific text to
-the description and acceptance criteria.
+sit on top of this specification to demonstrate PoC-specific divergence from
+the shared Krav (one **Avviken**, one **Pågående**). They reuse the originating
+Krav's category/type/quality-characteristic and append PoC-specific text to the
+description and acceptance criteria.
 
 ## How it is wired in
 

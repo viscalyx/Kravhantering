@@ -71,7 +71,7 @@ vi.mock('next-intl', () => ({
         `Published version v${values?.version} is available`,
       'requirement.noPublishedVersion':
         'There is no published version of this requirement.',
-      'requirement.specificationCount': 'Used in packages',
+      'requirement.specificationCount': 'Used in specification',
       'requirement.publishConfirm': 'Publish this requirement?',
       'requirement.reactivateConfirm': 'Reactivate this requirement?',
       'requirement.reference': 'Reference',
@@ -776,11 +776,11 @@ describe('RequirementDetailClient', () => {
     expect(
       await screen.findByText('Package count requirement'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Used in packages')).toBeInTheDocument()
+    expect(screen.getByText('Used in specification')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
     expect(
       screen
-        .getByText('Used in packages')
+        .getByText('Used in specification')
         .closest('[data-developer-mode-name="detail section"]'),
     ).toHaveAttribute('data-developer-mode-value', 'specification count')
   })
@@ -1686,7 +1686,7 @@ describe('RequirementDetailClient', () => {
     )
     expect(addToSpecificationButton).toHaveAttribute(
       'data-developer-mode-value',
-      'add to package',
+      'add to specification',
     )
 
     await userEvent.click(addToSpecificationButton)

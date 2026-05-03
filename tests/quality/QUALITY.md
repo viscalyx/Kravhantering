@@ -57,7 +57,7 @@ The following do **not** count as meaningful coverage for this project:
 
 ## Fitness-to-Purpose Scenarios
 
-### Scenario 1: Published Detail Never Leaks Draft Content
+### Scenario 1: published detail never leaks draft content
 
 **Requirement tag:** `[Req: formal — docs/mcp-server-contributor-guide.md "requirements_get_requirement"]`
 
@@ -82,7 +82,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 1: publishe
 
 ---
 
-### Scenario 2: Pending Replacement Blocks Archiving
+### Scenario 2: pending replacement blocks archiving
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Initiate archiving"]`
 
@@ -105,7 +105,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 2: pending 
 
 ---
 
-### Scenario 3: Publishing A Successor Auto-Archives Its Predecessor
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 3: publishing a successor auto-archives its predecessor at the same instant
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Review -> Published"]`
 
@@ -129,7 +130,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 3: publishi
 
 ---
 
-### Scenario 4: Review And Archived Versions Are Immutable Until The State Changes
+### Scenario 4: review and archived versions are immutable until the state changes
 
 **Requirement tag:**
 
@@ -159,7 +160,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 4: review a
 
 ---
 
-### Scenario 5: Archived Requirements Stay Visible While A Replacement Draft Exists
+### Scenario 5: archived requirements stay visible while a replacement draft exists
 
 **Requirement tag:**
 `[Req: formal — docs/version-lifecycle-dates.md "Effective Status"]`
@@ -184,7 +185,8 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 5: archived
 
 ---
 
-### Scenario 6: Deviated Status Requires An Approved Deviation
+<!-- markdownlint-disable-next-line MD013 -->
+### Scenario 6: deviated status requires an approved deviation for both library and specification-local items
 
 **Requirement tag:**
 
@@ -215,7 +217,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 6: deviated
 
 ---
 
-### Scenario 7: Needs-Reference Linking Never Leaks Orphan Metadata
+### Scenario 7: needs-reference linking never leaks orphan metadata
 
 **Requirement tag:**
 `[Req: inferred — from linkRequirementsToPackageAtomically() cleanup path]`
@@ -240,7 +242,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 7: needs-re
 
 ---
 
-### Scenario 8: Suggestion Resolution Is Impossible Without Review
+### Scenario 8: suggestion resolution is impossible without review
 
 **Requirement tag:**
 `[Req: formal — docs/lifecycle-workflow.md "Improvement Suggestion Lifecycle"]`
@@ -266,7 +268,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 8: suggesti
 
 ---
 
-### Scenario 9: Deviation Decisions Are Write-Once Audit Events
+### Scenario 9: deviation decisions are write-once audit events
 
 **Requirement tag:**
 
@@ -296,7 +298,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 9: deviatio
 
 ---
 
-### Scenario 10: MCP Tool Inventory Matches Documentation
+### Scenario 10: MCP tool inventory matches documentation
 
 **Requirement tag:**
 `[Req: formal — docs/mcp-server-contributor-guide.md "Server Contract"]`
@@ -349,7 +351,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 11: stale d
 
 ---
 
-### Scenario 12: Concurrent Archiving Attempts Are Atomic And Strictly Targeted
+### Scenario 12: concurrent archiving attempts are atomic and strictly targeted
 
 **Requirement tag:** `[Req: formal — docs/lifecycle-workflow.md "Two-Step Archiving"]`
 
@@ -377,7 +379,7 @@ Draft/Review version is never the target.
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12"
+npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 12: concurrent archiving attempts are atomic and strictly targeted"
 ```
 <!-- markdownlint-enable MD013 -->
 

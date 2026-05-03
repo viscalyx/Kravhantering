@@ -45,7 +45,7 @@ export const specificationNeedsReferenceEntity =
             'fk_specification_needs_references_specification_id',
         },
         nullable: false,
-        onDelete: 'NO ACTION',
+        onDelete: 'CASCADE',
         onUpdate: 'NO ACTION',
       },
     },

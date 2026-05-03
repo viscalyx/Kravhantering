@@ -158,7 +158,7 @@ describe('SpecificationItemStatusesClient', () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specification-item-statuses',
+        '/api/catalog/specification-item-statuses',
         expect.objectContaining({ method: 'POST' }),
       )
     })
@@ -238,7 +238,7 @@ describe('SpecificationItemStatusesClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/specification-item-statuses/1',
+        '/api/catalog/specification-item-statuses/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

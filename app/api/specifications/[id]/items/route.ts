@@ -305,10 +305,18 @@ export async function DELETE(
     }
   }
 
-  const removedCount = await unlinkRequirementsFromPackage(
-    db,
-    specificationId,
-    parsedBody.value.requirementIds,
-  )
-  return NextResponse.json({ ok: true, removedCount })
+  try {
+    const removedCount = await unlinkRequirementsFromPackage(
+      db,
+      specificationId,
+      parsedBody.value.requirementIds,
+    )
+    return NextResponse.json({ ok: true, removedCount })
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : 'Failed to unlink requirements'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }

@@ -2397,14 +2397,16 @@ export default function RequirementsTable({
             className={`py-2 px-2 truncate ${archivedContentClass} ${dividerClass}`}
             title={statusDescription}
           >
-            {statusColor ? (
+            {statusLabel ? (
               <span className="inline-flex items-center gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: statusColor }}
-                />
-                {statusLabel ?? '—'}
+                {statusColor ? (
+                  <span
+                    aria-hidden="true"
+                    className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: statusColor }}
+                  />
+                ) : null}
+                {statusLabel}
               </span>
             ) : (
               '—'

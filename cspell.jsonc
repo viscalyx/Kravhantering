@@ -38,9 +38,7 @@
     "Kravunderlagsansvarig",
     "Kravunderlagsmedförfattare",
     "Kravunderlagslista",
-    "kravunderlagslista",
     "Kravunderlagsdetalj",
-    "kravunderlagsdetalj",
     "Kravunderlagsdetaljsidan",
     "kravunderlagsdetaljvyns",
     "underlagskravdetaljvyn",
@@ -429,7 +427,7 @@
     "devmode",
     "kravunderlagsansvarige",
     "kravsammanställning",
-    "kravunderlagmedförfattare",
+    "kravunderlagsmedförfattare",
     "Kravunderlagsmedförfattaren",
     "kravstyrning",
     "kravfrågor"
@@ -457,6 +455,7 @@
     "yarn.lock",
     "pnpm-lock.yaml",
     "tsconfig.tsbuildinfo",
+    "coderabbit-ai-agent-prompts.md",
     ".cspell.json",
     ".cspell.jsonc"
   ],

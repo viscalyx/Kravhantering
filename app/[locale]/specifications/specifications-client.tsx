@@ -318,24 +318,54 @@ export default function RequirementsSpecificationsClient() {
   }, [])
 
   const fetchTaxonomies = useCallback(async () => {
-    const [areasRes, typesRes, statusesRes] = await Promise.all([
-      apiFetch('/api/specification-responsibility-areas'),
-      apiFetch('/api/specification-implementation-types'),
-      apiFetch('/api/specification-lifecycle-statuses'),
+    const loadTaxonomy = async <TBody,>(
+      endpoint: string,
+      label: string,
+      pickItems: (body: TBody) => TaxonomyItem[] | undefined,
+      setItems: (items: TaxonomyItem[]) => void,
+    ) => {
+      try {
+        const response = await apiFetch(endpoint)
+        if (!isMountedRef.current) return
+
+        if (!response.ok) {
+          setItems([])
+          console.error(`Failed to load ${label}`, response.status)
+          return
+        }
+
+        const body = (await response.json()) as TBody
+        if (isMountedRef.current) {
+          setItems(pickItems(body) ?? [])
+        }
+      } catch (error) {
+        if (isMountedRef.current) {
+          setItems([])
+        }
+        console.error(`Failed to load ${label}`, error)
+      }
+    }
+
+    await Promise.all([
+      loadTaxonomy(
+        '/api/specification-responsibility-areas',
+        'specification responsibility areas',
+        (body: { areas?: TaxonomyItem[] }) => body.areas,
+        setResponsibilityAreas,
+      ),
+      loadTaxonomy(
+        '/api/specification-implementation-types',
+        'specification implementation types',
+        (body: { types?: TaxonomyItem[] }) => body.types,
+        setImplementationTypes,
+      ),
+      loadTaxonomy(
+        '/api/specification-lifecycle-statuses',
+        'specification lifecycle statuses',
+        (body: { statuses?: TaxonomyItem[] }) => body.statuses,
+        setLifecycleStatuses,
+      ),
     ])
-    if (areasRes.ok && isMountedRef.current)
-      setResponsibilityAreas(
-        ((await areasRes.json()) as { areas?: TaxonomyItem[] }).areas ?? [],
-      )
-    if (typesRes.ok && isMountedRef.current)
-      setImplementationTypes(
-        ((await typesRes.json()) as { types?: TaxonomyItem[] }).types ?? [],
-      )
-    if (statusesRes.ok && isMountedRef.current)
-      setLifecycleStatuses(
-        ((await statusesRes.json()) as { statuses?: TaxonomyItem[] })
-          .statuses ?? [],
-      )
   }, [])
 
   useEffect(() => {

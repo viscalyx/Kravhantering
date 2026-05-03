@@ -663,7 +663,7 @@ const SEED_DATA = {
       [
         21,
         9,
-        'Rate limiting är ett primärt krav för API-gateway-upphandlingen',
+        'Rate limiting är ett primärt krav för API-gateway-utvecklingen',
         '2026-04-17 20:07:00',
       ],
       [

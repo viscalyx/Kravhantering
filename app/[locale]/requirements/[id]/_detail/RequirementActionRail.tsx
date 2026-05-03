@@ -183,7 +183,7 @@ export default function RequirementActionRail({
             context: detailContext,
             name: 'detail action',
             priority: 360,
-            value: 'add to package',
+            value: 'add to specification',
           })}
           onClick={() => void onOpenAddToSpecification()}
           title={tp('addToSpecification')}

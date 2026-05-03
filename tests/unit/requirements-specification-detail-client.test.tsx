@@ -43,6 +43,7 @@ vi.mock('@/components/RequirementsTable', () => ({
     stickyTopOffsetClassName?: string
     stickyTitle?: ReactNode
     stickyTitleActions?: ReactNode
+    visibleColumns?: string[]
   }) => {
     requirementsTableMock(props)
     return (
@@ -302,13 +303,14 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ qualityCharacteristics: [] }))
         }
 
-        if (url === '/api/specification-item-statuses') {
+        if (url === '/api/catalog/specification-item-statuses') {
           return Promise.resolve(okJson({ statuses: [] }))
         }
 
         throw new Error(`Unmocked fetch: ${method} ${url}`)
       },
     )
+    window.localStorage.clear()
   })
 
   it('opens and closes the package edit view from the title action', async () => {
@@ -371,7 +373,7 @@ describe('RequirementsSpecificationDetailClient', () => {
     )
     expect(editButton).toHaveAttribute(
       'data-developer-mode-value',
-      'edit package',
+      'edit specification',
     )
     expect(titleRow).toContainElement(
       screen.getByRole('heading', {
@@ -401,6 +403,34 @@ describe('RequirementsSpecificationDetailClient', () => {
       ).not.toBeInTheDocument()
     })
     expect(editButton).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('ignores stale and invalid stored detail column ids', async () => {
+    window.localStorage.setItem(
+      'requirement-packages.visibleColumns.left.v2',
+      JSON.stringify(['uniqueId']),
+    )
+    window.localStorage.setItem(
+      'requirement-packages.visibleColumns.left.v3',
+      JSON.stringify(['uniqueId', 'legacyPackageColumn']),
+    )
+
+    renderRequirementsSpecificationDetailClient()
+
+    await waitFor(() => {
+      expect(requirementsTableMock).toHaveBeenCalled()
+    })
+
+    const leftTableProps = requirementsTableMock.mock.calls.find(
+      ([props]) => props.stickyTitle,
+    )?.[0]
+
+    expect(leftTableProps?.visibleColumns).toEqual([
+      'uniqueId',
+      'description',
+      'area',
+      'needsReference',
+    ])
   })
 
   it('uses inline top rails and sticky table titles for the split tables', async () => {

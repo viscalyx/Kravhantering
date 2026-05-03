@@ -123,7 +123,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `packages > table action: collapse requirement areas`.
 - Requirement package detail header edit affordances use the
   `requirements specification detail` context with
-  `detail action: edit package` on the icon trigger and
+  `detail action: edit specification` on the icon trigger and
   `crud form: edit` on the opened editor.
 - Requirement package detail left-panel create affordance for
   specification-local requirements uses the `requirements specification detail`
@@ -173,7 +173,7 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   back control in that header area; browser navigation is the supported
   way back from this compact header.
 - Published requirement detail views expose the package-link control as
-  `detail action: add to package` when the currently displayed
+  `detail action: add to specification` when the currently displayed
   published version is the one that can be added to a package.
 - Sticky requirements table headers keep their existing
   `requirements table > column header: ...` references while pinned;
@@ -209,11 +209,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   - `type card: <type name>` on the card container
   - `iso badge` on the ISO/IEC 25010:2023 badge span
   - `quality heading` on the quality-characteristics section heading
-- Needs-reference controls and inline loading or failure messages
-  inside the add-to-package dialog remain part of that same
-  `detail action: add to package` flow rather than introducing extra
-  markers, including when those controls are temporarily disabled
-  during submission.
+- Needs-reference controls and inline loading or failure messages inside the
+  add-to-package dialog remain part of that same
+  `detail action: add to specification` flow rather than introducing extra
+  markers, including when those controls are temporarily disabled during
+  submission.
 - Requirement package list print pages expose `report state` markers
   with values `report-print:error`, `report-print:loading`, and
   `report-print:renderer`.

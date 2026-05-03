@@ -153,4 +153,31 @@ describe('SpecificationEditPanel', () => {
       uniqueId: 'ETJANST-UPP-2026',
     })
   })
+
+  it('ignores repeated submits while a save is already in progress', async () => {
+    fetchMock.mockReturnValue(new Promise(() => undefined))
+
+    render(
+      <SpecificationEditPanel
+        implementationTypes={implementationTypes}
+        lifecycleStatuses={lifecycleStatuses}
+        onCancel={() => {}}
+        onSaved={() => {}}
+        pkg={pkg}
+        responsibilityAreas={responsibilityAreas}
+        specificationSlug="ETJANST-UPP-2026"
+      />,
+    )
+
+    const form = screen
+      .getByRole('button', { name: /common\.save/i })
+      .closest('form')
+
+    expect(form).toBeTruthy()
+
+    fireEvent.submit(form as HTMLFormElement)
+    fireEvent.submit(form as HTMLFormElement)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+  })
 })

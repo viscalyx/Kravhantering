@@ -1071,7 +1071,7 @@ describe('createRequirementsService', () => {
       }),
     ])
     expect(JSON.parse(result.message)).toMatchObject({
-      title: 'Krav i underlag',
+      title: 'Krav i kravunderlag',
     })
   })
 
@@ -1103,8 +1103,8 @@ describe('createRequirementsService', () => {
     expect(result.addedCount).toBe(1)
     expect(result.skippedCount).toBe(0)
     expect(JSON.parse(result.message)).toMatchObject({
-      lines: ['Added 1 requirement to package IAM-PACKAGE.'],
-      title: 'Requirements Added to Package',
+      lines: ['Added 1 requirement to specification IAM-PACKAGE.'],
+      title: 'Requirements Added to Specification',
     })
   })
 
@@ -1124,8 +1124,8 @@ describe('createRequirementsService', () => {
 
     expect(result.removedCount).toBe(1)
     expect(JSON.parse(result.message)).toMatchObject({
-      lines: ['Removed 1 requirement from package IAM-PACKAGE.'],
-      title: 'Requirements Removed from Package',
+      lines: ['Removed 1 requirement from specification IAM-PACKAGE.'],
+      title: 'Requirements Removed from Specification',
     })
   })
 })

@@ -26,7 +26,7 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.updatePackageItemFieldsByItemRef(...args),
 }))
 
-import { GET } from '@/app/api/specifications/[id]/items/[itemId]/route'
+import { GET, PATCH } from '@/app/api/specifications/[id]/items/[itemId]/route'
 
 function makeParams(id: string, itemId: string) {
   return { params: Promise.resolve({ id, itemId }) }
@@ -69,5 +69,63 @@ describe('requirement-packages/[id]/items/[itemId] route', () => {
       specificationItemStatusNameSv: 'Pågående',
     })
     expect(mocks.listPackageItems).toHaveBeenCalledWith(mockDb, 5)
+  })
+
+  it('updates specification item status by item ref within the specification', async () => {
+    mocks.getPackageBySlug.mockResolvedValue({ id: 7 })
+    mocks.getPackageItemByRef.mockResolvedValue({
+      itemRef: 'lib:31',
+      specificationId: 7,
+      specificationItemId: 31,
+    })
+
+    const request = new NextRequest(
+      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      {
+        body: JSON.stringify({ specificationItemStatusId: 5 }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    )
+
+    const response = await PATCH(
+      request,
+      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({ ok: true })
+    expect(mocks.getPackageItemByRef).toHaveBeenCalledWith(mockDb, 7, 'lib:31')
+    expect(mocks.updatePackageItemFieldsByItemRef).toHaveBeenCalledWith(
+      mockDb,
+      7,
+      'lib:31',
+      { specificationItemStatusId: 5 },
+    )
+  })
+
+  it.each([
+    0, -1, 1.5,
+  ])('rejects malformed specification item status id %s', async specificationItemStatusId => {
+    const request = new NextRequest(
+      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      {
+        body: JSON.stringify({ specificationItemStatusId }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    )
+
+    const response = await PATCH(
+      request,
+      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'Malformed payload',
+    })
+    expect(mocks.getPackageBySlug).not.toHaveBeenCalled()
+    expect(mocks.updatePackageItemFieldsByItemRef).not.toHaveBeenCalled()
   })
 })

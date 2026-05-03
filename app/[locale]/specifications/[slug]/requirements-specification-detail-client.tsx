@@ -41,6 +41,7 @@ import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterOption,
   type FilterValues,
+  isRequirementColumnId,
   type RequirementColumnId,
   type RequirementRow,
   type RequirementSortState,
@@ -98,8 +99,8 @@ interface PackageItem extends RequirementRow {
 
 const PAGE_SIZE = 200
 
-const LEFT_VISIBLE_COLS_KEY = 'requirement-packages.visibleColumns.left.v2'
-const RIGHT_VISIBLE_COLS_KEY = 'requirement-packages.visibleColumns.right.v2'
+const LEFT_VISIBLE_COLS_KEY = 'requirement-packages.visibleColumns.left.v3'
+const RIGHT_VISIBLE_COLS_KEY = 'requirement-packages.visibleColumns.right.v3'
 const DEFAULT_LEFT_COLS: RequirementColumnId[] = [
   'uniqueId',
   'description',
@@ -121,8 +122,15 @@ function readStoredCols(
     const raw = localStorage.getItem(key)
     if (!raw) return fallback
     const parsed = JSON.parse(raw) as unknown
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed as RequirementColumnId[]
+    if (
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      parsed.every(
+        (column): column is RequirementColumnId =>
+          typeof column === 'string' && isRequirementColumnId(column),
+      )
+    ) {
+      return parsed
     }
   } catch {
     // ignore
@@ -447,7 +455,7 @@ export default function KravunderlagDetailClient({
         apiFetch('/api/specification-responsibility-areas'),
         apiFetch('/api/specification-implementation-types'),
         apiFetch('/api/specification-lifecycle-statuses'),
-        apiFetch('/api/specification-item-statuses'),
+        apiFetch('/api/catalog/specification-item-statuses'),
       ])
       if (areasRes.status === 'fulfilled' && areasRes.value.ok) {
         const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
@@ -1314,7 +1322,7 @@ export default function KravunderlagDetailClient({
                       context: 'requirements specification detail',
                       name: 'detail action',
                       priority: 350,
-                      value: 'edit package',
+                      value: 'edit specification',
                     })}
                     onClick={() => setShowEditPackageForm(current => !current)}
                     title={t('editSpecification')}

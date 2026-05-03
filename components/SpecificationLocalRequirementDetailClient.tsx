@@ -14,6 +14,7 @@ import SpecificationLocalRequirementForm, {
 } from '@/components/SpecificationLocalRequirementForm'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { DEFAULT_SPECIFICATION_ITEM_STATUS_ID } from '@/lib/specification-item-status-constants'
 
 interface SpecificationLocalRequirementDetail {
   acceptanceCriteria: string | null
@@ -93,7 +94,6 @@ export default function SpecificationLocalRequirementDetailClient({
   onChange,
   specificationSlug,
 }: SpecificationLocalRequirementDetailClientProps) {
-  const INCLUDED_PACKAGE_ITEM_STATUS_ID = 1
   const t = useTranslations('requirement')
   const tp = useTranslations('specification')
   const td = useTranslations('deviation')
@@ -655,8 +655,8 @@ export default function SpecificationLocalRequirementDetailClient({
   const hasPendingDeviation =
     deviationStep === 'draft' || deviationStep === 'review_requested'
   const canMutateLocalRequirement =
-    requirement.specificationItemStatusId === INCLUDED_PACKAGE_ITEM_STATUS_ID &&
-    !hasPendingDeviation
+    requirement.specificationItemStatusId ===
+      DEFAULT_SPECIFICATION_ITEM_STATUS_ID && !hasPendingDeviation
   const localRequirementMutationTooltip = canMutateLocalRequirement
     ? undefined
     : tp('localRequirementActionDisabledTooltip')

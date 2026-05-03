@@ -312,11 +312,11 @@ function getPackageServiceTitle(
   if (locale === 'sv') {
     switch (kind) {
       case 'add':
-        return 'Krav tillagda i underlag'
+        return 'Krav tillagda i kravunderlag'
       case 'items':
-        return 'Krav i underlag'
+        return 'Krav i kravunderlag'
       case 'remove':
-        return 'Krav borttagna fran paket'
+        return 'Krav borttagna fran kravunderlag'
       default:
         return 'Kravunderlag'
     }
@@ -324,11 +324,11 @@ function getPackageServiceTitle(
 
   switch (kind) {
     case 'add':
-      return 'Requirements Added to Package'
+      return 'Requirements Added to Specification'
     case 'items':
-      return 'Package Requirements'
+      return 'Specification Requirements'
     case 'remove':
-      return 'Requirements Removed from Package'
+      return 'Requirements Removed from Specification'
     default:
       return 'Requirements Specifications'
   }
@@ -1638,7 +1638,7 @@ export function createRequirementsService(
                 ? 'Inga kravunderlag hittades.'
                 : `Hittade ${packages.length} ${getPackageWord(locale, packages.length)}.`
               : packages.length === 0
-                ? 'No packages found.'
+                ? 'No specifications found.'
                 : `Found ${packages.length} ${getPackageWord(locale, packages.length)}.`
 
           return {
@@ -1708,8 +1708,8 @@ export function createRequirementsService(
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary =
             locale === 'sv'
-              ? `Hittade ${items.length} ${getRequirementWord(locale, items.length)} i underlag ${ref}.`
-              : `Found ${items.length} ${getRequirementWord(locale, items.length)} in package ${ref}.`
+              ? `Hittade ${items.length} ${getRequirementWord(locale, items.length)} i kravunderlag ${ref}.`
+              : `Found ${items.length} ${getRequirementWord(locale, items.length)} in specification ${ref}.`
 
           return {
             items: items.map(item => ({
@@ -1805,8 +1805,8 @@ export function createRequirementsService(
           const skippedIds = skipped.map(r => r.id)
           const lines: string[] = [
             locale === 'sv'
-              ? `Lade till ${addedCount} ${getRequirementWord(locale, addedCount)} i underlag ${ref}.`
-              : `Added ${addedCount} ${getRequirementWord(locale, addedCount)} to package ${ref}.`,
+              ? `Lade till ${addedCount} ${getRequirementWord(locale, addedCount)} i kravunderlag ${ref}.`
+              : `Added ${addedCount} ${getRequirementWord(locale, addedCount)} to specification ${ref}.`,
           ]
           if (skippedIds.length > 0) {
             lines.push(
@@ -1863,8 +1863,8 @@ export function createRequirementsService(
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary =
             locale === 'sv'
-              ? `Tog bort ${removedCount} ${getRequirementWord(locale, removedCount)} fran paket ${ref}.`
-              : `Removed ${removedCount} ${getRequirementWord(locale, removedCount)} from package ${ref}.`
+              ? `Tog bort ${removedCount} ${getRequirementWord(locale, removedCount)} fran kravunderlag ${ref}.`
+              : `Removed ${removedCount} ${getRequirementWord(locale, removedCount)} from specification ${ref}.`
           return {
             message: createServiceMessage(
               getPackageServiceTitle('remove', locale),

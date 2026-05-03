@@ -83,7 +83,9 @@ export async function PATCH(
       'specificationItemStatusId' in obj &&
       obj.specificationItemStatusId !== null &&
       obj.specificationItemStatusId !== undefined &&
-      typeof obj.specificationItemStatusId !== 'number'
+      (typeof obj.specificationItemStatusId !== 'number' ||
+        !Number.isInteger(obj.specificationItemStatusId) ||
+        obj.specificationItemStatusId <= 0)
     ) {
       return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
     }

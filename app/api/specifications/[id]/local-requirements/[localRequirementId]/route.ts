@@ -203,13 +203,21 @@ export async function DELETE(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const deleted = await deleteSpecificationLocalRequirement(
-    db,
-    specificationId,
-    numericLocalRequirementId,
-  )
-  if (!deleted) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  try {
+    const deleted = await deleteSpecificationLocalRequirement(
+      db,
+      specificationId,
+      numericLocalRequirementId,
+    )
+    if (!deleted) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+  } catch (error) {
+    console.error('Failed to delete specification-local requirement', error)
+    return NextResponse.json(
+      { error: 'Failed to delete specification-local requirement' },
+      { status: 500 },
+    )
   }
 
   return NextResponse.json({ ok: true })

@@ -109,7 +109,7 @@ export default function SpecificationItemStatusesClient() {
     SpecificationItemStatusForm
   >({
     confirmDeleteMessage: tc('confirm'),
-    endpoint: '/api/specification-item-statuses',
+    endpoint: '/api/catalog/specification-item-statuses',
     errorMessage: tc('error'),
     getInitialForm,
     listKey: 'statuses',
@@ -124,7 +124,7 @@ export default function SpecificationItemStatusesClient() {
       setLinkedItemsError(null)
       try {
         const response = await apiFetch(
-          `/api/specification-item-statuses/${statusId}`,
+          `/api/catalog/specification-item-statuses/${statusId}`,
         )
         if (requestId !== linkedItemRequestId.current) return
         if (!response.ok) {

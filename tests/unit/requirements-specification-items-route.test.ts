@@ -36,7 +36,7 @@ vi.mock('@/lib/dal/deviations', () => ({
   countDeviationsPerItemRef: vi.fn(async () => new Map()),
 }))
 
-import { DELETE, POST } from '@/app/api/specifications/[id]/items/route'
+import { DELETE, GET, POST } from '@/app/api/specifications/[id]/items/route'
 import { validationError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
@@ -93,6 +93,56 @@ describe('requirement-packages/[id]/items route', () => {
         needsReferenceText: undefined,
       },
     )
+  })
+
+  it('returns specification items with merged deviation counts', async () => {
+    mocks.getPackageBySlug.mockResolvedValue({ id: 7 })
+    mocks.listPackageItems.mockResolvedValue([
+      {
+        id: 31,
+        itemRef: 'lib:31',
+        kind: 'library',
+        specificationItemId: 31,
+      },
+      {
+        id: 41,
+        itemRef: 'local:41',
+        kind: 'local',
+        specificationLocalRequirementId: 41,
+      },
+    ])
+    const { countDeviationsPerItemRef } = await import('@/lib/dal/deviations')
+    vi.mocked(countDeviationsPerItemRef).mockResolvedValueOnce(
+      new Map([
+        ['lib:31', { approved: 1, pending: 2, total: 3 }],
+        ['local:41', { approved: 0, pending: 1, total: 1 }],
+      ]),
+    )
+
+    const response = await GET(
+      new NextRequest('http://localhost/api/specifications/pkg/items'),
+      makeParams('pkg'),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      items: [
+        expect.objectContaining({
+          deviationCount: 3,
+          hasApprovedDeviation: true,
+          hasPendingDeviation: true,
+          specificationItemId: 31,
+        }),
+        expect.objectContaining({
+          deviationCount: 1,
+          hasApprovedDeviation: false,
+          hasPendingDeviation: true,
+          specificationLocalRequirementId: 41,
+        }),
+      ],
+    })
+    expect(mocks.listPackageItems).toHaveBeenCalledWith(mockDb, 7)
+    expect(countDeviationsPerItemRef).toHaveBeenCalledWith(mockDb, 7)
   })
 
   it('delegates requirement linking to the transactional helper', async () => {
@@ -336,6 +386,35 @@ describe('requirement-packages/[id]/items route', () => {
       removedCount: 2,
     })
     expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledTimes(1)
+    expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledWith(
+      mockDb,
+      5,
+      [1, 2],
+    )
+  })
+
+  it('returns a JSON 500 error when unlinking requirements fails unexpectedly', async () => {
+    mocks.unlinkRequirementsFromPackage.mockRejectedValueOnce(
+      new Error('SQL unlink failed'),
+    )
+
+    const request = new NextRequest(
+      'http://localhost/api/specifications/pkg/items',
+      {
+        body: JSON.stringify({
+          requirementIds: [1, 2],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'DELETE',
+      },
+    )
+
+    const response = await DELETE(request, makeParams('pkg'))
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({
+      error: 'SQL unlink failed',
+    })
     expect(mocks.unlinkRequirementsFromPackage).toHaveBeenCalledWith(
       mockDb,
       5,

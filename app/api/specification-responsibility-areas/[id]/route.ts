@@ -21,6 +21,9 @@ export async function PUT(
     typeof updateSpecificationResponsibilityArea
   >[2]
   const area = await updateSpecificationResponsibilityArea(db, numericId, body)
+  if (area === undefined) {
+    return NextResponse.json({ message: 'Not found' }, { status: 404 })
+  }
   return NextResponse.json(area)
 }
 

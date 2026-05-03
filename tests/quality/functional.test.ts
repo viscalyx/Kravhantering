@@ -69,7 +69,7 @@ import {
  * Scenario 10 is a pure file-content check and always runs as part of
  * `npm run test`.
  *
- * Scenarios 1-9 and 11 exercise lifecycle invariants that require a real
+ * Scenarios 1-9 and 11-12 exercise lifecycle invariants that require a real
  * SQL Server instance. The harness derives a connection URL automatically from
  * the standard DB_* environment variables (the same ones used by the dev
  * scripts) and swaps the database name to a dedicated
@@ -782,7 +782,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     })
   })
 
-  it('Scenario 12: concurrent initiateArchiving attempts are serialized', async () => {
+  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -812,7 +812,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(history[0]?.archiveInitiatedAt).not.toBeNull()
   })
 
-  it('Scenario 12: concurrent approveArchiving attempts are serialized', async () => {
+  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -847,7 +847,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     expect(Number(flagRows[0]?.isArchived)).toBe(1)
   })
 
-  it('Scenario 12: concurrent approveArchiving and cancelArchiving cannot both succeed', async () => {
+  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
     const area = await createArea(appDb())
     const published = await createPublishedRequirement(
       appDb(),
@@ -887,7 +887,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     }
   })
 
-  it('Scenario 12: approve/cancel target only the version with archive_initiated_at and never archive a newer Draft/Review', async () => {
+  it('Scenario 12: concurrent archiving attempts are atomic and strictly targeted', async () => {
     // Seed a state that cannot be reached through the public API after the
     // initiateArchiving fix: V1 is in Review with archive_initiated_at set,
     // V2 exists as a newer Draft. Approve/cancel must operate strictly on V1

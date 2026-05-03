@@ -62,11 +62,26 @@ export async function countLinkedPackageItems(
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
     SELECT
-      specification_item_status_id AS statusId,
-      COUNT(*) AS count
-    FROM requirements_specification_items
-    WHERE specification_item_status_id IS NOT NULL
-    GROUP BY specification_item_status_id
+      linked.statusId,
+      SUM(linked.count) AS count
+    FROM (
+      SELECT
+        specification_item_status_id AS statusId,
+        COUNT(*) AS count
+      FROM requirements_specification_items
+      WHERE specification_item_status_id IS NOT NULL
+      GROUP BY specification_item_status_id
+
+      UNION ALL
+
+      SELECT
+        specification_item_status_id AS statusId,
+        COUNT(*) AS count
+      FROM specification_local_requirements
+      WHERE specification_item_status_id IS NOT NULL
+      GROUP BY specification_item_status_id
+    ) linked
+    GROUP BY linked.statusId
   `)
   const counts: Record<number, number> = {}
   for (const row of rows as Array<{
@@ -87,15 +102,34 @@ export async function getLinkedPackageItems(
   return db.query(
     `
       SELECT
-        requirements_specifications.id AS specificationId,
-        requirements_specifications.name AS specificationName,
-        COUNT(*) AS requirementCount
-      FROM requirements_specification_items
-      INNER JOIN requirements_specifications
-        ON requirements_specifications.id = requirements_specification_items.specification_id
-      WHERE requirements_specification_items.specification_item_status_id = @0
-      GROUP BY requirements_specifications.id, requirements_specifications.name
-      ORDER BY requirements_specifications.name ASC
+        linked.specificationId,
+        linked.specificationName,
+        SUM(linked.requirementCount) AS requirementCount
+      FROM (
+        SELECT
+          requirements_specifications.id AS specificationId,
+          requirements_specifications.name AS specificationName,
+          COUNT(*) AS requirementCount
+        FROM requirements_specification_items
+        INNER JOIN requirements_specifications
+          ON requirements_specifications.id = requirements_specification_items.requirements_specification_id
+        WHERE requirements_specification_items.specification_item_status_id = @0
+        GROUP BY requirements_specifications.id, requirements_specifications.name
+
+        UNION ALL
+
+        SELECT
+          requirements_specifications.id AS specificationId,
+          requirements_specifications.name AS specificationName,
+          COUNT(*) AS requirementCount
+        FROM specification_local_requirements
+        INNER JOIN requirements_specifications
+          ON requirements_specifications.id = specification_local_requirements.specification_id
+        WHERE specification_local_requirements.specification_item_status_id = @0
+        GROUP BY requirements_specifications.id, requirements_specifications.name
+      ) linked
+      GROUP BY linked.specificationId, linked.specificationName
+      ORDER BY linked.specificationName ASC
     `,
     [statusId],
   )

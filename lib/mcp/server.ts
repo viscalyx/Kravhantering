@@ -467,7 +467,7 @@ function renderRequirementHtml(
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'qualityCharacteristic', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'riskLevel', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'version', locale, 'singular'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'specificationCount'], locale === 'sv' ? 'Används i kravunderlag' : 'Used in packages'))}</h2><p>${escapeHtml(String(detail.specificationCount ?? 0))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'specificationCount'], locale === 'sv' ? 'Används i kravunderlag' : 'Used in specification'))}</h2><p>${escapeHtml(String(detail.specificationCount ?? 0))}</p></section>`,
     '        </div>',
     '      </section>',
     '      <section class="split">',
