@@ -1025,8 +1025,10 @@ describe('RequirementDetailClient', () => {
       'requirement.editBlockedByPendingWork',
     )
     expect(screen.queryByText('No')).toBeNull()
-    expect(screen.getByTestId('status-stepper')).toHaveTextContent(
-      'status:3;count:3',
+    await waitFor(() =>
+      expect(screen.getByTestId('status-stepper')).toHaveTextContent(
+        'status:3;count:3',
+      ),
     )
 
     await userEvent.click(screen.getByRole('button', { name: 'v1' }))
