@@ -327,6 +327,109 @@ ask a cluster administrator for one of these OpenShift-side fixes:
 
 ## Troubleshooting
 
+### Debug failed starts
+
+Use the actual Dev Spaces project/namespace from the error message. In
+Red Hat Developer Sandbox this may be `<user>-dev`; in other clusters it
+may be `<user>-devspaces`.
+
+```bash
+oc project <workspace-namespace>
+```
+
+If you are unsure which project Dev Spaces used, list the workspaces and
+look at the namespace column:
+
+```bash
+oc get devworkspaces -A
+```
+
+Inspect the resolved `DevWorkspace`. This is the source of truth for the
+devfile Dev Spaces is actually using, including cached or factory-loaded
+content:
+
+```bash
+oc describe devworkspace kravhantering -n <workspace-namespace>
+```
+
+Check the resolved `db` and `idp` container env sections. The `db`
+container must include:
+
+```text
+MSSQL_SA_PASSWORD=YourStrong!Passw0rd
+```
+
+The `idp` container must include:
+
+```text
+KEYCLOAK_ADMIN_PASSWORD=admin
+```
+
+If those values are missing from the resolved `DevWorkspace`, the
+workspace was not created from the current `devfile.yaml`. Delete and
+recreate the workspace from the current branch.
+
+If `oc get pods` returns no resources, Dev Spaces has already stopped
+and cleaned up the failed pod. Use events to find the failed pod names
+and the last reported reason:
+
+```bash
+oc get pods -n <workspace-namespace>
+oc get events -n <workspace-namespace> --sort-by=.lastTimestamp
+```
+
+When a workspace pod exists, inspect the generated Kubernetes env for
+the `db` container without printing secret values:
+
+```bash
+DB_ENV='{range .spec.containers[?(@.name=="db")].env[*]}{.name}{"\n"}{end}'
+oc get pod <workspace-pod-name> -n <workspace-namespace> \
+  -o jsonpath="$DB_ENV" | sort
+```
+
+Expected `db` names include:
+
+```text
+ACCEPT_EULA
+MSSQL_PID
+MSSQL_SA_PASSWORD
+```
+
+For Keycloak, verify the `idp` container env names:
+
+```bash
+IDP_ENV='{range .spec.containers[?(@.name=="idp")].env[*]}{.name}{"\n"}{end}'
+oc get pod <workspace-pod-name> -n <workspace-namespace> \
+  -o jsonpath="$IDP_ENV" | sort
+```
+
+Expected `idp` names include:
+
+```text
+KEYCLOAK_ADMIN
+KEYCLOAK_ADMIN_PASSWORD
+KC_HTTP_PORT
+```
+
+For `CrashLoopBackOff`, the kubelet event is not enough; get the
+container's own log. Use `--previous` first because the failed process
+may already have restarted:
+
+```bash
+oc logs -n <workspace-namespace> <workspace-pod-name> -c db \
+  --previous --tail=200
+oc logs -n <workspace-namespace> <workspace-pod-name> -c db --tail=200
+```
+
+When the pod disappears too quickly, start the workspace again and watch
+for the pod name in a second terminal:
+
+```bash
+watch -n 1 'oc get pods -n <workspace-namespace>'
+```
+
+Then run the `oc logs` command as soon as the `workspace...` pod appears.
+
 - **Workspace fails with `postStart hook` or exit code 243** — make sure
   the workspace was created from the current `devfile.yaml`. Older
   versions bound `install` and `db-setup` to `events.postStart`; Dev
