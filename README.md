@@ -1,11 +1,18 @@
 # Requirements Management Web Application
 
-A web application for requirements management that supports the
-company's requirements model and requirements process.
+Kravhantering in Swedish, Requirements Management in English. This repository
+contains a web application for managing requirements
 
-<!-- cSpell:disable-next-line -->
-*En webbapplikation för kravhantering som stödjer företagets
-kravmodell och kravprocess.*
+## High-Level View (English)
+
+>[!TIP]
+>Se längre ner för en svensk översikt.
+
+![Infographics English](public/infographic-english.png)
+
+## Högnivåöversikt (Svenska)
+
+![Infographics Swedish](public/infographic-swedish.png)
 
 ## Requirements Process
 
@@ -22,7 +29,7 @@ The application supports the full requirements lifecycle:
 
 1. **Register** — create a new requirement or a new version
 2. **Classify** — assign area, category, owner, risk level,
-   usage scenarios
+   requirement packages
 3. **Edit** — update requirement text, guidance, and evidence
 4. **Review** — submit for review, collect comments, handle
    referrals
@@ -96,7 +103,7 @@ Applikationen stödjer hela kravlivscykeln:
 
 1. **Registrera** — skapa ett nytt krav eller en ny version
 2. **Klassificera** — tilldela område, kategori, ägare,
-   risknivå, användningsscenarier
+   risknivå, kravpaket
 3. **Redigera** — uppdatera kravtext, vägledning och evidens
 4. **Granska** — skicka till granskning, samla kommentarer,
    hantera återremiss
