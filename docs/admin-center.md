@@ -123,6 +123,7 @@ It links to the existing stable routes for:
 - areas (including owner assignment)
 - types
 - requirement packages
+- norm references
 - statuses
 - quality characteristics
 - business objects

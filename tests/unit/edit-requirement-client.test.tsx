@@ -35,11 +35,15 @@ vi.mock('@/components/RequirementForm', () => ({
     mode: string
     requirementId?: number | string
     initialData?: Record<string, string | boolean>
+    initialRequirementPackageIds?: number[] | null
   }) => (
     <div
       data-base-revision-token={props.baseRevisionToken ?? ''}
       data-base-version-id={props.baseVersionId ?? ''}
       data-initial-data={JSON.stringify(props.initialData)}
+      data-initial-requirement-package-ids={JSON.stringify(
+        props.initialRequirementPackageIds ?? [],
+      )}
       data-mode={props.mode}
       data-testid="req-form"
     />
@@ -139,6 +143,18 @@ describe('EditRequirementClient', () => {
           {
             id: 10,
             revisionToken: '22222222-2222-4222-8222-222222222222',
+            versionRequirementPackages: [
+              {
+                requirementPackage: {
+                  descriptionEn: null,
+                  descriptionSv: null,
+                  id: 7,
+                  nameEn: 'Normal operations',
+                  nameSv: 'Normal drift',
+                  ownerId: null,
+                },
+              },
+            ],
           },
         ),
       ),
@@ -155,6 +171,10 @@ describe('EditRequirementClient', () => {
     expect(screen.getByTestId('req-form')).toHaveAttribute(
       'data-base-revision-token',
       '22222222-2222-4222-8222-222222222222',
+    )
+    expect(screen.getByTestId('req-form')).toHaveAttribute(
+      'data-initial-requirement-package-ids',
+      '[7]',
     )
     expect(screen.getByText(/REQ-001/)).toBeInTheDocument()
   })

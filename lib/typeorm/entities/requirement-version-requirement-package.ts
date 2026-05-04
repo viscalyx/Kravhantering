@@ -55,7 +55,7 @@ export const requirementVersionRequirementPackageEntity =
             'fk_requirement_version_requirement_packages_requirement_package_id',
         },
         nullable: false,
-        onDelete: 'NO ACTION',
+        onDelete: 'CASCADE',
         onUpdate: 'NO ACTION',
       },
     },

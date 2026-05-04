@@ -1,4 +1,5 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
+import { localizedName } from '@/lib/i18n/localized'
 import type {
   DiffSegment,
   MetadataChange,
@@ -409,6 +410,9 @@ function PdfVersionSummary({
     if (!item) return null
     return locale === 'sv' ? item.nameSv : item.nameEn
   }
+  const requirementPackageNames = version.requirementPackages
+    .map(requirementPackage => localizedName(requirementPackage, locale))
+    .filter(name => name.length > 0)
 
   return (
     <View style={[styles.versionBox, { borderColor }]}>
@@ -491,15 +495,13 @@ function PdfVersionSummary({
           </Text>
         </View>
       )}
-      {version.requirementPackages.length > 0 && (
+      {requirementPackageNames.length > 0 && (
         <View style={{ marginTop: 2 }}>
           <Text style={{ fontSize: 8, color: '#6b7280' }}>
             <Text style={{ fontFamily: 'Helvetica-Bold', color: '#374151' }}>
               {locale === 'sv' ? 'Kravpaket: ' : 'Requirements packages: '}
             </Text>
-            {version.requirementPackages
-              .map(s => (locale === 'sv' ? s.nameSv : s.nameEn))
-              .join(', ')}
+            {requirementPackageNames.join(', ')}
           </Text>
         </View>
       )}

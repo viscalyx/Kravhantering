@@ -157,7 +157,17 @@ function computeMetadataChanges(
     .map(vs => getName(vs.requirementPackage, locale) ?? '')
     .sort()
     .join(', ')
-  if (oldRequirementPackages !== newRequirementPackages) {
+  const oldRequirementPackageIds = baseVersion.versionRequirementPackages
+    .map(vs => vs.requirementPackage?.id)
+    .filter((id): id is number => Number.isInteger(id))
+    .sort((a, b) => a - b)
+    .join(',')
+  const newRequirementPackageIds = reviewVersion.versionRequirementPackages
+    .map(vs => vs.requirementPackage?.id)
+    .filter((id): id is number => Number.isInteger(id))
+    .sort((a, b) => a - b)
+    .join(',')
+  if (oldRequirementPackageIds !== newRequirementPackageIds) {
     changes.push({
       field: locale === 'sv' ? 'Kravpaket' : 'Requirements packages',
       oldValue: oldRequirementPackages || null,

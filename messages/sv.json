@@ -233,7 +233,7 @@
     "typePlaceholder": "T.ex. Lag, Standard, Förordning",
     "specificationLocalBadge": "Unik",
     "specificationLocalTooltip": "Den här raden är ett unikt krav i kravunderlaget. Det finns bara i detta kravunderlag och visas inte i kravbiblioteket.",
-    "requirementPackageHelp": "<strong>Välj ett eller flera kravpaket som gäller för detta krav.</strong>\nKravpaket samlar krav för en viss gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal driftscenario, hög belastning eller katastrofåterställning."
+    "requirementPackageHelp": "<strong>Välj ett eller flera kravpaket som gäller för detta krav.</strong>\nKravpaket samlar krav för en viss gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning."
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -849,7 +849,7 @@
         },
         "requirementPackages": {
           "heading": "Kravpaket",
-          "body": "Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal driftscenario, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar."
+          "body": "Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar."
         },
         "normReferences": {
           "heading": "Normreferenser",
@@ -1066,7 +1066,7 @@
       "title": "Kravpaket",
       "overview": {
         "heading": "Vad är kravpaket?",
-        "body": "Kravpaket samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal driftscenario, hög belastning eller katastrofåterställning."
+        "body": "Kravpaket samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning."
       },
       "manage": {
         "heading": "Hantera",

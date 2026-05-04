@@ -162,7 +162,6 @@ export default function RequirementPackagesClient() {
   const fetchLinkedRequirements = useCallback(
     async (requirementPackageId: number) => {
       const requestId = ++linkedReqRequestId.current
-      const previousLinkedRequirements = linkedRequirements
       setLinkedRequirementsLoading(true)
       setLinkedRequirementsError(null)
       try {
@@ -171,7 +170,7 @@ export default function RequirementPackagesClient() {
         )
         if (requestId !== linkedReqRequestId.current) return
         if (!response.ok) {
-          setLinkedRequirements(previousLinkedRequirements)
+          setLinkedRequirements([])
           setLinkedRequirementsError(tc('error'))
           return
         }
@@ -182,7 +181,7 @@ export default function RequirementPackagesClient() {
         setLinkedRequirements(data.linkedRequirements ?? [])
       } catch {
         if (requestId === linkedReqRequestId.current) {
-          setLinkedRequirements(previousLinkedRequirements)
+          setLinkedRequirements([])
           setLinkedRequirementsError(tc('error'))
         }
       } finally {
@@ -191,7 +190,7 @@ export default function RequirementPackagesClient() {
         }
       }
     },
-    [linkedRequirements, tc],
+    [tc],
   )
 
   const openCreate = () => {

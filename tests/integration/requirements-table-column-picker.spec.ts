@@ -149,10 +149,9 @@ test.describe('Requirements table column picker', () => {
         const scrollTopTrigger = page.locator(
           '[data-scroll-top-trigger="true"]',
         )
-        const requirementPackageFilter = page.getByRole('button', {
-          exact: true,
-          name: 'Mobil användning',
-        })
+        const requirementPackageFilter = page.locator(
+          '[data-requirement-package="1"]',
+        )
         const headerLabel = page
           .locator('[data-requirement-header-label="uniqueId"]')
           .first()

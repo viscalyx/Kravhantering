@@ -110,10 +110,10 @@ describe('buildSystemPrompt', () => {
     }
 
     expect(buildSystemPrompt(taxonomyWithoutRequirementPackages)).toContain(
-      'No requirements packages available',
+      'No requirement package available',
     )
     expect(buildSystemPrompt(taxonomyWithoutRequirementPackages)).not.toContain(
-      '  - No requirements packages available',
+      '  - No requirement package available',
     )
     expect(
       buildSystemPrompt(taxonomyWithoutRequirementPackages, 'sv'),

@@ -517,6 +517,21 @@ describe('requirement-packages routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST returns 400 for invalid payload', async () => {
+    const r = await postRequirementPackage(
+      new Request('http://l', {
+        method: 'POST',
+        body: '{"nameSv":"A","ownerId":"abc"}',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(400)
+    const j = (await r.json()) as { details: string[]; error: string }
+    expect(j.error).toBe('Invalid payload')
+    expect(j.details).toContain('nameEn must be a non-empty string')
+    expect(j.details).toContain('ownerId must be a positive integer or null')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
   it('PUT updates', async () => {
     mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })
     const r = await putRequirementPackage(

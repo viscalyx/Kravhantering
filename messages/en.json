@@ -750,7 +750,7 @@
       "definitePlural": "Acceptance criteria"
     },
     "requirementPackage": {
-      "singular": "Requirements package",
+      "singular": "Requirement package",
       "plural": "Requirements packages",
       "definitePlural": "Requirements packages"
     },
@@ -1258,7 +1258,7 @@
     "prompt": {
       "defaultInstruction": "Generate 5-10 well-structured system requirements for the given topic.\n\nEach requirement MUST:\n- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Use \"The system shall...\" form for functional requirements\n- Use \"The system shall be able to...\" or quality-attribute language for non-functional requirements\n- Include acceptance criteria where applicable\n- Reference appropriate quality characteristics from ISO/IEC 25010:2023\n- Include a rationale explaining why the requirement exists\n\nFor non-functional requirements, apply the ISO/IEC 25010:2023 quality model:\n- Map each to the most specific quality sub-characteristic\n- Consider performance efficiency, security, usability, reliability, and maintainability\n\nAssess risk level based on:\n- Impact on system safety, security, or core functionality (High)\n- Impact on user experience or non-critical features (Medium)\n- Nice-to-have or cosmetic requirements (Low)",
       "userHeader": "Topic / System Context",
-      "noRequirementPackagesAvailable": "No requirements packages available",
+      "noRequirementPackagesAvailable": "No requirement package available",
       "system": {
         "intro": "You are an expert requirements engineer. You generate system requirements following international standards:\n- ISO/IEC/IEEE 29148:2018 (Requirements engineering)\n- ISO/IEC 25030:2019 (Quality requirements framework)\n- ISO/IEC 25010:2023 (Quality model)",
         "taxonomyIntro": "You MUST use the following taxonomy IDs in your output. Only use IDs from the lists below.",

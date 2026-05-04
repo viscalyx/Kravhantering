@@ -410,15 +410,22 @@ export default function RequirementDetailClient({
 
   const detailRequirementPackages =
     selectedVersion?.versionRequirementPackages?.map(
-      versionRequirementPackage => ({
-        id: `requirementPackage-chip-${versionRequirementPackage.requirementPackage.id}`,
-        label: localName(versionRequirementPackage.requirementPackage),
-        markerContext: buildDetailSectionContext('requirementPackages'),
-        markerValue:
-          versionRequirementPackage.requirementPackage.nameEn ??
-          versionRequirementPackage.requirementPackage.nameSv ??
-          String(versionRequirementPackage.requirementPackage.id),
-      }),
+      versionRequirementPackage => {
+        const requirementPackage = versionRequirementPackage.requirementPackage
+        const requirementPackageLabel =
+          localName(requirementPackage)?.trim() || String(requirementPackage.id)
+        const requirementPackageMarkerValue =
+          requirementPackage.nameEn?.trim() ||
+          requirementPackage.nameSv?.trim() ||
+          String(requirementPackage.id)
+
+        return {
+          id: `requirementPackage-chip-${requirementPackage.id}`,
+          label: requirementPackageLabel,
+          markerContext: buildDetailSectionContext('requirementPackages'),
+          markerValue: requirementPackageMarkerValue,
+        }
+      },
     ) ?? []
 
   const handleArchive = async (event?: MouseEvent<HTMLButtonElement>) => {

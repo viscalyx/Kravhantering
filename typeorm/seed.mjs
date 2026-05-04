@@ -11658,7 +11658,7 @@ const SEED_DATA = {
         'Kravpaket',
         'Kravpaket',
         'Kravpaketen',
-        'Requirements package',
+        'Requirement package',
         'Requirements packages',
         'Requirements packages',
         '2026-04-20 20:07:00',
@@ -11795,7 +11795,7 @@ const SEED_DATA = {
       ],
       [
         7,
-        'Normal driftscenario',
+        'Normal drift',
         'Normal operations',
         'Krav som gäller ordinarie drift och vardaglig användning utan särskilda störningar.',
         'Requirements that apply during normal operations and day-to-day use without special disruptions.',
@@ -11905,6 +11905,11 @@ export async function seedDatabase(executor) {
   let currentTable = null
   let currentRowIndex = -1
   let currentRow = null
+  const seedPositionDetail = () =>
+    currentTable != null
+      ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
+      : ` while seeding table=${String(currentTable)} rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
+  let commitError = null
   try {
     for (const table of TABLE_ORDER) {
       const entry = SEED_DATA[table]
@@ -11952,29 +11957,41 @@ export async function seedDatabase(executor) {
       currentRow = null
     }
   } catch (error) {
+    let rollbackError = null
     if (startedTransaction && runner) {
       try {
         await runner.rollbackTransaction()
+      } catch (caughtRollbackError) {
+        rollbackError = caughtRollbackError
+      } finally {
         startedTransaction = false
-      } catch {
-        // ignore rollback errors; original error is more important
       }
     }
-    const detail =
-      currentTable != null
-        ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
-        : ''
+    const detail = seedPositionDetail()
     const message = error instanceof Error ? error.message : String(error)
-    const wrapped = new Error(`Seed failed${detail}: ${message}`)
+    const rollbackMessage =
+      rollbackError instanceof Error
+        ? rollbackError.message
+        : rollbackError == null
+          ? null
+          : String(rollbackError)
+    const wrapped = new Error(
+      rollbackMessage
+        ? `Seed failed${detail}: ${message}; rollback also failed: ${rollbackMessage}`
+        : `Seed failed${detail}: ${message}`,
+    )
     if (error instanceof Error && error.stack) wrapped.stack = error.stack
+    if (rollbackError != null) {
+      wrapped.rollbackError = rollbackError
+    }
     throw wrapped
   } finally {
     if (startedTransaction && runner) {
       try {
         await runner.commitTransaction()
-      } catch {
-        // ignore commit errors here; if commit fails the caller's next
-        // operation will surface a clearer error
+        startedTransaction = false
+      } catch (caughtCommitError) {
+        commitError = caughtCommitError
       }
     }
     if (runner) {
@@ -11984,6 +12001,12 @@ export async function seedDatabase(executor) {
         // ignore release errors
       }
     }
+  }
+  if (commitError != null) {
+    const detail = seedPositionDetail()
+    const message =
+      commitError instanceof Error ? commitError.message : String(commitError)
+    throw new Error(`Seed commit failed${detail}: ${message}`)
   }
   return inserted
 }

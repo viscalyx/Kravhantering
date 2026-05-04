@@ -267,9 +267,9 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
   },
   requirementPackage: {
     en: {
-      definitePlural: 'Requirements packages',
-      plural: 'Requirements packages',
-      singular: 'Requirements package',
+      definitePlural: 'Requirement packages',
+      plural: 'Requirement packages',
+      singular: 'Requirement package',
     },
     sv: {
       definitePlural: 'Kravpaketen',

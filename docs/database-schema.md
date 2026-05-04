@@ -627,7 +627,7 @@ be linked to.
 | 4 | Ärendehantering | Case management |
 | 5 | Användarvänlighet | Usability |
 | 6 | Molndrift | Cloud operations |
-| 7 | Normal driftscenario | Normal operations |
+| 7 | Normal drift | Normal operations |
 | 8 | Hög belastning | High load |
 | 9 | Katastrofåterställning | Disaster recovery |
 
@@ -1061,7 +1061,7 @@ Many-to-many link between requirement versions and requirement packages.
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Composite PK part 1 |
-| `requirement_package_id` | integer FK → `requirement_packages.id` | Composite PK part 2 |
+| `requirement_package_id` | integer FK → `requirement_packages.id` (`ON DELETE CASCADE`) | Composite PK part 2 |
 <!-- markdownlint-enable MD013 -->
 
 **Primary key:**
@@ -1395,7 +1395,7 @@ The following table lists every named FK constraint:
 | `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE | NO ACTION |
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
 | `fk_requirement_version_requirement_packages_requirement_version_id` | `requirement_version_requirement_packages` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
-| `fk_requirement_version_requirement_packages_requirement_package_id` | `requirement_version_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | NO ACTION | NO ACTION |
+| `fk_requirement_version_requirement_packages_requirement_package_id` | `requirement_version_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | CASCADE | NO ACTION |
 | `fk_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | `requirements_specifications.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirements_specification_id_needs_reference_id` | `requirements_specification_items` | `(requirements_specification_id, needs_reference_id)` | `specification_needs_references.(specification_id, id)` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |

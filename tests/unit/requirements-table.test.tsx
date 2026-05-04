@@ -3129,6 +3129,43 @@ describe('RequirementsTable', () => {
     }
   })
 
+  it('only renders requirement package filter pills when filtering is available', () => {
+    const requirementPackages = [
+      { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
+    ]
+
+    const { rerender } = render(
+      <RequirementsTable
+        getName={opt => opt.nameSv}
+        locale="sv"
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'Mobil användning' }),
+    ).not.toBeInTheDocument()
+
+    rerender(
+      <RequirementsTable
+        getName={opt => opt.nameSv}
+        locale="sv"
+        onFilterChange={vi.fn()}
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const requirementPackageFilter = screen.getByRole('button', {
+      name: 'Mobil användning',
+    })
+    expect(requirementPackageFilter).toHaveAttribute(
+      'data-requirement-package',
+      '1',
+    )
+  })
+
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {
     let observedElement: Element | null = null
     let observerCallback: IntersectionObserverCallback | null = null
