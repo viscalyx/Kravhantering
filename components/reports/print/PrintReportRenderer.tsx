@@ -402,13 +402,15 @@ function VersionDetails({
           </span>
         </div>
       )}
-      {version.scenarios.length > 0 && (
+      {version.requirementPackages.length > 0 && (
         <div style={{ marginTop: '0.25rem' }}>
           <span style={{ fontWeight: 600, color: '#374151' }}>
-            {t('scenarios')}:{' '}
+            {t('requirementPackages')}:{' '}
           </span>
           <span style={{ color: '#6b7280' }}>
-            {version.scenarios.map(s => localizedName(s, locale)).join(', ')}
+            {version.requirementPackages
+              .map(s => localizedName(s, locale))
+              .join(', ')}
           </span>
         </div>
       )}

@@ -99,7 +99,7 @@ describe('requirements route', () => {
 
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
-        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4',
+        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5&requirementPackageIds=0&requirementPackageIds=-1&requirementPackageIds=1.5&requirementPackageIds=abc',
       )
       await GET(req as never)
       expect(mockQueryCatalog).toHaveBeenCalledWith(
@@ -113,6 +113,7 @@ describe('requirements route', () => {
           categoryIds: [2],
           typeIds: [3],
           qualityCharacteristicIds: [4],
+          requirementPackageIds: [5],
           statuses: [1],
           requiresTesting: [true],
         }),
@@ -153,7 +154,7 @@ describe('requirements route', () => {
           description: 'New requirement',
           areaId: 1,
           typeId: 2,
-          scenarioIds: [1, 2],
+          requirementPackageIds: [1, 2, 2, 0, -1, 1.5, 'abc'],
           references: [{ name: 'Ref 1', uri: 'https://example.com' }],
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -162,6 +163,14 @@ describe('requirements route', () => {
       expect(res.status).toBe(201)
       const json = (await res.json()) as { id: number }
       expect(json.id).toBe(42)
+      expect(mockManageRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          requirement: expect.objectContaining({
+            requirementPackageIds: [1, 2],
+          }),
+        }),
+      )
     })
 
     it('returns error on failure', async () => {

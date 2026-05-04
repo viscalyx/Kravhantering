@@ -92,10 +92,10 @@ Combines:
 - requirement listing
 - free-text search
 - lookup tables for areas, categories, types, quality characteristics,
-  risk levels, statuses, scenarios, and transitions
+  risk levels, statuses, requirement packages, and transitions
 
 Requirement search supports pagination, sorting, archive inclusion, taxonomy
-filters, status/testing filters, norm-reference filters, and usage-scenario
+filters, status/testing filters, norm-reference filters, and requirement-package
 filters. Lookup catalogs ignore requirement-only filters except
 `typeId`, which filters the `quality_characteristics` catalog.
 
@@ -259,7 +259,7 @@ routes:
   a new draft version
 - publishing preserves the existing behavior where the previously published
   version is auto-archived
-- restoring a version copies scenarios and references into the new draft
+- restoring a version copies requirement packages and references into the new draft
 
 ## Logging
 

@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   listAreas: vi.fn(),
   listCategories: vi.fn(),
   listRequirements: vi.fn(),
-  listScenarios: vi.fn(),
+  listRequirementPackages: vi.fn(),
   listStatuses: vi.fn(),
   listTransitions: vi.fn(),
   listSpecifications: vi.fn(),
@@ -59,8 +59,8 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
     mocks.unlinkRequirementsFromSpecification,
 }))
 
-vi.mock('@/lib/dal/usage-scenarios', () => ({
-  listScenarios: mocks.listScenarios,
+vi.mock('@/lib/dal/requirement-packages', () => ({
+  listRequirementPackages: mocks.listRequirementPackages,
 }))
 
 vi.mock('@/lib/dal/requirement-statuses', () => ({
@@ -137,9 +137,9 @@ function makeRequirementRecord() {
           nameSv: 'Sakerhet',
         },
         versionNumber: 1,
-        versionScenarios: [
+        versionRequirementPackages: [
           {
-            scenario: {
+            requirementPackage: {
               descriptionEn: 'A login flow',
               descriptionSv: 'Ett inloggningsflode',
               id: 7,
@@ -449,7 +449,7 @@ describe('createRequirementsService', () => {
       requirement: {
         areaId: 1,
         description: 'Support secure integration',
-        scenarioIds: [7],
+        requirementPackageIds: [7],
       },
     })
 
@@ -458,7 +458,7 @@ describe('createRequirementsService', () => {
       expect.objectContaining({
         description: 'Support secure integration',
         requirementAreaId: 1,
-        scenarioIds: [7],
+        requirementPackageIds: [7],
       }),
     )
     expect(result.detail?.uniqueId).toBe('INT0001')
@@ -675,18 +675,18 @@ describe('createRequirementsService', () => {
     expect(result.items).toHaveLength(1)
   })
 
-  it('queries scenarios catalog', async () => {
-    mocks.listScenarios.mockResolvedValue([
-      { id: 1, nameSv: 'Scen', nameEn: 'Scene' },
+  it('queries requirementPackages catalog', async () => {
+    mocks.listRequirementPackages.mockResolvedValue([
+      { id: 1, nameSv: 'Mobil användning', nameEn: 'Mobile use' },
     ])
     const service = createRequirementsService({} as never, {
       logger,
       uiSettings: makeUiSettings(),
     })
     const result = await service.queryCatalog(makeContext(), {
-      catalog: 'scenarios',
+      catalog: 'requirement_packages',
     })
-    expect(result.catalog).toBe('scenarios')
+    expect(result.catalog).toBe('requirement_packages')
     expect(result.items).toHaveLength(1)
   })
 

@@ -108,7 +108,9 @@ export async function POST(
             ? rawBody.requiresTesting
             : false,
         riskLevelId: parseOptionalPositiveInteger(rawBody.riskLevelId),
-        scenarioIds: parseOptionalIntegerArray(rawBody.scenarioIds),
+        requirementPackageIds: parseOptionalIntegerArray(
+          rawBody.requirementPackageIds,
+        ),
         verificationMethod:
           typeof rawBody.verificationMethod === 'string'
             ? rawBody.verificationMethod

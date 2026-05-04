@@ -302,7 +302,7 @@ function makeRequirementDetail(
         type: { id: 3, nameEn: 'Functional', nameSv: 'Funktionellt' },
         verificationMethod: null,
         versionNumber: 1,
-        versionScenarios: [],
+        versionRequirementPackages: [],
         versionNormReferences: [],
       },
     ],
@@ -341,7 +341,7 @@ function mockMetadataFetch(url: string) {
   if (url === '/api/risk-levels') {
     return Promise.resolve(okJson({ riskLevels: [] }))
   }
-  if (url === '/api/usage-scenarios') {
+  if (url === '/api/requirement-packages') {
     return Promise.resolve(okJson([]))
   }
   if (url.startsWith('/api/norm-references')) {
@@ -500,8 +500,8 @@ describe('RequirementsClient', () => {
         },
         {
           kind: 'text',
-          bodyKey: 'requirements.properties.scenarios.body',
-          headingKey: 'requirements.properties.scenarios.heading',
+          bodyKey: 'requirements.properties.requirementPackages.body',
+          headingKey: 'requirements.properties.requirementPackages.heading',
           subheading: true,
         },
         {

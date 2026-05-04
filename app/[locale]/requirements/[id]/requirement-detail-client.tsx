@@ -408,16 +408,25 @@ export default function RequirementDetailClient({
       title: `${vnr.normReference.name} (${vnr.normReference.reference})`,
     })) ?? []
 
-  const detailScenarios =
-    selectedVersion?.versionScenarios?.map(versionScenario => ({
-      id: `scenario-chip-${versionScenario.scenario.id}`,
-      label: localName(versionScenario.scenario),
-      markerContext: buildDetailSectionContext('scenarios'),
-      markerValue:
-        versionScenario.scenario.nameEn ??
-        versionScenario.scenario.nameSv ??
-        String(versionScenario.scenario.id),
-    })) ?? []
+  const detailRequirementPackages =
+    selectedVersion?.versionRequirementPackages?.map(
+      versionRequirementPackage => {
+        const requirementPackage = versionRequirementPackage.requirementPackage
+        const requirementPackageLabel =
+          localName(requirementPackage)?.trim() || String(requirementPackage.id)
+        const requirementPackageMarkerValue =
+          requirementPackage.nameEn?.trim() ||
+          requirementPackage.nameSv?.trim() ||
+          String(requirementPackage.id)
+
+        return {
+          id: `requirementPackage-chip-${requirementPackage.id}`,
+          label: requirementPackageLabel,
+          markerContext: buildDetailSectionContext('requirementPackages'),
+          markerValue: requirementPackageMarkerValue,
+        }
+      },
+    ) ?? []
 
   const handleArchive = async (event?: MouseEvent<HTMLButtonElement>) => {
     const anchorEl = event?.currentTarget
@@ -799,8 +808,8 @@ export default function RequirementDetailClient({
                   metadata={detailMetadata}
                   references={detailReferences}
                   referencesLabel={t('normReferences')}
-                  scenarios={detailScenarios}
-                  scenariosLabel={t('scenario')}
+                  requirementPackages={detailRequirementPackages}
+                  requirementPackagesLabel={t('requirementPackage')}
                 />
 
                 {triangleLeft !== null && (

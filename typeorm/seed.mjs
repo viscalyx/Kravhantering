@@ -25,9 +25,9 @@ const TABLE_ORDER = [
   'deviations',
   'requirement_version_norm_references',
   'ui_terminology',
-  'usage_scenarios',
-  'specification_local_requirement_usage_scenarios',
-  'requirement_version_usage_scenarios',
+  'requirement_packages',
+  'specification_local_requirement_requirement_packages',
+  'requirement_version_requirement_packages',
 ]
 
 const SEED_DATA = {
@@ -11654,13 +11654,13 @@ const SEED_DATA = {
       ],
       [
         10,
-        'scenario',
-        'Användningsscenario',
-        'Användningsscenarier',
-        'Användningsscenarierna',
-        'Usage scenario',
-        'Usage scenarios',
-        'Usage scenarios',
+        'requirementPackage',
+        'Kravpaket',
+        'Kravpaket',
+        'Kravpaketen',
+        'Requirement package',
+        'Requirements packages',
+        'Requirements packages',
         '2026-04-20 20:07:00',
       ],
       [
@@ -11720,7 +11720,7 @@ const SEED_DATA = {
       ],
     ],
   },
-  usage_scenarios: {
+  requirement_packages: {
     columns: [
       'id',
       'name_sv',
@@ -11735,60 +11735,132 @@ const SEED_DATA = {
     rows: [
       [
         1,
-        'Normal driftscenario',
-        'Normal operation scenario',
-        'Systemet körs under normal belastning med typiskt antal samtidiga användare',
-        'The system runs under normal load with a typical number of concurrent users',
+        'Mobil användning',
+        'Mobile use',
+        'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
+        'Requirements that apply when the system is used from a phone or tablet.',
         1,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
       [
         2,
-        'Hög belastning',
-        'High load',
-        'Systemet utsätts för maximal förväntad belastning under topptider',
-        'The system is subjected to maximum expected load during peak times',
+        'Datamigrering',
+        'Data migration',
+        'Krav som gäller import, export, konvertering och kvalitetssäkring av data.',
+        'Requirements for import, export, conversion, and quality assurance of data.',
         1,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
       [
         3,
+        'Integration med andra system',
+        'Integration with other systems',
+        'Krav som gäller tekniska gränssnitt, informationsutbyte och externa beroenden.',
+        'Requirements for technical interfaces, information exchange, and external dependencies.',
+        2,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        4,
+        'Ärendehantering',
+        'Case management',
+        'Krav som gäller registrering, handläggning, uppföljning och avslut av ärenden.',
+        'Requirements for registering, processing, following up, and closing cases.',
+        2,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        5,
+        'Användarvänlighet',
+        'Usability',
+        'Krav som gäller tydlighet, effektivitet och enkel användning för slutanvändare.',
+        'Requirements for clarity, efficiency, and ease of use for end users.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        6,
+        'Molndrift',
+        'Cloud operations',
+        'Krav som gäller drift, övervakning, skalning och robusthet i molnmiljö.',
+        'Requirements for operations, monitoring, scaling, and resilience in cloud environments.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        7,
+        'Normal drift',
+        'Normal operations',
+        'Krav som gäller ordinarie drift och vardaglig användning utan särskilda störningar.',
+        'Requirements that apply during normal operations and day-to-day use without special disruptions.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        8,
+        'Hög belastning',
+        'High load',
+        'Krav som gäller när många användare, stora datamängder eller många samtidiga operationer belastar systemet.',
+        'Requirements that apply when many users, large data volumes, or concurrent operations put the system under load.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        9,
         'Katastrofåterställning',
         'Disaster recovery',
-        'Systemet återställs efter ett allvarligt avbrott',
-        'The system is restored after a serious interruption',
-        2,
+        'Krav som gäller återställning efter större avbrott, dataförlust eller miljöbortfall.',
+        'Requirements that apply when restoring service after major outages, data loss, or environment failure.',
+        3,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
     ],
   },
-  specification_local_requirement_usage_scenarios: {
-    columns: ['specification_local_requirement_id', 'usage_scenario_id'],
-    pk: ['specification_local_requirement_id', 'usage_scenario_id'],
+  specification_local_requirement_requirement_packages: {
+    columns: ['specification_local_requirement_id', 'requirement_package_id'],
+    pk: ['specification_local_requirement_id', 'requirement_package_id'],
     rows: [
       [1, 1],
-      [1, 2],
-      [2, 1],
+      [1, 4],
+      [2, 5],
     ],
   },
-  requirement_version_usage_scenarios: {
-    columns: ['requirement_version_id', 'usage_scenario_id'],
-    pk: ['requirement_version_id', 'usage_scenario_id'],
+  requirement_version_requirement_packages: {
+    columns: ['requirement_version_id', 'requirement_package_id'],
+    pk: ['requirement_version_id', 'requirement_package_id'],
     rows: [
       [2, 1],
-      [5, 1],
-      [7, 1],
-      [7, 2],
-      [23, 2],
-      [26, 2],
-      [33, 3],
-      [56, 1],
-      [57, 3],
-      [69, 3],
-      [70, 3],
+      [5, 3],
+      [7, 3],
+      [7, 6],
+      [23, 5],
+      [23, 8],
+      [25, 7],
+      [26, 1],
+      [26, 8],
+      [33, 2],
+      [33, 9],
+      [56, 4],
+      [56, 7],
+      [57, 6],
+      [59, 8],
+      [69, 2],
+      [70, 6],
+      [267, 9],
+      [288, 9],
+      [433, 9],
+      [436, 7],
+      [439, 7],
+      [447, 8],
     ],
   },
 }
@@ -11833,6 +11905,11 @@ export async function seedDatabase(executor) {
   let currentTable = null
   let currentRowIndex = -1
   let currentRow = null
+  const seedPositionDetail = () =>
+    currentTable != null
+      ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
+      : ` while seeding table=${String(currentTable)} rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
+  let commitError = null
   try {
     for (const table of TABLE_ORDER) {
       const entry = SEED_DATA[table]
@@ -11880,29 +11957,41 @@ export async function seedDatabase(executor) {
       currentRow = null
     }
   } catch (error) {
+    let rollbackError = null
     if (startedTransaction && runner) {
       try {
         await runner.rollbackTransaction()
+      } catch (caughtRollbackError) {
+        rollbackError = caughtRollbackError
+      } finally {
         startedTransaction = false
-      } catch {
-        // ignore rollback errors; original error is more important
       }
     }
-    const detail =
-      currentTable != null
-        ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
-        : ''
+    const detail = seedPositionDetail()
     const message = error instanceof Error ? error.message : String(error)
-    const wrapped = new Error(`Seed failed${detail}: ${message}`)
+    const rollbackMessage =
+      rollbackError instanceof Error
+        ? rollbackError.message
+        : rollbackError == null
+          ? null
+          : String(rollbackError)
+    const wrapped = new Error(
+      rollbackMessage
+        ? `Seed failed${detail}: ${message}; rollback also failed: ${rollbackMessage}`
+        : `Seed failed${detail}: ${message}`,
+    )
     if (error instanceof Error && error.stack) wrapped.stack = error.stack
+    if (rollbackError != null) {
+      wrapped.rollbackError = rollbackError
+    }
     throw wrapped
   } finally {
     if (startedTransaction && runner) {
       try {
         await runner.commitTransaction()
-      } catch {
-        // ignore commit errors here; if commit fails the caller's next
-        // operation will surface a clearer error
+        startedTransaction = false
+      } catch (caughtCommitError) {
+        commitError = caughtCommitError
       }
     }
     if (runner) {
@@ -11912,6 +12001,12 @@ export async function seedDatabase(executor) {
         // ignore release errors
       }
     }
+  }
+  if (commitError != null) {
+    const detail = seedPositionDetail()
+    const message =
+      commitError instanceof Error ? commitError.message : String(commitError)
+    throw new Error(`Seed commit failed${detail}: ${message}`)
   }
   return inserted
 }

@@ -87,13 +87,15 @@ function mapSpecificationLocalRequirementToReportData(
           },
         })),
         versionNumber: 1,
-        versionScenarios: requirement.scenarios.map(scenario => ({
-          scenario: {
-            id: scenario.id,
-            nameEn: scenario.nameEn,
-            nameSv: scenario.nameSv,
-          },
-        })),
+        versionRequirementPackages: requirement.requirementPackages.map(
+          requirementPackage => ({
+            requirementPackage: {
+              id: requirementPackage.id,
+              nameEn: requirementPackage.nameEn,
+              nameSv: requirementPackage.nameSv,
+            },
+          }),
+        ),
       },
     ],
   }

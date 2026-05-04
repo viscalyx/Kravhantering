@@ -103,14 +103,16 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
   isSlugTaken: async () => false,
 }))
 
-const mockUpdateScenario = vi.fn()
-const mockDeleteScenario = vi.fn()
-vi.mock('@/lib/dal/usage-scenarios', () => ({
-  listScenarios: async () => [{ id: 1 }],
-  countLinkedRequirements: async () => ({}),
-  createScenario: async () => ({ id: 2 }),
-  updateScenario: (...a: unknown[]) => mockUpdateScenario(...a),
-  deleteScenario: (...a: unknown[]) => mockDeleteScenario(...a),
+const mockUpdateRequirementPackage = vi.fn()
+const mockDeleteRequirementPackage = vi.fn()
+vi.mock('@/lib/dal/requirement-packages', () => ({
+  listRequirementPackages: async () => [{ id: 1 }],
+  countLinkedRequirementsByPackage: async () => ({}),
+  createRequirementPackage: async () => ({ id: 2 }),
+  updateRequirementPackage: (...a: unknown[]) =>
+    mockUpdateRequirementPackage(...a),
+  deleteRequirementPackage: (...a: unknown[]) =>
+    mockDeleteRequirementPackage(...a),
 }))
 
 vi.mock('@/lib/dal/requirement-types', () => ({
@@ -147,6 +149,14 @@ import {
   POST as postReqArea,
 } from '@/app/api/requirement-areas/route'
 import { GET as getCats } from '@/app/api/requirement-categories/route'
+import {
+  DELETE as deleteRequirementPackage,
+  PUT as putRequirementPackage,
+} from '@/app/api/requirement-packages/[id]/route'
+import {
+  GET as getRequirementPackages,
+  POST as postRequirementPackage,
+} from '@/app/api/requirement-packages/route'
 import { GET as getTypes } from '@/app/api/requirement-types/route'
 import {
   DELETE as deleteImplType,
@@ -177,14 +187,6 @@ import {
   PUT as putPkg,
 } from '@/app/api/specifications/[id]/route'
 import { GET as getPkgs, POST as postPkg } from '@/app/api/specifications/route'
-import {
-  DELETE as deleteScen,
-  PUT as putScen,
-} from '@/app/api/usage-scenarios/[id]/route'
-import {
-  GET as getScenarios,
-  POST as postScenario,
-} from '@/app/api/usage-scenarios/route'
 
 /* ── helpers ─────────────────────────────────────────────────────── */
 
@@ -495,18 +497,18 @@ describe('requirement-specifications routes', () => {
   })
 })
 
-describe('usage-scenarios routes', () => {
+describe('requirement-packages routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('GET returns scenarios', async () => {
-    const r = await getScenarios()
-    const j = (await r.json()) as { scenarios: { id: number }[] }
-    expect(j.scenarios).toHaveLength(1)
+  it('GET returns requirementPackages', async () => {
+    const r = await getRequirementPackages()
+    const j = (await r.json()) as { requirementPackages: { id: number }[] }
+    expect(j.requirementPackages).toHaveLength(1)
   })
   it('POST creates with 201', async () => {
-    const r = await postScenario(
+    const r = await postRequirementPackage(
       new Request('http://l', {
         method: 'POST',
         body: '{"nameSv":"A","nameEn":"B"}',
@@ -515,14 +517,32 @@ describe('usage-scenarios routes', () => {
     )
     expect(r.status).toBe(201)
   })
+  it('POST returns 400 for invalid payload', async () => {
+    const r = await postRequirementPackage(
+      new Request('http://l', {
+        method: 'POST',
+        body: '{"nameSv":"A","ownerId":"abc"}',
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(400)
+    const j = (await r.json()) as { details: string[]; error: string }
+    expect(j.error).toBe('Invalid payload')
+    expect(j.details).toContain('nameEn must be a non-empty string')
+    expect(j.details).toContain('ownerId must be a positive integer or null')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
   it('PUT updates', async () => {
-    mockUpdateScenario.mockResolvedValue({ id: 1 })
-    const r = await putScen(jsonReq('PUT', { nameEn: 'X' }), makeParams('1'))
+    mockUpdateRequirementPackage.mockResolvedValue({ id: 1 })
+    const r = await putRequirementPackage(
+      jsonReq('PUT', { nameEn: 'X' }),
+      makeParams('1'),
+    )
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
   it('DELETE deletes', async () => {
-    mockDeleteScenario.mockResolvedValue(undefined)
-    const r = await deleteScen(
+    mockDeleteRequirementPackage.mockResolvedValue(undefined)
+    const r = await deleteRequirementPackage(
       new NextRequest('http://l', { method: 'DELETE' }),
       makeParams('1'),
     )

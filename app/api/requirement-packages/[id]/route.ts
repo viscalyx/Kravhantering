@@ -1,10 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  deleteScenario,
-  getLinkedRequirements,
-  getScenarioById,
-  updateScenario,
-} from '@/lib/dal/usage-scenarios'
+  deleteRequirementPackage,
+  getLinkedRequirementsForPackage,
+  getRequirementPackageById,
+  updateRequirementPackage,
+} from '@/lib/dal/requirement-packages'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
@@ -19,14 +19,14 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
   const db = await getRequestSqlServerDataSource()
-  const [scenario, linkedRequirements] = await Promise.all([
-    getScenarioById(db, numericId),
-    getLinkedRequirements(db, numericId),
+  const [requirementPackage, linkedRequirements] = await Promise.all([
+    getRequirementPackageById(db, numericId),
+    getLinkedRequirementsForPackage(db, numericId),
   ])
-  if (!scenario) {
+  if (!requirementPackage) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-  return NextResponse.json({ scenario, linkedRequirements })
+  return NextResponse.json({ requirementPackage, linkedRequirements })
 }
 
 export async function PUT(
@@ -39,12 +39,14 @@ export async function PUT(
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Parameters<typeof updateScenario>[2]
-  const scenario = await updateScenario(db, numericId, body)
-  if (!scenario) {
+  const body = (await request.json()) as Parameters<
+    typeof updateRequirementPackage
+  >[2]
+  const requirementPackage = await updateRequirementPackage(db, numericId, body)
+  if (!requirementPackage) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-  return NextResponse.json(scenario)
+  return NextResponse.json(requirementPackage)
 }
 
 export async function DELETE(
@@ -57,6 +59,6 @@ export async function DELETE(
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
   }
   const db = await getRequestSqlServerDataSource()
-  await deleteScenario(db, numericId)
+  await deleteRequirementPackage(db, numericId)
   return NextResponse.json({ ok: true })
 }

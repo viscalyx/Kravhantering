@@ -75,11 +75,11 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    scenarios: version.versionScenarios
-      .filter(vs => vs.scenario)
+    requirementPackages: version.versionRequirementPackages
+      .filter(vs => vs.requirementPackage)
       .map(vs => ({
-        nameSv: vs.scenario.nameSv ?? '',
-        nameEn: vs.scenario.nameEn ?? '',
+        nameSv: vs.requirementPackage.nameSv ?? '',
+        nameEn: vs.requirementPackage.nameEn ?? '',
       })),
   }
 }
@@ -149,19 +149,29 @@ function computeMetadataChanges(
     })
   }
 
-  const oldScenarios = baseVersion.versionScenarios
-    .map(vs => getName(vs.scenario, locale) ?? '')
+  const oldRequirementPackages = baseVersion.versionRequirementPackages
+    .map(vs => getName(vs.requirementPackage, locale) ?? '')
     .sort()
     .join(', ')
-  const newScenarios = reviewVersion.versionScenarios
-    .map(vs => getName(vs.scenario, locale) ?? '')
+  const newRequirementPackages = reviewVersion.versionRequirementPackages
+    .map(vs => getName(vs.requirementPackage, locale) ?? '')
     .sort()
     .join(', ')
-  if (oldScenarios !== newScenarios) {
+  const oldRequirementPackageIds = baseVersion.versionRequirementPackages
+    .map(vs => vs.requirementPackage?.id)
+    .filter((id): id is number => Number.isInteger(id))
+    .sort((a, b) => a - b)
+    .join(',')
+  const newRequirementPackageIds = reviewVersion.versionRequirementPackages
+    .map(vs => vs.requirementPackage?.id)
+    .filter((id): id is number => Number.isInteger(id))
+    .sort((a, b) => a - b)
+    .join(',')
+  if (oldRequirementPackageIds !== newRequirementPackageIds) {
     changes.push({
-      field: locale === 'sv' ? 'Användningsscenarier' : 'Usage Scenarios',
-      oldValue: oldScenarios || null,
-      newValue: newScenarios || null,
+      field: locale === 'sv' ? 'Kravpaket' : 'Requirements packages',
+      oldValue: oldRequirementPackages || null,
+      newValue: newRequirementPackages || null,
     })
   }
 

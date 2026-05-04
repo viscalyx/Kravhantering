@@ -12,6 +12,25 @@ type Params = Promise<{ id: string }>
 
 import { parseRequirementRef } from '../parse-requirement-ref'
 
+function normalizePositiveIntegerIds(value: unknown): number[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const ids: number[] = []
+  const seen = new Set<number>()
+  for (const entry of value) {
+    const parsed =
+      typeof entry === 'number' || typeof entry === 'string'
+        ? Number(entry)
+        : Number.NaN
+    if (Number.isInteger(parsed) && parsed > 0 && !seen.has(parsed)) {
+      seen.add(parsed)
+      ids.push(parsed)
+    }
+  }
+
+  return ids.length > 0 ? ids : undefined
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
@@ -73,20 +92,14 @@ export async function PUT(
         categoryId: body.categoryId ? Number(body.categoryId) : undefined,
         createdBy: body.ownerId ? String(body.ownerId) : undefined,
         description: String(body.description ?? ''),
-        normReferenceIds: Array.isArray(body.normReferenceIds)
-          ? body.normReferenceIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
-          : undefined,
+        normReferenceIds: normalizePositiveIntegerIds(body.normReferenceIds),
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        scenarioIds: Array.isArray(body.scenarioIds)
-          ? body.scenarioIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
-          : undefined,
+        requirementPackageIds: normalizePositiveIntegerIds(
+          body.requirementPackageIds,
+        ),
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,

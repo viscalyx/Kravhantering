@@ -105,7 +105,7 @@ följer en översikt av varje egenskap och hur den stödjer kravets livscykel.
 | **Risknivå** | Markerar kravet som Låg, Medel eller Hög risk. Högre risknivåer signalerar att kravet behöver mer noggrann granskning, mer rigorös testning och tätare uppföljning under implementeringen. Risknivån spelar även en roll vid begäran om avsteg inom ett kravunderlag — ett avsteg för ett krav med hög risk medför större potentiell påverkan och kräver därför en striktare bedömning vid avstegsgranskningen. |
 | **Verifierbar** | Anger om kravet kan testas. När du aktiverar detta måste du även ange en verifieringsmetod. Verifieringsmetoden används inom de kravunderlag där kravet ingår, till exempel i samband med en upphandling, ett införande eller förvaltning. |
 | **Verifieringsmetod** | Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang. |
-| **Användningsscenarier** | Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravunderlag och filtrera krav efter de sammanhang som är relevanta för en viss leverans. |
+| **Kravpaket** | Beskriver grupperingar där kravet hör hemma, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Att koppla kravpaket hjälper till att avgränsa kravunderlag och filtrera krav efter de paket som är relevanta för en viss leverans. |
 | **Normreferenser** | Kopplar kravet till externa standarder, lagar eller föreskrifter. Dessa kopplingar stödjer efterlevnadsrevision och gör det möjligt att spåra varje krav tillbaka till sitt rättsliga eller normativa ursprung. |
 | **Status** | Visar kravets aktuella livscykelfas — Utkast, Granskning, Publicerad eller Arkiverad. Status hanteras automatiskt genom arbetsflödesåtgärder och styr vilka operationer som är tillgängliga. Se avsnitten Visuell processöversikt och Kravets process nedan för detaljer. |
 <!-- markdownlint-enable MD013 -->
@@ -148,7 +148,7 @@ det tillfället. Användbara för revision och spårbarhet.
 Navigera till "Skapa nytt krav" via knappen i katalogen. Formuläret innehåller
 fält för alla kravegenskaper: kravtext, acceptanskriterier, område, kategori,
 typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och
-användningsscenarier.
+kravpaket.
 
 ![Skapa krav — tomt formulär](images/013-nytt-krav-tomt.png)
 
@@ -401,7 +401,7 @@ också ange standardvyer för olika kontexter.
 
 Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor:
 områden, typer, statusar, risknivåer, kvalitetsegenskaper, normreferenser och
-användningsscenarier. Här bygger du upp de grunddata som krav refererar till.
+kravpaket. Här bygger du upp de grunddata som krav refererar till.
 
 ![Admin — Referensdata](images/042-admin-referensdata.png)
 
@@ -485,7 +485,7 @@ följd av opublicerade versioner markerade som utkast eller granskning.
 Jämför en version i **Granskning** med den senast publicerade eller arkiverade
 versionen. Rapporten visar ord-för-ord-skillnader i kravtext och
 acceptanskriterier samt förändringar i metadata (kategori, typ,
-kvalitetsegenskaper, risknivå, normreferenser, scenarier m.m.). Om ingen
+kvalitetsegenskaper, risknivå, normreferenser, kravpaket m.m.). Om ingen
 publicerad/arkiverad version finns noteras detta.
 
 **Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status

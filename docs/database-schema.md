@@ -86,9 +86,9 @@ Apply these rules to all schema objects.
 <!-- markdownlint-disable MD013 -->
 | Rule | Exception | Rationale |
 | ---- | --------- | --------- |
-| 4 | `requirement_version_usage_scenarios` uses composite PK `(requirement_version_id, usage_scenario_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. |
-| 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the usage-scenarios join table above. |
-| 4 | `specification_local_requirement_usage_scenarios` uses composite PK `(specification_local_requirement_id, usage_scenario_id)` instead of a single `id` | Same rationale as the version-based usage-scenarios join table above. |
+| 4 | `requirement_version_requirement_packages` uses composite PK `(requirement_version_id, requirement_package_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. |
+| 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the requirement-packages join table above. |
+| 4 | `specification_local_requirement_requirement_packages` uses composite PK `(specification_local_requirement_id, requirement_package_id)` instead of a single `id` | Same rationale as the version-based requirement-packages join table above. |
 | 4 | `specification_local_requirement_norm_references` uses composite PK `(specification_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
 | Versioning | `requirement_version_norm_references` stores only FK IDs, not snapshots of mutable `norm_references` fields (`name`, `type`, `reference`, `version`, `issuer`, `uri`) | Norm references are shared external documents whose metadata should reflect the latest known state across all requirement versions. Snapshotting would create stale duplicates of external metadata that the system does not own. If point-in-time fidelity is needed in the future, a dedicated snapshot table can be added without breaking the current schema. |
@@ -228,7 +228,7 @@ erDiagram
         text updated_at
     }
 
-    usage_scenarios {
+    requirement_packages {
         integer id PK
         text name_sv
         text name_en
@@ -237,9 +237,9 @@ erDiagram
         integer owner_id FK
     }
 
-    requirement_version_usage_scenarios {
+    requirement_version_requirement_packages {
         integer requirement_version_id FK, PK
-        integer usage_scenario_id FK, PK
+        integer requirement_package_id FK, PK
     }
 
     requirement_version_norm_references {
@@ -317,9 +317,9 @@ erDiagram
         text updated_at
     }
 
-    specification_local_requirement_usage_scenarios {
+    specification_local_requirement_requirement_packages {
         integer specification_local_requirement_id PK, FK
-        integer usage_scenario_id PK, FK
+        integer requirement_package_id PK, FK
     }
 
     specification_local_requirement_norm_references {
@@ -377,11 +377,11 @@ erDiagram
     requirement_versions }o--o| requirement_types : "typed as"
     requirement_versions }o--o| quality_characteristics : "sub-typed as"
     requirement_versions }o--o| risk_levels : "risk level"
-    requirement_versions ||--o{ requirement_version_usage_scenarios : "linked via"
-    usage_scenarios ||--o{ requirement_version_usage_scenarios : "linked via"
+    requirement_versions ||--o{ requirement_version_requirement_packages : "linked via"
+    requirement_packages ||--o{ requirement_version_requirement_packages : "linked via"
     requirement_versions ||--o{ requirement_version_norm_references : "linked via"
     norm_references ||--o{ requirement_version_norm_references : "linked via"
-    owners |o--o{ usage_scenarios : "owns"
+    owners |o--o{ requirement_packages : "owns"
     requirement_types ||--o{ quality_characteristics : "has many"
     quality_characteristics ||--o{ quality_characteristics : "parent-child"
     requirement_statuses ||--o{ requirement_status_transitions : "from"
@@ -404,8 +404,8 @@ erDiagram
     requirement_types ||--o{ specification_local_requirements : "typed as"
     quality_characteristics ||--o{ specification_local_requirements : "sub-typed as"
     risk_levels ||--o{ specification_local_requirements : "risk level"
-    specification_local_requirements ||--o{ specification_local_requirement_usage_scenarios : "linked via"
-    usage_scenarios ||--o{ specification_local_requirement_usage_scenarios : "linked via"
+    specification_local_requirements ||--o{ specification_local_requirement_requirement_packages : "linked via"
+    requirement_packages ||--o{ specification_local_requirement_requirement_packages : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "linked via"
     norm_references ||--o{ specification_local_requirement_norm_references : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "has deviations"
@@ -587,20 +587,20 @@ Classifies the risk associated with a requirement.
 
 ---
 
-### `usage_scenarios`
+### `requirement_packages`
 
-Describes operational scenarios (e.g. "High load",
-"Disaster recovery") that requirement versions can be
-linked to.
+Describes requirement packages (for example "Mobile use",
+"Data migration", or "Cloud operations") that requirement versions can
+be linked to.
 
 > **Applicability / Tillämpningsbarhet.**
-> Usage scenarios also serve as the mechanism for
+> Requirement packages also serve as the mechanism for
 > expressing *applicability* — i.e. in which contexts or
 > environments a requirement applies. Instead of a
-> separate applicability table, create usage scenarios
+> separate applicability table, create requirement packages
 > such as "All systems", "Protected data", or
 > "Public services" and link them to requirement
-> versions via `requirement_version_usage_scenarios`.
+> versions via `requirement_version_requirement_packages`.
 > The many-to-many relation lets a single requirement
 > apply to multiple contexts.
 
@@ -616,6 +616,20 @@ linked to.
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
+
+**Seed values:**
+
+| id | Swedish | English |
+| ---- | ------- | ------- |
+| 1 | Mobil användning | Mobile use |
+| 2 | Datamigrering | Data migration |
+| 3 | Integration med andra system | Integration with other systems |
+| 4 | Ärendehantering | Case management |
+| 5 | Användarvänlighet | Usability |
+| 6 | Molndrift | Cloud operations |
+| 7 | Normal drift | Normal operations |
+| 8 | Hög belastning | High load |
+| 9 | Katastrofåterställning | Disaster recovery |
 
 ---
 
@@ -1039,24 +1053,24 @@ feature.
 
 ## Join / Bridge Tables
 
-### `requirement_version_usage_scenarios`
+### `requirement_version_requirement_packages`
 
-Many-to-many link between requirement versions and usage scenarios.
+Many-to-many link between requirement versions and requirement packages.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `requirement_version_id` | integer FK → `requirement_versions.id` | Composite PK part 1 |
-| `usage_scenario_id` | integer FK → `usage_scenarios.id` | Composite PK part 2 |
+| `requirement_package_id` | integer FK → `requirement_packages.id` (`ON DELETE CASCADE`) | Composite PK part 2 |
 <!-- markdownlint-enable MD013 -->
 
 **Primary key:**
-`(requirement_version_id, usage_scenario_id)`.
+`(requirement_version_id, requirement_package_id)`.
 
 **Indexes:**
-`idx_requirement_version_usage_scenarios_usage_scenario_id`
-on `(usage_scenario_id)` — reverse-lookup index for
-scenario-to-requirement queries.
+`idx_requirement_version_requirement_packages_requirement_package_id`
+on `(requirement_package_id)` — reverse-lookup index for
+requirement-package-to-requirement queries.
 
 ---
 
@@ -1091,28 +1105,28 @@ norm-reference-to-requirement queries.
 
 ---
 
-### `specification_local_requirement_usage_scenarios`
+### `specification_local_requirement_requirement_packages`
 
 Many-to-many link between specification-local requirements and
-usage scenarios.
+requirement packages.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
 | -------- | ------ | ------------- |
 | `specification_local_requirement_id` | integer FK → `specification_local_requirements.id` | Composite PK part 1 (CASCADE DELETE) |
-| `usage_scenario_id` | integer FK → `usage_scenarios.id` | Composite PK part 2 |
+| `requirement_package_id` | integer FK → `requirement_packages.id` | Composite PK part 2 |
 <!-- markdownlint-enable MD013 -->
 
 **Primary key:**
-`(specification_local_requirement_id, usage_scenario_id)`.
+`(specification_local_requirement_id, requirement_package_id)`.
 
 **Named foreign keys:**
-`fk_specification_local_requirement_usage_scenarios_specification_local_requirement_id`
+`fk_specification_local_requirement_requirement_packages_specification_local_requirement_id`
 (on delete CASCADE),
-`fk_specification_local_requirement_usage_scenarios_usage_scenario_id`.
+`fk_specification_local_requirement_requirement_packages_requirement_package_id`.
 
 **Index:**
-`idx_specification_local_requirement_usage_scenarios_usage_scenario_id`.
+`idx_specification_local_requirement_requirement_packages_requirement_package_id`.
 
 ---
 
@@ -1318,9 +1332,9 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | Speed up listing items in a specification |
 | `idx_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | Speed up finding which specifications contain a requirement |
 | `idx_requirements_specification_items_specification_item_status_id` | `requirements_specification_items` | `specification_item_status_id` | Speed up filtering items by usage status |
-| `idx_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | Speed up lookups of requirement versions by usage scenario |
+| `idx_requirement_version_requirement_packages_requirement_package_id` | `requirement_version_requirement_packages` | `requirement_package_id` | Speed up lookups of requirement versions by requirement package |
 | `idx_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | Speed up lookups of requirement versions by norm reference |
-| `idx_specification_local_requirement_usage_scenarios_usage_scenario_id` | `specification_local_requirement_usage_scenarios` | `usage_scenario_id` | Speed up lookups of specification-local requirements by usage scenario |
+| `idx_specification_local_requirement_requirement_packages_requirement_package_id` | `specification_local_requirement_requirement_packages` | `requirement_package_id` | Speed up lookups of specification-local requirements by requirement package |
 | `idx_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of specification-local requirements by norm reference |
 | `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by specification item |
 | `idx_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | Speed up lookups of deviations by specification-local requirement |
@@ -1370,8 +1384,8 @@ The following table lists every named FK constraint:
 | `fk_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_specification_local_requirement_id` | `specification_local_requirement_norm_references` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
 | `fk_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
-| `fk_specification_local_requirement_usage_scenarios_specification_local_requirement_id` | `specification_local_requirement_usage_scenarios` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
-| `fk_specification_local_requirement_usage_scenarios_usage_scenario_id` | `specification_local_requirement_usage_scenarios` | `usage_scenario_id` | `usage_scenarios.id` | NO ACTION | NO ACTION |
+| `fk_specification_local_requirement_requirement_packages_specification_local_requirement_id` | `specification_local_requirement_requirement_packages` | `specification_local_requirement_id` | `specification_local_requirements.id` | CASCADE | NO ACTION |
+| `fk_specification_local_requirement_requirement_packages_requirement_package_id` | `specification_local_requirement_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_status_id` | `requirement_versions` | `requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |
 | `fk_requirement_versions_requirement_type_id` | `requirement_versions` | `requirement_type_id` | `requirement_types.id` | NO ACTION | NO ACTION |
@@ -1380,8 +1394,8 @@ The following table lists every named FK constraint:
 | `fk_requirement_versions_risk_level_id` | `requirement_versions` | `risk_level_id` | `risk_levels.id` | NO ACTION | NO ACTION |
 | `fk_requirement_version_norm_references_requirement_version_id` | `requirement_version_norm_references` | `requirement_version_id` | `requirement_versions.id` | CASCADE | NO ACTION |
 | `fk_requirement_version_norm_references_norm_reference_id` | `requirement_version_norm_references` | `norm_reference_id` | `norm_references.id` | NO ACTION | NO ACTION |
-| `fk_requirement_version_usage_scenarios_requirement_version_id` | `requirement_version_usage_scenarios` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
-| `fk_requirement_version_usage_scenarios_usage_scenario_id` | `requirement_version_usage_scenarios` | `usage_scenario_id` | `usage_scenarios.id` | NO ACTION | NO ACTION |
+| `fk_requirement_version_requirement_packages_requirement_version_id` | `requirement_version_requirement_packages` | `requirement_version_id` | `requirement_versions.id` | NO ACTION | NO ACTION |
+| `fk_requirement_version_requirement_packages_requirement_package_id` | `requirement_version_requirement_packages` | `requirement_package_id` | `requirement_packages.id` | CASCADE | NO ACTION |
 | `fk_requirements_specification_items_requirements_specification_id` | `requirements_specification_items` | `requirements_specification_id` | `requirements_specifications.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirements_specification_id_needs_reference_id` | `requirements_specification_items` | `(requirements_specification_id, needs_reference_id)` | `specification_needs_references.(specification_id, id)` | NO ACTION | NO ACTION |
 | `fk_requirements_specification_items_requirement_id` | `requirements_specification_items` | `requirement_id` | `requirements.id` | NO ACTION | NO ACTION |
@@ -1390,7 +1404,7 @@ The following table lists every named FK constraint:
 | `fk_deviations_specification_item_id` | `deviations` | `specification_item_id` | `requirements_specification_items.id` | CASCADE | NO ACTION |
 | `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE | NO ACTION |
 | `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL | NO ACTION |
-| `fk_usage_scenarios_owner_id` | `usage_scenarios` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
+| `fk_requirement_packages_owner_id` | `requirement_packages` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
@@ -1405,7 +1419,7 @@ graph LR
         RTC[quality_characteristics]
         RS[requirement_statuses]
         RST[requirement_status_transitions]
-        RSC[usage_scenarios]
+        RPKG[requirement_packages]
         RL[risk_levels]
         NR[norm_references]
     end
@@ -1430,9 +1444,9 @@ graph LR
     end
 
     subgraph Join Tables
-        RVS[requirement_version_usage_scenarios]
+        RVS[requirement_version_requirement_packages]
         RVNR[requirement_version_norm_references]
-        PLRUS[specification_local_requirement_usage_scenarios]
+        PLRPKG[specification_local_requirement_requirement_packages]
         PLRNR[specification_local_requirement_norm_references]
     end
 
@@ -1447,7 +1461,7 @@ graph LR
     RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
 
-    RVS -- "idx_..._usage_scenario_id\n(usage_scenario_id)" --> RSC
+    RVS -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RPKG
     RVNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
 
     RTC -- "idx_..._requirement_type_id\n(requirement_type_id)" --> RT
@@ -1470,7 +1484,7 @@ graph LR
     RPI -- "idx_..._requirements_specification_id\n(requirements_specification_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
     RPI -- "idx_..._specification_item_status_id\n(specification_item_status_id)" --> PIS
-    PLRUS -- "idx_..._usage_scenario_id\n(usage_scenario_id)" --> RSC
+    PLRPKG -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RPKG
     PLRNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
     PLRD -- "idx_..._specification_local_requirement_id\n(specification_local_requirement_id)" --> PLR
 
@@ -1479,13 +1493,13 @@ graph LR
     PLS -- "uq_..._name_sv / name_en" --> PLS
     PIS -- "uq_..._name_sv / name_en" --> PIS
 
-    RVS -. "composite PK\n(requirement_version_id,\nusage_scenario_id)" .-> RV
-    RVS -. "composite PK" .-> RSC
+    RVS -. "composite PK\n(requirement_version_id,\nrequirement_package_id)" .-> RV
+    RVS -. "composite PK" .-> RPKG
 
     RVNR -. "composite PK\n(requirement_version_id,\nnorm_reference_id)" .-> RV
     RVNR -. "composite PK" .-> NR
-    PLRUS -. "composite PK\n(specification_local_requirement_id,\nusage_scenario_id)" .-> PLR
-    PLRUS -. "composite PK" .-> RSC
+    PLRPKG -. "composite PK\n(specification_local_requirement_id,\nrequirement_package_id)" .-> PLR
+    PLRPKG -. "composite PK" .-> RPKG
     PLRNR -. "composite PK\n(specification_local_requirement_id,\nnorm_reference_id)" .-> PLR
     PLRNR -. "composite PK" .-> NR
     NR -- "uq_..._norm_reference_id\n(norm_reference_id)" --> NR

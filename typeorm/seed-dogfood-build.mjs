@@ -16,7 +16,7 @@ import {
   DOGFOOD_NEEDS_REFS,
   DOGFOOD_NORMS,
   DOGFOOD_OWNERS,
-  DOGFOOD_SCENARIOS,
+  DOGFOOD_REQUIREMENT_PACKAGES,
   DOGFOOD_SPECIFICATION_LOCALS,
   DOGFOOD_SPECIFICATIONS,
   ID,
@@ -97,11 +97,11 @@ export function appendDogfoodSeed(SEED_DATA) {
     )
   }
 
-  // ---- Usage scenarios ---------------------------------------------------
-  const scenarios = tableSection(SEED_DATA, 'usage_scenarios')
-  for (const [id, sv, en, dsv, den, ownerId] of DOGFOOD_SCENARIOS) {
+  // ---- Requirement packages -----------------------------------------------
+  const requirementPackages = tableSection(SEED_DATA, 'requirement_packages')
+  for (const [id, sv, en, dsv, den, ownerId] of DOGFOOD_REQUIREMENT_PACKAGES) {
     ensureRow(
-      scenarios,
+      requirementPackages,
       [id, sv, en, dsv, den, ownerId, SEED_TS, SEED_TS],
       ['id'],
     )
@@ -222,12 +222,15 @@ export function appendDogfoodSeed(SEED_DATA) {
     }
   }
 
-  // ---- requirement_version_usage_scenarios -------------------------------
-  const vScn = tableSection(SEED_DATA, 'requirement_version_usage_scenarios')
+  // ---- requirement_version_requirement_packages ---------------------------
+  const vPackages = tableSection(
+    SEED_DATA,
+    'requirement_version_requirement_packages',
+  )
   for (const m of minted) {
     const k = DOGFOOD_KRAV[m.idx]
-    for (const scnId of k.scn) {
-      vScn.rows.push([m.versionId, scnId])
+    for (const packageId of k.pkg) {
+      vPackages.rows.push([m.versionId, packageId])
     }
   }
 
@@ -265,9 +268,9 @@ export function appendDogfoodSeed(SEED_DATA) {
     SEED_DATA,
     'specification_local_requirement_norm_references',
   )
-  const localScn = tableSection(
+  const localPackages = tableSection(
     SEED_DATA,
-    'specification_local_requirement_usage_scenarios',
+    'specification_local_requirement_requirement_packages',
   )
   // Track per-specification local sequence
   const specLocalSeq = {}
@@ -313,8 +316,8 @@ export function appendDogfoodSeed(SEED_DATA) {
     for (const normId of k.norm) {
       localNorms.rows.push([localId, normId])
     }
-    for (const scnId of k.scn) {
-      localScn.rows.push([localId, scnId])
+    for (const packageId of k.pkg) {
+      localPackages.rows.push([localId, packageId])
     }
   }
 

@@ -66,7 +66,7 @@
     "catalog": "Requirements Catalog",
     "areas": "Areas",
     "specifications": "Requirements Specifications",
-    "scenarios": "Usage Scenarios",
+    "requirementPackages": "Requirements packages",
     "statuses": "Statuses",
     "types": "Types",
     "taxonomy": "Reference data",
@@ -132,9 +132,8 @@
     "typeHelp": "<strong>Select the type that best describes the requirement.</strong>\nThe type determines which quality characteristics can be linked to the requirement.",
     "qualityCharacteristicHelp": "<strong>Select the quality characteristic the requirement contributes to.</strong>\nQuality characteristics follow ISO/IEC 25010:2023 and help categorize requirements by quality aspect.",
     "requiresTestingHelp": "<strong>Indicate whether the requirement should be verified.</strong>\nIf the requirement is marked as verifiable, you also need to specify a verification method.",
-    "scenarioHelp": "<strong>Select one or more usage scenarios that apply to this requirement.</strong>\nUsage scenarios describe operational contexts (e.g. high load, disaster recovery) that help clarify when and how the requirement is relevant.",
     "reference": "Requirement reference",
-    "scenario": "Usage scenario",
+    "requirementPackage": "Requirements package",
     "newRequirement": "New requirement",
     "aiGenerate": "AI Generate",
     "editRequirement": "Edit requirement",
@@ -233,7 +232,8 @@
     "normRefTypeSuggestionStrategicGuideline": "Strategic guideline",
     "typePlaceholder": "E.g. Law, Standard, Regulation",
     "specificationLocalBadge": "Unique",
-    "specificationLocalTooltip": "This row is a specification-local requirement. It exists only in this requirements specification and does not appear in the requirements catalog."
+    "specificationLocalTooltip": "This row is a specification-local requirement. It exists only in this requirements specification and does not appear in the requirements catalog.",
+    "requirementPackageHelp": "<strong>Select one or more requirements packages that apply to this requirement.</strong>\nRequirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery."
   },
   "requirementsTable": {
     "clear": "Clear",
@@ -398,9 +398,9 @@
     "stepperAriaLabel": "Deviation workflow steps",
     "requestDeviation": "Request a deviation",
     "requestDeviationSelected": "Request deviation for selected ({count})",
-    "requestReview": "Review \u2197",
-    "revertToDraft": "\u2190 Draft",
-    "markDecided": "Decided \u2197",
+    "requestReview": "Review ↗",
+    "revertToDraft": "← Draft",
+    "markDecided": "Decided ↗",
     "deviationRequested": "Deviation requested with motivation:",
     "decisionHeading": "Decision:",
     "revertToDraftConfirm": "Are you sure you want to revert this deviation to draft?",
@@ -501,7 +501,7 @@
       "requiresTesting": "Requires Testing",
       "createdBy": "Created By",
       "references": "References",
-      "scenarios": "Scenarios",
+      "requirementPackages": "Requirements packages",
       "deviation": "Deviation",
       "motivation": "Motivation:",
       "submittedBy": "Submitted by:",
@@ -515,23 +515,23 @@
       "timelineCreated": "Created"
     }
   },
-  "scenario": {
+  "requirementPackage": {
     "name": "Name",
     "nameSvLabel": "Name (Swedish)",
-    "nameSvHelp": "Enter the Swedish name for this usage scenario.",
+    "nameSvHelp": "Enter the Swedish name for this requirements package.",
     "nameEnLabel": "Name (English)",
-    "nameEnHelp": "Enter the English name for this usage scenario.",
+    "nameEnHelp": "Enter the English name for this requirements package.",
     "description": "Description",
     "descriptionSvLabel": "Description (Swedish)",
-    "descriptionSvHelp": "Optionally describe the scenario in Swedish so users understand when it applies.",
+    "descriptionSvHelp": "Optionally describe the requirements package in Swedish so users understand the grouping it represents.",
     "descriptionEnLabel": "Description (English)",
-    "descriptionEnHelp": "Optionally describe the scenario in English so users understand when it applies.",
-    "owner": "Scenario owner",
+    "descriptionEnHelp": "Optionally describe the requirements package in English so users understand the grouping it represents.",
+    "owner": "Requirements package owner",
     "help": {
-      "owner": "Choose the owner responsible for this scenario and its linked requirements."
+      "owner": "Choose the owner responsible for this requirements package and its linked requirements."
     },
-    "newScenario": "New usage scenario",
-    "editScenario": "Edit usage scenario",
+    "newRequirementPackage": "New requirements package",
+    "editRequirementPackage": "Edit requirements package",
     "linkedRequirements": "Linked requirements",
     "requirementCount": "{count, plural, =0 {0 requirements} one {1 requirement} other {# requirements}}"
   },
@@ -682,7 +682,7 @@
     "terminologySaveError": "Could not save the terminology.",
     "areasDescription": "Manage areas and their prefixes.",
     "typesDescription": "View types and their quality hierarchy.",
-    "scenariosDescription": "Manage usage scenarios linked to requirements.",
+    "requirementPackagesDescription": "Manage requirements packages linked to requirements.",
     "statusesDescription": "Manage lifecycle statuses and their ordering.",
     "qualityAttributesDescription": "Manage quality characteristics from ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Manage business objects for requirements specifications.",
@@ -749,10 +749,10 @@
       "plural": "Acceptance criteria",
       "definitePlural": "Acceptance criteria"
     },
-    "scenario": {
-      "singular": "Usage scenario",
-      "plural": "Usage scenarios",
-      "definitePlural": "Usage scenarios"
+    "requirementPackage": {
+      "singular": "Requirement package",
+      "plural": "Requirements packages",
+      "definitePlural": "Requirements packages"
     },
     "responsibilityArea": {
       "singular": "Business object",
@@ -802,7 +802,7 @@
       },
       "inlineDetail": {
         "heading": "Inline detail view",
-        "body": "Click a row to open its detail view directly underneath. There you can read the requirement text, acceptance criteria, metadata, references, scenarios, status steps, and version history. If the requirement has a published version, that version is normally shown first; otherwise an archived version is shown, and otherwise the latest working version. The buttons on the right only show the actions that are available for the version and status you are currently viewing."
+        "body": "Click a row to open its detail view directly underneath. There you can read the requirement text, acceptance criteria, metadata, references, requirements packages, status steps, and version history. If the requirement has a published version, that version is normally shown first; otherwise an archived version is shown, and otherwise the latest working version. The buttons on the right only show the actions that are available for the version and status you are currently viewing."
       },
       "properties": {
         "heading": "Requirement properties",
@@ -847,9 +847,9 @@
           "heading": "Verification method",
           "body": "Describes exactly how the requirement will be verified — for example through automated tests, manual inspection, or user acceptance testing. This field is required when Verifiable is turned on. The method is applied within the requirements specifications where the requirement is used, providing concrete guidance for how verification should be carried out in each context."
         },
-        "scenarios": {
-          "heading": "Usage scenarios",
-          "body": "Describes the contexts or situations where the requirement applies. Scenarios can for example represent operational conditions such as high load or disaster recovery, group functional requirements that belong together, or gather requirements tied to a specific legal framework. Each scenario has an owner who is responsible for the requirements within that context. Linking scenarios helps scope requirements specifications and lets you filter requirements by the contexts that matter for a particular delivery."
+        "requirementPackages": {
+          "heading": "Requirements packages",
+          "body": "Groups requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery. Each requirements package has an owner responsible for the requirements in that grouping. Linking packages helps scope specifications and filter requirements by the groupings that matter for a delivery."
         },
         "normReferences": {
           "heading": "Norm references",
@@ -1037,7 +1037,7 @@
       },
       "referenceData": {
         "heading": "Reference data",
-        "body": "Quick links to manage areas, types, scenarios, statuses, quality characteristics, business objects, implementation types, and area owners."
+        "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, business objects, implementation types, and area owners."
       }
     },
     "requirementAreas": {
@@ -1062,15 +1062,15 @@
         "body": "The type controls which quality characteristics can be linked to a requirement. Non-functional types can be associated with the ISO/IEC 25010:2023 quality characteristic hierarchy."
       }
     },
-    "usageScenarios": {
-      "title": "Usage Scenarios",
+    "requirementPackages": {
+      "title": "Requirements packages",
       "overview": {
-        "heading": "What are usage scenarios?",
-        "body": "Usage scenarios represent operational contexts in which requirements apply, such as high-load operation, disaster recovery, or maintenance mode. They help clarify when a requirement is relevant."
+        "heading": "What are requirements packages?",
+        "body": "Requirements packages group requirements for a specific area of concern, such as mobile use, data migration, integrations with other systems, case management, usability, cloud operations, normal operations, high load, or disaster recovery."
       },
       "manage": {
         "heading": "Managing",
-        "body": "Create and edit scenarios using the toolbar. A scenario can be linked to multiple requirements. Removing a scenario only removes the scenario record; linked requirements are not affected."
+        "body": "Create and edit requirements packages using the toolbar. A requirements package can be linked to multiple requirements. Removing a package only removes the package record; linked requirements are not affected."
       }
     },
     "normReferences": {
@@ -1258,7 +1258,7 @@
     "prompt": {
       "defaultInstruction": "Generate 5-10 well-structured system requirements for the given topic.\n\nEach requirement MUST:\n- Have a clear, testable, unambiguous description (per ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Use \"The system shall...\" form for functional requirements\n- Use \"The system shall be able to...\" or quality-attribute language for non-functional requirements\n- Include acceptance criteria where applicable\n- Reference appropriate quality characteristics from ISO/IEC 25010:2023\n- Include a rationale explaining why the requirement exists\n\nFor non-functional requirements, apply the ISO/IEC 25010:2023 quality model:\n- Map each to the most specific quality sub-characteristic\n- Consider performance efficiency, security, usability, reliability, and maintainability\n\nAssess risk level based on:\n- Impact on system safety, security, or core functionality (High)\n- Impact on user experience or non-critical features (Medium)\n- Nice-to-have or cosmetic requirements (Low)",
       "userHeader": "Topic / System Context",
-      "noUsageScenariosAvailable": "No usage scenarios available",
+      "noRequirementPackagesAvailable": "No requirement package available",
       "system": {
         "intro": "You are an expert requirements engineer. You generate system requirements following international standards:\n- ISO/IEC/IEEE 29148:2018 (Requirements engineering)\n- ISO/IEC 25030:2019 (Quality requirements framework)\n- ISO/IEC 25010:2023 (Quality model)",
         "taxonomyIntro": "You MUST use the following taxonomy IDs in your output. Only use IDs from the lists below.",
@@ -1267,7 +1267,7 @@
           "categories": "Categories",
           "qualityCharacteristics": "Quality Characteristics (ISO 25010:2023)",
           "riskLevels": "Risk Levels",
-          "usageScenarios": "Usage Scenarios",
+          "requirementPackages": "Requirements packages",
           "outputRules": "Output Rules"
         },
         "outputRules": [
@@ -1277,7 +1277,7 @@
           "qualityCharacteristicId is recommended for non-functional requirements",
           "categoryId should be set when the category is clear",
           "riskLevelId should always be set",
-          "scenarioIds must be [] or only contain IDs from the usage scenarios list above",
+          "requirementPackageIds must be [] or only contain IDs from the requirements packages list above",
           "requiresTesting must be true for functional requirements and security requirements",
           "verificationMethod should describe how to verify the requirement when requiresTesting is true",
           "rationale must explain why the requirement matters for the system"
@@ -1298,7 +1298,7 @@
     "detailAcceptanceCriteria": "Acceptance criteria",
     "detailRequiresTesting": "Verifiable",
     "detailVerification": "Verification method",
-    "detailScenarios": "Scenarios",
+    "detailRequirementPackages": "Requirements packages",
     "detailYes": "Yes",
     "detailNo": "No",
     "reasoningEffortLabel": "Reasoning Effort",

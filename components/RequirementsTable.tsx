@@ -103,6 +103,7 @@ export interface RequirementsTableProps {
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
+  requirementPackages?: FilterOption[]
   riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
@@ -114,7 +115,6 @@ export interface RequirementsTableProps {
   stickyTitleActions?: ReactNode
   stickyTopOffsetClassName?: string
   types?: FilterOption[]
-  usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
   wrapDescription?: boolean
 }
@@ -372,7 +372,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                       <li key={item.id}>
                         {isFloatingActionMenuLink(item) ? (
                           <Link
-                            className="flex min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            className="flex min-h-11 min-w-11 flex-col justify-center rounded-xl px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
                             href={item.href}
                             onClick={() => setOpen(false)}
                           >
@@ -389,7 +389,7 @@ function FloatingActionPill({ action }: { action: FloatingActionItem }) {
                           </Link>
                         ) : (
                           <button
-                            className="flex w-full min-h-[44px] min-w-[44px] flex-col justify-center rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
+                            className="flex w-full min-h-11 min-w-11 flex-col justify-center rounded-xl px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white hover:bg-secondary-100/80 dark:hover:bg-secondary-800/70 dark:focus-visible:ring-offset-secondary-900"
                             onClick={() => {
                               item.onClick()
                               setOpen(false)
@@ -621,7 +621,7 @@ function SearchFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${isActive ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
           name: 'filter button',
           priority: 300,
@@ -782,7 +782,7 @@ function MultiSelectFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
           name: 'filter button',
           priority: 300,
@@ -817,7 +817,7 @@ function MultiSelectFilterPopover({
           >
             {value.length > 0 && (
               <button
-                className="min-h-[44px] w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
+                className="min-h-11 w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
                 onClick={() => onChange([])}
                 type="button"
               >
@@ -827,7 +827,7 @@ function MultiSelectFilterPopover({
             )}
             {options.map(opt => (
               <label
-                className="flex min-h-[44px] cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
+                className="flex min-h-11 cursor-pointer items-center gap-2 px-2.5 py-1.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
                 key={opt.id}
               >
                 <input
@@ -933,7 +933,7 @@ function GroupedMultiSelectFilterPopover({
     <div className="relative inline-flex" ref={ref}>
       <button
         aria-label={tc('filterBy', { label })}
-        className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded p-2 transition-colors ${activeCount > 0 ? 'text-primary-500' : 'text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300'}`}
         {...devMarker({
           name: 'filter button',
           priority: 300,
@@ -968,7 +968,7 @@ function GroupedMultiSelectFilterPopover({
           >
             {value.length > 0 && (
               <button
-                className="min-h-[44px] w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
+                className="min-h-11 w-full border-b px-2.5 py-1.5 pb-1.5 text-left text-xs text-secondary-500 hover:text-red-600 dark:hover:text-red-400"
                 onClick={() => onChange([])}
                 type="button"
               >
@@ -985,7 +985,7 @@ function GroupedMultiSelectFilterPopover({
                   </div>
                   {children.map(child => (
                     <label
-                      className="flex min-h-[44px] cursor-pointer items-center gap-2 py-1.5 pl-5 pr-2.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
+                      className="flex min-h-11 cursor-pointer items-center gap-2 py-1.5 pl-5 pr-2.5 text-xs hover:bg-secondary-50 dark:hover:bg-secondary-700/50"
                       key={child.id}
                     >
                       <input
@@ -1153,7 +1153,7 @@ function ColumnsPopover({
           >
             <div className="mb-1 border-b pb-1">
               <button
-                className="min-h-[44px] min-w-[44px] w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-secondary-500 transition-colors hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200"
+                className="min-h-11 min-w-11 w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-secondary-500 transition-colors hover:bg-secondary-50 hover:text-secondary-700 dark:hover:bg-secondary-700/50 dark:hover:text-secondary-200"
                 onClick={() => {
                   onReset()
                   setOpen(false)
@@ -1176,7 +1176,7 @@ function ColumnsPopover({
                   <div key={column.id}>
                     <label
                       aria-disabled={!column.canHide}
-                      className={`flex min-h-[44px] min-w-[44px] w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
+                      className={`flex min-h-11 min-w-11 w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-secondary-50 dark:hover:bg-secondary-700/50 ${
                         !column.canHide ? 'cursor-not-allowed opacity-60' : ''
                       }`}
                       data-column-picker-option={column.id}
@@ -1347,7 +1347,7 @@ export default function RequirementsTable({
   statusOptions = [],
   qualityCharacteristics = [],
   types = [],
-  usageScenarios = [],
+  requirementPackages = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
 }: RequirementsTableProps) {
@@ -1607,11 +1607,6 @@ export default function RequirementsTable({
     const desc = locale === 'sv' ? s.descriptionSv : s.descriptionEn
     return desc || undefined
   }
-  const _scenarioLabel = (id: number) => {
-    const s = usageScenarios.find(s => s.id === id)
-    return s ? getName(s) : String(id)
-  }
-
   const requiresTestingOptions = [
     { id: 1, label: tc('yes') },
     { id: 0, label: tc('no') },
@@ -2173,7 +2168,7 @@ export default function RequirementsTable({
             <button
               aria-controls={renderExpanded ? expandedDetailCellId : undefined}
               aria-expanded={renderExpanded ? isExpanded : undefined}
-              className="inline-flex min-h-[44px] min-w-[44px] w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
+              className="inline-flex min-h-11 min-w-11 w-full items-center gap-1.5 rounded border-0 bg-transparent px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-secondary-950"
               onClick={event => {
                 event.stopPropagation()
                 handleRowAction(row.id)
@@ -2212,7 +2207,7 @@ export default function RequirementsTable({
       case 'description':
         return (
           <td
-            className={`py-2 px-2 ${descriptionWrapped ? 'whitespace-normal break-words' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
+            className={`py-2 px-2 ${descriptionWrapped ? 'whitespace-normal wrap-break-word' : 'truncate'} ${archivedContentClass} ${dividerClass}`}
             title={
               !descriptionWrapped
                 ? (row.version?.description ?? undefined)
@@ -2430,7 +2425,7 @@ export default function RequirementsTable({
             className={`py-2 px-2 text-center ${archivedContentClass} ${dividerClass}`}
           >
             {row.suggestionCount != null && row.suggestionCount > 0 ? (
-              <span className="inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium min-w-[1.5rem] h-6 px-1.5">
+              <span className="inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-medium min-w-6 h-6 px-1.5">
                 {row.suggestionCount}
               </span>
             ) : (
@@ -2486,9 +2481,9 @@ export default function RequirementsTable({
   const stickyTopBarClassName =
     'flex flex-wrap items-center justify-between gap-3 border-b bg-white/80 px-3 py-2 backdrop-blur-sm sm:flex-nowrap dark:bg-secondary-900/80'
   const resizeHandleBaseClassName =
-    'group pointer-events-auto absolute left-0 z-20 m-0 min-w-[44px] -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
+    'group pointer-events-auto absolute left-0 z-20 m-0 min-w-11 -translate-x-1/2 cursor-ew-resize touch-none border-0 bg-transparent p-0 before:absolute before:bottom-0 before:left-1/2 before:top-0 before:w-px before:-translate-x-1/2 before:rounded-full before:bg-secondary-300/18 before:transition-colors dark:before:bg-secondary-600/25'
   const interactiveResizeHandleClassName = `${resizeHandleBaseClassName} focus-visible:outline-none hover:before:bg-primary-400 focus-visible:before:bg-primary-400 dark:hover:before:bg-primary-400 dark:focus-visible:before:bg-primary-400`
-  const fullResizeHandleClassName = `${interactiveResizeHandleClassName} min-h-[44px]`
+  const fullResizeHandleClassName = `${interactiveResizeHandleClassName} min-h-11`
   const pointerResizeSegmentClassName = `${resizeHandleBaseClassName} min-h-0 hover:before:bg-primary-400 dark:hover:before:bg-primary-400`
   const resetColumnsView = () => {
     cancelResizePreviewFrame()
@@ -2617,7 +2612,7 @@ export default function RequirementsTable({
             scope="col"
           >
             {mode === 'interactive' ? (
-              <div className="flex min-h-[44px] items-center justify-center">
+              <div className="flex min-h-11 items-center justify-center">
                 <input
                   aria-label={tc('selectAll')}
                   checked={
@@ -2707,7 +2702,7 @@ export default function RequirementsTable({
                       {isSortable ? (
                         <button
                           aria-label={tc('sortBy', { label })}
-                          className="group inline-flex min-h-[44px] min-w-[44px] max-w-full flex-1 items-center gap-1 text-left"
+                          className="group inline-flex min-h-11 min-w-11 max-w-full flex-1 items-center gap-1 text-left"
                           {...devMarker({
                             name: 'sort button',
                             priority: 300,
@@ -2731,7 +2726,7 @@ export default function RequirementsTable({
                         </button>
                       ) : (
                         <span
-                          className="inline-flex min-h-[44px] min-w-0 flex-1 items-center truncate"
+                          className="inline-flex min-h-11 min-w-0 flex-1 items-center truncate"
                           data-requirement-header-label={column.id}
                         >
                           {label}
@@ -2936,31 +2931,33 @@ export default function RequirementsTable({
             </div>
           </div>
         )}
-        {usageScenarios.length > 0 && (
+        {requirementPackages.length > 0 && hasFilters && (
           <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
             <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
-              {t('scenario')}:
+              {t('requirementPackage')}:
             </span>
             <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
-              {usageScenarios.map(s => {
-                const active = (fv.usageScenarioIds ?? []).includes(s.id)
+              {requirementPackages.map(s => {
+                const active = (fv.requirementPackageIds ?? []).includes(s.id)
                 return (
                   <button
                     aria-label={getName(s)}
                     aria-pressed={active}
-                    className={`min-h-[44px] min-w-[44px] shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                    className={`min-h-11 min-w-11 shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                       active
                         ? 'bg-primary-600 text-white'
                         : 'bg-secondary-100 dark:bg-secondary-800 text-secondary-600 dark:text-secondary-400 hover:bg-secondary-200 dark:hover:bg-secondary-700'
                     }`}
+                    data-requirement-package={s.id}
                     key={s.id}
                     onClick={() => {
-                      const current = fv.usageScenarioIds ?? []
+                      const current = fv.requirementPackageIds ?? []
                       const next = active
                         ? current.filter(id => id !== s.id)
                         : [...current, s.id]
                       updateFilter({
-                        usageScenarioIds: next.length > 0 ? next : undefined,
+                        requirementPackageIds:
+                          next.length > 0 ? next : undefined,
                       })
                     }}
                     type="button"
@@ -2970,11 +2967,13 @@ export default function RequirementsTable({
                 )
               })}
             </div>
-            {(fv.usageScenarioIds ?? []).length > 0 && (
+            {(fv.requirementPackageIds ?? []).length > 0 && (
               <button
                 aria-label={tc('clearFilters')}
-                className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                onClick={() => updateFilter({ usageScenarioIds: undefined })}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                onClick={() =>
+                  updateFilter({ requirementPackageIds: undefined })
+                }
                 type="button"
               >
                 <X aria-hidden="true" className="h-3 w-3" />
@@ -3071,14 +3070,14 @@ export default function RequirementsTable({
       >
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-white/85 via-white/55 to-transparent transition-opacity dark:from-secondary-900/85 dark:via-secondary-900/55 ${
+          className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-linear-to-r from-white/85 via-white/55 to-transparent transition-opacity dark:from-secondary-900/85 dark:via-secondary-900/55 ${
             scrollFadeState.left ? 'opacity-100' : 'opacity-0'
           }`}
           data-scroll-fade="left"
         />
         <div
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-white/85 via-white/55 to-transparent transition-opacity dark:from-secondary-900/85 dark:via-secondary-900/55 ${
+          className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-linear-to-l from-white/85 via-white/55 to-transparent transition-opacity dark:from-secondary-900/85 dark:via-secondary-900/55 ${
             scrollFadeState.right ? 'opacity-100' : 'opacity-0'
           }`}
           data-scroll-fade="right"

@@ -114,8 +114,9 @@ describe('requirements/[id] route', () => {
           baseRevisionToken: '11111111-1111-4111-8111-111111111111',
           baseVersionId: 10,
           description: 'Updated',
+          normReferenceIds: [5, 5, 0, -1, '6', 1.5],
           references: [{ name: 'Ref1', uri: 'http://example.com' }],
-          scenarioIds: [1, 2],
+          requirementPackageIds: [1, 2, 2, 0, -1, 'abc', 1.5],
         }),
         headers: { 'Content-Type': 'application/json' },
       })
@@ -132,6 +133,8 @@ describe('requirements/[id] route', () => {
           requirement: expect.objectContaining({
             baseRevisionToken: '11111111-1111-4111-8111-111111111111',
             baseVersionId: 10,
+            normReferenceIds: [5, 6],
+            requirementPackageIds: [1, 2],
           }),
         }),
       )

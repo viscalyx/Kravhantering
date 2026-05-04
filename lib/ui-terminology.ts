@@ -10,7 +10,7 @@ export const UI_TERM_KEYS = [
   'requiresTestingOff',
   'version',
   'acceptanceCriteria',
-  'scenario',
+  'requirementPackage',
   'normReferences',
   'responsibilityArea',
   'implementationType',
@@ -82,9 +82,9 @@ const MESSAGE_BINDINGS: Record<
   acceptanceCriteria: {
     singular: [['requirement', 'acceptanceCriteria']],
   },
-  scenario: {
-    plural: [['nav', 'scenarios']],
-    singular: [['requirement', 'scenario']],
+  requirementPackage: {
+    plural: [['nav', 'requirement_packages']],
+    singular: [['requirement', 'requirementPackage']],
   },
   normReferences: {
     plural: [
@@ -265,16 +265,16 @@ export const DEFAULT_UI_TERMINOLOGY: Record<
       singular: 'Acceptanskriterium',
     },
   },
-  scenario: {
+  requirementPackage: {
     en: {
-      definitePlural: 'Usage scenarios',
-      plural: 'Usage scenarios',
-      singular: 'Usage scenario',
+      definitePlural: 'Requirement packages',
+      plural: 'Requirement packages',
+      singular: 'Requirement package',
     },
     sv: {
-      definitePlural: 'Användningsscenarierna',
-      plural: 'Användningsscenarier',
-      singular: 'Användningsscenario',
+      definitePlural: 'Kravpaketen',
+      plural: 'Kravpaket',
+      singular: 'Kravpaket',
     },
   },
   normReferences: {
@@ -561,7 +561,7 @@ export function getCatalogTitle(
     | 'categories'
     | 'requirements'
     | 'risk_levels'
-    | 'scenarios'
+    | 'requirement_packages'
     | 'statuses'
     | 'transitions'
     | 'quality_characteristics'
@@ -587,8 +587,13 @@ export function getCatalogTitle(
       return getLocalizedUiTerm(terminology, 'riskLevel', locale, 'plural')
     case 'statuses':
       return getLocalizedUiTerm(terminology, 'status', locale, 'plural')
-    case 'scenarios':
-      return getLocalizedUiTerm(terminology, 'scenario', locale, 'plural')
+    case 'requirement_packages':
+      return getLocalizedUiTerm(
+        terminology,
+        'requirementPackage',
+        locale,
+        'plural',
+      )
     case 'transitions':
       return locale === 'sv' ? 'Övergångar' : 'Transitions'
     case 'requirements':

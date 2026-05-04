@@ -33,6 +33,11 @@ interface SpecificationLocalRequirementDetail {
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
   requirementArea: { id: number; name: string } | null
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
+  requirementPackages: {
+    id: number
+    nameEn: string | null
+    nameSv: string | null
+  }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
   riskLevel: {
@@ -41,11 +46,6 @@ interface SpecificationLocalRequirementDetail {
     nameEn: string
     nameSv: string
   } | null
-  scenarios: {
-    id: number
-    nameEn: string | null
-    nameSv: string | null
-  }[]
   specificationId: number
   specificationItemStatusColor: string | null
   specificationItemStatusId: number | null
@@ -642,15 +642,20 @@ export default function SpecificationLocalRequirementDetailClient({
     title: reference.name,
   }))
 
-  const scenarios = requirement.scenarios.map(scenario => ({
-    id: `specification-local-scenario-${scenario.id}`,
-    label:
-      locale === 'sv'
-        ? (scenario.nameSv ?? scenario.nameEn)
-        : (scenario.nameEn ?? scenario.nameSv),
-    markerContext: buildDetailSectionContext('scenarios'),
-    markerValue: scenario.nameEn ?? scenario.nameSv ?? String(scenario.id),
-  }))
+  const requirementPackages = requirement.requirementPackages.map(
+    requirementPackage => ({
+      id: `specification-local-requirementPackage-${requirementPackage.id}`,
+      label:
+        locale === 'sv'
+          ? (requirementPackage.nameSv ?? requirementPackage.nameEn)
+          : (requirementPackage.nameEn ?? requirementPackage.nameSv),
+      markerContext: buildDetailSectionContext('requirementPackages'),
+      markerValue:
+        requirementPackage.nameEn ??
+        requirementPackage.nameSv ??
+        String(requirementPackage.id),
+    }),
+  )
 
   const hasPendingDeviation =
     deviationStep === 'draft' || deviationStep === 'review_requested'
@@ -710,7 +715,9 @@ export default function SpecificationLocalRequirementDetailClient({
                 riskLevelId: requirement.riskLevel
                   ? String(requirement.riskLevel.id)
                   : '',
-                scenarioIds: requirement.scenarios.map(scenario => scenario.id),
+                requirementPackageIds: requirement.requirementPackages.map(
+                  requirementPackage => requirementPackage.id,
+                ),
                 verificationMethod: requirement.verificationMethod ?? '',
               }}
               needsReferences={needsReferences}
@@ -756,8 +763,8 @@ export default function SpecificationLocalRequirementDetailClient({
                       metadata={metadata}
                       references={references}
                       referencesLabel={t('normReferences')}
-                      scenarios={scenarios}
-                      scenariosLabel={t('scenario')}
+                      requirementPackages={requirementPackages}
+                      requirementPackagesLabel={t('requirementPackage')}
                     />
                   </div>
 

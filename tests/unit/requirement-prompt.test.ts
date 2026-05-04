@@ -35,7 +35,7 @@ const testTaxonomy: TaxonomyData = {
     { id: 2, name: 'Medium' },
     { id: 3, name: 'High' },
   ],
-  scenarios: [
+  requirementPackages: [
     { id: 1, name: 'Normal operation' },
     { id: 2, name: 'High load' },
   ],
@@ -49,7 +49,7 @@ const PROMPT_LOCALES = ['en', 'sv'] as const
 
 const REQUIRED_PROMPT_MESSAGE_PATHS = [
   ['ai', 'prompt', 'defaultInstruction'],
-  ['ai', 'prompt', 'noUsageScenariosAvailable'],
+  ['ai', 'prompt', 'noRequirementPackagesAvailable'],
   ['ai', 'prompt', 'userHeader'],
   ['ai', 'prompt', 'system', 'intro'],
   ['ai', 'prompt', 'system', 'taxonomyIntro'],
@@ -57,7 +57,7 @@ const REQUIRED_PROMPT_MESSAGE_PATHS = [
   ['ai', 'prompt', 'system', 'headings', 'categories'],
   ['ai', 'prompt', 'system', 'headings', 'qualityCharacteristics'],
   ['ai', 'prompt', 'system', 'headings', 'riskLevels'],
-  ['ai', 'prompt', 'system', 'headings', 'usageScenarios'],
+  ['ai', 'prompt', 'system', 'headings', 'requirementPackages'],
   ['ai', 'prompt', 'system', 'headings', 'outputRules'],
 ] as const
 
@@ -89,7 +89,7 @@ describe('buildSystemPrompt', () => {
     const prompt = buildSystemPrompt(testTaxonomy)
     expect(prompt).toContain('typeId is required')
     expect(prompt).toContain(
-      'scenarioIds must be [] or only contain IDs from the usage scenarios list above',
+      'requirementPackageIds must be [] or only contain IDs from the requirements packages list above',
     )
     expect(prompt).toContain('requiresTesting must be true')
   })
@@ -99,28 +99,28 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('Du är en expert på kravhantering')
     expect(prompt).toContain('Kravtyper')
     expect(prompt).toContain('Risknivåer')
-    expect(prompt).toContain('Användningsscenarier')
+    expect(prompt).toContain('Kravpaket')
     expect(prompt).toContain('ID 1: Functional')
   })
 
-  it('uses localized fallback text when no usage scenarios are available', () => {
-    const taxonomyWithoutScenarios: TaxonomyData = {
+  it('uses localized fallback text when no requirements packages are available', () => {
+    const taxonomyWithoutRequirementPackages: TaxonomyData = {
       ...testTaxonomy,
-      scenarios: [],
+      requirementPackages: [],
     }
 
-    expect(buildSystemPrompt(taxonomyWithoutScenarios)).toContain(
-      'No usage scenarios available',
+    expect(buildSystemPrompt(taxonomyWithoutRequirementPackages)).toContain(
+      'No requirement package available',
     )
-    expect(buildSystemPrompt(taxonomyWithoutScenarios)).not.toContain(
-      '  - No usage scenarios available',
+    expect(buildSystemPrompt(taxonomyWithoutRequirementPackages)).not.toContain(
+      '  - No requirement package available',
     )
-    expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).toContain(
-      'Inga användningsscenarier tillgängliga',
-    )
-    expect(buildSystemPrompt(taxonomyWithoutScenarios, 'sv')).not.toContain(
-      '  - Inga användningsscenarier tillgängliga',
-    )
+    expect(
+      buildSystemPrompt(taxonomyWithoutRequirementPackages, 'sv'),
+    ).toContain('Inga kravpaket tillgängliga')
+    expect(
+      buildSystemPrompt(taxonomyWithoutRequirementPackages, 'sv'),
+    ).not.toContain('  - Inga kravpaket tillgängliga')
   })
 })
 
@@ -246,7 +246,7 @@ describe('validateGeneratedRequirements', () => {
     rationale: 'Security',
     requiresTesting: true,
     riskLevelId: 3,
-    scenarioIds: [1],
+    requirementPackageIds: [1],
     typeId: 1,
   }
 
@@ -279,14 +279,17 @@ describe('validateGeneratedRequirements', () => {
     expect(result[0].qualityCharacteristicId).toBeUndefined()
   })
 
-  it('filters invalid scenarioIds', () => {
-    const withBadScenario = { ...validRequirement, scenarioIds: [1, 99, 2] }
+  it('filters invalid requirementPackageIds', () => {
+    const withBadRequirementPackage = {
+      ...validRequirement,
+      requirementPackageIds: [1, 99, 2],
+    }
     const result = validateGeneratedRequirements(
-      [withBadScenario],
+      [withBadRequirementPackage],
       testTaxonomy,
     )
     expect(result).toHaveLength(1)
-    expect(result[0].scenarioIds).toEqual([1, 2])
+    expect(result[0].requirementPackageIds).toEqual([1, 2])
   })
 
   it('clears invalid riskLevelId', () => {

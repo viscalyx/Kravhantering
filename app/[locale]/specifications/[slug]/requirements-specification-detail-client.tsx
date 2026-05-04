@@ -173,7 +173,9 @@ export default function KravunderlagDetailClient({
   const [availableRows, setAvailableRows] = useState<RequirementRow[]>([])
   const [loading, setLoading] = useState(true)
   const [areas, setAreas] = useState<AreaOption[]>([])
-  const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
+  const [requirementPackages, setRequirementPackages] = useState<
+    FilterOption[]
+  >([])
   const [
     specificationResponsibilityAreas,
     setSpecificationResponsibilityAreas,
@@ -449,7 +451,7 @@ export default function KravunderlagDetailClient({
     const fetchTaxonomies = async () => {
       const [
         areasRes,
-        scenariosRes,
+        requirementPackagesRes,
         needsRefsRes,
         specificationAreasRes,
         specificationTypesRes,
@@ -457,7 +459,7 @@ export default function KravunderlagDetailClient({
         specificationItemStatusesRes,
       ] = await Promise.allSettled([
         apiFetch('/api/requirement-areas'),
-        apiFetch('/api/usage-scenarios'),
+        apiFetch('/api/requirement-packages'),
         apiFetch(`/api/specifications/${specificationSlug}/needs-references`),
         apiFetch('/api/specification-responsibility-areas'),
         apiFetch('/api/specification-implementation-types'),
@@ -468,11 +470,14 @@ export default function KravunderlagDetailClient({
         const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
         setAreas(data.areas ?? [])
       }
-      if (scenariosRes.status === 'fulfilled' && scenariosRes.value.ok) {
-        const data = (await scenariosRes.value.json()) as {
-          scenarios?: FilterOption[]
+      if (
+        requirementPackagesRes.status === 'fulfilled' &&
+        requirementPackagesRes.value.ok
+      ) {
+        const data = (await requirementPackagesRes.value.json()) as {
+          requirementPackages?: FilterOption[]
         }
-        setUsageScenarios(data.scenarios ?? [])
+        setRequirementPackages(data.requirementPackages ?? [])
       }
       if (needsRefsRes.status === 'fulfilled' && needsRefsRes.value.ok) {
         const data = (await needsRefsRes.value.json()) as {
@@ -825,26 +830,29 @@ export default function KravunderlagDetailClient({
         current != null && removedIds.has(current) ? null : current,
       )
       setLeftFilters(prev => {
-        if (!prev.usageScenarioIds || prev.usageScenarioIds.length === 0) {
+        if (
+          !prev.requirementPackageIds ||
+          prev.requirementPackageIds.length === 0
+        ) {
           return prev
         }
 
-        const remainingScenarioIds = new Set(
+        const remainingRequirementPackageIds = new Set(
           specificationItems
             .filter(item => !removedIds.has(item.id))
-            .flatMap(item => item.usageScenarioIds ?? []),
+            .flatMap(item => item.requirementPackageIds ?? []),
         )
-        const stillValid = prev.usageScenarioIds.filter(id =>
-          remainingScenarioIds.has(id),
+        const stillValid = prev.requirementPackageIds.filter(id =>
+          remainingRequirementPackageIds.has(id),
         )
 
-        if (stillValid.length === prev.usageScenarioIds.length) {
+        if (stillValid.length === prev.requirementPackageIds.length) {
           return prev
         }
 
         return {
           ...prev,
-          usageScenarioIds: stillValid.length > 0 ? stillValid : undefined,
+          requirementPackageIds: stillValid.length > 0 ? stillValid : undefined,
         }
       })
 
@@ -952,12 +960,12 @@ export default function KravunderlagDetailClient({
       )
     }
     if (
-      leftFilters.usageScenarioIds &&
-      leftFilters.usageScenarioIds.length > 0
+      leftFilters.requirementPackageIds &&
+      leftFilters.requirementPackageIds.length > 0
     ) {
-      const scenarioSet = new Set(leftFilters.usageScenarioIds)
+      const requirementPackageSet = new Set(leftFilters.requirementPackageIds)
       rows = rows.filter(r =>
-        r.usageScenarioIds?.some(id => scenarioSet.has(id)),
+        r.requirementPackageIds?.some(id => requirementPackageSet.has(id)),
       )
     }
     if (
@@ -990,13 +998,13 @@ export default function KravunderlagDetailClient({
     return rows
   }, [specificationItems, leftFilters, areas, leftNormReferenceOptions])
 
-  // Only show usage scenarios that appear on at least one item in the specification
-  const specificationUsageScenarios = useMemo(() => {
+  // Only show requirements packages that appear on at least one item in the specification
+  const specificationRequirementPackages = useMemo(() => {
     const usedIds = new Set(
-      specificationItems.flatMap(r => r.usageScenarioIds ?? []),
+      specificationItems.flatMap(r => r.requirementPackageIds ?? []),
     )
-    return usageScenarios.filter(s => usedIds.has(s.id))
-  }, [specificationItems, usageScenarios])
+    return requirementPackages.filter(s => usedIds.has(s.id))
+  }, [specificationItems, requirementPackages])
 
   const handleExportCsv = useCallback(() => {
     const headers = [
@@ -1588,6 +1596,7 @@ export default function KravunderlagDetailClient({
                         />
                       )
                     }}
+                    requirementPackages={specificationRequirementPackages}
                     rows={filteredSpecificationItems}
                     selectable
                     selectedIds={leftSelectedIds}
@@ -1640,7 +1649,6 @@ export default function KravunderlagDetailClient({
                     stickyTopOffsetClassName={
                       specificationDetailStickyTopOffsetClassName
                     }
-                    usageScenarios={specificationUsageScenarios}
                     visibleColumns={leftVisibleCols}
                     wrapDescription
                   />
@@ -1697,6 +1705,7 @@ export default function KravunderlagDetailClient({
                   renderExpanded={id => (
                     <RequirementDetailClient inline requirementId={id} />
                   )}
+                  requirementPackages={requirementPackages}
                   rows={rightRows}
                   selectable
                   selectedIds={rightSelectedIds}
@@ -1723,7 +1732,6 @@ export default function KravunderlagDetailClient({
                   stickyTopOffsetClassName={
                     specificationDetailStickyTopOffsetClassName
                   }
-                  usageScenarios={usageScenarios}
                   visibleColumns={rightVisibleCols}
                   wrapDescription
                 />

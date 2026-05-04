@@ -14,6 +14,22 @@ import {
 } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
+function normalizePositiveIntegerIds(values: Iterable<unknown>): number[] {
+  const ids: number[] = []
+  const seen = new Set<number>()
+  for (const value of values) {
+    const parsed =
+      typeof value === 'number' || typeof value === 'string'
+        ? Number(value)
+        : Number.NaN
+    if (Number.isInteger(parsed) && parsed > 0 && !seen.has(parsed)) {
+      seen.add(parsed)
+      ids.push(parsed)
+    }
+  }
+  return ids
+}
+
 export async function GET(request: NextRequest) {
   const db = await getRequestSqlServerDataSource()
   const uiSettings = createUiSettingsLoader(db)
@@ -55,10 +71,9 @@ export async function GET(request: NextRequest) {
     .filter(v => v.trim() !== '')
     .map(Number)
     .filter(n => Number.isInteger(n) && n > 0)
-  const usageScenarioIds = url.searchParams
-    .getAll('usageScenarioIds')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
+  const requirementPackageIds = normalizePositiveIntegerIds(
+    url.searchParams.getAll('requirementPackageIds'),
+  )
   const riskLevelIds = url.searchParams
     .getAll('riskLevelIds')
     .map(Number)
@@ -99,8 +114,8 @@ export async function GET(request: NextRequest) {
       normReferenceIds:
         normReferenceIds.length > 0 ? normReferenceIds : undefined,
       riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
-      usageScenarioIds:
-        usageScenarioIds.length > 0 ? usageScenarioIds : undefined,
+      requirementPackageIds:
+        requirementPackageIds.length > 0 ? requirementPackageIds : undefined,
     })
 
     const requirements = result.items as RequirementListItem[]
@@ -196,10 +211,8 @@ export async function POST(request: NextRequest) {
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        scenarioIds: Array.isArray(body.scenarioIds)
-          ? body.scenarioIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
+        requirementPackageIds: Array.isArray(body.requirementPackageIds)
+          ? normalizePositiveIntegerIds(body.requirementPackageIds)
           : undefined,
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)

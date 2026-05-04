@@ -115,8 +115,8 @@ const REQUIREMENTS_HELP: HelpContent = {
     },
     {
       kind: 'text',
-      bodyKey: 'requirements.properties.scenarios.body',
-      headingKey: 'requirements.properties.scenarios.heading',
+      bodyKey: 'requirements.properties.requirementPackages.body',
+      headingKey: 'requirements.properties.requirementPackages.heading',
       subheading: true,
     },
     {
@@ -237,7 +237,9 @@ export default function RequirementsClient({
   >([])
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([])
   const [riskLevels, setRiskLevels] = useState<RiskLevelOption[]>([])
-  const [usageScenarios, setUsageScenarios] = useState<FilterOption[]>([])
+  const [requirementPackages, setRequirementPackages] = useState<
+    FilterOption[]
+  >([])
   const [normReferenceOptions, setNormReferenceOptions] = useState<
     { id: number; normReferenceId: string; name: string }[]
   >([])
@@ -510,7 +512,7 @@ export default function RequirementsClient({
         typesRes,
         qualityCharacteristicsRes,
         statusesRes,
-        scenariosRes,
+        requirementPackagesRes,
         riskLevelsRes,
       ] = await Promise.allSettled([
         fetch('/api/requirement-areas'),
@@ -518,7 +520,7 @@ export default function RequirementsClient({
         fetch('/api/requirement-types'),
         fetch('/api/quality-characteristics'),
         fetch('/api/requirement-statuses'),
-        fetch('/api/usage-scenarios'),
+        fetch('/api/requirement-packages'),
         fetch('/api/risk-levels'),
       ])
 
@@ -554,11 +556,13 @@ export default function RequirementsClient({
       if (statusesData) {
         setStatusOptions(statusesData.statuses ?? [])
       }
-      const scenariosData = await readFilterResponse<{
-        scenarios?: FilterOption[]
-      }>(scenariosRes)
-      if (scenariosData) {
-        setUsageScenarios(scenariosData.scenarios ?? [])
+      const requirementPackagesData = await readFilterResponse<{
+        requirementPackages?: FilterOption[]
+      }>(requirementPackagesRes)
+      if (requirementPackagesData) {
+        setRequirementPackages(
+          requirementPackagesData.requirementPackages ?? [],
+        )
       }
       const riskLevelsData = await readFilterResponse<{
         riskLevels?: RiskLevelOption[]
@@ -893,6 +897,7 @@ export default function RequirementsClient({
                     requirementId={id}
                   />
                 )}
+                requirementPackages={requirementPackages}
                 riskLevels={riskLevels}
                 rows={displayRows}
                 selectable
@@ -900,7 +905,6 @@ export default function RequirementsClient({
                 sortState={sortState}
                 statusOptions={statusOptions}
                 types={types}
-                usageScenarios={usageScenarios}
                 visibleColumns={visibleColumns}
               />
             )}

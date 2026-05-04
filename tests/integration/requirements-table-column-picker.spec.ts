@@ -149,16 +149,15 @@ test.describe('Requirements table column picker', () => {
         const scrollTopTrigger = page.locator(
           '[data-scroll-top-trigger="true"]',
         )
-        const scenarioFilter = page.getByRole('button', {
-          exact: true,
-          name: 'Hög belastning',
-        })
+        const requirementPackageFilter = page.locator(
+          '[data-requirement-package="1"]',
+        )
         const headerLabel = page
           .locator('[data-requirement-header-label="uniqueId"]')
           .first()
 
         await expect(columnsTrigger).toBeVisible()
-        await expect(scenarioFilter).toBeVisible()
+        await expect(requirementPackageFilter).toBeVisible()
         await expect(headerLabel).toBeVisible()
 
         const beforeScrollBox = await columnsTrigger.boundingBox()
@@ -173,7 +172,7 @@ test.describe('Requirements table column picker', () => {
         await expect
           .poll(async () => page.evaluate(() => Math.round(window.scrollY)))
           .toBeGreaterThan(200)
-        await expect(scenarioFilter).toBeVisible()
+        await expect(requirementPackageFilter).toBeVisible()
         await expect(headerLabel).toBeVisible()
         await expect(scrollTopTrigger).toBeVisible()
 

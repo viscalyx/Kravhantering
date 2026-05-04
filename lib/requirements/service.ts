@@ -29,6 +29,7 @@ import {
   listCategories,
   type RequirementCategoryRow,
 } from '@/lib/dal/requirement-categories'
+import { listRequirementPackages } from '@/lib/dal/requirement-packages'
 import {
   listStatuses,
   listTransitions,
@@ -70,7 +71,6 @@ import {
   createUiSettingsLoader,
   type UiSettingsLoader,
 } from '@/lib/dal/ui-settings'
-import { listScenarios } from '@/lib/dal/usage-scenarios'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   type AuthorizationService,
@@ -115,7 +115,7 @@ export type CatalogKind =
   | 'quality_characteristics'
   | 'risk_levels'
   | 'statuses'
-  | 'scenarios'
+  | 'requirement_packages'
   | 'transitions'
 
 export interface RequirementMutationInput {
@@ -128,9 +128,9 @@ export interface RequirementMutationInput {
   description?: string
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
+  requirementPackageIds?: number[]
   requiresTesting?: boolean
   riskLevelId?: number
-  scenarioIds?: number[]
   typeId?: number
   verificationMethod?: string | null
 }
@@ -151,6 +151,7 @@ export interface QueryCatalogInput {
   normReferenceIds?: number[]
   offset?: number
   qualityCharacteristicIds?: number[]
+  requirementPackageIds?: number[]
   requiresTesting?: boolean[]
   responseFormat?: ResponseFormat
   riskLevelIds?: number[]
@@ -160,7 +161,6 @@ export interface QueryCatalogInput {
   typeId?: number
   typeIds?: number[]
   uniqueIdSearch?: string
-  usageScenarioIds?: number[]
 }
 
 export interface GetRequirementInput extends RequirementRefInput {
@@ -475,16 +475,27 @@ function formatRequirementDetail(
         },
       })),
       versionNumber: version.versionNumber,
-      versionScenarios: version.versionScenarios.map(versionScenario => ({
-        scenario: {
-          descriptionEn: versionScenario.scenario?.descriptionEn ?? null,
-          descriptionSv: versionScenario.scenario?.descriptionSv ?? null,
-          id: versionScenario.scenario?.id ?? versionScenario.usageScenarioId,
-          nameEn: versionScenario.scenario?.nameEn ?? null,
-          nameSv: versionScenario.scenario?.nameSv ?? null,
-          ownerId: versionScenario.scenario?.ownerId ?? null,
-        },
-      })),
+      versionRequirementPackages: version.versionRequirementPackages.map(
+        versionRequirementPackage => ({
+          requirementPackage: {
+            descriptionEn:
+              versionRequirementPackage.requirementPackage?.descriptionEn ??
+              null,
+            descriptionSv:
+              versionRequirementPackage.requirementPackage?.descriptionSv ??
+              null,
+            id:
+              versionRequirementPackage.requirementPackage?.id ??
+              versionRequirementPackage.requirementPackageId,
+            nameEn:
+              versionRequirementPackage.requirementPackage?.nameEn ?? null,
+            nameSv:
+              versionRequirementPackage.requirementPackage?.nameSv ?? null,
+            ownerId:
+              versionRequirementPackage.requirementPackage?.ownerId ?? null,
+          },
+        }),
+      ),
     })),
   }
 }
@@ -913,7 +924,7 @@ export function createRequirementsService(
               normReferenceIds: input.normReferenceIds,
               typeIds: input.typeIds,
               uniqueIdSearch: input.uniqueIdSearch,
-              usageScenarioIds: input.usageScenarioIds,
+              requirementPackageIds: input.requirementPackageIds,
             }
             const [rows, total] = await Promise.all([
               listRequirements(db, query),
@@ -1047,15 +1058,17 @@ export function createRequirementsService(
             }
           }
 
-          if (catalog === 'scenarios') {
-            const scenarios = await listScenarios(db)
+          if (catalog === 'requirement_packages') {
+            const requirementPackages = await listRequirementPackages(db)
             return {
               catalog,
-              items: scenarios,
+              items: requirementPackages,
               message: createServiceMessage(
-                getCatalogTitle('scenarios', locale, terminology),
-                scenarios.map(scenario =>
-                  locale === 'sv' ? scenario.nameSv : scenario.nameEn,
+                getCatalogTitle('requirement_packages', locale, terminology),
+                requirementPackages.map(requirementPackage =>
+                  locale === 'sv'
+                    ? requirementPackage.nameSv
+                    : requirementPackage.nameEn,
                 ),
                 responseFormat,
               ),
@@ -1279,7 +1292,7 @@ export function createRequirementsService(
               requiresTesting: payload.requiresTesting,
               riskLevelId: payload.riskLevelId,
               verificationMethod: payload.verificationMethod,
-              scenarioIds: payload.scenarioIds,
+              requirementPackageIds: payload.requirementPackageIds,
             })
 
             const detail = formatRequirementDetail(
@@ -1353,7 +1366,7 @@ export function createRequirementsService(
                 requiresTesting: payload.requiresTesting,
                 riskLevelId: payload.riskLevelId,
                 verificationMethod: payload.verificationMethod,
-                scenarioIds: payload.scenarioIds,
+                requirementPackageIds: payload.requirementPackageIds,
               })
             } catch (error) {
               if (

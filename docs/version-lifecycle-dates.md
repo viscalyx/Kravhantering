@@ -63,7 +63,7 @@ change:
 - acceptance criteria
 - category, type, type category
 - risk level
-- scenarios
+- requirement packages
 - requires-testing
 
 `edited_at` is **never** updated by:
@@ -234,7 +234,7 @@ is not stored as a column.
 
 A Draft version can **always** be deleted, regardless of whether
 earlier versions exist. Deletion removes only that version row
-(and its references/scenarios). Other versions are never changed.
+(and its references/requirement packages). Other versions are never changed.
 
 If no versions remain after deletion, the requirement itself is
 also deleted.

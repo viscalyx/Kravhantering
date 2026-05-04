@@ -4,14 +4,14 @@ export interface RequirementLocalizedEntity {
   nameSv: string | null
 }
 
-export interface RequirementScenarioSummary extends RequirementLocalizedEntity {
+export interface RequirementPackageSummary extends RequirementLocalizedEntity {
   descriptionEn: string | null
   descriptionSv: string | null
   ownerId: number | null
 }
 
-export interface RequirementVersionScenario {
-  scenario: RequirementScenarioSummary
+export interface RequirementVersionRequirementPackage {
+  requirementPackage: RequirementPackageSummary
 }
 
 export interface NormReferenceSummary {
@@ -61,7 +61,7 @@ export interface RequirementVersionDetail {
   verificationMethod: string | null
   versionNormReferences: RequirementVersionNormReference[]
   versionNumber: number
-  versionScenarios: RequirementVersionScenario[]
+  versionRequirementPackages: RequirementVersionRequirementPackage[]
 }
 
 export interface RequirementDetailArea {

@@ -5,13 +5,13 @@ export interface FilterValues {
   needsReferenceIds?: number[]
   normReferenceIds?: number[]
   qualityCharacteristicIds?: number[]
+  requirementPackageIds?: number[]
   requiresTesting?: string[]
   riskLevelIds?: number[]
   specificationItemStatusIds?: number[]
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
-  usageScenarioIds?: number[]
 }
 
 export interface FilterOption {
@@ -77,6 +77,7 @@ export interface RequirementRow {
   normReferenceIds?: string[]
   pendingVersionStatusColor?: string | null
   pendingVersionStatusId?: number | null
+  requirementPackageIds?: number[]
   specificationItemId?: number
   specificationItemStatusColor?: string | null
   specificationItemStatusDescriptionEn?: string | null
@@ -87,7 +88,6 @@ export interface RequirementRow {
   specificationLocalRequirementId?: number
   suggestionCount?: number
   uniqueId: string
-  usageScenarioIds?: number[]
   version: {
     archiveInitiatedAt?: string | null
     categoryNameEn: string | null
@@ -139,7 +139,7 @@ export function hasActiveFilters(values: FilterValues): boolean {
     (values.normReferenceIds && values.normReferenceIds.length > 0) ||
     values.uniqueIdSearch ||
     values.descriptionSearch ||
-    (values.usageScenarioIds && values.usageScenarioIds.length > 0) ||
+    (values.requirementPackageIds && values.requirementPackageIds.length > 0) ||
     statusesDiffer
   )
 }
@@ -825,9 +825,9 @@ export function buildRequirementListParams({
       params.append('normReferenceIds', String(id))
     }
   }
-  if (filters.usageScenarioIds) {
-    for (const id of filters.usageScenarioIds) {
-      params.append('usageScenarioIds', String(id))
+  if (filters.requirementPackageIds) {
+    for (const id of filters.requirementPackageIds) {
+      params.append('requirementPackageIds', String(id))
     }
   }
   if (filters.specificationItemStatusIds) {
