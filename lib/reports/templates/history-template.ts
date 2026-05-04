@@ -66,11 +66,11 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    scenarios: version.versionScenarios
-      .filter(vs => vs.scenario)
+    requirementPackages: version.versionRequirementPackages
+      .filter(vs => vs.requirementPackage)
       .map(vs => ({
-        nameSv: vs.scenario.nameSv ?? '',
-        nameEn: vs.scenario.nameEn ?? '',
+        nameSv: vs.requirementPackage.nameSv ?? '',
+        nameEn: vs.requirementPackage.nameEn ?? '',
       })),
   }
 }

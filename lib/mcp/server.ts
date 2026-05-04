@@ -69,7 +69,7 @@ const QueryCatalogOutputSchema = z
         'quality_characteristics',
         'risk_levels',
         'statuses',
-        'scenarios',
+        'requirement_packages',
         'transitions',
       ])
       .describe('Catalog that was returned.'),
@@ -188,7 +188,7 @@ const GeneratedRequirementOutputSchema = z
     rationale: z.string(),
     requiresTesting: z.boolean(),
     riskLevelId: z.number().optional(),
-    scenarioIds: z.array(z.number()).optional(),
+    requirementPackageIds: z.array(z.number()).optional(),
     typeId: z.number(),
     verificationMethod: z.string().nullable().optional(),
   })
@@ -345,9 +345,11 @@ function renderRequirementHtml(
         }[]
       ).filter(r => r?.normReference)
     : []
-  const scenarios = Array.isArray(selectedVersion?.versionScenarios)
-    ? (selectedVersion.versionScenarios as {
-        scenario?: { nameEn?: string | null; nameSv?: string | null }
+  const requirementPackages = Array.isArray(
+    selectedVersion?.versionRequirementPackages,
+  )
+    ? (selectedVersion.versionRequirementPackages as {
+        requirementPackage?: { nameEn?: string | null; nameSv?: string | null }
       }[])
     : []
 
@@ -379,11 +381,11 @@ function renderRequirementHtml(
     getLocalizedUiTerm(terminology, 'references', locale, 'singular'),
   )
 
-  const scenarioNames = scenarios
+  const requirementPackageNames = requirementPackages
     .map(item =>
       locale === 'sv'
-        ? (item.scenario?.nameSv ?? item.scenario?.nameEn)
-        : (item.scenario?.nameEn ?? item.scenario?.nameSv),
+        ? (item.requirementPackage?.nameSv ?? item.requirementPackage?.nameEn)
+        : (item.requirementPackage?.nameEn ?? item.requirementPackage?.nameSv),
     )
     .filter((name): name is string => Boolean(name))
 
@@ -408,9 +410,9 @@ function renderRequirementHtml(
           .join('')}</ul>`
       : `<p>${escapeHtml(noneLabel)}</p>`
 
-  const scenarioMarkup =
-    scenarioNames.length > 0
-      ? `<ul>${scenarioNames
+  const requirementPackageMarkup =
+    requirementPackageNames.length > 0
+      ? `<ul>${requirementPackageNames
           .map(name => `<li>${escapeHtml(name)}</li>`)
           .join('')}</ul>`
       : `<p>${escapeHtml(noneLabel)}</p>`
@@ -472,7 +474,7 @@ function renderRequirementHtml(
     '      </section>',
     '      <section class="split">',
     `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'references', locale, 'plural'))}</h2>${normReferenceMarkup}</section>`,
-    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'scenario', locale, 'plural'))}</h2>${scenarioMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'requirementPackage', locale, 'plural'))}</h2>${requirementPackageMarkup}</section>`,
     '      </section>',
     '    </article>',
     '  </main>',
@@ -499,7 +501,7 @@ function createQueryCatalogSchema() {
           'quality_characteristics',
           'risk_levels',
           'statuses',
-          'scenarios',
+          'requirement_packages',
           'transitions',
         ])
         .default('requirements')
@@ -611,11 +613,11 @@ function createQueryCatalogSchema() {
         .describe(
           'Case-insensitive substring filter on requirement uniqueId. Applies only to catalog "requirements".',
         ),
-      usageScenarioIds: z
+      requirementPackageIds: z
         .array(z.number().int().positive())
         .optional()
         .describe(
-          'Usage scenario IDs. Applies only to catalog "requirements".',
+          'Requirements package IDs. Applies only to catalog "requirements".',
         ),
     })
     .strict()
@@ -723,10 +725,10 @@ const RequirementMutationSchema = z
       .describe(
         'How the requirement should be verified when requiresTesting is true.',
       ),
-    scenarioIds: z
+    requirementPackageIds: z
       .array(z.number().int().positive())
       .optional()
-      .describe('Usage scenario IDs linked to the version.'),
+      .describe('Requirements package IDs linked to the version.'),
     normReferenceIds: z
       .array(z.number().int().positive())
       .optional()
@@ -770,7 +772,7 @@ function createManageRequirementSchema() {
           'Operation to perform. Create has no existing requirement ID; all other operations require id or uniqueId.',
         ),
       requirement: RequirementMutationSchema.optional().describe(
-        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, riskLevelId, requiresTesting, verificationMethod, scenarioIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
+        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, riskLevelId, requiresTesting, verificationMethod, requirementPackageIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
       ),
       responseFormat: ResponseFormatSchema,
       uniqueId: z
@@ -914,7 +916,7 @@ function toCatalogInput(
     typeId: input.typeId,
     typeIds: input.typeIds,
     uniqueIdSearch: input.uniqueIdSearch,
-    usageScenarioIds: input.usageScenarioIds,
+    requirementPackageIds: input.requirementPackageIds,
   }
 }
 
@@ -1112,7 +1114,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, statuses, scenarios, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
+        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Catalog',

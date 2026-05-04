@@ -31,10 +31,10 @@ interface SpecificationLocalRequirementMutationInput {
   qualityCharacteristicId?: number | null
   requirementAreaId?: number | null
   requirementCategoryId?: number | null
+  requirementPackageIds?: number[]
   requirementTypeId?: number | null
   requiresTesting?: boolean
   riskLevelId?: number | null
-  scenarioIds?: number[]
   verificationMethod?: string | null
 }
 
@@ -57,6 +57,11 @@ export interface SpecificationLocalRequirementDetail {
   qualityCharacteristic: { id: number; nameEn: string; nameSv: string } | null
   requirementArea: { id: number; name: string } | null
   requirementCategory: { id: number; nameEn: string; nameSv: string } | null
+  requirementPackages: {
+    id: number
+    nameEn: string | null
+    nameSv: string | null
+  }[]
   requirementType: { id: number; nameEn: string; nameSv: string } | null
   requiresTesting: boolean
   riskLevel: {
@@ -66,11 +71,6 @@ export interface SpecificationLocalRequirementDetail {
     nameSv: string
     sortOrder: number
   } | null
-  scenarios: {
-    id: number
-    nameEn: string | null
-    nameSv: string | null
-  }[]
   specificationId: number
   specificationItemStatusColor: string | null
   specificationItemStatusDescriptionEn: string | null
@@ -889,7 +889,7 @@ async function normalizeSpecificationLocalRequirementInput(
     requirementTypeId: normalizeOptionalForeignKeyId(data.requirementTypeId),
     requiresTesting,
     riskLevelId: normalizeOptionalForeignKeyId(data.riskLevelId),
-    scenarioIds: dedupePositiveIntegerIds(data.scenarioIds),
+    requirementPackageIds: dedupePositiveIntegerIds(data.requirementPackageIds),
     verificationMethod,
   }
 }
@@ -977,7 +977,7 @@ const LOCAL_REQUIREMENT_DETAIL_SELECT = `
 function mapSpecificationLocalRequirementDetailFlat(
   row: Row,
   normReferenceRows: Row[],
-  scenarioRows: Row[],
+  requirementPackageRows: Row[],
 ): SpecificationLocalRequirementDetail {
   const id = Number(row.id)
   const qualityCharacteristicId = toNum(row.qualityCharacteristicId)
@@ -996,11 +996,17 @@ function mapSpecificationLocalRequirementDetailFlat(
     .sort((left, right) =>
       left.normReferenceId.localeCompare(right.normReferenceId, 'sv'),
     )
-  const sortedScenarios = [...scenarioRows]
-    .map(scenario => ({
-      id: Number(scenario.id),
-      nameEn: scenario.nameEn == null ? null : String(scenario.nameEn),
-      nameSv: scenario.nameSv == null ? null : String(scenario.nameSv),
+  const sortedRequirementPackages = [...requirementPackageRows]
+    .map(requirementPackage => ({
+      id: Number(requirementPackage.id),
+      nameEn:
+        requirementPackage.nameEn == null
+          ? null
+          : String(requirementPackage.nameEn),
+      nameSv:
+        requirementPackage.nameSv == null
+          ? null
+          : String(requirementPackage.nameSv),
     }))
     .sort((left, right) =>
       (left.nameSv ?? left.nameEn ?? '').localeCompare(
@@ -1073,7 +1079,7 @@ function mapSpecificationLocalRequirementDetailFlat(
             sortOrder: Number(row.riskLevelSortOrder ?? 0),
           }
         : null,
-    scenarios: sortedScenarios,
+    requirementPackages: sortedRequirementPackages,
     uniqueId: String(row.uniqueId),
     updatedAt: toIso(row.updatedAt) ?? '',
     verificationMethod: toStr(row.verificationMethod),
@@ -1096,7 +1102,7 @@ export async function getSpecificationLocalRequirementDetail(
     return null
   }
 
-  const [normReferenceRows, scenarioRows] = await Promise.all([
+  const [normReferenceRows, requirementPackageRows] = await Promise.all([
     db.query(
       `
         SELECT
@@ -1114,12 +1120,12 @@ export async function getSpecificationLocalRequirementDetail(
     db.query(
       `
         SELECT
-          usage_scenario.id AS id,
-          usage_scenario.name_en AS nameEn,
-          usage_scenario.name_sv AS nameSv
-        FROM specification_local_requirement_usage_scenarios link
-        INNER JOIN usage_scenarios usage_scenario
-          ON usage_scenario.id = link.usage_scenario_id
+          requirement_package.id AS id,
+          requirement_package.name_en AS nameEn,
+          requirement_package.name_sv AS nameSv
+        FROM specification_local_requirement_requirement_packages link
+        INNER JOIN requirement_packages requirement_package
+          ON requirement_package.id = link.requirement_package_id
         WHERE link.specification_local_requirement_id = @0
       `,
       [specificationLocalRequirementId],
@@ -1129,7 +1135,7 @@ export async function getSpecificationLocalRequirementDetail(
   return mapSpecificationLocalRequirementDetailFlat(
     mainRow,
     normReferenceRows,
-    scenarioRows,
+    requirementPackageRows,
   )
 }
 
@@ -1138,23 +1144,23 @@ async function insertSpecificationLocalRequirementJoins(
   specificationLocalRequirementId: number,
   {
     normReferenceIds,
-    scenarioIds,
+    requirementPackageIds,
   }: {
     normReferenceIds: number[]
-    scenarioIds: number[]
+    requirementPackageIds: number[]
   },
 ) {
-  if (scenarioIds.length > 0) {
-    const valuesSql = scenarioIds
+  if (requirementPackageIds.length > 0) {
+    const valuesSql = requirementPackageIds
       .map((_, index) => `(@0, @${index + 1})`)
       .join(', ')
     await manager.query(
       `
-        INSERT INTO specification_local_requirement_usage_scenarios
-          (specification_local_requirement_id, usage_scenario_id)
+        INSERT INTO specification_local_requirement_requirement_packages
+          (specification_local_requirement_id, requirement_package_id)
         VALUES ${valuesSql}
       `,
-      [specificationLocalRequirementId, ...scenarioIds],
+      [specificationLocalRequirementId, ...requirementPackageIds],
     )
   }
 
@@ -1334,7 +1340,7 @@ export async function updateSpecificationLocalRequirement(
 
     await manager.query(
       `
-        DELETE FROM specification_local_requirement_usage_scenarios
+        DELETE FROM specification_local_requirement_requirement_packages
         WHERE specification_local_requirement_id = @0
       `,
       [specificationLocalRequirementId],
@@ -1550,6 +1556,7 @@ interface LibrarySpecificationItemFlatRow {
   qualityCharacteristicNameEn: string | null
   qualityCharacteristicNameSv: string | null
   requirementId: number
+  requirementPackageIds: string | null
   requiresTesting: unknown
   riskLevelColor: string | null
   riskLevelId: number | null
@@ -1570,7 +1577,6 @@ interface LibrarySpecificationItemFlatRow {
   typeNameEn: string | null
   typeNameSv: string | null
   uniqueId: string
-  usageScenarioIds: string | null
   versionNumber: number
 }
 
@@ -1597,7 +1603,7 @@ function mapLibrarySpecificationItemRow(
     specificationItemStatusNameEn: row.specificationItemStatusNameEn ?? null,
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     uniqueId: row.uniqueId,
-    usageScenarioIds: parseCsvNumberList(row.usageScenarioIds),
+    requirementPackageIds: parseCsvNumberList(row.requirementPackageIds),
     version: {
       archiveInitiatedAt: null,
       categoryNameEn: row.categoryNameEn ?? null,
@@ -1633,6 +1639,7 @@ interface SpecificationLocalListFlatRow {
   requirementAreaName: string | null
   requirementCategoryNameEn: string | null
   requirementCategoryNameSv: string | null
+  requirementPackageIds: string | null
   requirementTypeNameEn: string | null
   requirementTypeNameSv: string | null
   requiresTesting: unknown
@@ -1648,7 +1655,6 @@ interface SpecificationLocalListFlatRow {
   specificationItemStatusNameEn: string | null
   specificationItemStatusNameSv: string | null
   uniqueId: string
-  usageScenarioIds: string | null
 }
 
 function mapSpecificationLocalRequirementListRow(
@@ -1674,7 +1680,7 @@ function mapSpecificationLocalRequirementListRow(
     specificationItemStatusNameSv: row.specificationItemStatusNameSv ?? null,
     specificationLocalRequirementId: Number(row.id),
     uniqueId: row.uniqueId,
-    usageScenarioIds: parseCsvNumberList(row.usageScenarioIds),
+    requirementPackageIds: parseCsvNumberList(row.requirementPackageIds),
     version: {
       archiveInitiatedAt: null,
       categoryNameEn: row.requirementCategoryNameEn ?? null,
@@ -1744,10 +1750,10 @@ export async function listSpecificationItems(
           requirement_type.name_sv AS typeNameSv,
           requirement.unique_id AS uniqueId,
           (
-            SELECT STRING_AGG(CAST(rvus.usage_scenario_id AS varchar(20)), ',')
-            FROM requirement_version_usage_scenarios rvus
+            SELECT STRING_AGG(CAST(rvus.requirement_package_id AS varchar(20)), ',')
+            FROM requirement_version_requirement_packages rvus
             WHERE rvus.requirement_version_id = requirement_version.id
-          ) AS usageScenarioIds,
+          ) AS requirementPackageIds,
           requirement_version.version_number AS versionNumber
         FROM requirements_specification_items specification_item
         INNER JOIN requirements requirement
@@ -1809,10 +1815,10 @@ export async function listSpecificationItems(
           risk_level.name_sv AS riskLevelNameSv,
           risk_level.sort_order AS riskLevelSortOrder,
           (
-            SELECT STRING_AGG(CAST(plrus.usage_scenario_id AS varchar(20)), ',')
-            FROM specification_local_requirement_usage_scenarios plrus
+            SELECT STRING_AGG(CAST(plrus.requirement_package_id AS varchar(20)), ',')
+            FROM specification_local_requirement_requirement_packages plrus
             WHERE plrus.specification_local_requirement_id = local_requirement.id
-          ) AS usageScenarioIds
+          ) AS requirementPackageIds
         FROM specification_local_requirements local_requirement
         LEFT JOIN specification_needs_references needs_reference
           ON needs_reference.id = local_requirement.needs_reference_id

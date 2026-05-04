@@ -261,8 +261,8 @@ describe('RequirementsSpecificationDetailClient', () => {
           return Promise.resolve(okJson({ riskLevels: [] }))
         }
 
-        if (url === '/api/usage-scenarios') {
-          return Promise.resolve(okJson({ scenarios: [] }))
+        if (url === '/api/requirement-packages') {
+          return Promise.resolve(okJson({ requirementPackages: [] }))
         }
 
         if (url === '/api/specifications/ETJANST-UPP-2026/needs-references') {

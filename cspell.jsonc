@@ -168,9 +168,6 @@
     "kravområden",
     "kravprocess",
     "kravreferens",
-    "kravscenarier",
-    "kravscenario",
-    "kravscenarioägare",
     "granskningsfasen",
     "kravstatus",
     "kravstatusar",
@@ -189,6 +186,12 @@
     "markdownlint",
     "metadataBase",
     "mgmt",
+    "Driftscenario",
+    "driftscenario",
+    "Katastrofåterställning",
+    "katastrofåterställning",
+    "Molndrift",
+    "molndrift",
     "miniflare",
     "modelcontextprotocol",
     "modularitet",
@@ -428,7 +431,9 @@
     "kravunderlagsmedförfattare",
     "Kravunderlagsmedförfattaren",
     "kravstyrning",
-    "kravfrågor"
+    "kravfrågor",
+    "pyproject",
+    "Infographics"
   ],
   "flagWords": [],
   "ignorePaths": [

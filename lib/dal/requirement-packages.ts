@@ -1,14 +1,14 @@
 import type { SqlServerDatabase } from '@/lib/db'
 import { toIsoString } from '@/lib/typeorm/value-mappers'
 
-interface ScenarioOwner {
+interface RequirementPackageOwner {
   email: string
   firstName: string
   id: number
   lastName: string
 }
 
-interface ScenarioRow {
+interface RequirementPackageRow {
   createdAt: string
   descriptionEn: string | null
   descriptionSv: string | null
@@ -19,8 +19,8 @@ interface ScenarioRow {
   updatedAt: string
 }
 
-interface ScenarioWithOwner extends ScenarioRow {
-  owner: ScenarioOwner | null
+interface RequirementPackageWithOwner extends RequirementPackageRow {
+  owner: RequirementPackageOwner | null
 }
 
 interface LinkedRequirementRow {
@@ -34,9 +34,15 @@ interface LinkedRequirementRow {
   versionNumber: number
 }
 
-export type { LinkedRequirementRow, ScenarioRow, ScenarioWithOwner }
+export type {
+  LinkedRequirementRow,
+  RequirementPackageRow,
+  RequirementPackageWithOwner,
+}
 
-function mapScenarioRow(row: Record<string, unknown>): ScenarioWithOwner {
+function mapRequirementPackageRow(
+  row: Record<string, unknown>,
+): RequirementPackageWithOwner {
   return {
     createdAt: toIsoString(row.createdAt as Date | string),
     descriptionEn: row.descriptionEn as string | null,
@@ -58,53 +64,56 @@ function mapScenarioRow(row: Record<string, unknown>): ScenarioWithOwner {
   }
 }
 
-export async function listScenarios(
+export async function listRequirementPackages(
   db: SqlServerDatabase,
-): Promise<ScenarioWithOwner[]> {
+): Promise<RequirementPackageWithOwner[]> {
   const rows = await db.query(`
     SELECT
-      scenarios.id AS id,
-      scenarios.name_sv AS nameSv,
-      scenarios.name_en AS nameEn,
-      scenarios.description_sv AS descriptionSv,
-      scenarios.description_en AS descriptionEn,
-      scenarios.owner_id AS ownerId,
-      scenarios.created_at AS createdAt,
-      scenarios.updated_at AS updatedAt,
+      requirementPackages.id AS id,
+      requirementPackages.name_sv AS nameSv,
+      requirementPackages.name_en AS nameEn,
+      requirementPackages.description_sv AS descriptionSv,
+      requirementPackages.description_en AS descriptionEn,
+      requirementPackages.owner_id AS ownerId,
+      requirementPackages.created_at AS createdAt,
+      requirementPackages.updated_at AS updatedAt,
       owners.id AS owner_id_join,
       owners.first_name AS owner_firstName,
       owners.last_name AS owner_lastName,
       owners.email AS owner_email
-    FROM usage_scenarios AS scenarios
+    FROM requirement_packages AS requirementPackages
     LEFT JOIN owners
-      ON scenarios.owner_id = owners.id
-    ORDER BY scenarios.name_sv ASC
+      ON requirementPackages.owner_id = owners.id
+    ORDER BY requirementPackages.name_sv ASC
   `)
-  return rows.map(mapScenarioRow)
+  return rows.map(mapRequirementPackageRow)
 }
 
-export async function countLinkedRequirements(
+export async function countLinkedRequirementsByPackage(
   db: SqlServerDatabase,
 ): Promise<Record<number, number>> {
   const rows = await db.query(`
     SELECT
-      usage_scenario_id AS scenarioId,
+      requirement_package_id AS requirementPackageId,
       COUNT(DISTINCT requirement_id) AS count
-    FROM requirement_version_usage_scenarios AS links
+    FROM requirement_version_requirement_packages AS links
     INNER JOIN requirement_versions AS versions
       ON links.requirement_version_id = versions.id
-    GROUP BY usage_scenario_id
+    GROUP BY requirement_package_id
   `)
   const counts: Record<number, number> = {}
-  for (const row of rows as Array<{ count: number; scenarioId: number }>) {
-    counts[row.scenarioId] = row.count
+  for (const row of rows as Array<{
+    count: number
+    requirementPackageId: number
+  }>) {
+    counts[row.requirementPackageId] = row.count
   }
   return counts
 }
 
-export async function getLinkedRequirements(
+export async function getLinkedRequirementsForPackage(
   db: SqlServerDatabase,
-  scenarioId: number,
+  requirementPackageId: number,
 ): Promise<LinkedRequirementRow[]> {
   return db.query(
     `
@@ -117,50 +126,50 @@ export async function getLinkedRequirements(
         requirement_statuses.name_sv AS statusNameSv,
         requirement_statuses.name_en AS statusNameEn,
         requirement_statuses.color AS statusColor
-      FROM requirement_version_usage_scenarios AS links
+      FROM requirement_version_requirement_packages AS links
       INNER JOIN requirement_versions
         ON links.requirement_version_id = requirement_versions.id
       INNER JOIN requirements
         ON requirement_versions.requirement_id = requirements.id
       LEFT JOIN requirement_statuses
         ON requirement_versions.requirement_status_id = requirement_statuses.id
-      WHERE links.usage_scenario_id = @0
+      WHERE links.requirement_package_id = @0
       ORDER BY requirements.unique_id ASC
     `,
-    [scenarioId],
+    [requirementPackageId],
   )
 }
 
-export async function getScenarioById(
+export async function getRequirementPackageById(
   db: SqlServerDatabase,
   id: number,
-): Promise<ScenarioWithOwner | null> {
+): Promise<RequirementPackageWithOwner | null> {
   const rows = await db.query(
     `
       SELECT
-        scenarios.id AS id,
-        scenarios.name_sv AS nameSv,
-        scenarios.name_en AS nameEn,
-        scenarios.description_sv AS descriptionSv,
-        scenarios.description_en AS descriptionEn,
-        scenarios.owner_id AS ownerId,
-        scenarios.created_at AS createdAt,
-        scenarios.updated_at AS updatedAt,
+        requirementPackages.id AS id,
+        requirementPackages.name_sv AS nameSv,
+        requirementPackages.name_en AS nameEn,
+        requirementPackages.description_sv AS descriptionSv,
+        requirementPackages.description_en AS descriptionEn,
+        requirementPackages.owner_id AS ownerId,
+        requirementPackages.created_at AS createdAt,
+        requirementPackages.updated_at AS updatedAt,
         owners.id AS owner_id_join,
         owners.first_name AS owner_firstName,
         owners.last_name AS owner_lastName,
         owners.email AS owner_email
-      FROM usage_scenarios AS scenarios
+      FROM requirement_packages AS requirementPackages
       LEFT JOIN owners
-        ON scenarios.owner_id = owners.id
-      WHERE scenarios.id = @0
+        ON requirementPackages.owner_id = owners.id
+      WHERE requirementPackages.id = @0
     `,
     [id],
   )
-  return rows[0] ? mapScenarioRow(rows[0]) : null
+  return rows[0] ? mapRequirementPackageRow(rows[0]) : null
 }
 
-export async function createScenario(
+export async function createRequirementPackage(
   db: SqlServerDatabase,
   data: {
     nameSv: string
@@ -169,11 +178,11 @@ export async function createScenario(
     descriptionEn?: string
     ownerId?: number | null
   },
-): Promise<ScenarioRow> {
+): Promise<RequirementPackageRow> {
   const now = new Date()
   const rows = await db.query(
     `
-      INSERT INTO usage_scenarios (
+      INSERT INTO requirement_packages (
         name_sv,
         name_en,
         description_sv,
@@ -209,7 +218,7 @@ export async function createScenario(
   }
 }
 
-export async function updateScenario(
+export async function updateRequirementPackage(
   db: SqlServerDatabase,
   id: number,
   data: {
@@ -219,7 +228,7 @@ export async function updateScenario(
     descriptionEn?: string
     ownerId?: number | null
   },
-): Promise<ScenarioRow | undefined> {
+): Promise<RequirementPackageRow | undefined> {
   const sets: string[] = []
   const params: Array<string | number | Date | null> = []
 
@@ -250,7 +259,7 @@ export async function updateScenario(
 
   const rows = await db.query(
     `
-      UPDATE usage_scenarios
+      UPDATE requirement_packages
       SET ${sets.join(', ')}
       OUTPUT
         inserted.id AS id,
@@ -274,9 +283,9 @@ export async function updateScenario(
     : undefined
 }
 
-export async function deleteScenario(
+export async function deleteRequirementPackage(
   db: SqlServerDatabase,
   id: number,
 ): Promise<void> {
-  await db.query(`DELETE FROM usage_scenarios WHERE id = @0`, [id])
+  await db.query(`DELETE FROM requirement_packages WHERE id = @0`, [id])
 }

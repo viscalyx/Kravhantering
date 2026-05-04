@@ -55,8 +55,8 @@ export async function GET(request: NextRequest) {
     .filter(v => v.trim() !== '')
     .map(Number)
     .filter(n => Number.isInteger(n) && n > 0)
-  const usageScenarioIds = url.searchParams
-    .getAll('usageScenarioIds')
+  const requirementPackageIds = url.searchParams
+    .getAll('requirementPackageIds')
     .map(Number)
     .filter(n => !Number.isNaN(n))
   const riskLevelIds = url.searchParams
@@ -99,8 +99,8 @@ export async function GET(request: NextRequest) {
       normReferenceIds:
         normReferenceIds.length > 0 ? normReferenceIds : undefined,
       riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
-      usageScenarioIds:
-        usageScenarioIds.length > 0 ? usageScenarioIds : undefined,
+      requirementPackageIds:
+        requirementPackageIds.length > 0 ? requirementPackageIds : undefined,
     })
 
     const requirements = result.items as RequirementListItem[]
@@ -196,8 +196,8 @@ export async function POST(request: NextRequest) {
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        scenarioIds: Array.isArray(body.scenarioIds)
-          ? body.scenarioIds
+        requirementPackageIds: Array.isArray(body.requirementPackageIds)
+          ? body.requirementPackageIds
               .map(value => Number(value))
               .filter(value => !Number.isNaN(value))
           : undefined,

@@ -89,7 +89,7 @@ function makeVersion(
     type: { id: 3, nameEn: 'Type', nameSv: 'Typ' },
     verificationMethod: null,
     versionNumber: 1,
-    versionScenarios: [],
+    versionRequirementPackages: [],
     versionNormReferences: [],
     ...overrides,
   }

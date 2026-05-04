@@ -26,6 +26,7 @@ interface ListRequirementsOptions {
   normReferenceIds?: number[]
   offset?: number
   qualityCharacteristicIds?: number[]
+  requirementPackageIds?: number[]
   requiresTesting?: boolean[]
   riskLevelIds?: number[]
   sortBy?: RequirementSortField
@@ -33,7 +34,6 @@ interface ListRequirementsOptions {
   statuses?: number[]
   typeIds?: number[]
   uniqueIdSearch?: string
-  usageScenarioIds?: number[]
 }
 
 function toIso(value: unknown): string | null {
@@ -167,12 +167,12 @@ function buildListConditions(
       `EXISTS (SELECT 1 FROM requirement_version_norm_references vnr WHERE vnr.requirement_version_id = version.id AND vnr.norm_reference_id IN (${placeholders}))`,
     )
   }
-  if (opts.usageScenarioIds && opts.usageScenarioIds.length > 0) {
-    const placeholders = opts.usageScenarioIds
+  if (opts.requirementPackageIds && opts.requirementPackageIds.length > 0) {
+    const placeholders = opts.requirementPackageIds
       .map(id => builder.push(id))
       .join(', ')
     conditions.push(
-      `EXISTS (SELECT 1 FROM requirement_version_usage_scenarios vus WHERE vus.requirement_version_id = version.id AND vus.usage_scenario_id IN (${placeholders}))`,
+      `EXISTS (SELECT 1 FROM requirement_version_requirement_packages vus WHERE vus.requirement_version_id = version.id AND vus.requirement_package_id IN (${placeholders}))`,
     )
   }
   return conditions
@@ -486,23 +486,23 @@ interface RequirementMutationData {
   qualityCharacteristicId?: number
   requirementAreaId: number
   requirementCategoryId?: number
+  requirementPackageIds?: number[]
   requirementTypeId?: number
   requiresTesting?: boolean
   riskLevelId?: number
-  scenarioIds?: number[]
   verificationMethod?: string | null
 }
 
 async function insertVersionJoinsSqlServer(
   tx: SqlServerTxExecutor,
   versionId: number,
-  scenarioIds: number[],
+  requirementPackageIds: number[],
   normRefIds: number[],
 ) {
-  for (const usageScenarioId of scenarioIds) {
+  for (const requirementPackageId of requirementPackageIds) {
     await tx.query(
-      `INSERT INTO requirement_version_usage_scenarios (requirement_version_id, usage_scenario_id) VALUES (@0, @1)`,
-      [versionId, usageScenarioId],
+      `INSERT INTO requirement_version_requirement_packages (requirement_version_id, requirement_package_id) VALUES (@0, @1)`,
+      [versionId, requirementPackageId],
     )
   }
   for (const normReferenceId of normRefIds) {
@@ -625,7 +625,7 @@ export async function createRequirement(
   requirement: RequirementInsertedRow
   version: VersionInsertedRow
 }> {
-  const scenarioIds = uniqueIds(data.scenarioIds)
+  const requirementPackageIds = uniqueIds(data.requirementPackageIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
   const now = new Date()
   const verificationMethod = data.requiresTesting
@@ -679,7 +679,12 @@ export async function createRequirement(
     )) as Array<Record<string, unknown>>
     version = mapVersion(verRows[0] ?? {})
 
-    await insertVersionJoinsSqlServer(tx, version.id, scenarioIds, normRefIds)
+    await insertVersionJoinsSqlServer(
+      tx,
+      version.id,
+      requirementPackageIds,
+      normRefIds,
+    )
   })
 
   return { requirement, version }
@@ -800,7 +805,7 @@ export async function editRequirement(
     requirementAreaId?: number
   },
 ): Promise<VersionInsertedRow> {
-  const scenarioIds = uniqueIds(data.scenarioIds)
+  const requirementPackageIds = uniqueIds(data.requirementPackageIds)
   const normRefIds = uniqueIds(data.normReferenceIds)
   const baseVersionId = normalizeBaseVersionId(data.baseVersionId)
   const baseRevisionToken = normalizeBaseRevisionToken(data.baseRevisionToken)
@@ -885,14 +890,19 @@ export async function editRequirement(
 
       await updateRequirementArea()
       await tx.query(
-        `DELETE FROM requirement_version_usage_scenarios WHERE requirement_version_id = @0`,
+        `DELETE FROM requirement_version_requirement_packages WHERE requirement_version_id = @0`,
         [current.id],
       )
       await tx.query(
         `DELETE FROM requirement_version_norm_references WHERE requirement_version_id = @0`,
         [current.id],
       )
-      await insertVersionJoinsSqlServer(tx, current.id, scenarioIds, normRefIds)
+      await insertVersionJoinsSqlServer(
+        tx,
+        current.id,
+        requirementPackageIds,
+        normRefIds,
+      )
       return
     }
 
@@ -930,7 +940,12 @@ export async function editRequirement(
       ],
     )) as Array<Record<string, unknown>>
     result = mapVersion(insertRows[0] ?? {})
-    await insertVersionJoinsSqlServer(tx, result.id, scenarioIds, normRefIds)
+    await insertVersionJoinsSqlServer(
+      tx,
+      result.id,
+      requirementPackageIds,
+      normRefIds,
+    )
   })
 
   return result
@@ -1092,7 +1107,7 @@ export async function deleteDraftVersion(
     }
 
     await tx.query(
-      `DELETE FROM requirement_version_usage_scenarios WHERE requirement_version_id = @0`,
+      `DELETE FROM requirement_version_requirement_packages WHERE requirement_version_id = @0`,
       [latest.id],
     )
     await tx.query(
@@ -1282,8 +1297,8 @@ export async function restoreVersion(
     }
     const old = oldRows[0]
 
-    const scenarioRows = (await tx.query(
-      `SELECT usage_scenario_id AS usageScenarioId FROM requirement_version_usage_scenarios WHERE requirement_version_id = @0`,
+    const requirementPackageRows = (await tx.query(
+      `SELECT requirement_package_id AS requirementPackageId FROM requirement_version_requirement_packages WHERE requirement_version_id = @0`,
       [versionId],
     )) as Array<Record<string, unknown>>
     const normRefRows = (await tx.query(
@@ -1329,7 +1344,7 @@ export async function restoreVersion(
     await insertVersionJoinsSqlServer(
       tx,
       result.id,
-      scenarioRows.map(r => Number(r.usageScenarioId)),
+      requirementPackageRows.map(r => Number(r.requirementPackageId)),
       normRefRows.map(r => Number(r.normReferenceId)),
     )
   })
@@ -1411,27 +1426,30 @@ export async function getVersionHistory(
   )) as Array<Record<string, unknown>>
 
   const ids = rows.map(r => Number(r.id))
-  const scenarioRows = ids.length
+  const requirementPackageRows = ids.length
     ? ((await db.query(
         `SELECT
             link.requirement_version_id AS requirementVersionId,
-            link.usage_scenario_id AS usageScenarioId,
-            scenario.id AS scId,
-            scenario.name_en AS scNameEn,
-            scenario.name_sv AS scNameSv
-          FROM requirement_version_usage_scenarios link
-          INNER JOIN usage_scenarios scenario ON scenario.id = link.usage_scenario_id
+            link.requirement_package_id AS requirementPackageId,
+            requirementPackage.id AS packageId,
+            requirementPackage.name_en AS packageNameEn,
+            requirementPackage.name_sv AS packageNameSv
+          FROM requirement_version_requirement_packages link
+          INNER JOIN requirement_packages requirementPackage ON requirementPackage.id = link.requirement_package_id
           WHERE link.requirement_version_id IN (${ids.map((_, i) => `@${i}`).join(', ')})`,
         ids,
       )) as Array<Record<string, unknown>>)
     : []
 
-  const scenarioByVersion = new Map<number, Array<Record<string, unknown>>>()
-  for (const link of scenarioRows) {
+  const requirementPackageByVersion = new Map<
+    number,
+    Array<Record<string, unknown>>
+  >()
+  for (const link of requirementPackageRows) {
     const v = Number(link.requirementVersionId)
-    const list = scenarioByVersion.get(v) ?? []
+    const list = requirementPackageByVersion.get(v) ?? []
     list.push(link)
-    scenarioByVersion.set(v, list)
+    requirementPackageByVersion.set(v, list)
   }
 
   return rows.map(row => {
@@ -1486,13 +1504,17 @@ export async function getVersionHistory(
               nameEn: String(row.qcNameEn ?? ''),
               nameSv: String(row.qcNameSv ?? ''),
             },
-      versionScenarios: (scenarioByVersion.get(versionId) ?? []).map(link => ({
+      versionRequirementPackages: (
+        requirementPackageByVersion.get(versionId) ?? []
+      ).map(link => ({
         requirementVersionId: versionId,
-        usageScenarioId: Number(link.usageScenarioId),
-        scenario: {
-          id: Number(link.scId),
-          nameEn: link.scNameEn == null ? null : String(link.scNameEn),
-          nameSv: link.scNameSv == null ? null : String(link.scNameSv),
+        requirementPackageId: Number(link.requirementPackageId),
+        requirementPackage: {
+          id: Number(link.packageId),
+          nameEn:
+            link.packageNameEn == null ? null : String(link.packageNameEn),
+          nameSv:
+            link.packageNameSv == null ? null : String(link.packageNameSv),
         },
       })),
       status: Number(row.statusId),
@@ -1615,21 +1637,21 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
       )) as Array<Record<string, unknown>>)
     : []
 
-  const scenarioRows = versionIds.length
+  const requirementPackageRows = versionIds.length
     ? ((await db.query(
         `SELECT
             link.requirement_version_id AS requirementVersionId,
-            link.usage_scenario_id AS usageScenarioId,
-            scenario.id AS scId,
-            scenario.name_en AS scNameEn,
-            scenario.name_sv AS scNameSv,
-            scenario.description_en AS scDescriptionEn,
-            scenario.description_sv AS scDescriptionSv,
-            scenario.owner_id AS scOwnerId,
-            scenario.created_at AS scCreatedAt,
-            scenario.updated_at AS scUpdatedAt
-          FROM requirement_version_usage_scenarios link
-          INNER JOIN usage_scenarios scenario ON scenario.id = link.usage_scenario_id
+            link.requirement_package_id AS requirementPackageId,
+            requirementPackage.id AS packageId,
+            requirementPackage.name_en AS packageNameEn,
+            requirementPackage.name_sv AS packageNameSv,
+            requirementPackage.description_en AS packageDescriptionEn,
+            requirementPackage.description_sv AS packageDescriptionSv,
+            requirementPackage.owner_id AS packageOwnerId,
+            requirementPackage.created_at AS packageCreatedAt,
+            requirementPackage.updated_at AS packageUpdatedAt
+          FROM requirement_version_requirement_packages link
+          INNER JOIN requirement_packages requirementPackage ON requirementPackage.id = link.requirement_package_id
           WHERE link.requirement_version_id IN (${placeholders})`,
         versionIds,
       )) as Array<Record<string, unknown>>)
@@ -1649,12 +1671,15 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
     list.push(link)
     normRefByVersion.set(v, list)
   }
-  const scenarioByVersion = new Map<number, Array<Record<string, unknown>>>()
-  for (const link of scenarioRows) {
+  const requirementPackageByVersion = new Map<
+    number,
+    Array<Record<string, unknown>>
+  >()
+  for (const link of requirementPackageRows) {
     const v = Number(link.requirementVersionId)
-    const list = scenarioByVersion.get(v) ?? []
+    const list = requirementPackageByVersion.get(v) ?? []
     list.push(link)
-    scenarioByVersion.set(v, list)
+    requirementPackageByVersion.set(v, list)
   }
 
   const versions = versionRows.map(row => {
@@ -1742,20 +1767,28 @@ export async function getRequirementById(db: SqlServerDatabase, id: number) {
           updatedAt: toIso(link.nrUpdatedAt) ?? '',
         },
       })),
-      versionScenarios: (scenarioByVersion.get(vId) ?? []).map(link => ({
+      versionRequirementPackages: (
+        requirementPackageByVersion.get(vId) ?? []
+      ).map(link => ({
         requirementVersionId: vId,
-        usageScenarioId: Number(link.usageScenarioId),
-        scenario: {
-          id: Number(link.scId),
-          nameEn: link.scNameEn == null ? null : String(link.scNameEn),
-          nameSv: link.scNameSv == null ? null : String(link.scNameSv),
+        requirementPackageId: Number(link.requirementPackageId),
+        requirementPackage: {
+          id: Number(link.packageId),
+          nameEn:
+            link.packageNameEn == null ? null : String(link.packageNameEn),
+          nameSv:
+            link.packageNameSv == null ? null : String(link.packageNameSv),
           descriptionEn:
-            link.scDescriptionEn == null ? null : String(link.scDescriptionEn),
+            link.packageDescriptionEn == null
+              ? null
+              : String(link.packageDescriptionEn),
           descriptionSv:
-            link.scDescriptionSv == null ? null : String(link.scDescriptionSv),
-          ownerId: toNum(link.scOwnerId),
-          createdAt: toIso(link.scCreatedAt) ?? '',
-          updatedAt: toIso(link.scUpdatedAt) ?? '',
+            link.packageDescriptionSv == null
+              ? null
+              : String(link.packageDescriptionSv),
+          ownerId: toNum(link.packageOwnerId),
+          createdAt: toIso(link.packageCreatedAt) ?? '',
+          updatedAt: toIso(link.packageUpdatedAt) ?? '',
         },
       })),
     }

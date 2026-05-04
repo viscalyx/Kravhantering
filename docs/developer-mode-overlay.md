@@ -135,9 +135,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - The shared requirement-content card inside both catalog requirement
   details and specification-local inline details exposes the same
   `detail section` markers for requirement text, acceptance criteria,
-  metadata, references, and scenarios. Specification-local scenario and
-  reference chips also inherit the same marker naming pattern as the
-  catalog detail card.
+  metadata, references, and requirement packages. Specification-local
+  requirement-package and reference chips also inherit the same marker naming
+  pattern as the catalog detail card.
 - Specification-local inline detail views also expose the same
   `report print button` surface on the right-side action rail as the
   specification-item detail layout, while their local edit/delete controls
@@ -251,7 +251,7 @@ The current canonical labels include:
 - `detail section`
 - `detail action`
 - `reference item`
-- `scenario chip`
+- `requirement package chip`
 - `status stepper`
 - `status step`
 - `version history`

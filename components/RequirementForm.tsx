@@ -17,10 +17,13 @@ interface RequirementFormProps {
   baseRevisionToken?: string | null
   baseVersionId?: number | null
   initialData?: Partial<
-    Omit<RequirementFormFieldValues, 'normReferenceIds' | 'scenarioIds'>
+    Omit<
+      RequirementFormFieldValues,
+      'normReferenceIds' | 'requirementPackageIds'
+    >
   >
   initialNormReferenceIds?: number[]
-  initialScenarioIds?: number[]
+  initialRequirementPackageIds?: number[]
   mode: 'create' | 'edit'
   onRefreshLatest?: () => Promise<void> | void
   requirementId?: number | string
@@ -53,7 +56,7 @@ const EMPTY_FORM: RequirementFormFieldValues = {
   qualityCharacteristicId: '',
   requiresTesting: false,
   riskLevelId: '',
-  scenarioIds: [],
+  requirementPackageIds: [],
   typeId: '',
   verificationMethod: '',
 }
@@ -63,7 +66,7 @@ export default function RequirementForm({
   baseVersionId,
   initialData,
   initialNormReferenceIds,
-  initialScenarioIds,
+  initialRequirementPackageIds,
   onRefreshLatest,
   requirementId,
   mode,
@@ -112,24 +115,25 @@ export default function RequirementForm({
     ...EMPTY_FORM,
     ...initialData,
     normReferenceIds: initialNormReferenceIds ?? [],
-    scenarioIds: initialScenarioIds ?? [],
+    requirementPackageIds: initialRequirementPackageIds ?? [],
   })
 
   const dirtyFields = useRef<Set<string>>(new Set())
   const prevInitialData = useRef(initialData)
   const prevNormReferenceIds = useRef(initialNormReferenceIds)
-  const prevScenarioIds = useRef(initialScenarioIds)
+  const prevRequirementPackageIds = useRef(initialRequirementPackageIds)
 
   useEffect(() => {
     const dataChanged = initialData !== prevInitialData.current
     const normRefsChanged =
       initialNormReferenceIds !== prevNormReferenceIds.current
-    const scenariosChanged = initialScenarioIds !== prevScenarioIds.current
-    if (!dataChanged && !normRefsChanged && !scenariosChanged) return
+    const requirementPackagesChanged =
+      initialRequirementPackageIds !== prevRequirementPackageIds.current
+    if (!dataChanged && !normRefsChanged && !requirementPackagesChanged) return
 
     prevInitialData.current = initialData
     prevNormReferenceIds.current = initialNormReferenceIds
-    prevScenarioIds.current = initialScenarioIds
+    prevRequirementPackageIds.current = initialRequirementPackageIds
 
     if (dataChanged) {
       dirtyFields.current = new Set()
@@ -139,9 +143,9 @@ export default function RequirementForm({
       ...EMPTY_FORM,
       ...(initialData ?? {}),
       normReferenceIds: initialNormReferenceIds ?? [],
-      scenarioIds: initialScenarioIds ?? [],
+      requirementPackageIds: initialRequirementPackageIds ?? [],
     }))
-  }, [initialData, initialNormReferenceIds, initialScenarioIds])
+  }, [initialData, initialNormReferenceIds, initialRequirementPackageIds])
 
   const handleFieldsChange = (values: RequirementFormFieldValues) => {
     for (const key of Object.keys(
@@ -190,11 +194,11 @@ export default function RequirementForm({
               : form.normReferenceIds.length > 0
                 ? form.normReferenceIds
                 : undefined,
-          scenarioIds:
+          requirementPackageIds:
             mode === 'edit'
-              ? form.scenarioIds
-              : form.scenarioIds.length > 0
-                ? form.scenarioIds
+              ? form.requirementPackageIds
+              : form.requirementPackageIds.length > 0
+                ? form.requirementPackageIds
                 : undefined,
         }),
       })

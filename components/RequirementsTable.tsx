@@ -103,6 +103,7 @@ export interface RequirementsTableProps {
   pinnedIds?: Set<number>
   qualityCharacteristics?: QualityCharacteristicOption[]
   renderExpanded?: (id: number) => ReactNode
+  requirementPackages?: FilterOption[]
   riskLevels?: RiskLevelOption[]
   rows: RequirementRow[]
   selectable?: boolean
@@ -114,7 +115,6 @@ export interface RequirementsTableProps {
   stickyTitleActions?: ReactNode
   stickyTopOffsetClassName?: string
   types?: FilterOption[]
-  usageScenarios?: FilterOption[]
   visibleColumns?: RequirementColumnId[]
   wrapDescription?: boolean
 }
@@ -1347,7 +1347,7 @@ export default function RequirementsTable({
   statusOptions = [],
   qualityCharacteristics = [],
   types = [],
-  usageScenarios = [],
+  requirementPackages = [],
   visibleColumns = getDefaultVisibleRequirementColumns(columnDefaults),
   wrapDescription = false,
 }: RequirementsTableProps) {
@@ -1607,11 +1607,6 @@ export default function RequirementsTable({
     const desc = locale === 'sv' ? s.descriptionSv : s.descriptionEn
     return desc || undefined
   }
-  const _scenarioLabel = (id: number) => {
-    const s = usageScenarios.find(s => s.id === id)
-    return s ? getName(s) : String(id)
-  }
-
   const requiresTestingOptions = [
     { id: 1, label: tc('yes') },
     { id: 0, label: tc('no') },
@@ -2936,14 +2931,14 @@ export default function RequirementsTable({
             </div>
           </div>
         )}
-        {usageScenarios.length > 0 && (
+        {requirementPackages.length > 0 && (
           <div className="flex items-center gap-2 border-b bg-white/80 px-3 py-2 text-sm backdrop-blur-sm dark:bg-secondary-900/80">
             <span className="shrink-0 text-xs font-medium text-secondary-600 dark:text-secondary-400">
-              {t('scenario')}:
+              {t('requirementPackage')}:
             </span>
             <div className="flex min-w-0 flex-1 flex-nowrap gap-1 overflow-x-auto">
-              {usageScenarios.map(s => {
-                const active = (fv.usageScenarioIds ?? []).includes(s.id)
+              {requirementPackages.map(s => {
+                const active = (fv.requirementPackageIds ?? []).includes(s.id)
                 return (
                   <button
                     aria-label={getName(s)}
@@ -2955,12 +2950,13 @@ export default function RequirementsTable({
                     }`}
                     key={s.id}
                     onClick={() => {
-                      const current = fv.usageScenarioIds ?? []
+                      const current = fv.requirementPackageIds ?? []
                       const next = active
                         ? current.filter(id => id !== s.id)
                         : [...current, s.id]
                       updateFilter({
-                        usageScenarioIds: next.length > 0 ? next : undefined,
+                        requirementPackageIds:
+                          next.length > 0 ? next : undefined,
                       })
                     }}
                     type="button"
@@ -2970,11 +2966,13 @@ export default function RequirementsTable({
                 )
               })}
             </div>
-            {(fv.usageScenarioIds ?? []).length > 0 && (
+            {(fv.requirementPackageIds ?? []).length > 0 && (
               <button
                 aria-label={tc('clearFilters')}
                 className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center text-xs text-secondary-400 transition-colors hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-                onClick={() => updateFilter({ usageScenarioIds: undefined })}
+                onClick={() =>
+                  updateFilter({ requirementPackageIds: undefined })
+                }
                 type="button"
               >
                 <X aria-hidden="true" className="h-3 w-3" />

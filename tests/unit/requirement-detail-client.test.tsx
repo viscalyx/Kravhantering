@@ -79,7 +79,7 @@ vi.mock('next-intl', () => ({
         `Review version v${values?.version} is available`,
       'requirement.requiresTesting': 'Requires testing',
       'requirement.restoreConfirm': 'Restore this version?',
-      'requirement.scenario': 'Scenario',
+      'requirement.requirementPackage': 'RequirementPackage',
       'requirement.shareLinkInline': 'Copy link (list view)',
       'requirement.shareLinkPage': 'Copy link (detail page)',
       'requirement.sendBackToDraftConfirm': 'Send back to draft?',
@@ -180,8 +180,8 @@ type RequirementLocalizedEntityOverride = {
   nameSv: string | null
 }
 
-type RequirementScenarioOverride = {
-  scenario: {
+type RequirementPackageOverride = {
+  requirementPackage: {
     descriptionEn?: string | null
     descriptionSv?: string | null
     id: number
@@ -193,13 +193,13 @@ type RequirementScenarioOverride = {
 
 type RequirementVersionOverrides = Omit<
   Partial<RequirementVersionDetail>,
-  'category' | 'qualityCharacteristic' | 'type' | 'versionScenarios'
+  'category' | 'qualityCharacteristic' | 'type' | 'versionRequirementPackages'
 > & {
   id?: number
   category?: RequirementLocalizedEntityOverride | null
   qualityCharacteristic?: RequirementLocalizedEntityOverride | null
   type?: RequirementLocalizedEntityOverride | null
-  versionScenarios?: RequirementScenarioOverride[]
+  versionRequirementPackages?: RequirementPackageOverride[]
 }
 
 function toLocalizedEntity(
@@ -217,17 +217,17 @@ function toLocalizedEntity(
   }
 }
 
-function toVersionScenarios(
-  scenarios: RequirementScenarioOverride[] | undefined,
-): RequirementVersionDetail['versionScenarios'] {
-  return (scenarios ?? []).map(({ scenario }) => ({
-    scenario: {
-      descriptionEn: scenario.descriptionEn ?? null,
-      descriptionSv: scenario.descriptionSv ?? null,
-      id: scenario.id,
-      nameEn: scenario.nameEn,
-      nameSv: scenario.nameSv,
-      ownerId: scenario.ownerId ?? null,
+function toVersionRequirementPackages(
+  requirementPackages: RequirementPackageOverride[] | undefined,
+): RequirementVersionDetail['versionRequirementPackages'] {
+  return (requirementPackages ?? []).map(({ requirementPackage }) => ({
+    requirementPackage: {
+      descriptionEn: requirementPackage.descriptionEn ?? null,
+      descriptionSv: requirementPackage.descriptionSv ?? null,
+      id: requirementPackage.id,
+      nameEn: requirementPackage.nameEn,
+      nameSv: requirementPackage.nameSv,
+      ownerId: requirementPackage.ownerId ?? null,
     },
   }))
 }
@@ -236,8 +236,13 @@ function makeVersion(
   versionNumber: number,
   overrides: RequirementVersionOverrides = {},
 ): RequirementVersionDetail {
-  const { category, qualityCharacteristic, type, versionScenarios, ...rest } =
-    overrides
+  const {
+    category,
+    qualityCharacteristic,
+    type,
+    versionRequirementPackages,
+    ...rest
+  } = overrides
 
   return {
     acceptanceCriteria: `Acceptance ${versionNumber}`,
@@ -262,7 +267,9 @@ function makeVersion(
     type: toLocalizedEntity(type, 20),
     verificationMethod: null,
     versionNumber,
-    versionScenarios: toVersionScenarios(versionScenarios),
+    versionRequirementPackages: toVersionRequirementPackages(
+      versionRequirementPackages,
+    ),
     versionNormReferences: [],
     ...rest,
   }
@@ -660,9 +667,13 @@ describe('RequirementDetailClient', () => {
         statusColor: '#22c55e',
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
-        versionScenarios: [
+        versionRequirementPackages: [
           {
-            scenario: { id: 1, nameEn: 'Ordering', nameSv: 'Bestallning' },
+            requirementPackage: {
+              id: 1,
+              nameEn: 'Ordering',
+              nameSv: 'Bestallning',
+            },
           },
         ],
       }),
@@ -693,7 +704,7 @@ describe('RequirementDetailClient', () => {
     expect(
       screen
         .getByText('Bestallning')
-        .closest('[data-developer-mode-name="scenario chip"]'),
+        .closest('[data-developer-mode-name="requirement package chip"]'),
     ).toHaveAttribute('data-developer-mode-value', 'Ordering')
     // Edit button is disabled (pending draft exists above published)
     const editBtn = screen.getByRole('button', { name: 'Edit' })
@@ -851,9 +862,9 @@ describe('RequirementDetailClient', () => {
         statusNameEn: 'Published',
         statusNameSv: 'Publicerad',
         type: { nameEn: 'Functional', nameSv: null },
-        versionScenarios: [
+        versionRequirementPackages: [
           {
-            scenario: { id: 1, nameEn: 'Ordering', nameSv: null },
+            requirementPackage: { id: 1, nameEn: 'Ordering', nameSv: null },
           },
         ],
       }),
@@ -986,9 +997,13 @@ describe('RequirementDetailClient', () => {
         statusNameSv: 'Publicerad',
         type: { nameEn: 'Functional', nameSv: 'Funktionell' },
         qualityCharacteristic: { nameEn: 'Business', nameSv: 'Verksamhet' },
-        versionScenarios: [
+        versionRequirementPackages: [
           {
-            scenario: { id: 1, nameEn: 'Ordering', nameSv: 'Bestallning' },
+            requirementPackage: {
+              id: 1,
+              nameEn: 'Ordering',
+              nameSv: 'Bestallning',
+            },
           },
         ],
       }),

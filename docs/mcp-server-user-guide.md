@@ -25,7 +25,7 @@ agents can use it reliably.
 - `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, quality characteristics, risk levels, statuses,
-  scenarios, and transitions.
+  requirement packages, and transitions.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.
@@ -399,7 +399,7 @@ tool. For requirement lists, it supports:
 - `qualityCharacteristicIds`
 - `riskLevelIds`
 - `normReferenceIds`
-- `usageScenarioIds`
+- `requirementPackageIds`
 - `statuses`
 - `requiresTesting`
 - `sortBy`
@@ -412,7 +412,7 @@ tool. For requirement lists, it supports:
 - `List the first 10 requirements that mention login.`
 - `Show the version history for SEC0012.`
 - `List available requirement transitions.`
-- `Show all scenarios and then tell me which ones are linked to INT0001.`
+- `Show all requirement packages and then tell me which ones are linked to INT0001.`
 
 ### Mutating
 

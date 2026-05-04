@@ -115,7 +115,7 @@ describe('requirements/[id] route', () => {
           baseVersionId: 10,
           description: 'Updated',
           references: [{ name: 'Ref1', uri: 'http://example.com' }],
-          scenarioIds: [1, 2],
+          requirementPackageIds: [1, 2],
         }),
         headers: { 'Content-Type': 'application/json' },
       })

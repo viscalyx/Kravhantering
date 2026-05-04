@@ -13,20 +13,20 @@ import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { isSwedish } from '@/lib/i18n/localized'
 
-const USAGE_SCENARIOS_HELP: HelpContent = {
+const REQUIREMENT_PACKAGES_HELP: HelpContent = {
   sections: [
     {
       kind: 'text',
-      bodyKey: 'usageScenarios.overview.body',
-      headingKey: 'usageScenarios.overview.heading',
+      bodyKey: 'requirementPackages.overview.body',
+      headingKey: 'requirementPackages.overview.heading',
     },
     {
       kind: 'text',
-      bodyKey: 'usageScenarios.manage.body',
-      headingKey: 'usageScenarios.manage.heading',
+      bodyKey: 'requirementPackages.manage.body',
+      headingKey: 'requirementPackages.manage.heading',
     },
   ],
-  titleKey: 'usageScenarios.title',
+  titleKey: 'requirementPackages.title',
 }
 
 interface Owner {
@@ -36,7 +36,7 @@ interface Owner {
   lastName: string
 }
 
-interface Scenario {
+interface RequirementPackage {
   descriptionEn: string | null
   descriptionSv: string | null
   id: number
@@ -47,7 +47,7 @@ interface Scenario {
   ownerId: number | null
 }
 
-interface ScenarioForm {
+interface RequirementPackageForm {
   descriptionEn: string
   descriptionSv: string
   nameEn: string
@@ -67,7 +67,7 @@ interface LinkedRequirement {
 
 const DESCRIPTION_TRUNCATE = 80
 
-const getInitialForm = (): ScenarioForm => ({
+const getInitialForm = (): RequirementPackageForm => ({
   descriptionEn: '',
   descriptionSv: '',
   nameEn: '',
@@ -75,15 +75,20 @@ const getInitialForm = (): ScenarioForm => ({
   ownerId: '',
 })
 
-const toForm = (scenario: Scenario): ScenarioForm => ({
-  descriptionEn: scenario.descriptionEn ?? '',
-  descriptionSv: scenario.descriptionSv ?? '',
-  nameEn: scenario.nameEn,
-  nameSv: scenario.nameSv,
-  ownerId: scenario.ownerId != null ? String(scenario.ownerId) : '',
+const toForm = (
+  requirementPackage: RequirementPackage,
+): RequirementPackageForm => ({
+  descriptionEn: requirementPackage.descriptionEn ?? '',
+  descriptionSv: requirementPackage.descriptionSv ?? '',
+  nameEn: requirementPackage.nameEn,
+  nameSv: requirementPackage.nameSv,
+  ownerId:
+    requirementPackage.ownerId != null
+      ? String(requirementPackage.ownerId)
+      : '',
 })
 
-const toPayload = (form: ScenarioForm) => ({
+const toPayload = (form: RequirementPackageForm) => ({
   nameSv: form.nameSv,
   nameEn: form.nameEn,
   descriptionSv: form.descriptionSv || undefined,
@@ -94,9 +99,9 @@ const toPayload = (form: ScenarioForm) => ({
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
 
-export default function UsageScenariosClient() {
-  useHelpContent(USAGE_SCENARIOS_HELP)
-  const t = useTranslations('scenario')
+export default function RequirementPackagesClient() {
+  useHelpContent(REQUIREMENT_PACKAGES_HELP)
+  const t = useTranslations('requirementPackage')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
@@ -112,17 +117,22 @@ export default function UsageScenariosClient() {
     useState(false)
   const linkedReqRequestId = useRef(0)
 
-  const getName = (scenario: Scenario) =>
-    isSwedish(locale) ? scenario.nameSv : scenario.nameEn
-  const getDescription = (scenario: Scenario) =>
-    isSwedish(locale) ? scenario.descriptionSv : scenario.descriptionEn
+  const getName = (requirementPackage: RequirementPackage) =>
+    isSwedish(locale) ? requirementPackage.nameSv : requirementPackage.nameEn
+  const getDescription = (requirementPackage: RequirementPackage) =>
+    isSwedish(locale)
+      ? requirementPackage.descriptionSv
+      : requirementPackage.descriptionEn
 
-  const controller = useCrudAdminResource<Scenario, ScenarioForm>({
+  const controller = useCrudAdminResource<
+    RequirementPackage,
+    RequirementPackageForm
+  >({
     confirmDeleteMessage: tc('confirm'),
-    endpoint: '/api/usage-scenarios',
+    endpoint: '/api/requirement-packages',
     errorMessage: tc('error'),
     getInitialForm,
-    listKey: 'scenarios',
+    listKey: 'requirementPackages',
     toForm,
     toPayload,
   })
@@ -150,13 +160,15 @@ export default function UsageScenariosClient() {
   }, [])
 
   const fetchLinkedRequirements = useCallback(
-    async (scenarioId: number) => {
+    async (requirementPackageId: number) => {
       const requestId = ++linkedReqRequestId.current
       const previousLinkedRequirements = linkedRequirements
       setLinkedRequirementsLoading(true)
       setLinkedRequirementsError(null)
       try {
-        const response = await apiFetch(`/api/usage-scenarios/${scenarioId}`)
+        const response = await apiFetch(
+          `/api/requirement-packages/${requirementPackageId}`,
+        )
         if (requestId !== linkedReqRequestId.current) return
         if (!response.ok) {
           setLinkedRequirements(previousLinkedRequirements)
@@ -188,9 +200,9 @@ export default function UsageScenariosClient() {
     controller.openCreate()
   }
 
-  const openEdit = (scenario: Scenario) => {
-    controller.openEdit(scenario)
-    void fetchLinkedRequirements(scenario.id)
+  const openEdit = (requirementPackage: RequirementPackage) => {
+    controller.openEdit(requirementPackage)
+    void fetchLinkedRequirements(requirementPackage.id)
   }
 
   const closeForm = () => {
@@ -215,9 +227,9 @@ export default function UsageScenariosClient() {
     }
   }
 
-  const getOwnerName = (scenario: Scenario) => {
-    if (scenario.owner) {
-      return `${scenario.owner.firstName} ${scenario.owner.lastName}`
+  const getOwnerName = (requirementPackage: RequirementPackage) => {
+    if (requirementPackage.owner) {
+      return `${requirementPackage.owner.firstName} ${requirementPackage.owner.lastName}`
     }
     return '—'
   }
@@ -233,12 +245,12 @@ export default function UsageScenariosClient() {
       <div className="container-custom">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
-            {tn('scenarios')}
+            {tn('requirementPackages')}
           </h1>
           <button
             className="btn-primary inline-flex items-center gap-1.5"
             {...devMarker({
-              context: 'scenarios',
+              context: 'requirementPackages',
               name: 'create button',
               priority: 350,
             })}
@@ -255,7 +267,7 @@ export default function UsageScenariosClient() {
           <p
             className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300"
             {...devMarker({
-              context: 'scenarios',
+              context: 'requirementPackages',
               name: 'error banner',
               priority: 340,
               value: controller.deleteError ? 'delete-error' : 'load-error',
@@ -279,7 +291,7 @@ export default function UsageScenariosClient() {
                 <form
                   className="space-y-5"
                   {...devMarker({
-                    context: 'scenarios',
+                    context: 'requirementPackages',
                     name: 'crud form',
                     priority: 340,
                     value: controller.editId ? 'edit' : 'create',
@@ -292,14 +304,14 @@ export default function UsageScenariosClient() {
                   <div>
                     <FieldLabelWithHelp
                       help={t('nameSvHelp')}
-                      htmlFor="scen-name-sv"
+                      htmlFor="requirement-package-name-sv"
                       label={t('nameSvLabel')}
                       required
                     />
                     <input
                       className={inputClassName}
                       disabled={controller.submitting}
-                      id="scen-name-sv"
+                      id="requirement-package-name-sv"
                       onChange={event =>
                         controller.setForm(previousForm => ({
                           ...previousForm,
@@ -313,14 +325,14 @@ export default function UsageScenariosClient() {
                   <div>
                     <FieldLabelWithHelp
                       help={t('nameEnHelp')}
-                      htmlFor="scen-name-en"
+                      htmlFor="requirement-package-name-en"
                       label={t('nameEnLabel')}
                       required
                     />
                     <input
                       className={inputClassName}
                       disabled={controller.submitting}
-                      id="scen-name-en"
+                      id="requirement-package-name-en"
                       onChange={event =>
                         controller.setForm(previousForm => ({
                           ...previousForm,
@@ -334,13 +346,13 @@ export default function UsageScenariosClient() {
                   <div>
                     <FieldLabelWithHelp
                       help={t('descriptionSvHelp')}
-                      htmlFor="scen-desc-sv"
+                      htmlFor="requirement-package-description-sv"
                       label={t('descriptionSvLabel')}
                     />
                     <textarea
                       className={inputClassName}
                       disabled={controller.submitting}
-                      id="scen-desc-sv"
+                      id="requirement-package-description-sv"
                       onChange={event =>
                         controller.setForm(previousForm => ({
                           ...previousForm,
@@ -353,13 +365,13 @@ export default function UsageScenariosClient() {
                   <div>
                     <FieldLabelWithHelp
                       help={t('descriptionEnHelp')}
-                      htmlFor="scen-desc-en"
+                      htmlFor="requirement-package-description-en"
                       label={t('descriptionEnLabel')}
                     />
                     <textarea
                       className={inputClassName}
                       disabled={controller.submitting}
-                      id="scen-desc-en"
+                      id="requirement-package-description-en"
                       onChange={event =>
                         controller.setForm(previousForm => ({
                           ...previousForm,
@@ -372,13 +384,13 @@ export default function UsageScenariosClient() {
                   <div>
                     <FieldLabelWithHelp
                       help={t('help.owner')}
-                      htmlFor="scen-owner"
+                      htmlFor="requirement-package-owner"
                       label={t('owner')}
                     />
                     <select
                       className={inputClassName}
                       disabled={controller.submitting}
-                      id="scen-owner"
+                      id="requirement-package-owner"
                       onChange={event =>
                         controller.setForm(previousForm => ({
                           ...previousForm,
@@ -533,7 +545,7 @@ export default function UsageScenariosClient() {
           <div
             className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm overflow-x-auto"
             {...devMarker({
-              context: 'scenarios',
+              context: 'requirementPackages',
               name: 'crud table',
               priority: 340,
             })}
@@ -551,35 +563,35 @@ export default function UsageScenariosClient() {
                 </tr>
               </thead>
               <tbody>
-                {controller.items.map(scenario => (
+                {controller.items.map(requirementPackage => (
                   <tr
                     className="border-b hover:bg-primary-50/40 dark:hover:bg-primary-950/20 transition-colors"
-                    key={scenario.id}
+                    key={requirementPackage.id}
                   >
                     <td className="py-3 px-4 font-medium">
-                      {getName(scenario)}
+                      {getName(requirementPackage)}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate">
-                      {getDescription(scenario) || '—'}
+                      {getDescription(requirementPackage) || '—'}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {getOwnerName(scenario)}
+                      {getOwnerName(requirementPackage)}
                     </td>
                     <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
                       {t('requirementCount', {
-                        count: scenario.linkedRequirementCount,
+                        count: requirementPackage.linkedRequirementCount,
                       })}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <button
                         className="text-sm text-primary-700 dark:text-primary-300 hover:underline mr-3 min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
-                          context: 'scenarios',
+                          context: 'requirementPackages',
                           name: 'table action',
                           value: 'edit',
                         })}
                         disabled={controller.submitting}
-                        onClick={() => openEdit(scenario)}
+                        onClick={() => openEdit(requirementPackage)}
                         type="button"
                       >
                         {tc('edit')}
@@ -587,20 +599,23 @@ export default function UsageScenariosClient() {
                       <button
                         className="text-sm text-red-700 dark:text-red-400 hover:underline min-h-11 min-w-11 inline-flex items-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded disabled:opacity-50 disabled:pointer-events-none"
                         {...devMarker({
-                          context: 'scenarios',
+                          context: 'requirementPackages',
                           name: 'table action',
                           value: 'delete',
                         })}
                         disabled={
                           controller.submitting ||
-                          controller.deletingIds.has(scenario.id)
+                          controller.deletingIds.has(requirementPackage.id)
                         }
                         onClick={event => {
-                          void remove(scenario.id, event.currentTarget)
+                          void remove(
+                            requirementPackage.id,
+                            event.currentTarget,
+                          )
                         }}
                         type="button"
                       >
-                        {controller.deletingIds.has(scenario.id)
+                        {controller.deletingIds.has(requirementPackage.id)
                           ? tc('loading')
                           : tc('delete')}
                       </button>

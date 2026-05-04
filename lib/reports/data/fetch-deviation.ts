@@ -11,9 +11,9 @@ export interface DeviationReportVersion {
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
+  requirementPackages: { nameEn: string | null; nameSv: string | null }[]
   requiresTesting: boolean
   riskLevel: { nameEn: string; nameSv: string } | null
-  scenarios: { nameEn: string | null; nameSv: string | null }[]
   status: { color: string | null; label: string }
   type: { nameEn: string; nameSv: string } | null
   verificationMethod: string | null
@@ -82,8 +82,8 @@ export async function fetchDeviationForReport(
         }
       }[]
       versionNumber: number
-      versionScenarios: {
-        scenario: { nameEn: string | null; nameSv: string | null }
+      versionRequirementPackages: {
+        requirementPackage: { nameEn: string | null; nameSv: string | null }
       }[]
     }[]
   }
@@ -167,11 +167,11 @@ export async function fetchDeviationForReport(
           reference: vnr.normReference.reference,
           uri: vnr.normReference.uri,
         })),
-      scenarios: version.versionScenarios
-        .filter(vs => vs.scenario)
+      requirementPackages: version.versionRequirementPackages
+        .filter(vs => vs.requirementPackage)
         .map(vs => ({
-          nameEn: vs.scenario.nameEn,
-          nameSv: vs.scenario.nameSv,
+          nameEn: vs.requirementPackage.nameEn,
+          nameSv: vs.requirementPackage.nameSv,
         })),
     },
   }

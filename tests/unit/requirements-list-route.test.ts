@@ -153,7 +153,7 @@ describe('requirements route', () => {
           description: 'New requirement',
           areaId: 1,
           typeId: 2,
-          scenarioIds: [1, 2],
+          requirementPackageIds: [1, 2],
           references: [{ name: 'Ref 1', uri: 'https://example.com' }],
         }),
         headers: { 'Content-Type': 'application/json' },

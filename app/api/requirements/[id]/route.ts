@@ -82,8 +82,8 @@ export async function PUT(
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        scenarioIds: Array.isArray(body.scenarioIds)
-          ? body.scenarioIds
+        requirementPackageIds: Array.isArray(body.requirementPackageIds)
+          ? body.requirementPackageIds
               .map(value => Number(value))
               .filter(value => !Number.isNaN(value))
           : undefined,

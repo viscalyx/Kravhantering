@@ -1,34 +1,34 @@
 import { EntitySchema } from 'typeorm'
+import type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
 import type { SpecificationLocalRequirementEntity } from '@/lib/typeorm/entities/specification-local-requirement'
-import type { UsageScenarioEntity } from '@/lib/typeorm/entities/usage-scenario'
 
-export interface SpecificationLocalRequirementUsageScenarioEntity {
+export interface SpecificationLocalRequirementRequirementPackageEntity {
+  requirementPackage: RequirementPackageEntity
+  requirementPackageId: number
   specificationLocalRequirement: SpecificationLocalRequirementEntity
   specificationLocalRequirementId: number
-  usageScenario: UsageScenarioEntity
-  usageScenarioId: number
 }
 
-export const specificationLocalRequirementUsageScenarioEntity =
-  new EntitySchema<SpecificationLocalRequirementUsageScenarioEntity>({
-    name: 'SpecificationLocalRequirementUsageScenario',
-    tableName: 'specification_local_requirement_usage_scenarios',
+export const specificationLocalRequirementRequirementPackageEntity =
+  new EntitySchema<SpecificationLocalRequirementRequirementPackageEntity>({
+    name: 'SpecificationLocalRequirementRequirementPackage',
+    tableName: 'specification_local_requirement_requirement_packages',
     columns: {
       specificationLocalRequirementId: {
         name: 'specification_local_requirement_id',
         type: 'int',
         primary: true,
       },
-      usageScenarioId: {
-        name: 'usage_scenario_id',
+      requirementPackageId: {
+        name: 'requirement_package_id',
         type: 'int',
         primary: true,
       },
     },
     indices: [
       {
-        name: 'idx_specification_local_requirement_usage_scenarios_usage_scenario_id',
-        columns: ['usageScenarioId'],
+        name: 'idx_specification_local_requirement_requirement_packages_requirement_package_id',
+        columns: ['requirementPackageId'],
       },
     ],
     relations: {
@@ -39,20 +39,20 @@ export const specificationLocalRequirementUsageScenarioEntity =
           name: 'specification_local_requirement_id',
           referencedColumnName: 'id',
           foreignKeyConstraintName:
-            'fk_specification_local_requirement_usage_scenarios_specification_local_requirement_id',
+            'fk_specification_local_requirement_requirement_packages_specification_local_requirement_id',
         },
         nullable: false,
         onDelete: 'CASCADE',
         onUpdate: 'NO ACTION',
       },
-      usageScenario: {
+      requirementPackage: {
         type: 'many-to-one',
-        target: 'UsageScenario',
+        target: 'RequirementPackage',
         joinColumn: {
-          name: 'usage_scenario_id',
+          name: 'requirement_package_id',
           referencedColumnName: 'id',
           foreignKeyConstraintName:
-            'fk_specification_local_requirement_usage_scenarios_usage_scenario_id',
+            'fk_specification_local_requirement_requirement_packages_requirement_package_id',
         },
         nullable: false,
         onDelete: 'NO ACTION',

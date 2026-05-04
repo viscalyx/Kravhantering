@@ -330,7 +330,7 @@ npm exec -- vitest run tests/quality/functional.test.ts -t "Scenario 10: MCP too
 **What happened:** Draft content is intentionally editable in place, but
 `editRequirement()` now requires the caller's `baseVersionId` and
 `baseRevisionToken` to match the latest draft row before it updates the row or
-rewrites its scenario and norm reference joins at
+rewrites its requirement-package and norm-reference joins at
 `lib/dal/requirements.ts:805-895`. The shared service requires both base
 fields and adds the latest snapshot to stale conflict responses at
 `lib/requirements/service.ts:1317-1364`. If those guards are removed, a second

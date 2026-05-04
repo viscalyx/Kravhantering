@@ -48,7 +48,7 @@ const translations: Record<string, string> = {
   'requirement.qualityCharacteristic': 'Quality characteristic',
   'requirement.requiresTesting': 'Requires testing',
   'requirement.riskLevel': 'Risk level',
-  'requirement.scenario': 'Scenario',
+  'requirement.requirementPackage': 'RequirementPackage',
   'requirement.type': 'Type',
   'requirement.verificationMethod': 'Verification method',
 }
@@ -161,7 +161,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
             nameEn: 'High',
             nameSv: 'Hog',
           },
-          scenarios: [
+          requirementPackages: [
             {
               id: 12,
               nameEn: 'Ordering',
@@ -192,7 +192,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Area')).toBeInTheDocument()
     expect(screen.getByText('Norm references')).toBeInTheDocument()
-    expect(screen.getByText('Scenario')).toBeInTheDocument()
+    expect(screen.getByText('RequirementPackage')).toBeInTheDocument()
     expect(screen.getByText('ISO27001')).toBeInTheDocument()
     expect(screen.getByText('Bestallning')).toBeInTheDocument()
     expect(screen.queryByText('KRAV0001')).not.toBeInTheDocument()
@@ -253,7 +253,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
           requirementType: null,
           requiresTesting: false,
           riskLevel: null,
-          scenarios: [],
+          requirementPackages: [],
           uniqueId: 'KRAV0002',
           updatedAt: '2026-04-02T00:00:00.000Z',
           verificationMethod: null,
@@ -312,7 +312,7 @@ describe('SpecificationLocalRequirementDetailClient', () => {
           requirementType: null,
           requiresTesting: false,
           riskLevel: null,
-          scenarios: [],
+          requirementPackages: [],
           uniqueId: 'KRAV0003',
           updatedAt: '2026-04-02T00:00:00.000Z',
           verificationMethod: null,

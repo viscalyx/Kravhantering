@@ -29,15 +29,15 @@ taken, it falls back to `-${Date.now()}`.
 
 ### Linked Requirements
 
-`countLinkedRequirements()` counts distinct requirements per
+`countLinkedRequirementsByPackage()` counts distinct requirements per
 norm reference, with an optional `statuses` filter array.
-`getLinkedRequirements()` returns linked requirements with
+`getLinkedRequirementsForPackage()` returns linked requirements with
 both `statusNameSv` and `statusNameEn` columns.
 
 ### Ordering
 
 `listNormReferences()` orders by `normReferenceId` ascending.
-`getLinkedRequirements()` orders by `requirements.uniqueId`
+`getLinkedRequirementsForPackage()` orders by `requirements.uniqueId`
 ascending.
 
 ### Localization
@@ -181,7 +181,7 @@ reference valid IDs in its output.
 - **Invalid `qualityCharacteristicId`** → set to `undefined`
   (repaired).
 - **Invalid `riskLevelId`** → set to `undefined` (repaired).
-- **Invalid `scenarioIds` entries** → filtered from array.
+- **Invalid `requirementPackageIds` entries** → filtered from array.
 
 `typeId` is the only hard requirement because every
 requirement must have a type.
@@ -192,7 +192,7 @@ requirement must have a type.
 
 - Runs 5 DAL queries in parallel via `Promise.all`:
   categories, types, quality characteristics, risk levels,
-  scenarios.
+  requirement packages.
 - Selects `nameEn` or `nameSv` based on the `locale`
   parameter.
 - Quality characteristics include parent hierarchy: a `Map`

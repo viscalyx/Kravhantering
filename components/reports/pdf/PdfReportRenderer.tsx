@@ -491,13 +491,13 @@ function PdfVersionSummary({
           </Text>
         </View>
       )}
-      {version.scenarios.length > 0 && (
+      {version.requirementPackages.length > 0 && (
         <View style={{ marginTop: 2 }}>
           <Text style={{ fontSize: 8, color: '#6b7280' }}>
             <Text style={{ fontFamily: 'Helvetica-Bold', color: '#374151' }}>
-              {locale === 'sv' ? 'Scenarier: ' : 'Scenarios: '}
+              {locale === 'sv' ? 'Kravpaket: ' : 'Requirements packages: '}
             </Text>
-            {version.scenarios
+            {version.requirementPackages
               .map(s => (locale === 'sv' ? s.nameSv : s.nameEn))
               .join(', ')}
           </Text>

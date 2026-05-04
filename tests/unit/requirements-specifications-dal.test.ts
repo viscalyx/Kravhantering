@@ -420,7 +420,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
         nameSv: 'Hög',
         sortOrder: 3,
       },
-      scenarios: [{ id: 13, nameEn: 'Login', nameSv: 'Inloggning' }],
+      requirementPackages: [{ id: 13, nameEn: 'Login', nameSv: 'Inloggning' }],
       uniqueId: 'LOK-001',
       updatedAt: '2026-04-21T10:00:00.000Z',
       verificationMethod: 'Manual test',
@@ -503,7 +503,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
       description: 'Created local requirement',
       normReferenceIds: [11],
       requirementAreaId: 7,
-      scenarioIds: [13],
+      requirementPackageIds: [13],
     })
 
     const updated = await updateSpecificationLocalRequirement(db, 5, 41, {
@@ -605,7 +605,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           typeNameEn: 'Business',
           typeNameSv: 'Verksamhet',
           uniqueId: 'REQ-001',
-          usageScenarioIds: '2,3',
+          requirementPackageIds: '2,3',
           versionNumber: 2,
         },
       ])
@@ -636,7 +636,7 @@ describe('requirements-specifications DAL (SQL Server path)', () => {
           riskLevelNameEn: 'Medium',
           riskLevelNameSv: 'Medel',
           riskLevelSortOrder: 2,
-          usageScenarioIds: '9',
+          requirementPackageIds: '9',
         },
       ])
 

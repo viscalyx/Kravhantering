@@ -122,7 +122,7 @@ It links to the existing stable routes for:
 
 - areas (including owner assignment)
 - types
-- scenarios
+- requirement packages
 - statuses
 - quality characteristics
 - business objects
