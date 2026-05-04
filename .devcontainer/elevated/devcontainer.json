@@ -219,7 +219,7 @@
 
   // Copy .devcontainer/.env.example to .devcontainer/.env before the first rebuild.
   // Use 'postStartCommand' to run commands after the container starts and every time it starts
-
+  // Unset the gpg.ssh.program for the vscode user so that SSH agent forwarding works correctly.
   // Also start a socat forwarder so server-side OIDC calls to
   // http://localhost:8080 (Keycloak issuer) inside this container reach the
   // `idp` service container. Without this, Next.js fetches from /api/auth/*
