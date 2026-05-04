@@ -1089,7 +1089,7 @@ const DOGFOOD_KRAV = [
   },
   {
     area: ID.area.KVA,
-    desc: 'Playwright ska användas för end-to-end-test mot dev-, prodlika- och guide-konfigurationer.',
+    desc: 'Playwright ska användas för end-to-end-test mot dev-, produktionsliknande- och guide-konfigurationer.',
     ac: 'playwright.config.ts, playwright.prodlike.config.ts och playwright.guide.config.ts startar respektive scenarion och rapporterar resultat under playwright-report*-mapparna.',
     vm: 'CI-körning samt manuell körning enligt docs/auth-developer-workflow.md.',
     cat: ID.cat.it,
