@@ -15,11 +15,12 @@
     "ghcr.io/devcontainers/features/node:2": {
       "nodeGitTagPrefix": "v",
       "version": "24",
-      "nvmVersion": "latest"
+      "nvmVersion": "latest",
+      "npmVersion": "latest"
     },
     "ghcr.io/devcontainers/features/git:1": {
       "ppa": true,
-      "version": "latest"
+
     },
     "ghcr.io/devcontainers/features/github-cli:1": {
       "installDirectlyFromGitHubRelease": false,
