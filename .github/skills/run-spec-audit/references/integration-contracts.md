@@ -60,7 +60,7 @@ Source: `lib/requirements/types.ts`
 | `verificationMethod` | `string \| null` | Test method |
 | `versionNormReferences` | `RequirementVersionNormReference[]` | Norm refs |
 | `versionNumber` | `number` | Version sequence |
-| `versionRequirementPackages` | `RequirementVersionRequirementPackage[]` | Requirement packages |
+| `versionScenarios` | `RequirementVersionScenario[]` | Scenarios |
 
 ## REST: Specification Detail `/api/specifications/[id]`
 
@@ -112,7 +112,7 @@ Top-level: `{ items: RequirementRow[] }`
 | `specificationItemStatusNameSv` | `string \| null` | Swedish status |
 | `specificationLocalRequirementId` | `number` | Specification-local rows |
 | `uniqueId` | `string` | Req or local id |
-| `requirementPackageIds` | `number[]` | Requirement package ids |
+| `usageScenarioIds` | `number[]` | Scenario ids |
 | `version` | `object` | Published snapshot |
 
 ## MCP: `GetRequirementOutputSchema`
