@@ -971,11 +971,11 @@ describe('RequirementsTable', () => {
       .getByRole('checkbox', { name: 'status' })
       .closest('label')
 
-    expect(resetButton.className).toContain('min-h-[44px]')
-    expect(resetButton.className).toContain('min-w-[44px]')
+    expect(resetButton.className).toContain('min-h-11')
+    expect(resetButton.className).toContain('min-w-11')
     expect(statusLabel).toBeTruthy()
-    expect(statusLabel?.className).toContain('min-h-[44px]')
-    expect(statusLabel?.className).toContain('min-w-[44px]')
+    expect(statusLabel?.className).toContain('min-h-11')
+    expect(statusLabel?.className).toContain('min-w-11')
     expect(statusLabel?.className).toContain('w-full')
   })
 
@@ -1531,8 +1531,8 @@ describe('RequirementsTable', () => {
       expect(list).toBeTruthy()
       expect(item).toBeTruthy()
       expect(link.getAttribute('role')).toBeNull()
-      expect(link.className).toContain('min-h-[44px]')
-      expect(link.className).toContain('min-w-[44px]')
+      expect(link.className).toContain('min-h-11')
+      expect(link.className).toContain('min-w-11')
       expect(link.className).toContain('focus-visible:ring-2')
     })
   })
@@ -1577,8 +1577,8 @@ describe('RequirementsTable', () => {
     const descriptionCell = screen.getByText('Testkrav').closest('td')
 
     expect(descriptionCell?.className).toContain('whitespace-normal')
-    expect(descriptionCell?.className).toContain('break-words')
-    expect(descriptionCell?.className).not.toContain('wrap-break-word')
+    expect(descriptionCell?.className).toContain('wrap-break-word')
+    expect(descriptionCell?.className).not.toContain('break-words')
   })
 
   it('syncs description wrapping when the prop changes on rerender', () => {
@@ -1595,7 +1595,7 @@ describe('RequirementsTable', () => {
 
     descriptionCell = screen.getByText('Testkrav').closest('td')
     expect(descriptionCell?.className).toContain('whitespace-normal')
-    expect(descriptionCell?.className).toContain('break-words')
+    expect(descriptionCell?.className).toContain('wrap-break-word')
 
     rerender(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
@@ -1795,8 +1795,8 @@ describe('RequirementsTable', () => {
     )
 
     for (const button of screen.getAllByRole('button', { name: 'filterBy' })) {
-      expect(button.className).toContain('min-h-[44px]')
-      expect(button.className).toContain('min-w-[44px]')
+      expect(button.className).toContain('min-h-11')
+      expect(button.className).toContain('min-w-11')
       expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     }
   })
@@ -1832,8 +1832,8 @@ describe('RequirementsTable', () => {
     const clearButton = popover?.querySelector('button')
     const optionRow = popover?.querySelector('label')
 
-    expect(clearButton?.className).toContain('min-h-[44px]')
-    expect(optionRow?.className).toContain('min-h-[44px]')
+    expect(clearButton?.className).toContain('min-h-11')
+    expect(optionRow?.className).toContain('min-h-11')
   })
 
   it('applies 44px touch targets to grouped filter popover actions', () => {
@@ -1875,8 +1875,8 @@ describe('RequirementsTable', () => {
     const clearButton = popover?.querySelector('button')
     const optionRow = popover?.querySelector('label')
 
-    expect(clearButton?.className).toContain('min-h-[44px]')
-    expect(optionRow?.className).toContain('min-h-[44px]')
+    expect(clearButton?.className).toContain('min-h-11')
+    expect(optionRow?.className).toContain('min-h-11')
   })
 
   it('applies the minimum header touch target to the sortable button itself', () => {
@@ -1898,9 +1898,9 @@ describe('RequirementsTable', () => {
 
     expect(headerControl).toBeTruthy()
     expect(sortableButton).toBeTruthy()
-    expect(headerControl?.className).not.toContain('min-h-[44px]')
-    expect(sortableButton?.className).toContain('min-h-[44px]')
-    expect(sortableButton?.className).toContain('min-w-[44px]')
+    expect(headerControl?.className).not.toContain('min-h-11')
+    expect(sortableButton?.className).toContain('min-h-11')
+    expect(sortableButton?.className).toContain('min-w-11')
   })
 
   it('anchors active filter count badges to the filter icon instead of the full button shell', () => {
@@ -2026,10 +2026,10 @@ describe('RequirementsTable', () => {
       screen.getAllByRole('button', { name: 'resizeColumn' }),
     ).toHaveLength(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS.length - 1)
     expect(getResizeHandle(container, 'description')?.className).toContain(
-      'min-w-[44px]',
+      'min-w-11',
     )
     expect(getResizeHandle(container, 'description')?.className).toContain(
-      'min-h-[44px]',
+      'min-h-11',
     )
     expect(getResizeHandle(container, 'description')?.className).toContain(
       'before:w-px',
@@ -2266,7 +2266,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment).toBeTruthy()
     expect(bottomSegment?.style.top).toBe('240px')
     expect(bottomSegment?.style.height).toBe('48px')
-    expect(bottomSegment?.className).toContain('min-w-[44px]')
+    expect(bottomSegment?.className).toContain('min-w-11')
     expect(bottomSegment?.className).toContain('min-h-0')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
     expect(
@@ -2325,9 +2325,9 @@ describe('RequirementsTable', () => {
     expect(bottomSegment).toBeTruthy()
     expect(bottomSegment?.style.top).toBe('248px')
     expect(bottomSegment?.style.height).toBe('32px')
-    expect(bottomSegment?.className).toContain('min-w-[44px]')
+    expect(bottomSegment?.className).toContain('min-w-11')
     expect(bottomSegment?.className).toContain('min-h-0')
-    expect(bottomSegment?.className).not.toContain('min-h-[44px]')
+    expect(bottomSegment?.className).not.toContain('min-h-11')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
 
     firePrimaryPointerDown(bottomSegment as Element, {
@@ -2678,8 +2678,8 @@ describe('RequirementsTable', () => {
     const action = screen.getByRole('button', { name: 'INT0001' })
     const cell = action.closest('td')
 
-    expect(action.className).toContain('min-h-[44px]')
-    expect(action.className).toContain('min-w-[44px]')
+    expect(action.className).toContain('min-h-11')
+    expect(action.className).toContain('min-w-11')
     expect(action.className).toContain('px-2')
     expect(action.className).toContain('py-2')
     expect(cell?.className).not.toContain('px-2')
