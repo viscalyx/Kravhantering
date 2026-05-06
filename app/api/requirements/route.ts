@@ -7,6 +7,7 @@ import {
   isRequirementSortDirection,
   isRequirementSortField,
 } from '@/lib/requirements/list-view'
+import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
   type RequirementListItem,
@@ -15,19 +16,16 @@ import {
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
 function normalizePositiveIntegerIds(values: Iterable<unknown>): number[] {
-  const ids: number[] = []
-  const seen = new Set<number>()
-  for (const value of values) {
-    const parsed =
-      typeof value === 'number' || typeof value === 'string'
-        ? Number(value)
-        : Number.NaN
-    if (Number.isInteger(parsed) && parsed > 0 && !seen.has(parsed)) {
-      seen.add(parsed)
-      ids.push(parsed)
-    }
-  }
-  return ids
+  return parsePositiveIntegerIds(values)
+}
+
+function normalizeOptionalPositiveIntegerIds(
+  value: unknown,
+): number[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const ids = parsePositiveIntegerIds(value)
+  return ids.length > 0 ? ids : undefined
 }
 
 export async function GET(request: NextRequest) {
@@ -211,9 +209,9 @@ export async function POST(request: NextRequest) {
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        requirementPackageIds: Array.isArray(body.requirementPackageIds)
-          ? normalizePositiveIntegerIds(body.requirementPackageIds)
-          : undefined,
+        requirementPackageIds: normalizeOptionalPositiveIntegerIds(
+          body.requirementPackageIds,
+        ),
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,

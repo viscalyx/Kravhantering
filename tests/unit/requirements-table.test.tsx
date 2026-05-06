@@ -3133,6 +3133,7 @@ describe('RequirementsTable', () => {
     const requirementPackages = [
       { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
     ]
+    const onFilterChange = vi.fn()
 
     const { rerender } = render(
       <RequirementsTable
@@ -3149,9 +3150,10 @@ describe('RequirementsTable', () => {
 
     rerender(
       <RequirementsTable
+        filterValues={{ requirementPackageIds: [1] }}
         getName={opt => opt.nameSv}
         locale="sv"
-        onFilterChange={vi.fn()}
+        onFilterChange={onFilterChange}
         requirementPackages={requirementPackages}
         rows={[makeRow()]}
       />,
@@ -3164,6 +3166,27 @@ describe('RequirementsTable', () => {
       'data-requirement-package',
       '1',
     )
+    expect(requirementPackageFilter).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(requirementPackageFilter)
+    expect(onFilterChange).toHaveBeenCalledWith({
+      requirementPackageIds: undefined,
+    })
+
+    rerender(
+      <RequirementsTable
+        filterValues={{}}
+        getName={opt => opt.nameSv}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Mobil användning' }),
+    ).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {

@@ -2,32 +2,20 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getOwnerById } from '@/lib/dal/owners'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
+import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
+import { parseRequirementRef } from '../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
-
-import { parseRequirementRef } from '../parse-requirement-ref'
 
 function normalizePositiveIntegerIds(value: unknown): number[] | undefined {
   if (!Array.isArray(value)) return undefined
 
-  const ids: number[] = []
-  const seen = new Set<number>()
-  for (const entry of value) {
-    const parsed =
-      typeof entry === 'number' || typeof entry === 'string'
-        ? Number(entry)
-        : Number.NaN
-    if (Number.isInteger(parsed) && parsed > 0 && !seen.has(parsed)) {
-      seen.add(parsed)
-      ids.push(parsed)
-    }
-  }
-
+  const ids = parsePositiveIntegerIds(value)
   return ids.length > 0 ? ids : undefined
 }
 

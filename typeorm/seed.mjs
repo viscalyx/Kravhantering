@@ -11903,18 +11903,33 @@ export async function seedDatabase(executor) {
     process.env.SEED_DEBUG === '1' || process.env.SEED_DEBUG === 'true'
   let inserted = 0
   let currentTable = null
+  let currentEntry = null
   let currentRowIndex = -1
   let currentRow = null
+  const seedPrimaryKeyDetail = () => {
+    if (!currentEntry || !currentRow || currentEntry.pk.length === 0) {
+      return 'pk={}'
+    }
+
+    const values = currentEntry.pk.map(pkCol => {
+      const columnIndex = currentEntry.columns.indexOf(pkCol)
+      const value = columnIndex >= 0 ? currentRow[columnIndex] : undefined
+      return `${pkCol}=${String(value)}`
+    })
+
+    return `pk={${values.join(', ')}}`
+  }
   const seedPositionDetail = () =>
     currentTable != null
-      ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
-      : ` while seeding table=${String(currentTable)} rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
+      ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} ${seedPrimaryKeyDetail()}`
+      : ` while seeding table=${String(currentTable)} rowIndex=${currentRowIndex}`
   let commitError = null
   try {
     for (const table of TABLE_ORDER) {
       const entry = SEED_DATA[table]
       if (!entry || entry.rows.length === 0) continue
       currentTable = table
+      currentEntry = entry
       const colList = entry.columns.map(c => `[${c}]`).join(', ')
       const hasIdentityId =
         entry.columns.includes('id') &&
@@ -11953,6 +11968,7 @@ export async function seedDatabase(executor) {
         // No-op: IDENTITY_INSERT is bundled per-row above.
       }
       currentTable = null
+      currentEntry = null
       currentRowIndex = -1
       currentRow = null
     }

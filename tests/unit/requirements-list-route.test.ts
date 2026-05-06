@@ -173,6 +173,33 @@ describe('requirements route', () => {
       )
     })
 
+    it('omits requirement package ids when POST contains no valid ids', async () => {
+      mockManageRequirement.mockResolvedValue({
+        result: { id: 42, uniqueId: 'TST-042' },
+      })
+
+      const { POST } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements', {
+        method: 'POST',
+        body: JSON.stringify({
+          description: 'New requirement',
+          areaId: 1,
+          requirementPackageIds: [0, -1, 1.5, 'abc'],
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never)
+      expect(res.status).toBe(201)
+      expect(mockManageRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          requirement: expect.objectContaining({
+            requirementPackageIds: undefined,
+          }),
+        }),
+      )
+    })
+
     it('returns error on failure', async () => {
       mockManageRequirement.mockRejectedValue(new Error('validation'))
 

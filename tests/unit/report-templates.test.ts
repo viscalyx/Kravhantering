@@ -83,6 +83,45 @@ describe('report templates', () => {
     ).toEqual([{ nameEn: 'Mobile use', nameSv: 'Mobile use' }])
   })
 
+  it('skips blank requirement packages in review reports and falls back to the available locale', () => {
+    const model = buildReviewReport(
+      makeRequirement([
+        makeVersion({
+          status: 2,
+          statusNameEn: 'Review',
+          statusNameSv: 'Granskning',
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                id: 1,
+                nameEn: 'Mobile use',
+                nameSv: null,
+              },
+            },
+            {
+              requirementPackage: {
+                id: 2,
+                nameEn: '',
+                nameSv: '',
+              },
+            },
+          ],
+        }),
+      ]),
+      'sv',
+    )
+
+    const versionSummary = model.sections.find(
+      section => section.type === 'version-summary',
+    )
+    expect(versionSummary).toBeDefined()
+    expect(
+      versionSummary?.type === 'version-summary'
+        ? versionSummary.version.requirementPackages
+        : [],
+    ).toEqual([{ nameEn: 'Mobile use', nameSv: 'Mobile use' }])
+  })
+
   it('compares requirement packages by stable IDs in review metadata', () => {
     const model = buildReviewReport(
       makeRequirement([

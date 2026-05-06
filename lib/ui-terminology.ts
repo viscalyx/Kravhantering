@@ -83,7 +83,7 @@ const MESSAGE_BINDINGS: Record<
     singular: [['requirement', 'acceptanceCriteria']],
   },
   requirementPackage: {
-    plural: [['nav', 'requirement_packages']],
+    plural: [['nav', 'requirementPackages']],
     singular: [['requirement', 'requirementPackage']],
   },
   normReferences: {

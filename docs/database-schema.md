@@ -235,6 +235,8 @@ erDiagram
         text description_sv
         text description_en
         integer owner_id FK
+        text created_at
+        text updated_at
     }
 
     requirement_version_requirement_packages {

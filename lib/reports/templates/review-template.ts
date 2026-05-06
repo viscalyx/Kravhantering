@@ -11,6 +11,20 @@ const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 
+type VersionRequirementPackage =
+  RequirementReportData['versions'][number]['versionRequirementPackages'][number]
+type VersionRequirementPackageWithPackage = VersionRequirementPackage & {
+  requirementPackage: NonNullable<
+    VersionRequirementPackage['requirementPackage']
+  >
+}
+
+function hasRequirementPackage(
+  versionRequirementPackage: VersionRequirementPackage,
+): versionRequirementPackage is VersionRequirementPackageWithPackage {
+  return Boolean(versionRequirementPackage.requirementPackage)
+}
+
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
   locale: string,
@@ -76,11 +90,18 @@ function toVersionSummary(
         uri: vnr.normReference.uri,
       })),
     requirementPackages: version.versionRequirementPackages
-      .filter(vs => vs.requirementPackage)
-      .map(vs => ({
-        nameSv: vs.requirementPackage.nameSv ?? '',
-        nameEn: vs.requirementPackage.nameEn ?? '',
-      })),
+      .filter(hasRequirementPackage)
+      .flatMap(({ requirementPackage }) => {
+        const nameSv = requirementPackage.nameSv?.trim()
+        const nameEn = requirementPackage.nameEn?.trim()
+        if (!nameSv && !nameEn) return []
+        return [
+          {
+            nameSv: nameSv || nameEn || '',
+            nameEn: nameEn || nameSv || '',
+          },
+        ]
+      }),
   }
 }
 

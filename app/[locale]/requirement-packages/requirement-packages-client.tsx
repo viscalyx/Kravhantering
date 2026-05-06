@@ -570,7 +570,10 @@ export default function RequirementPackagesClient() {
                     <td className="py-3 px-4 font-medium">
                       {getName(requirementPackage)}
                     </td>
-                    <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate">
+                    <td
+                      className="py-3 px-4 text-secondary-600 dark:text-secondary-400 max-w-xs truncate"
+                      title={getDescription(requirementPackage) || '—'}
+                    >
                       {getDescription(requirementPackage) || '—'}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
