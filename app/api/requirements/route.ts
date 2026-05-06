@@ -15,10 +15,6 @@ import {
 } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
-function normalizePositiveIntegerIds(values: Iterable<unknown>): number[] {
-  return parsePositiveIntegerIds(values)
-}
-
 function normalizeOptionalPositiveIntegerIds(
   value: unknown,
 ): number[] | undefined {
@@ -69,7 +65,7 @@ export async function GET(request: NextRequest) {
     .filter(v => v.trim() !== '')
     .map(Number)
     .filter(n => Number.isInteger(n) && n > 0)
-  const requirementPackageIds = normalizePositiveIntegerIds(
+  const requirementPackageIds = parsePositiveIntegerIds(
     url.searchParams.getAll('requirementPackageIds'),
   )
   const riskLevelIds = url.searchParams
@@ -184,6 +180,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const context = await createRequestContext(request, 'rest')
+    const requirementPackageIds = normalizeOptionalPositiveIntegerIds(
+      body.requirementPackageIds,
+    )
     const result = await service.manageRequirement(context, {
       operation: 'create',
       requirement: {
@@ -209,9 +208,7 @@ export async function POST(request: NextRequest) {
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        requirementPackageIds: normalizeOptionalPositiveIntegerIds(
-          body.requirementPackageIds,
-        ),
+        ...(requirementPackageIds ? { requirementPackageIds } : {}),
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,

@@ -11871,6 +11871,16 @@ const SEED_DATA = {
 const { appendDogfoodSeed } = await import('./seed-dogfood-build.mjs')
 appendDogfoodSeed(SEED_DATA)
 
+export function seedPositionDetail({
+  table,
+  rowIndex,
+  primaryKeyDetail = 'pk={}',
+}) {
+  return table != null
+    ? ` while seeding table='${table}' rowIndex=${rowIndex} ${primaryKeyDetail}`
+    : ` while seeding table=${String(table)} rowIndex=${rowIndex}`
+}
+
 export async function seedDatabase(executor) {
   // SQL Server's SET IDENTITY_INSERT is connection-scoped. When `executor` is
   // a DataSource, each .query() call may be served by a different pooled
@@ -11919,10 +11929,12 @@ export async function seedDatabase(executor) {
 
     return `pk={${values.join(', ')}}`
   }
-  const seedPositionDetail = () =>
-    currentTable != null
-      ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} ${seedPrimaryKeyDetail()}`
-      : ` while seeding table=${String(currentTable)} rowIndex=${currentRowIndex}`
+  const currentSeedPositionDetail = () =>
+    seedPositionDetail({
+      primaryKeyDetail: seedPrimaryKeyDetail(),
+      rowIndex: currentRowIndex,
+      table: currentTable,
+    })
   let commitError = null
   try {
     for (const table of TABLE_ORDER) {
@@ -11983,7 +11995,7 @@ export async function seedDatabase(executor) {
         startedTransaction = false
       }
     }
-    const detail = seedPositionDetail()
+    const detail = currentSeedPositionDetail()
     const message = error instanceof Error ? error.message : String(error)
     const rollbackMessage =
       rollbackError instanceof Error
@@ -12019,7 +12031,7 @@ export async function seedDatabase(executor) {
     }
   }
   if (commitError != null) {
-    const detail = seedPositionDetail()
+    const detail = currentSeedPositionDetail()
     const message =
       commitError instanceof Error ? commitError.message : String(commitError)
     throw new Error(`Seed commit failed${detail}: ${message}`)

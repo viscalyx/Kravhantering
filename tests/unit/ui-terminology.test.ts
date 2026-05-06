@@ -60,7 +60,7 @@ describe('ui terminology helpers', () => {
     const enMessages = applyUiTerminologyMessages(
       {
         nav: {
-          requirementPackages: 'Requirements packages',
+          requirementPackages: 'Requirement packages',
           statuses: 'Requirement Statuses',
         },
         requirement: { description: 'Description', status: 'Status' },
@@ -76,6 +76,11 @@ describe('ui terminology helpers', () => {
       },
       requirement: { description: 'Kravtext', status: 'Livscykelstatus' },
       terminology: {
+        requirementPackage: {
+          definitePlural: 'Leveranspaketen',
+          plural: 'Leveranspaket',
+          singular: 'Leveranspaket',
+        },
         status: {
           definitePlural: 'Livscykelstatusarna',
           plural: 'Livscykelstatusar',
@@ -97,6 +102,11 @@ describe('ui terminology helpers', () => {
           definitePlural: 'Requirement texts',
           plural: 'Requirement texts',
           singular: 'Requirement text',
+        },
+        requirementPackage: {
+          definitePlural: 'Delivery bundles',
+          plural: 'Delivery bundles',
+          singular: 'Delivery bundle',
         },
       },
     })

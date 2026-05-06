@@ -163,4 +163,60 @@ describe('report templates', () => {
       model.sections.some(section => section.type === 'metadata-changes'),
     ).toBe(false)
   })
+
+  it('uses fallback requirement package names in review metadata changes', () => {
+    const model = buildReviewReport(
+      makeRequirement([
+        makeVersion({
+          id: 1,
+          status: 3,
+          versionNumber: 1,
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                id: 7,
+                nameEn: 'Old package',
+                nameSv: null,
+              },
+            },
+          ],
+        }),
+        makeVersion({
+          id: 2,
+          status: 2,
+          statusNameEn: 'Review',
+          statusNameSv: 'Granskning',
+          versionNumber: 2,
+          versionRequirementPackages: [
+            {
+              requirementPackage: {
+                id: 8,
+                nameEn: 'New package',
+                nameSv: null,
+              },
+            },
+          ],
+        }),
+      ]),
+      'sv',
+    )
+
+    const metadataChanges = model.sections.find(
+      section => section.type === 'metadata-changes',
+    )
+    expect(metadataChanges).toBeDefined()
+    expect(
+      metadataChanges?.type === 'metadata-changes'
+        ? metadataChanges.changes
+        : [],
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'Kravpaket',
+          newValue: 'New package',
+          oldValue: 'Old package',
+        }),
+      ]),
+    )
+  })
 })

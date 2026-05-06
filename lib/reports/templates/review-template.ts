@@ -11,19 +11,10 @@ const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 
-type VersionRequirementPackage =
-  RequirementReportData['versions'][number]['versionRequirementPackages'][number]
-type VersionRequirementPackageWithPackage = VersionRequirementPackage & {
-  requirementPackage: NonNullable<
-    VersionRequirementPackage['requirementPackage']
-  >
-}
-
-function hasRequirementPackage(
-  versionRequirementPackage: VersionRequirementPackage,
-): versionRequirementPackage is VersionRequirementPackageWithPackage {
-  return Boolean(versionRequirementPackage.requirementPackage)
-}
+type LocalizedNameItem = {
+  nameSv: string | null
+  nameEn: string | null
+} | null
 
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
@@ -34,12 +25,31 @@ function getStatusLabel(
   )
 }
 
-function getName(
-  item: { nameSv: string | null; nameEn: string | null } | null,
-  locale: string,
-): string | null {
+function getName(item: LocalizedNameItem, locale: string): string | null {
   if (!item) return null
   return (locale === 'sv' ? item.nameSv : item.nameEn) ?? null
+}
+
+function toRequirementPackageSummary(
+  item: LocalizedNameItem,
+): { nameSv: string; nameEn: string } | null {
+  const nameSv = item?.nameSv?.trim()
+  const nameEn = item?.nameEn?.trim()
+  if (!nameSv && !nameEn) return null
+
+  return {
+    nameSv: nameSv || nameEn || '',
+    nameEn: nameEn || nameSv || '',
+  }
+}
+
+function getRequirementPackageDisplayName(
+  item: LocalizedNameItem,
+  locale: string,
+): string | null {
+  const summary = toRequirementPackageSummary(item)
+  if (!summary) return null
+  return locale === 'sv' ? summary.nameSv : summary.nameEn
 }
 
 function toVersionSummary(
@@ -89,19 +99,12 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    requirementPackages: version.versionRequirementPackages
-      .filter(hasRequirementPackage)
-      .flatMap(({ requirementPackage }) => {
-        const nameSv = requirementPackage.nameSv?.trim()
-        const nameEn = requirementPackage.nameEn?.trim()
-        if (!nameSv && !nameEn) return []
-        return [
-          {
-            nameSv: nameSv || nameEn || '',
-            nameEn: nameEn || nameSv || '',
-          },
-        ]
-      }),
+    requirementPackages: version.versionRequirementPackages.flatMap(
+      ({ requirementPackage }) => {
+        const summary = toRequirementPackageSummary(requirementPackage)
+        return summary ? [summary] : []
+      },
+    ),
   }
 }
 
@@ -171,11 +174,23 @@ function computeMetadataChanges(
   }
 
   const oldRequirementPackages = baseVersion.versionRequirementPackages
-    .map(vs => getName(vs.requirementPackage, locale) ?? '')
+    .flatMap(vs => {
+      const name = getRequirementPackageDisplayName(
+        vs.requirementPackage,
+        locale,
+      )
+      return name ? [name] : []
+    })
     .sort()
     .join(', ')
   const newRequirementPackages = reviewVersion.versionRequirementPackages
-    .map(vs => getName(vs.requirementPackage, locale) ?? '')
+    .flatMap(vs => {
+      const name = getRequirementPackageDisplayName(
+        vs.requirementPackage,
+        locale,
+      )
+      return name ? [name] : []
+    })
     .sort()
     .join(', ')
   const oldRequirementPackageIds = baseVersion.versionRequirementPackages

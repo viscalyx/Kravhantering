@@ -190,14 +190,11 @@ describe('requirements route', () => {
       })
       const res = await POST(req as never)
       expect(res.status).toBe(201)
-      expect(mockManageRequirement).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          requirement: expect.objectContaining({
-            requirementPackageIds: undefined,
-          }),
-        }),
-      )
+      const payload = mockManageRequirement.mock.calls.at(-1)?.[1] as
+        | { requirement?: Record<string, unknown> }
+        | undefined
+      expect(payload?.requirement).toBeDefined()
+      expect(payload?.requirement).not.toHaveProperty('requirementPackageIds')
     })
 
     it('returns error on failure', async () => {
