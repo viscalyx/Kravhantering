@@ -12,10 +12,11 @@
 
   // Features to add to the dev container
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {
+    "ghcr.io/devcontainers/features/node:2": {
       "nodeGitTagPrefix": "v",
       "version": "24",
-      "nvmVersion": "latest"
+      "nvmVersion": "latest",
+      "npmVersion": "latest"
     },
     "ghcr.io/devcontainers/features/git:1": {
       "ppa": true,
@@ -214,7 +215,7 @@
 
   // Use 'postCreateCommand' to run commands after the container is created
   // Do not use this git configuration command here, as it will prevent ssh-agent forwarding
-  "postCreateCommand": "npm install -g npm@latest && npm install && npx playwright install --with-deps",
+  "postCreateCommand": "npm install && npx playwright install --with-deps",
 
   // Copy .devcontainer/.env.example to .devcontainer/.env before the first rebuild.
   // Use 'postStartCommand' to run commands after the container starts and every time it starts
