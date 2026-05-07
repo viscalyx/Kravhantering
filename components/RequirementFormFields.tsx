@@ -2,45 +2,15 @@
 
 import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 
-interface TaxonomyOption {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface AreaOption {
-  id: number
-  name: string
-  ownerName: string | null
-}
-
-interface QualityCharacteristicOption {
-  id: number
-  nameEn: string
-  nameSv: string
-  parentId: number | null
-}
-
-interface RequirementPackageOption {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface NormReferenceOption {
-  id: number
-  name: string
-  normReferenceId: string
-}
+import type {
+  NormReferenceOption,
+  QualityCharacteristicOption,
+  TaxonomyOption,
+  TaxonomyOptions,
+} from '@/hooks/useTaxonomyOptions'
 
 export interface RequirementFormFieldValues {
   acceptanceCriteria: string
@@ -70,6 +40,8 @@ export interface RequirementFormFieldsProps {
   /** Extra actions rendered after norm reference list (e.g. "Create" button) */
   normReferenceActions?: ReactNode
   onChange: (values: RequirementFormFieldValues) => void
+  /** Taxonomy option arrays loaded by the form container via useTaxonomyOptions */
+  taxonomyOptions: TaxonomyOptions
   values: RequirementFormFieldValues
 }
 
@@ -91,28 +63,26 @@ export default function RequirementFormFields({
   layout = 'sidebar',
   normReferenceActions,
   onChange,
+  taxonomyOptions,
   values,
 }: RequirementFormFieldsProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
   const locale = useLocale()
 
+  const {
+    areas,
+    categories,
+    normReferences,
+    qualityCharacteristics,
+    requirementPackages,
+    riskLevels,
+    types,
+  } = taxonomyOptions
+
   const getOptionName = (o: TaxonomyOption) =>
     locale === 'sv' ? o.nameSv : o.nameEn
 
-  const [areas, setAreas] = useState<AreaOption[]>([])
-  const [categories, setCategories] = useState<TaxonomyOption[]>([])
-  const [types, setTypes] = useState<TaxonomyOption[]>([])
-  const [qualityCharacteristics, setQualityCharacteristics] = useState<
-    QualityCharacteristicOption[]
-  >([])
-  const [riskLevels, setRiskLevels] = useState<TaxonomyOption[]>([])
-  const [requirementPackages, setRequirementPackages] = useState<
-    RequirementPackageOption[]
-  >([])
-  const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
-    [],
-  )
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
 
   const allNormReferences = useMemo(() => {
@@ -123,92 +93,6 @@ export default function RequirementFormFields({
       ...additionalNormReferences.filter(nr => !existingIds.has(nr.id)),
     ]
   }, [normReferences, additionalNormReferences])
-
-  const fetchOptions = useCallback(async () => {
-    const results = await Promise.allSettled([
-      fetch('/api/requirement-areas'),
-      fetch('/api/requirement-categories'),
-      fetch('/api/requirement-types'),
-      fetch('/api/requirement-packages'),
-      fetch('/api/norm-references'),
-      fetch('/api/risk-levels'),
-    ])
-    const [
-      areasResult,
-      catResult,
-      typesResult,
-      requirementPackagesResult,
-      normRefsResult,
-      riskLevelsResult,
-    ] = results
-    if (areasResult.status === 'fulfilled' && areasResult.value.ok)
-      setAreas(
-        ((await areasResult.value.json()) as { areas?: AreaOption[] }).areas ??
-          [],
-      )
-    if (catResult.status === 'fulfilled' && catResult.value.ok)
-      setCategories(
-        ((await catResult.value.json()) as { categories?: TaxonomyOption[] })
-          .categories ?? [],
-      )
-    if (typesResult.status === 'fulfilled' && typesResult.value.ok)
-      setTypes(
-        ((await typesResult.value.json()) as { types?: TaxonomyOption[] })
-          .types ?? [],
-      )
-    if (
-      requirementPackagesResult.status === 'fulfilled' &&
-      requirementPackagesResult.value.ok
-    )
-      setRequirementPackages(
-        (
-          (await requirementPackagesResult.value.json()) as {
-            requirementPackages?: RequirementPackageOption[]
-          }
-        ).requirementPackages ?? [],
-      )
-    if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok) {
-      setNormReferences(
-        (
-          (await normRefsResult.value.json()) as {
-            normReferences?: NormReferenceOption[]
-          }
-        ).normReferences ?? [],
-      )
-    }
-    if (riskLevelsResult.status === 'fulfilled' && riskLevelsResult.value.ok)
-      setRiskLevels(
-        (
-          (await riskLevelsResult.value.json()) as {
-            riskLevels?: TaxonomyOption[]
-          }
-        ).riskLevels ?? [],
-      )
-  }, [])
-
-  const fetchQualityCharacteristics = useCallback(async (typeId: string) => {
-    if (!typeId) {
-      setQualityCharacteristics([])
-      return
-    }
-    const res = await fetch(`/api/quality-characteristics?typeId=${typeId}`)
-    if (res.ok)
-      setQualityCharacteristics(
-        (
-          (await res.json()) as {
-            qualityCharacteristics?: QualityCharacteristicOption[]
-          }
-        ).qualityCharacteristics ?? [],
-      )
-  }, [])
-
-  useEffect(() => {
-    void fetchOptions()
-  }, [fetchOptions])
-
-  useEffect(() => {
-    void fetchQualityCharacteristics(values.typeId)
-  }, [values.typeId, fetchQualityCharacteristics])
 
   const handleChange = (
     key: keyof RequirementFormFieldValues,
