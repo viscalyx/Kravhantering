@@ -9,6 +9,7 @@ import NormReferenceFormFields from '@/components/NormReferenceFormFields'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
@@ -117,6 +118,8 @@ export default function RequirementForm({
     normReferenceIds: initialNormReferenceIds ?? [],
     requirementPackageIds: initialRequirementPackageIds ?? [],
   })
+
+  const taxonomyOptions = useTaxonomyOptions(form.typeId)
 
   const dirtyFields = useRef<Set<string>>(new Set())
   const prevInitialData = useRef(initialData)
@@ -292,6 +295,7 @@ export default function RequirementForm({
         layout="sidebar"
         normReferenceActions={normReferenceCreateButton}
         onChange={handleFieldsChange}
+        taxonomyOptions={taxonomyOptions}
         values={form}
       />
 

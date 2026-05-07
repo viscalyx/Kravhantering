@@ -7,6 +7,7 @@ import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import RequirementFormFields, {
   type RequirementFormFieldValues,
 } from '@/components/RequirementFormFields'
+import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 
 export interface SpecificationLocalRequirementSubmitPayload {
   acceptanceCriteria: string | null
@@ -105,6 +106,8 @@ export default function SpecificationLocalRequirementForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [needsRefHelpOpen, setNeedsRefHelpOpen] = useState(false)
 
+  const taxonomyOptions = useTaxonomyOptions(fields.typeId)
+
   useEffect(() => {
     setFields(toFieldValues(initialValue))
     setNeedsReferenceId(initialValue?.needsReferenceId ?? '')
@@ -196,6 +199,7 @@ export default function SpecificationLocalRequirementForm({
         idPrefix="plr"
         layout="sidebar"
         onChange={setFields}
+        taxonomyOptions={taxonomyOptions}
         values={fields}
       />
 

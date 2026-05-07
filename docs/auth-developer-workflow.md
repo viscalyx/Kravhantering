@@ -24,7 +24,7 @@ falling back to an unauthenticated mode. Bring up Keycloak first with
 
 <!-- cSpell:ignore socat -->
 
-Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.0`)
+Both setups use the same Keycloak image (`quay.io/keycloak/keycloak:26.6.1`)
 and import the realm config from `dev/keycloak/realm-kravhantering-dev.json`
 on every start. The JSON file is the source of truth — changes made via
 the admin UI on `http://localhost:8080` are NOT persisted across restarts.

@@ -163,7 +163,8 @@ components:
       # Keycloak realm `kravhantering-dev` is imported on every start
       # from dev/keycloak/realm-kravhantering-dev.json — same as the
       # devcontainer compose service.
-      image: quay.io/keycloak/keycloak:26.6
+      # https://www.keycloak.org/docs/latest/upgrading/
+      image: quay.io/keycloak/keycloak:26.6.1
       memoryRequest: 512Mi
       memoryLimit: 1Gi
       cpuRequest: 200m
