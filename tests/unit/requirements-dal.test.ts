@@ -138,15 +138,15 @@ describe('requirements DAL (SQL Server path)', () => {
       .mockResolvedValueOnce([
         {
           requirementVersionId: 21,
-          usageScenarioId: 200,
-          scId: 200,
-          scNameEn: 'Citizen portal',
-          scNameSv: 'Medborgarportal',
-          scDescriptionEn: null,
-          scDescriptionSv: null,
-          scOwnerId: null,
-          scCreatedAt: new Date('2026-03-01T00:00:00.000Z'),
-          scUpdatedAt: new Date('2026-03-02T00:00:00.000Z'),
+          requirementPackageId: 200,
+          packageId: 200,
+          packageNameEn: 'Citizen portal',
+          packageNameSv: 'Medborgarportal',
+          packageDescriptionEn: null,
+          packageDescriptionSv: null,
+          packageOwnerId: null,
+          packageCreatedAt: new Date('2026-03-01T00:00:00.000Z'),
+          packageUpdatedAt: new Date('2026-03-02T00:00:00.000Z'),
         },
       ])
       .mockResolvedValueOnce([{ specificationCount: 2 }])
@@ -208,11 +208,11 @@ describe('requirements DAL (SQL Server path)', () => {
         },
       },
     ])
-    expect(version?.versionScenarios).toEqual([
+    expect(version?.versionRequirementPackages).toEqual([
       {
         requirementVersionId: 21,
-        usageScenarioId: 200,
-        scenario: {
+        requirementPackageId: 200,
+        requirementPackage: {
           id: 200,
           nameEn: 'Citizen portal',
           nameSv: 'Medborgarportal',
@@ -262,7 +262,7 @@ describe('requirements DAL (SQL Server path)', () => {
         baseVersionId: 21,
         description: 'Stale update',
         normReferenceIds: [100],
-        scenarioIds: [200],
+        requirementPackageIds: [200],
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -278,7 +278,7 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(sqlCalls[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
     expect(
       sqlCalls.some(sql =>
-        sql.includes('DELETE FROM requirement_version_usage_scenarios'),
+        sql.includes('DELETE FROM requirement_version_requirement_packages'),
       ),
     ).toBe(false)
     expect(
@@ -304,7 +304,7 @@ describe('requirements DAL (SQL Server path)', () => {
         baseVersionId: 21,
         description: 'Stale update',
         normReferenceIds: [100],
-        scenarioIds: [200],
+        requirementPackageIds: [200],
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -319,7 +319,7 @@ describe('requirements DAL (SQL Server path)', () => {
     expect(sqlCalls).toHaveLength(1)
     expect(
       sqlCalls.some(sql =>
-        sql.includes('DELETE FROM requirement_version_usage_scenarios'),
+        sql.includes('DELETE FROM requirement_version_requirement_packages'),
       ),
     ).toBe(false)
     expect(
@@ -422,7 +422,7 @@ describe('requirements DAL (SQL Server path)', () => {
       baseVersionId: 21,
       description: 'Updated draft',
       normReferenceIds: [],
-      scenarioIds: [],
+      requirementPackageIds: [],
     })
 
     const sqlCalls = query.mock.calls.map(([sql]) => String(sql))

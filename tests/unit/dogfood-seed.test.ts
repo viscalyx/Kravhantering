@@ -6,7 +6,7 @@ import {
   DOGFOOD_KRAV,
   DOGFOOD_NORMS,
   DOGFOOD_OWNERS,
-  DOGFOOD_SCENARIOS,
+  DOGFOOD_REQUIREMENT_PACKAGES,
   DOGFOOD_SPECIFICATION_LOCALS,
   DOGFOOD_SPECIFICATIONS,
   ID,
@@ -45,7 +45,7 @@ function emptySeed() {
       pk: ['id'],
       rows: [],
     },
-    usage_scenarios: {
+    requirement_packages: {
       columns: [
         'id',
         'name_sv',
@@ -125,9 +125,9 @@ function emptySeed() {
       pk: ['requirement_version_id', 'norm_reference_id'],
       rows: [],
     },
-    requirement_version_usage_scenarios: {
-      columns: ['requirement_version_id', 'usage_scenario_id'],
-      pk: ['requirement_version_id', 'usage_scenario_id'],
+    requirement_version_requirement_packages: {
+      columns: ['requirement_version_id', 'requirement_package_id'],
+      pk: ['requirement_version_id', 'requirement_package_id'],
       rows: [],
     },
     requirements_specifications: {
@@ -181,9 +181,9 @@ function emptySeed() {
       pk: ['specification_local_requirement_id', 'norm_reference_id'],
       rows: [],
     },
-    specification_local_requirement_usage_scenarios: {
-      columns: ['specification_local_requirement_id', 'usage_scenario_id'],
-      pk: ['specification_local_requirement_id', 'usage_scenario_id'],
+    specification_local_requirement_requirement_packages: {
+      columns: ['specification_local_requirement_id', 'requirement_package_id'],
+      pk: ['specification_local_requirement_id', 'requirement_package_id'],
       rows: [],
     },
     requirements_specification_items: {
@@ -219,7 +219,7 @@ describe('dogfood seed inventory', () => {
       expect(typeof k.qc).toBe('number')
       expect(typeof k.risk).toBe('number')
       expect(typeof k.test).toBe('boolean')
-      expect(Array.isArray(k.scn)).toBe(true)
+      expect(Array.isArray(k.pkg)).toBe(true)
       expect(Array.isArray(k.norm)).toBe(true)
       expect(typeof k.item).toBe('number')
     }
@@ -232,11 +232,11 @@ describe('dogfood seed inventory', () => {
     }
   })
 
-  it('areas, owners, norms and scenarios have expected sizes', () => {
+  it('areas, owners, norms and requirement packages have expected sizes', () => {
     expect(DOGFOOD_OWNERS).toHaveLength(5)
     expect(DOGFOOD_AREAS).toHaveLength(6)
     expect(DOGFOOD_NORMS).toHaveLength(6)
-    expect(DOGFOOD_SCENARIOS).toHaveLength(12)
+    expect(DOGFOOD_REQUIREMENT_PACKAGES).toHaveLength(12)
     expect(DOGFOOD_SPECIFICATIONS).toHaveLength(2)
   })
 

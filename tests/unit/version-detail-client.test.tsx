@@ -46,7 +46,7 @@ function makeVersion(
     type: { id: 3, nameSv: 'Typ', nameEn: 'ReqType' },
     verificationMethod: null,
     versionNumber: 2,
-    versionScenarios: [],
+    versionRequirementPackages: [],
     versionNormReferences: [],
     ...overrides,
   }

@@ -11,6 +11,11 @@ const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 
+type LocalizedNameItem = {
+  nameSv: string | null
+  nameEn: string | null
+} | null
+
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
   locale: string,
@@ -20,12 +25,54 @@ function getStatusLabel(
   )
 }
 
-function getName(
-  item: { nameSv: string | null; nameEn: string | null } | null,
-  locale: string,
-): string | null {
+function getName(item: LocalizedNameItem, locale: string): string | null {
   if (!item) return null
   return (locale === 'sv' ? item.nameSv : item.nameEn) ?? null
+}
+
+function toRequirementPackageSummary(
+  item: LocalizedNameItem,
+): { nameSv: string; nameEn: string } | null {
+  const nameSv = item?.nameSv?.trim()
+  const nameEn = item?.nameEn?.trim()
+  if (!nameSv && !nameEn) return null
+
+  return {
+    nameSv: nameSv || nameEn || '',
+    nameEn: nameEn || nameSv || '',
+  }
+}
+
+function getRequirementPackageDisplayName(
+  item: LocalizedNameItem,
+  locale: string,
+): string | null {
+  const summary = toRequirementPackageSummary(item)
+  if (!summary) return null
+  return locale === 'sv' ? summary.nameSv : summary.nameEn
+}
+
+function collectPackageNames(
+  version: RequirementReportData['versions'][number],
+  locale: string,
+): string {
+  return version.versionRequirementPackages
+    .flatMap(({ requirementPackage }) => {
+      const name = getRequirementPackageDisplayName(requirementPackage, locale)
+      return name ? [name] : []
+    })
+    .sort()
+    .join(', ')
+}
+
+function collectPackageIds(
+  version: RequirementReportData['versions'][number],
+): string {
+  return version.versionRequirementPackages
+    .map(({ requirementPackage }) => requirementPackage?.id)
+    .filter((id): id is number => Number.isInteger(id))
+    .sort((a, b) => a - b)
+    .join(',')
 }
 
 function toVersionSummary(
@@ -75,12 +122,12 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    scenarios: version.versionScenarios
-      .filter(vs => vs.scenario)
-      .map(vs => ({
-        nameSv: vs.scenario.nameSv ?? '',
-        nameEn: vs.scenario.nameEn ?? '',
-      })),
+    requirementPackages: version.versionRequirementPackages.flatMap(
+      ({ requirementPackage }) => {
+        const summary = toRequirementPackageSummary(requirementPackage)
+        return summary ? [summary] : []
+      },
+    ),
   }
 }
 
@@ -149,19 +196,15 @@ function computeMetadataChanges(
     })
   }
 
-  const oldScenarios = baseVersion.versionScenarios
-    .map(vs => getName(vs.scenario, locale) ?? '')
-    .sort()
-    .join(', ')
-  const newScenarios = reviewVersion.versionScenarios
-    .map(vs => getName(vs.scenario, locale) ?? '')
-    .sort()
-    .join(', ')
-  if (oldScenarios !== newScenarios) {
+  const oldRequirementPackages = collectPackageNames(baseVersion, locale)
+  const newRequirementPackages = collectPackageNames(reviewVersion, locale)
+  const oldRequirementPackageIds = collectPackageIds(baseVersion)
+  const newRequirementPackageIds = collectPackageIds(reviewVersion)
+  if (oldRequirementPackageIds !== newRequirementPackageIds) {
     changes.push({
-      field: locale === 'sv' ? 'Användningsscenarier' : 'Usage Scenarios',
-      oldValue: oldScenarios || null,
-      newValue: newScenarios || null,
+      field: locale === 'sv' ? 'Kravpaket' : 'Requirements packages',
+      oldValue: oldRequirementPackages || null,
+      newValue: newRequirementPackages || null,
     })
   }
 

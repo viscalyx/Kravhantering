@@ -52,7 +52,7 @@ export function buildDeviationReviewReport(
     publishedAt: null,
     archivedAt: null,
     normReferences: v.normReferences,
-    scenarios: v.scenarios.map(s => ({
+    requirementPackages: v.requirementPackages.map(s => ({
       nameSv: s.nameSv ?? '',
       nameEn: s.nameEn ?? '',
     })),

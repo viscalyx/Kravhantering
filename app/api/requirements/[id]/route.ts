@@ -2,15 +2,22 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { getOwnerById } from '@/lib/dal/owners'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { createRequestContext } from '@/lib/requirements/auth'
+import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
+import { parseRequirementRef } from '../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
 
-import { parseRequirementRef } from '../parse-requirement-ref'
+function normalizePositiveIntegerIds(value: unknown): number[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const ids = parsePositiveIntegerIds(value)
+  return ids.length > 0 ? ids : undefined
+}
 
 export async function GET(
   _request: NextRequest,
@@ -73,20 +80,14 @@ export async function PUT(
         categoryId: body.categoryId ? Number(body.categoryId) : undefined,
         createdBy: body.ownerId ? String(body.ownerId) : undefined,
         description: String(body.description ?? ''),
-        normReferenceIds: Array.isArray(body.normReferenceIds)
-          ? body.normReferenceIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
-          : undefined,
+        normReferenceIds: normalizePositiveIntegerIds(body.normReferenceIds),
         requiresTesting: (body.requiresTesting as boolean) ?? false,
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        scenarioIds: Array.isArray(body.scenarioIds)
-          ? body.scenarioIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
-          : undefined,
+        requirementPackageIds: normalizePositiveIntegerIds(
+          body.requirementPackageIds,
+        ),
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,

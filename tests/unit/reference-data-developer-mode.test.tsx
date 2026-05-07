@@ -106,17 +106,17 @@ const pages: MarkerSpec[] = [
     expectedMarkers: ['create button', 'crud table', 'table action'],
   },
   {
-    label: 'KravscenarierClient (scenarios)',
-    context: 'scenarios',
+    label: 'RequirementPackagesClient (requirementPackages)',
+    context: 'requirementPackages',
     factory: () =>
       import(
-        '@/app/[locale]/usage-scenarios/usage-scenarios-client'
+        '@/app/[locale]/requirement-packages/requirement-packages-client'
       ) as Promise<{
         default: React.ComponentType
       }>,
     fetchResponse: () =>
       okJson({
-        scenarios: [
+        requirementPackages: [
           {
             id: 1,
             nameSv: 'S',
@@ -131,9 +131,9 @@ const pages: MarkerSpec[] = [
       }),
     fetchHandler: input => {
       const url = String(input)
-      if (url === '/api/usage-scenarios') {
+      if (url === '/api/requirement-packages') {
         return okJson({
-          scenarios: [
+          requirementPackages: [
             {
               descriptionEn: null,
               descriptionSv: null,
@@ -348,7 +348,7 @@ describe.each(pages)('$label developer-mode markers', spec => {
   })
 })
 
-describe('KravscenarierClient error banner developer-mode marker', () => {
+describe('RequirementPackagesClient error banner developer-mode marker', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('renders error banner with developer-mode attributes on delete failure', async () => {
@@ -366,9 +366,9 @@ describe('KravscenarierClient error banner developer-mode marker', () => {
             json: async () => ({ error: 'Has linked requirements' }),
           } as Response
         }
-        if (url.endsWith('/api/usage-scenarios')) {
+        if (url.endsWith('/api/requirement-packages')) {
           return okJson({
-            scenarios: [
+            requirementPackages: [
               {
                 id: 1,
                 nameSv: 'S',
@@ -387,7 +387,7 @@ describe('KravscenarierClient error banner developer-mode marker', () => {
 
     try {
       const mod = await import(
-        '@/app/[locale]/usage-scenarios/usage-scenarios-client'
+        '@/app/[locale]/requirement-packages/requirement-packages-client'
       )
       const Component = mod.default
       const { container } = render(<Component />)
@@ -407,7 +407,7 @@ describe('KravscenarierClient error banner developer-mode marker', () => {
 
       await waitFor(() => {
         const banner = container.querySelector(
-          '[data-developer-mode-name="error banner"][data-developer-mode-context="scenarios"]',
+          '[data-developer-mode-name="error banner"][data-developer-mode-context="requirementPackages"]',
         )
         expect(banner).toBeInTheDocument()
         expect(banner).toHaveAttribute(

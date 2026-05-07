@@ -28,8 +28,8 @@ interface RequirementDetailSectionsProps {
   metadata: RequirementDetailMetadataItem[]
   references: RequirementDetailChipItem[]
   referencesLabel: string
-  scenarios: RequirementDetailChipItem[]
-  scenariosLabel: string
+  requirementPackages: RequirementDetailChipItem[]
+  requirementPackagesLabel: string
 }
 
 function getMarkerProps(
@@ -58,8 +58,8 @@ export default function RequirementDetailSections({
   metadata,
   references,
   referencesLabel,
-  scenarios,
-  scenariosLabel,
+  requirementPackages,
+  requirementPackagesLabel,
 }: RequirementDetailSectionsProps) {
   return (
     <>
@@ -168,26 +168,27 @@ export default function RequirementDetailSections({
           developerModeContext,
           'detail section',
           350,
-          'scenarios',
+          'requirementPackages',
         )}
       >
         <h3 className="mb-1 text-sm font-medium text-secondary-600 dark:text-secondary-400">
-          {scenariosLabel}
+          {requirementPackagesLabel}
         </h3>
-        {scenarios.length > 0 ? (
+        {requirementPackages.length > 0 ? (
           <ul className="flex flex-wrap gap-2">
-            {scenarios.map(scenario => (
+            {requirementPackages.map(requirementPackage => (
               <li
                 className="rounded-full bg-secondary-100 px-2.5 py-1 text-xs font-medium dark:bg-secondary-800"
-                key={scenario.id}
+                key={requirementPackage.id}
                 {...getMarkerProps(
-                  scenario.markerContext ?? developerModeContext,
-                  scenario.markerName ?? 'scenario chip',
+                  requirementPackage.markerContext ?? developerModeContext,
+                  requirementPackage.markerName ?? 'requirement package chip',
                   360,
-                  scenario.markerValue ?? String(scenario.id),
+                  requirementPackage.markerValue ??
+                    String(requirementPackage.id),
                 )}
               >
-                {scenario.label}
+                {requirementPackage.label}
               </li>
             ))}
           </ul>

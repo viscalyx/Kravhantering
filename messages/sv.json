@@ -66,7 +66,7 @@
     "catalog": "Kravkatalog",
     "areas": "Områden",
     "specifications": "Kravunderlag",
-    "scenarios": "Användningsscenarier",
+    "requirementPackages": "Kravpaket",
     "statuses": "Statusar",
     "types": "Typer",
     "taxonomy": "Referensdata",
@@ -132,9 +132,8 @@
     "typeHelp": "<strong>Välj den typ som bäst beskriver kravet.</strong>\nTypen bestämmer vilka kvalitetsegenskaper som kan kopplas till kravet.",
     "qualityCharacteristicHelp": "<strong>Välj den kvalitetsegenskap som kravet bidrar till.</strong>\nKvalitetsegenskaper följer ISO/IEC 25010:2023 och hjälper till att kategorisera kraven efter kvalitetsaspekt.",
     "requiresTestingHelp": "<strong>Ange om kravet ska verifieras.</strong>\nOm kravet markeras som verifierbart behöver du även ange en verifieringsmetod.",
-    "scenarioHelp": "<strong>Välj ett eller flera användningsscenarier som gäller för detta krav.</strong>\nAnvändningsscenarier beskriver driftsituationer (t.ex. hög belastning, katastrofåterställning) som förtydligar när och hur kravet är relevant.",
     "reference": "Kravreferens",
-    "scenario": "Användningsscenario",
+    "requirementPackage": "Kravpaket",
     "newRequirement": "Nytt krav",
     "aiGenerate": "AI-generera",
     "editRequirement": "Redigera krav",
@@ -233,7 +232,8 @@
     "normRefTypeSuggestionStrategicGuideline": "Strategisk riktlinje",
     "typePlaceholder": "T.ex. Lag, Standard, Förordning",
     "specificationLocalBadge": "Unik",
-    "specificationLocalTooltip": "Den här raden är ett unikt krav i kravunderlaget. Det finns bara i detta kravunderlag och visas inte i kravbiblioteket."
+    "specificationLocalTooltip": "Den här raden är ett unikt krav i kravunderlaget. Det finns bara i detta kravunderlag och visas inte i kravbiblioteket.",
+    "requirementPackageHelp": "<strong>Välj ett eller flera kravpaket som gäller för detta krav.</strong>\nKravpaket samlar krav för en viss gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning."
   },
   "requirementsTable": {
     "clear": "Rensa",
@@ -398,9 +398,9 @@
     "stepperAriaLabel": "Steg i avstegsarbetsflödet",
     "requestDeviation": "Begär ett avsteg",
     "requestDeviationSelected": "Begär avsteg för valda ({count})",
-    "requestReview": "Granskning \u2197",
-    "revertToDraft": "\u2190 Utkast",
-    "markDecided": "Beslutad \u2197",
+    "requestReview": "Granskning ↗",
+    "revertToDraft": "← Utkast",
+    "markDecided": "Beslutad ↗",
     "deviationRequested": "Avsteg begärt med motivering:",
     "decisionHeading": "Beslut:",
     "revertToDraftConfirm": "Är du säker på att du vill återställa detta avsteg till utkast?",
@@ -501,7 +501,7 @@
       "requiresTesting": "Kräver testning",
       "createdBy": "Skapad av",
       "references": "Referenser",
-      "scenarios": "Scenarier",
+      "requirementPackages": "Kravpaket",
       "deviation": "Avvikelse",
       "motivation": "Motivering:",
       "submittedBy": "Inlämnad av:",
@@ -515,23 +515,23 @@
       "timelineCreated": "Skapad"
     }
   },
-  "scenario": {
+  "requirementPackage": {
     "name": "Namn",
     "nameSvLabel": "Namn (svenska)",
-    "nameSvHelp": "Ange det svenska namnet för användningsscenariot.",
+    "nameSvHelp": "Ange kravpaketets svenska namn.",
     "nameEnLabel": "Namn (engelska)",
-    "nameEnHelp": "Ange det engelska namnet för användningsscenariot.",
+    "nameEnHelp": "Ange kravpaketets engelska namn.",
     "description": "Beskrivning",
     "descriptionSvLabel": "Beskrivning (svenska)",
-    "descriptionSvHelp": "Beskriv vid behov scenariot på svenska så att användare förstår när det gäller.",
+    "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser.",
     "descriptionEnLabel": "Beskrivning (engelska)",
-    "descriptionEnHelp": "Beskriv vid behov scenariot på engelska så att användare förstår när det gäller.",
-    "owner": "Scenarioägare",
+    "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser.",
+    "owner": "Ägare",
     "help": {
-      "owner": "Välj ägaren som ansvarar för scenariot och dess kopplade krav."
+      "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
     },
-    "newScenario": "Nytt användningsscenario",
-    "editScenario": "Redigera användningsscenario",
+    "newRequirementPackage": "Nytt kravpaket",
+    "editRequirementPackage": "Redigera kravpaket",
     "linkedRequirements": "Kopplade krav",
     "requirementCount": "{count, plural, =0 {0 krav} one {1 krav} other {# krav}}"
   },
@@ -682,7 +682,7 @@
     "terminologySaveError": "Det gick inte att spara benämningarna.",
     "areasDescription": "Hantera områden och deras prefix.",
     "typesDescription": "Visa typer och deras kvalitetsstruktur.",
-    "scenariosDescription": "Hantera användningsscenarier som kan kopplas till krav.",
+    "requirementPackagesDescription": "Hantera kravpaket som kan kopplas till krav.",
     "statusesDescription": "Hantera livscykelstatusar och deras ordning.",
     "qualityAttributesDescription": "Hantera kvalitetsegenskaper enligt ISO/IEC 25010:2023.",
     "responsibilityAreasDescription": "Hantera verksamhetsobjekt för kravunderlag.",
@@ -749,10 +749,10 @@
       "plural": "Acceptanskriterier",
       "definitePlural": "Acceptanskriterierna"
     },
-    "scenario": {
-      "singular": "Användningsscenario",
-      "plural": "Användningsscenarier",
-      "definitePlural": "Användningsscenarierna"
+    "requirementPackage": {
+      "singular": "Kravpaket",
+      "plural": "Kravpaket",
+      "definitePlural": "Kravpaketen"
     },
     "responsibilityArea": {
       "singular": "Verksamhetsobjekt",
@@ -802,7 +802,7 @@
       },
       "inlineDetail": {
         "heading": "Detaljvy i listan",
-        "body": "Klicka på en rad för att öppna detaljvyn direkt under raden. Där ser du kravtext, acceptanskriterier, metadata, referenser, scenarier, statussteg och versionshistorik. Om kravet har en publicerad version visas den normalt först, annars en arkiverad version och annars den senaste arbetsversionen. Knapparna till höger visar bara de åtgärder som är möjliga för den version och status du tittar på."
+        "body": "Klicka på en rad för att öppna detaljvyn direkt under raden. Där ser du kravtext, acceptanskriterier, metadata, referenser, kravpaket, statussteg och versionshistorik. Om kravet har en publicerad version visas den normalt först, annars en arkiverad version och annars den senaste arbetsversionen. Knapparna till höger visar bara de åtgärder som är möjliga för den version och status du tittar på."
       },
       "properties": {
         "heading": "Kravets egenskaper",
@@ -847,9 +847,9 @@
           "heading": "Verifieringsmetod",
           "body": "Beskriver exakt hur kravet ska verifieras — till exempel genom automatiserade tester, manuell inspektion eller användartester. Fältet är obligatoriskt när Verifierbar är aktiverat. Metoden tillämpas inom de kravunderlag där kravet används och ger konkret vägledning för hur verifieringen ska genomföras i varje sammanhang."
         },
-        "scenarios": {
-          "heading": "Användningsscenarier",
-          "body": "Beskriver de sammanhang eller situationer där kravet gäller. Scenarier kan till exempel representera driftsförhållanden som hög belastning eller katastrofåterställning, gruppera funktionella krav som hör ihop eller samla krav kopplade till ett visst lagrum. Varje scenario har en ägare som ansvarar för kraven inom det sammanhanget. Att koppla scenarier hjälper till att avgränsa kravunderlag och filtrera krav efter de sammanhang som är relevanta för en viss leverans."
+        "requirementPackages": {
+          "heading": "Kravpaket",
+          "body": "Samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning. Varje kravpaket har en ägare som ansvarar för kraven inom grupperingen. Kopplingen hjälper till att avgränsa kravunderlag och filtrera krav efter relevanta grupperingar."
         },
         "normReferences": {
           "heading": "Normreferenser",
@@ -1037,7 +1037,7 @@
       },
       "referenceData": {
         "heading": "Referensdata",
-        "body": "Snabblänkar till hantering av områden, typer, scenarier, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och områdesägare."
+        "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och områdesägare."
       }
     },
     "requirementAreas": {
@@ -1062,15 +1062,15 @@
         "body": "Typen styr vilka kvalitetsegenskaper som kan kopplas till ett krav. Icke-funktionella typer kan kopplas till ISO/IEC 25010:2023-hierarkin för kvalitetsegenskaper."
       }
     },
-    "usageScenarios": {
-      "title": "Användningsscenarier",
+    "requirementPackages": {
+      "title": "Kravpaket",
       "overview": {
-        "heading": "Vad är användningsscenarier?",
-        "body": "Användningsscenarier representerar driftsmässiga kontexter där krav gäller, t.ex. hög belastning, katastrofåterställning eller underhållsläge. De hjälper till att förtydliga när ett krav är relevant."
+        "heading": "Vad är kravpaket?",
+        "body": "Kravpaket samlar krav för en specifik gruppering, till exempel mobil användning, datamigrering, integration med andra system, ärendehantering, användarvänlighet, molndrift, normal drift, hög belastning eller katastrofåterställning."
       },
       "manage": {
         "heading": "Hantera",
-        "body": "Skapa och redigera scenarier med verktygsfältet. Ett scenario kan kopplas till flera krav. Att ta bort ett scenario tar bara bort scenarioposten - kopplade krav påverkas inte."
+        "body": "Skapa och redigera kravpaket med verktygsfältet. Ett kravpaket kan kopplas till flera krav. Att ta bort ett kravpaket tar bara bort posten för kravpaketet; kopplade krav påverkas inte."
       }
     },
     "normReferences": {
@@ -1258,7 +1258,7 @@
     "prompt": {
       "defaultInstruction": "Generera 5-10 välstrukturerade systemkrav för det givna ämnet.\n\nVarje krav MÅSTE:\n- Ha en tydlig, testbar och entydig beskrivning (enligt ISO/IEC/IEEE 29148:2018 §5.2.5)\n- Använda formen \"Systemet ska...\" för funktionella krav\n- Använda \"Systemet ska kunna...\" eller kvalitetsattributspråk för icke-funktionella krav\n- Inkludera acceptanskriterier där det är tillämpligt\n- Referera till lämpliga kvalitetsegenskaper från ISO/IEC 25010:2023\n- Inkludera en motivering som förklarar varför kravet finns\n\nFör icke-funktionella krav, tillämpa kvalitetsmodellen ISO/IEC 25010:2023:\n- Mappa till den mest specifika kvalitetsunderegenskapen\n- Beakta prestandaeffektivitet, säkerhet, användbarhet, tillförlitlighet och underhållbarhet\n\nBedöm risknivå baserat på:\n- Påverkan på systemsäkerhet, informationssäkerhet eller kärnfunktionalitet (Hög)\n- Påverkan på användarupplevelse eller icke-kritiska funktioner (Medel)\n- Önskvärt eller kosmetiska krav (Låg)",
       "userHeader": "Ämne / Systemkontext",
-      "noUsageScenariosAvailable": "Inga användningsscenarier tillgängliga",
+      "noRequirementPackagesAvailable": "Inga kravpaket tillgängliga",
       "system": {
         "intro": "Du är en expert på kravhantering. Du genererar systemkrav enligt internationella standarder:\n- ISO/IEC/IEEE 29148:2018 (Kravhantering)\n- ISO/IEC 25030:2019 (Ramverk för kvalitetskrav)\n- ISO/IEC 25010:2023 (Kvalitetsmodell)",
         "taxonomyIntro": "Du MÅSTE använda följande taxonomi-ID:n i din output. Använd bara ID:n från listorna nedan.",
@@ -1267,7 +1267,7 @@
           "categories": "Kategorier",
           "qualityCharacteristics": "Kvalitetsegenskaper (ISO 25010:2023)",
           "riskLevels": "Risknivåer",
-          "usageScenarios": "Användningsscenarier",
+          "requirementPackages": "Kravpaket",
           "outputRules": "Outputregler"
         },
         "outputRules": [
@@ -1277,7 +1277,7 @@
           "qualityCharacteristicId rekommenderas för icke-funktionella krav",
           "categoryId bör sättas när kategorin är tydlig",
           "riskLevelId bör alltid sättas",
-          "scenarioIds måste vara [] eller bara innehålla ID:n från listan över användningsscenarier ovan",
+          "requirementPackageIds måste vara [] eller bara innehålla ID:n från listan över kravpaket ovan",
           "requiresTesting måste vara true för funktionella krav och säkerhetskrav",
           "verificationMethod bör beskriva hur kravet verifieras när requiresTesting är true",
           "rationale måste förklara varför kravet är viktigt för systemet",
@@ -1290,7 +1290,7 @@
       "failedToLoadModels": "Kunde inte läsa in modeller",
       "failedToLoadSystemPrompt": "Kunde inte läsa in systemprompt"
     },
-    "rawOutput": "R\u00e5data fr\u00e5n modell",
+    "rawOutput": "Rådata från modell",
     "showDetails": "Visa detaljer",
     "hideDetails": "Dölj detaljer",
     "detailRiskLevel": "Risknivå",
@@ -1299,7 +1299,7 @@
     "detailAcceptanceCriteria": "Acceptanskriterier",
     "detailRequiresTesting": "Verifierbar",
     "detailVerification": "Verifieringsmetod",
-    "detailScenarios": "Scenarier",
+    "detailRequirementPackages": "Kravpaket",
     "detailYes": "Ja",
     "detailNo": "Nej",
     "reasoningEffortLabel": "Resonemangsansträngning",

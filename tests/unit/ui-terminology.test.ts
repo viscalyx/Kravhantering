@@ -34,11 +34,24 @@ describe('ui terminology helpers', () => {
           singular: 'Kravtext',
         },
       },
+      {
+        en: {
+          definitePlural: 'Delivery bundles',
+          plural: 'Delivery bundles',
+          singular: 'Delivery bundle',
+        },
+        key: 'requirementPackage',
+        sv: {
+          definitePlural: 'Leveranspaketen',
+          plural: 'Leveranspaket',
+          singular: 'Leveranspaket',
+        },
+      },
     ])
 
     const svMessages = applyUiTerminologyMessages(
       {
-        nav: { statuses: 'Kravstatusar' },
+        nav: { requirementPackages: 'Kravpaket', statuses: 'Kravstatusar' },
         requirement: { description: 'Beskrivning', status: 'Kravstatus' },
       },
       'sv',
@@ -46,7 +59,10 @@ describe('ui terminology helpers', () => {
     )
     const enMessages = applyUiTerminologyMessages(
       {
-        nav: { statuses: 'Requirement Statuses' },
+        nav: {
+          requirementPackages: 'Requirement packages',
+          statuses: 'Requirement Statuses',
+        },
         requirement: { description: 'Description', status: 'Status' },
       },
       'en',
@@ -54,9 +70,17 @@ describe('ui terminology helpers', () => {
     )
 
     expect(svMessages).toMatchObject({
-      nav: { statuses: 'Livscykelstatusar' },
+      nav: {
+        requirementPackages: 'Leveranspaket',
+        statuses: 'Livscykelstatusar',
+      },
       requirement: { description: 'Kravtext', status: 'Livscykelstatus' },
       terminology: {
+        requirementPackage: {
+          definitePlural: 'Leveranspaketen',
+          plural: 'Leveranspaket',
+          singular: 'Leveranspaket',
+        },
         status: {
           definitePlural: 'Livscykelstatusarna',
           plural: 'Livscykelstatusar',
@@ -65,7 +89,10 @@ describe('ui terminology helpers', () => {
       },
     })
     expect(enMessages).toMatchObject({
-      nav: { statuses: 'Lifecycle states' },
+      nav: {
+        requirementPackages: 'Delivery bundles',
+        statuses: 'Lifecycle states',
+      },
       requirement: {
         description: 'Requirement text',
         status: 'Lifecycle state',
@@ -75,6 +102,11 @@ describe('ui terminology helpers', () => {
           definitePlural: 'Requirement texts',
           plural: 'Requirement texts',
           singular: 'Requirement text',
+        },
+        requirementPackage: {
+          definitePlural: 'Delivery bundles',
+          plural: 'Delivery bundles',
+          singular: 'Delivery bundle',
         },
       },
     })

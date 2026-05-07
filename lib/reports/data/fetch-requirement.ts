@@ -36,8 +36,8 @@ export interface RequirementReportVersion {
     }
   }[]
   versionNumber: number
-  versionScenarios: {
-    scenario: {
+  versionRequirementPackages: {
+    requirementPackage: {
       id: number
       nameEn: string | null
       nameSv: string | null

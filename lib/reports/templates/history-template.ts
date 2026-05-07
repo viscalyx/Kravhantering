@@ -66,12 +66,18 @@ function toVersionSummary(
         reference: vnr.normReference.reference,
         uri: vnr.normReference.uri,
       })),
-    scenarios: version.versionScenarios
-      .filter(vs => vs.scenario)
-      .map(vs => ({
-        nameSv: vs.scenario.nameSv ?? '',
-        nameEn: vs.scenario.nameEn ?? '',
-      })),
+    requirementPackages: version.versionRequirementPackages.flatMap(vs => {
+      const requirementPackage = vs.requirementPackage
+      const nameSv = requirementPackage?.nameSv?.trim()
+      const nameEn = requirementPackage?.nameEn?.trim()
+      if (!nameSv && !nameEn) return []
+      return [
+        {
+          nameSv: nameSv || nameEn || '',
+          nameEn: nameEn || nameSv || '',
+        },
+      ]
+    }),
   }
 }
 

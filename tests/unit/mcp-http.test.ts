@@ -93,7 +93,7 @@ function createFakeService(
               nameSv: 'Sakerhet',
             },
             versionNumber: 2,
-            versionScenarios: [],
+            versionRequirementPackages: [],
           },
         ],
       },
@@ -125,7 +125,7 @@ function createFakeService(
           nameSv: 'Sakerhet',
         },
         versionNumber: 2,
-        versionScenarios: [],
+        versionRequirementPackages: [],
       },
     }),
     manageRequirement: vi.fn().mockResolvedValue({
@@ -288,7 +288,7 @@ describe('handleRequirementsMcpRequest', () => {
       const queryInputSchemaText = JSON.stringify(queryTool?.inputSchema)
       expect(queryInputSchemaText).toContain('risk_levels')
       expect(queryInputSchemaText).toContain('normReferenceIds')
-      expect(queryInputSchemaText).toContain('usageScenarioIds')
+      expect(queryInputSchemaText).toContain('requirementPackageIds')
       expect(queryInputSchemaText).toContain('sortBy')
       expect(JSON.stringify(queryTool?.outputSchema)).toContain('pagination')
     })
@@ -468,7 +468,7 @@ describe('handleRequirementsMcpRequest', () => {
         riskLevelIds: [2],
         sortBy: 'riskLevel',
         sortDirection: 'desc',
-        usageScenarioIds: [3],
+        requirementPackageIds: [3],
       },
       name: 'requirements_query_catalog',
     })
@@ -481,7 +481,7 @@ describe('handleRequirementsMcpRequest', () => {
         riskLevelIds: [2],
         sortBy: 'riskLevel',
         sortDirection: 'desc',
-        usageScenarioIds: [3],
+        requirementPackageIds: [3],
       }),
     )
 
@@ -586,7 +586,7 @@ describe('handleRequirementsMcpRequest', () => {
     await Promise.allSettled([client.close(), server.close()])
   })
 
-  it('localizes empty reference and scenario sections in Swedish HTML resources', async () => {
+  it('localizes empty reference and requirementPackage sections in Swedish HTML resources', async () => {
     const { client, transport } = await createClient()
     const viewResource = await client.readResource({
       uri: 'ui://requirements/requirement-detail/INT0001?version=2&locale=sv',
@@ -599,7 +599,7 @@ describe('handleRequirementsMcpRequest', () => {
         : undefined
 
     expect(viewText).toContain('<h2>Referenser</h2><p>Inga</p>')
-    expect(viewText).toContain('<h2>Användningsscenarier</h2><p>Inga</p>')
+    expect(viewText).toContain('<h2>Kravpaket</h2><p>Inga</p>')
 
     await client.close()
     await transport.close()
@@ -622,7 +622,7 @@ describe('handleRequirementsMcpRequest', () => {
         : undefined
 
     expect(viewText).toContain('<li>Referens</li>')
-    expect(viewText).toContain('<h2>Användningsscenarier</h2><p>Inga</p>')
+    expect(viewText).toContain('<h2>Kravpaket</h2><p>Inga</p>')
 
     await client.close()
     await transport.close()

@@ -481,7 +481,7 @@ tabellvy med:
   och deras ordning. Användare kan anpassa lokalt via
   webbläsarens lagring.
 - **Filtrering** — Kravområde, kategori, typ,
-  kvalitetskaraktäristik, status, scenario och
+  kvalitetskaraktäristik, status, kravpaket och
   testflagga.
 - **Sortering** — Enkelkolumnssortering med
   klick-baserad växling (stigande/fallande).
@@ -494,7 +494,7 @@ tabellvy med:
 
 Klick på en rad expanderar en inline-detaljpanel som
 visar kravtext, acceptanskriterier, område med ägare,
-referenser och scenarier. Alternativt öppnas en
+referenser och kravpaket. Alternativt öppnas en
 helsidevy (`/requirements/[id]`).
 
 Från detaljvyn kan användaren:
@@ -548,7 +548,7 @@ Administrationscentret (`/admin`) erbjuder tre flikar:
    för kravlistan organisationsövergripande.
 3. **Referensdata** — Navigeringsnav till alla
    referensdatasidor (områden, typer, kategorier,
-   kvalitetskaraktäristiker, statusar, scenarier).
+   kvalitetskaraktäristiker, statusar, kravpaket).
 
 ### Export och rapporter
 
@@ -712,7 +712,7 @@ app/
     admin/               Administrationscenter
     requirement-areas/         Områdeshantering (CRUD)
     specifications/           Underlagshantering
-    usage-scenarios/       Scenariohantering
+    requirement-packages/       Hantering av kravpaket
     requirement-statuses/        Statushantering
     requirement-types/           Typhantering
     quality-characteristics/  Kvalitetskaraktäristiker
@@ -776,12 +776,12 @@ erDiagram
     requirement_versions }o--o| requirement_types : "av typ"
     requirement_versions }o--o| quality_characteristics : "kvalitetskaraktäristik"
     requirement_versions }o--o| risk_levels : "risknivå"
-    requirement_versions ||--o{ requirement_version_usage_scenarios : "kopplade scenarier"
-    requirement_version_usage_scenarios }o--|| usage_scenarios : "refererar scenario"
+    requirement_versions ||--o{ requirement_version_requirement_packages : "kopplade kravpaket"
+    requirement_version_requirement_packages }o--|| requirement_packages : "refererar kravpaket"
     requirement_versions ||--o{ requirement_version_norm_references : "kopplade normreferenser"
     requirement_version_norm_references }o--|| norm_references : "refererar normreferens"
     requirement_areas }o--|| owners : "ägs av"
-    usage_scenarios }o--o| owners : "ägs av"
+    requirement_packages }o--o| owners : "ägs av"
     quality_characteristics }o--o| quality_characteristics : "förälder"
     quality_characteristics }o--|| requirement_types : "kopplad till typ"
     requirements_specifications ||--o{ requirements_specification_items : "innehåller"
@@ -796,8 +796,8 @@ erDiagram
     specification_local_requirements }o--o| risk_levels : "risknivå"
     specification_local_requirements }o--o| specification_item_statuses : "användningsstatus"
     specification_local_requirements }o--o| specification_needs_references : "behovsreferens"
-    specification_local_requirements ||--o{ specification_local_requirement_usage_scenarios : "kopplade scenarier"
-    specification_local_requirement_usage_scenarios }o--|| usage_scenarios : "refererar scenario"
+    specification_local_requirements ||--o{ specification_local_requirement_requirement_packages : "kopplade kravpaket"
+    specification_local_requirement_requirement_packages }o--|| requirement_packages : "refererar kravpaket"
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "kopplade normreferenser"
     specification_local_requirement_norm_references }o--|| norm_references : "refererar normreferens"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "har avsteg"
@@ -806,15 +806,15 @@ erDiagram
 
 <!-- markdownlint-enable MD013 -->
 
-> **Tillämpningsbarhet via användningsscenarier.**
-> Tabellen `usage_scenarios` hanterar även
+> **Tillämpningsbarhet via kravpaket.**
+> Tabellen `requirement_packages` hanterar även
 > *tillämpningsbarhet* — d.v.s. i vilka kontexter
 > eller miljöer ett krav gäller (t.ex. "Alla system").
 
 ### Taxonomi och tvåspråkig design
 
 Alla uppslagstabeller (kategorier, typer, statusar,
-scenarier, kvalitetskaraktäristiker) lagrar
+kravpaket, kvalitetskaraktäristiker) lagrar
 användarsynliga texter i separata kolumner per språk:
 `name_sv` och `name_en`. Applikationen väljer rätt
 kolumn baserat på aktivt locale vid frågetillfället.

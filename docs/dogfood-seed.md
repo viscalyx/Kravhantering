@@ -8,7 +8,7 @@ development requirements — and the two Kravunderlag that group them.
 The data lives in two pure ES modules:
 
 - [typeorm/seed-dogfood.mjs](../typeorm/seed-dogfood.mjs) — inventory: areas,
-  owners, norm references, usage scenarios and the `DOGFOOD_KRAV` list.
+  owners, norm references, requirement packages and the `DOGFOOD_KRAV` list.
 - [typeorm/seed-dogfood-build.mjs](../typeorm/seed-dogfood-build.mjs) — the
   builder `appendDogfoodSeed(SEED_DATA)` that mutates the base `SEED_DATA`
   shape (`{ table: { columns, rows } }`) in place. `seed.mjs` calls it once at
@@ -28,7 +28,7 @@ ranges:
 |`owners`|1–3|1001–1005|
 |`requirement_areas`|1–10|1001–1006 (new)|
 |`norm_references`|1–6|1001–1006|
-|`usage_scenarios`|1–3|1001–1012|
+|`requirement_packages`|1–9|1001–1012|
 |`requirements_specifications`|1–10|1001 (KH), 1002 (KH-POC)|
 |`specification_needs_references`|1–23|1001–1006|
 |`specification_local_requirements`|1–2|1001–1002|
@@ -83,7 +83,7 @@ as version 1 with status **Publicerad**. Distribution per area:
 
 Every Krav fills `description`, `acceptance_criteria`, `verification_method`,
 `requirement_category_id`, `requirement_type_id`, `quality_characteristic_id`,
-`risk_level_id`, `is_testing_required`, and at least one usage scenario. Norm
+`risk_level_id`, `is_testing_required`, and at least one requirement package. Norm
 references are optional and added only where a Krav maps to an applicable law,
 standard or framework.
 

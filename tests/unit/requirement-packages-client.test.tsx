@@ -45,140 +45,151 @@ function notOk(body: unknown = { error: 'Bad request' }) {
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import UsageScenariosClient from '@/app/[locale]/usage-scenarios/usage-scenarios-client'
+import RequirementPackagesClient from '@/app/[locale]/requirement-packages/requirement-packages-client'
 
-const sampleScenarios = [
+const sampleRequirementPackages = [
   {
     id: 1,
-    nameSv: 'Scenario A sv',
-    nameEn: 'Scenario A',
-    descriptionSv: 'Desc sv',
-    descriptionEn: 'Desc en',
+    nameSv: 'Mobil användning',
+    nameEn: 'Mobile use',
+    descriptionSv: 'Krav för mobil åtkomst och responsiva flöden.',
+    descriptionEn: 'Requirements for mobile access and responsive flows.',
     ownerId: null,
   },
 ]
 
-const scenarioNameSvInput = () =>
-  screen.getByRole('textbox', { name: /scenario\.nameSvLabel/ })
-const scenarioNameEnInput = () =>
-  screen.getByRole('textbox', { name: /scenario\.nameEnLabel/ })
+const requirementPackageNameSvInput = () =>
+  screen.getByRole('textbox', { name: /requirementPackage\.nameSvLabel/ })
+const requirementPackageNameEnInput = () =>
+  screen.getByRole('textbox', { name: /requirementPackage\.nameEnLabel/ })
 
-function setupUsageScenarioMocks(
-  scenarioDetailResponse: () => Promise<unknown> | unknown,
+function setupRequirementPackageMocks(
+  requirementPackageDetailResponse: () => Promise<unknown> | unknown,
 ) {
   fetchMock.mockImplementation(async (url: string) => {
-    if (url === '/api/usage-scenarios') {
-      return okJson({ scenarios: sampleScenarios })
+    if (url === '/api/requirement-packages') {
+      return okJson({ requirementPackages: sampleRequirementPackages })
     }
     if (url === '/api/owners/all') return okJson({ owners: [] })
-    if (url === '/api/usage-scenarios/1') return scenarioDetailResponse()
+    if (url === '/api/requirement-packages/1')
+      return requirementPackageDetailResponse()
     return okJson({})
   })
 }
 
-describe('UsageScenariosClient', () => {
+describe('RequirementPackagesClient', () => {
   afterEach(cleanup)
 
   beforeEach(() => {
     vi.clearAllMocks()
-    fetchMock.mockResolvedValue(okJson({ scenarios: sampleScenarios }))
+    fetchMock.mockResolvedValue(
+      okJson({ requirementPackages: sampleRequirementPackages }),
+    )
   })
 
   it('renders heading and create button', async () => {
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'nav.scenarios',
+      'nav.requirementPackages',
     )
     expect(
       screen.getByRole('button', { name: /common\.create/i }),
     ).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
   })
 
-  it('fetches and displays scenarios', async () => {
-    render(<UsageScenariosClient />)
+  it('fetches and displays requirementPackages', async () => {
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
-    expect(screen.getByText('Desc en')).toBeInTheDocument()
+    expect(
+      screen.getByText('Requirements for mobile access and responsive flows.'),
+    ).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {
     fetchMock.mockReturnValue(new Promise(() => {}))
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     expect(screen.getByText('common.loading')).toBeInTheDocument()
   })
 
   it('opens create form', async () => {
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    expect(scenarioNameSvInput()).toBeInTheDocument()
-    expect(scenarioNameEnInput()).toBeInTheDocument()
+    expect(requirementPackageNameSvInput()).toBeInTheDocument()
+    expect(requirementPackageNameEnInput()).toBeInTheDocument()
     const nameHelpButton = screen.getByRole('button', {
-      name: 'common.help: scenario.nameSvLabel',
+      name: 'common.help: requirementPackage.nameSvLabel',
     })
     fireEvent.click(nameHelpButton)
     expect(nameHelpButton).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('scenario.nameSvHelp')).toBeInTheDocument()
+    expect(
+      screen.getByText('requirementPackage.nameSvHelp'),
+    ).toBeInTheDocument()
     expect(
       screen.getByRole('button', {
-        name: 'common.help: scenario.owner',
+        name: 'common.help: requirementPackage.owner',
       }),
     ).toBeInTheDocument()
   })
 
   it('submits create form', async () => {
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
-    fireEvent.change(scenarioNameSvInput(), {
+    fireEvent.change(requirementPackageNameSvInput(), {
       target: { value: 'Ny' },
     })
-    fireEvent.change(scenarioNameEnInput(), {
+    fireEvent.change(requirementPackageNameEnInput(), {
       target: { value: 'New' },
     })
 
     fetchMock.mockResolvedValueOnce(okJson({ id: 2 }))
-    fetchMock.mockResolvedValueOnce(okJson({ scenarios: sampleScenarios }))
+    fetchMock.mockResolvedValueOnce(
+      okJson({ requirementPackages: sampleRequirementPackages }),
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /common\.save/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/usage-scenarios',
+        '/api/requirement-packages',
         expect.objectContaining({ method: 'POST' }),
       )
     })
   })
 
   it('opens edit form with existing data', async () => {
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
     const editButtons = screen.getAllByRole('button', {
       name: /common\.edit/i,
     })
     fireEvent.click(editButtons[0])
-    expect((scenarioNameEnInput() as HTMLInputElement).value).toBe('Scenario A')
+    expect((requirementPackageNameEnInput() as HTMLInputElement).value).toBe(
+      'Mobile use',
+    )
     await waitFor(() => {
       expect(screen.getByText('common.noneAvailable')).toBeInTheDocument()
     })
   })
 
   it('marks linked requirement loading as a status', async () => {
-    setupUsageScenarioMocks(() => new Promise(() => {}))
+    setupRequirementPackageMocks(() => new Promise(() => {}))
 
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
 
     const editButtons = screen.getAllByRole('button', {
@@ -192,11 +203,11 @@ describe('UsageScenariosClient', () => {
   })
 
   it('shows an error instead of an empty state when linked requirements fail to load', async () => {
-    setupUsageScenarioMocks(notOk)
+    setupRequirementPackageMocks(notOk)
 
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
 
     const editButtons = screen.getAllByRole('button', {
@@ -211,26 +222,28 @@ describe('UsageScenariosClient', () => {
   })
 
   it('closes form on cancel', async () => {
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/i }))
     fireEvent.click(screen.getByRole('button', { name: /common\.cancel/i }))
     expect(
-      screen.queryByRole('textbox', { name: /scenario\.nameSvLabel/ }),
+      screen.queryByRole('textbox', {
+        name: /requirementPackage\.nameSvLabel/,
+      }),
     ).toBeNull()
   })
 
   it('deletes with confirm', async () => {
     confirmMock.mockResolvedValue(true)
-    render(<UsageScenariosClient />)
+    render(<RequirementPackagesClient />)
     await waitFor(() => {
-      expect(screen.getByText('Scenario A')).toBeInTheDocument()
+      expect(screen.getByText('Mobile use')).toBeInTheDocument()
     })
 
     fetchMock.mockResolvedValueOnce(okJson({}))
-    fetchMock.mockResolvedValueOnce(okJson({ scenarios: [] }))
+    fetchMock.mockResolvedValueOnce(okJson({ requirementPackages: [] }))
 
     const deleteButtons = screen.getAllByRole('button', {
       name: /common\.delete/i,
@@ -242,7 +255,7 @@ describe('UsageScenariosClient', () => {
         expect.objectContaining({ variant: 'danger', icon: 'caution' }),
       )
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/usage-scenarios/1',
+        '/api/requirement-packages/1',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })

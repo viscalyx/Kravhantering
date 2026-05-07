@@ -621,7 +621,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
               'riskLevel',
               'verifiable',
               'verificationMethod',
-              'scenarios',
+              'requirementPackages',
               'normReferences',
               'status',
             ]),
@@ -743,7 +743,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'nytt-krav-tomt',
         'Skapa krav — tomt formulär',
-        'Navigera till "Skapa nytt krav" via knappen i katalogen. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, område, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och användningsscenarier.',
+        'Navigera till "Skapa nytt krav" via knappen i katalogen. Formuläret innehåller fält för alla kravegenskaper: kravtext, acceptanskriterier, område, kategori, typ, risknivå, kvalitetsegenskaper, verifieringsmetod, normreferenser och kravpaket.',
       )
     })
 
@@ -1516,7 +1516,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
         page,
         'admin-referensdata',
         'Admin — Referensdata',
-        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: områden, typer, statusar, risknivåer, kvalitetsegenskaper, normreferenser och användningsscenarier. Här bygger du upp de grunddata som krav refererar till.',
+        'Fliken **Referensdata** innehåller länkar till alla taxonomihanteringssidor: områden, typer, statusar, risknivåer, kvalitetsegenskaper, normreferenser och kravpaket. Här bygger du upp de grunddata som krav refererar till.',
       )
     })
 
@@ -1616,7 +1616,7 @@ test.describe('Kravhantering — Guidegenerering', () => {
 
       textEntry(
         'Granskningsrapport',
-        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, risknivå, normreferenser, scenarier m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
+        'Jämför en version i **Granskning** med den senast publicerade eller arkiverade versionen. Rapporten visar ord-för-ord-skillnader i kravtext och acceptanskriterier samt förändringar i metadata (kategori, typ, kvalitetsegenskaper, risknivå, normreferenser, kravpaket m.m.). Om ingen publicerad/arkiverad version finns noteras detta.\n\n' +
           '**Åtkomst:** Rapportmenyn i kravdetaljvyn (visas enbart när kravet är i status *Granskning*).\n\n' +
           '**Rutt:** `/requirements/reports/print/review/[id]` (utskrift) · `/requirements/reports/pdf/review/[id]` (PDF)',
       )

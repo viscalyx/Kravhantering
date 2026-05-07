@@ -45,7 +45,8 @@ export default function EditRequirementClient({
   const [initialNormReferenceIds, setInitialNormReferenceIds] = useState<
     number[]
   >([])
-  const [initialScenarioIds, setInitialScenarioIds] = useState<number[]>([])
+  const [initialRequirementPackageIds, setInitialRequirementPackageIds] =
+    useState<number[]>([])
   const [baseRevisionToken, setBaseRevisionToken] = useState<string | null>(
     null,
   )
@@ -114,9 +115,9 @@ export default function EditRequirementClient({
           .map(vnr => vnr.normReference.id)
           .filter((id): id is number => id != null),
       )
-      setInitialScenarioIds(
-        latest.versionScenarios
-          .map(vs => vs.scenario.id)
+      setInitialRequirementPackageIds(
+        latest.versionRequirementPackages
+          .map(vs => vs.requirementPackage.id)
           .filter((id): id is number => id != null),
       )
     } catch {
@@ -181,7 +182,7 @@ export default function EditRequirementClient({
             baseVersionId={baseVersionId}
             initialData={initialData ?? undefined}
             initialNormReferenceIds={initialNormReferenceIds}
-            initialScenarioIds={initialScenarioIds}
+            initialRequirementPackageIds={initialRequirementPackageIds}
             mode="edit"
             onRefreshLatest={fetchData}
             requirementId={requirementId}

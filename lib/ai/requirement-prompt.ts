@@ -18,9 +18,9 @@ export interface GeneratedRequirement {
   description: string
   qualityCharacteristicId?: number
   rationale: string
+  requirementPackageIds?: number[]
   requiresTesting: boolean
   riskLevelId?: number
-  scenarioIds?: number[]
   typeId: number
   verificationMethod?: string
 }
@@ -39,8 +39,8 @@ export interface TaxonomyData {
     name: string
     parentName?: string
   }>
+  requirementPackages: Array<{ id: number; name: string }>
   riskLevels: Array<{ id: number; name: string }>
-  scenarios: Array<{ id: number; name: string }>
   types: Array<{ id: number; name: string }>
 }
 
@@ -60,7 +60,7 @@ export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
           rationale: { type: 'string' },
           requiresTesting: { type: 'boolean' },
           riskLevelId: { type: ['integer', 'null'] },
-          scenarioIds: {
+          requirementPackageIds: {
             items: { type: 'integer' },
             type: ['array', 'null'],
           },
@@ -75,7 +75,7 @@ export const REQUIREMENT_FORMAT_SCHEMA: Record<string, unknown> = {
           'rationale',
           'requiresTesting',
           'riskLevelId',
-          'scenarioIds',
+          'requirementPackageIds',
           'typeId',
           'verificationMethod',
         ],
@@ -194,7 +194,7 @@ const SYSTEM_PROMPT_HEADING_KEYS = [
   'categories',
   'qualityCharacteristics',
   'riskLevels',
-  'usageScenarios',
+  'requirementPackages',
   'outputRules',
 ] as const
 
@@ -277,13 +277,15 @@ export function buildSystemPrompt(
   const riskList = taxonomy.riskLevels
     .map(r => `  - ID ${r.id}: ${r.name}`)
     .join('\n')
-  const scenarioList =
-    taxonomy.scenarios.length > 0
-      ? taxonomy.scenarios.map(s => `  - ID ${s.id}: ${s.name}`).join('\n')
+  const requirementPackageList =
+    taxonomy.requirementPackages.length > 0
+      ? taxonomy.requirementPackages
+          .map(s => `  - ID ${s.id}: ${s.name}`)
+          .join('\n')
       : `_${getPromptMessage(locale, [
           'ai',
           'prompt',
-          'noUsageScenariosAvailable',
+          'noRequirementPackagesAvailable',
         ])}_`
   const outputRules = getPromptMessageList(locale, [
     'ai',
@@ -317,8 +319,8 @@ ${qcList}
 ## ${headings.riskLevels}
 ${riskList}
 
-## ${headings.usageScenarios}
-${scenarioList}
+## ${headings.requirementPackages}
+${requirementPackageList}
 
 ## ${headings.outputRules}
 ${outputRules}`
@@ -353,7 +355,9 @@ export function validateGeneratedRequirements(
   const validCatIds = new Set(taxonomy.categories.map(c => c.id))
   const validQcIds = new Set(taxonomy.qualityCharacteristics.map(qc => qc.id))
   const validRiskIds = new Set(taxonomy.riskLevels.map(r => r.id))
-  const validScenarioIds = new Set(taxonomy.scenarios.map(s => s.id))
+  const validRequirementPackageIds = new Set(
+    taxonomy.requirementPackages.map(s => s.id),
+  )
 
   return requirements
     .filter(r => validTypeIds.has(r.typeId))
@@ -371,6 +375,8 @@ export function validateGeneratedRequirements(
         r.riskLevelId && validRiskIds.has(r.riskLevelId)
           ? r.riskLevelId
           : undefined,
-      scenarioIds: r.scenarioIds?.filter(id => validScenarioIds.has(id)),
+      requirementPackageIds: r.requirementPackageIds?.filter(id =>
+        validRequirementPackageIds.has(id),
+      ),
     }))
 }

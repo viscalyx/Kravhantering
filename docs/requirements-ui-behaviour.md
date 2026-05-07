@@ -76,9 +76,9 @@ The behaviors below apply to the requirement list rendered by:
 - The column header row stays sticky during vertical page scroll.
 - Sticky headers pin directly below the `h-16` site navigation using a `top-16`
   offset.
-- The sticky table chrome keeps the usage-scenario chips visible together with
+- The sticky table chrome keeps the requirement-package chips visible together with
   the header when those chips are present.
-- Sticky usage-scenario and norm-reference chip rows stay single-line and
+- Sticky requirement-package and norm-reference chip rows stay single-line and
   horizontally scrollable on all viewport sizes so the sticky chrome does not
   cover the table body or inline detail pane.
 - Specification-detail split tables also keep their list title bar sticky in that
@@ -96,7 +96,8 @@ The behaviors below apply to the requirement list rendered by:
 - In that desktop split-panel mode, the specification-detail sticky chrome
   uses the
   card’s own top edge instead of the global `top-16` viewport offset so the
-  title bar, scenario chips, and header stay visually attached to the table.
+  title bar, requirement-package chips, and header stay visually attached to
+  the table.
 - The specification-detail bulk-add dialog keeps API failures inline inside the
   modal and leaves the current selection in place so the user can adjust the
   needs-reference choice or retry without rebuilding the selection.
@@ -249,7 +250,7 @@ The detail card renders sections in this fixed order:
 4. **Specification count** — read-only count of how many requirements specifications
    include this requirement (always shown, displays 0 when unused)
 5. **References** — if any exist
-6. **Scenarios** — if any exist
+6. **Requirement packages** — if any exist
 
 Requirement text and acceptance criteria are the primary content. Classification
 metadata (area, owner, category, type, etc.) must not push the main content
@@ -294,7 +295,7 @@ down.
 - The specification-local inline detail pane now reuses the same core content-card
   layout as the requirements catalog inline detail view: description first,
   acceptance criteria second, then the shared metadata grid, references, and
-  scenarios.
+  requirement packages.
 - When a library requirement is opened from the specification list `Krav i underlaget`,
   its inline detail metadata also includes the specification-specific fields
   **Behovsreferens** and **Användningsstatus** in the same properties grid.

@@ -325,11 +325,11 @@ export default function AdminClient({
       label: tn('types'),
     },
     {
-      description: ta('scenariosDescription'),
-      href: '/usage-scenarios',
+      description: ta('requirementPackagesDescription'),
+      href: '/requirement-packages',
       icon: Theater,
-      id: 'scenarios',
-      label: tn('scenarios'),
+      id: 'requirementPackages',
+      label: tn('requirementPackages'),
     },
     {
       description: ta('statusesDescription'),

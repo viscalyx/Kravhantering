@@ -286,6 +286,7 @@ Common causes are:
 
 Verify that the Secret has the expected keys without printing values:
 
+<!-- cSpell:ignore println -->
 ```bash
 oc get secret kravhantering-secrets -n <user>-devspaces \
   -o go-template='{{range $k, $_ := .data}}{{println $k}}{{end}}'
@@ -354,7 +355,7 @@ oc project <workspace-namespace>
 
 If you are unsure which project Dev Spaces used, list the workspaces and
 look at the namespace column:
-
+<!-- cSpell:ignore devworkspaces -->
 ```bash
 oc get devworkspaces -A
 ```
@@ -425,7 +426,7 @@ KEYCLOAK_ADMIN
 KEYCLOAK_ADMIN_PASSWORD
 KC_HTTP_PORT
 ```
-
+<!-- cSpell:ignore kubelet -->
 For `CrashLoopBackOff`, the kubelet event is not enough; get the
 container's own log. Use `--previous` first because the failed process
 may already have restarted:

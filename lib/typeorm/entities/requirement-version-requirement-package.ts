@@ -1,34 +1,34 @@
 import { EntitySchema } from 'typeorm'
+import type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
 import type { RequirementVersionEntity } from '@/lib/typeorm/entities/requirement-version'
-import type { UsageScenarioEntity } from '@/lib/typeorm/entities/usage-scenario'
 
-export interface RequirementVersionUsageScenarioEntity {
+export interface RequirementVersionRequirementPackageEntity {
+  requirementPackage: RequirementPackageEntity
+  requirementPackageId: number
   requirementVersion: RequirementVersionEntity
   requirementVersionId: number
-  usageScenario: UsageScenarioEntity
-  usageScenarioId: number
 }
 
-export const requirementVersionUsageScenarioEntity =
-  new EntitySchema<RequirementVersionUsageScenarioEntity>({
-    name: 'RequirementVersionUsageScenario',
-    tableName: 'requirement_version_usage_scenarios',
+export const requirementVersionRequirementPackageEntity =
+  new EntitySchema<RequirementVersionRequirementPackageEntity>({
+    name: 'RequirementVersionRequirementPackage',
+    tableName: 'requirement_version_requirement_packages',
     columns: {
       requirementVersionId: {
         name: 'requirement_version_id',
         type: 'int',
         primary: true,
       },
-      usageScenarioId: {
-        name: 'usage_scenario_id',
+      requirementPackageId: {
+        name: 'requirement_package_id',
         type: 'int',
         primary: true,
       },
     },
     indices: [
       {
-        name: 'idx_requirement_version_usage_scenarios_usage_scenario_id',
-        columns: ['usageScenarioId'],
+        name: 'idx_requirement_version_requirement_packages_requirement_package_id',
+        columns: ['requirementPackageId'],
       },
     ],
     relations: {
@@ -39,23 +39,23 @@ export const requirementVersionUsageScenarioEntity =
           name: 'requirement_version_id',
           referencedColumnName: 'id',
           foreignKeyConstraintName:
-            'fk_requirement_version_usage_scenarios_requirement_version_id',
+            'fk_requirement_version_requirement_packages_requirement_version_id',
         },
         nullable: false,
         onDelete: 'NO ACTION',
         onUpdate: 'NO ACTION',
       },
-      usageScenario: {
+      requirementPackage: {
         type: 'many-to-one',
-        target: 'UsageScenario',
+        target: 'RequirementPackage',
         joinColumn: {
-          name: 'usage_scenario_id',
+          name: 'requirement_package_id',
           referencedColumnName: 'id',
           foreignKeyConstraintName:
-            'fk_requirement_version_usage_scenarios_usage_scenario_id',
+            'fk_requirement_version_requirement_packages_requirement_package_id',
         },
         nullable: false,
-        onDelete: 'NO ACTION',
+        onDelete: 'CASCADE',
         onUpdate: 'NO ACTION',
       },
     },

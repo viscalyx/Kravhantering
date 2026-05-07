@@ -156,9 +156,9 @@ const FUNCTIONAL_TESTS_URL = resolveFunctionalTestsUrl()
 // Tables that the lifecycle scenarios populate and need cleared between tests.
 // Ordered child → parent so foreign key constraints never reject a DELETE.
 const TRANSACTIONAL_TABLES = [
-  'requirement_version_usage_scenarios',
+  'requirement_version_requirement_packages',
   'requirement_version_norm_references',
-  'specification_local_requirement_usage_scenarios',
+  'specification_local_requirement_requirement_packages',
   'specification_local_requirement_norm_references',
   'specification_local_requirement_deviations',
   'deviations',
@@ -170,7 +170,7 @@ const TRANSACTIONAL_TABLES = [
   'requirements',
   'requirements_specifications',
   'requirement_areas',
-  'usage_scenarios',
+  'requirement_packages',
   'norm_references',
   'owners',
 ] as const

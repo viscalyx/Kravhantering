@@ -171,11 +171,12 @@ describe('AdminClient', () => {
     )
     expect(panel.getByTestId('reference-data-icon-types')).toBeTruthy()
 
-    expect(panel.getByTestId('reference-data-card-scenarios')).toHaveAttribute(
-      'href',
-      '/usage-scenarios',
-    )
-    expect(panel.getByTestId('reference-data-icon-scenarios')).toBeTruthy()
+    expect(
+      panel.getByTestId('reference-data-card-requirementPackages'),
+    ).toHaveAttribute('href', '/requirement-packages')
+    expect(
+      panel.getByTestId('reference-data-icon-requirementPackages'),
+    ).toBeTruthy()
 
     expect(panel.getByTestId('reference-data-card-statuses')).toHaveAttribute(
       'href',

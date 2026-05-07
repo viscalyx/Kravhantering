@@ -16,10 +16,10 @@ export interface SpecificationLocalRequirementSubmitPayload {
   qualityCharacteristicId: number | null
   requirementAreaId: number | null
   requirementCategoryId: number | null
+  requirementPackageIds: number[]
   requirementTypeId: number | null
   requiresTesting: boolean
   riskLevelId: number | null
-  scenarioIds: number[]
   verificationMethod: string | null
 }
 
@@ -44,7 +44,7 @@ const EMPTY_FIELDS: RequirementFormFieldValues = {
   qualityCharacteristicId: '',
   requiresTesting: false,
   riskLevelId: '',
-  scenarioIds: [],
+  requirementPackageIds: [],
   typeId: '',
   verificationMethod: '',
 }
@@ -79,8 +79,8 @@ function toFieldValues(
     ...(initial.normReferenceIds != null
       ? { normReferenceIds: initial.normReferenceIds }
       : {}),
-    ...(initial.scenarioIds != null
-      ? { scenarioIds: initial.scenarioIds }
+    ...(initial.requirementPackageIds != null
+      ? { requirementPackageIds: initial.requirementPackageIds }
       : {}),
   }
 }
@@ -132,7 +132,7 @@ export default function SpecificationLocalRequirementForm({
         requirementTypeId: fields.typeId ? Number(fields.typeId) : null,
         requiresTesting: fields.requiresTesting,
         riskLevelId: fields.riskLevelId ? Number(fields.riskLevelId) : null,
-        scenarioIds: fields.scenarioIds,
+        requirementPackageIds: fields.requirementPackageIds,
         verificationMethod: fields.requiresTesting
           ? fields.verificationMethod.trim() || null
           : null,
