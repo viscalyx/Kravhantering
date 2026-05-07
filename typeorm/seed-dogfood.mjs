@@ -1,10 +1,10 @@
 // Dogfood seed: realistic Krav describing the Kravhantering application itself
-// plus a "Kravhantering" Kravpaket (uniqueId KH) that contains them all and a
-// smaller "Kravhantering PoC införande" package (uniqueId KH-POC).
+// plus a "Kravhantering" Kravunderlag (uniqueId KH) that contains them all and a
+// smaller "Kravhantering PoC införande" specification (uniqueId KH-POC).
 //
 // Strategy:
 // - All new IDs use offsets well above the existing seed's max IDs to avoid
-//   any collision (areas/norms/scenarios/owners/packages: 1001+; krav,
+//   any collision (areas/norms/packages/owners/specifications: 1001+; krav,
 //   versions, items: 10001+).
 // - Krav are described as compact tuples in DOGFOOD_KRAV and expanded into
 //   `requirements`, `requirement_versions`, and junction-table rows.
@@ -29,15 +29,20 @@ const ID = {
     avviken: 5,
     ejTillampbar: 6,
   },
-  pkgLifecycle: { upphandling: 1, inforande: 2, utveckling: 3, forvaltning: 4 },
-  pkgRespArea: {
+  specLifecycle: {
+    upphandling: 1,
+    inforande: 2,
+    utveckling: 3,
+    forvaltning: 4,
+  },
+  specRespArea: {
     forvaltningsobjekt: 1,
     projekt: 2,
     uppdrag: 3,
     leveransomrade: 4,
     tjansteomrade: 5,
   },
-  pkgImpl: { upphandling: 1, utveckling: 2 },
+  specImpl: { upphandling: 1, utveckling: 2 },
   // Existing requirement areas (id -> prefix). Sequence offsets are read from
   // SEED_DATA.requirement_areas when the dogfood rows are appended.
   area: {
@@ -74,11 +79,14 @@ const ID = {
     gdpr: 1005,
     rfc9700: 1006,
   },
-  // Existing usage scenarios (1-3) plus new ones (1001+)
-  scn: {
-    normalDrift: 1,
-    hogBelastning: 2,
-    katastrof: 3,
+  // Existing requirement packages (1-9) plus new ones (1001+)
+  pkg: {
+    mobilAnvandning: 1,
+    datamigrering: 2,
+    integrationer: 3,
+    arendehantering: 4,
+    anvandarvanlighetBas: 5,
+    molndrift: 6,
     grundSystem: 1001,
     infosak: 1002,
     behorighet: 1003,
@@ -132,15 +140,15 @@ const ID = {
   },
 }
 
-// Dogfood package IDs (chosen high to avoid clashing with future seed growth)
-const PKG_KH = 1001
-const PKG_KH_POC = 1002
+// Dogfood specification IDs (chosen high to avoid clashing with future seed growth)
+const SPEC_KH = 1001
+const SPEC_KH_POC = 1002
 
 // Starting IDs for generated rows
 const REQUIREMENT_ID_BASE = 10000
 const VERSION_ID_BASE = 10000
-const PACKAGE_ITEM_ID_BASE = 10000
-const PACKAGE_LOCAL_ID_BASE = 1000
+const SPECIFICATION_ITEM_ID_BASE = 10000
+const SPECIFICATION_LOCAL_ID_BASE = 1000
 const NEEDS_REF_ID_BASE = 1000
 
 const AREA_PREFIX_BY_ID = {
@@ -162,7 +170,7 @@ const AREA_PREFIX_BY_ID = {
   [ID.area.ARK]: 'ARK',
 }
 
-// New owners (fake persons assigned to new areas, scenarios and needs refs)
+// New owners (fake persons assigned to new areas, packages and needs refs)
 const DOGFOOD_OWNERS = [
   [ID.owner.sara, 'Sara', 'Holm', 'sara.holm@example.com'],
   [ID.owner.karl, 'Karl', 'Persson', 'karl.persson@example.com'],
@@ -282,10 +290,10 @@ const DOGFOOD_NORMS = [
   ],
 ]
 
-// New usage scenarios (bilingual sv/en)
-const DOGFOOD_SCENARIOS = [
+// New requirement packages (bilingual sv/en)
+const DOGFOOD_REQUIREMENT_PACKAGES = [
   [
-    ID.scn.grundSystem,
+    ID.pkg.grundSystem,
     'Grundläggande systemstöd',
     'Core system support',
     'Krav för de viktigaste funktionerna som systemet måste stödja.',
@@ -293,7 +301,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.sara,
   ],
   [
-    ID.scn.infosak,
+    ID.pkg.infosak,
     'Informationssäkerhet',
     'Information security',
     'Krav som skyddar information mot obehörig åtkomst, förlust eller manipulation.',
@@ -301,7 +309,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.karl,
   ],
   [
-    ID.scn.behorighet,
+    ID.pkg.behorighet,
     'Behörighetsstyrning',
     'Access control',
     'Krav för att styra vem som får se, ändra eller administrera information.',
@@ -309,7 +317,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.karl,
   ],
   [
-    ID.scn.apiUtbyte,
+    ID.pkg.apiUtbyte,
     'API och informationsutbyte',
     'API and information exchange',
     'Krav för tekniska gränssnitt, dataflöden och maskin-till-maskin-kommunikation.',
@@ -317,7 +325,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.sara,
   ],
   [
-    ID.scn.anvandbarhet,
+    ID.pkg.anvandbarhet,
     'Användarvänlighet',
     'Usability',
     'Krav för att systemet ska vara enkelt, effektivt och tydligt att använda.',
@@ -325,7 +333,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.linnea,
   ],
   [
-    ID.scn.tillganglighet,
+    ID.pkg.tillganglighet,
     'Tillgänglighet',
     'Accessibility',
     'Krav för att systemet ska kunna användas av personer med olika behov och förutsättningar.',
@@ -333,7 +341,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.linnea,
   ],
   [
-    ID.scn.sparbarhet,
+    ID.pkg.sparbarhet,
     'Spårbarhet och loggning',
     'Traceability and logging',
     'Krav för att kunna se vem som gjort vad, när och i vilket sammanhang.',
@@ -341,7 +349,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.oscar,
   ],
   [
-    ID.scn.driftTillg,
+    ID.pkg.driftTillg,
     'Drift och tillgänglighet',
     'Operations and availability',
     'Krav för driftsmiljö, upptid, övervakning och teknisk stabilitet.',
@@ -349,7 +357,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.oscar,
   ],
   [
-    ID.scn.testKvalitet,
+    ID.pkg.testKvalitet,
     'Test och kvalitetssäkring',
     'Testing and quality assurance',
     'Krav för testning, verifiering, acceptans och kvalitet i leveransen.',
@@ -357,7 +365,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.emma,
   ],
   [
-    ID.scn.versionshantering,
+    ID.pkg.versionshantering,
     'Versionshantering',
     'Version control',
     'Krav för att hantera olika versioner av dokument, data, konfigurationer eller funktioner.',
@@ -365,7 +373,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.sara,
   ],
   [
-    ID.scn.sso,
+    ID.pkg.sso,
     'Single Sign-On',
     'Single Sign-On',
     'Krav för att användare ska kunna logga in via organisationens gemensamma inloggning.',
@@ -373,7 +381,7 @@ const DOGFOOD_SCENARIOS = [
     ID.owner.karl,
   ],
   [
-    ID.scn.gdprPerson,
+    ID.pkg.gdprPerson,
     'GDPR och personuppgifter',
     'GDPR and personal data',
     'Krav för hantering av personuppgifter enligt dataskyddsregler.',
@@ -383,8 +391,8 @@ const DOGFOOD_SCENARIOS = [
 ]
 
 // Krav inventory: each row is
-// { area, desc, ac, vm, cat, type, qc, risk, test, scn:[], norm:[], item }
-// The order here also defines the order of items in the KH package.
+// { area, desc, ac, vm, cat, type, qc, risk, test, pkg: [], norm:[], item }
+// The order here also defines the order of items in the KH specification.
 const DOGFOOD_KRAV = [
   // ====== ARK – Arkitektur (4) ======
   {
@@ -397,7 +405,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.modularitet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.grundSystem],
+    pkg: [ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -411,7 +419,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.modularitet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.grundSystem],
+    pkg: [ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -425,7 +433,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.interoperabilitet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.grundSystem, ID.scn.driftTillg],
+    pkg: [ID.pkg.grundSystem, ID.pkg.driftTillg],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -439,7 +447,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.akthet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.infosak, ID.scn.behorighet],
+    pkg: [ID.pkg.infosak, ID.pkg.behorighet],
     norm: [ID.norm.asvs],
     item: ID.itemStatus.verifierad,
   },
@@ -455,7 +463,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.interoperabilitet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.apiUtbyte, ID.scn.grundSystem],
+    pkg: [ID.pkg.apiUtbyte, ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -469,13 +477,13 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.akthet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.sso, ID.scn.infosak],
+    pkg: [ID.pkg.sso, ID.pkg.infosak],
     norm: [ID.norm.oidcCore, ID.norm.rfc6749, ID.norm.rfc9700],
     item: ID.itemStatus.verifierad,
   },
   {
     area: ID.area.INT,
-    desc: 'REST API:er för krav och paket ska finnas under /api/requirements respektive /api/requirement-packages och stödja CRUD enligt dokumentationen.',
+    desc: 'REST API:er för krav och kravunderlag ska finnas under /api/requirements respektive /api/specifications och stödja CRUD enligt dokumentationen.',
     ac: 'GET, POST, PATCH och DELETE fungerar enligt specifikation och returnerar dokumenterade statuskoder. Felresponser följer ett gemensamt JSON-felschema.',
     vm: 'Vitest enhetstester per route samt scripts/dev-curl.sh för manuell verifiering.',
     cat: ID.cat.it,
@@ -483,7 +491,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.funkKorrekthet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.apiUtbyte, ID.scn.grundSystem],
+    pkg: [ID.pkg.apiUtbyte, ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -497,7 +505,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anvandbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.apiUtbyte],
+    pkg: [ID.pkg.apiUtbyte],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -511,7 +519,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anvandbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.apiUtbyte],
+    pkg: [ID.pkg.apiUtbyte],
     norm: [],
     item: ID.itemStatus.implementerad,
   },
@@ -526,21 +534,21 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.integritet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.infosak, ID.scn.versionshantering],
+    pkg: [ID.pkg.infosak, ID.pkg.versionshantering],
     norm: [ID.norm.asvs],
     item: ID.itemStatus.verifierad,
   },
   {
     area: ID.area.SAK,
     desc: 'Skyddade routes ska returnera 302 till /api/auth/login när giltig session saknas, aldrig läcka data.',
-    ac: 'Anrop utan giltig sessionscookie mot t.ex. /api/requirements eller /api/requirement-packages returnerar 302 mot /api/auth/login med originalvägen i parametern returnTo.',
+    ac: 'Anrop utan giltig sessionscookie mot t.ex. /api/requirements eller /api/specifications returnerar 302 mot /api/auth/login med originalvägen i parametern returnTo.',
     vm: 'Integrationstester med scripts/dev-curl.sh utan cookie-jar samt enhetstester av middleware-matchningen.',
     cat: ID.cat.it,
     type: ID.type.ickefunk,
     qc: ID.qc.konfidentialitet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.infosak],
+    pkg: [ID.pkg.infosak],
     norm: [ID.norm.asvs, ID.norm.iso27001],
     item: ID.itemStatus.verifierad,
   },
@@ -554,7 +562,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.akthet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.infosak, ID.scn.sso],
+    pkg: [ID.pkg.infosak, ID.pkg.sso],
     norm: [ID.norm.oidcCore, ID.norm.rfc9700],
     item: ID.itemStatus.verifierad,
   },
@@ -568,7 +576,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.skyddAnvFel,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.anvandbarhet],
+    pkg: [ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -582,7 +590,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.konfidentialitet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.infosak, ID.scn.driftTillg],
+    pkg: [ID.pkg.infosak, ID.pkg.driftTillg],
     norm: [ID.norm.asvs],
     item: ID.itemStatus.verifierad,
   },
@@ -598,7 +606,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.akthet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.sso, ID.scn.infosak],
+    pkg: [ID.pkg.sso, ID.pkg.infosak],
     norm: [ID.norm.oidcCore, ID.norm.rfc6749, ID.norm.rfc9700],
     item: ID.itemStatus.verifierad,
   },
@@ -612,7 +620,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.sjalvbeskrivning,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.sso, ID.scn.anvandbarhet],
+    pkg: [ID.pkg.sso, ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -626,7 +634,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.akthet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.sso],
+    pkg: [ID.pkg.sso],
     norm: [ID.norm.oidcCore],
     item: ID.itemStatus.implementerad,
   },
@@ -642,7 +650,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.ansvarsskyldighet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.behorighet, ID.scn.infosak],
+    pkg: [ID.pkg.behorighet, ID.pkg.infosak],
     norm: [ID.norm.iso27001, ID.norm.asvs],
     item: ID.itemStatus.verifierad,
   },
@@ -656,7 +664,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.konfidentialitet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.behorighet],
+    pkg: [ID.pkg.behorighet],
     norm: [ID.norm.iso27001],
     item: ID.itemStatus.verifierad,
   },
@@ -670,7 +678,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.ansvarsskyldighet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.behorighet, ID.scn.sparbarhet],
+    pkg: [ID.pkg.behorighet, ID.pkg.sparbarhet],
     norm: [ID.norm.iso27001],
     item: ID.itemStatus.verifierad,
   },
@@ -686,7 +694,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.tidsbeteende,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.hogBelastning, ID.scn.anvandbarhet],
+    pkg: [ID.pkg.molndrift, ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.implementerad,
   },
@@ -700,21 +708,21 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anvandbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.anvandbarhet, ID.scn.grundSystem],
+    pkg: [ID.pkg.anvandbarhet, ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
   {
     area: ID.area.PRE,
-    desc: 'Initial sidladdning för paketöversikten ska vara under 2 sekunder i utvecklingsmiljö med seedad databas.',
-    ac: 'Mätning i utvecklingsmiljö visar TTFB under 1 sekund och Largest Contentful Paint under 2 sekunder för /sv/requirements/packages/KH.',
+    desc: 'Initial sidladdning för kravunderlagsöversikten ska vara under 2 sekunder i utvecklingsmiljö med seedad databas.',
+    ac: 'Mätning i utvecklingsmiljö visar TTFB under 1 sekund och Largest Contentful Paint under 2 sekunder för /sv/requirements/specifications/KH.',
     vm: 'Manuell mätning med Playwright trace samt CI-kontroll av Next.js build-output storlek.',
     cat: ID.cat.it,
     type: ID.type.ickefunk,
     qc: ID.qc.tidsbeteende,
     risk: ID.risk.medel,
     test: false,
-    scn: [ID.scn.anvandbarhet, ID.scn.driftTillg],
+    pkg: [ID.pkg.anvandbarhet, ID.pkg.driftTillg],
     norm: [],
     item: ID.itemStatus.pagaende,
   },
@@ -729,7 +737,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anvandbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.anvandbarhet],
+    pkg: [ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -743,7 +751,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.hjalpmedelsanpassning,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.anvandbarhet],
+    pkg: [ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -757,7 +765,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.sjalvbeskrivning,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.anvandbarhet, ID.scn.versionshantering],
+    pkg: [ID.pkg.anvandbarhet, ID.pkg.versionshantering],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -771,7 +779,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anpassningsbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.anvandbarhet],
+    pkg: [ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -785,7 +793,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.hjalpmedelsanpassning,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.anvandbarhet, ID.scn.tillganglighet],
+    pkg: [ID.pkg.anvandbarhet, ID.pkg.tillganglighet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -801,7 +809,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.tillganglighet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.tillganglighet, ID.scn.anvandbarhet],
+    pkg: [ID.pkg.tillganglighet, ID.pkg.anvandbarhet],
     norm: [ID.norm.wcag22, ID.norm.en301549],
     item: ID.itemStatus.implementerad,
   },
@@ -815,7 +823,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.tillganglighet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.tillganglighet],
+    pkg: [ID.pkg.tillganglighet],
     norm: [ID.norm.wcag22],
     item: ID.itemStatus.verifierad,
   },
@@ -829,7 +837,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anpassningsbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.sparbarhet],
+    pkg: [ID.pkg.sparbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -845,7 +853,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.versionshantering, ID.scn.sparbarhet],
+    pkg: [ID.pkg.versionshantering, ID.pkg.sparbarhet],
     norm: [ID.norm.iso25010],
     item: ID.itemStatus.verifierad,
   },
@@ -859,7 +867,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.aterstallningsbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.versionshantering],
+    pkg: [ID.pkg.versionshantering],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -873,7 +881,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.ansvarsskyldighet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.versionshantering, ID.scn.sparbarhet],
+    pkg: [ID.pkg.versionshantering, ID.pkg.sparbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -888,7 +896,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.ansvarsskyldighet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.sparbarhet, ID.scn.versionshantering],
+    pkg: [ID.pkg.sparbarhet, ID.pkg.versionshantering],
     norm: [ID.norm.iso27001],
     item: ID.itemStatus.verifierad,
   },
@@ -902,21 +910,21 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.analyserbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.sparbarhet],
+    pkg: [ID.pkg.sparbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
   {
     area: ID.area.LOG,
-    desc: 'Statusändringar för paketposter ska spåras via fältet status_updated_at.',
-    ac: 'Vid ändring av package_item_status_id sätts status_updated_at till aktuellt datum; tidigare värde går att läsa via versionshistoriken på paketposten.',
-    vm: 'Enhetstester av lib/dal/requirement-packages.ts och DAL-tester av updatePackageItemFields.',
+    desc: 'Statusändringar för underlagsposter ska spåras via fältet status_updated_at.',
+    ac: 'Vid ändring av specification_item_status_id sätts status_updated_at till aktuellt datum; tidigare värde går att läsa via versionshistoriken på kravunderlagsposten.',
+    vm: 'Enhetstester av lib/dal/requirements-specifications.ts och DAL-tester av updateSpecificationItemFields.',
     cat: ID.cat.verksamhet,
     type: ID.type.funk,
     qc: ID.qc.ansvarsskyldighet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.sparbarhet],
+    pkg: [ID.pkg.sparbarhet],
     norm: [ID.norm.iso27001],
     item: ID.itemStatus.verifierad,
   },
@@ -932,7 +940,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.installerbarhet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.driftTillg],
+    pkg: [ID.pkg.driftTillg],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -946,7 +954,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.installerbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.driftTillg],
+    pkg: [ID.pkg.driftTillg],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -960,7 +968,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.installerbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.driftTillg],
+    pkg: [ID.pkg.driftTillg],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -974,7 +982,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.installerbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.driftTillg, ID.scn.sso],
+    pkg: [ID.pkg.driftTillg, ID.pkg.sso],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -988,7 +996,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.installerbarhet,
     risk: ID.risk.lag,
     test: false,
-    scn: [ID.scn.driftTillg],
+    pkg: [ID.pkg.driftTillg],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1004,7 +1012,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.driftTillg, ID.scn.versionshantering],
+    pkg: [ID.pkg.driftTillg, ID.pkg.versionshantering],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1018,7 +1026,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1032,7 +1040,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.interoperabilitet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.grundSystem],
+    pkg: [ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1046,7 +1054,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.modularitet,
     risk: ID.risk.lag,
     test: false,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1061,7 +1069,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1075,13 +1083,13 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
   {
     area: ID.area.KVA,
-    desc: 'Playwright ska användas för end-to-end-test mot dev-, prodlika- och guide-konfigurationer.',
+    desc: 'Playwright ska användas för end-to-end-test mot dev-, produktionsliknande- och guide-konfigurationer.',
     ac: 'playwright.config.ts, playwright.prodlike.config.ts och playwright.guide.config.ts startar respektive scenarion och rapporterar resultat under playwright-report*-mapparna.',
     vm: 'CI-körning samt manuell körning enligt docs/auth-developer-workflow.md.',
     cat: ID.cat.it,
@@ -1089,7 +1097,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.implementerad,
   },
@@ -1103,7 +1111,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1117,7 +1125,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.testbarhet,
     risk: ID.risk.hog,
     test: true,
-    scn: [ID.scn.testKvalitet, ID.scn.versionshantering],
+    pkg: [ID.pkg.testKvalitet, ID.pkg.versionshantering],
     norm: [ID.norm.iso25010],
     item: ID.itemStatus.verifierad,
   },
@@ -1133,7 +1141,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.inkludering,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.tillganglighet, ID.scn.anvandbarhet],
+    pkg: [ID.pkg.tillganglighet, ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1147,7 +1155,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.anvandbarhet,
     risk: ID.risk.lag,
     test: true,
-    scn: [ID.scn.anvandbarhet],
+    pkg: [ID.pkg.anvandbarhet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1155,15 +1163,15 @@ const DOGFOOD_KRAV = [
   // ====== RAP – Rapportering (3) ======
   {
     area: ID.area.RAP,
-    desc: 'Systemet ska kunna producera PDF-export av krav och paket via components/reports/pdf och lib/reports.',
-    ac: 'PDF-exporten innehåller kravens id, beskrivning, status, version, paketkoppling samt rapport-metadata; exporten är reproducerbar för samma indata.',
+    desc: 'Systemet ska kunna producera PDF-export av krav och kravunderlag via components/reports/pdf och lib/reports.',
+    ac: 'PDF-exporten innehåller kravens id, beskrivning, status, version, kravunderlagskoppling samt rapport-metadata; exporten är reproducerbar för samma indata.',
     vm: 'Enhetstester av lib/reports samt manuell granskning av genererad PDF.',
     cat: ID.cat.verksamhet,
     type: ID.type.funk,
     qc: ID.qc.funkAndamalsenlighet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.grundSystem, ID.scn.sparbarhet],
+    pkg: [ID.pkg.grundSystem, ID.pkg.sparbarhet],
     norm: [],
     item: ID.itemStatus.implementerad,
   },
@@ -1177,21 +1185,21 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.funkAndamalsenlighet,
     risk: ID.risk.lag,
     test: false,
-    scn: [ID.scn.grundSystem],
+    pkg: [ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.implementerad,
   },
   {
     area: ID.area.RAP,
-    desc: 'Reports-modulen ska producera en paketrapport med kravinklusion och status per post.',
-    ac: 'Rapporten listar varje requirement_package_item med uniqueId, beskrivning, status och länkad version; sortering följer paketets ordning.',
-    vm: 'Enhetstester av lib/reports/data och manuell verifiering på paketet KH.',
+    desc: 'Reports-modulen ska producera en kravunderlagsrapport med kravinklusion och status per post.',
+    ac: 'Rapporten listar varje requirement_specification_item med uniqueId, beskrivning, status och länkad version; sortering följer underlagets ordning.',
+    vm: 'Enhetstester av lib/reports/data och manuell verifiering på underlaget KH.',
     cat: ID.cat.verksamhet,
     type: ID.type.funk,
     qc: ID.qc.funkKorrekthet,
     risk: ID.risk.medel,
     test: true,
-    scn: [ID.scn.sparbarhet, ID.scn.grundSystem],
+    pkg: [ID.pkg.sparbarhet, ID.pkg.grundSystem],
     norm: [],
     item: ID.itemStatus.implementerad,
   },
@@ -1207,7 +1215,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.modularitet,
     risk: ID.risk.lag,
     test: false,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1221,7 +1229,7 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.andringsbarhet,
     risk: ID.risk.lag,
     test: false,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
@@ -1235,77 +1243,77 @@ const DOGFOOD_KRAV = [
     qc: ID.qc.andringsbarhet,
     risk: ID.risk.lag,
     test: false,
-    scn: [ID.scn.testKvalitet],
+    pkg: [ID.pkg.testKvalitet],
     norm: [],
     item: ID.itemStatus.verifierad,
   },
   // KRAV-INSERT-MARKER (do not remove; used during file authoring)
 ]
 
-// Two packages: the main "Kravhantering" container (KH) and a smaller PoC
-// package (KH-POC) that holds a curated subset for demonstrating the Införande
+// Two specifications: the main "Kravhantering" specification (KH) and a smaller PoC
+// specification (KH-POC) that holds a curated subset for demonstrating the Införande
 // lifecycle.
-const DOGFOOD_PACKAGES = [
+const DOGFOOD_SPECIFICATIONS = [
   {
-    id: PKG_KH,
+    id: SPEC_KH,
     uniqueId: 'KH',
     name: 'Kravhantering',
-    responsibility: ID.pkgRespArea.forvaltningsobjekt,
-    impl: ID.pkgImpl.utveckling,
-    lifecycle: ID.pkgLifecycle.utveckling,
+    responsibility: ID.specRespArea.forvaltningsobjekt,
+    impl: ID.specImpl.utveckling,
+    lifecycle: ID.specLifecycle.utveckling,
     businessNeeds:
-      'Standardiserat kravarbete för plattformen Kravhantering: ett gemensamt paket som beskriver vad applikationen själv ska kunna, så att förändringar prövas mot ett dogfooded kravregister.',
+      'Standardiserat kravarbete för plattformen Kravhantering: ett gemensamt kravunderlag som beskriver vad applikationen själv ska kunna, så att förändringar prövas mot ett dogfooded kravregister.',
   },
   {
-    id: PKG_KH_POC,
+    id: SPEC_KH_POC,
     uniqueId: 'KH-POC',
     name: 'Kravhantering PoC införande',
-    responsibility: ID.pkgRespArea.projekt,
-    impl: ID.pkgImpl.utveckling,
-    lifecycle: ID.pkgLifecycle.inforande,
+    responsibility: ID.specRespArea.projekt,
+    impl: ID.specImpl.utveckling,
+    lifecycle: ID.specLifecycle.inforande,
     businessNeeds:
-      'Pilot-införande av Kravhantering hos en första förvaltning. Paketet pekar ut den delmängd Krav som krävs för PoC och innehåller paket-lokala varianter där PoC behöver justerade acceptanskriterier.',
+      'Pilot-införande av Kravhantering hos en första förvaltning. Underlaget pekar ut den delmängd Krav som krävs för PoC och innehåller underlagslokala varianter där PoC behöver justerade acceptanskriterier.',
   },
 ]
 
-// Business-needs references attached to each package
+// Business-needs references attached to each specification
 const DOGFOOD_NEEDS_REFS = [
   // KH
   {
-    pkg: PKG_KH,
-    text: 'Spårbarhet mellan krav, version och paket — Kravhantering ska kunna styras av sina egna krav.',
+    spec: SPEC_KH,
+    text: 'Spårbarhet mellan krav, version och kravunderlag — Kravhantering ska kunna styras av sina egna krav.',
   },
   {
-    pkg: PKG_KH,
+    spec: SPEC_KH,
     text: 'Stöd för MCP-baserad AI-assistans mot kravregistret för granskning, sökning och rapportering.',
   },
   {
-    pkg: PKG_KH,
-    text: 'Standardiserat kravarbete för svensk offentlig sektor med stöd för norm­hänvisningar och svenskspråkiga texter.',
+    spec: SPEC_KH,
+    text: 'Standardiserat kravarbete för svensk offentlig sektor med stöd för normhänvisningar och svenskspråkiga texter.',
   },
   {
-    pkg: PKG_KH,
+    spec: SPEC_KH,
     text: 'Reproducerbar utvecklings- och driftmiljö så att teamet kan dogfooda applikationen lokalt.',
   },
   // KH-POC
   {
-    pkg: PKG_KH_POC,
+    spec: SPEC_KH_POC,
     text: 'PoC-införande hos en pilotförvaltning för att validera kravregistrets arbetssätt på riktig data.',
   },
   {
-    pkg: PKG_KH_POC,
+    spec: SPEC_KH_POC,
     text: 'Begränsad omfattning under införande — endast de Krav som behövs för PoC ingår.',
   },
 ]
 
-// Package-local requirements: PoC-specific tweaks of a few Krav. Each entry
+// Specification-local requirements: PoC-specific tweaks of a few Krav. Each entry
 // references the dogfood Krav by its 0-based index in DOGFOOD_KRAV (so the
 // builder can resolve the matching requirement_area_id, category, etc.).
 // kravIdx must point to a Krav that is also linked into KH-POC via
 // DOGFOOD_KH_POC_INDEXES below.
-const DOGFOOD_PACKAGE_LOCALS = [
+const DOGFOOD_SPECIFICATION_LOCALS = [
   {
-    pkg: PKG_KH_POC,
+    spec: SPEC_KH_POC,
     kravIdx: 3, // ARK middleware krav
     descSuffix:
       ' I PoC-leveransen accepteras även anonymt åtkomliga hälso-endpoints under /api/health/*.',
@@ -1316,7 +1324,7 @@ const DOGFOOD_PACKAGE_LOCALS = [
     item: ID.itemStatus.avviken,
   },
   {
-    pkg: PKG_KH_POC,
+    spec: SPEC_KH_POC,
     kravIdx: 23, // ANV ConfirmModal anchor krav
     descSuffix:
       ' I PoC ska minst destruktiva åtgärder (radera, arkivera) använda anchorEl-positioneringen.',
@@ -1360,16 +1368,16 @@ export {
   DOGFOOD_NEEDS_REFS,
   DOGFOOD_NORMS,
   DOGFOOD_OWNERS,
-  DOGFOOD_PACKAGE_LOCALS,
-  DOGFOOD_PACKAGES,
-  DOGFOOD_SCENARIOS,
+  DOGFOOD_REQUIREMENT_PACKAGES,
+  DOGFOOD_SPECIFICATION_LOCALS,
+  DOGFOOD_SPECIFICATIONS,
   ID,
   NEEDS_REF_ID_BASE,
-  PACKAGE_ITEM_ID_BASE,
-  PACKAGE_LOCAL_ID_BASE,
-  PKG_KH,
-  PKG_KH_POC,
   REQUIREMENT_ID_BASE,
   SEED_TS,
+  SPEC_KH,
+  SPEC_KH_POC,
+  SPECIFICATION_ITEM_ID_BASE,
+  SPECIFICATION_LOCAL_ID_BASE,
   VERSION_ID_BASE,
 }

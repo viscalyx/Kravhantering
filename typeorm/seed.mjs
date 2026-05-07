@@ -1,33 +1,33 @@
 const TABLE_ORDER = [
   'norm_references',
   'owners',
-  'package_implementation_types',
-  'package_item_statuses',
-  'package_lifecycle_statuses',
-  'package_responsibility_areas',
+  'specification_implementation_types',
+  'specification_item_statuses',
+  'specification_lifecycle_statuses',
+  'specification_responsibility_areas',
   'requirement_areas',
   'requirement_categories',
   'requirement_list_column_defaults',
-  'requirement_packages',
-  'package_needs_references',
+  'requirements_specifications',
+  'specification_needs_references',
   'requirement_statuses',
   'requirement_status_transitions',
   'requirement_types',
   'quality_characteristics',
   'requirements',
   'risk_levels',
-  'package_local_requirements',
-  'package_local_requirement_deviations',
-  'package_local_requirement_norm_references',
+  'specification_local_requirements',
+  'specification_local_requirement_deviations',
+  'specification_local_requirement_norm_references',
   'requirement_versions',
   'improvement_suggestions',
-  'requirement_package_items',
+  'requirements_specification_items',
   'deviations',
   'requirement_version_norm_references',
   'ui_terminology',
-  'usage_scenarios',
-  'package_local_requirement_usage_scenarios',
-  'requirement_version_usage_scenarios',
+  'requirement_packages',
+  'specification_local_requirement_requirement_packages',
+  'requirement_version_requirement_packages',
 ]
 
 const SEED_DATA = {
@@ -157,7 +157,7 @@ const SEED_DATA = {
       ],
     ],
   },
-  package_implementation_types: {
+  specification_implementation_types: {
     columns: ['id', 'name_sv', 'name_en'],
     pk: ['id'],
     rows: [
@@ -165,7 +165,7 @@ const SEED_DATA = {
       [2, 'Utveckling', 'Development'],
     ],
   },
-  package_item_statuses: {
+  specification_item_statuses: {
     columns: [
       'id',
       'name_sv',
@@ -181,8 +181,8 @@ const SEED_DATA = {
         1,
         'Inkluderad',
         'Included',
-        'Kravet finns i paketet men inget arbete påbörjat',
-        'Requirement is in the package but no work started',
+        'Kravet finns i underlaget men inget arbete påbörjat',
+        'Requirement is in the specification but no work started',
         '#94a3b8',
         1,
       ],
@@ -233,7 +233,7 @@ const SEED_DATA = {
       ],
     ],
   },
-  package_lifecycle_statuses: {
+  specification_lifecycle_statuses: {
     columns: ['id', 'name_sv', 'name_en'],
     pk: ['id'],
     rows: [
@@ -243,7 +243,7 @@ const SEED_DATA = {
       [4, 'Förvaltning', 'Management'],
     ],
   },
-  package_responsibility_areas: {
+  specification_responsibility_areas: {
     columns: ['id', 'name_sv', 'name_en'],
     pk: ['id'],
     rows: [
@@ -400,46 +400,46 @@ const SEED_DATA = {
       [10, 'version', 8, 0, '2026-04-20 20:07:00'],
       [11, 'needsReference', 9, 0, '2026-04-20 20:07:00'],
       [13, 'riskLevel', 11, 0, '2026-04-20 20:07:00'],
-      [14, 'packageItemStatus', 12, 0, '2026-04-20 20:07:00'],
+      [14, 'specificationItemStatus', 12, 0, '2026-04-20 20:07:00'],
       [15, 'suggestionCount', 13, 0, '2026-04-20 20:07:00'],
     ],
   },
-  requirement_packages: {
+  requirements_specifications: {
     columns: [
       'id',
-      'package_responsibility_area_id',
-      'package_implementation_type_id',
+      'specification_responsibility_area_id',
+      'specification_implementation_type_id',
       'created_at',
       'updated_at',
       'business_needs_reference',
       'unique_id',
       'name',
-      'package_lifecycle_status_id',
+      'specification_lifecycle_status_id',
       'local_requirement_next_sequence',
     ],
     pk: ['id'],
     rows: [
       [
         1,
-        1,
+        2,
         1,
         '2026-03-21 20:07:00',
         '2026-03-21 20:07:00',
-        'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform',
-        'INTPLATTFORM-2026',
-        'Integrationsplattform 2026',
+        'Verksamhetsplan 2026, initiativ IP-4: Konsolidera externa integrationer till en gemensam plattform genom upphandling',
+        'INTPLATT-UPP-2026',
+        'Upphandling av integrationsplattform 2026',
         1,
         1,
       ],
       [
         2,
-        1,
+        3,
         2,
         '2026-03-26 20:07:00',
         '2026-03-26 20:07:00',
-        'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas',
-        'SAKLYFT-Q2',
-        'Säkerhetslyft Q2',
+        'IT-säkerhetsrevision 2025 identifierade gap i kryptering och behörighetskontroll som ska åtgärdas i Q2-uppdraget',
+        'SAKLYFT-INFOR-Q2',
+        'Införande av säkerhetslyft Q2',
         2,
         1,
       ],
@@ -449,21 +449,21 @@ const SEED_DATA = {
         2,
         '2026-03-31 20:07:00',
         '2026-03-31 20:07:00',
-        null,
-        'PRESTANDA-SKAL',
-        'Prestanda och Skalbarhet',
+        'Utvecklingsinitiativ för förbättrad svarstid och horisontell skalbarhet i kärnplattformen',
+        'PRESTANDA-UTV',
+        'Utveckling av prestanda och skalbarhet',
         3,
         1,
       ],
       [
         4,
-        3,
+        1,
         2,
         '2026-04-02 20:07:00',
         '2026-04-02 20:07:00',
-        'Myndighetsuppdrag: uppfyll WCAG 2.1 AA inför lansering av ny e-tjänst hösten 2025',
-        'TILLGANGLIGHET-Q3',
-        'Tillgänglighet Q3 2025',
+        'Förvaltningsobjekt: löpande WCAG 2.1 AA-efterlevnad för publika e-tjänster',
+        'TILLGANG-FORV-Q3',
+        'Förvaltning av tillgänglighet Q3 2025',
         4,
         1,
       ],
@@ -473,76 +473,76 @@ const SEED_DATA = {
         1,
         '2026-04-05 20:07:00',
         '2026-04-05 20:07:00',
-        null,
-        'DATALAGRING-BACKUP',
-        'Datalagring och Backup',
+        'Upphandling av ny lagringslösning som ersätter befintlig SAN under 2026',
+        'LAGRING-UPP-2026',
+        'Upphandling av lagringslösning 2026',
         1,
         1,
       ],
       [
         6,
-        1,
+        2,
         2,
         '2026-04-08 20:07:00',
         '2026-04-08 20:07:00',
-        'Funktionellt krav FR-88: Centralisera IAM för att minska administrationsbörda och förbättra säkerhet',
-        'IAM-IDENTITET',
-        'Identitets- och åtkomsthantering',
-        3,
+        'Funktionellt krav FR-88: Införande av centraliserad IAM-lösning för minskad administrationsbörda och förbättrad säkerhet',
+        'IAM-INFOR-2026',
+        'Införande av IAM-lösning',
+        2,
         1,
       ],
       [
         7,
         5,
-        1,
+        2,
         '2026-04-10 20:07:00',
         '2026-04-10 20:07:00',
-        'Juridisk skyldighet: säkerställ GDPR-efterlevnad inför DPA-revision planerad till Q1 2026',
-        'GDPR-2026',
-        'GDPR-efterlevnad 2026',
+        'Juridisk skyldighet: löpande förvaltning av GDPR-efterlevnad inför DPA-revision Q1 2026 och därefter',
+        'GDPR-FORV-2026',
+        'Förvaltningskrav GDPR-efterlevnad 2026',
         4,
         1,
       ],
       [
         8,
-        2,
-        2,
+        4,
+        1,
         '2026-04-12 20:07:00',
         '2026-04-12 20:07:00',
-        null,
-        'ETJANSTPLATT',
-        'Införande av e-tjänstplattform',
-        2,
+        'Upphandling av ny e-tjänstplattform för medborgartjänster med isolerade adminflöden',
+        'ETJANST-UPP-2026',
+        'Upphandling av e-tjänstplattform',
+        1,
         3,
       ],
       [
         9,
+        2,
+        2,
+        '2026-04-15 20:07:00',
+        '2026-04-15 20:07:00',
+        'Egenutveckling av API-gateway för att standardisera extern och intern API-kommunikation',
+        'APIGW-UTV-2026',
+        'Utveckling av API Gateway',
         3,
-        1,
-        '2026-04-15 20:07:00',
-        '2026-04-15 20:07:00',
-        null,
-        'API-GATEWAY',
-        'API Gateway och Kommunikation',
-        4,
         1,
       ],
       [
         10,
-        4,
+        1,
         2,
         '2026-04-17 20:07:00',
         '2026-04-17 20:07:00',
-        'Grundkrav för driftövervakning som ska vara på plats innan produktionssättning',
-        'SYSOVERVAKNING-BAS',
-        'Systemövervakning Bas',
-        3,
+        'Förvaltningsobjekt: baseline för driftövervakning som upprätthålls i löpande förvaltning',
+        'DRIFT-FORV-BAS',
+        'Driftövervakning baseline (förvaltning)',
+        4,
         1,
       ],
     ],
   },
-  package_needs_references: {
-    columns: ['id', 'package_id', 'text', 'created_at'],
+  specification_needs_references: {
+    columns: ['id', 'specification_id', 'text', 'created_at'],
     pk: ['id'],
     rows: [
       [
@@ -663,7 +663,7 @@ const SEED_DATA = {
       [
         21,
         9,
-        'Rate limiting är ett primärt krav för API-gateway-upphandlingen',
+        'Rate limiting är ett primärt krav för API-gateway-utvecklingen',
         '2026-04-17 20:07:00',
       ],
       [
@@ -1152,10 +1152,10 @@ const SEED_DATA = {
       [3, 'Hög', 'High', 3, '#ef4444'],
     ],
   },
-  package_local_requirements: {
+  specification_local_requirements: {
     columns: [
       'id',
-      'package_id',
+      'specification_id',
       'unique_id',
       'sequence_number',
       'requirement_area_id',
@@ -1168,7 +1168,7 @@ const SEED_DATA = {
       'is_testing_required',
       'verification_method',
       'needs_reference_id',
-      'package_item_status_id',
+      'specification_item_status_id',
       'note',
       'status_updated_at',
       'created_at',
@@ -1220,10 +1220,10 @@ const SEED_DATA = {
       ],
     ],
   },
-  package_local_requirement_deviations: {
+  specification_local_requirement_deviations: {
     columns: [
       'id',
-      'package_local_requirement_id',
+      'specification_local_requirement_id',
       'motivation',
       'is_review_requested',
       'decision',
@@ -1251,9 +1251,9 @@ const SEED_DATA = {
       ],
     ],
   },
-  package_local_requirement_norm_references: {
-    columns: ['package_local_requirement_id', 'norm_reference_id'],
-    pk: ['package_local_requirement_id', 'norm_reference_id'],
+  specification_local_requirement_norm_references: {
+    columns: ['specification_local_requirement_id', 'norm_reference_id'],
+    pk: ['specification_local_requirement_id', 'norm_reference_id'],
     rows: [
       [1, 4],
       [1, 5],
@@ -11381,16 +11381,16 @@ const SEED_DATA = {
       ],
     ],
   },
-  requirement_package_items: {
+  requirements_specification_items: {
     columns: [
       'id',
-      'requirement_package_id',
+      'requirements_specification_id',
       'requirement_id',
       'requirement_version_id',
       'needs_reference_id',
       'unused_1',
       'created_at',
-      'package_item_status_id',
+      'specification_item_status_id',
       'note',
       'status_updated_at',
     ],
@@ -11439,7 +11439,7 @@ const SEED_DATA = {
   deviations: {
     columns: [
       'id',
-      'package_item_id',
+      'specification_item_id',
       'motivation',
       'decision',
       'decision_motivation',
@@ -11654,13 +11654,13 @@ const SEED_DATA = {
       ],
       [
         10,
-        'scenario',
-        'Användningsscenario',
-        'Användningsscenarier',
-        'Användningsscenarierna',
-        'Usage scenario',
-        'Usage scenarios',
-        'Usage scenarios',
+        'requirementPackage',
+        'Kravpaket',
+        'Kravpaket',
+        'Kravpaketen',
+        'Requirement package',
+        'Requirements packages',
+        'Requirements packages',
         '2026-04-20 20:07:00',
       ],
       [
@@ -11720,7 +11720,7 @@ const SEED_DATA = {
       ],
     ],
   },
-  usage_scenarios: {
+  requirement_packages: {
     columns: [
       'id',
       'name_sv',
@@ -11735,60 +11735,132 @@ const SEED_DATA = {
     rows: [
       [
         1,
-        'Normal driftscenario',
-        'Normal operation scenario',
-        'Systemet körs under normal belastning med typiskt antal samtidiga användare',
-        'The system runs under normal load with a typical number of concurrent users',
+        'Mobil användning',
+        'Mobile use',
+        'Krav som gäller när systemet används från mobiltelefon eller surfplatta.',
+        'Requirements that apply when the system is used from a phone or tablet.',
         1,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
       [
         2,
-        'Hög belastning',
-        'High load',
-        'Systemet utsätts för maximal förväntad belastning under topptider',
-        'The system is subjected to maximum expected load during peak times',
+        'Datamigrering',
+        'Data migration',
+        'Krav som gäller import, export, konvertering och kvalitetssäkring av data.',
+        'Requirements for import, export, conversion, and quality assurance of data.',
         1,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
       [
         3,
+        'Integration med andra system',
+        'Integration with other systems',
+        'Krav som gäller tekniska gränssnitt, informationsutbyte och externa beroenden.',
+        'Requirements for technical interfaces, information exchange, and external dependencies.',
+        2,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        4,
+        'Ärendehantering',
+        'Case management',
+        'Krav som gäller registrering, handläggning, uppföljning och avslut av ärenden.',
+        'Requirements for registering, processing, following up, and closing cases.',
+        2,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        5,
+        'Användarvänlighet',
+        'Usability',
+        'Krav som gäller tydlighet, effektivitet och enkel användning för slutanvändare.',
+        'Requirements for clarity, efficiency, and ease of use for end users.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        6,
+        'Molndrift',
+        'Cloud operations',
+        'Krav som gäller drift, övervakning, skalning och robusthet i molnmiljö.',
+        'Requirements for operations, monitoring, scaling, and resilience in cloud environments.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        7,
+        'Normal drift',
+        'Normal operations',
+        'Krav som gäller ordinarie drift och vardaglig användning utan särskilda störningar.',
+        'Requirements that apply during normal operations and day-to-day use without special disruptions.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        8,
+        'Hög belastning',
+        'High load',
+        'Krav som gäller när många användare, stora datamängder eller många samtidiga operationer belastar systemet.',
+        'Requirements that apply when many users, large data volumes, or concurrent operations put the system under load.',
+        3,
+        '2026-04-20 20:07:00',
+        '2026-04-20 20:07:00',
+      ],
+      [
+        9,
         'Katastrofåterställning',
         'Disaster recovery',
-        'Systemet återställs efter ett allvarligt avbrott',
-        'The system is restored after a serious interruption',
-        2,
+        'Krav som gäller återställning efter större avbrott, dataförlust eller miljöbortfall.',
+        'Requirements that apply when restoring service after major outages, data loss, or environment failure.',
+        3,
         '2026-04-20 20:07:00',
         '2026-04-20 20:07:00',
       ],
     ],
   },
-  package_local_requirement_usage_scenarios: {
-    columns: ['package_local_requirement_id', 'usage_scenario_id'],
-    pk: ['package_local_requirement_id', 'usage_scenario_id'],
+  specification_local_requirement_requirement_packages: {
+    columns: ['specification_local_requirement_id', 'requirement_package_id'],
+    pk: ['specification_local_requirement_id', 'requirement_package_id'],
     rows: [
       [1, 1],
-      [1, 2],
-      [2, 1],
+      [1, 4],
+      [2, 5],
     ],
   },
-  requirement_version_usage_scenarios: {
-    columns: ['requirement_version_id', 'usage_scenario_id'],
-    pk: ['requirement_version_id', 'usage_scenario_id'],
+  requirement_version_requirement_packages: {
+    columns: ['requirement_version_id', 'requirement_package_id'],
+    pk: ['requirement_version_id', 'requirement_package_id'],
     rows: [
       [2, 1],
-      [5, 1],
-      [7, 1],
-      [7, 2],
-      [23, 2],
-      [26, 2],
-      [33, 3],
-      [56, 1],
-      [57, 3],
-      [69, 3],
-      [70, 3],
+      [5, 3],
+      [7, 3],
+      [7, 6],
+      [23, 5],
+      [23, 8],
+      [25, 7],
+      [26, 1],
+      [26, 8],
+      [33, 2],
+      [33, 9],
+      [56, 4],
+      [56, 7],
+      [57, 6],
+      [59, 8],
+      [69, 2],
+      [70, 6],
+      [267, 9],
+      [288, 9],
+      [433, 9],
+      [436, 7],
+      [439, 7],
+      [447, 8],
     ],
   },
 }
@@ -11798,6 +11870,16 @@ const SEED_DATA = {
 // typeorm/seed-dogfood-build.mjs for the builder logic.
 const { appendDogfoodSeed } = await import('./seed-dogfood-build.mjs')
 appendDogfoodSeed(SEED_DATA)
+
+export function seedPositionDetail({
+  table,
+  rowIndex,
+  primaryKeyDetail = 'pk={}',
+}) {
+  return table != null
+    ? ` while seeding table='${table}' rowIndex=${rowIndex} ${primaryKeyDetail}`
+    : ` while seeding table=${String(table)} rowIndex=${rowIndex}`
+}
 
 export async function seedDatabase(executor) {
   // SQL Server's SET IDENTITY_INSERT is connection-scoped. When `executor` is
@@ -11831,13 +11913,35 @@ export async function seedDatabase(executor) {
     process.env.SEED_DEBUG === '1' || process.env.SEED_DEBUG === 'true'
   let inserted = 0
   let currentTable = null
+  let currentEntry = null
   let currentRowIndex = -1
   let currentRow = null
+  const seedPrimaryKeyDetail = () => {
+    if (!currentEntry || !currentRow || currentEntry.pk.length === 0) {
+      return 'pk={}'
+    }
+
+    const values = currentEntry.pk.map(pkCol => {
+      const columnIndex = currentEntry.columns.indexOf(pkCol)
+      const value = columnIndex >= 0 ? currentRow[columnIndex] : undefined
+      return `${pkCol}=${String(value)}`
+    })
+
+    return `pk={${values.join(', ')}}`
+  }
+  const currentSeedPositionDetail = () =>
+    seedPositionDetail({
+      primaryKeyDetail: seedPrimaryKeyDetail(),
+      rowIndex: currentRowIndex,
+      table: currentTable,
+    })
+  let commitError = null
   try {
     for (const table of TABLE_ORDER) {
       const entry = SEED_DATA[table]
       if (!entry || entry.rows.length === 0) continue
       currentTable = table
+      currentEntry = entry
       const colList = entry.columns.map(c => `[${c}]`).join(', ')
       const hasIdentityId =
         entry.columns.includes('id') &&
@@ -11876,33 +11980,46 @@ export async function seedDatabase(executor) {
         // No-op: IDENTITY_INSERT is bundled per-row above.
       }
       currentTable = null
+      currentEntry = null
       currentRowIndex = -1
       currentRow = null
     }
   } catch (error) {
+    let rollbackError = null
     if (startedTransaction && runner) {
       try {
         await runner.rollbackTransaction()
+      } catch (caughtRollbackError) {
+        rollbackError = caughtRollbackError
+      } finally {
         startedTransaction = false
-      } catch {
-        // ignore rollback errors; original error is more important
       }
     }
-    const detail =
-      currentTable != null
-        ? ` while seeding table='${currentTable}' rowIndex=${currentRowIndex} row=${JSON.stringify(currentRow)}`
-        : ''
+    const detail = currentSeedPositionDetail()
     const message = error instanceof Error ? error.message : String(error)
-    const wrapped = new Error(`Seed failed${detail}: ${message}`)
+    const rollbackMessage =
+      rollbackError instanceof Error
+        ? rollbackError.message
+        : rollbackError == null
+          ? null
+          : String(rollbackError)
+    const wrapped = new Error(
+      rollbackMessage
+        ? `Seed failed${detail}: ${message}; rollback also failed: ${rollbackMessage}`
+        : `Seed failed${detail}: ${message}`,
+    )
     if (error instanceof Error && error.stack) wrapped.stack = error.stack
+    if (rollbackError != null) {
+      wrapped.rollbackError = rollbackError
+    }
     throw wrapped
   } finally {
     if (startedTransaction && runner) {
       try {
         await runner.commitTransaction()
-      } catch {
-        // ignore commit errors here; if commit fails the caller's next
-        // operation will surface a clearer error
+        startedTransaction = false
+      } catch (caughtCommitError) {
+        commitError = caughtCommitError
       }
     }
     if (runner) {
@@ -11912,6 +12029,12 @@ export async function seedDatabase(executor) {
         // ignore release errors
       }
     }
+  }
+  if (commitError != null) {
+    const detail = currentSeedPositionDetail()
+    const message =
+      commitError instanceof Error ? commitError.message : String(commitError)
+    throw new Error(`Seed commit failed${detail}: ${message}`)
   }
   return inserted
 }

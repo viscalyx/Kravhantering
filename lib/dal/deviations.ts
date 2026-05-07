@@ -1,8 +1,8 @@
 import {
   createLibraryItemRef,
-  createPackageLocalItemRef,
-  parsePackageItemRef,
-} from '@/lib/dal/requirement-packages'
+  createSpecificationLocalItemRef,
+  parseSpecificationItemRef,
+} from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import {
   conflictError,
@@ -21,17 +21,17 @@ export interface DeviationRow {
   decision: number | null
   decisionMotivation: string | null
   id: number
-  isPackageLocal?: boolean
   isReviewRequested: number
+  isSpecificationLocal?: boolean
   itemRef?: string
   motivation: string
-  packageItemId: number | null
-  packageLocalRequirementId?: number | null
-  packageName: string | null
-  packageUniqueId: string | null
   requirementDescription: string | null
   requirementUniqueId: string | null
   requirementVersionId: number | null
+  specificationItemId: number | null
+  specificationLocalRequirementId?: number | null
+  specificationName: string | null
+  specificationUniqueId: string | null
   updatedAt: string | null
 }
 
@@ -73,12 +73,12 @@ function toOptionalNumber(value: unknown): number | null {
 }
 
 function mapSqlServerDeviationRow(row: Record<string, unknown>): DeviationRow {
-  const packageItemId = toOptionalNumber(row.packageItemId)
-  const packageLocalRequirementId = toOptionalNumber(
-    row.packageLocalRequirementId,
+  const specificationItemId = toOptionalNumber(row.specificationItemId)
+  const specificationLocalRequirementId = toOptionalNumber(
+    row.specificationLocalRequirementId,
   )
-  const isPackageLocal =
-    toNumericFlag(row.isPackageLocal ?? row.isLocal ?? 0) === 1
+  const isSpecificationLocal =
+    toNumericFlag(row.isSpecificationLocal ?? row.isLocal ?? 0) === 1
 
   return {
     createdAt: toIsoString(row.createdAt) ?? new Date(0).toISOString(),
@@ -89,17 +89,22 @@ function mapSqlServerDeviationRow(row: Record<string, unknown>): DeviationRow {
     decisionMotivation:
       row.decisionMotivation == null ? null : String(row.decisionMotivation),
     id: Number(row.id),
-    isPackageLocal,
+    isSpecificationLocal,
     isReviewRequested: toNumericFlag(row.isReviewRequested),
-    itemRef: isPackageLocal
-      ? createPackageLocalItemRef(packageLocalRequirementId as number)
-      : createLibraryItemRef(packageItemId as number),
+    itemRef: isSpecificationLocal
+      ? createSpecificationLocalItemRef(
+          specificationLocalRequirementId as number,
+        )
+      : createLibraryItemRef(specificationItemId as number),
     motivation: String(row.motivation ?? ''),
-    packageItemId,
-    packageLocalRequirementId,
-    packageName: row.packageName == null ? null : String(row.packageName),
-    packageUniqueId:
-      row.packageUniqueId == null ? null : String(row.packageUniqueId),
+    specificationItemId,
+    specificationLocalRequirementId,
+    specificationName:
+      row.specificationName == null ? null : String(row.specificationName),
+    specificationUniqueId:
+      row.specificationUniqueId == null
+        ? null
+        : String(row.specificationUniqueId),
     requirementDescription:
       row.requirementDescription == null
         ? null
@@ -142,7 +147,7 @@ async function findSqlServerDeviationState(
   }
 }
 
-async function findSqlServerPackageLocalDeviationState(
+async function findSqlServerSpecificationLocalDeviationState(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<{
@@ -156,7 +161,7 @@ async function findSqlServerPackageLocalDeviationState(
         deviation.id AS id,
         deviation.decision AS decision,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested
-      FROM package_local_requirement_deviations deviation
+      FROM specification_local_requirement_deviations deviation
       WHERE deviation.id = @0
     `,
     [deviationId],
@@ -173,15 +178,15 @@ async function findSqlServerPackageLocalDeviationState(
   }
 }
 
-export async function listDeviationsForPackageItem(
+export async function listDeviationsForSpecificationItem(
   db: SqlServerDatabase,
-  packageItemId: number,
+  specificationItemId: number,
 ): Promise<DeviationRow[]> {
   const rows = (await db.query(
     `
       SELECT
         deviation.id AS id,
-        deviation.package_item_id AS packageItemId,
+        deviation.specification_item_id AS specificationItemId,
         deviation.motivation AS motivation,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested,
         deviation.decision AS decision,
@@ -193,38 +198,38 @@ export async function listDeviationsForPackageItem(
         deviation.updated_at AS updatedAt,
         requirement.unique_id AS requirementUniqueId,
         requirement_version.description AS requirementDescription,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_record.name AS packageName,
-        package_record.unique_id AS packageUniqueId,
-        CAST(0 AS int) AS isPackageLocal,
-        CAST(NULL AS int) AS packageLocalRequirementId
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
+        CAST(0 AS int) AS isSpecificationLocal,
+        CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
-      INNER JOIN requirement_package_items package_item
-        ON package_item.id = deviation.package_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
       INNER JOIN requirements requirement
-        ON requirement.id = package_item.requirement_id
+        ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version
-        ON requirement_version.id = package_item.requirement_version_id
-      INNER JOIN requirement_packages package_record
-        ON package_record.id = package_item.requirement_package_id
-      WHERE deviation.package_item_id = @0
+        ON requirement_version.id = specification_item.requirement_version_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_item.requirements_specification_id
+      WHERE deviation.specification_item_id = @0
       ORDER BY deviation.created_at ASC, deviation.id ASC
     `,
-    [packageItemId],
+    [specificationItemId],
   )) as Array<Record<string, unknown>>
 
   return rows.map(mapSqlServerDeviationRow)
 }
 
-export async function listDeviationsForPackage(
+export async function listDeviationsForSpecification(
   db: SqlServerDatabase,
-  packageId: number,
+  specificationId: number,
 ): Promise<DeviationRow[]> {
   const rows = (await db.query(
     `
       SELECT
         deviation.id AS id,
-        deviation.package_item_id AS packageItemId,
+        deviation.specification_item_id AS specificationItemId,
         deviation.motivation AS motivation,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested,
         deviation.decision AS decision,
@@ -236,27 +241,27 @@ export async function listDeviationsForPackage(
         deviation.updated_at AS updatedAt,
         requirement.unique_id AS requirementUniqueId,
         requirement_version.description AS requirementDescription,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_record.name AS packageName,
-        package_record.unique_id AS packageUniqueId,
-        CAST(0 AS int) AS isPackageLocal,
-        CAST(NULL AS int) AS packageLocalRequirementId
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
+        CAST(0 AS int) AS isSpecificationLocal,
+        CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
-      INNER JOIN requirement_package_items package_item
-        ON package_item.id = deviation.package_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
       INNER JOIN requirements requirement
-        ON requirement.id = package_item.requirement_id
+        ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version
-        ON requirement_version.id = package_item.requirement_version_id
-      INNER JOIN requirement_packages package_record
-        ON package_record.id = package_item.requirement_package_id
-      WHERE package_item.requirement_package_id = @0
+        ON requirement_version.id = specification_item.requirement_version_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_item.requirements_specification_id
+      WHERE specification_item.requirements_specification_id = @0
 
       UNION ALL
 
       SELECT
         deviation.id AS id,
-        CAST(NULL AS int) AS packageItemId,
+        CAST(NULL AS int) AS specificationItemId,
         deviation.motivation AS motivation,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested,
         deviation.decision AS decision,
@@ -266,23 +271,23 @@ export async function listDeviationsForPackage(
         deviation.created_by AS createdBy,
         deviation.created_at AS createdAt,
         deviation.updated_at AS updatedAt,
-        package_local_requirement.unique_id AS requirementUniqueId,
-        package_local_requirement.description AS requirementDescription,
+        specification_local_requirement.unique_id AS requirementUniqueId,
+        specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
-        package_record.name AS packageName,
-        package_record.unique_id AS packageUniqueId,
-        CAST(1 AS int) AS isPackageLocal,
-        package_local_requirement.id AS packageLocalRequirementId
-      FROM package_local_requirement_deviations deviation
-      INNER JOIN package_local_requirements package_local_requirement
-        ON package_local_requirement.id = deviation.package_local_requirement_id
-      INNER JOIN requirement_packages package_record
-        ON package_record.id = package_local_requirement.package_id
-      WHERE package_local_requirement.package_id = @0
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
+        CAST(1 AS int) AS isSpecificationLocal,
+        specification_local_requirement.id AS specificationLocalRequirementId
+      FROM specification_local_requirement_deviations deviation
+      INNER JOIN specification_local_requirements specification_local_requirement
+        ON specification_local_requirement.id = deviation.specification_local_requirement_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_local_requirement.specification_id
+      WHERE specification_local_requirement.specification_id = @0
 
       ORDER BY requirementUniqueId ASC, createdAt ASC, id ASC
     `,
-    [packageId],
+    [specificationId],
   )) as Array<Record<string, unknown>>
 
   return rows.map(mapSqlServerDeviationRow)
@@ -296,7 +301,7 @@ export async function getDeviation(
     `
       SELECT TOP (1)
         deviation.id AS id,
-        deviation.package_item_id AS packageItemId,
+        deviation.specification_item_id AS specificationItemId,
         deviation.motivation AS motivation,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested,
         deviation.decision AS decision,
@@ -308,20 +313,20 @@ export async function getDeviation(
         deviation.updated_at AS updatedAt,
         requirement.unique_id AS requirementUniqueId,
         requirement_version.description AS requirementDescription,
-        package_item.requirement_version_id AS requirementVersionId,
-        package_record.name AS packageName,
-        package_record.unique_id AS packageUniqueId,
-        CAST(0 AS int) AS isPackageLocal,
-        CAST(NULL AS int) AS packageLocalRequirementId
+        specification_item.requirement_version_id AS requirementVersionId,
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
+        CAST(0 AS int) AS isSpecificationLocal,
+        CAST(NULL AS int) AS specificationLocalRequirementId
       FROM deviations deviation
-      INNER JOIN requirement_package_items package_item
-        ON package_item.id = deviation.package_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
       INNER JOIN requirements requirement
-        ON requirement.id = package_item.requirement_id
+        ON requirement.id = specification_item.requirement_id
       INNER JOIN requirement_versions requirement_version
-        ON requirement_version.id = package_item.requirement_version_id
-      INNER JOIN requirement_packages package_record
-        ON package_record.id = package_item.requirement_package_id
+        ON requirement_version.id = specification_item.requirement_version_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_item.requirements_specification_id
       WHERE deviation.id = @0
     `,
     [deviationId],
@@ -337,7 +342,7 @@ export async function getDeviation(
 export async function createDeviation(
   db: SqlServerDatabase,
   data: {
-    packageItemId: number
+    specificationItemId: number
     motivation: string
     createdBy?: string | null
   },
@@ -348,22 +353,24 @@ export async function createDeviation(
 
   const itemRows = (await db.query(
     `
-      SELECT TOP (1) package_item.id AS id
-      FROM requirement_package_items package_item
-      WHERE package_item.id = @0
+      SELECT TOP (1) specification_item.id AS id
+      FROM requirements_specification_items specification_item
+      WHERE specification_item.id = @0
     `,
-    [data.packageItemId],
+    [data.specificationItemId],
   )) as Array<Record<string, unknown>>
 
   if (itemRows.length === 0) {
-    throw notFoundError(`Package item ${data.packageItemId} not found`)
+    throw notFoundError(
+      `Specification item ${data.specificationItemId} not found`,
+    )
   }
 
   const now = new Date()
   const insertedRows = (await db.query(
     `
       INSERT INTO deviations (
-        package_item_id,
+        specification_item_id,
         motivation,
         created_by,
         created_at
@@ -371,21 +378,26 @@ export async function createDeviation(
       OUTPUT INSERTED.id AS id
       VALUES (@0, @1, @2, @3)
     `,
-    [data.packageItemId, data.motivation.trim(), data.createdBy ?? null, now],
+    [
+      data.specificationItemId,
+      data.motivation.trim(),
+      data.createdBy ?? null,
+      now,
+    ],
   )) as Array<Record<string, unknown>>
 
   return { id: Number(insertedRows[0]?.id) }
 }
 
-export async function listDeviationsForPackageLocalRequirement(
+export async function listDeviationsForSpecificationLocalRequirement(
   db: SqlServerDatabase,
-  packageLocalRequirementId: number,
+  specificationLocalRequirementId: number,
 ): Promise<DeviationRow[]> {
   const rows = (await db.query(
     `
       SELECT
         deviation.id AS id,
-        CAST(NULL AS int) AS packageItemId,
+        CAST(NULL AS int) AS specificationItemId,
         deviation.motivation AS motivation,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested,
         deviation.decision AS decision,
@@ -395,33 +407,33 @@ export async function listDeviationsForPackageLocalRequirement(
         deviation.created_by AS createdBy,
         deviation.created_at AS createdAt,
         deviation.updated_at AS updatedAt,
-        package_local_requirement.unique_id AS requirementUniqueId,
-        package_local_requirement.description AS requirementDescription,
+        specification_local_requirement.unique_id AS requirementUniqueId,
+        specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
-        package_record.name AS packageName,
-        package_record.unique_id AS packageUniqueId,
-        CAST(1 AS int) AS isPackageLocal,
-        package_local_requirement.id AS packageLocalRequirementId
-      FROM package_local_requirement_deviations deviation
-      INNER JOIN package_local_requirements package_local_requirement
-        ON package_local_requirement.id = deviation.package_local_requirement_id
-      INNER JOIN requirement_packages package_record
-        ON package_record.id = package_local_requirement.package_id
-      WHERE deviation.package_local_requirement_id = @0
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
+        CAST(1 AS int) AS isSpecificationLocal,
+        specification_local_requirement.id AS specificationLocalRequirementId
+      FROM specification_local_requirement_deviations deviation
+      INNER JOIN specification_local_requirements specification_local_requirement
+        ON specification_local_requirement.id = deviation.specification_local_requirement_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_local_requirement.specification_id
+      WHERE deviation.specification_local_requirement_id = @0
       ORDER BY deviation.created_at ASC, deviation.id ASC
     `,
-    [packageLocalRequirementId],
+    [specificationLocalRequirementId],
   )) as Array<Record<string, unknown>>
 
   return rows.map(mapSqlServerDeviationRow)
 }
 
-export async function createPackageLocalDeviation(
+export async function createSpecificationLocalDeviation(
   db: SqlServerDatabase,
   data: {
     createdBy?: string | null
     motivation: string
-    packageLocalRequirementId: number
+    specificationLocalRequirementId: number
   },
 ): Promise<{ id: number }> {
   if (!data.motivation.trim()) {
@@ -431,23 +443,23 @@ export async function createPackageLocalDeviation(
   const requirementRows = (await db.query(
     `
       SELECT TOP (1) requirement.id AS id
-      FROM package_local_requirements requirement
+      FROM specification_local_requirements requirement
       WHERE requirement.id = @0
     `,
-    [data.packageLocalRequirementId],
+    [data.specificationLocalRequirementId],
   )) as Array<Record<string, unknown>>
 
   if (requirementRows.length === 0) {
     throw notFoundError(
-      `Package-local requirement ${data.packageLocalRequirementId} not found`,
+      `Specification-local requirement ${data.specificationLocalRequirementId} not found`,
     )
   }
 
   const now = new Date()
   const insertedRows = (await db.query(
     `
-      INSERT INTO package_local_requirement_deviations (
-        package_local_requirement_id,
+      INSERT INTO specification_local_requirement_deviations (
+        specification_local_requirement_id,
         motivation,
         created_by,
         created_at
@@ -456,7 +468,7 @@ export async function createPackageLocalDeviation(
       VALUES (@0, @1, @2, @3)
     `,
     [
-      data.packageLocalRequirementId,
+      data.specificationLocalRequirementId,
       data.motivation.trim(),
       data.createdBy ?? null,
       now,
@@ -474,7 +486,7 @@ export async function createDeviationForItemRef(
     motivation: string
   },
 ): Promise<{ id: number }> {
-  const parsed = parsePackageItemRef(data.itemRef)
+  const parsed = parseSpecificationItemRef(data.itemRef)
   if (!parsed) {
     throw validationError('Invalid itemRef', { itemRef: data.itemRef })
   }
@@ -483,18 +495,18 @@ export async function createDeviationForItemRef(
     return createDeviation(db, {
       createdBy: data.createdBy,
       motivation: data.motivation,
-      packageItemId: parsed.id,
+      specificationItemId: parsed.id,
     })
   }
 
-  return createPackageLocalDeviation(db, {
+  return createSpecificationLocalDeviation(db, {
     createdBy: data.createdBy,
     motivation: data.motivation,
-    packageLocalRequirementId: parsed.id,
+    specificationLocalRequirementId: parsed.id,
   })
 }
 
-export async function getPackageLocalDeviation(
+export async function getSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<DeviationRow> {
@@ -502,7 +514,7 @@ export async function getPackageLocalDeviation(
     `
       SELECT TOP (1)
         deviation.id AS id,
-        CAST(NULL AS int) AS packageItemId,
+        CAST(NULL AS int) AS specificationItemId,
         deviation.motivation AS motivation,
         CAST(deviation.is_review_requested AS int) AS isReviewRequested,
         deviation.decision AS decision,
@@ -512,25 +524,27 @@ export async function getPackageLocalDeviation(
         deviation.created_by AS createdBy,
         deviation.created_at AS createdAt,
         deviation.updated_at AS updatedAt,
-        package_local_requirement.unique_id AS requirementUniqueId,
-        package_local_requirement.description AS requirementDescription,
+        specification_local_requirement.unique_id AS requirementUniqueId,
+        specification_local_requirement.description AS requirementDescription,
         CAST(NULL AS int) AS requirementVersionId,
-        package_record.name AS packageName,
-        package_record.unique_id AS packageUniqueId,
-        CAST(1 AS int) AS isPackageLocal,
-        package_local_requirement.id AS packageLocalRequirementId
-      FROM package_local_requirement_deviations deviation
-      INNER JOIN package_local_requirements package_local_requirement
-        ON package_local_requirement.id = deviation.package_local_requirement_id
-      INNER JOIN requirement_packages package_record
-        ON package_record.id = package_local_requirement.package_id
+        specification_record.name AS specificationName,
+        specification_record.unique_id AS specificationUniqueId,
+        CAST(1 AS int) AS isSpecificationLocal,
+        specification_local_requirement.id AS specificationLocalRequirementId
+      FROM specification_local_requirement_deviations deviation
+      INNER JOIN specification_local_requirements specification_local_requirement
+        ON specification_local_requirement.id = deviation.specification_local_requirement_id
+      INNER JOIN requirements_specifications specification_record
+        ON specification_record.id = specification_local_requirement.specification_id
       WHERE deviation.id = @0
     `,
     [deviationId],
   )) as Array<Record<string, unknown>>
 
   if (!rows[0]) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
   }
 
   return mapSqlServerDeviationRow(rows[0])
@@ -708,18 +722,20 @@ export async function deleteDeviation(
   return
 }
 
-export async function updatePackageLocalDeviation(
+export async function updateSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
   data: { motivation?: string; createdBy?: string | null },
 ): Promise<void> {
-  const existing = await findSqlServerPackageLocalDeviationState(
+  const existing = await findSqlServerSpecificationLocalDeviationState(
     db,
     deviationId,
   )
 
   if (!existing) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
   }
 
   if (existing.decision !== null) {
@@ -743,7 +759,7 @@ export async function updatePackageLocalDeviation(
     if (data.createdBy !== undefined) {
       await db.query(
         `
-          UPDATE package_local_requirement_deviations
+          UPDATE specification_local_requirement_deviations
           SET
             motivation = @0,
             created_by = @1,
@@ -755,7 +771,7 @@ export async function updatePackageLocalDeviation(
     } else {
       await db.query(
         `
-          UPDATE package_local_requirement_deviations
+          UPDATE specification_local_requirement_deviations
           SET
             motivation = @0,
             updated_at = @1
@@ -770,7 +786,7 @@ export async function updatePackageLocalDeviation(
   if (data.createdBy !== undefined) {
     await db.query(
       `
-        UPDATE package_local_requirement_deviations
+        UPDATE specification_local_requirement_deviations
         SET
           created_by = @0,
           updated_at = @1
@@ -783,7 +799,7 @@ export async function updatePackageLocalDeviation(
 
   await db.query(
     `
-      UPDATE package_local_requirement_deviations
+      UPDATE specification_local_requirement_deviations
       SET updated_at = @0
       WHERE id = @1
     `,
@@ -792,7 +808,7 @@ export async function updatePackageLocalDeviation(
   return
 }
 
-export async function recordPackageLocalDecision(
+export async function recordSpecificationLocalDecision(
   db: SqlServerDatabase,
   deviationId: number,
   data: {
@@ -816,13 +832,15 @@ export async function recordPackageLocalDecision(
     throw validationError('Decided by is required')
   }
 
-  const existing = await findSqlServerPackageLocalDeviationState(
+  const existing = await findSqlServerSpecificationLocalDeviationState(
     db,
     deviationId,
   )
 
   if (!existing) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
   }
 
   if (existing.decision !== null) {
@@ -840,7 +858,7 @@ export async function recordPackageLocalDecision(
   const now = new Date()
   await db.query(
     `
-      UPDATE package_local_requirement_deviations
+      UPDATE specification_local_requirement_deviations
       SET
         decision = @0,
         decision_motivation = @1,
@@ -860,17 +878,19 @@ export async function recordPackageLocalDecision(
   return
 }
 
-export async function deletePackageLocalDeviation(
+export async function deleteSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
-  const existing = await findSqlServerPackageLocalDeviationState(
+  const existing = await findSqlServerSpecificationLocalDeviationState(
     db,
     deviationId,
   )
 
   if (!existing) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
   }
 
   if (existing.decision !== null) {
@@ -886,15 +906,15 @@ export async function deletePackageLocalDeviation(
   }
 
   await db.query(
-    `DELETE FROM package_local_requirement_deviations WHERE id = @0`,
+    `DELETE FROM specification_local_requirement_deviations WHERE id = @0`,
     [deviationId],
   )
   return
 }
 
-export async function countDeviationsByPackage(
+export async function countDeviationsBySpecification(
   db: SqlServerDatabase,
-  packageId: number,
+  specificationId: number,
 ): Promise<DeviationCounts> {
   const rows = (await db.query(
     `
@@ -904,9 +924,9 @@ export async function countDeviationsByPackage(
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
       FROM deviations deviation
-      INNER JOIN requirement_package_items package_item
-        ON package_item.id = deviation.package_item_id
-      WHERE package_item.requirement_package_id = @0
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
+      WHERE specification_item.requirements_specification_id = @0
 
       UNION ALL
 
@@ -915,12 +935,12 @@ export async function countDeviationsByPackage(
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved,
         SUM(CASE WHEN deviation.decision = @2 THEN 1 ELSE 0 END) AS rejected
-      FROM package_local_requirement_deviations deviation
-      INNER JOIN package_local_requirements package_local_requirement
-        ON package_local_requirement.id = deviation.package_local_requirement_id
-      WHERE package_local_requirement.package_id = @0
+      FROM specification_local_requirement_deviations deviation
+      INNER JOIN specification_local_requirements specification_local_requirement
+        ON specification_local_requirement.id = deviation.specification_local_requirement_id
+      WHERE specification_local_requirement.specification_id = @0
     `,
-    [packageId, DEVIATION_APPROVED, DEVIATION_REJECTED],
+    [specificationId, DEVIATION_APPROVED, DEVIATION_REJECTED],
   )) as Array<Record<string, unknown>>
 
   return {
@@ -933,22 +953,22 @@ export async function countDeviationsByPackage(
 
 export async function countDeviationsPerItem(
   db: SqlServerDatabase,
-  packageId: number,
+  specificationId: number,
 ): Promise<Map<number, { total: number; pending: number; approved: number }>> {
   const rows = (await db.query(
     `
       SELECT
-        deviation.package_item_id AS packageItemId,
+        deviation.specification_item_id AS specificationItemId,
         COUNT(*) AS total,
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
       FROM deviations deviation
-      INNER JOIN requirement_package_items package_item
-        ON package_item.id = deviation.package_item_id
-      WHERE package_item.requirement_package_id = @0
-      GROUP BY deviation.package_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
+      WHERE specification_item.requirements_specification_id = @0
+      GROUP BY deviation.specification_item_id
     `,
-    [packageId, DEVIATION_APPROVED],
+    [specificationId, DEVIATION_APPROVED],
   )) as Array<Record<string, unknown>>
 
   const map = new Map<
@@ -956,7 +976,7 @@ export async function countDeviationsPerItem(
     { total: number; pending: number; approved: number }
   >()
   for (const row of rows) {
-    map.set(Number(row.packageItemId), {
+    map.set(Number(row.specificationItemId), {
       total: Number(row.total) || 0,
       pending: Number(row.pending) || 0,
       approved: Number(row.approved) || 0,
@@ -967,37 +987,37 @@ export async function countDeviationsPerItem(
 
 export async function countDeviationsPerItemRef(
   db: SqlServerDatabase,
-  packageId: number,
+  specificationId: number,
 ): Promise<Map<string, { total: number; pending: number; approved: number }>> {
   const rows = (await db.query(
     `
       SELECT
-        deviation.package_item_id AS itemId,
-        CAST(0 AS int) AS isPackageLocal,
+        deviation.specification_item_id AS itemId,
+        CAST(0 AS int) AS isSpecificationLocal,
         COUNT(*) AS total,
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
       FROM deviations deviation
-      INNER JOIN requirement_package_items package_item
-        ON package_item.id = deviation.package_item_id
-      WHERE package_item.requirement_package_id = @0
-      GROUP BY deviation.package_item_id
+      INNER JOIN requirements_specification_items specification_item
+        ON specification_item.id = deviation.specification_item_id
+      WHERE specification_item.requirements_specification_id = @0
+      GROUP BY deviation.specification_item_id
 
       UNION ALL
 
       SELECT
-        deviation.package_local_requirement_id AS itemId,
-        CAST(1 AS int) AS isPackageLocal,
+        deviation.specification_local_requirement_id AS itemId,
+        CAST(1 AS int) AS isSpecificationLocal,
         COUNT(*) AS total,
         SUM(CASE WHEN deviation.decision IS NULL THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN deviation.decision = @1 THEN 1 ELSE 0 END) AS approved
-      FROM package_local_requirement_deviations deviation
-      INNER JOIN package_local_requirements package_local_requirement
-        ON package_local_requirement.id = deviation.package_local_requirement_id
-      WHERE package_local_requirement.package_id = @0
-      GROUP BY deviation.package_local_requirement_id
+      FROM specification_local_requirement_deviations deviation
+      INNER JOIN specification_local_requirements specification_local_requirement
+        ON specification_local_requirement.id = deviation.specification_local_requirement_id
+      WHERE specification_local_requirement.specification_id = @0
+      GROUP BY deviation.specification_local_requirement_id
     `,
-    [packageId, DEVIATION_APPROVED],
+    [specificationId, DEVIATION_APPROVED],
   )) as Array<Record<string, unknown>>
 
   const map = new Map<
@@ -1007,8 +1027,8 @@ export async function countDeviationsPerItemRef(
 
   for (const row of rows) {
     const key =
-      toNumericFlag(row.isPackageLocal) === 1
-        ? createPackageLocalItemRef(Number(row.itemId))
+      toNumericFlag(row.isSpecificationLocal) === 1
+        ? createSpecificationLocalItemRef(Number(row.itemId))
         : createLibraryItemRef(Number(row.itemId))
     map.set(key, {
       total: Number(row.total) || 0,
@@ -1056,14 +1076,14 @@ export async function requestReview(
   throw conflictError('Review has already been requested for this deviation')
 }
 
-export async function requestPackageLocalReview(
+export async function requestSpecificationLocalReview(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
   const now = new Date()
   const updatedRows = (await db.query(
     `
-      UPDATE package_local_requirement_deviations
+      UPDATE specification_local_requirement_deviations
       SET
         is_review_requested = 1,
         updated_at = @0
@@ -1080,9 +1100,14 @@ export async function requestPackageLocalReview(
     return
   }
 
-  const row = await findSqlServerPackageLocalDeviationState(db, deviationId)
+  const row = await findSqlServerSpecificationLocalDeviationState(
+    db,
+    deviationId,
+  )
   if (!row) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
   }
   if (row.decision !== null) {
     throw conflictError(
@@ -1126,14 +1151,14 @@ export async function revertToDraft(
   throw conflictError('Deviation is already in draft state')
 }
 
-export async function revertPackageLocalToDraft(
+export async function revertSpecificationLocalToDraft(
   db: SqlServerDatabase,
   deviationId: number,
 ): Promise<void> {
   const now = new Date()
   const updatedRows = (await db.query(
     `
-      UPDATE package_local_requirement_deviations
+      UPDATE specification_local_requirement_deviations
       SET
         is_review_requested = 0,
         updated_at = @0
@@ -1150,9 +1175,14 @@ export async function revertPackageLocalToDraft(
     return
   }
 
-  const row = await findSqlServerPackageLocalDeviationState(db, deviationId)
+  const row = await findSqlServerSpecificationLocalDeviationState(
+    db,
+    deviationId,
+  )
   if (!row) {
-    throw notFoundError(`Package-local deviation ${deviationId} not found`)
+    throw notFoundError(
+      `Specification-local deviation ${deviationId} not found`,
+    )
   }
   if (row.decision !== null) {
     throw conflictError('Cannot revert a deviation that already has a decision')

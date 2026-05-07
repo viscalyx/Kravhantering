@@ -171,11 +171,12 @@ describe('AdminClient', () => {
     )
     expect(panel.getByTestId('reference-data-icon-types')).toBeTruthy()
 
-    expect(panel.getByTestId('reference-data-card-scenarios')).toHaveAttribute(
-      'href',
-      '/usage-scenarios',
-    )
-    expect(panel.getByTestId('reference-data-icon-scenarios')).toBeTruthy()
+    expect(
+      panel.getByTestId('reference-data-card-requirementPackages'),
+    ).toHaveAttribute('href', '/requirement-packages')
+    expect(
+      panel.getByTestId('reference-data-icon-requirementPackages'),
+    ).toBeTruthy()
 
     expect(panel.getByTestId('reference-data-card-statuses')).toHaveAttribute(
       'href',
@@ -198,21 +199,21 @@ describe('AdminClient', () => {
 
     expect(
       panel.getByTestId('reference-data-card-responsibilityAreas'),
-    ).toHaveAttribute('href', '/requirement-packages/responsibility-areas')
+    ).toHaveAttribute('href', '/specifications/responsibility-areas')
     expect(
       panel.getByTestId('reference-data-icon-responsibilityAreas'),
     ).toBeTruthy()
 
     expect(
       panel.getByTestId('reference-data-card-implementationTypes'),
-    ).toHaveAttribute('href', '/requirement-packages/implementation-types')
+    ).toHaveAttribute('href', '/specifications/implementation-types')
     expect(
       panel.getByTestId('reference-data-icon-implementationTypes'),
     ).toBeTruthy()
 
     expect(
       panel.getByTestId('reference-data-card-lifecycleStatuses'),
-    ).toHaveAttribute('href', '/requirement-packages/lifecycle-statuses')
+    ).toHaveAttribute('href', '/specifications/lifecycle-statuses')
     expect(
       panel.getByTestId('reference-data-icon-lifecycleStatuses'),
     ).toBeTruthy()
@@ -224,10 +225,10 @@ describe('AdminClient', () => {
     expect(panel.getByTestId('reference-data-icon-areaOwners')).toBeTruthy()
 
     expect(
-      panel.getByTestId('reference-data-card-packageItemStatuses'),
-    ).toHaveAttribute('href', '/package-item-statuses')
+      panel.getByTestId('reference-data-card-specificationItemStatuses'),
+    ).toHaveAttribute('href', '/specification-item-statuses')
     expect(
-      panel.getByTestId('reference-data-icon-packageItemStatuses'),
+      panel.getByTestId('reference-data-icon-specificationItemStatuses'),
     ).toBeTruthy()
 
     expect(panel.getAllByRole('link')).toHaveLength(12)

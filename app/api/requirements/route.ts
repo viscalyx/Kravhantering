@@ -7,12 +7,22 @@ import {
   isRequirementSortDirection,
   isRequirementSortField,
 } from '@/lib/requirements/list-view'
+import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
   type RequirementListItem,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
+
+function normalizeOptionalPositiveIntegerIds(
+  value: unknown,
+): number[] | undefined {
+  if (!Array.isArray(value)) return undefined
+
+  const ids = parsePositiveIntegerIds(value)
+  return ids.length > 0 ? ids : undefined
+}
 
 export async function GET(request: NextRequest) {
   const db = await getRequestSqlServerDataSource()
@@ -55,10 +65,9 @@ export async function GET(request: NextRequest) {
     .filter(v => v.trim() !== '')
     .map(Number)
     .filter(n => Number.isInteger(n) && n > 0)
-  const usageScenarioIds = url.searchParams
-    .getAll('usageScenarioIds')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
+  const requirementPackageIds = parsePositiveIntegerIds(
+    url.searchParams.getAll('requirementPackageIds'),
+  )
   const riskLevelIds = url.searchParams
     .getAll('riskLevelIds')
     .map(Number)
@@ -99,8 +108,8 @@ export async function GET(request: NextRequest) {
       normReferenceIds:
         normReferenceIds.length > 0 ? normReferenceIds : undefined,
       riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
-      usageScenarioIds:
-        usageScenarioIds.length > 0 ? usageScenarioIds : undefined,
+      requirementPackageIds:
+        requirementPackageIds.length > 0 ? requirementPackageIds : undefined,
     })
 
     const requirements = result.items as RequirementListItem[]
@@ -171,6 +180,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const context = await createRequestContext(request, 'rest')
+    const requirementPackageIds = normalizeOptionalPositiveIntegerIds(
+      body.requirementPackageIds,
+    )
     const result = await service.manageRequirement(context, {
       operation: 'create',
       requirement: {
@@ -196,11 +208,7 @@ export async function POST(request: NextRequest) {
         verificationMethod: body.verificationMethod
           ? String(body.verificationMethod)
           : undefined,
-        scenarioIds: Array.isArray(body.scenarioIds)
-          ? body.scenarioIds
-              .map(value => Number(value))
-              .filter(value => !Number.isNaN(value))
-          : undefined,
+        ...(requirementPackageIds ? { requirementPackageIds } : {}),
         qualityCharacteristicId: body.qualityCharacteristicId
           ? Number(body.qualityCharacteristicId)
           : undefined,

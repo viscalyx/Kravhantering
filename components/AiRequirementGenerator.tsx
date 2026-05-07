@@ -790,7 +790,7 @@ export default function AiRequirementGenerator({
             qualityCharacteristicId: req.qualityCharacteristicId,
             requiresTesting: req.requiresTesting,
             riskLevelId: req.riskLevelId,
-            scenarioIds: req.scenarioIds,
+            requirementPackageIds: req.requirementPackageIds,
             typeId: req.typeId,
             verificationMethod: req.verificationMethod,
           }),
@@ -1901,12 +1901,15 @@ export default function AiRequirementGenerator({
                                 : undefined
                             })()
                           : undefined
-                        const scenarioNames = req.scenarioIds
-                          ?.map(
-                            sid =>
-                              taxonomy?.scenarios.find(s => s.id === sid)?.name,
-                          )
-                          .filter(Boolean)
+                        const requirementPackageNames =
+                          req.requirementPackageIds
+                            ?.map(
+                              sid =>
+                                taxonomy?.requirementPackages.find(
+                                  s => s.id === sid,
+                                )?.name,
+                            )
+                            .filter(Boolean)
                         const riskName = req.riskLevelId
                           ? (taxonomy?.riskLevels.find(
                               r => r.id === req.riskLevelId,
@@ -2049,13 +2052,13 @@ export default function AiRequirementGenerator({
                                         {req.verificationMethod}
                                       </div>
                                     )}
-                                    {scenarioNames &&
-                                      scenarioNames.length > 0 && (
+                                    {requirementPackageNames &&
+                                      requirementPackageNames.length > 0 && (
                                         <div>
                                           <span className="font-medium">
-                                            {t('detailScenarios')}:
+                                            {t('detailRequirementPackages')}:
                                           </span>{' '}
-                                          {scenarioNames.join(', ')}
+                                          {requirementPackageNames.join(', ')}
                                         </div>
                                       )}
                                   </div>

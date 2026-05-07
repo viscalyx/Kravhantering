@@ -54,24 +54,24 @@ export type RequirementsAction =
       catalog: string
     }
   | {
-      kind: 'list_packages'
+      kind: 'list_specifications'
       nameSearch?: string
     }
   | {
-      kind: 'get_package_items'
-      packageId?: number
-      packageSlug?: string
+      kind: 'get_specification_items'
+      specificationId?: number
+      specificationSlug?: string
     }
   | {
-      kind: 'add_to_package'
-      packageId?: number
-      packageSlug?: string
+      kind: 'add_to_specification'
+      specificationId?: number
+      specificationSlug?: string
       requirementIds: number[]
     }
   | {
-      kind: 'remove_from_package'
-      packageId?: number
-      packageSlug?: string
+      kind: 'remove_from_specification'
+      specificationId?: number
+      specificationSlug?: string
       requirementIds: number[]
     }
   | {
@@ -94,14 +94,14 @@ export type RequirementsAction =
     }
   | {
       kind: 'list_deviations'
-      packageId?: number
-      packageSlug?: string
+      specificationId?: number
+      specificationSlug?: string
     }
   | {
       kind: 'manage_deviation'
       operation: string
       deviationId?: number
-      packageItemId?: number
+      specificationItemId?: number
     }
   | {
       kind: 'list_suggestions'

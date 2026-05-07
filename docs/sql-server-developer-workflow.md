@@ -115,6 +115,20 @@ Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
 applies the migrations in `typeorm/migrations/`, and seeds via
 `typeorm/seed.mjs`.
 
+### Adding a new migration
+
+Create a new file in `typeorm/migrations/` named `NNNN_short_description.mjs`
+(zero-padded, monotonically increasing). Both
+`lib/typeorm/sqlserver-config.ts` and `scripts/db-sqlserver-admin.mjs`
+auto-discover migration files in that directory (alphabetical filename order
+drives execution order, which matches the numeric prefix). No manual import
+list to update; a guard test in
+`scripts/__tests__/db-sqlserver-admin.test.mjs` enforces this.
+
+Existing dev or production databases that are already at an earlier migration
+will pick up new files on the next `npm run db:migrate`. Clean databases run
+the full set in order via `npm run db:setup`.
+
 ## Read-Only Browse Workflow
 
 The blessed VS Code-friendly path is:

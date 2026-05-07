@@ -23,7 +23,7 @@ vi.mock('@/components/ConfirmModal', () => ({
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
-import ResponsibilityAreasClient from '@/app/[locale]/requirement-packages/responsibility-areas/responsibility-areas-client'
+import ResponsibilityAreasClient from '@/app/[locale]/specifications/responsibility-areas/responsibility-areas-client'
 
 describe('ResponsibilityAreasClient', () => {
   afterEach(cleanup)
@@ -96,7 +96,9 @@ describe('ResponsibilityAreasClient', () => {
       expect(screen.getByText('Security')).toBeInTheDocument()
     })
     const submitInit = fetchMock.mock.calls[1][1] as RequestInit
-    expect(fetchMock.mock.calls[1][0]).toBe('/api/package-responsibility-areas')
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      '/api/specification-responsibility-areas',
+    )
     expect(submitInit.method).toBe('POST')
     expect(JSON.parse(submitInit.body as string)).toEqual({
       nameEn: 'Security',
@@ -152,7 +154,7 @@ describe('ResponsibilityAreasClient', () => {
       }),
     )
     expect(fetchMock.mock.calls[1][0]).toBe(
-      '/api/package-responsibility-areas/1',
+      '/api/specification-responsibility-areas/1',
     )
     expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('DELETE')
   })

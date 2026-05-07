@@ -1,30 +1,32 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import {
-  deletePackage,
-  getPackageById,
-  getPackageBySlug,
-  isSlugTaken,
-  updatePackage,
+  deleteRequirementPackage,
+  getLinkedRequirementsForPackage,
+  getRequirementPackageById,
+  updateRequirementPackage,
 } from '@/lib/dal/requirement-packages'
-import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 
 type Params = Promise<{ id: string }>
-
-async function resolvePackage(db: SqlServerDatabase, idOrSlug: string) {
-  if (/^\d+$/.test(idOrSlug)) return getPackageById(db, Number(idOrSlug))
-  return getPackageBySlug(db, idOrSlug)
-}
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const db = await getRequestSqlServerDataSource()
-  const pkg = await resolvePackage(db, id)
-  if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  return NextResponse.json(pkg)
+  const [requirementPackage, linkedRequirements] = await Promise.all([
+    getRequirementPackageById(db, numericId),
+    getLinkedRequirementsForPackage(db, numericId),
+  ])
+  if (!requirementPackage) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  return NextResponse.json({ requirementPackage, linkedRequirements })
 }
 
 export async function PUT(
@@ -32,26 +34,19 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const db = await getRequestSqlServerDataSource()
-
-  const pkg = await resolvePackage(db, id)
-  if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  const body = (await request.json()) as {
-    businessNeedsReference?: string | null
-    name?: string
-    packageImplementationTypeId?: number | null
-    packageLifecycleStatusId?: number | null
-    packageResponsibilityAreaId?: number | null
-    uniqueId?: string
+  const body = (await request.json()) as Parameters<
+    typeof updateRequirementPackage
+  >[2]
+  const requirementPackage = await updateRequirementPackage(db, numericId, body)
+  if (!requirementPackage) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
-
-  if (body.uniqueId && (await isSlugTaken(db, body.uniqueId, pkg.id))) {
-    return NextResponse.json({ error: 'slug_taken' }, { status: 409 })
-  }
-
-  const updated = await updatePackage(db, pkg.id, body)
-  return NextResponse.json(updated)
+  return NextResponse.json(requirementPackage)
 }
 
 export async function DELETE(
@@ -59,9 +54,11 @@ export async function DELETE(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const numericId = Number(id)
+  if (!Number.isInteger(numericId) || numericId < 1) {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const db = await getRequestSqlServerDataSource()
-  const pkg = await resolvePackage(db, id)
-  if (!pkg) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await deletePackage(db, pkg.id)
+  await deleteRequirementPackage(db, numericId)
   return NextResponse.json({ ok: true })
 }

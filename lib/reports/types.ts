@@ -14,9 +14,9 @@ export interface VersionSummaryData {
   normReferences: { name: string; reference: string; uri: string | null }[]
   publishedAt: string | null
   qualityCharacteristic: { nameSv: string; nameEn: string } | null
+  requirementPackages: { nameSv: string; nameEn: string }[]
   requiresTesting: boolean
   riskLevel: { nameSv: string; nameEn: string } | null
-  scenarios: { nameSv: string; nameEn: string }[]
   status: { label: string; color: string | null }
   type: { nameSv: string; nameEn: string } | null
   verificationMethod: string | null
@@ -72,7 +72,7 @@ export type ReportSection =
   | { type: 'timeline-entry'; entry: TimelineEntryData }
   | { type: 'page-break' }
   | {
-      type: 'package-cover'
+      type: 'specification-cover'
       name: string
       uniqueId: string
       responsibilityArea: string | null
@@ -102,8 +102,8 @@ export type ReportSection =
       motivation: string
       createdBy: string | null
       createdAt: string
-      packageName: string | null
-      packageUniqueId: string | null
+      specificationName: string | null
+      specificationUniqueId: string | null
       riskLevel: { nameSv: string; nameEn: string } | null
       locale: string
     }

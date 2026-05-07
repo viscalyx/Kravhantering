@@ -1,5 +1,5 @@
 import { EntitySchema } from 'typeorm'
-import type { RequirementPackageItemEntity } from '@/lib/typeorm/entities/requirement-package-item'
+import type { RequirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 
 export interface DeviationEntity {
   createdAt: Date
@@ -11,7 +11,7 @@ export interface DeviationEntity {
   id: number
   isReviewRequested: boolean
   motivation: string
-  packageItem: RequirementPackageItemEntity
+  specificationItem: RequirementsSpecificationItemEntity
   updatedAt: Date | null
 }
 
@@ -55,16 +55,19 @@ export const deviationEntity = new EntitySchema<DeviationEntity>({
     },
   },
   indices: [
-    { name: 'idx_deviations_package_item_id', columns: ['packageItem'] },
+    {
+      name: 'idx_deviations_specification_item_id',
+      columns: ['specificationItem'],
+    },
   ],
   relations: {
-    packageItem: {
+    specificationItem: {
       type: 'many-to-one',
-      target: 'RequirementPackageItem',
+      target: 'RequirementsSpecificationItem',
       joinColumn: {
-        name: 'package_item_id',
+        name: 'specification_item_id',
         referencedColumnName: 'id',
-        foreignKeyConstraintName: 'fk_deviations_package_item_id',
+        foreignKeyConstraintName: 'fk_deviations_specification_item_id',
       },
       nullable: false,
       onDelete: 'CASCADE',

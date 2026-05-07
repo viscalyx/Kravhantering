@@ -335,7 +335,7 @@ flowchart LR
   canonical app roles `Reviewer` and `Admin`. For the least friction, emit
   those exact values on a `roles` claim.
 - Do not model authoring rights as IdP roles. The application derives
-  authoring rights from area and package assignments matched on
+  authoring rights from area and specification assignments matched on
   `employeeHsaId`.
 
 #### MCP service client

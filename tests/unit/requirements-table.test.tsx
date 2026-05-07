@@ -670,16 +670,16 @@ describe('RequirementsTable', () => {
     expect(screen.queryByText('Arkiveringsgranskning')).toBeNull()
   })
 
-  it('renders a package-local marker icon for package-local rows', () => {
+  it('renders a specification-local marker icon for specification-local rows', () => {
     render(
       <RequirementsTable
         locale="sv"
         rows={[
           makeRow({
-            isPackageLocal: true,
+            isSpecificationLocal: true,
             itemRef: 'local:1',
-            kind: 'packageLocal',
-            packageLocalRequirementId: 1,
+            kind: 'specificationLocal',
+            specificationLocalRequirementId: 1,
             uniqueId: 'KRAV0001',
           }),
         ]}
@@ -687,7 +687,7 @@ describe('RequirementsTable', () => {
     )
 
     expect(
-      document.querySelector('[data-package-local-marker="true"]'),
+      document.querySelector('[data-specification-local-marker="true"]'),
     ).toBeInTheDocument()
   })
 
@@ -727,15 +727,15 @@ describe('RequirementsTable', () => {
     expect(screen.getByText('Hög')).toBeTruthy()
   })
 
-  it('hides the read-only package item status color dot from assistive tech', () => {
+  it('hides the read-only specification item status color dot from assistive tech', () => {
     const rows = [
       makeRow({
-        packageItemStatusColor: '#f59e0b',
-        packageItemStatusDescriptionEn: 'In progress',
-        packageItemStatusDescriptionSv: 'Pågående',
-        packageItemStatusId: 2,
-        packageItemStatusNameEn: 'Ongoing',
-        packageItemStatusNameSv: 'Pågående',
+        specificationItemStatusColor: '#f59e0b',
+        specificationItemStatusDescriptionEn: 'In progress',
+        specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
       }),
     ]
 
@@ -745,7 +745,7 @@ describe('RequirementsTable', () => {
         rows={rows}
         visibleColumns={[
           ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
-          'packageItemStatus',
+          'specificationItemStatus',
         ]}
       />,
     )
@@ -756,6 +756,97 @@ describe('RequirementsTable', () => {
 
     expect(statusDot).toHaveAttribute('aria-hidden', 'true')
     expect(statusDot).toHaveStyle({ backgroundColor: '#f59e0b' })
+  })
+
+  it('renders read-only specification item status labels without a color dot', () => {
+    const rows = [
+      makeRow({
+        specificationItemStatusColor: null,
+        specificationItemStatusDescriptionEn: 'In progress',
+        specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
+      }),
+    ]
+
+    render(
+      <RequirementsTable
+        locale="sv"
+        rows={rows}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'specificationItemStatus',
+        ]}
+      />,
+    )
+
+    const statusLabel = screen.getByText('Pågående')
+    const statusWrapper = statusLabel.closest('span')
+
+    expect(statusWrapper?.querySelector('span[aria-hidden="true"]')).toBeNull()
+  })
+
+  it('renders the editable specification item status select and forwards changes', () => {
+    const onSpecificationItemStatusChange = vi.fn()
+    const rows = [
+      makeRow({
+        hasApprovedDeviation: false,
+        itemRef: 'lib:42',
+        specificationItemStatusColor: '#f59e0b',
+        specificationItemStatusDescriptionEn: 'In progress',
+        specificationItemStatusDescriptionSv: 'Pågående',
+        specificationItemStatusId: 2,
+        specificationItemStatusNameEn: 'Ongoing',
+        specificationItemStatusNameSv: 'Pågående',
+      }),
+    ]
+
+    render(
+      <RequirementsTable
+        locale="sv"
+        onSpecificationItemStatusChange={onSpecificationItemStatusChange}
+        rows={rows}
+        specificationItemStatuses={[
+          {
+            color: '#a3a3a3',
+            descriptionEn: null,
+            descriptionSv: null,
+            id: 1,
+            nameEn: 'Open',
+            nameSv: 'Öppen',
+            sortOrder: 1,
+          },
+          {
+            color: '#f59e0b',
+            descriptionEn: 'In progress',
+            descriptionSv: 'Pågående',
+            id: 2,
+            nameEn: 'Ongoing',
+            nameSv: 'Pågående',
+            sortOrder: 2,
+          },
+        ]}
+        visibleColumns={[
+          ...DEFAULT_VISIBLE_REQUIREMENT_COLUMNS,
+          'specificationItemStatus',
+        ]}
+      />,
+    )
+
+    const select = screen.getByRole('combobox', {
+      name: 'specificationItemStatus',
+    }) as HTMLSelectElement
+    expect(select.value).toBe('2')
+
+    fireEvent.change(select, { target: { value: '1' } })
+    expect(onSpecificationItemStatusChange).toHaveBeenCalledWith('lib:42', 1)
+
+    fireEvent.change(select, { target: { value: '' } })
+    expect(onSpecificationItemStatusChange).toHaveBeenLastCalledWith(
+      'lib:42',
+      null,
+    )
   })
 
   it('toggles sorting from the header button and updates aria-sort', () => {
@@ -880,11 +971,11 @@ describe('RequirementsTable', () => {
       .getByRole('checkbox', { name: 'status' })
       .closest('label')
 
-    expect(resetButton.className).toContain('min-h-[44px]')
-    expect(resetButton.className).toContain('min-w-[44px]')
+    expect(resetButton.className).toContain('min-h-11')
+    expect(resetButton.className).toContain('min-w-11')
     expect(statusLabel).toBeTruthy()
-    expect(statusLabel?.className).toContain('min-h-[44px]')
-    expect(statusLabel?.className).toContain('min-w-[44px]')
+    expect(statusLabel?.className).toContain('min-h-11')
+    expect(statusLabel?.className).toContain('min-w-11')
     expect(statusLabel?.className).toContain('w-full')
   })
 
@@ -1053,7 +1144,7 @@ describe('RequirementsTable', () => {
         floatingActionRailPlacement="inline-top"
         locale="sv"
         rows={[makeRow()]}
-        stickyTitle={<h2>Package items</h2>}
+        stickyTitle={<h2>Specification items</h2>}
         stickyTitleActions={<button type="button">Remove selected</button>}
       />,
     )
@@ -1067,7 +1158,7 @@ describe('RequirementsTable', () => {
     const actionGroup = stickyTopBar?.lastElementChild as HTMLDivElement | null
 
     expect(stickyTopBar).toBeTruthy()
-    expect(stickyTopBar).toHaveTextContent('Package items')
+    expect(stickyTopBar).toHaveTextContent('Specification items')
     expect(stickyTopBar).toHaveTextContent('Remove selected')
     expect(stickyTopBar?.className).toContain('flex-wrap')
     expect(stickyTopBar?.className).toContain('sm:flex-nowrap')
@@ -1440,8 +1531,8 @@ describe('RequirementsTable', () => {
       expect(list).toBeTruthy()
       expect(item).toBeTruthy()
       expect(link.getAttribute('role')).toBeNull()
-      expect(link.className).toContain('min-h-[44px]')
-      expect(link.className).toContain('min-w-[44px]')
+      expect(link.className).toContain('min-h-11')
+      expect(link.className).toContain('min-w-11')
       expect(link.className).toContain('focus-visible:ring-2')
     })
   })
@@ -1486,8 +1577,8 @@ describe('RequirementsTable', () => {
     const descriptionCell = screen.getByText('Testkrav').closest('td')
 
     expect(descriptionCell?.className).toContain('whitespace-normal')
-    expect(descriptionCell?.className).toContain('break-words')
-    expect(descriptionCell?.className).not.toContain('wrap-break-word')
+    expect(descriptionCell?.className).toContain('wrap-break-word')
+    expect(descriptionCell?.className).not.toContain('break-words')
   })
 
   it('syncs description wrapping when the prop changes on rerender', () => {
@@ -1504,7 +1595,7 @@ describe('RequirementsTable', () => {
 
     descriptionCell = screen.getByText('Testkrav').closest('td')
     expect(descriptionCell?.className).toContain('whitespace-normal')
-    expect(descriptionCell?.className).toContain('break-words')
+    expect(descriptionCell?.className).toContain('wrap-break-word')
 
     rerender(<RequirementsTable locale="sv" rows={[makeRow()]} />)
 
@@ -1704,8 +1795,8 @@ describe('RequirementsTable', () => {
     )
 
     for (const button of screen.getAllByRole('button', { name: 'filterBy' })) {
-      expect(button.className).toContain('min-h-[44px]')
-      expect(button.className).toContain('min-w-[44px]')
+      expect(button.className).toContain('min-h-11')
+      expect(button.className).toContain('min-w-11')
       expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     }
   })
@@ -1741,8 +1832,8 @@ describe('RequirementsTable', () => {
     const clearButton = popover?.querySelector('button')
     const optionRow = popover?.querySelector('label')
 
-    expect(clearButton?.className).toContain('min-h-[44px]')
-    expect(optionRow?.className).toContain('min-h-[44px]')
+    expect(clearButton?.className).toContain('min-h-11')
+    expect(optionRow?.className).toContain('min-h-11')
   })
 
   it('applies 44px touch targets to grouped filter popover actions', () => {
@@ -1784,8 +1875,8 @@ describe('RequirementsTable', () => {
     const clearButton = popover?.querySelector('button')
     const optionRow = popover?.querySelector('label')
 
-    expect(clearButton?.className).toContain('min-h-[44px]')
-    expect(optionRow?.className).toContain('min-h-[44px]')
+    expect(clearButton?.className).toContain('min-h-11')
+    expect(optionRow?.className).toContain('min-h-11')
   })
 
   it('applies the minimum header touch target to the sortable button itself', () => {
@@ -1807,9 +1898,9 @@ describe('RequirementsTable', () => {
 
     expect(headerControl).toBeTruthy()
     expect(sortableButton).toBeTruthy()
-    expect(headerControl?.className).not.toContain('min-h-[44px]')
-    expect(sortableButton?.className).toContain('min-h-[44px]')
-    expect(sortableButton?.className).toContain('min-w-[44px]')
+    expect(headerControl?.className).not.toContain('min-h-11')
+    expect(sortableButton?.className).toContain('min-h-11')
+    expect(sortableButton?.className).toContain('min-w-11')
   })
 
   it('anchors active filter count badges to the filter icon instead of the full button shell', () => {
@@ -1935,10 +2026,10 @@ describe('RequirementsTable', () => {
       screen.getAllByRole('button', { name: 'resizeColumn' }),
     ).toHaveLength(DEFAULT_VISIBLE_REQUIREMENT_COLUMNS.length - 1)
     expect(getResizeHandle(container, 'description')?.className).toContain(
-      'min-w-[44px]',
+      'min-w-11',
     )
     expect(getResizeHandle(container, 'description')?.className).toContain(
-      'min-h-[44px]',
+      'min-h-11',
     )
     expect(getResizeHandle(container, 'description')?.className).toContain(
       'before:w-px',
@@ -2175,7 +2266,7 @@ describe('RequirementsTable', () => {
     expect(bottomSegment).toBeTruthy()
     expect(bottomSegment?.style.top).toBe('240px')
     expect(bottomSegment?.style.height).toBe('48px')
-    expect(bottomSegment?.className).toContain('min-w-[44px]')
+    expect(bottomSegment?.className).toContain('min-w-11')
     expect(bottomSegment?.className).toContain('min-h-0')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
     expect(
@@ -2234,9 +2325,9 @@ describe('RequirementsTable', () => {
     expect(bottomSegment).toBeTruthy()
     expect(bottomSegment?.style.top).toBe('248px')
     expect(bottomSegment?.style.height).toBe('32px')
-    expect(bottomSegment?.className).toContain('min-w-[44px]')
+    expect(bottomSegment?.className).toContain('min-w-11')
     expect(bottomSegment?.className).toContain('min-h-0')
-    expect(bottomSegment?.className).not.toContain('min-h-[44px]')
+    expect(bottomSegment?.className).not.toContain('min-h-11')
     expect(bottomSegment).not.toHaveAttribute('data-column-resize-handle')
 
     firePrimaryPointerDown(bottomSegment as Element, {
@@ -2587,8 +2678,8 @@ describe('RequirementsTable', () => {
     const action = screen.getByRole('button', { name: 'INT0001' })
     const cell = action.closest('td')
 
-    expect(action.className).toContain('min-h-[44px]')
-    expect(action.className).toContain('min-w-[44px]')
+    expect(action.className).toContain('min-h-11')
+    expect(action.className).toContain('min-w-11')
     expect(action.className).toContain('px-2')
     expect(action.className).toContain('py-2')
     expect(cell?.className).not.toContain('px-2')
@@ -3036,6 +3127,66 @@ describe('RequirementsTable', () => {
     } finally {
       consoleError.mockRestore()
     }
+  })
+
+  it('only renders requirement package filter pills when filtering is available', () => {
+    const requirementPackages = [
+      { id: 1, nameEn: 'Mobile use', nameSv: 'Mobil användning' },
+    ]
+    const onFilterChange = vi.fn()
+
+    const { rerender } = render(
+      <RequirementsTable
+        getName={opt => opt.nameSv}
+        locale="sv"
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'Mobil användning' }),
+    ).not.toBeInTheDocument()
+
+    rerender(
+      <RequirementsTable
+        filterValues={{ requirementPackageIds: [1] }}
+        getName={opt => opt.nameSv}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    const requirementPackageFilter = screen.getByRole('button', {
+      name: 'Mobil användning',
+    })
+    expect(requirementPackageFilter).toHaveAttribute(
+      'data-requirement-package',
+      '1',
+    )
+    expect(requirementPackageFilter).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(requirementPackageFilter)
+    expect(onFilterChange).toHaveBeenCalledWith({
+      requirementPackageIds: undefined,
+    })
+
+    rerender(
+      <RequirementsTable
+        filterValues={{}}
+        getName={opt => opt.nameSv}
+        locale="sv"
+        onFilterChange={onFilterChange}
+        requirementPackages={requirementPackages}
+        rows={[makeRow()]}
+      />,
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Mobil användning' }),
+    ).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('renders the infinite-scroll sentinel when hasMore and onLoadMore are set', () => {

@@ -3,12 +3,12 @@
 This document describes the dogfood dataset that is appended to the base seed
 in `typeorm/seed.mjs`. The dataset captures the Krav that the Kravhantering
 application places on itself — technical, functional, UX, deployment and
-development requirements — and the two Kravpaket that group them.
+development requirements — and the two Kravunderlag that group them.
 
 The data lives in two pure ES modules:
 
 - [typeorm/seed-dogfood.mjs](../typeorm/seed-dogfood.mjs) — inventory: areas,
-  owners, norm references, usage scenarios and the `DOGFOOD_KRAV` list.
+  owners, norm references, requirement packages and the `DOGFOOD_KRAV` list.
 - [typeorm/seed-dogfood-build.mjs](../typeorm/seed-dogfood-build.mjs) — the
   builder `appendDogfoodSeed(SEED_DATA)` that mutates the base `SEED_DATA`
   shape (`{ table: { columns, rows } }`) in place. `seed.mjs` calls it once at
@@ -23,18 +23,18 @@ Unit coverage lives in
 To avoid colliding with the base seed, the dogfood module reserves these
 ranges:
 
-| Entity                       | Base IDs | Dogfood IDs              |
-| ---------------------------- | -------- | ------------------------ |
-| `owners`                     | 1–3      | 1001–1005                |
-| `requirement_areas`          | 1–10     | 1001–1006 (new)          |
-| `norm_references`            | 1–6      | 1001–1006                |
-| `usage_scenarios`            | 1–3      | 1001–1012                |
-| `requirement_packages`       | 1–10     | 1001 (KH), 1002 (KH-POC) |
-| `package_needs_references`   | 1–23     | 1001–1006                |
-| `package_local_requirements` | 1–2      | 1001–1002                |
-| `requirements`               | 1–367    | 10001–10059              |
-| `requirement_versions`       | 1–~498   | 10001–10059              |
-| `requirement_package_items`  | 1–~38    | 10001+                   |
+|Entity|Base IDs|Dogfood IDs|
+|---|---|---|
+|`owners`|1–3|1001–1005|
+|`requirement_areas`|1–10|1001–1006 (new)|
+|`norm_references`|1–6|1001–1006|
+|`requirement_packages`|1–9|1001–1012|
+|`requirements_specifications`|1–10|1001 (KH), 1002 (KH-POC)|
+|`specification_needs_references`|1–23|1001–1006|
+|`specification_local_requirements`|1–2|1001–1002|
+|`requirements`|1–367|10001–10059|
+|`requirement_versions`|1–~498|10001–10059|
+|`requirements_specification_items`|1–~38|10001+|
 
 Existing `requirement_areas.next_sequence` is bumped by the number of dogfood
 Krav added to that area, so newly minted `unique_id` values continue without
@@ -83,27 +83,27 @@ as version 1 with status **Publicerad**. Distribution per area:
 
 Every Krav fills `description`, `acceptance_criteria`, `verification_method`,
 `requirement_category_id`, `requirement_type_id`, `quality_characteristic_id`,
-`risk_level_id`, `is_testing_required`, and at least one usage scenario. Norm
+`risk_level_id`, `is_testing_required`, and at least one requirement package. Norm
 references are optional and added only where a Krav maps to an applicable law,
 standard or framework.
 
-## Kravpaket
+## Kravunderlag
 
 ### `KH` — Kravhantering (lifecycle: Utveckling)
 
-The main package containing all 59 Krav from the dogfood inventory. Each item
-gets a status that reflects current implementation: most are **Verifierad**,
+The main specification containing all 59 Krav from the dogfood inventory. Each
+item gets a status that reflects current implementation: most are **Verifierad**,
 some **Implementerad**, and a few that describe newer features remain
 **Pågående**.
 
 ### `KH-POC` — Kravhantering PoC införande (lifecycle: Införande)
 
 A smaller curated subset (17 Krav) that demonstrates the *Införande*
-lifecycle. All items default to **Inkluderad**. Two `package_local_requirements`
-sit on top of this package to demonstrate PoC-specific divergence from the
-shared Krav (one **Avviken**, one **Pågående**). They reuse the originating
-Krav's category/type/quality-characteristic and append PoC-specific text to
-the description and acceptance criteria.
+lifecycle. All items default to **Inkluderad**. Two `specification_local_requirements`
+sit on top of this specification to demonstrate PoC-specific divergence from
+the shared Krav (one **Avviken**, one **Pågående**). They reuse the originating
+Krav's category/type/quality-characteristic and append PoC-specific text to the
+description and acceptance criteria.
 
 ## How it is wired in
 

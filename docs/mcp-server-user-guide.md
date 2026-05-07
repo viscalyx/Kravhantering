@@ -25,7 +25,7 @@ agents can use it reliably.
 - `requirements_query_catalog`
   List or search requirements and fetch lookup catalogs such as areas,
   categories, types, quality characteristics, risk levels, statuses,
-  scenarios, and transitions.
+  requirement packages, and transitions.
 - `requirements_get_requirement`
   Fetch the current requirement detail, a specific version, or full version
   history.
@@ -38,24 +38,25 @@ agents can use it reliably.
 - `requirements_transition_requirement`
   Move a requirement through the lifecycle using a target status ID.
 
-#### Requirement Packages (Kravpaket)
+#### Requirements Specifications (Kravunderlag)
 
-- `requirements_list_packages`
-  List all requirement packages, optionally filtered by name. Returns id,
+- `requirements_list_specifications`
+  List all requirements specifications, optionally filtered by name. Returns id,
   `uniqueId` (slug), Swedish and English names, item count, responsibility
-  area, and implementation type for each package.
-- `requirements_get_package_items`
-  List requirements linked to a specific package, with optional description
-  search. Use `packageId` (numeric) or `packageSlug` (e.g. `SAKLYFT-Q2`)
-  from `requirements_list_packages`.
-- `requirements_add_to_package`
-  Link one or more requirements to a package. Requirements must have a
+  area, and implementation type for each specification.
+- `requirements_get_specification_items`
+  List requirements linked to a specific specification, with optional description
+  search. Use `specificationId` (numeric) or `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`)
+  from `requirements_list_specifications`.
+- `requirements_add_to_specification`
+  Link one or more requirements to a specification. Requirements must have a
   published version; those without are skipped and returned in `skippedIds`.
   Optionally attach a `needsReferenceText` to all added items. Use
-  `packageId` or `packageSlug` to identify the package.
-- `requirements_remove_from_package`
-  Unlink one or more requirements from a package. The requirements themselves
-  are not deleted. Use `packageId` or `packageSlug` to identify the package.
+  `specificationId` or `specificationSlug` to identify the specification.
+- `requirements_remove_from_specification`
+  Unlink one or more requirements from a specification. The requirements themselves
+  are not deleted. Use `specificationId` or `specificationSlug` to identify the
+  specification.
 
 #### Improvement Suggestions
 
@@ -257,10 +258,10 @@ Use a configuration like this:
         "requirements_get_requirement",
         "requirements_manage_requirement",
         "requirements_transition_requirement",
-        "requirements_list_packages",
-        "requirements_get_package_items",
-        "requirements_add_to_package",
-        "requirements_remove_from_package",
+        "requirements_list_specifications",
+        "requirements_get_specification_items",
+        "requirements_add_to_specification",
+        "requirements_remove_from_specification",
         "requirements_list_improvement_suggestions",
         "requirements_manage_improvement_suggestion",
         "requirements_generate_requirements"
@@ -291,10 +292,10 @@ Example:
         "requirements_get_requirement",
         "requirements_manage_requirement",
         "requirements_transition_requirement",
-        "requirements_list_packages",
-        "requirements_get_package_items",
-        "requirements_add_to_package",
-        "requirements_remove_from_package",
+        "requirements_list_specifications",
+        "requirements_get_specification_items",
+        "requirements_add_to_specification",
+        "requirements_remove_from_specification",
         "requirements_list_improvement_suggestions",
         "requirements_manage_improvement_suggestion",
         "requirements_generate_requirements"
@@ -398,7 +399,7 @@ tool. For requirement lists, it supports:
 - `qualityCharacteristicIds`
 - `riskLevelIds`
 - `normReferenceIds`
-- `usageScenarioIds`
+- `requirementPackageIds`
 - `statuses`
 - `requiresTesting`
 - `sortBy`
@@ -411,7 +412,7 @@ tool. For requirement lists, it supports:
 - `List the first 10 requirements that mention login.`
 - `Show the version history for SEC0012.`
 - `List available requirement transitions.`
-- `Show all scenarios and then tell me which ones are linked to INT0001.`
+- `Show all requirement packages and then tell me which ones are linked to INT0001.`
 
 ### Mutating
 
@@ -421,21 +422,21 @@ tool. For requirement lists, it supports:
 - `Restore version 2 of INT0001.`
 - `Transition INT0001 to published after checking the valid transitions.`
 
-### Requirement Packages
+### Requirements Specifications
 
-- `List all requirement packages.`
-- `List packages whose name contains "säkerhet".`
-- `Show all requirements in package SAKLYFT-Q2.`
-- `Search for requirements about login in package SAKLYFT-Q2.`
-- `Add requirements INT0001 and INT0002 to package SAKLYFT-Q2.`
-- `Add requirement INT0005 to package GDPR-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
-- `Remove requirement INT0003 from package SAKLYFT-Q2.`
+- `List all requirements specifications.`
+- `List specifications whose name contains "säkerhet".`
+- `Show all requirements in specification SAKLYFT-INFOR-Q2.`
+- `Search for requirements about login in specification SAKLYFT-INFOR-Q2.`
+- `Add requirements INT0001 and INT0002 to specification SAKLYFT-INFOR-Q2.`
+- `Add requirement INT0005 to specification GDPR-FORV-2026 with needs reference text "Behov 4.1".` <!-- markdownlint-disable-line MD013 -->
+- `Remove requirement INT0003 from specification SAKLYFT-INFOR-Q2.`
 
-> **Note:** Packages can be identified by `packageId` (numeric) or
-> `packageSlug` (e.g. `SAKLYFT-Q2`) — use whichever is available from
-> `requirements_list_packages`. `requirementIds` are numeric IDs; use
-> `requirements_query_catalog` or `requirements_get_package_items` to find
-> them. Requirements must have a published version to be added to a package.
+> **Note:** Specifications can be identified by `specificationId` (numeric) or
+> `specificationSlug` (e.g. `SAKLYFT-INFOR-Q2`) — use whichever is available from
+> `requirements_list_specifications`. `requirementIds` are numeric IDs; use
+> `requirements_query_catalog` or `requirements_get_specification_items` to find
+> them. Requirements must have a published version to be added to a specification.
 
 ## Limitations
 

@@ -1,18 +1,14 @@
 import { EntitySchema } from 'typeorm'
-import type { PackageImplementationTypeEntity } from '@/lib/typeorm/entities/package-implementation-type'
-import type { PackageLifecycleStatusEntity } from '@/lib/typeorm/entities/package-lifecycle-status'
-import type { PackageResponsibilityAreaEntity } from '@/lib/typeorm/entities/package-responsibility-area'
+import type { OwnerEntity } from '@/lib/typeorm/entities/owner'
 
 export interface RequirementPackageEntity {
-  businessNeedsReference: string | null
   createdAt: Date
+  descriptionEn: string | null
+  descriptionSv: string | null
   id: number
-  localRequirementNextSequence: number
-  name: string
-  packageImplementationType: PackageImplementationTypeEntity | null
-  packageLifecycleStatus: PackageLifecycleStatusEntity | null
-  packageResponsibilityArea: PackageResponsibilityAreaEntity | null
-  uniqueId: string
+  nameEn: string
+  nameSv: string
+  owner: OwnerEntity | null
   updatedAt: Date
 }
 
@@ -27,70 +23,31 @@ export const requirementPackageEntity =
         type: 'int',
         generated: 'increment',
       },
+      nameSv: { name: 'name_sv', type: 'nvarchar', length: 'MAX' },
+      nameEn: { name: 'name_en', type: 'nvarchar', length: 'MAX' },
+      descriptionSv: {
+        name: 'description_sv',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
+      descriptionEn: {
+        name: 'description_en',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
       createdAt: { name: 'created_at', type: 'datetime2' },
       updatedAt: { name: 'updated_at', type: 'datetime2' },
-      businessNeedsReference: {
-        name: 'business_needs_reference',
-        type: 'nvarchar',
-        length: 'MAX',
-        nullable: true,
-      },
-      uniqueId: {
-        name: 'unique_id',
-        type: 'nvarchar',
-        length: 450,
-        default: '',
-      },
-      name: {
-        name: 'name',
-        type: 'nvarchar',
-        length: 'MAX',
-        default: '',
-      },
-      localRequirementNextSequence: {
-        name: 'local_requirement_next_sequence',
-        type: 'int',
-        default: 1,
-      },
     },
-    uniques: [
-      { name: 'uq_requirement_packages_unique_id', columns: ['uniqueId'] },
-    ],
     relations: {
-      packageResponsibilityArea: {
+      owner: {
         type: 'many-to-one',
-        target: 'PackageResponsibilityArea',
+        target: 'Owner',
         joinColumn: {
-          name: 'package_responsibility_area_id',
+          name: 'owner_id',
           referencedColumnName: 'id',
-          foreignKeyConstraintName:
-            'fk_requirement_packages_package_responsibility_area_id',
-        },
-        nullable: true,
-        onDelete: 'NO ACTION',
-        onUpdate: 'NO ACTION',
-      },
-      packageImplementationType: {
-        type: 'many-to-one',
-        target: 'PackageImplementationType',
-        joinColumn: {
-          name: 'package_implementation_type_id',
-          referencedColumnName: 'id',
-          foreignKeyConstraintName:
-            'fk_requirement_packages_package_implementation_type_id',
-        },
-        nullable: true,
-        onDelete: 'NO ACTION',
-        onUpdate: 'NO ACTION',
-      },
-      packageLifecycleStatus: {
-        type: 'many-to-one',
-        target: 'PackageLifecycleStatus',
-        joinColumn: {
-          name: 'package_lifecycle_status_id',
-          referencedColumnName: 'id',
-          foreignKeyConstraintName:
-            'fk_requirement_packages_package_lifecycle_status_id',
+          foreignKeyConstraintName: 'fk_requirement_packages_owner_id',
         },
         nullable: true,
         onDelete: 'NO ACTION',

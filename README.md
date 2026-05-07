@@ -1,11 +1,18 @@
 # Requirements Management Web Application
 
-A web application for requirements management that supports the
-company's requirements model and requirements process.
+Kravhantering in Swedish, Requirements Management in English. This repository
+contains a web application for managing requirements
 
-<!-- cSpell:disable-next-line -->
-*En webbapplikation för kravhantering som stödjer företagets
-kravmodell och kravprocess.*
+## High-Level View (English)
+
+>[!TIP]
+>Se längre ner för en svensk översikt.
+
+![Infographics English](public/infographic-english.png)
+
+## Högnivåöversikt (Svenska)
+
+![Infographics Swedish](public/infographic-swedish.png)
 
 ## Requirements Process
 
@@ -22,7 +29,7 @@ The application supports the full requirements lifecycle:
 
 1. **Register** — create a new requirement or a new version
 2. **Classify** — assign area, category, owner, risk level,
-   usage scenarios
+   requirement packages
 3. **Edit** — update requirement text, guidance, and evidence
 4. **Review** — submit for review, collect comments, handle
    referrals
@@ -96,7 +103,7 @@ Applikationen stödjer hela kravlivscykeln:
 
 1. **Registrera** — skapa ett nytt krav eller en ny version
 2. **Klassificera** — tilldela område, kategori, ägare,
-   risknivå, användningsscenarier
+   risknivå, kravpaket
 3. **Redigera** — uppdatera kravtext, vägledning och evidens
 4. **Granska** — skicka till granskning, samla kommentarer,
    hantera återremiss
@@ -216,6 +223,17 @@ Start the devcontainers by opening the project in VS Code and accepting the
 prompt to "Reopen in Container". The devcontainer includes the local
 *SQL Server Developer* container, so you can run the full application and
 database stack without any additional setup.
+
+### Cloud development with Red Hat OpenShift Dev Spaces
+
+The repository ships a [`devfile.yaml`](devfile.yaml) for [Red Hat
+OpenShift Dev
+Spaces](https://developers.redhat.com/products/openshift-dev-spaces/overview).
+Create a workspace from this Git URL in your Dev Spaces dashboard and the
+same SQL Server + Keycloak stack is provisioned as sidecar containers in a
+single pod. See
+[docs/openshift-devspaces.md](docs/openshift-devspaces.md) for required
+secrets, editor selection, and SCC requirements.
 
 ### Local development without devcontainers
 

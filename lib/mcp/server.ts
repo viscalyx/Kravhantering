@@ -69,7 +69,7 @@ const QueryCatalogOutputSchema = z
         'quality_characteristics',
         'risk_levels',
         'statuses',
-        'scenarios',
+        'requirement_packages',
         'transitions',
       ])
       .describe('Catalog that was returned.'),
@@ -188,7 +188,7 @@ const GeneratedRequirementOutputSchema = z
     rationale: z.string(),
     requiresTesting: z.boolean(),
     riskLevelId: z.number().optional(),
-    scenarioIds: z.array(z.number()).optional(),
+    requirementPackageIds: z.array(z.number()).optional(),
     typeId: z.number(),
     verificationMethod: z.string().nullable().optional(),
   })
@@ -345,9 +345,11 @@ function renderRequirementHtml(
         }[]
       ).filter(r => r?.normReference)
     : []
-  const scenarios = Array.isArray(selectedVersion?.versionScenarios)
-    ? (selectedVersion.versionScenarios as {
-        scenario?: { nameEn?: string | null; nameSv?: string | null }
+  const requirementPackages = Array.isArray(
+    selectedVersion?.versionRequirementPackages,
+  )
+    ? (selectedVersion.versionRequirementPackages as {
+        requirementPackage?: { nameEn?: string | null; nameSv?: string | null }
       }[])
     : []
 
@@ -379,11 +381,11 @@ function renderRequirementHtml(
     getLocalizedUiTerm(terminology, 'references', locale, 'singular'),
   )
 
-  const scenarioNames = scenarios
+  const requirementPackageNames = requirementPackages
     .map(item =>
       locale === 'sv'
-        ? (item.scenario?.nameSv ?? item.scenario?.nameEn)
-        : (item.scenario?.nameEn ?? item.scenario?.nameSv),
+        ? (item.requirementPackage?.nameSv ?? item.requirementPackage?.nameEn)
+        : (item.requirementPackage?.nameEn ?? item.requirementPackage?.nameSv),
     )
     .filter((name): name is string => Boolean(name))
 
@@ -408,9 +410,9 @@ function renderRequirementHtml(
           .join('')}</ul>`
       : `<p>${escapeHtml(noneLabel)}</p>`
 
-  const scenarioMarkup =
-    scenarioNames.length > 0
-      ? `<ul>${scenarioNames
+  const requirementPackageMarkup =
+    requirementPackageNames.length > 0
+      ? `<ul>${requirementPackageNames
           .map(name => `<li>${escapeHtml(name)}</li>`)
           .join('')}</ul>`
       : `<p>${escapeHtml(noneLabel)}</p>`
@@ -467,12 +469,12 @@ function renderRequirementHtml(
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'qualityCharacteristic', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.qualityCharacteristic?.nameSv : selectedVersion?.qualityCharacteristic?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'riskLevel', locale, 'singular'))}</h2><p>${escapeHtml(String((locale === 'sv' ? selectedVersion?.riskLevel?.nameSv : selectedVersion?.riskLevel?.nameEn) ?? '—'))}</p></section>`,
     `          <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'version', locale, 'singular'))}</h2><p>${escapeHtml(String(selectedVersion?.versionNumber ?? '—'))}</p></section>`,
-    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'packageCount'], locale === 'sv' ? 'Används i kravpaket' : 'Used in packages'))}</h2><p>${escapeHtml(String(detail.packageCount ?? 0))}</p></section>`,
+    `          <section class="panel"><h2>${escapeHtml(getMessageString(localizedMessages, ['requirement', 'specificationCount'], locale === 'sv' ? 'Används i kravunderlag' : 'Used in specification'))}</h2><p>${escapeHtml(String(detail.specificationCount ?? 0))}</p></section>`,
     '        </div>',
     '      </section>',
     '      <section class="split">',
     `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'references', locale, 'plural'))}</h2>${normReferenceMarkup}</section>`,
-    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'scenario', locale, 'plural'))}</h2>${scenarioMarkup}</section>`,
+    `        <section class="panel"><h2>${escapeHtml(getLocalizedUiTerm(terminology, 'requirementPackage', locale, 'plural'))}</h2>${requirementPackageMarkup}</section>`,
     '      </section>',
     '    </article>',
     '  </main>',
@@ -499,7 +501,7 @@ function createQueryCatalogSchema() {
           'quality_characteristics',
           'risk_levels',
           'statuses',
-          'scenarios',
+          'requirement_packages',
           'transitions',
         ])
         .default('requirements')
@@ -611,11 +613,11 @@ function createQueryCatalogSchema() {
         .describe(
           'Case-insensitive substring filter on requirement uniqueId. Applies only to catalog "requirements".',
         ),
-      usageScenarioIds: z
+      requirementPackageIds: z
         .array(z.number().int().positive())
         .optional()
         .describe(
-          'Usage scenario IDs. Applies only to catalog "requirements".',
+          'Requirements package IDs. Applies only to catalog "requirements".',
         ),
     })
     .strict()
@@ -723,10 +725,10 @@ const RequirementMutationSchema = z
       .describe(
         'How the requirement should be verified when requiresTesting is true.',
       ),
-    scenarioIds: z
+    requirementPackageIds: z
       .array(z.number().int().positive())
       .optional()
-      .describe('Usage scenario IDs linked to the version.'),
+      .describe('Requirements package IDs linked to the version.'),
     normReferenceIds: z
       .array(z.number().int().positive())
       .optional()
@@ -770,7 +772,7 @@ function createManageRequirementSchema() {
           'Operation to perform. Create has no existing requirement ID; all other operations require id or uniqueId.',
         ),
       requirement: RequirementMutationSchema.optional().describe(
-        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, riskLevelId, requiresTesting, verificationMethod, scenarioIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
+        'Requirement fields for create/edit. For create, pass at least requirement.areaId and requirement.description; optional fields include acceptanceCriteria, typeId, categoryId, qualityCharacteristicId, riskLevelId, requiresTesting, verificationMethod, requirementPackageIds, normReferenceIds, and createdBy. For edit, first call requirements_get_requirement with view: "history" and copy requirement.versions[0].id to baseVersionId plus requirement.versions[0].revisionToken to baseRevisionToken.',
       ),
       responseFormat: ResponseFormatSchema,
       uniqueId: z
@@ -914,7 +916,7 @@ function toCatalogInput(
     typeId: input.typeId,
     typeIds: input.typeIds,
     uniqueIdSearch: input.uniqueIdSearch,
-    usageScenarioIds: input.usageScenarioIds,
+    requirementPackageIds: input.requirementPackageIds,
   }
 }
 
@@ -1112,7 +1114,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, statuses, scenarios, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
+        'List/search paginated requirements or fetch lookup catalogs: areas, categories, types, quality_characteristics, risk_levels, statuses, requirement_packages, and transitions. Requirement filters, sorting, limit, and offset apply only when catalog is "requirements".',
       inputSchema: createQueryCatalogSchema(),
       outputSchema: QueryCatalogOutputSchema,
       title: 'Query Requirements Catalog',
@@ -1307,7 +1309,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'requirements_list_packages',
+    'requirements_list_specifications',
     {
       annotations: {
         destructiveHint: false,
@@ -1316,7 +1318,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List all requirement packages, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each package.',
+        'List all requirements specifications, optionally filtered by name. Returns id, uniqueId (slug), names, item count, responsibility area, and implementation type for each specification.',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1324,7 +1326,7 @@ export function createKravhanteringMcpServer(
             .string()
             .optional()
             .describe(
-              'Case-insensitive substring filter applied to both Swedish and English package names.',
+              'Case-insensitive substring filter applied to the specification primary name (p.name) only.',
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
@@ -1332,7 +1334,7 @@ export function createKravhanteringMcpServer(
       outputSchema: z
         .object({
           message: z.string(),
-          packages: z.array(
+          specifications: z.array(
             z
               .object({
                 businessNeedsReference: z.string().nullable(),
@@ -1351,12 +1353,12 @@ export function createKravhanteringMcpServer(
           ),
         })
         .strict(),
-      title: 'List Requirement Packages',
+      title: 'List Requirements Specifications',
     },
     async input => {
       try {
-        const payload = await service.listPackages(
-          await getBaseContext(request, 'requirements_list_packages'),
+        const payload = await service.listSpecifications(
+          await getBaseContext(request, 'requirements_list_specifications'),
           {
             locale: toResponseLocale(input.locale),
             nameSearch: input.nameSearch,
@@ -1374,7 +1376,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'requirements_get_package_items',
+    'requirements_get_specification_items',
     {
       annotations: {
         destructiveHint: false,
@@ -1383,7 +1385,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: true,
       },
       description:
-        'List requirements (krav) linked to a specific requirement package, with optional description search. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2") from requirements_list_packages.',
+        'List requirements (krav) linked to a specific requirements specification, with optional description search. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2") from requirements_list_specifications.',
       inputSchema: z
         .object({
           descriptionSearch: z
@@ -1393,26 +1395,30 @@ export function createKravhanteringMcpServer(
               'Case-insensitive substring filter on the requirement description.',
             ),
           locale: z.enum(['en', 'sv']).default('en'),
-          packageId: z
+          specificationId: z
             .number()
             .int()
             .positive()
             .optional()
-            .describe('Numeric ID of the requirement package.'),
-          packageSlug: z
+            .describe('Numeric ID of the requirements specification.'),
+          specificationSlug: z
             .string()
             .optional()
             .describe(
-              'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
+              'Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict()
         .superRefine((val, ctx) => {
-          if ((val.packageId == null) === (val.packageSlug == null)) {
+          if (
+            (val.specificationId == null) ===
+            (val.specificationSlug == null)
+          ) {
             ctx.addIssue({
               code: 'custom',
-              message: 'Provide exactly one of packageId or packageSlug.',
+              message:
+                'Provide exactly one of specificationId or specificationSlug.',
             })
           }
         }),
@@ -1433,20 +1439,20 @@ export function createKravhanteringMcpServer(
               .strict(),
           ),
           message: z.string(),
-          packageId: z.number(),
+          specificationId: z.number(),
         })
         .strict(),
-      title: 'Get Package Items',
+      title: 'Get Specification Items',
     },
     async input => {
       try {
-        const payload = await service.getPackageItems(
-          await getBaseContext(request, 'requirements_get_package_items'),
+        const payload = await service.getSpecificationItems(
+          await getBaseContext(request, 'requirements_get_specification_items'),
           {
             descriptionSearch: input.descriptionSearch,
             locale: toResponseLocale(input.locale),
-            packageId: input.packageId,
-            packageSlug: input.packageSlug,
+            specificationId: input.specificationId,
+            specificationSlug: input.specificationSlug,
             responseFormat: toResponseFormat(input.responseFormat),
           },
         )
@@ -1461,7 +1467,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'requirements_add_to_package',
+    'requirements_add_to_specification',
     {
       annotations: {
         destructiveHint: false,
@@ -1470,7 +1476,7 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Link one or more requirements to a requirement package. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2").',
+        'Link one or more requirements to a requirements specification. Requirements must have a published version; those without are skipped and returned in skippedIds. Optionally attach a needs reference text to all added items. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
@@ -1480,32 +1486,36 @@ export function createKravhanteringMcpServer(
             .describe(
               'Optional needs reference text applied to all added requirements. An existing reference with the same text will be reused.',
             ),
-          packageId: z
+          specificationId: z
             .number()
             .int()
             .positive()
             .optional()
-            .describe('Numeric ID of the requirement package.'),
-          packageSlug: z
+            .describe('Numeric ID of the requirements specification.'),
+          specificationSlug: z
             .string()
             .optional()
             .describe(
-              'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
+              'Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
             ),
           requirementIds: z
             .array(z.number().int().positive())
             .min(1)
             .describe(
-              'Numeric requirement IDs (not uniqueId strings) to add to the package.',
+              'Numeric requirement IDs (not uniqueId strings) to add to the specification.',
             ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict()
         .superRefine((val, ctx) => {
-          if ((val.packageId == null) === (val.packageSlug == null)) {
+          if (
+            (val.specificationId == null) ===
+            (val.specificationSlug == null)
+          ) {
             ctx.addIssue({
               code: 'custom',
-              message: 'Provide exactly one of packageId or packageSlug.',
+              message:
+                'Provide exactly one of specificationId or specificationSlug.',
             })
           }
         }),
@@ -1517,17 +1527,17 @@ export function createKravhanteringMcpServer(
           skippedIds: z.array(z.number()),
         })
         .strict(),
-      title: 'Add Requirements to Package',
+      title: 'Add Requirements to Specification',
     },
     async input => {
       try {
-        const payload = await service.addToPackage(
-          await getBaseContext(request, 'requirements_add_to_package'),
+        const payload = await service.addToSpecification(
+          await getBaseContext(request, 'requirements_add_to_specification'),
           {
             locale: toResponseLocale(input.locale),
             needsReferenceText: input.needsReferenceText,
-            packageId: input.packageId,
-            packageSlug: input.packageSlug,
+            specificationId: input.specificationId,
+            specificationSlug: input.specificationSlug,
             requirementIds: input.requirementIds,
             responseFormat: toResponseFormat(input.responseFormat),
           },
@@ -1543,7 +1553,7 @@ export function createKravhanteringMcpServer(
   )
 
   server.registerTool(
-    'requirements_remove_from_package',
+    'requirements_remove_from_specification',
     {
       annotations: {
         destructiveHint: true,
@@ -1552,34 +1562,40 @@ export function createKravhanteringMcpServer(
         readOnlyHint: false,
       },
       description:
-        'Unlink one or more requirements from a requirement package. The requirements themselves are not deleted. Identify the package with packageId (numeric) or packageSlug (e.g. "SAKLYFT-Q2").',
+        'Unlink one or more requirements from a requirements specification. The requirements themselves are not deleted. Identify the specification with specificationId (numeric) or specificationSlug (e.g. "SAKLYFT-INFOR-Q2").',
       inputSchema: z
         .object({
           locale: z.enum(['en', 'sv']).default('en'),
-          packageId: z
+          specificationId: z
             .number()
             .int()
             .positive()
             .optional()
-            .describe('Numeric ID of the requirement package.'),
-          packageSlug: z
+            .describe('Numeric ID of the requirements specification.'),
+          specificationSlug: z
             .string()
             .optional()
             .describe(
-              'Slug (uniqueId) of the requirement package, e.g. "SAKLYFT-Q2".',
+              'Slug (uniqueId) of the requirements specification, e.g. "SAKLYFT-INFOR-Q2".',
             ),
           requirementIds: z
             .array(z.number().int().positive())
             .min(1)
-            .describe('Numeric requirement IDs to remove from the package.'),
+            .describe(
+              'Numeric requirement IDs to remove from the specification.',
+            ),
           responseFormat: z.enum(['json', 'markdown']).default('markdown'),
         })
         .strict()
         .superRefine((val, ctx) => {
-          if ((val.packageId == null) === (val.packageSlug == null)) {
+          if (
+            (val.specificationId == null) ===
+            (val.specificationSlug == null)
+          ) {
             ctx.addIssue({
               code: 'custom',
-              message: 'Provide exactly one of packageId or packageSlug.',
+              message:
+                'Provide exactly one of specificationId or specificationSlug.',
             })
           }
         }),
@@ -1589,16 +1605,19 @@ export function createKravhanteringMcpServer(
           removedCount: z.number(),
         })
         .strict(),
-      title: 'Remove Requirements from Package',
+      title: 'Remove Requirements from Specification',
     },
     async input => {
       try {
-        const payload = await service.removeFromPackage(
-          await getBaseContext(request, 'requirements_remove_from_package'),
+        const payload = await service.removeFromSpecification(
+          await getBaseContext(
+            request,
+            'requirements_remove_from_specification',
+          ),
           {
             locale: toResponseLocale(input.locale),
-            packageId: input.packageId,
-            packageSlug: input.packageSlug,
+            specificationId: input.specificationId,
+            specificationSlug: input.specificationSlug,
             requirementIds: input.requirementIds,
             responseFormat: toResponseFormat(input.responseFormat),
           },

@@ -1,0 +1,322 @@
+import { type NextRequest, NextResponse } from 'next/server'
+import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
+import {
+  deleteSpecificationItemsByRefs,
+  getSpecificationById,
+  getSpecificationBySlug,
+  linkRequirementsToSpecificationAtomically,
+  listSpecificationItems,
+  unlinkRequirementsFromSpecification,
+} from '@/lib/dal/requirements-specifications'
+import type { SqlServerDatabase } from '@/lib/db'
+import { getRequestSqlServerDataSource } from '@/lib/db'
+import { isRequirementsServiceError } from '@/lib/requirements/errors'
+
+type Params = Promise<{ id: string }>
+
+const ADD_REQUIREMENTS_ERROR = 'Failed to add requirements'
+
+type ParseResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; response: NextResponse<{ error: string }> }
+
+interface ParsedDeleteBody {
+  itemRefs?: string[]
+  requirementIds: number[]
+}
+
+interface ParsedPostBody extends ParsedDeleteBody {
+  needsReferenceId?: number | null
+  needsReferenceText?: string | null
+}
+
+function invalidBody(message: string): ParseResult<never> {
+  return {
+    ok: false,
+    response: NextResponse.json({ error: message }, { status: 400 }),
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function parseRequirementIds(
+  value: unknown,
+): ParseResult<ParsedDeleteBody['requirementIds']> {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.some(
+      requirementId =>
+        !Number.isInteger(requirementId) || (requirementId as number) <= 0,
+    )
+  ) {
+    return invalidBody(
+      'requirementIds must be a non-empty array of positive integers',
+    )
+  }
+
+  if (new Set(value as number[]).size !== (value as number[]).length) {
+    return invalidBody(
+      'requirementIds must be a non-empty array of unique positive integers',
+    )
+  }
+
+  return { ok: true, value: value as number[] }
+}
+
+function parseDeleteBody(body: unknown): ParseResult<ParsedDeleteBody> {
+  if (!isRecord(body)) {
+    return invalidBody('Invalid request body')
+  }
+
+  if (Array.isArray(body.itemRefs)) {
+    const itemRefs = body.itemRefs
+    if (
+      itemRefs.length === 0 ||
+      itemRefs.some(
+        itemRef => typeof itemRef !== 'string' || itemRef.trim().length === 0,
+      ) ||
+      new Set(itemRefs).size !== itemRefs.length
+    ) {
+      return invalidBody('itemRefs must be a non-empty array of unique strings')
+    }
+
+    return {
+      ok: true,
+      value: {
+        itemRefs,
+        requirementIds: [],
+      },
+    }
+  }
+
+  const requirementIds = parseRequirementIds(body.requirementIds)
+  if (!requirementIds.ok) {
+    return requirementIds
+  }
+
+  return {
+    ok: true,
+    value: {
+      requirementIds: requirementIds.value,
+    },
+  }
+}
+
+function parsePostBody(body: unknown): ParseResult<ParsedPostBody> {
+  if (!isRecord(body)) {
+    return invalidBody('Invalid request body')
+  }
+
+  const requirementIds = parseRequirementIds(body.requirementIds)
+  if (!requirementIds.ok) {
+    return requirementIds
+  }
+
+  const needsReferenceId = Object.hasOwn(body, 'needsReferenceId')
+    ? body.needsReferenceId
+    : undefined
+  if (
+    needsReferenceId !== undefined &&
+    needsReferenceId !== null &&
+    (typeof needsReferenceId !== 'number' ||
+      !Number.isInteger(needsReferenceId) ||
+      needsReferenceId < 0)
+  ) {
+    return invalidBody(
+      'needsReferenceId must be a non-negative integer, null, or undefined',
+    )
+  }
+
+  const needsReferenceText = Object.hasOwn(body, 'needsReferenceText')
+    ? body.needsReferenceText
+    : undefined
+  if (
+    needsReferenceText !== undefined &&
+    needsReferenceText !== null &&
+    typeof needsReferenceText !== 'string'
+  ) {
+    return invalidBody(
+      'needsReferenceText must be a string, null, or undefined',
+    )
+  }
+
+  if (
+    needsReferenceId !== undefined &&
+    needsReferenceId !== null &&
+    typeof needsReferenceText === 'string' &&
+    needsReferenceText.trim() !== ''
+  ) {
+    return invalidBody(
+      'Provide either needsReferenceId or needsReferenceText, not both',
+    )
+  }
+
+  return {
+    ok: true,
+    value: {
+      needsReferenceId:
+        needsReferenceId === undefined
+          ? undefined
+          : (needsReferenceId as number | null),
+      needsReferenceText:
+        needsReferenceText === undefined
+          ? undefined
+          : (needsReferenceText as string | null),
+      requirementIds: requirementIds.value,
+    },
+  }
+}
+
+async function resolveSpecificationId(db: SqlServerDatabase, idOrSlug: string) {
+  const bySlug = await getSpecificationBySlug(db, idOrSlug)
+  if (bySlug) return bySlug.id
+  if (/^\d+$/.test(idOrSlug)) {
+    const byId = await getSpecificationById(db, Number(idOrSlug))
+    return byId?.id ?? null
+  }
+  return null
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id } = await params
+  const db = await getRequestSqlServerDataSource()
+  const specificationId = await resolveSpecificationId(db, id)
+  if (specificationId === null)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const items = await listSpecificationItems(db, specificationId)
+  const deviationCounts = await countDeviationsPerItemRef(db, specificationId)
+  const enrichedItems = items.map(item => {
+    const dc = item.itemRef ? deviationCounts.get(item.itemRef) : undefined
+    return {
+      ...item,
+      deviationCount: dc?.total ?? 0,
+      hasApprovedDeviation: (dc?.approved ?? 0) > 0,
+      hasPendingDeviation: (dc?.pending ?? 0) > 0,
+    }
+  })
+  return NextResponse.json({ items: enrichedItems })
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id } = await params
+  const db = await getRequestSqlServerDataSource()
+
+  const specificationId = await resolveSpecificationId(db, id)
+  if (specificationId === null)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const parsedBody = parsePostBody(rawBody)
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const { requirementIds, needsReferenceId, needsReferenceText } =
+    parsedBody.value
+
+  try {
+    const addedCount = await linkRequirementsToSpecificationAtomically(
+      db,
+      specificationId,
+      {
+        requirementIds,
+        needsReferenceId,
+        needsReferenceText,
+      },
+    )
+    return NextResponse.json(
+      { addedCount, ok: true },
+      { status: addedCount > 0 ? 201 : 200 },
+    )
+  } catch (error) {
+    if (isRequirementsServiceError(error) && error.code === 'validation') {
+      const status =
+        error.details?.httpStatus === 422 ? 422 : (error.status ?? 400)
+      return NextResponse.json({ error: error.message }, { status })
+    }
+
+    console.error(
+      'Failed to add requirements to requirements specification',
+      error,
+    )
+    return NextResponse.json({ error: ADD_REQUIREMENTS_ERROR }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Params },
+) {
+  const { id } = await params
+  const db = await getRequestSqlServerDataSource()
+
+  const specificationId = await resolveSpecificationId(db, id)
+  if (specificationId === null)
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  }
+  const parsedBody = parseDeleteBody(rawBody)
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+
+  if (parsedBody.value.itemRefs?.length) {
+    try {
+      const { deletedLibraryCount, deletedSpecificationLocalCount } =
+        await deleteSpecificationItemsByRefs(
+          db,
+          specificationId,
+          parsedBody.value.itemRefs,
+        )
+      return NextResponse.json({
+        deletedLibraryCount,
+        deletedSpecificationLocalCount,
+        ok: true,
+        removedCount: deletedLibraryCount + deletedSpecificationLocalCount,
+      })
+    } catch (error) {
+      if (isRequirementsServiceError(error) && error.code === 'validation') {
+        return NextResponse.json({ error: error.message }, { status: 400 })
+      }
+
+      console.error('Failed to delete specification items by refs', error)
+      return NextResponse.json(
+        { error: 'Failed to remove items' },
+        { status: 500 },
+      )
+    }
+  }
+
+  try {
+    const removedCount = await unlinkRequirementsFromSpecification(
+      db,
+      specificationId,
+      parsedBody.value.requirementIds,
+    )
+    return NextResponse.json({ ok: true, removedCount })
+  } catch (error) {
+    console.error('Failed to unlink requirements from specification', error)
+    return NextResponse.json(
+      { error: 'Failed to unlink requirements' },
+      { status: 500 },
+    )
+  }
+}

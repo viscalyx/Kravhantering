@@ -165,10 +165,10 @@ stateDiagram-v2
 
 ## Deviation Lifecycle
 
-Deviations are linked to requirement package items
-(`requirement_package_items`). They record a request to
-deviate from a requirement within a specific package. A
-single package item can have multiple deviations over
+Deviations are linked to requirements specification items
+(`requirements_specification_items`). They record a request to
+deviate from a requirement within a specific specification. A
+single specification item can have multiple deviations over
 time.
 
 ```mermaid
@@ -195,18 +195,18 @@ stateDiagram-v2
 Approved and Rejected are terminal states — a decided
 deviation cannot be edited, deleted, or reopened.
 
-### Deviation Effect on Package Item Status
+### Deviation Effect on Specification Item Status
 
 Approving a deviation does **not** automatically change
-the package item status. To mark the item as deviated,
-the user must manually set the package item status to
+the specification item status. To mark the item as deviated,
+the user must manually set the specification item status to
 "Deviated" (see below). This is only allowed when at
 least one approved deviation exists for the item.
 
-## Package Item Status
+## Specification Item Status
 
-When a requirement is included in a requirement package
-it becomes a **package item** with a manually managed
+When a requirement is included in a requirements specification
+it becomes a **specification item** with a manually managed
 status. There is no enforced state machine — users can
 set any status at any time, with one exception.
 
@@ -221,35 +221,35 @@ set any status at any time, with one exception.
 | 6 | Ej tillämpbar | Not Applicable | #6b7280 | Not applicable in this context. |
 <!-- markdownlint-enable MD013 -->
 
-- Every new package item starts with status **Included**
+- Every new specification item starts with status **Included**
   (1).
 - Status changes are recorded with a `status_updated_at`
   timestamp.
 - **Guard rule:** The **Deviated** (5) status can only be
-  set when the package item has at least one approved
+  set when the specification item has at least one approved
   deviation. The system rejects the update otherwise.
 - Creating or approving a deviation does **not**
-  automatically update the package item status.
+  automatically update the specification item status.
 
-### Deviation-in-Package Process
+### Deviation-in-Specification Process
 
 The end-to-end process for handling deviations within a
-requirement package:
+requirements specification:
 
-1. A package item exists in the package (status defaults
+1. A specification item exists in the specification (status defaults
    to Included).
 2. The user registers a deviation on the item, providing
    a motivation.
 3. The deviation goes through
    Draft → Review Requested → Approved or Rejected.
-4. If approved, the user may set the package item status
+4. If approved, the user may set the specification item status
    to **Deviated**. The system validates that an approved
    deviation exists before allowing this.
-5. If rejected, the package item status remains
+5. If rejected, the specification item status remains
    unchanged and the user may register a new deviation.
-6. A package item can accumulate multiple deviations for
+6. A specification item can accumulate multiple deviations for
    historical tracking.
-7. Deviations are cascade-deleted when the package item
-   is removed from the package.
+7. Deviations are cascade-deleted when the specification item
+   is removed from the specification.
 
 ---

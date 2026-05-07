@@ -75,10 +75,9 @@ describe('Navigation', () => {
       'href',
       '/requirements',
     )
-    expect(screen.getByRole('link', { name: 'nav.packages' })).toHaveAttribute(
-      'href',
-      '/requirement-packages',
-    )
+    expect(
+      screen.getByRole('link', { name: 'nav.specifications' }),
+    ).toHaveAttribute('href', '/specifications')
   })
 
   it('keeps mobile navigation limited to the primary items', () => {
@@ -93,9 +92,9 @@ describe('Navigation', () => {
     ).toContain('/requirements')
     expect(
       screen
-        .getAllByRole('link', { name: 'nav.packages' })
+        .getAllByRole('link', { name: 'nav.specifications' })
         .map(link => link.getAttribute('href')),
-    ).toContain('/requirement-packages')
+    ).toContain('/specifications')
     expect(screen.queryByRole('link', { name: 'nav.areas' })).toBeNull()
     expect(screen.queryByText('nav.referenceData')).toBeNull()
   })

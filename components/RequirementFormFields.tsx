@@ -30,7 +30,7 @@ interface QualityCharacteristicOption {
   parentId: number | null
 }
 
-interface ScenarioOption {
+interface RequirementPackageOption {
   id: number
   nameEn: string
   nameSv: string
@@ -49,9 +49,9 @@ export interface RequirementFormFieldValues {
   description: string
   normReferenceIds: number[]
   qualityCharacteristicId: string
+  requirementPackageIds: number[]
   requiresTesting: boolean
   riskLevelId: string
-  scenarioIds: number[]
   typeId: string
   verificationMethod: string
 }
@@ -65,7 +65,7 @@ export interface RequirementFormFieldsProps {
   extraFieldsAfterRiskLevel?: ReactNode
   /** Unique prefix for field ids to avoid collisions when multiple forms exist */
   idPrefix?: string
-  /** Layout for scenarios/norm-references: 'sidebar' renders in right column, 'bottom' renders below */
+  /** Layout for requirementPackages/norm-references: 'sidebar' renders in right column, 'bottom' renders below */
   layout?: 'sidebar' | 'bottom'
   /** Extra actions rendered after norm reference list (e.g. "Create" button) */
   normReferenceActions?: ReactNode
@@ -107,7 +107,9 @@ export default function RequirementFormFields({
     QualityCharacteristicOption[]
   >([])
   const [riskLevels, setRiskLevels] = useState<TaxonomyOption[]>([])
-  const [scenarios, setScenarios] = useState<ScenarioOption[]>([])
+  const [requirementPackages, setRequirementPackages] = useState<
+    RequirementPackageOption[]
+  >([])
   const [normReferences, setNormReferences] = useState<NormReferenceOption[]>(
     [],
   )
@@ -127,7 +129,7 @@ export default function RequirementFormFields({
       fetch('/api/requirement-areas'),
       fetch('/api/requirement-categories'),
       fetch('/api/requirement-types'),
-      fetch('/api/usage-scenarios'),
+      fetch('/api/requirement-packages'),
       fetch('/api/norm-references'),
       fetch('/api/risk-levels'),
     ])
@@ -135,7 +137,7 @@ export default function RequirementFormFields({
       areasResult,
       catResult,
       typesResult,
-      scenariosResult,
+      requirementPackagesResult,
       normRefsResult,
       riskLevelsResult,
     ] = results
@@ -154,13 +156,16 @@ export default function RequirementFormFields({
         ((await typesResult.value.json()) as { types?: TaxonomyOption[] })
           .types ?? [],
       )
-    if (scenariosResult.status === 'fulfilled' && scenariosResult.value.ok)
-      setScenarios(
+    if (
+      requirementPackagesResult.status === 'fulfilled' &&
+      requirementPackagesResult.value.ok
+    )
+      setRequirementPackages(
         (
-          (await scenariosResult.value.json()) as {
-            scenarios?: ScenarioOption[]
+          (await requirementPackagesResult.value.json()) as {
+            requirementPackages?: RequirementPackageOption[]
           }
-        ).scenarios ?? [],
+        ).requirementPackages ?? [],
       )
     if (normRefsResult.status === 'fulfilled' && normRefsResult.value.ok) {
       setNormReferences(
@@ -483,31 +488,31 @@ export default function RequirementFormFields({
     </>
   )
 
-  const scenariosFieldset = scenarios.length > 0 && (
+  const requirementPackagesFieldset = requirementPackages.length > 0 && (
     <fieldset className="border-0 m-0 p-0">
       <div className="flex items-center gap-1.5 mb-1">
         <legend className="text-sm font-medium contents">
-          {t('scenario')}
+          {t('requirementPackage')}
         </legend>
-        {helpButton(fid('scenario'), t('scenario'))}
+        {helpButton(fid('requirementPackage'), t('requirementPackage'))}
       </div>
-      {helpPanel('scenarioHelp', fid('scenario'))}
+      {helpPanel('requirementPackageHelp', fid('requirementPackage'))}
       <div className="space-y-1.5 rounded-xl border bg-white dark:bg-secondary-800/50 p-3">
-        {scenarios.map(s => (
+        {requirementPackages.map(s => (
           <label
             className="flex items-center gap-2 text-sm cursor-pointer"
             key={s.id}
           >
             <input
-              checked={values.scenarioIds.includes(s.id)}
+              checked={values.requirementPackageIds.includes(s.id)}
               className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
               onChange={e => {
                 const checked = e.target.checked
                 onChange({
                   ...values,
-                  scenarioIds: checked
-                    ? [...values.scenarioIds, s.id]
-                    : values.scenarioIds.filter(id => id !== s.id),
+                  requirementPackageIds: checked
+                    ? [...values.requirementPackageIds, s.id]
+                    : values.requirementPackageIds.filter(id => id !== s.id),
                 })
               }}
               type="checkbox"
@@ -570,28 +575,36 @@ export default function RequirementFormFields({
       <div className="space-y-5">
         {mainFields}
         <div className="grid gap-5 lg:grid-cols-2">
-          {scenariosFieldset && (
+          {requirementPackagesFieldset && (
             <fieldset className="rounded-2xl border p-4">
               <legend className="px-1 text-sm font-medium">
                 <span className="inline-flex items-center gap-1.5">
-                  {t('scenario')}
-                  {helpButton(fid('scenario-legend'), t('scenario'))}
+                  {t('requirementPackage')}
+                  {helpButton(
+                    fid('requirementPackage-legend'),
+                    t('requirementPackage'),
+                  )}
                 </span>
               </legend>
-              {helpPanel('scenarioHelp', fid('scenario-legend'))}
+              {helpPanel(
+                'requirementPackageHelp',
+                fid('requirementPackage-legend'),
+              )}
               <div className="mt-2 space-y-2">
-                {scenarios.map(s => (
+                {requirementPackages.map(s => (
                   <label className="flex items-center gap-2 text-sm" key={s.id}>
                     <input
-                      checked={values.scenarioIds.includes(s.id)}
+                      checked={values.requirementPackageIds.includes(s.id)}
                       className="rounded border-secondary-300 text-primary-700 focus:ring-primary-400/50"
                       onChange={e => {
                         const checked = e.target.checked
                         onChange({
                           ...values,
-                          scenarioIds: checked
-                            ? [...values.scenarioIds, s.id]
-                            : values.scenarioIds.filter(id => id !== s.id),
+                          requirementPackageIds: checked
+                            ? [...values.requirementPackageIds, s.id]
+                            : values.requirementPackageIds.filter(
+                                id => id !== s.id,
+                              ),
                         })
                       }}
                       type="checkbox"
@@ -646,7 +659,7 @@ export default function RequirementFormFields({
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-start">
       <div className="space-y-5">{mainFields}</div>
       <div className="self-start lg:w-64 space-y-6">
-        {scenariosFieldset}
+        {requirementPackagesFieldset}
         {normReferencesFieldset}
       </div>
     </div>

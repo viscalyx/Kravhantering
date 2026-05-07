@@ -4,7 +4,7 @@ import RequirementPackagesClient from './requirement-packages-client'
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('nav')
-  return { title: t('packages') }
+  return { title: t('requirementPackages') }
 }
 
 export default function RequirementPackagesPage() {

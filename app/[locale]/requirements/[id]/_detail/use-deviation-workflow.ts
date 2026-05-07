@@ -41,9 +41,9 @@ function deviationDialogReducer(
 }
 
 interface UseDeviationWorkflowOptions {
-  isPackageItemContext: boolean
+  isSpecificationItemContext: boolean
   onChange?: () => void | Promise<void>
-  packageItemId?: number
+  specificationItemId?: number
 }
 
 export interface UseDeviationWorkflowResult {
@@ -77,9 +77,9 @@ export interface UseDeviationWorkflowResult {
 }
 
 export function useDeviationWorkflow({
-  isPackageItemContext,
+  isSpecificationItemContext,
   onChange,
-  packageItemId,
+  specificationItemId,
 }: UseDeviationWorkflowOptions): UseDeviationWorkflowResult {
   const td = useTranslations('deviation')
   const { confirm } = useConfirmModal()
@@ -122,10 +122,10 @@ export function useDeviationWorkflow({
 
     setDeviations([])
     setDeviationError(null)
-    if (!packageItemId) return
+    if (!specificationItemId) return
     try {
       const res = await apiFetch(
-        `/api/package-item-deviations/${packageItemId}`,
+        `/api/specification-item-deviations/${specificationItemId}`,
       )
       if (!isLatestRequest()) return
       if (res.ok) {
@@ -139,13 +139,13 @@ export function useDeviationWorkflow({
       if (!isLatestRequest()) return
       setDeviationError(deviationFetchFailed)
     }
-  }, [packageItemId, deviationFetchFailed])
+  }, [specificationItemId, deviationFetchFailed])
 
   useEffect(() => {
-    if (isPackageItemContext) {
+    if (isSpecificationItemContext) {
       void fetchDeviations()
     }
-  }, [isPackageItemContext, fetchDeviations])
+  }, [isSpecificationItemContext, fetchDeviations])
 
   const closeDialog = useCallback(() => {
     dispatchDialog({ type: 'close' })
@@ -153,11 +153,11 @@ export function useDeviationWorkflow({
 
   const handleCreateDeviation = useCallback(
     async (motivation: string, createdBy: string) => {
-      if (!packageItemId || !motivation) return
+      if (!specificationItemId || !motivation) return
       setDeviationSaving(true)
       try {
         const res = await apiFetch(
-          `/api/package-item-deviations/${packageItemId}`,
+          `/api/specification-item-deviations/${specificationItemId}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -179,7 +179,7 @@ export function useDeviationWorkflow({
         setDeviationSaving(false)
       }
     },
-    [packageItemId, fetchDeviations, deviationSaveFailed, closeDialog],
+    [specificationItemId, fetchDeviations, deviationSaveFailed, closeDialog],
   )
 
   const handleEditDeviation = useCallback(

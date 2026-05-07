@@ -117,7 +117,9 @@ remove **all** references to it from `docs/database-schema.md`:
 2. Add a new migration file under `typeorm/migrations/` named
    `NNNN_<name>.mjs`. Migrations are hand-authored; embed the `up` and
    `down` SQL statements as string arrays and execute them with
-   `queryRunner.query(...)`.
+   `queryRunner.query(...)`. The file is auto-discovered by
+   `lib/typeorm/sqlserver-config.ts` and `scripts/db-sqlserver-admin.mjs`
+   (sorted by filename) — do not maintain a manual import list.
 3. Prefer SQL Server `ALTER TABLE … ADD`, `ALTER COLUMN`, and `sp_rename`
    over drop-and-recreate for renames and additions, to keep FK safety.
 4. Update `typeorm/seed.mjs` so every table in the schema has

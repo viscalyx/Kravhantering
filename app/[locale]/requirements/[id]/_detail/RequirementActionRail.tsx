@@ -4,7 +4,7 @@ import {
   Archive,
   Check,
   Edit,
-  PackagePlus,
+  FolderPlus,
   RotateCcw,
   Share2,
   Trash2,
@@ -24,7 +24,7 @@ import {
 } from './types'
 
 interface RequirementActionRailProps {
-  canAddToPackage: boolean
+  canAddToSpecification: boolean
   currentStatusId: number
   detailContext?: string
   displayVersionNumber?: number
@@ -46,7 +46,7 @@ interface RequirementActionRailProps {
     event?: ReactMouseEvent<HTMLButtonElement>,
   ) => Promise<void>
   onDeleteDraft: (event?: ReactMouseEvent<HTMLButtonElement>) => Promise<void>
-  onOpenAddToPackage: () => Promise<void>
+  onOpenAddToSpecification: () => Promise<void>
   onRestore: (versionNumber: number, anchorEl?: HTMLElement) => Promise<void>
   onTransition: (
     targetStatusId: number,
@@ -78,7 +78,7 @@ function getTransitionActionDeveloperModeValue(
 }
 
 export default function RequirementActionRail({
-  canAddToPackage,
+  canAddToSpecification,
   currentStatusId,
   detailContext,
   displayVersionNumber,
@@ -96,7 +96,7 @@ export default function RequirementActionRail({
   onArchive,
   onCancelArchiving,
   onDeleteDraft,
-  onOpenAddToPackage,
+  onOpenAddToSpecification,
   onRestore,
   onTransition,
   onVersionSelect,
@@ -108,7 +108,7 @@ export default function RequirementActionRail({
 }: RequirementActionRailProps) {
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
-  const tp = useTranslations('package')
+  const tp = useTranslations('specification')
   const [copied, setCopied] = useState<'inline' | 'page' | null>(null)
   const [showShareMenu, setShowShareMenu] = useState(false)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -176,21 +176,21 @@ export default function RequirementActionRail({
         requirementId={requirementId}
         variant="standalone"
       />
-      {canAddToPackage && (
+      {canAddToSpecification && (
         <button
           className="btn-secondary inline-flex items-center gap-1.5 w-full justify-center min-h-[44px] min-w-[44px]"
           {...devMarker({
             context: detailContext,
             name: 'detail action',
             priority: 360,
-            value: 'add to package',
+            value: 'add to specification',
           })}
-          onClick={() => void onOpenAddToPackage()}
-          title={tp('addToPackage')}
+          onClick={() => void onOpenAddToSpecification()}
+          title={tp('addToSpecification')}
           type="button"
         >
-          <PackagePlus aria-hidden="true" className="h-4 w-4" />
-          {tp('addToPackage')}
+          <FolderPlus aria-hidden="true" className="h-4 w-4" />
+          {tp('addToSpecification')}
         </button>
       )}
       <div className="relative" ref={shareMenuRef}>

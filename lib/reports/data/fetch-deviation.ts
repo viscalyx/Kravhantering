@@ -11,9 +11,9 @@ export interface DeviationReportVersion {
   description: string | null
   normReferences: { name: string; reference: string; uri: string | null }[]
   qualityCharacteristic: { nameEn: string; nameSv: string } | null
+  requirementPackages: { nameEn: string | null; nameSv: string | null }[]
   requiresTesting: boolean
   riskLevel: { nameEn: string; nameSv: string } | null
-  scenarios: { nameEn: string | null; nameSv: string | null }[]
   status: { color: string | null; label: string }
   type: { nameEn: string; nameSv: string } | null
   verificationMethod: string | null
@@ -22,22 +22,24 @@ export interface DeviationReportVersion {
 
 export interface DeviationReportData {
   deviation: DeviationReportDeviation
-  packageName: string | null
-  packageUniqueId: string | null
   requirementUniqueId: string
+  specificationName: string | null
+  specificationUniqueId: string | null
   version: DeviationReportVersion
 }
 
 export async function fetchDeviationForReport(
   requirementId: number | string,
-  packageItemId: number | string,
+  specificationItemId: number | string,
   locale: string,
 ): Promise<DeviationReportData> {
   const baseUrl = typeof window !== 'undefined' ? '' : 'http://localhost:3000'
 
   const [reqRes, devRes] = await Promise.all([
     fetch(`${baseUrl}/api/requirements/${requirementId}?locale=${locale}`),
-    fetch(`${baseUrl}/api/package-item-deviations/${packageItemId}`),
+    fetch(
+      `${baseUrl}/api/specification-item-deviations/${specificationItemId}`,
+    ),
   ])
 
   if (!reqRes.ok) {
@@ -47,7 +49,7 @@ export async function fetchDeviationForReport(
   }
   if (!devRes.ok) {
     throw new Error(
-      `Failed to fetch deviations for item ${packageItemId}: ${devRes.status}`,
+      `Failed to fetch deviations for item ${specificationItemId}: ${devRes.status}`,
     )
   }
 
@@ -80,8 +82,8 @@ export async function fetchDeviationForReport(
         }
       }[]
       versionNumber: number
-      versionScenarios: {
-        scenario: { nameEn: string | null; nameSv: string | null }
+      versionRequirementPackages: {
+        requirementPackage: { nameEn: string | null; nameSv: string | null }
       }[]
     }[]
   }
@@ -94,8 +96,8 @@ export async function fetchDeviationForReport(
       id: number
       isReviewRequested: number
       motivation: string
-      packageName: string | null
-      packageUniqueId: string | null
+      specificationName: string | null
+      specificationUniqueId: string | null
       requirementVersionId: number
     }[]
   }
@@ -108,7 +110,7 @@ export async function fetchDeviationForReport(
     throw new Error('No deviation in review found')
   }
 
-  // Find the specific version connected to the package item
+  // Find the specific version connected to the specification item
   const version =
     requirement.versions.find(v => v.id === inReview.requirementVersionId) ??
     requirement.versions[requirement.versions.length - 1]
@@ -122,8 +124,8 @@ export async function fetchDeviationForReport(
 
   return {
     requirementUniqueId: requirement.uniqueId,
-    packageName: inReview.packageName,
-    packageUniqueId: inReview.packageUniqueId,
+    specificationName: inReview.specificationName,
+    specificationUniqueId: inReview.specificationUniqueId,
     deviation: {
       motivation: inReview.motivation,
       createdBy: inReview.createdBy,
@@ -165,11 +167,11 @@ export async function fetchDeviationForReport(
           reference: vnr.normReference.reference,
           uri: vnr.normReference.uri,
         })),
-      scenarios: version.versionScenarios
-        .filter(vs => vs.scenario)
+      requirementPackages: version.versionRequirementPackages
+        .filter(vs => vs.requirementPackage)
         .map(vs => ({
-          nameEn: vs.scenario.nameEn,
-          nameSv: vs.scenario.nameSv,
+          nameEn: vs.requirementPackage.nameEn,
+          nameSv: vs.requirementPackage.nameSv,
         })),
     },
   }
