@@ -44,6 +44,15 @@ export interface TaxonomyOptions {
   types: TaxonomyOption[]
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    error.name === 'AbortError'
+  )
+}
+
 export function useTaxonomyOptions(typeId: string): TaxonomyOptions {
   const [areas, setAreas] = useState<AreaOption[]>([])
   const [categories, setCategories] = useState<TaxonomyOption[]>([])
@@ -130,28 +139,43 @@ export function useTaxonomyOptions(typeId: string): TaxonomyOptions {
     }
   }, [])
 
-  const fetchQualityCharacteristics = useCallback(async (tid: string) => {
-    if (!tid) {
-      setQualityCharacteristics([])
-      return
-    }
-    const res = await fetch(`/api/quality-characteristics?typeId=${tid}`)
-    if (res.ok)
-      setQualityCharacteristics(
-        (
-          (await res.json()) as {
-            qualityCharacteristics?: QualityCharacteristicOption[]
-          }
-        ).qualityCharacteristics ?? [],
-      )
-  }, [])
+  const fetchQualityCharacteristics = useCallback(
+    async (tid: string, signal: AbortSignal) => {
+      if (!tid) {
+        setQualityCharacteristics([])
+        return
+      }
+      try {
+        const res = await fetch(`/api/quality-characteristics?typeId=${tid}`, {
+          signal,
+        })
+        if (!res.ok) {
+          if (!signal.aborted) setQualityCharacteristics([])
+          return
+        }
+        const body = (await res.json()) as {
+          qualityCharacteristics?: QualityCharacteristicOption[]
+        }
+        if (!signal.aborted)
+          setQualityCharacteristics(body.qualityCharacteristics ?? [])
+      } catch (error) {
+        if (signal.aborted || isAbortError(error)) return
+        setQualityCharacteristics([])
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     void fetchOptions()
   }, [fetchOptions])
 
   useEffect(() => {
-    void fetchQualityCharacteristics(typeId)
+    const controller = new AbortController()
+    void fetchQualityCharacteristics(typeId, controller.signal)
+    return () => {
+      controller.abort()
+    }
   }, [typeId, fetchQualityCharacteristics])
 
   return {

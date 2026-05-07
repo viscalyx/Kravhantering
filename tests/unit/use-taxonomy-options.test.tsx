@@ -14,6 +14,14 @@ function failedResponse() {
   return { ok: false, json: async () => ({}) }
 }
 
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>(res => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 const fetchMock = vi.fn()
 vi.stubGlobal('fetch', fetchMock)
 
@@ -100,6 +108,7 @@ describe('useTaxonomyOptions', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/quality-characteristics?typeId=1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
     expect(result.current.qualityCharacteristics).toEqual(sampleQC)
   })
@@ -147,7 +156,118 @@ describe('useTaxonomyOptions', () => {
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/quality-characteristics?typeId=2',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       )
+    })
+  })
+
+  it('ignores stale quality-characteristics responses when typeId changes', async () => {
+    const firstQc = deferred<ReturnType<typeof okJson>>()
+    const secondQc = deferred<ReturnType<typeof okJson>>()
+    const staleQC = [
+      { id: 20, nameSv: 'Gammal', nameEn: 'Stale', parentId: null },
+    ]
+    const latestQC = [
+      { id: 30, nameSv: 'Senaste', nameEn: 'Latest', parentId: null },
+    ]
+    let qualityCharacteristicsRequests = 0
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/api/quality-characteristics')) {
+        qualityCharacteristicsRequests += 1
+        return qualityCharacteristicsRequests === 1
+          ? firstQc.promise
+          : secondQc.promise
+      }
+      if (url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url.includes('/api/requirement-categories'))
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url.includes('/api/requirement-packages'))
+        return Promise.resolve(okJson({ requirementPackages: samplePackages }))
+      if (url.includes('/api/norm-references'))
+        return Promise.resolve(okJson({ normReferences: sampleNormRefs }))
+      if (url.includes('/api/risk-levels'))
+        return Promise.resolve(okJson({ riskLevels: sampleRiskLevels }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { result, rerender } = renderHook(
+      ({ typeId }: { typeId: string }) => useTaxonomyOptions(typeId),
+      { initialProps: { typeId: '1' } },
+    )
+
+    await waitFor(() => {
+      expect(qualityCharacteristicsRequests).toBe(1)
+    })
+
+    await act(async () => {
+      rerender({ typeId: '2' })
+    })
+
+    await waitFor(() => {
+      expect(qualityCharacteristicsRequests).toBe(2)
+    })
+
+    await act(async () => {
+      secondQc.resolve(okJson({ qualityCharacteristics: latestQC }))
+      await secondQc.promise
+    })
+
+    await waitFor(() => {
+      expect(result.current.qualityCharacteristics).toEqual(latestQC)
+    })
+
+    await act(async () => {
+      firstQc.resolve(okJson({ qualityCharacteristics: staleQC }))
+      await firstQc.promise
+    })
+
+    expect(result.current.qualityCharacteristics).toEqual(latestQC)
+  })
+
+  it('handles thrown fetch error for quality-characteristics', async () => {
+    let qualityCharacteristicsRequests = 0
+
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes('/api/quality-characteristics')) {
+        qualityCharacteristicsRequests += 1
+        return qualityCharacteristicsRequests === 1
+          ? Promise.resolve(okJson({ qualityCharacteristics: sampleQC }))
+          : Promise.reject(new Error('Quality characteristic fetch failed'))
+      }
+      if (url.includes('/api/requirement-areas'))
+        return Promise.resolve(okJson({ areas: sampleAreas }))
+      if (url.includes('/api/requirement-categories'))
+        return Promise.resolve(okJson({ categories: sampleCategories }))
+      if (url.includes('/api/requirement-types'))
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url.includes('/api/requirement-packages'))
+        return Promise.resolve(okJson({ requirementPackages: samplePackages }))
+      if (url.includes('/api/norm-references'))
+        return Promise.resolve(okJson({ normReferences: sampleNormRefs }))
+      if (url.includes('/api/risk-levels'))
+        return Promise.resolve(okJson({ riskLevels: sampleRiskLevels }))
+      return Promise.resolve(okJson({}))
+    })
+
+    const { result, rerender } = renderHook(
+      ({ typeId }: { typeId: string }) => useTaxonomyOptions(typeId),
+      { initialProps: { typeId: '1' } },
+    )
+
+    await waitFor(() => {
+      expect(result.current.qualityCharacteristics).toEqual(sampleQC)
+    })
+
+    await act(async () => {
+      rerender({ typeId: '2' })
+    })
+
+    await waitFor(() => {
+      expect(result.current.qualityCharacteristics).toEqual([])
     })
   })
 

@@ -490,6 +490,7 @@ describe('RequirementForm', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/api/quality-characteristics?typeId=1'),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
   })
 
