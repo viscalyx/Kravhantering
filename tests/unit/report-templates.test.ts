@@ -141,6 +141,7 @@ describe('report templates', () => {
         }),
         makeVersion({
           id: 2,
+          requiresTesting: true,
           status: 2,
           statusNameEn: 'Review',
           statusNameSv: 'Granskning',
@@ -159,9 +160,20 @@ describe('report templates', () => {
       'en',
     )
 
+    const metadataChanges = model.sections.filter(
+      section => section.type === 'metadata-changes',
+    )
+    expect(metadataChanges).toHaveLength(1)
     expect(
-      model.sections.some(section => section.type === 'metadata-changes'),
-    ).toBe(false)
+      metadataChanges.flatMap(section =>
+        section.type === 'metadata-changes' ? section.changes : [],
+      ),
+    ).toEqual(
+      expect.not.arrayContaining([
+        expect.objectContaining({ field: 'Requirements packages' }),
+        expect.objectContaining({ field: 'Kravpaket' }),
+      ]),
+    )
   })
 
   it('uses fallback requirement package names in review metadata changes', () => {

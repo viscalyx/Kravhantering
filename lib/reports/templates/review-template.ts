@@ -52,6 +52,29 @@ function getRequirementPackageDisplayName(
   return locale === 'sv' ? summary.nameSv : summary.nameEn
 }
 
+function collectPackageNames(
+  version: RequirementReportData['versions'][number],
+  locale: string,
+): string {
+  return version.versionRequirementPackages
+    .flatMap(({ requirementPackage }) => {
+      const name = getRequirementPackageDisplayName(requirementPackage, locale)
+      return name ? [name] : []
+    })
+    .sort()
+    .join(', ')
+}
+
+function collectPackageIds(
+  version: RequirementReportData['versions'][number],
+): string {
+  return version.versionRequirementPackages
+    .map(({ requirementPackage }) => requirementPackage?.id)
+    .filter((id): id is number => Number.isInteger(id))
+    .sort((a, b) => a - b)
+    .join(',')
+}
+
 function toVersionSummary(
   version: RequirementReportData['versions'][number],
   locale: string,
@@ -173,36 +196,10 @@ function computeMetadataChanges(
     })
   }
 
-  const oldRequirementPackages = baseVersion.versionRequirementPackages
-    .flatMap(vs => {
-      const name = getRequirementPackageDisplayName(
-        vs.requirementPackage,
-        locale,
-      )
-      return name ? [name] : []
-    })
-    .sort()
-    .join(', ')
-  const newRequirementPackages = reviewVersion.versionRequirementPackages
-    .flatMap(vs => {
-      const name = getRequirementPackageDisplayName(
-        vs.requirementPackage,
-        locale,
-      )
-      return name ? [name] : []
-    })
-    .sort()
-    .join(', ')
-  const oldRequirementPackageIds = baseVersion.versionRequirementPackages
-    .map(vs => vs.requirementPackage?.id)
-    .filter((id): id is number => Number.isInteger(id))
-    .sort((a, b) => a - b)
-    .join(',')
-  const newRequirementPackageIds = reviewVersion.versionRequirementPackages
-    .map(vs => vs.requirementPackage?.id)
-    .filter((id): id is number => Number.isInteger(id))
-    .sort((a, b) => a - b)
-    .join(',')
+  const oldRequirementPackages = collectPackageNames(baseVersion, locale)
+  const newRequirementPackages = collectPackageNames(reviewVersion, locale)
+  const oldRequirementPackageIds = collectPackageIds(baseVersion)
+  const newRequirementPackageIds = collectPackageIds(reviewVersion)
   if (oldRequirementPackageIds !== newRequirementPackageIds) {
     changes.push({
       field: locale === 'sv' ? 'Kravpaket' : 'Requirements packages',
