@@ -114,10 +114,112 @@ let addRequirementsResponse: { body: unknown; ok: boolean }
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 
-function renderRequirementsSpecificationDetailClient() {
+const initialSpec = {
+  businessNeedsReference: 'Shared IAM business case',
+  id: 8,
+  implementationType: { id: 2, nameEn: 'Program', nameSv: 'Program' },
+  lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
+  name: 'Authorization and IAM',
+  specificationImplementationTypeId: 2,
+  specificationLifecycleStatusId: 3,
+  specificationResponsibilityAreaId: 1,
+  responsibilityArea: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+  uniqueId: 'ETJANST-UPP-2026',
+}
+
+const initialSpecificationItem = {
+  area: { name: 'Security' },
+  id: 101,
+  isArchived: false,
+  itemRef: 'lib:31',
+  kind: 'library' as const,
+  specificationItemId: 31,
+  uniqueId: 'BEH0001',
+  version: {
+    categoryNameEn: 'Business requirement',
+    categoryNameSv: 'Verksamhetskrav',
+    description: 'RBAC should be enforced.',
+    qualityCharacteristicNameEn: null,
+    qualityCharacteristicNameSv: null,
+    requiresTesting: true,
+    riskLevelColor: null,
+    riskLevelId: null,
+    riskLevelNameEn: null,
+    riskLevelNameSv: null,
+    riskLevelSortOrder: null,
+    status: 3,
+    statusColor: '#22c55e',
+    statusNameEn: 'Published',
+    statusNameSv: 'Publicerad',
+    typeNameEn: 'Non-functional',
+    typeNameSv: 'Icke-funktionellt',
+    versionNumber: 1,
+  },
+}
+
+const initialAvailableRequirement = {
+  area: { name: 'Platform' },
+  id: 202,
+  isArchived: false,
+  uniqueId: 'IAM0202',
+  version: {
+    categoryNameEn: 'Business requirement',
+    categoryNameSv: 'Verksamhetskrav',
+    description: 'Allow specification-level linking.',
+    qualityCharacteristicNameEn: null,
+    qualityCharacteristicNameSv: null,
+    requiresTesting: true,
+    riskLevelColor: null,
+    riskLevelId: null,
+    riskLevelNameEn: null,
+    riskLevelNameSv: null,
+    riskLevelSortOrder: null,
+    status: 3,
+    statusColor: '#22c55e',
+    statusNameEn: 'Published',
+    statusNameSv: 'Publicerad',
+    typeNameEn: 'Non-functional',
+    typeNameSv: 'Icke-funktionellt',
+    versionNumber: 1,
+  },
+}
+
+function createInitialData() {
+  return {
+    areas: [],
+    availableNeedsRefs: [],
+    availableRequirements: {
+      hasMore: false,
+      rows: [initialAvailableRequirement],
+    },
+    errors: [],
+    leftNormReferenceOptions: [],
+    requirementPackages: [],
+    rightNormReferenceOptions: [],
+    spec: initialSpec,
+    specificationImplementationTypes: [
+      { id: 2, nameEn: 'Program', nameSv: 'Program' },
+    ],
+    specificationItemStatuses: [],
+    specificationItems: [initialSpecificationItem],
+    specificationLifecycleStatuses: [
+      { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
+    ],
+    specificationResponsibilityAreas: [
+      { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+    ],
+  }
+}
+
+function renderRequirementsSpecificationDetailClient(
+  initialData = createInitialData(),
+) {
   return render(
     <ConfirmModalProvider>
-      <RequirementsSpecificationDetailClient specificationSlug="ETJANST-UPP-2026" />
+      <RequirementsSpecificationDetailClient
+        initialData={initialData}
+        specificationSlug="ETJANST-UPP-2026"
+      />
     </ConfirmModalProvider>,
   )
 }

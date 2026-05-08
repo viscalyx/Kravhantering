@@ -1,0 +1,89 @@
+import type {
+  AreaOption,
+  FilterOption,
+  RequirementRow,
+  SpecificationItemStatusOption,
+} from '@/lib/requirements/list-view'
+
+export interface SpecificationPreloadError {
+  key: string
+  message: string
+}
+
+export interface SpecificationTaxonomyItem {
+  id: number
+  nameEn: string
+  nameSv: string
+}
+
+export interface SpecificationMeta {
+  businessNeedsReference: string | null
+  id: number
+  implementationType: SpecificationTaxonomyItem | null
+  lifecycleStatus: SpecificationTaxonomyItem | null
+  name: string
+  responsibilityArea: SpecificationTaxonomyItem | null
+  specificationImplementationTypeId: number | null
+  specificationLifecycleStatusId: number | null
+  specificationResponsibilityAreaId: number | null
+  uniqueId: string
+}
+
+export interface SpecificationListItem extends RequirementRow {
+  needsReference?: string | null
+}
+
+export interface NormReferenceOption {
+  id: number
+  name: string
+  normReferenceId: string
+}
+
+export interface AvailableRequirementsData {
+  hasMore: boolean
+  rows: RequirementRow[]
+}
+
+export interface RequirementsSpecificationDetailInitialData {
+  areas: AreaOption[]
+  availableNeedsRefs: { id: number; text: string }[]
+  availableRequirements: AvailableRequirementsData
+  errors: SpecificationPreloadError[]
+  leftNormReferenceOptions: NormReferenceOption[]
+  requirementPackages: FilterOption[]
+  rightNormReferenceOptions: NormReferenceOption[]
+  spec: SpecificationMeta | null
+  specificationImplementationTypes: SpecificationTaxonomyItem[]
+  specificationItemStatuses: SpecificationItemStatusOption[]
+  specificationItems: SpecificationListItem[]
+  specificationLifecycleStatuses: SpecificationTaxonomyItem[]
+  specificationResponsibilityAreas: SpecificationTaxonomyItem[]
+}
+
+export interface SpecificationRequirementArea {
+  id: number
+  name: string
+}
+
+export interface Specification {
+  businessNeedsReference: string | null
+  id: number
+  implementationType: SpecificationTaxonomyItem | null
+  itemCount: number
+  lifecycleStatus: SpecificationTaxonomyItem | null
+  name: string
+  requirementAreas: SpecificationRequirementArea[]
+  responsibilityArea: SpecificationTaxonomyItem | null
+  specificationImplementationTypeId: number | null
+  specificationLifecycleStatusId: number | null
+  specificationResponsibilityAreaId: number | null
+  uniqueId: string
+}
+
+export interface RequirementsSpecificationsInitialData {
+  errors: SpecificationPreloadError[]
+  implementationTypes: SpecificationTaxonomyItem[]
+  lifecycleStatuses: SpecificationTaxonomyItem[]
+  responsibilityAreas: SpecificationTaxonomyItem[]
+  specifications: Specification[]
+}

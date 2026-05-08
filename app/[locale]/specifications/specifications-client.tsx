@@ -22,12 +22,18 @@ import {
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { generateSpecificationSlug, normalizeSlugInput } from '@/lib/slug'
+import type {
+  RequirementsSpecificationsInitialData,
+  Specification,
+  SpecificationTaxonomyItem,
+} from '@/lib/specifications/preload-types'
 
 const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   sections: [
@@ -45,35 +51,31 @@ const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
   titleKey: 'requirementsSpecifications.title',
 }
 
-interface TaxonomyItem {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface RequirementArea {
-  id: number
-  name: string
-}
-
-interface Specification {
-  businessNeedsReference: string | null
-  id: number
-  implementationType: TaxonomyItem | null
-  itemCount: number
-  lifecycleStatus: TaxonomyItem | null
-  name: string
-  requirementAreas: RequirementArea[]
-  responsibilityArea: TaxonomyItem | null
-  specificationImplementationTypeId: number | null
-  specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
-  uniqueId: string
-}
-
 const REQUIREMENT_AREA_PILL_ROW_HEIGHT = 24
+const EMPTY_INITIAL_DATA: RequirementsSpecificationsInitialData = {
+  errors: [],
+  implementationTypes: [],
+  lifecycleStatuses: [],
+  responsibilityAreas: [],
+  specifications: [],
+}
 
-function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
+async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
+  if (!response.ok) {
+    const details = await readResponseMessage(response)
+    throw new Error(
+      details ? `${fallbackMessage}: ${details}` : fallbackMessage,
+    )
+  }
+
+  return (await response.json()) as T
+}
+
+function RequirementAreaPills({
+  areas,
+}: {
+  areas: Specification['requirementAreas']
+}) {
   const tc = useTranslations('common')
   const [expanded, setExpanded] = useState(false)
   const [canExpand, setCanExpand] = useState(false)
@@ -176,40 +178,152 @@ function RequirementAreaPills({ areas }: { areas: RequirementArea[] }) {
   )
 }
 
-export default function RequirementsSpecificationsClient() {
+export default function RequirementsSpecificationsClient({
+  initialData,
+}: {
+  initialData?: RequirementsSpecificationsInitialData
+}) {
   useHelpContent(REQUIREMENT_SPECIFICATIONS_HELP)
   const t = useTranslations('specification')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
   const shouldReduceMotion = useReducedMotion()
-  const tRef = useRef(t)
-  tRef.current = t
+  const hasInitialData = initialData !== undefined
+  const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
 
   const getName = (spec: Specification) => spec.name
-  const getTaxonomyName = (item: TaxonomyItem | null) =>
+  const getTaxonomyName = (item: SpecificationTaxonomyItem | null) =>
     item ? (locale === 'sv' ? item.nameSv : item.nameEn) : '—'
   const specificationTableColumnCount = 7
 
-  const [specifications, setSpecifications] = useState<Specification[]>([])
-  const [responsibilityAreas, setResponsibilityAreas] = useState<
-    TaxonomyItem[]
-  >([])
-  const [implementationTypes, setImplementationTypes] = useState<
-    TaxonomyItem[]
-  >([])
-  const [lifecycleStatuses, setLifecycleStatuses] = useState<TaxonomyItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const responsibilityAreasResource = useAsyncResource<
+    SpecificationTaxonomyItem[]
+  >({
+    fetcher: async signal => {
+      const response = await apiFetch(
+        '/api/specification-responsibility-areas',
+        {
+          signal,
+        },
+      )
+      const data = await readJsonOrThrow<{
+        areas?: SpecificationTaxonomyItem[]
+      }>(response, t('partialDataLoadWarning'))
+      return data.areas ?? []
+    },
+    getErrorMessage: error => {
+      console.error('Failed to load specification responsibility areas', error)
+      return error instanceof Error
+        ? error.message
+        : t('partialDataLoadWarning')
+    },
+    key: 'specification-responsibility-areas',
+    loadOnMount: !hasInitialData,
+    ...(hasInitialData
+      ? { initialData: resolvedInitialData.responsibilityAreas }
+      : {}),
+  })
+  const implementationTypesResource = useAsyncResource<
+    SpecificationTaxonomyItem[]
+  >({
+    fetcher: async signal => {
+      const response = await apiFetch(
+        '/api/specification-implementation-types',
+        {
+          signal,
+        },
+      )
+      const data = await readJsonOrThrow<{
+        types?: SpecificationTaxonomyItem[]
+      }>(response, t('partialDataLoadWarning'))
+      return data.types ?? []
+    },
+    getErrorMessage: error => {
+      console.error('Failed to load specification implementation types', error)
+      return error instanceof Error
+        ? error.message
+        : t('partialDataLoadWarning')
+    },
+    key: 'specification-implementation-types',
+    loadOnMount: !hasInitialData,
+    ...(hasInitialData
+      ? { initialData: resolvedInitialData.implementationTypes }
+      : {}),
+  })
+  const lifecycleStatusesResource = useAsyncResource<
+    SpecificationTaxonomyItem[]
+  >({
+    fetcher: async signal => {
+      const response = await apiFetch('/api/specification-lifecycle-statuses', {
+        signal,
+      })
+      const data = await readJsonOrThrow<{
+        statuses?: SpecificationTaxonomyItem[]
+      }>(response, t('partialDataLoadWarning'))
+      return data.statuses ?? []
+    },
+    getErrorMessage: error => {
+      console.error('Failed to load specification lifecycle statuses', error)
+      return error instanceof Error
+        ? error.message
+        : t('partialDataLoadWarning')
+    },
+    key: 'specification-lifecycle-statuses',
+    loadOnMount: !hasInitialData,
+    ...(hasInitialData
+      ? { initialData: resolvedInitialData.lifecycleStatuses }
+      : {}),
+  })
+  const responsibilityAreas = responsibilityAreasResource.data ?? []
+  const implementationTypes = implementationTypesResource.data ?? []
+  const lifecycleStatuses = lifecycleStatusesResource.data ?? []
+  const specificationsResource = useAsyncResource<Specification[]>({
+    fetcher: async signal => {
+      const res = await apiFetch('/api/specifications', { signal })
+      if (!res.ok) {
+        const details = await readResponseMessage(res)
+        throw new Error(
+          details
+            ? `${t('loadSpecificationsFailed')}: ${details}`
+            : t('loadSpecificationsFailed'),
+        )
+      }
+      return (
+        ((await res.json()) as { specifications?: Specification[] })
+          .specifications ?? []
+      )
+    },
+    getErrorMessage: error => {
+      console.error('Failed to load requirements specifications', error)
+      return error instanceof Error
+        ? error.message
+        : t('loadSpecificationsFailed')
+    },
+    key: 'requirements-specifications',
+    loadOnMount: !hasInitialData,
+    ...(hasInitialData
+      ? { initialData: resolvedInitialData.specifications }
+      : {}),
+  })
+  const specifications = specificationsResource.data ?? []
+  const loading = specificationsResource.loading
+  const isFetchingSpecifications =
+    specificationsResource.loading || specificationsResource.refreshing
+  const fetchError = specificationsResource.error
+  const loadWarning =
+    specificationsResource.refreshError ??
+    responsibilityAreasResource.refreshError ??
+    implementationTypesResource.refreshError ??
+    lifecycleStatusesResource.refreshError ??
+    (resolvedInitialData.errors.length > 0 ? t('partialDataLoadWarning') : null)
   const [showSpinner, setShowSpinner] = useState(false)
   const spinnerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const fetchIdRef = useRef(0)
-  const isMountedRef = useRef(true)
   const [showForm, setShowForm] = useState(false)
   const [editSpec, setEditSpec] = useState<Specification | null>(null)
   const [slugEdited, setSlugEdited] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
-  const [fetchError, setFetchError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [slugError, setSlugError] = useState<string | null>(null)
   const [nameFilter, setNameFilter] = useState('')
@@ -270,123 +384,30 @@ export default function RequirementsSpecificationsClient() {
     </AnimatedHelpPanel>
   )
 
-  const fetchSpecifications = useCallback(async () => {
-    const localFetchId = ++fetchIdRef.current
-    setLoading(true)
-    setFetchError(null)
-    if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
-    spinnerTimerRef.current = setTimeout(() => {
-      if (isMountedRef.current && localFetchId === fetchIdRef.current) {
-        setShowSpinner(true)
-      }
-    }, 200)
-    try {
-      const res = await apiFetch('/api/specifications')
-      if (!res.ok) {
-        const details = await readResponseMessage(res)
-        throw new Error(
-          details
-            ? `${tRef.current('loadSpecificationsFailed')}: ${details}`
-            : tRef.current('loadSpecificationsFailed'),
-        )
-      }
-
-      if (isMountedRef.current && localFetchId === fetchIdRef.current) {
-        setSpecifications(
-          ((await res.json()) as { specifications?: Specification[] })
-            .specifications ?? [],
-        )
-        setFetchError(null)
-      }
-    } catch (error) {
-      console.error('Failed to load requirements specifications', error)
-      if (isMountedRef.current && localFetchId === fetchIdRef.current) {
-        setSpecifications([])
-        setFetchError(
-          error instanceof Error
-            ? error.message
-            : tRef.current('loadSpecificationsFailed'),
-        )
-      }
-    } finally {
-      if (localFetchId === fetchIdRef.current) {
-        if (spinnerTimerRef.current) clearTimeout(spinnerTimerRef.current)
-        spinnerTimerRef.current = null
-        if (isMountedRef.current) {
-          setShowSpinner(false)
-          setLoading(false)
-        }
-      }
-    }
-  }, [])
-
-  const fetchTaxonomies = useCallback(async () => {
-    const loadTaxonomy = async <TBody,>(
-      endpoint: string,
-      label: string,
-      pickItems: (body: TBody) => TaxonomyItem[] | undefined,
-      setItems: (items: TaxonomyItem[]) => void,
-    ) => {
-      try {
-        const response = await apiFetch(endpoint)
-        if (!isMountedRef.current) return
-
-        if (!response.ok) {
-          setItems([])
-          console.error(`Failed to load ${label}`, response.status)
-          return
-        }
-
-        const body = (await response.json()) as TBody
-        if (isMountedRef.current) {
-          setItems(pickItems(body) ?? [])
-        }
-      } catch (error) {
-        if (isMountedRef.current) {
-          setItems([])
-        }
-        console.error(`Failed to load ${label}`, error)
-      }
-    }
-
-    await Promise.all([
-      loadTaxonomy(
-        '/api/specification-responsibility-areas',
-        'specification responsibility areas',
-        (body: { areas?: TaxonomyItem[] }) => body.areas,
-        setResponsibilityAreas,
-      ),
-      loadTaxonomy(
-        '/api/specification-implementation-types',
-        'specification implementation types',
-        (body: { types?: TaxonomyItem[] }) => body.types,
-        setImplementationTypes,
-      ),
-      loadTaxonomy(
-        '/api/specification-lifecycle-statuses',
-        'specification lifecycle statuses',
-        (body: { statuses?: TaxonomyItem[] }) => body.statuses,
-        setLifecycleStatuses,
-      ),
-    ])
-  }, [])
-
   useEffect(() => {
-    isMountedRef.current = true
+    if (!isFetchingSpecifications) {
+      if (spinnerTimerRef.current) {
+        clearTimeout(spinnerTimerRef.current)
+        spinnerTimerRef.current = null
+      }
+      setShowSpinner(false)
+      return
+    }
+
+    if (spinnerTimerRef.current) {
+      clearTimeout(spinnerTimerRef.current)
+    }
+    spinnerTimerRef.current = setTimeout(() => {
+      setShowSpinner(true)
+    }, 200)
 
     return () => {
-      isMountedRef.current = false
       if (spinnerTimerRef.current) {
         clearTimeout(spinnerTimerRef.current)
         spinnerTimerRef.current = null
       }
     }
-  }, [])
-
-  useEffect(() => {
-    void fetchSpecifications()
-    void fetchTaxonomies()
-  }, [fetchSpecifications, fetchTaxonomies])
+  }, [isFetchingSpecifications])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -435,7 +456,7 @@ export default function RequirementsSpecificationsClient() {
       setOpenHelp(new Set())
       setSlugEdited(false)
       setForm(resetForm())
-      void fetchSpecifications()
+      void specificationsResource.reload()
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : t('saveFailed'))
     } finally {
@@ -495,7 +516,7 @@ export default function RequirementsSpecificationsClient() {
         return
       }
 
-      await fetchSpecifications()
+      await specificationsResource.reload()
     } catch (error) {
       await confirm({
         anchorEl,
@@ -527,6 +548,15 @@ export default function RequirementsSpecificationsClient() {
             {tn('specifications')}
           </h1>
         </div>
+
+        {loadWarning ? (
+          <p
+            className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+            role="alert"
+          >
+            {loadWarning}
+          </p>
+        ) : null}
 
         <AnimatePresence>
           {showForm && (

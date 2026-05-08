@@ -29,10 +29,12 @@ import SpecificationLocalRequirementDetailClient from '@/components/Specificatio
 import SpecificationLocalRequirementForm, {
   type SpecificationLocalRequirementSubmitPayload,
 } from '@/components/SpecificationLocalRequirementForm'
+import { useAsyncResource } from '@/hooks/useAsyncResource'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { exportToCsv } from '@/lib/export-csv'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { readResponseMessage } from '@/lib/http/response-message'
 import { fetchSpecificationItemsForReport } from '@/lib/reports/data/fetch-specification-items'
 import { buildListReport } from '@/lib/reports/templates/list-template'
 import type { ReportModel } from '@/lib/reports/types'
@@ -47,6 +49,14 @@ import {
   type RequirementRow,
   type RequirementSortState,
 } from '@/lib/requirements/list-view'
+import type {
+  AvailableRequirementsData,
+  NormReferenceOption,
+  RequirementsSpecificationDetailInitialData,
+  SpecificationListItem,
+  SpecificationMeta,
+  SpecificationTaxonomyItem,
+} from '@/lib/specifications/preload-types'
 
 const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
   sections: [
@@ -73,29 +83,6 @@ const REQUIREMENT_SPECIFICATION_DETAIL_HELP: HelpContent = {
     },
   ],
   titleKey: 'requirementsSpecificationDetail.title',
-}
-
-interface SpecificationMeta {
-  businessNeedsReference: string | null
-  id: number
-  implementationType: { nameSv: string; nameEn: string } | null
-  lifecycleStatus: { nameSv: string; nameEn: string } | null
-  name: string
-  responsibilityArea: { nameSv: string; nameEn: string } | null
-  specificationImplementationTypeId: number | null
-  specificationLifecycleStatusId: number | null
-  specificationResponsibilityAreaId: number | null
-  uniqueId: string
-}
-
-interface SpecificationTaxonomyItem {
-  id: number
-  nameEn: string
-  nameSv: string
-}
-
-interface SpecificationListItem extends RequirementRow {
-  needsReference?: string | null
 }
 
 const PAGE_SIZE = 200
@@ -149,9 +136,31 @@ function buildItemRefsQuery(rows: RequirementRow[]) {
   return refs.map(ref => encodeURIComponent(ref)).join(',')
 }
 
+async function readJsonOrThrow<T>(response: Response, fallbackMessage: string) {
+  if (!response.ok) {
+    const details = await readResponseMessage(response)
+    throw new Error(
+      details ? `${fallbackMessage}: ${details}` : fallbackMessage,
+    )
+  }
+
+  return (await response.json()) as T
+}
+
+function buildNormReferenceOptionsPath(statuses: number[] | undefined) {
+  const params = new URLSearchParams()
+  params.set('linked', 'true')
+  for (const status of statuses ?? []) {
+    params.append('statuses', String(status))
+  }
+  return `/api/norm-references?${params}`
+}
+
 export default function KravunderlagDetailClient({
+  initialData,
   specificationSlug,
 }: {
+  initialData: RequirementsSpecificationDetailInitialData
   specificationSlug: string
 }) {
   useHelpContent(REQUIREMENT_SPECIFICATION_DETAIL_HELP)
@@ -167,34 +176,29 @@ export default function KravunderlagDetailClient({
     ? Number(searchParams.get('areaId'))
     : null
 
-  const [spec, setSpec] = useState<SpecificationMeta | null>(null)
+  const [spec, setSpec] = useState<SpecificationMeta | null>(initialData.spec)
   const [specificationItems, setSpecificationItems] = useState<
     SpecificationListItem[]
-  >([])
-  const [availableRows, setAvailableRows] = useState<RequirementRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [areas, setAreas] = useState<AreaOption[]>([])
-  const [requirementPackages, setRequirementPackages] = useState<
-    FilterOption[]
-  >([])
-  const [
-    specificationResponsibilityAreas,
-    setSpecificationResponsibilityAreas,
-  ] = useState<SpecificationTaxonomyItem[]>([])
-  const [
-    specificationImplementationTypes,
-    setSpecificationImplementationTypes,
-  ] = useState<SpecificationTaxonomyItem[]>([])
-  const [specificationLifecycleStatuses, setSpecificationLifecycleStatuses] =
-    useState<SpecificationTaxonomyItem[]>([])
-  const [specificationItemStatuses, setSpecificationItemStatuses] = useState<
-    (SpecificationTaxonomyItem & {
-      color: string
-      descriptionEn: string | null
-      descriptionSv: string | null
-      sortOrder: number
-    })[]
-  >([])
+  >(initialData.specificationItems)
+  const [availableRows, setAvailableRows] = useState<RequirementRow[]>(
+    initialData.availableRequirements.rows,
+  )
+  const [areas] = useState<AreaOption[]>(initialData.areas)
+  const [requirementPackages] = useState<FilterOption[]>(
+    initialData.requirementPackages,
+  )
+  const [specificationResponsibilityAreas] = useState<
+    SpecificationTaxonomyItem[]
+  >(initialData.specificationResponsibilityAreas)
+  const [specificationImplementationTypes] = useState<
+    SpecificationTaxonomyItem[]
+  >(initialData.specificationImplementationTypes)
+  const [specificationLifecycleStatuses] = useState<
+    SpecificationTaxonomyItem[]
+  >(initialData.specificationLifecycleStatuses)
+  const [specificationItemStatuses] = useState(
+    initialData.specificationItemStatuses,
+  )
   const [showEditSpecificationForm, setShowEditSpecificationForm] =
     useState(false)
   const [showBulkDeviationModal, setShowBulkDeviationModal] = useState(false)
@@ -225,7 +229,9 @@ export default function KravunderlagDetailClient({
   const [rightSort, setRightSort] = useState<RequirementSortState>(
     DEFAULT_REQUIREMENT_SORT,
   )
-  const [rightHasMore, setRightHasMore] = useState(false)
+  const [rightHasMore, setRightHasMore] = useState(
+    initialData.availableRequirements.hasMore,
+  )
   const [rightLoadingMore, setRightLoadingMore] = useState(false)
   const [rightVisibleCols, setRightVisibleCols] = useState<
     RequirementColumnId[]
@@ -243,13 +249,7 @@ export default function KravunderlagDetailClient({
   const [addNeedsRefText, setAddNeedsRefText] = useState('')
   const [availableNeedsRefs, setAvailableNeedsRefs] = useState<
     { id: number; text: string }[]
-  >([])
-  const [leftNormReferenceOptions, setLeftNormReferenceOptions] = useState<
-    { id: number; normReferenceId: string; name: string }[]
-  >([])
-  const [rightNormReferenceOptions, setRightNormReferenceOptions] = useState<
-    { id: number; normReferenceId: string; name: string }[]
-  >([])
+  >(initialData.availableNeedsRefs)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [addModalLoading, setAddModalLoading] = useState(false)
   const [addModalError, setAddModalError] = useState<string | null>(null)
@@ -265,7 +265,180 @@ export default function KravunderlagDetailClient({
     filename: pdfFilename,
   })
 
-  const latestAvailableRequestIdRef = useRef(0)
+  const availableRequirementsParams = useMemo(
+    () =>
+      buildRequirementListParams({
+        filters: { ...rightFilters, statuses: [3] },
+        limit: PAGE_SIZE,
+        locale,
+        sort: rightSort,
+      }).toString(),
+    [locale, rightFilters, rightSort],
+  )
+  const availableRequirementsKeyRef = useRef(availableRequirementsParams)
+
+  const specResource = useAsyncResource<SpecificationMeta | null>({
+    fetcher: async signal => {
+      const response = await apiFetch(
+        `/api/specifications/${specificationSlug}`,
+        {
+          signal,
+        },
+      )
+      if (response.status === 404) return null
+      return readJsonOrThrow<SpecificationMeta>(
+        response,
+        t('loadSpecificationFailed'),
+      )
+    },
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : t('loadSpecificationFailed'),
+    initialData: initialData.spec,
+    key: `specification:${specificationSlug}`,
+    loadOnMount: false,
+  })
+
+  const specificationItemsResource = useAsyncResource<SpecificationListItem[]>({
+    fetcher: async signal => {
+      const response = await apiFetch(
+        `/api/specifications/${specificationSlug}/items`,
+        { signal },
+      )
+      const data = await readJsonOrThrow<{ items?: SpecificationListItem[] }>(
+        response,
+        t('loadSpecificationItemsFailed'),
+      )
+      return data.items ?? []
+    },
+    getErrorMessage: error =>
+      error instanceof Error
+        ? error.message
+        : t('loadSpecificationItemsFailed'),
+    initialData: initialData.specificationItems,
+    key: `specification-items:${specificationSlug}`,
+    loadOnMount: false,
+  })
+
+  const availableRequirementsResource =
+    useAsyncResource<AvailableRequirementsData>({
+      fetcher: async signal => {
+        const response = await apiFetch(
+          `/api/requirements?${availableRequirementsParams}`,
+          { signal },
+        )
+        const data = await readJsonOrThrow<{
+          pagination?: { hasMore?: boolean }
+          requirements?: RequirementRow[]
+        }>(response, t('loadAvailableRequirementsFailed'))
+        return {
+          hasMore: data.pagination?.hasMore ?? false,
+          rows: data.requirements ?? [],
+        }
+      },
+      getErrorMessage: error =>
+        error instanceof Error
+          ? error.message
+          : t('loadAvailableRequirementsFailed'),
+      initialData: initialData.availableRequirements,
+      key: `available-requirements:${availableRequirementsParams}`,
+      loadOnMount: false,
+    })
+
+  const needsReferencesResource = useAsyncResource<
+    { id: number; text: string }[]
+  >({
+    fetcher: async signal => {
+      const response = await apiFetch(
+        `/api/specifications/${specificationSlug}/needs-references`,
+        { signal },
+      )
+      const data = await readJsonOrThrow<{
+        needsReferences?: { id: number; text: string }[]
+      }>(response, t('failedToLoadNeedsReferences'))
+      return data.needsReferences ?? []
+    },
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : t('failedToLoadNeedsReferences'),
+    initialData: initialData.availableNeedsRefs,
+    key: `specification-needs-references:${specificationSlug}`,
+    loadOnMount: false,
+  })
+
+  const leftNormReferenceStatusesKey = (leftFilters.statuses ?? []).join(',')
+  const leftNormReferenceResource = useAsyncResource<NormReferenceOption[]>({
+    fetcher: async signal => {
+      const response = await apiFetch(
+        buildNormReferenceOptionsPath(leftFilters.statuses),
+        { signal },
+      )
+      const data = await readJsonOrThrow<{
+        normReferences?: NormReferenceOption[]
+      }>(response, t('loadNormReferencesFailed'))
+      return data.normReferences ?? []
+    },
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : t('loadNormReferencesFailed'),
+    initialData: initialData.leftNormReferenceOptions,
+    key: `left-norm-references:${leftNormReferenceStatusesKey}`,
+    loadOnMount: false,
+  })
+
+  const rightNormReferenceResource = useAsyncResource<NormReferenceOption[]>({
+    fetcher: async signal => {
+      const response = await apiFetch(buildNormReferenceOptionsPath([3]), {
+        signal,
+      })
+      const data = await readJsonOrThrow<{
+        normReferences?: NormReferenceOption[]
+      }>(response, t('loadNormReferencesFailed'))
+      return data.normReferences ?? []
+    },
+    getErrorMessage: error =>
+      error instanceof Error ? error.message : t('loadNormReferencesFailed'),
+    initialData: initialData.rightNormReferenceOptions,
+    key: 'right-norm-references:published',
+    loadOnMount: false,
+  })
+
+  const loading = specResource.loading || specificationItemsResource.loading
+  const loadWarning =
+    specResource.refreshError ??
+    specificationItemsResource.refreshError ??
+    availableRequirementsResource.refreshError ??
+    needsReferencesResource.refreshError ??
+    leftNormReferenceResource.refreshError ??
+    rightNormReferenceResource.refreshError ??
+    (initialData.errors.length > 0 ? t('partialDataLoadWarning') : null)
+
+  const leftNormReferenceOptions = leftNormReferenceResource.data ?? []
+  const rightNormReferenceOptions = rightNormReferenceResource.data ?? []
+
+  useEffect(() => {
+    setSpec(specResource.data ?? null)
+  }, [specResource.data])
+
+  useEffect(() => {
+    if (specificationItemsResource.data) {
+      setSpecificationItems(specificationItemsResource.data)
+    }
+  }, [specificationItemsResource.data])
+
+  useEffect(() => {
+    if (availableRequirementsResource.data) {
+      setAvailableRows(availableRequirementsResource.data.rows)
+      setRightHasMore(availableRequirementsResource.data.hasMore)
+    }
+  }, [availableRequirementsResource.data])
+
+  useEffect(() => {
+    if (needsReferencesResource.data) {
+      setAvailableNeedsRefs(needsReferencesResource.data)
+    }
+  }, [needsReferencesResource.data])
+
+  useEffect(() => {
+    availableRequirementsKeyRef.current = availableRequirementsParams
+  }, [availableRequirementsParams])
 
   const closeAddModal = useCallback(() => {
     if (addModalLoading) return
@@ -331,12 +504,16 @@ export default function KravunderlagDetailClient({
     [leftSelectedIds, specificationItems],
   )
 
-  const fetchSpecificationMeta = useCallback(async () => {
-    const res = await apiFetch(`/api/specifications/${specificationSlug}`)
-    if (res.ok) {
-      setSpec((await res.json()) as SpecificationMeta)
-    }
-  }, [specificationSlug])
+  const fetchSpecificationMeta = useCallback(
+    async ({ throwOnError = false }: { throwOnError?: boolean } = {}) => {
+      const refreshed = await specResource.reload()
+      if (throwOnError && refreshed === undefined) {
+        throw new Error(t('loadSpecificationFailed'))
+      }
+      return refreshed != null
+    },
+    [specResource, t],
+  )
 
   const fetchSpecificationItems = useCallback(
     async ({
@@ -344,20 +521,16 @@ export default function KravunderlagDetailClient({
     }: {
       throwOnError?: boolean
     } = {}): Promise<boolean> => {
-      const res = await apiFetch(
-        `/api/specifications/${specificationSlug}/items`,
-      )
-      if (!res.ok) {
+      const refreshed = await specificationItemsResource.reload()
+      if (refreshed === undefined) {
         if (throwOnError) {
-          throw new Error('Failed to refresh requirements specification items')
+          throw new Error(t('loadSpecificationItemsFailed'))
         }
         return false
       }
-      const data = (await res.json()) as { items: SpecificationListItem[] }
-      setSpecificationItems(data.items)
       return true
     },
-    [specificationSlug],
+    [specificationItemsResource, t],
   )
 
   const fetchAvailableRequirements = useCallback(
@@ -366,43 +539,21 @@ export default function KravunderlagDetailClient({
     }: {
       throwOnError?: boolean
     } = {}): Promise<boolean> => {
-      const requestId = ++latestAvailableRequestIdRef.current
-      const params = buildRequirementListParams({
-        filters: { ...rightFilters, statuses: [3] },
-        limit: PAGE_SIZE,
-        locale,
-        sort: rightSort,
-      })
-      try {
-        const res = await apiFetch(`/api/requirements?${params}`)
-        if (!res.ok) {
-          if (throwOnError) {
-            throw new Error('Failed to refresh available requirements')
-          }
-          return false
-        }
-        if (requestId !== latestAvailableRequestIdRef.current) return false
-        const data = (await res.json()) as {
-          requirements?: RequirementRow[]
-          pagination?: { hasMore?: boolean }
-        }
-        if (requestId !== latestAvailableRequestIdRef.current) return false
-        setAvailableRows(data.requirements ?? [])
-        setRightHasMore(data.pagination?.hasMore ?? false)
-        return true
-      } catch {
+      const refreshed = await availableRequirementsResource.reload()
+      if (refreshed === undefined) {
         if (throwOnError) {
-          throw new Error('Failed to refresh available requirements')
+          throw new Error(t('loadAvailableRequirementsFailed'))
         }
         return false
       }
+      return true
     },
-    [locale, rightFilters, rightSort],
+    [availableRequirementsResource, t],
   )
 
   const loadMoreAvailable = useCallback(async () => {
     if (rightLoadingMore || !rightHasMore) return
-    const requestId = ++latestAvailableRequestIdRef.current
+    const activeKey = availableRequirementsKeyRef.current
     setRightLoadingMore(true)
     try {
       const params = buildRequirementListParams({
@@ -413,12 +564,12 @@ export default function KravunderlagDetailClient({
         sort: rightSort,
       })
       const res = await apiFetch(`/api/requirements?${params}`)
-      if (!res.ok || requestId !== latestAvailableRequestIdRef.current) return
+      if (!res.ok || activeKey !== availableRequirementsKeyRef.current) return
       const data = (await res.json()) as {
         requirements?: RequirementRow[]
         pagination?: { hasMore?: boolean }
       }
-      if (requestId !== latestAvailableRequestIdRef.current) return
+      if (activeKey !== availableRequirementsKeyRef.current) return
       setAvailableRows(prev => [...prev, ...(data.requirements ?? [])])
       setRightHasMore(data.pagination?.hasMore ?? false)
     } catch {
@@ -435,103 +586,6 @@ export default function KravunderlagDetailClient({
     rightSort,
   ])
 
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true)
-      await Promise.all([fetchSpecificationMeta(), fetchSpecificationItems()])
-      setLoading(false)
-    }
-    void init()
-  }, [fetchSpecificationMeta, fetchSpecificationItems])
-
-  useEffect(() => {
-    void fetchAvailableRequirements()
-  }, [fetchAvailableRequirements])
-
-  useEffect(() => {
-    const fetchTaxonomies = async () => {
-      const [
-        areasRes,
-        requirementPackagesRes,
-        needsRefsRes,
-        specificationAreasRes,
-        specificationTypesRes,
-        specificationStatusesRes,
-        specificationItemStatusesRes,
-      ] = await Promise.allSettled([
-        apiFetch('/api/requirement-areas'),
-        apiFetch('/api/requirement-packages'),
-        apiFetch(`/api/specifications/${specificationSlug}/needs-references`),
-        apiFetch('/api/specification-responsibility-areas'),
-        apiFetch('/api/specification-implementation-types'),
-        apiFetch('/api/specification-lifecycle-statuses'),
-        apiFetch('/api/catalog/specification-item-statuses'),
-      ])
-      if (areasRes.status === 'fulfilled' && areasRes.value.ok) {
-        const data = (await areasRes.value.json()) as { areas?: AreaOption[] }
-        setAreas(data.areas ?? [])
-      }
-      if (
-        requirementPackagesRes.status === 'fulfilled' &&
-        requirementPackagesRes.value.ok
-      ) {
-        const data = (await requirementPackagesRes.value.json()) as {
-          requirementPackages?: FilterOption[]
-        }
-        setRequirementPackages(data.requirementPackages ?? [])
-      }
-      if (needsRefsRes.status === 'fulfilled' && needsRefsRes.value.ok) {
-        const data = (await needsRefsRes.value.json()) as {
-          needsReferences: { id: number; text: string }[]
-        }
-        setAvailableNeedsRefs(data.needsReferences)
-      }
-      if (
-        specificationAreasRes.status === 'fulfilled' &&
-        specificationAreasRes.value.ok
-      ) {
-        const data = (await specificationAreasRes.value.json()) as {
-          areas?: SpecificationTaxonomyItem[]
-        }
-        setSpecificationResponsibilityAreas(data.areas ?? [])
-      }
-      if (
-        specificationTypesRes.status === 'fulfilled' &&
-        specificationTypesRes.value.ok
-      ) {
-        const data = (await specificationTypesRes.value.json()) as {
-          types?: SpecificationTaxonomyItem[]
-        }
-        setSpecificationImplementationTypes(data.types ?? [])
-      }
-      if (
-        specificationStatusesRes.status === 'fulfilled' &&
-        specificationStatusesRes.value.ok
-      ) {
-        const data = (await specificationStatusesRes.value.json()) as {
-          statuses?: SpecificationTaxonomyItem[]
-        }
-        setSpecificationLifecycleStatuses(data.statuses ?? [])
-      }
-      if (
-        specificationItemStatusesRes.status === 'fulfilled' &&
-        specificationItemStatusesRes.value.ok
-      ) {
-        const data = (await specificationItemStatusesRes.value.json()) as {
-          statuses?: (SpecificationTaxonomyItem & {
-            color: string
-            descriptionEn: string | null
-            descriptionSv: string | null
-            isDeviationStatus?: boolean
-            sortOrder: number
-          })[]
-        }
-        setSpecificationItemStatuses(data.statuses ?? [])
-      }
-    }
-    void fetchTaxonomies()
-  }, [specificationSlug])
-
   // Persist visible columns to localStorage
   useEffect(() => {
     localStorage.setItem(LEFT_VISIBLE_COLS_KEY, JSON.stringify(leftVisibleCols))
@@ -544,44 +598,6 @@ export default function KravunderlagDetailClient({
     )
   }, [rightVisibleCols])
 
-  // Fetch norm reference options for left panel (status-aware)
-  useEffect(() => {
-    const statuses = leftFilters.statuses ?? []
-    const params = new URLSearchParams()
-    params.set('linked', 'true')
-    for (const s of statuses) params.append('statuses', String(s))
-    apiFetch(`/api/norm-references?${params}`)
-      .then(res => (res.ok ? res.json() : null))
-      .then((data: unknown) => {
-        const typed = data as {
-          normReferences?: {
-            id: number
-            normReferenceId: string
-            name: string
-          }[]
-        } | null
-        setLeftNormReferenceOptions(typed?.normReferences ?? [])
-      })
-      .catch(() => setLeftNormReferenceOptions([]))
-  }, [leftFilters.statuses])
-
-  // Fetch norm reference options for right panel (always published = status 3)
-  useEffect(() => {
-    apiFetch('/api/norm-references?linked=true&statuses=3')
-      .then(res => (res.ok ? res.json() : null))
-      .then((data: unknown) => {
-        const typed = data as {
-          normReferences?: {
-            id: number
-            normReferenceId: string
-            name: string
-          }[]
-        } | null
-        setRightNormReferenceOptions(typed?.normReferences ?? [])
-      })
-      .catch(() => setRightNormReferenceOptions([]))
-  }, [])
-
   // Open add modal
   const handleOpenAddModal = useCallback(async () => {
     setPendingAddIds(Array.from(rightSelectedIds))
@@ -591,16 +607,8 @@ export default function KravunderlagDetailClient({
     setAddModalError(null)
     setOpenHelp(new Set())
     setShowAddModal(true)
-    const res = await apiFetch(
-      `/api/specifications/${specificationSlug}/needs-references`,
-    )
-    if (res.ok) {
-      const data = (await res.json()) as {
-        needsReferences: { id: number; text: string }[]
-      }
-      setAvailableNeedsRefs(data.needsReferences)
-    }
-  }, [specificationSlug, rightSelectedIds])
+    await needsReferencesResource.reload()
+  }, [needsReferencesResource, rightSelectedIds])
 
   const handleOpenCreateLocalRequirementModal = useCallback(async () => {
     setShowCreateLocalRequirementModal(true)
@@ -609,16 +617,8 @@ export default function KravunderlagDetailClient({
       return
     }
 
-    const response = await apiFetch(
-      `/api/specifications/${specificationSlug}/needs-references`,
-    )
-    if (response.ok) {
-      const data = (await response.json()) as {
-        needsReferences: { id: number; text: string }[]
-      }
-      setAvailableNeedsRefs(data.needsReferences)
-    }
-  }, [availableNeedsRefs.length, specificationSlug])
+    await needsReferencesResource.reload()
+  }, [availableNeedsRefs.length, needsReferencesResource])
 
   const handleConfirmAdd = useCallback(async () => {
     if (pendingAddIds.length === 0) return
@@ -652,6 +652,7 @@ export default function KravunderlagDetailClient({
       await Promise.all([
         fetchSpecificationItems({ throwOnError: true }),
         fetchAvailableRequirements({ throwOnError: true }),
+        needsReferencesResource.reload(),
       ])
       setAddModalError(null)
       setRightSelectedIds(new Set())
@@ -667,6 +668,7 @@ export default function KravunderlagDetailClient({
     addNeedsRefText,
     fetchAvailableRequirements,
     fetchSpecificationItems,
+    needsReferencesResource,
     specificationSlug,
     pendingAddIds,
     tc,
@@ -1311,6 +1313,14 @@ export default function KravunderlagDetailClient({
     return (
       <div className="section-padding px-4 sm:px-6 lg:px-8">
         <div className="container-custom">
+          {loadWarning ? (
+            <p
+              className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+              role="status"
+            >
+              {loadWarning}
+            </p>
+          ) : null}
           <p className="text-secondary-600 dark:text-secondary-400">
             {t('specificationNotFound')}
           </p>
@@ -1347,6 +1357,14 @@ export default function KravunderlagDetailClient({
         data-specification-detail-page-shell="true"
       >
         <div className={specificationDetailContainerClassName}>
+          {loadWarning ? (
+            <p
+              className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+              role="status"
+            >
+              {loadWarning}
+            </p>
+          ) : null}
           {/* Header */}
           <div className="mb-5">
             <div

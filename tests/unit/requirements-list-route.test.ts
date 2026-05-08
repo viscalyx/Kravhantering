@@ -5,6 +5,7 @@ vi.mock('@/lib/db', () => ({
 }))
 
 const mockQueryCatalog = vi.fn()
+const mockQueryRequirementList = vi.fn()
 const mockManageRequirement = vi.fn()
 const mockCreateRequestContext = vi.fn(() => ({
   actor: {
@@ -31,6 +32,10 @@ vi.mock('@/lib/requirements/auth', () => ({
   createRequestContext: mockCreateRequestContext,
 }))
 
+vi.mock('@/lib/requirements/list-query', () => ({
+  queryRequirementList: mockQueryRequirementList,
+}))
+
 vi.mock('@/lib/dal/ui-settings', () => ({
   createUiSettingsLoader: () => ({
     getTerminology: vi.fn().mockResolvedValue({}),
@@ -38,6 +43,7 @@ vi.mock('@/lib/dal/ui-settings', () => ({
 }))
 
 vi.mock('@/lib/requirements/list-view', () => ({
+  DEFAULT_REQUIREMENT_SORT: { by: 'uniqueId', direction: 'asc' },
   isRequirementSortField: (v: string) =>
     ['uniqueId', 'description', 'area', 'status'].includes(v),
   isRequirementSortDirection: (v: string) => ['asc', 'desc'].includes(v),
@@ -58,9 +64,9 @@ describe('requirements route', () => {
 
   describe('GET', () => {
     it('returns JSON list of requirements', async () => {
-      mockQueryCatalog.mockResolvedValue({
-        items: [{ id: 1, uniqueId: 'TST-001' }],
+      mockQueryRequirementList.mockResolvedValue({
         pagination: { total: 1, limit: 25, offset: 0 },
+        requirements: [{ id: 1, uniqueId: 'TST-001' }],
       })
 
       const { GET } = await import('@/app/api/requirements/route')
@@ -75,9 +81,9 @@ describe('requirements route', () => {
     })
 
     it('returns CSV when format=csv', async () => {
-      mockQueryCatalog.mockResolvedValue({
-        items: [{ id: 1, uniqueId: 'TST-001', version: {} }],
+      mockQueryRequirementList.mockResolvedValue({
         pagination: { total: 1 },
+        requirements: [{ id: 1, uniqueId: 'TST-001', version: {} }],
       })
 
       const { GET } = await import('@/app/api/requirements/route')
@@ -92,9 +98,9 @@ describe('requirements route', () => {
     })
 
     it('passes filter params to service', async () => {
-      mockQueryCatalog.mockResolvedValue({
-        items: [],
+      mockQueryRequirementList.mockResolvedValue({
         pagination: { total: 0 },
+        requirements: [],
       })
 
       const { GET } = await import('@/app/api/requirements/route')
@@ -102,26 +108,27 @@ describe('requirements route', () => {
         'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5&requirementPackageIds=0&requirementPackageIds=-1&requirementPackageIds=1.5&requirementPackageIds=abc',
       )
       await GET(req as never)
-      expect(mockQueryCatalog).toHaveBeenCalledWith(
+      expect(mockQueryRequirementList).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          sortBy: 'uniqueId',
-          sortDirection: 'desc',
           limit: 10,
           offset: 5,
-          areaIds: [1],
-          categoryIds: [2],
-          typeIds: [3],
-          qualityCharacteristicIds: [4],
-          requirementPackageIds: [5],
-          statuses: [1],
-          requiresTesting: [true],
+          sort: { by: 'uniqueId', direction: 'desc' },
+          filters: expect.objectContaining({
+            areaIds: [1],
+            categoryIds: [2],
+            qualityCharacteristicIds: [4],
+            requirementPackageIds: [5],
+            requiresTesting: ['true'],
+            statuses: [1],
+            typeIds: [3],
+          }),
         }),
       )
     })
 
     it('returns error on failure', async () => {
-      mockQueryCatalog.mockRejectedValue(new Error('db error'))
+      mockQueryRequirementList.mockRejectedValue(new Error('db error'))
 
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request('http://localhost/api/requirements')
@@ -137,7 +144,7 @@ describe('requirements route', () => {
       const res = await GET(req as never)
 
       expect(res.status).toBe(500)
-      expect(mockQueryCatalog).not.toHaveBeenCalled()
+      expect(mockQueryRequirementList).not.toHaveBeenCalled()
     })
   })
 
