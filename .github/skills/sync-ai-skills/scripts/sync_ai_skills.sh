@@ -83,7 +83,7 @@ verify_skill_copy() {
     local source_hash
     local target_hash
 
-    relative_path="${source_file#$source_skill_dir/}"
+    relative_path="${source_file#"$source_skill_dir"/}"
     target_file="$target_skill_dir/$relative_path"
 
     if [[ ! -f "$target_file" ]]; then

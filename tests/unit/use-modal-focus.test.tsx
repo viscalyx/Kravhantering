@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef, useState } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useModalFocus } from '@/hooks/useModalFocus'
 
 /**
@@ -58,6 +58,37 @@ function TestModal({
   )
 }
 
+function DisabledTrapModal() {
+  const modalRef = useRef<HTMLDivElement>(null)
+  const linkRef = useRef<HTMLAnchorElement>(null)
+
+  const { handleKeyDown } = useModalFocus({
+    initialFocusRef: linkRef,
+    modalRef,
+    onClose: () => {},
+    open: true,
+  })
+
+  return (
+    <div
+      data-testid="modal"
+      onKeyDown={handleKeyDown}
+      ref={modalRef}
+      role="dialog"
+    >
+      <a data-testid="first-link" href="#first" ref={linkRef}>
+        First
+      </a>
+      <button data-testid="last-enabled" type="button">
+        Last enabled
+      </button>
+      <button data-testid="disabled-last" disabled type="button">
+        Disabled
+      </button>
+    </div>
+  )
+}
+
 describe('useModalFocus', () => {
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -67,10 +98,15 @@ describe('useModalFocus', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn())
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('focuses initialFocusRef on open', async () => {
+    const user = userEvent.setup()
     render(<TestModal />)
 
-    await screen.getByRole('button', { name: 'Open' }).click()
+    await user.click(screen.getByRole('button', { name: 'Open' }))
 
     await waitFor(() => expect(screen.getByTestId('first')).toHaveFocus())
   })
@@ -147,5 +183,48 @@ describe('useModalFocus', () => {
     const prevented = !screen.getByTestId('modal').dispatchEvent(event)
 
     expect(prevented).toBe(false)
+  })
+
+  it('cancels scheduled initial focus when closing before RAF runs', async () => {
+    const user = userEvent.setup()
+    const rafCallbacks = new Map<number, FrameRequestCallback>()
+    const requestAnimationFrame = vi.fn((cb: FrameRequestCallback) => {
+      const id = rafCallbacks.size + 1
+      rafCallbacks.set(id, cb)
+      return id
+    })
+    const cancelAnimationFrame = vi.fn((id: number) => {
+      rafCallbacks.delete(id)
+    })
+    vi.stubGlobal('requestAnimationFrame', requestAnimationFrame)
+    vi.stubGlobal('cancelAnimationFrame', cancelAnimationFrame)
+
+    render(<TestModal />)
+
+    await user.click(screen.getByRole('button', { name: 'Open' }))
+    fireEvent.keyDown(screen.getByTestId('modal'), { key: 'Escape' })
+
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(1)
+    expect(rafCallbacks.size).toBe(0)
+  })
+
+  it('traps focus across links and ignores disabled controls', () => {
+    render(<DisabledTrapModal />)
+
+    const first = screen.getByTestId('first-link')
+    const last = screen.getByTestId('last-enabled')
+    first.focus()
+
+    fireEvent.keyDown(screen.getByTestId('modal'), {
+      key: 'Tab',
+      shiftKey: true,
+    })
+
+    expect(last).toHaveFocus()
+
+    last.focus()
+    fireEvent.keyDown(screen.getByTestId('modal'), { key: 'Tab' })
+
+    expect(first).toHaveFocus()
   })
 })

@@ -23,7 +23,7 @@ interface UseModalFocusReturn {
 /* ---------- Focusable selector ---------- */
 
 const FOCUSABLE =
-  'input, textarea, button, select, [tabindex]:not([tabindex="-1"])'
+  'a[href], input:not([disabled]), textarea:not([disabled]), button:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
 
 /* ---------- Hook ---------- */
 
@@ -45,20 +45,37 @@ export function useModalFocus({
   open,
 }: UseModalFocusOptions): UseModalFocusReturn {
   const previousFocusRef = useRef<Element | null>(null)
+  const rafIdRef = useRef<number | null>(null)
 
   /* Capture → initial focus, and restore on close */
   useEffect(() => {
+    const cancelScheduledFocus = () => {
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current)
+        rafIdRef.current = null
+      }
+    }
+
     if (open) {
       previousFocusRef.current = document.activeElement
-      requestAnimationFrame(() => initialFocusRef?.current?.focus())
+      cancelScheduledFocus()
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null
+        initialFocusRef?.current?.focus()
+      })
 
       // Restore focus when the modal closes or the component unmounts
       return () => {
+        cancelScheduledFocus()
         if (previousFocusRef.current instanceof HTMLElement) {
           previousFocusRef.current.focus()
           previousFocusRef.current = null
         }
       }
+    }
+
+    return () => {
+      cancelScheduledFocus()
     }
   }, [open, initialFocusRef])
 

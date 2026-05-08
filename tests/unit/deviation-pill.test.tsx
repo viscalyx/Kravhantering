@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import DeviationPill from '@/components/DeviationPill'
 
 vi.mock('next-intl', () => ({
+  useFormatter: () => ({
+    dateTime: (date: Date, opts?: Intl.DateTimeFormatOptions) =>
+      date.toLocaleDateString('en', opts),
+  }),
   useTranslations: () => (key: string, params?: Record<string, unknown>) => {
     if (params && 'count' in params) return `${key}(${params.count})`
     return key

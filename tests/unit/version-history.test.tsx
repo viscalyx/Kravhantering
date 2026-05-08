@@ -50,6 +50,10 @@ function makeVersion(
   }
 }
 
+function expectedShortDate(isoDate: string) {
+  return new Date(isoDate).toLocaleDateString('en', { dateStyle: 'short' })
+}
+
 describe('VersionHistory', () => {
   afterEach(() => {
     locale = 'sv'
@@ -93,9 +97,15 @@ describe('VersionHistory', () => {
       container.querySelector('[data-version-number="1"]'),
     ).toBeInTheDocument()
     expect(screen.getByText('Draft')).toBeInTheDocument()
-    expect(screen.getByText('3/3/26')).toBeInTheDocument()
-    expect(screen.getByText('3/2/26')).toBeInTheDocument()
-    expect(screen.getByText('3/1/26')).toBeInTheDocument()
+    expect(
+      screen.getByText(expectedShortDate('2026-03-03')),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(expectedShortDate('2026-03-02')),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(expectedShortDate('2026-03-01')),
+    ).toBeInTheDocument()
 
     await userEvent.click(
       container.querySelector('[data-version-number="2"]') as HTMLButtonElement,
@@ -357,8 +367,12 @@ describe('VersionHistory', () => {
       container.querySelectorAll('[data-version-number="3"]'),
     ).toHaveLength(1)
     expect(screen.getByText('Draft')).toBeInTheDocument()
-    expect(screen.getByText('3/3/26')).toBeInTheDocument()
-    expect(screen.queryByText('2/28/26')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(expectedShortDate('2026-03-03')),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(expectedShortDate('2026-02-28')),
+    ).not.toBeInTheDocument()
   })
 
   it('does not emit React key warnings while rendering version pills and toggles', async () => {
