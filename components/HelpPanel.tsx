@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ChevronDown, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
@@ -13,6 +13,12 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import {
+  drawerPanelMotion,
+  fadeMotion,
+  repeatingScrollCueMotion,
+  scrollCueMotion,
+} from '@/lib/reduced-motion'
 
 /* ---------- Types ---------- */
 
@@ -284,6 +290,7 @@ function HelpPanelInner({
   const containerRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const scrollRegionRef = useRef<HTMLDivElement>(null)
+  const shouldReduceMotion = useReducedMotion()
   const [showScrollIndicator, setShowScrollIndicator] = useState(false)
   const previousFocusedElementRef = useRef<HTMLElement | null>(null)
 
@@ -501,13 +508,10 @@ function HelpPanelInner({
     <AnimatePresence>
       {isOpen && content && (
         <motion.div
-          animate={{ opacity: 1 }}
           className="fixed inset-0 z-50"
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
           key="help-backdrop"
           ref={containerRef}
-          transition={{ duration: 0.2 }}
+          {...fadeMotion(shouldReduceMotion, { duration: 0.2 })}
         >
           {/* Backdrop */}
           {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss pattern */}
@@ -519,16 +523,13 @@ function HelpPanelInner({
 
           {/* Drawer */}
           <motion.div
-            animate={{ x: 0 }}
             aria-label={t(content.titleKey as Parameters<typeof t>[0])}
             aria-modal="true"
             className="absolute right-0 top-0 h-full w-full max-w-sm bg-white dark:bg-secondary-900 shadow-2xl flex flex-col overflow-hidden"
-            exit={{ x: '100%' }}
-            initial={{ x: '100%' }}
             ref={panelRef}
             role="dialog"
             tabIndex={-1}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            {...drawerPanelMotion(shouldReduceMotion)}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-secondary-200 dark:border-secondary-700 shrink-0">
@@ -595,22 +596,14 @@ function HelpPanelInner({
               <AnimatePresence>
                 {showScrollIndicator && (
                   <motion.div
-                    animate={{ opacity: 1, y: 0 }}
                     aria-hidden="true"
                     className="help-panel-scroll-indicator pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center pb-3"
-                    exit={{ opacity: 0, y: 6 }}
-                    initial={{ opacity: 0, y: 6 }}
-                    transition={{ duration: 0.18, ease: 'easeOut' }}
+                    {...scrollCueMotion(shouldReduceMotion)}
                   >
                     <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white via-white/95 to-transparent dark:from-secondary-900 dark:via-secondary-900/95" />
                     <motion.div
-                      animate={{ y: [0, 3, 0] }}
                       className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-secondary-200/80 bg-white/92 text-secondary-500 shadow-sm dark:border-secondary-700/80 dark:bg-secondary-900/92 dark:text-secondary-300"
-                      transition={{
-                        duration: 1.4,
-                        ease: 'easeInOut',
-                        repeat: Number.POSITIVE_INFINITY,
-                      }}
+                      {...repeatingScrollCueMotion(shouldReduceMotion)}
                     >
                       <ChevronDown aria-hidden="true" className="h-4 w-4" />
                     </motion.div>

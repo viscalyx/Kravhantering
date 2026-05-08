@@ -1,11 +1,12 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { HelpCircle, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { KeyboardEvent } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 import type { UseAddToSpecificationDialogResult } from './use-add-to-specification-dialog'
 
 interface AddToSpecificationDialogProps {
@@ -21,6 +22,7 @@ export default function AddToSpecificationDialog({
   const tp = useTranslations('specification')
   const { state } = dialog
   const titleId = 'add-to-specification-dialog-title'
+  const shouldReduceMotion = useReducedMotion()
 
   const helpButton = (field: string, label: string) => (
     <button
@@ -49,12 +51,9 @@ export default function AddToSpecificationDialog({
     <AnimatePresence>
       {state.isOpen ? (
         <motion.div
-          animate={{ opacity: 1 }}
           aria-labelledby={titleId}
           aria-modal="true"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
           onClick={dialog.closeDialog}
           onKeyDown={event => {
             if (event.key === 'Escape') {
@@ -62,17 +61,18 @@ export default function AddToSpecificationDialog({
             }
           }}
           role="dialog"
-          transition={{ duration: 0.16 }}
+          {...fadeMotion(shouldReduceMotion, { duration: 0.16 })}
         >
           <motion.div
-            animate={{ opacity: 1, scale: 1 }}
             className="max-h-[calc(100vh-2rem)] w-full max-w-md space-y-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl dark:bg-secondary-900"
-            exit={{ opacity: 0, scale: 0.96 }}
-            initial={{ opacity: 0, scale: 0.96 }}
             onClick={event => event.stopPropagation()}
             onKeyDown={onDocumentKeyDown}
             role="document"
-            transition={{ duration: 0.16, ease: 'easeOut' }}
+            {...dialogPanelMotion(shouldReduceMotion, {
+              duration: 0.16,
+              hiddenScale: 0.96,
+              transition: { duration: 0.16, ease: 'easeOut' },
+            })}
           >
             <div className="flex items-center justify-between">
               <h2

@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { useReducedMotion } from 'framer-motion'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   type HelpContent,
@@ -94,6 +95,7 @@ function NestedHelpHarness({ showChild }: { showChild: boolean }) {
 describe('HelpPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useReducedMotion).mockReturnValue(false)
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
       cb(0)
       return 1
@@ -135,6 +137,24 @@ describe('HelpPanel', () => {
     expect(document.body.style.overscrollBehavior).toBe('auto')
     expect(document.documentElement.style.overflow).toBe('scroll')
     expect(document.documentElement.style.overscrollBehavior).toBe('auto')
+  })
+
+  it('opens and closes when reduced motion is requested', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+
+    render(
+      <HelpProvider>
+        <HelpHarness />
+      </HelpProvider>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle help' }))
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.close' }))
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('shows a scroll cue when more help content exists below the fold and hides it at the bottom', () => {

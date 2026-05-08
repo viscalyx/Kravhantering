@@ -1,11 +1,12 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { ReactNode } from 'react'
 import type { CrudAdminResourceController } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 type CrudId = number | string
 
@@ -46,6 +47,7 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
   title,
 }: CrudAdminPanelProps<TItem, TForm>) {
   const common = useTranslations('common')
+  const shouldReduceMotion = useReducedMotion()
   const visibleError = controller.deleteError ?? controller.loadError
 
   return (
@@ -88,11 +90,8 @@ export default function CrudAdminPanel<TItem extends { id: CrudId }, TForm>({
         <AnimatePresence>
           {controller.showForm && (
             <motion.form
-              animate={{ opacity: 1, y: 0 }}
               className={`glass rounded-2xl p-6 mb-6 space-y-5 ${formMaxWidthClassName}`}
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
+              {...offsetPanelMotion(shouldReduceMotion)}
               {...devMarker({
                 context: devContext,
                 name: 'crud form',
