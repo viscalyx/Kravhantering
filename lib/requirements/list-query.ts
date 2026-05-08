@@ -2,8 +2,14 @@ import {
   countRequirements,
   type ListRequirementsOptions,
   listRequirements,
+  STATUS_ARCHIVED,
 } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
+import {
+  type AuthorizationService,
+  createDefaultAuthorizationService,
+  type RequestContext,
+} from '@/lib/requirements/auth'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -37,7 +43,42 @@ export interface RequirementListQueryInput {
   sort?: RequirementSortState
 }
 
+export interface RequirementListQueryAuthorization {
+  authorization?: AuthorizationService
+  context: RequestContext
+}
+
 const DEFAULT_LIMIT = 200
+const MAX_PAGE_SIZE = 200
+
+function clampLimit(limit: number): number {
+  if (!Number.isFinite(limit)) {
+    return DEFAULT_LIMIT
+  }
+
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_PAGE_SIZE)
+}
+
+function clampOffset(offset: number): number {
+  if (!Number.isFinite(offset)) {
+    return 0
+  }
+
+  return Math.max(Math.trunc(offset), 0)
+}
+
+async function authorizeRequirementListQuery(
+  options?: RequirementListQueryAuthorization,
+): Promise<void> {
+  if (!options) return
+
+  const authorization =
+    options.authorization ?? createDefaultAuthorizationService()
+  await authorization.assertAuthorized(
+    { kind: 'query_catalog', catalog: 'requirements' },
+    options.context,
+  )
+}
 
 function toBooleans(values: string[] | undefined): boolean[] | undefined {
   if (!values || values.length === 0) return undefined
@@ -56,13 +97,17 @@ function toPositiveIntegerIds(values: number[] | undefined) {
 export async function queryRequirementList(
   db: SqlServerDatabase,
   input: RequirementListQueryInput = {},
+  authorizationOptions?: RequirementListQueryAuthorization,
 ): Promise<RequirementListQueryResult> {
+  await authorizeRequirementListQuery(authorizationOptions)
+
   const filters = input.filters ?? {}
-  const limit = input.limit ?? DEFAULT_LIMIT
-  const offset = input.offset ?? 0
+  const limit = clampLimit(input.limit ?? DEFAULT_LIMIT)
+  const offset = clampOffset(input.offset ?? 0)
   const sort = input.sort ?? DEFAULT_REQUIREMENT_SORT
   const statuses = toPositiveIntegerIds(filters.statuses)
-  const inferredIncludeArchived = !statuses?.length || statuses.includes(4)
+  const inferredIncludeArchived =
+    !statuses?.length || statuses.includes(STATUS_ARCHIVED)
   const includeArchived = input.includeArchived ?? inferredIncludeArchived
 
   const query: ListRequirementsOptions = {

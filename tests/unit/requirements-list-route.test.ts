@@ -7,7 +7,7 @@ vi.mock('@/lib/db', () => ({
 const mockQueryCatalog = vi.fn()
 const mockQueryRequirementList = vi.fn()
 const mockManageRequirement = vi.fn()
-const mockCreateRequestContext = vi.fn(() => ({
+const mockRequestContext = {
   actor: {
     id: null,
     displayName: '',
@@ -18,7 +18,8 @@ const mockCreateRequestContext = vi.fn(() => ({
   },
   requestId: 'test',
   source: 'rest',
-}))
+}
+const mockCreateRequestContext = vi.fn(() => mockRequestContext)
 
 vi.mock('@/lib/requirements/service', () => ({
   createRequirementsService: () => ({
@@ -78,6 +79,12 @@ describe('requirements route', () => {
       }
       expect(json.requirements).toHaveLength(1)
       expect(json.pagination.total).toBe(1)
+      expect(mockCreateRequestContext).toHaveBeenCalledWith(req, 'rest')
+      expect(mockQueryRequirementList).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        { context: mockRequestContext },
+      )
     })
 
     it('returns CSV when format=csv', async () => {
@@ -124,6 +131,7 @@ describe('requirements route', () => {
             typeIds: [3],
           }),
         }),
+        { context: mockRequestContext },
       )
     })
 

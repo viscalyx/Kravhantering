@@ -74,45 +74,51 @@ export async function GET(request: NextRequest) {
     .filter(n => Number.isInteger(n) && n > 0)
 
   try {
-    await createRequestContext(request, 'rest')
-    const result = await queryRequirementList(db, {
-      filters: {
-        areaIds: areaIds.length > 0 ? areaIds : undefined,
-        categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
-        descriptionSearch,
-        normReferenceIds:
-          normReferenceIds.length > 0 ? normReferenceIds : undefined,
-        qualityCharacteristicIds:
-          qualityCharacteristicIds.length > 0
-            ? qualityCharacteristicIds
-            : undefined,
-        requirementPackageIds:
-          requirementPackageIds.length > 0 ? requirementPackageIds : undefined,
-        requiresTesting:
-          requiresTesting.length > 0 ? requiresTesting : undefined,
-        riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
-        statuses: statuses.length > 0 ? statuses : undefined,
-        typeIds: typeIds.length > 0 ? typeIds : undefined,
-        uniqueIdSearch,
+    const context = await createRequestContext(request, 'rest')
+    const result = await queryRequirementList(
+      db,
+      {
+        filters: {
+          areaIds: areaIds.length > 0 ? areaIds : undefined,
+          categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+          descriptionSearch,
+          normReferenceIds:
+            normReferenceIds.length > 0 ? normReferenceIds : undefined,
+          qualityCharacteristicIds:
+            qualityCharacteristicIds.length > 0
+              ? qualityCharacteristicIds
+              : undefined,
+          requirementPackageIds:
+            requirementPackageIds.length > 0
+              ? requirementPackageIds
+              : undefined,
+          requiresTesting:
+            requiresTesting.length > 0 ? requiresTesting : undefined,
+          riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
+          statuses: statuses.length > 0 ? statuses : undefined,
+          typeIds: typeIds.length > 0 ? typeIds : undefined,
+          uniqueIdSearch,
+        },
+        limit: url.searchParams.get('limit')
+          ? Number(url.searchParams.get('limit'))
+          : undefined,
+        locale,
+        offset: url.searchParams.get('offset')
+          ? Number(url.searchParams.get('offset'))
+          : undefined,
+        sort: {
+          by:
+            sortByParam && isRequirementSortField(sortByParam)
+              ? sortByParam
+              : DEFAULT_REQUIREMENT_SORT.by,
+          direction:
+            sortDirectionParam && isRequirementSortDirection(sortDirectionParam)
+              ? sortDirectionParam
+              : DEFAULT_REQUIREMENT_SORT.direction,
+        },
       },
-      limit: url.searchParams.get('limit')
-        ? Number(url.searchParams.get('limit'))
-        : undefined,
-      locale,
-      offset: url.searchParams.get('offset')
-        ? Number(url.searchParams.get('offset'))
-        : undefined,
-      sort: {
-        by:
-          sortByParam && isRequirementSortField(sortByParam)
-            ? sortByParam
-            : DEFAULT_REQUIREMENT_SORT.by,
-        direction:
-          sortDirectionParam && isRequirementSortDirection(sortDirectionParam)
-            ? sortDirectionParam
-            : DEFAULT_REQUIREMENT_SORT.direction,
-      },
-    })
+      { context },
+    )
     const requirements = result.requirements
 
     if (format === 'csv') {

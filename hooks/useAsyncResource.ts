@@ -90,6 +90,8 @@ export function useAsyncResource<T>(
   const fetcherRef = useRef(fetcher)
   const getErrorMessageRef = useRef(getErrorMessage)
   const hasDataRef = useRef(hasInitialData)
+  const hasInitialDataRef = useRef(hasInitialData)
+  const initialDataRef = useRef<T | undefined>(options.initialData)
   const isMountedRef = useRef(false)
   const requestIdRef = useRef(0)
   const previousKeyRef = useRef(key)
@@ -97,6 +99,8 @@ export function useAsyncResource<T>(
 
   fetcherRef.current = fetcher
   getErrorMessageRef.current = getErrorMessage
+  hasInitialDataRef.current = hasInitialData
+  initialDataRef.current = options.initialData
 
   const reload = useCallback(async () => {
     if (!enabled) return dataRef.current
@@ -131,7 +135,8 @@ export function useAsyncResource<T>(
       if (
         !isMountedRef.current ||
         requestId !== requestIdRef.current ||
-        request.controller.signal.aborted
+        request.controller.signal.aborted ||
+        key !== previousKeyRef.current
       ) {
         return dataRef.current
       }
@@ -147,7 +152,8 @@ export function useAsyncResource<T>(
         isAbortError(caughtError) ||
         request.controller.signal.aborted ||
         !isMountedRef.current ||
-        requestId !== requestIdRef.current
+        requestId !== requestIdRef.current ||
+        key !== previousKeyRef.current
       ) {
         return dataRef.current
       }
@@ -160,7 +166,11 @@ export function useAsyncResource<T>(
       }
       return undefined
     } finally {
-      if (isMountedRef.current && requestId === requestIdRef.current) {
+      if (
+        isMountedRef.current &&
+        requestId === requestIdRef.current &&
+        key === previousKeyRef.current
+      ) {
         setLoading(false)
         setRefreshing(false)
       }
@@ -182,10 +192,25 @@ export function useAsyncResource<T>(
   }, [])
 
   useEffect(() => {
-    if (!enabled) return
-
     const keyChanged = previousKeyRef.current !== key
-    previousKeyRef.current = key
+    if (keyChanged) {
+      const nextHasInitialData = hasInitialDataRef.current
+      const nextInitialData = initialDataRef.current
+      controllerRef.current?.abort()
+      controllerRef.current = null
+      previousKeyRef.current = key
+      dataRef.current = nextInitialData
+      hasDataRef.current = nextHasInitialData
+      skippedInitialLoadRef.current = false
+      requestIdRef.current = 0
+      setData(nextInitialData)
+      setLoading(enabled && loadOnMount && !hasDataRef.current)
+      setRefreshing(false)
+      setError(null)
+      setRefreshError(null)
+    }
+
+    if (!enabled) return
 
     if (!keyChanged && !loadOnMount && !skippedInitialLoadRef.current) {
       skippedInitialLoadRef.current = true

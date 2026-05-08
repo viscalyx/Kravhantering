@@ -191,6 +191,27 @@ export default function RequirementsSpecificationsClient({
   const shouldReduceMotion = useReducedMotion()
   const hasInitialData = initialData !== undefined
   const resolvedInitialData = initialData ?? EMPTY_INITIAL_DATA
+  const initialDataErrorKeys = new Set(
+    resolvedInitialData.errors.map(error => error.key),
+  )
+  const hasUsableInitialResource = (items: readonly unknown[], key: string) =>
+    hasInitialData && (items.length > 0 || !initialDataErrorKeys.has(key))
+  const hasInitialResponsibilityAreas = hasUsableInitialResource(
+    resolvedInitialData.responsibilityAreas,
+    'specification responsibility areas',
+  )
+  const hasInitialImplementationTypes = hasUsableInitialResource(
+    resolvedInitialData.implementationTypes,
+    'specification implementation types',
+  )
+  const hasInitialLifecycleStatuses = hasUsableInitialResource(
+    resolvedInitialData.lifecycleStatuses,
+    'specification lifecycle statuses',
+  )
+  const hasInitialSpecifications = hasUsableInitialResource(
+    resolvedInitialData.specifications,
+    'requirements specifications',
+  )
 
   const getName = (spec: Specification) => spec.name
   const getTaxonomyName = (item: SpecificationTaxonomyItem | null) =>
@@ -219,8 +240,8 @@ export default function RequirementsSpecificationsClient({
         : t('partialDataLoadWarning')
     },
     key: 'specification-responsibility-areas',
-    loadOnMount: !hasInitialData,
-    ...(hasInitialData
+    loadOnMount: !hasInitialResponsibilityAreas,
+    ...(hasInitialResponsibilityAreas
       ? { initialData: resolvedInitialData.responsibilityAreas }
       : {}),
   })
@@ -246,8 +267,8 @@ export default function RequirementsSpecificationsClient({
         : t('partialDataLoadWarning')
     },
     key: 'specification-implementation-types',
-    loadOnMount: !hasInitialData,
-    ...(hasInitialData
+    loadOnMount: !hasInitialImplementationTypes,
+    ...(hasInitialImplementationTypes
       ? { initialData: resolvedInitialData.implementationTypes }
       : {}),
   })
@@ -270,8 +291,8 @@ export default function RequirementsSpecificationsClient({
         : t('partialDataLoadWarning')
     },
     key: 'specification-lifecycle-statuses',
-    loadOnMount: !hasInitialData,
-    ...(hasInitialData
+    loadOnMount: !hasInitialLifecycleStatuses,
+    ...(hasInitialLifecycleStatuses
       ? { initialData: resolvedInitialData.lifecycleStatuses }
       : {}),
   })
@@ -301,8 +322,8 @@ export default function RequirementsSpecificationsClient({
         : t('loadSpecificationsFailed')
     },
     key: 'requirements-specifications',
-    loadOnMount: !hasInitialData,
-    ...(hasInitialData
+    loadOnMount: !hasInitialSpecifications,
+    ...(hasInitialSpecifications
       ? { initialData: resolvedInitialData.specifications }
       : {}),
   })

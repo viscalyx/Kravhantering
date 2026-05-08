@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(async () => (key: string) => key),
@@ -47,9 +47,16 @@ vi.mock('@/lib/specifications/preload', () => ({
 }))
 
 describe('specifications pages', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('RequirementsSpecificationsPage returns specifications metadata and mounts the client', async () => {
     const { default: RequirementsSpecificationsPage, generateMetadata } =
       await import('@/app/[locale]/specifications/page')
+    const { loadRequirementsSpecificationsInitialData } = await import(
+      '@/lib/specifications/preload'
+    )
 
     const metadata = await generateMetadata()
     expect(metadata.title).toBe('specifications')
@@ -58,11 +65,15 @@ describe('specifications pages', () => {
     expect(
       screen.getByText('RequirementsSpecificationsClient mounted: 1'),
     ).toBeInTheDocument()
+    expect(loadRequirementsSpecificationsInitialData).toHaveBeenCalledWith()
   })
 
   it('RequirementsSpecificationDetailPage passes the slug to RequirementsSpecificationDetailClient', async () => {
     const { default: RequirementsSpecificationDetailPage } = await import(
       '@/app/[locale]/specifications/[slug]/page'
+    )
+    const { loadRequirementsSpecificationDetailInitialData } = await import(
+      '@/lib/specifications/preload'
     )
 
     const element = await RequirementsSpecificationDetailPage({
@@ -75,5 +86,11 @@ describe('specifications pages', () => {
         'RequirementsSpecificationDetailClient mounted: ETJANST-UPP-2026 (1)',
       ),
     ).toBeInTheDocument()
+    expect(loadRequirementsSpecificationDetailInitialData).toHaveBeenCalledWith(
+      {
+        locale: 'en',
+        slug: 'ETJANST-UPP-2026',
+      },
+    )
   })
 })

@@ -233,6 +233,7 @@ export default function KravunderlagDetailClient({
     initialData.availableRequirements.hasMore,
   )
   const [rightLoadingMore, setRightLoadingMore] = useState(false)
+  const [loadMoreWarning, setLoadMoreWarning] = useState<string | null>(null)
   const [rightVisibleCols, setRightVisibleCols] = useState<
     RequirementColumnId[]
   >(() => readStoredCols(RIGHT_VISIBLE_COLS_KEY, DEFAULT_RIGHT_COLS))
@@ -402,6 +403,7 @@ export default function KravunderlagDetailClient({
 
   const loading = specResource.loading || specificationItemsResource.loading
   const loadWarning =
+    loadMoreWarning ??
     specResource.refreshError ??
     specificationItemsResource.refreshError ??
     availableRequirementsResource.refreshError ??
@@ -563,17 +565,25 @@ export default function KravunderlagDetailClient({
         offset: availableRows.length,
         sort: rightSort,
       })
-      const res = await apiFetch(`/api/requirements?${params}`)
-      if (!res.ok || activeKey !== availableRequirementsKeyRef.current) return
-      const data = (await res.json()) as {
+      const data = await readJsonOrThrow<{
         requirements?: RequirementRow[]
         pagination?: { hasMore?: boolean }
-      }
+      }>(
+        await apiFetch(`/api/requirements?${params}`),
+        t('loadAvailableRequirementsFailed'),
+      )
       if (activeKey !== availableRequirementsKeyRef.current) return
+      setLoadMoreWarning(null)
       setAvailableRows(prev => [...prev, ...(data.requirements ?? [])])
       setRightHasMore(data.pagination?.hasMore ?? false)
-    } catch {
-      // ignore
+    } catch (error) {
+      if (activeKey === availableRequirementsKeyRef.current) {
+        setLoadMoreWarning(
+          error instanceof Error
+            ? error.message
+            : t('loadAvailableRequirementsFailed'),
+        )
+      }
     } finally {
       setRightLoadingMore(false)
     }
@@ -584,6 +594,7 @@ export default function KravunderlagDetailClient({
     rightHasMore,
     rightLoadingMore,
     rightSort,
+    t,
   ])
 
   // Persist visible columns to localStorage

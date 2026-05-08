@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import type { SpecificationPreloadError } from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
 
@@ -38,6 +39,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       id: string
       onClick?: () => void
     }[]
+    hasMore?: boolean
+    loadingMore?: boolean
+    onLoadMore?: () => void | Promise<void>
     onSelectionChange?: (ids: Set<number>) => void
     rows: { id: number; itemRef?: string }[]
     stickyTopOffsetClassName?: string
@@ -71,6 +75,16 @@ vi.mock('@/components/RequirementsTable', () => ({
             {action.icon}
           </button>
         ))}
+        {props.hasMore ? (
+          <button
+            aria-label="load-more-available"
+            disabled={props.loadingMore}
+            onClick={() => void props.onLoadMore?.()}
+            type="button"
+          >
+            load more
+          </button>
+        ) : null}
         {props.rows[0] ? (
           <button
             aria-label={`select-row-${props.rows[0].id}`}
@@ -192,7 +206,7 @@ function createInitialData() {
       hasMore: false,
       rows: [initialAvailableRequirement],
     },
-    errors: [],
+    errors: [] as SpecificationPreloadError[],
     leftNormReferenceOptions: [],
     requirementPackages: [],
     rightNormReferenceOptions: [],
@@ -413,6 +427,17 @@ describe('RequirementsSpecificationDetailClient', () => {
       },
     )
     window.localStorage.clear()
+  })
+
+  it('shows the partial preload warning banner when initial data contains errors', () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      errors: [{ key: 'available requirements', message: 'preload failed' }],
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'specification.partialDataLoadWarning',
+    )
   })
 
   it('opens and closes the specification edit view from the title action', async () => {
@@ -737,6 +762,33 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
     expect(dialog).toBeInTheDocument()
+  })
+
+  it('shows a warning when loading more available requirements fails', async () => {
+    failNextAvailableRequirementsFetch = true
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableRequirements: {
+        hasMore: true,
+        rows: [initialAvailableRequirement],
+      },
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'specification.loadAvailableRequirementsFailed',
+    )
   })
 
   it('opens the specification-local requirement dialog from the left-panel action', async () => {

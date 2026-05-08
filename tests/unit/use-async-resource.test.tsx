@@ -114,6 +114,59 @@ describe('useAsyncResource', () => {
     expect(result.current.refreshError).toBe('refresh failed')
   })
 
+  it('resets cached data and errors when the key changes', async () => {
+    const second = createDeferred<string>()
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('refresh failed'))
+      .mockImplementationOnce(() => second.promise)
+
+    const { rerender, result } = renderHook(
+      ({
+        initialData,
+        resourceKey,
+      }: {
+        initialData: string
+        resourceKey: string
+      }) =>
+        useAsyncResource({
+          fetcher,
+          initialData,
+          key: resourceKey,
+          loadOnMount: false,
+        }),
+      {
+        initialProps: {
+          initialData: 'first cached',
+          resourceKey: 'resource:first',
+        },
+      },
+    )
+
+    await act(async () => {
+      await result.current.reload()
+    })
+
+    expect(result.current.data).toBe('first cached')
+    expect(result.current.refreshError).toBe('refresh failed')
+
+    rerender({
+      initialData: 'second cached',
+      resourceKey: 'resource:second',
+    })
+
+    await waitFor(() => {
+      expect(result.current.data).toBe('second cached')
+      expect(result.current.refreshError).toBeNull()
+      expect(result.current.error).toBeNull()
+    })
+
+    await act(async () => {
+      second.resolve('second loaded')
+      await second.promise
+    })
+  })
+
   it('supports manual reload when mount loading is disabled', async () => {
     const fetcher = vi.fn(async () => 'manual')
 
