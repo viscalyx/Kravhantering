@@ -1,5 +1,6 @@
 'use client'
 
+import { AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle,
   Download,
@@ -1422,10 +1423,12 @@ export default function KravunderlagDetailClient({
                 )}
               </dl>
             </div>
-            {showEditSpecificationForm && (
-              <div className="mt-4">
+            <AnimatePresence initial={false}>
+              {showEditSpecificationForm ? (
                 <SpecificationEditPanel
+                  className="mt-4"
                   implementationTypes={specificationImplementationTypes}
+                  key="specification-edit-panel"
                   lifecycleStatuses={specificationLifecycleStatuses}
                   onCancel={() => setShowEditSpecificationForm(false)}
                   onSaved={async result => {
@@ -1443,8 +1446,8 @@ export default function KravunderlagDetailClient({
                   spec={spec}
                   specificationSlug={specificationSlug}
                 />
-              </div>
-            )}
+              ) : null}
+            </AnimatePresence>
           </div>
 
           {/* Split panel */}

@@ -26,6 +26,7 @@ interface SpecificationMeta {
 }
 
 interface SpecificationEditPanelProps {
+  className?: string
   implementationTypes: TaxonomyItem[]
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
@@ -61,6 +62,7 @@ function buildFormState(spec: SpecificationMeta): SpecificationFormState {
 }
 
 export default function SpecificationEditPanel({
+  className,
   implementationTypes,
   lifecycleStatuses,
   onCancel,
@@ -182,7 +184,7 @@ export default function SpecificationEditPanel({
   return (
     <motion.form
       aria-busy={isSubmitting}
-      className="glass max-w-lg space-y-5 rounded-2xl p-6"
+      className={`glass max-w-lg space-y-5 rounded-2xl p-6 ${className ?? ''}`}
       id={SPECIFICATION_EDIT_FORM_ID}
       {...offsetPanelMotion(shouldReduceMotion)}
       {...devMarker({
