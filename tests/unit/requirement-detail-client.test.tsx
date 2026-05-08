@@ -22,6 +22,10 @@ let resizeObserverCallback: ResizeObserverCallback | null = null
 let mutationObserverCallback: MutationCallback | null = null
 
 vi.mock('next-intl', () => ({
+  useFormatter: () => ({
+    dateTime: (date: Date, opts?: Intl.DateTimeFormatOptions) =>
+      date.toLocaleDateString('sv', opts),
+  }),
   useLocale: () => 'sv',
   useTranslations: (namespace: string) => {
     const translations: Record<

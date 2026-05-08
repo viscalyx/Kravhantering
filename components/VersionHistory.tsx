@@ -1,7 +1,7 @@
 'use client'
 
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useFormatter, useLocale, useTranslations } from 'next-intl'
 import { forwardRef, useEffect, useRef, useState } from 'react'
 import StatusBadge from '@/components/StatusBadge'
 import { devMarker } from '@/lib/developer-mode-markers'
@@ -62,6 +62,7 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
     const t = useTranslations('requirement')
     const tStatusLabel = useTranslations('requirement.statusLabel')
     const locale = useLocale()
+    const format = useFormatter()
     const [expandedBefore, setExpandedBefore] = useState(false)
     const [expandedAfter, setExpandedAfter] = useState(false)
 
@@ -335,17 +336,23 @@ const VersionHistory = forwardRef<HTMLDivElement, VersionHistoryProps>(
                 />
                 {v.status === 1 && v.editedAt && (
                   <span className="text-[10px] text-secondary-500 dark:text-secondary-400">
-                    {new Date(v.editedAt).toLocaleDateString('sv-SE')}
+                    {format.dateTime(new Date(v.editedAt), {
+                      dateStyle: 'short',
+                    })}
                   </span>
                 )}
                 {v.publishedAt && !v.archivedAt && v.status !== 1 && (
                   <span className="text-[10px] text-secondary-500 dark:text-secondary-400">
-                    {new Date(v.publishedAt).toLocaleDateString('sv-SE')}
+                    {format.dateTime(new Date(v.publishedAt), {
+                      dateStyle: 'short',
+                    })}
                   </span>
                 )}
                 {v.archivedAt && (
                   <span className="text-[10px] text-secondary-500 dark:text-secondary-400">
-                    {new Date(v.archivedAt).toLocaleDateString('sv-SE')}
+                    {format.dateTime(new Date(v.archivedAt), {
+                      dateStyle: 'short',
+                    })}
                   </span>
                 )}
               </button>
