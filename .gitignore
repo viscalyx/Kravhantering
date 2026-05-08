@@ -263,4 +263,6 @@ tests/quality/spec_audits
 # Cookie jars produced by scripts/dev-login.mjs
 .auth/
 
+.agents
+.agent
 devcontainer-lock.json

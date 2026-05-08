@@ -206,10 +206,12 @@ describe('ConfirmModal', () => {
 
     await waitFor(() => expect(cancelButton).toHaveFocus())
 
-    fireEvent.keyDown(dialog, { key: 'Tab' })
+    // Shift+Tab from first element wraps to last
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
     expect(confirmButton).toHaveFocus()
 
-    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true })
+    // Tab from last element wraps to first
+    fireEvent.keyDown(dialog, { key: 'Tab' })
     expect(cancelButton).toHaveFocus()
 
     const backdrop = dialog.parentElement?.querySelector('.absolute.inset-0')
@@ -265,5 +267,24 @@ describe('ConfirmModal', () => {
         'false',
       ),
     )
+  })
+
+  it('restores focus to the trigger button after dialog is dismissed', async () => {
+    render(
+      <ConfirmModalProvider>
+        <Trigger anchorMode="none" label="restore-focus" />
+      </ConfirmModalProvider>,
+    )
+
+    const trigger = screen.getByRole('button', { name: 'restore-focus' })
+    await userEvent.click(trigger)
+
+    await screen.findByRole('alertdialog')
+
+    // Dismiss via Escape
+    const dialog = screen.getByRole('alertdialog')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 })

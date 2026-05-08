@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface DeviationDecisionModalProps {
@@ -36,9 +37,15 @@ export default function DeviationDecisionModal({
       setMotivation('')
       setDecidedBy('')
       setOpenHelp(new Set())
-      requestAnimationFrame(() => textareaRef.current?.focus())
     }
   }, [open])
+
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose,
+    open,
+  })
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -56,16 +63,6 @@ export default function DeviationDecisionModal({
     if (!motivation.trim() || !decidedBy.trim()) return
     onSubmit(decision, motivation.trim(), decidedBy.trim())
   }, [decision, motivation, decidedBy, onSubmit])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-      }
-    },
-    [onClose],
-  )
 
   if (typeof window === 'undefined') return null
 

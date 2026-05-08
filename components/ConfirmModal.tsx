@@ -10,10 +10,12 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 /* ---------- Types ---------- */
@@ -172,6 +174,21 @@ function ConfirmModalInner({
   const confirmText = modal?.confirmText ?? defaultConfirmText
   const cancelText = modal?.cancelText ?? defaultCancelText
 
+  // Auto-focus: danger or defaultCancel → cancel button; default → confirm button
+  const initialFocusRef = useMemo(() => {
+    if ((variant === 'danger' || modal?.defaultCancel) && showCancel) {
+      return cancelBtnRef
+    }
+    return confirmBtnRef
+  }, [variant, modal?.defaultCancel, showCancel])
+
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    initialFocusRef,
+    onClose: () => onClose(false),
+    open: !!modal,
+  })
+
   // Compute position after mount and on resize/scroll
   useEffect(() => {
     if (!modal) return
@@ -193,18 +210,6 @@ function ConfirmModalInner({
       window.removeEventListener('scroll', update, true)
     }
   }, [modal])
-
-  // Auto-focus: danger or defaultCancel → cancel button; default → confirm button
-  useEffect(() => {
-    if (!modal) return
-    requestAnimationFrame(() => {
-      if ((variant === 'danger' || modal.defaultCancel) && showCancel) {
-        cancelBtnRef.current?.focus()
-      } else {
-        confirmBtnRef.current?.focus()
-      }
-    })
-  }, [modal, variant, showCancel])
 
   // Resolve icon
   let IconComponent: LucideIcon | null = null
@@ -255,31 +260,7 @@ function ConfirmModalInner({
             })}
             exit={{ opacity: 0, scale: 0.95 }}
             initial={{ opacity: 0, scale: 0.95 }}
-            onKeyDown={e => {
-              if (e.key === 'Escape') {
-                e.stopPropagation()
-                onClose(false)
-              }
-              // Focus trap between buttons
-              if (e.key === 'Tab' && showCancel) {
-                const isConfirm =
-                  document.activeElement === confirmBtnRef.current
-                const isCancel = document.activeElement === cancelBtnRef.current
-                if (e.shiftKey && isCancel) {
-                  e.preventDefault()
-                  confirmBtnRef.current?.focus()
-                } else if (e.shiftKey && isConfirm) {
-                  e.preventDefault()
-                  cancelBtnRef.current?.focus()
-                } else if (!e.shiftKey && isConfirm) {
-                  e.preventDefault()
-                  cancelBtnRef.current?.focus()
-                } else if (!e.shiftKey && isCancel) {
-                  e.preventDefault()
-                  confirmBtnRef.current?.focus()
-                }
-              }
-            }}
+            onKeyDown={handleKeyDown}
             ref={modalRef}
             role="alertdialog"
             style={{ top: pos.top, left: pos.left }}

@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface SuggestionFormModalProps {
@@ -40,9 +41,16 @@ export default function SuggestionFormModal({
       setContent(initialContent ?? '')
       setCreatedBy(initialCreatedBy ?? '')
       setOpenHelp(new Set())
-      requestAnimationFrame(() => textareaRef.current?.focus())
     }
   }, [open, initialContent, initialCreatedBy])
+
+  const { handleKeyDown } = useModalFocus({
+    closeDisabled: loading,
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose,
+    open,
+  })
 
   const toggleHelp = (field: string) => {
     setOpenHelp(prev => {
@@ -60,17 +68,6 @@ export default function SuggestionFormModal({
     if (!content.trim()) return
     onSubmit(content.trim(), createdBy.trim())
   }, [content, createdBy, onSubmit])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        if (loading) return
-        onClose()
-      }
-    },
-    [onClose, loading],
-  )
 
   if (typeof window === 'undefined') return null
 

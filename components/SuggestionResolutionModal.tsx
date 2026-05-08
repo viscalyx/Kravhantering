@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
+import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 
 interface SuggestionResolutionModalProps {
@@ -30,19 +31,19 @@ export default function SuggestionResolutionModal({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
-  const previousFocusRef = useRef<Element | null>(null)
+  const { handleKeyDown } = useModalFocus({
+    modalRef,
+    initialFocusRef: textareaRef,
+    onClose,
+    open,
+  })
 
   useEffect(() => {
     if (open) {
-      previousFocusRef.current = document.activeElement
       setResolution(1)
       setMotivation('')
       setResolvedBy('')
       setOpenHelp(new Set())
-      requestAnimationFrame(() => textareaRef.current?.focus())
-    } else if (previousFocusRef.current instanceof HTMLElement) {
-      previousFocusRef.current.focus()
-      previousFocusRef.current = null
     }
   }, [open])
 
@@ -62,31 +63,6 @@ export default function SuggestionResolutionModal({
     if (!motivation.trim() || !resolvedBy.trim()) return
     onSubmit(resolution, motivation.trim(), resolvedBy.trim())
   }, [resolution, motivation, resolvedBy, onSubmit])
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-      }
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'input, textarea, button, select, [tabindex]:not([tabindex="-1"])',
-        )
-        if (focusable.length === 0) return
-        const first = focusable[0]
-        const last = focusable[focusable.length - 1]
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault()
-          last.focus()
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault()
-          first.focus()
-        }
-      }
-    },
-    [onClose],
-  )
 
   if (typeof window === 'undefined') return null
 

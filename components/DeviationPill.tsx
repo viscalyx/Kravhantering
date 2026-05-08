@@ -1,7 +1,7 @@
 'use client'
 
 import { CheckCircle2, Clock, XCircle } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
 
@@ -28,6 +28,7 @@ function DeviationPillContent({
   developerModeContext,
   muted,
 }: DeviationPillProps) {
+  const locale = useLocale()
   const t = useTranslations('deviation')
   const isDecided = deviation.decision !== null
   const isApproved = deviation.decision === 1
@@ -96,7 +97,9 @@ function DeviationPillContent({
         {deviation.createdBy && <span>{deviation.createdBy}</span>}
         {deviation.createdBy && deviation.createdAt && <span> · </span>}
         {deviation.createdAt && (
-          <span>{new Date(deviation.createdAt).toLocaleDateString()}</span>
+          <span>
+            {new Date(deviation.createdAt).toLocaleDateString(locale)}
+          </span>
         )}
       </p>
 
@@ -123,7 +126,9 @@ function DeviationPillContent({
             {deviation.decidedBy && <span>{deviation.decidedBy}</span>}
             {deviation.decidedBy && deviation.decidedAt && <span> · </span>}
             {deviation.decidedAt && (
-              <span>{new Date(deviation.decidedAt).toLocaleDateString()}</span>
+              <span>
+                {new Date(deviation.decidedAt).toLocaleDateString(locale)}
+              </span>
             )}
           </p>
         </div>
