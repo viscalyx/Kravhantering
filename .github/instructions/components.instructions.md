@@ -25,16 +25,18 @@ applyTo: 'components/**/*.tsx'
 ## Animation Patterns
 
 - Use Framer Motion with `AnimatePresence` for enter/exit transitions (modals, overlays).
+- Respect `prefers-reduced-motion` for every Framer Motion surface. Import
+  `useReducedMotion()` and route props through `lib/reduced-motion.ts` so
+  reduced motion removes scale, slide, height, offset, and repeating movement.
 - See `ConfirmModal.tsx` for a reference implementation.
 
 ```tsx
+const shouldReduceMotion = useReducedMotion()
+
 <AnimatePresence>
   {isOpen && (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.15 }}
+      {...dialogPanelMotion(shouldReduceMotion)}
     >
       {children}
     </motion.div>

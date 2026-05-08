@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ChevronDown,
   ChevronUp,
@@ -26,6 +26,7 @@ import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { generateSpecificationSlug, normalizeSlugInput } from '@/lib/slug'
 
 const REQUIREMENT_SPECIFICATIONS_HELP: HelpContent = {
@@ -181,6 +182,7 @@ export default function RequirementsSpecificationsClient() {
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const locale = useLocale()
+  const shouldReduceMotion = useReducedMotion()
   const tRef = useRef(t)
   tRef.current = t
 
@@ -529,11 +531,8 @@ export default function RequirementsSpecificationsClient() {
         <AnimatePresence>
           {showForm && (
             <motion.form
-              animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
+              {...offsetPanelMotion(shouldReduceMotion)}
               {...devMarker({
                 context: 'specifications',
                 name: 'crud form',

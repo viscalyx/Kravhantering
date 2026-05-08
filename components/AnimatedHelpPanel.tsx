@@ -1,7 +1,8 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
+import { collapsiblePanelMotion } from '@/lib/reduced-motion'
 
 interface AnimatedHelpPanelProps {
   children: ReactNode
@@ -19,16 +20,15 @@ export default function AnimatedHelpPanel({
   id,
   isOpen,
 }: AnimatedHelpPanelProps) {
+  const shouldReduceMotion = useReducedMotion()
+
   return (
     <AnimatePresence initial={false}>
       {isOpen && (
         <motion.div
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          initial={{ height: 0, opacity: 0 }}
           key={id}
           style={{ overflow: 'hidden' }}
-          transition={{ duration: 0.15 }}
+          {...collapsiblePanelMotion(shouldReduceMotion)}
         >
           <p className={className} id={id}>
             {children}

@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 interface SuggestionResolutionModalProps {
   loading?: boolean
@@ -30,6 +31,7 @@ export default function SuggestionResolutionModal({
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
+  const shouldReduceMotion = useReducedMotion()
 
   const { handleKeyDown } = useModalFocus({
     modalRef,
@@ -70,12 +72,9 @@ export default function SuggestionResolutionModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          animate={{ opacity: 1 }}
           className="fixed inset-0 z-50 flex items-center justify-center"
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
           key="suggestion-resolution-backdrop"
-          transition={{ duration: 0.15 }}
+          {...fadeMotion(shouldReduceMotion)}
         >
           {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss */}
           {/* biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled on dialog */}
@@ -85,7 +84,6 @@ export default function SuggestionResolutionModal({
           />
 
           <motion.div
-            animate={{ opacity: 1, scale: 1 }}
             aria-labelledby="suggestion-resolution-title"
             aria-modal="true"
             className="relative z-50 w-full max-w-md rounded-xl bg-white dark:bg-secondary-900 shadow-2xl"
@@ -94,12 +92,10 @@ export default function SuggestionResolutionModal({
               priority: 420,
               value: 'suggestion-resolution',
             })}
-            exit={{ opacity: 0, scale: 0.95 }}
-            initial={{ opacity: 0, scale: 0.95 }}
             onKeyDown={handleKeyDown}
             ref={modalRef}
             role="dialog"
-            transition={{ duration: 0.15 }}
+            {...dialogPanelMotion(shouldReduceMotion)}
           >
             <div className="p-5 space-y-4">
               <h2

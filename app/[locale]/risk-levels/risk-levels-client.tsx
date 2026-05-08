@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
@@ -10,6 +10,7 @@ import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 const RISK_LEVELS_HELP: HelpContent = {
   sections: [
@@ -86,6 +87,7 @@ export default function RiskLevelsClient() {
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
   const locale = useLocale()
+  const shouldReduceMotion = useReducedMotion()
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
   >([])
@@ -208,11 +210,8 @@ export default function RiskLevelsClient() {
         <AnimatePresence>
           {controller.showForm && (
             <motion.div
-              animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6"
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
+              {...offsetPanelMotion(shouldReduceMotion)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
                 <form

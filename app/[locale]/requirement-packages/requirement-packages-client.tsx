@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -12,6 +12,7 @@ import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { isSwedish } from '@/lib/i18n/localized'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
   sections: [
@@ -106,6 +107,7 @@ export default function RequirementPackagesClient() {
   const tc = useTranslations('common')
   const tr = useTranslations('requirement')
   const locale = useLocale()
+  const shouldReduceMotion = useReducedMotion()
   const [owners, setOwners] = useState<Owner[]>([])
   const [linkedRequirements, setLinkedRequirements] = useState<
     LinkedRequirement[]
@@ -280,11 +282,8 @@ export default function RequirementPackagesClient() {
         <AnimatePresence>
           {controller.showForm && (
             <motion.div
-              animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6"
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
+              {...offsetPanelMotion(shouldReduceMotion)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
                 <form

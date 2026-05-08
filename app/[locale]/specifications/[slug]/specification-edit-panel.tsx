@@ -1,12 +1,13 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type FormEvent, useEffect, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 import { normalizeSlugInput } from '@/lib/slug'
 
 interface TaxonomyItem {
@@ -25,6 +26,7 @@ interface SpecificationMeta {
 }
 
 interface SpecificationEditPanelProps {
+  className?: string
   implementationTypes: TaxonomyItem[]
   lifecycleStatuses: TaxonomyItem[]
   onCancel: () => void
@@ -60,6 +62,7 @@ function buildFormState(spec: SpecificationMeta): SpecificationFormState {
 }
 
 export default function SpecificationEditPanel({
+  className,
   implementationTypes,
   lifecycleStatuses,
   onCancel,
@@ -71,6 +74,7 @@ export default function SpecificationEditPanel({
   const t = useTranslations('specification')
   const tc = useTranslations('common')
   const locale = useLocale()
+  const shouldReduceMotion = useReducedMotion()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [openHelp, setOpenHelp] = useState<Set<string>>(() => new Set())
   const [slugError, setSlugError] = useState<string | null>(null)
@@ -179,12 +183,10 @@ export default function SpecificationEditPanel({
 
   return (
     <motion.form
-      animate={{ opacity: 1, y: 0 }}
       aria-busy={isSubmitting}
-      className="glass max-w-lg space-y-5 rounded-2xl p-6"
+      className={`glass max-w-lg space-y-5 rounded-2xl p-6 ${className ?? ''}`}
       id={SPECIFICATION_EDIT_FORM_ID}
-      initial={{ opacity: 0, y: 8 }}
-      transition={{ duration: 0.15 }}
+      {...offsetPanelMotion(shouldReduceMotion)}
       {...devMarker({
         context: 'requirements specification detail',
         name: 'crud form',

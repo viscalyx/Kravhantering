@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { useReducedMotion } from 'framer-motion'
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -95,6 +96,7 @@ describe('CrudAdminPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(useReducedMotion).mockReturnValue(false)
   })
 
   it('renders the header and table rows', () => {
@@ -110,6 +112,19 @@ describe('CrudAdminPanel', () => {
   })
 
   it('opens the form from the create button', () => {
+    render(<PanelHarness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.create' }))
+
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'common.create' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toBeInTheDocument()
+  })
+
+  it('opens the form when reduced motion is requested', () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+
     render(<PanelHarness />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.create' }))

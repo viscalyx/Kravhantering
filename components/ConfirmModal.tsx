@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import { AlertCircle, AlertTriangle, Info } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -17,6 +17,7 @@ import {
 import { createPortal } from 'react-dom'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 /* ---------- Types ---------- */
 
@@ -164,6 +165,7 @@ function ConfirmModalInner({
   const modalRef = useRef<HTMLDivElement>(null)
   const confirmBtnRef = useRef<HTMLButtonElement>(null)
   const cancelBtnRef = useRef<HTMLButtonElement>(null)
+  const shouldReduceMotion = useReducedMotion()
   const [pos, setPos] = useState<{ top: number; left: number }>({
     top: 0,
     left: 0,
@@ -231,12 +233,9 @@ function ConfirmModalInner({
     <AnimatePresence>
       {modal && (
         <motion.div
-          animate={{ opacity: 1 }}
           className="fixed inset-0 z-50 flex items-start justify-center"
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
           key="confirm-backdrop"
-          transition={{ duration: 0.15 }}
+          {...fadeMotion(shouldReduceMotion)}
         >
           {/* Backdrop — click to dismiss */}
           {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop dismiss pattern */}
@@ -248,7 +247,6 @@ function ConfirmModalInner({
 
           {/* Dialog */}
           <motion.div
-            animate={{ opacity: 1, scale: 1 }}
             aria-describedby={modal.title ? messageId : undefined}
             aria-labelledby={modal.title ? titleId : messageId}
             aria-modal="true"
@@ -258,13 +256,11 @@ function ConfirmModalInner({
               priority: 420,
               value: modal.title ?? undefined,
             })}
-            exit={{ opacity: 0, scale: 0.95 }}
-            initial={{ opacity: 0, scale: 0.95 }}
             onKeyDown={handleKeyDown}
             ref={modalRef}
             role="alertdialog"
             style={{ top: pos.top, left: pos.left }}
-            transition={{ duration: 0.15 }}
+            {...dialogPanelMotion(shouldReduceMotion)}
           >
             <div className="p-5">
               {/* Header: icon + title */}

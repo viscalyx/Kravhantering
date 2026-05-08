@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useRef, useState } from 'react'
@@ -9,6 +9,7 @@ import StatusBadge from '@/components/StatusBadge'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,
@@ -93,6 +94,7 @@ export default function SpecificationItemStatusesClient() {
   const t = useTranslations('specificationItemStatusAdmin')
   const tc = useTranslations('common')
   const locale = useLocale()
+  const shouldReduceMotion = useReducedMotion()
   const [linkedItems, setLinkedItems] = useState<LinkedItem[]>([])
   const [linkedItemsError, setLinkedItemsError] = useState<string | null>(null)
   const [linkedItemsLoading, setLinkedItemsLoading] = useState(false)
@@ -227,11 +229,8 @@ export default function SpecificationItemStatusesClient() {
         <AnimatePresence>
           {controller.showForm && (
             <motion.div
-              animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6"
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
+              {...offsetPanelMotion(shouldReduceMotion)}
             >
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 items-start">
                 <form

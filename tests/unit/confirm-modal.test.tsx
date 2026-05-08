@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useReducedMotion } from 'framer-motion'
 import type { LucideIcon } from 'lucide-react'
 import { AlertTriangle } from 'lucide-react'
 import { useState } from 'react'
@@ -93,6 +94,7 @@ function OutsideTrigger() {
 
 describe('ConfirmModal', () => {
   beforeEach(() => {
+    vi.mocked(useReducedMotion).mockReturnValue(false)
     window.innerHeight = 800
     window.innerWidth = 600
 
@@ -186,6 +188,31 @@ describe('ConfirmModal', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('no-anchor-result')).toHaveTextContent('true'),
+    )
+  })
+
+  it('opens and resolves when reduced motion is requested', async () => {
+    vi.mocked(useReducedMotion).mockReturnValue(true)
+
+    render(
+      <ConfirmModalProvider>
+        <Trigger anchorMode="none" label="reduced-motion" />
+      </ConfirmModalProvider>,
+    )
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'reduced-motion' }),
+    )
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveStyle({ left: '140px', top: '340px' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('reduced-motion-result')).toHaveTextContent(
+        'true',
+      ),
     )
   })
 

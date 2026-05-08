@@ -1,11 +1,12 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { LogIn, LogOut, UserCircle2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useId, useRef, useState } from 'react'
 import { usePathname } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 type AuthMeAuthenticated = {
   authenticated: true
@@ -204,6 +205,7 @@ export default function AuthMenu({ variant }: ComponentProps) {
   const pathname = usePathname()
   const me = useAuthMe()
   const popupId = useId()
+  const shouldReduceMotion = useReducedMotion()
   const [isPopupOpen, setIsPopupOpen] = useState(false)
   const popupRootRef = useRef<HTMLDivElement | null>(null)
   const suppressNextFocusOpenRef = useRef(false)
@@ -402,12 +404,9 @@ export default function AuthMenu({ variant }: ComponentProps) {
         <AnimatePresence>
           {isPopupOpen && (
             <motion.div
-              animate={{ opacity: 1, y: 0 }}
               aria-label={t('userInfoTitle')}
               className="absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),24rem)] max-w-sm rounded-xl border border-secondary-200 bg-white p-4 shadow-lg dark:border-secondary-700 dark:bg-secondary-900"
-              exit={{ opacity: 0, y: -4 }}
               id={popupId}
-              initial={{ opacity: 0, y: -4 }}
               onKeyDown={event => {
                 if (event.key !== 'Escape') return
                 event.preventDefault()
@@ -416,7 +415,10 @@ export default function AuthMenu({ variant }: ComponentProps) {
                 triggerRef.current?.focus()
               }}
               role="dialog"
-              transition={{ duration: 0.12 }}
+              {...offsetPanelMotion(shouldReduceMotion, {
+                duration: 0.12,
+                offset: -4,
+              })}
               {...devMarker({
                 name: 'popover',
                 priority: 311,

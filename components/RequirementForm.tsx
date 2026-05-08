@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { AlertTriangle, ExternalLink, Plus, RotateCcw, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
@@ -12,6 +12,7 @@ import RequirementFormFields, {
 import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { dialogPanelMotion, offsetPanelMotion } from '@/lib/reduced-motion'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 interface RequirementFormProps {
@@ -75,6 +76,7 @@ export default function RequirementForm({
   const tc = useTranslations('common')
   const t = useTranslations('requirement')
   const router = useRouter()
+  const shouldReduceMotion = useReducedMotion()
 
   const [showCreateNormRef, setShowCreateNormRef] = useState(false)
   const [normRefForm, setNormRefForm] = useState({
@@ -285,10 +287,8 @@ export default function RequirementForm({
 
   return (
     <motion.form
-      animate={{ opacity: 1, y: 0 }}
-      initial={{ opacity: 0, y: 8 }}
       onSubmit={handleSubmit}
-      transition={{ duration: 0.15 }}
+      {...offsetPanelMotion(shouldReduceMotion)}
     >
       <RequirementFormFields
         additionalNormReferences={createdNormRefs}
@@ -510,6 +510,7 @@ function NormReferenceModal({
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previouslyFocused = useRef<Element | null>(null)
+  const shouldReduceMotion = useReducedMotion()
 
   useEffect(() => {
     previouslyFocused.current = document.activeElement
@@ -576,15 +577,13 @@ function NormReferenceModal({
         onClick={normRefSubmitting ? undefined : onCancel}
       />
       <motion.div
-        animate={{ opacity: 1, scale: 1 }}
         aria-describedby="modal-desc-norm-ref"
         aria-labelledby="modal-title-norm-ref"
         aria-modal="true"
         className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-secondary-900 border shadow-xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
-        initial={{ opacity: 0, scale: 0.95 }}
         ref={dialogRef}
         role="dialog"
-        transition={{ duration: 0.15 }}
+        {...dialogPanelMotion(shouldReduceMotion)}
       >
         <div className="flex items-center justify-between">
           <h2

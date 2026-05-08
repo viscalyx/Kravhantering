@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
@@ -11,6 +11,7 @@ import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 const QUALITY_CHARACTERISTICS_HELP: HelpContent = {
   sections: [
@@ -80,6 +81,7 @@ export default function QualityCharacteristicsClient() {
   const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const shouldReduceMotion = useReducedMotion()
   const [types, setTypes] = useState<Type[]>([])
   const [typesError, setTypesError] = useState<string>()
   const [typesLoading, setTypesLoading] = useState(true)
@@ -240,11 +242,8 @@ export default function QualityCharacteristicsClient() {
         <AnimatePresence>
           {controller.showForm && (
             <motion.form
-              animate={{ opacity: 1, y: 0 }}
               className="glass rounded-2xl p-6 mb-6 space-y-5 max-w-lg"
-              exit={{ opacity: 0, y: 8 }}
-              initial={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.15 }}
+              {...offsetPanelMotion(shouldReduceMotion)}
               {...devMarker({
                 context: 'quality characteristics',
                 name: 'crud form',

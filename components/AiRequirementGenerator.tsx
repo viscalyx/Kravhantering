@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle,
   ChevronDown,
@@ -30,6 +30,7 @@ import {
 } from '@/lib/ai/requirement-prompt'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -223,6 +224,7 @@ export default function AiRequirementGenerator({
   const tc = useTranslations('common')
   const locale = useLocale()
   const { confirm } = useConfirmModal()
+  const shouldReduceMotion = useReducedMotion()
 
   // Input state
   const [topic, setTopic] = useState('')
@@ -1002,25 +1004,20 @@ export default function AiRequirementGenerator({
     <AnimatePresence>
       {open && (
         <motion.div
-          animate={{ opacity: 1 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          exit={{ opacity: 0 }}
-          initial={{ opacity: 0 }}
+          {...fadeMotion(shouldReduceMotion)}
         >
           <motion.div
-            animate={{ opacity: 1, scale: 1 }}
             aria-labelledby="ai-requirement-dialog-title"
             aria-modal="true"
-            className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl transition-[max-width] duration-300 dark:bg-secondary-900 ${thinking || (rawResponse && phase === 'done') ? 'max-w-6xl' : 'max-w-3xl'}`}
+            className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl transition-[max-width] duration-300 motion-reduce:transition-none dark:bg-secondary-900 ${thinking || (rawResponse && phase === 'done') ? 'max-w-6xl' : 'max-w-3xl'}`}
             {...devMarker({
               name: 'dialog',
               priority: 420,
               value: 'ai-requirement-generator',
             })}
-            exit={{ opacity: 0, scale: 0.95 }}
-            initial={{ opacity: 0, scale: 0.95 }}
             role="dialog"
-            transition={{ duration: 0.15 }}
+            {...dialogPanelMotion(shouldReduceMotion)}
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-secondary-200 px-6 py-4 dark:border-secondary-700">
