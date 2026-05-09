@@ -265,4 +265,7 @@ tests/quality/spec_audits
 
 .agents
 .agent
+
 devcontainer-lock.json
+
+.npm-cache
