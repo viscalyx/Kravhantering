@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RequirementsSpecificationDetailClient from '@/app/[locale]/specifications/[slug]/requirements-specification-detail-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import type { SpecificationPreloadError } from '@/lib/specifications/preload-types'
 
 const requirementsTableMock = vi.fn()
 
@@ -38,6 +39,9 @@ vi.mock('@/components/RequirementsTable', () => ({
       id: string
       onClick?: () => void
     }[]
+    hasMore?: boolean
+    loadingMore?: boolean
+    onLoadMore?: () => void | Promise<void>
     onSelectionChange?: (ids: Set<number>) => void
     rows: { id: number; itemRef?: string }[]
     stickyTopOffsetClassName?: string
@@ -71,6 +75,16 @@ vi.mock('@/components/RequirementsTable', () => ({
             {action.icon}
           </button>
         ))}
+        {props.hasMore ? (
+          <button
+            aria-label="load-more-available"
+            disabled={props.loadingMore}
+            onClick={() => void props.onLoadMore?.()}
+            type="button"
+          >
+            load more
+          </button>
+        ) : null}
         {props.rows[0] ? (
           <button
             aria-label={`select-row-${props.rows[0].id}`}
@@ -114,10 +128,112 @@ let addRequirementsResponse: { body: unknown; ok: boolean }
 let failNextAvailableRequirementsFetch = false
 let failNextSpecificationItemsFetch = false
 
-function renderRequirementsSpecificationDetailClient() {
+const initialSpec = {
+  businessNeedsReference: 'Shared IAM business case',
+  id: 8,
+  implementationType: { id: 2, nameEn: 'Program', nameSv: 'Program' },
+  lifecycleStatus: { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
+  name: 'Authorization and IAM',
+  specificationImplementationTypeId: 2,
+  specificationLifecycleStatusId: 3,
+  specificationResponsibilityAreaId: 1,
+  responsibilityArea: { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+  uniqueId: 'ETJANST-UPP-2026',
+}
+
+const initialSpecificationItem = {
+  area: { name: 'Security' },
+  id: 101,
+  isArchived: false,
+  itemRef: 'lib:31',
+  kind: 'library' as const,
+  specificationItemId: 31,
+  uniqueId: 'BEH0001',
+  version: {
+    categoryNameEn: 'Business requirement',
+    categoryNameSv: 'Verksamhetskrav',
+    description: 'RBAC should be enforced.',
+    qualityCharacteristicNameEn: null,
+    qualityCharacteristicNameSv: null,
+    requiresTesting: true,
+    riskLevelColor: null,
+    riskLevelId: null,
+    riskLevelNameEn: null,
+    riskLevelNameSv: null,
+    riskLevelSortOrder: null,
+    status: 3,
+    statusColor: '#22c55e',
+    statusNameEn: 'Published',
+    statusNameSv: 'Publicerad',
+    typeNameEn: 'Non-functional',
+    typeNameSv: 'Icke-funktionellt',
+    versionNumber: 1,
+  },
+}
+
+const initialAvailableRequirement = {
+  area: { name: 'Platform' },
+  id: 202,
+  isArchived: false,
+  uniqueId: 'IAM0202',
+  version: {
+    categoryNameEn: 'Business requirement',
+    categoryNameSv: 'Verksamhetskrav',
+    description: 'Allow specification-level linking.',
+    qualityCharacteristicNameEn: null,
+    qualityCharacteristicNameSv: null,
+    requiresTesting: true,
+    riskLevelColor: null,
+    riskLevelId: null,
+    riskLevelNameEn: null,
+    riskLevelNameSv: null,
+    riskLevelSortOrder: null,
+    status: 3,
+    statusColor: '#22c55e',
+    statusNameEn: 'Published',
+    statusNameSv: 'Publicerad',
+    typeNameEn: 'Non-functional',
+    typeNameSv: 'Icke-funktionellt',
+    versionNumber: 1,
+  },
+}
+
+function createInitialData() {
+  return {
+    areas: [],
+    availableNeedsRefs: [],
+    availableRequirements: {
+      hasMore: false,
+      rows: [initialAvailableRequirement],
+    },
+    errors: [] as SpecificationPreloadError[],
+    leftNormReferenceOptions: [],
+    requirementPackages: [],
+    rightNormReferenceOptions: [],
+    spec: initialSpec,
+    specificationImplementationTypes: [
+      { id: 2, nameEn: 'Program', nameSv: 'Program' },
+    ],
+    specificationItemStatuses: [],
+    specificationItems: [initialSpecificationItem],
+    specificationLifecycleStatuses: [
+      { id: 3, nameEn: 'Development', nameSv: 'Utveckling' },
+    ],
+    specificationResponsibilityAreas: [
+      { id: 1, nameEn: 'Platform', nameSv: 'Plattform' },
+    ],
+  }
+}
+
+function renderRequirementsSpecificationDetailClient(
+  initialData = createInitialData(),
+) {
   return render(
     <ConfirmModalProvider>
-      <RequirementsSpecificationDetailClient specificationSlug="ETJANST-UPP-2026" />
+      <RequirementsSpecificationDetailClient
+        initialData={initialData}
+        specificationSlug="ETJANST-UPP-2026"
+      />
     </ConfirmModalProvider>,
   )
 }
@@ -311,6 +427,17 @@ describe('RequirementsSpecificationDetailClient', () => {
       },
     )
     window.localStorage.clear()
+  })
+
+  it('shows the partial preload warning banner when initial data contains errors', () => {
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      errors: [{ key: 'available requirements', message: 'preload failed' }],
+    })
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'specification.partialDataLoadWarning',
+    )
   })
 
   it('opens and closes the specification edit view from the title action', async () => {
@@ -635,6 +762,33 @@ describe('RequirementsSpecificationDetailClient', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('common.error')
     expect(dialog).toBeInTheDocument()
+  })
+
+  it('shows a warning when loading more available requirements fails', async () => {
+    failNextAvailableRequirementsFetch = true
+
+    renderRequirementsSpecificationDetailClient({
+      ...createInitialData(),
+      availableRequirements: {
+        hasMore: true,
+        rows: [initialAvailableRequirement],
+      },
+    })
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          level: 1,
+          name: 'Authorization and IAM',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'load-more-available' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'specification.loadAvailableRequirementsFailed',
+    )
   })
 
   it('opens the specification-local requirement dialog from the left-panel action', async () => {

@@ -2,15 +2,19 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
-import { createRequestContext } from '@/lib/requirements/auth'
 import {
+  createDefaultAuthorizationService,
+  createRequestContext,
+} from '@/lib/requirements/auth'
+import { queryRequirementList } from '@/lib/requirements/list-query'
+import {
+  DEFAULT_REQUIREMENT_SORT,
   isRequirementSortDirection,
   isRequirementSortField,
 } from '@/lib/requirements/list-view'
 import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
-  type RequirementListItem,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
@@ -27,7 +31,6 @@ function normalizeOptionalPositiveIntegerIds(
 export async function GET(request: NextRequest) {
   const db = await getRequestSqlServerDataSource()
   const uiSettings = createUiSettingsLoader(db)
-  const service = createRequirementsService(db, { uiSettings })
 
   const url = new URL(request.url)
   const format = url.searchParams.get('format')
@@ -55,9 +58,9 @@ export async function GET(request: NextRequest) {
     .map(Number)
     .filter(n => !Number.isNaN(n))
   const requiresTestingParams = url.searchParams.getAll('requiresTesting')
-  const requiresTesting = requiresTestingParams
-    .map(v => (v === 'true' ? true : v === 'false' ? false : null))
-    .filter((v): v is boolean => v !== null)
+  const requiresTesting = requiresTestingParams.filter(
+    value => value === 'true' || value === 'false',
+  )
   const statusParams = url.searchParams.getAll('statuses')
   const statuses = statusParams.map(Number).filter(n => !Number.isNaN(n))
   const normReferenceIds = url.searchParams
@@ -72,47 +75,54 @@ export async function GET(request: NextRequest) {
     .getAll('riskLevelIds')
     .map(Number)
     .filter(n => Number.isInteger(n) && n > 0)
-  const includeArchived = statuses.length === 0 || statuses.includes(4)
 
   try {
     const context = await createRequestContext(request, 'rest')
-    const result = await service.queryCatalog(context, {
-      areaIds: areaIds.length > 0 ? areaIds : undefined,
-      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
-      catalog: 'requirements',
-      descriptionSearch,
-      includeArchived,
-      limit: url.searchParams.get('limit')
-        ? Number(url.searchParams.get('limit'))
-        : undefined,
-      locale,
-      offset: url.searchParams.get('offset')
-        ? Number(url.searchParams.get('offset'))
-        : undefined,
-      requiresTesting: requiresTesting.length > 0 ? requiresTesting : undefined,
-      sortBy:
-        sortByParam && isRequirementSortField(sortByParam)
-          ? sortByParam
+    const result = await queryRequirementList(
+      db,
+      {
+        filters: {
+          areaIds: areaIds.length > 0 ? areaIds : undefined,
+          categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+          descriptionSearch,
+          normReferenceIds:
+            normReferenceIds.length > 0 ? normReferenceIds : undefined,
+          qualityCharacteristicIds:
+            qualityCharacteristicIds.length > 0
+              ? qualityCharacteristicIds
+              : undefined,
+          requirementPackageIds:
+            requirementPackageIds.length > 0
+              ? requirementPackageIds
+              : undefined,
+          requiresTesting:
+            requiresTesting.length > 0 ? requiresTesting : undefined,
+          riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
+          statuses: statuses.length > 0 ? statuses : undefined,
+          typeIds: typeIds.length > 0 ? typeIds : undefined,
+          uniqueIdSearch,
+        },
+        limit: url.searchParams.get('limit')
+          ? Number(url.searchParams.get('limit'))
           : undefined,
-      sortDirection:
-        sortDirectionParam && isRequirementSortDirection(sortDirectionParam)
-          ? sortDirectionParam
+        locale,
+        offset: url.searchParams.get('offset')
+          ? Number(url.searchParams.get('offset'))
           : undefined,
-      statuses: statuses.length > 0 ? statuses : undefined,
-      qualityCharacteristicIds:
-        qualityCharacteristicIds.length > 0
-          ? qualityCharacteristicIds
-          : undefined,
-      typeIds: typeIds.length > 0 ? typeIds : undefined,
-      uniqueIdSearch,
-      normReferenceIds:
-        normReferenceIds.length > 0 ? normReferenceIds : undefined,
-      riskLevelIds: riskLevelIds.length > 0 ? riskLevelIds : undefined,
-      requirementPackageIds:
-        requirementPackageIds.length > 0 ? requirementPackageIds : undefined,
-    })
-
-    const requirements = result.items as RequirementListItem[]
+        sort: {
+          by:
+            sortByParam && isRequirementSortField(sortByParam)
+              ? sortByParam
+              : DEFAULT_REQUIREMENT_SORT.by,
+          direction:
+            sortDirectionParam && isRequirementSortDirection(sortDirectionParam)
+              ? sortDirectionParam
+              : DEFAULT_REQUIREMENT_SORT.direction,
+        },
+      },
+      { authorization: createDefaultAuthorizationService(), context },
+    )
+    const requirements = result.requirements
 
     if (format === 'csv') {
       const isSv = locale === 'sv'

@@ -187,6 +187,57 @@ describe('RequirementsSpecificationsClient', () => {
     }
   })
 
+  it('reloads empty preload fallbacks when the matching preload captured errors', async () => {
+    render(
+      <RequirementsSpecificationsClient
+        initialData={{
+          errors: [
+            { key: 'requirements specifications', message: 'preload failed' },
+            {
+              key: 'specification responsibility areas',
+              message: 'preload failed',
+            },
+            {
+              key: 'specification implementation types',
+              message: 'preload failed',
+            },
+            {
+              key: 'specification lifecycle statuses',
+              message: 'preload failed',
+            },
+          ],
+          implementationTypes: [],
+          lifecycleStatuses: [],
+          responsibilityAreas: [],
+          specifications: [],
+        }}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specifications',
+        expect.any(Object),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specification-responsibility-areas',
+        expect.any(Object),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specification-implementation-types',
+        expect.any(Object),
+      )
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specification-lifecycle-statuses',
+        expect.any(Object),
+      )
+    })
+    expect(await screen.findByText('Kravunderlag sv')).toBeInTheDocument()
+    expect(screen.getByText('Area')).toBeInTheDocument()
+    expect(screen.getByText('Type')).toBeInTheDocument()
+    expect(screen.getByText('Development')).toBeInTheDocument()
+  })
+
   it('filters specifications by the name column and clears the search', async () => {
     fetchMock.mockImplementation((url: string) => {
       if (url === '/api/specifications')

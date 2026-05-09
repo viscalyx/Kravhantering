@@ -334,7 +334,7 @@ function getSpecificationServiceTitle(
   }
 }
 
-function formatRequirementListItem(
+export function formatRequirementListItem(
   item: Awaited<ReturnType<typeof listRequirements>>[number],
 ) {
   return {

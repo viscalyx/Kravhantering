@@ -16,7 +16,7 @@ const STATUS_ARCHIVED = 4
 
 export { STATUS_ARCHIVED, STATUS_DRAFT, STATUS_PUBLISHED, STATUS_REVIEW }
 
-interface ListRequirementsOptions {
+export interface ListRequirementsOptions {
   areaIds?: number[]
   categoryIds?: number[]
   descriptionSearch?: string
