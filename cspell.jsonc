@@ -68,6 +68,8 @@
     "urllib",
     "urlopen",
     "userinfo",
+    "worktree",
+    "Worktrees",
     "CHECKIDENT",
     "cutover",
     "Cutover",

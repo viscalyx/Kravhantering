@@ -245,7 +245,14 @@ __pycache__/
 # Test artifacts
 /temp-test-content/
 .claude
-.codex
+.codex/*
+!.codex/
+!.codex/*.ps1
+!.codex/*.sh
+!.codex/Dockerfile
+!.codex/docker-compose.yml
+!.codex/environments/
+!.codex/environments/*.toml
 
 # Sandbox runtime artifacts (bwrap copies these into workspace root temporarily)
 .bash_profile

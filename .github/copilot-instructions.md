@@ -20,6 +20,23 @@
 - `npm run test` - run tests
 - `npm run dev` - start dev server
 
+## Codex Execution Environments
+
+- In VS Code devcontainers, including the Codex extension, run project commands
+  directly with `npm`. The devcontainer already has Node.js, npm, SQL Server,
+  and Keycloak.
+- Do not use `.codex/compose.sh` from VS Code devcontainers. Those containers
+  set `KRAV_DEVCONTAINER=1`, and the wrapper is reserved for Codex App
+  worktree automation.
+- Codex App local/worktree environments run project commands through the
+  dedicated Compose wrapper: `.codex/compose.sh`.
+- Do not run host `npm` in Codex App worktrees. Use
+  `.codex/compose.sh run --rm app npm <command>` instead.
+- For long-running app servers in Codex App worktrees, use
+  `.codex/compose.sh run --rm --service-ports app bash -lc '.codex/start-keycloak-forwarder.sh; npm run dev -- --hostname 0.0.0.0'`.
+- Use `.codex/compose.sh up -d db idp` before database or browser flows that
+  need SQL Server or Keycloak.
+
 ## Authenticated HTTP requests against the dev server
 
 - Never use plain `curl` against the running dev server. Every protected route returns `302 /api/auth/login`, so a bare `curl` only sees the redirect.
