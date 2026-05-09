@@ -25,6 +25,18 @@ function makeParams(id: string): Promise<{ id: string }> {
   return Promise.resolve({ id })
 }
 
+function makePostRequest(body: string): Request {
+  return new Request('http://localhost/api/owners', {
+    body,
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
+  })
+}
+
+function makeJsonPostRequest(body: unknown): Request {
+  return makePostRequest(JSON.stringify(body))
+}
+
 describe('owners routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -55,6 +67,56 @@ describe('owners routes', () => {
       const res = await POST(req)
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ id: 2 })
+      expect(mocks.createOwner).toHaveBeenCalledWith('mock-db', body)
+    })
+
+    it('returns 400 for invalid JSON before opening the DB', async () => {
+      const res = await POST(makePostRequest('{'))
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual({ error: 'Invalid JSON body' })
+      expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+      expect(mocks.createOwner).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      {
+        body: 'not-object',
+        error: 'Invalid body',
+        name: 'non-object body',
+      },
+      {
+        body: [1, 2],
+        error: 'Invalid body',
+        name: 'array body',
+      },
+      {
+        body: {
+          email: 'e@t.com',
+          firstName: 'Erik',
+          lastName: 'L',
+          role: 'admin',
+        },
+        error: 'Unknown fields',
+        name: 'unknown fields',
+      },
+      {
+        body: { email: 'e@t.com', firstName: 'Erik' },
+        error: 'Invalid field types',
+        name: 'missing required fields',
+      },
+      {
+        body: { email: 123, firstName: 'Erik', lastName: 'L' },
+        error: 'Invalid field types',
+        name: 'non-string field values',
+      },
+    ])('returns 400 for $name', async ({ body, error }) => {
+      const res = await POST(makeJsonPostRequest(body))
+
+      expect(res.status).toBe(400)
+      expect(await res.json()).toEqual({ error })
+      expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+      expect(mocks.createOwner).not.toHaveBeenCalled()
     })
   })
 
