@@ -66,6 +66,35 @@ function areaId(config, areaIndex) {
   return config.areaIdBase - areaIndex
 }
 
+function integerRange(first, last) {
+  return Array.from({ length: last - first + 1 }, (_, index) => first + index)
+}
+
+const PERFORMANCE_REFERENCE_REQUIREMENTS = [
+  {
+    ids: [1, 2, 3],
+    optionKey: 'categoryIds',
+    tableName: 'requirement_categories',
+  },
+  { ids: [1, 2], optionKey: 'typeIds', tableName: 'requirement_types' },
+  {
+    ids: integerRange(1, 48),
+    optionKey: 'qualityCharacteristicIds',
+    tableName: 'quality_characteristics',
+  },
+  { ids: [1, 2, 3], optionKey: 'riskLevelIds', tableName: 'risk_levels' },
+  {
+    ids: integerRange(1, 6),
+    optionKey: 'normReferenceIds',
+    tableName: 'norm_references',
+  },
+  {
+    ids: integerRange(1, 9),
+    optionKey: 'requirementPackageIds',
+    tableName: 'requirement_packages',
+  },
+]
+
 export function createRequirementListPerformanceScenarios(
   config = createPerformanceFixtureConfig(),
 ) {
@@ -180,6 +209,37 @@ export function buildPerformanceFixtureStatusSql() {
     FROM requirements
     WHERE unique_id LIKE @0
   `
+}
+
+export function buildReferencePreconditionSql() {
+  return PERFORMANCE_REFERENCE_REQUIREMENTS.flatMap(reference =>
+    reference.ids.map(
+      id => `
+    SELECT
+      N'${reference.optionKey}' AS optionKey,
+      N'${reference.tableName}' AS tableName,
+      ${id} AS id
+    WHERE NOT EXISTS (
+      SELECT 1 FROM ${reference.tableName} WHERE id = ${id}
+    )`,
+    ),
+  ).join('\nUNION ALL\n')
+}
+
+export function formatMissingReferenceRows(rows) {
+  const grouped = new Map()
+  for (const row of rows) {
+    const optionKey = String(row.optionKey ?? 'unknown')
+    const tableName = String(row.tableName ?? 'unknown')
+    const key = `${optionKey} (${tableName})`
+    const ids = grouped.get(key) ?? []
+    ids.push(Number(row.id))
+    grouped.set(key, ids)
+  }
+
+  return [...grouped.entries()]
+    .map(([label, ids]) => `${label}: ${ids.sort((a, b) => a - b).join(', ')}`)
+    .join('; ')
 }
 
 export function buildSeedPerformanceFixtureSql() {
@@ -604,6 +664,16 @@ async function runMeasuredSample(pool, listQuery, countQuery) {
 }
 
 export function summarizeSamples(samples) {
+  if (samples.length === 0) {
+    return {
+      maxDurationMs: null,
+      maxLogicalReads: null,
+      medianDurationMs: null,
+      p95DurationMs: null,
+      sampleCount: 0,
+    }
+  }
+
   const durations = samples.map(sample => sample.durationMs)
   const logicalReads = samples
     .map(sample => sample.logicalReads)
@@ -634,7 +704,9 @@ export function extractShowPlanXmls(result) {
 
 export function extractExecutionPlanFindings(planXmls) {
   const xml = Array.isArray(planXmls) ? planXmls.join('\n') : String(planXmls)
-  const missingIndexImpacts = [...xml.matchAll(/Impact="([\d.]+)"/g)]
+  const missingIndexImpacts = [
+    ...xml.matchAll(/<MissingIndexGroup\b[^>]*\bImpact="([\d.]+)"/g),
+  ]
     .map(match => Number(match[1]))
     .filter(Number.isFinite)
   return {
@@ -912,6 +984,8 @@ export function createBaselineFromResults(results, options = {}) {
 }
 
 async function ensurePerformanceFixture(pool, config) {
+  await assertPerformanceFixtureReferences(pool)
+
   const statusBefore = await queryScalarRow(
     pool,
     buildPerformanceFixtureStatusSql(),
@@ -1060,11 +1134,24 @@ function createRuntimeOptions(env = process.env) {
   }
 }
 
+async function assertPerformanceFixtureReferences(pool) {
+  const result = await createRequest(pool).query(
+    buildReferencePreconditionSql(),
+  )
+  const missingRows = result.recordset ?? []
+  if (missingRows.length === 0) return
+
+  throw new Error(
+    `Requirement list performance fixture is missing canonical reference rows for ${formatMissingReferenceRows(missingRows)}. Run npm run db:setup against the target SQL Server database before running the performance fixture.`,
+  )
+}
+
 export async function main(args, dependencies = {}) {
   const consoleObj = dependencies.consoleObj ?? console
-  const env = dependencies.env ?? process.env
+  const env = dependencies.env ? { ...dependencies.env } : process.env
   loadEnvironmentFiles(env)
-  env.DB_REQUEST_TIMEOUT_MS ??= String(DEFAULT_REQUEST_TIMEOUT_MS)
+  env.DB_REQUEST_TIMEOUT_MS =
+    env.DB_REQUEST_TIMEOUT_MS ?? String(DEFAULT_REQUEST_TIMEOUT_MS)
 
   const [command] = args
   if (!['check', 'update-baseline'].includes(command)) {

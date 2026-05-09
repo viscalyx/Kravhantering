@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyBaselineProfileUpdate,
   buildPerformanceFixtureStatusSql,
+  buildReferencePreconditionSql,
   buildSeedPerformanceFixtureSql,
   compareAgainstBaseline,
   createBaselineFromResults,
@@ -10,6 +11,8 @@ import {
   extractExecutionPlanFindings,
   extractShowPlanXmls,
   formatBaselineComparisonTable,
+  formatMissingReferenceRows,
+  main,
   parseStatisticsIoMessages,
   selectBaselineThresholds,
   summarizeSamples,
@@ -40,6 +43,12 @@ describe('requirements-list-performance.mjs', () => {
     expect(buildPerformanceFixtureStatusSql()).toContain(
       'COUNT(*) AS requirementCount',
     )
+    expect(buildReferencePreconditionSql()).toContain(
+      "N'categoryIds' AS optionKey",
+    )
+    expect(buildReferencePreconditionSql()).toContain(
+      "N'requirementPackageIds' AS optionKey",
+    )
   })
 
   it('parses SQL Server logical reads from STATISTICS IO messages', () => {
@@ -68,6 +77,16 @@ describe('requirements-list-performance.mjs', () => {
     })
   })
 
+  it('returns safe summary values when no samples were measured', () => {
+    expect(summarizeSamples([])).toEqual({
+      maxDurationMs: null,
+      maxLogicalReads: null,
+      medianDurationMs: null,
+      p95DurationMs: null,
+      sampleCount: 0,
+    })
+  })
+
   it('extracts showplan XML and warning findings', () => {
     const result = {
       recordsets: [
@@ -88,6 +107,43 @@ describe('requirements-list-performance.mjs', () => {
       maxMissingIndexImpact: 88.4,
       showPlanCount: 1,
     })
+  })
+
+  it('ignores non-missing-index impact attributes in execution plans', () => {
+    expect(
+      extractExecutionPlanFindings(
+        '<ShowPlanXML><RelOp Impact="99" /><MissingIndexGroup Impact="12.5" /></ShowPlanXML>',
+      ),
+    ).toEqual({
+      hasMissingIndex: true,
+      hasSpill: false,
+      maxMissingIndexImpact: 12.5,
+      showPlanCount: 1,
+    })
+  })
+
+  it('formats missing fixture reference rows for clear precondition errors', () => {
+    expect(
+      formatMissingReferenceRows([
+        {
+          id: 3,
+          optionKey: 'requirementPackageIds',
+          tableName: 'requirement_packages',
+        },
+        {
+          id: 1,
+          optionKey: 'requirementPackageIds',
+          tableName: 'requirement_packages',
+        },
+        {
+          id: 23,
+          optionKey: 'qualityCharacteristicIds',
+          tableName: 'quality_characteristics',
+        },
+      ]),
+    ).toBe(
+      'requirementPackageIds (requirement_packages): 1, 3; qualityCharacteristicIds (quality_characteristics): 23',
+    )
   })
 
   it('compares measured results against threshold baselines', () => {
@@ -368,5 +424,27 @@ describe('requirements-list-performance.mjs', () => {
     expect(table).toContain('1234/2000')
     expect(table).toContain('no/no')
     expect(table).toContain('12.5/75')
+  })
+
+  it('does not mutate a caller-provided environment object', async () => {
+    const env = {}
+    const errors = []
+
+    await expect(
+      main(['not-a-command'], {
+        consoleObj: {
+          error(message) {
+            errors.push(message)
+          },
+          log() {},
+        },
+        env,
+      }),
+    ).resolves.toBe(1)
+
+    expect(errors).toContain(
+      'Usage: node scripts/requirements-list-performance.mjs <check|update-baseline>',
+    )
+    expect(env).not.toHaveProperty('DB_REQUEST_TIMEOUT_MS')
   })
 })
