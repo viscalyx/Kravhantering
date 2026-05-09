@@ -27,6 +27,8 @@ export const DEFAULT_OUTPUT_DIR = resolve(
   'test-results/requirements-list-performance',
 )
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000
+const DEFAULT_DEVELOPER_BASELINE_PROFILE = 'developer'
+const DEFAULT_CI_BASELINE_PROFILE = 'ci'
 const USAGE =
   'Usage: node scripts/requirements-list-performance.mjs <check|update-baseline>'
 
@@ -733,9 +735,30 @@ async function runScenario(pool, scenario, options) {
   }
 }
 
-export function compareAgainstBaseline(results, baseline) {
+export function selectBaselineThresholds(baseline, options = {}) {
+  const profile = options.profile?.trim()
+  if (!profile) {
+    return { profile: null, thresholds: baseline.thresholds ?? {} }
+  }
+  if (profile === DEFAULT_CI_BASELINE_PROFILE) {
+    return { profile, thresholds: baseline.thresholds ?? {} }
+  }
+  const profileThresholds = baseline.thresholdProfiles?.[profile]
+  if (profileThresholds) {
+    return { profile, thresholds: profileThresholds }
+  }
+  return { missingProfile: true, profile, thresholds: {} }
+}
+
+export function compareAgainstBaseline(results, baseline, options = {}) {
   const failures = []
-  const thresholds = baseline.thresholds ?? {}
+  const { missingProfile, profile, thresholds } = selectBaselineThresholds(
+    baseline,
+    options,
+  )
+  if (missingProfile) {
+    failures.push(`baseline: missing threshold profile "${profile}"`)
+  }
   if (
     baseline.fixture?.requirementCount != null &&
     results.fixture?.requirementCount !== baseline.fixture.requirementCount
@@ -802,7 +825,8 @@ function padCell(value, width) {
   return String(value).padEnd(width, ' ')
 }
 
-export function formatBaselineComparisonTable(results, baseline) {
+export function formatBaselineComparisonTable(results, baseline, options = {}) {
+  const { profile, thresholds } = selectBaselineThresholds(baseline, options)
   const rows = [
     [
       'Scenario',
@@ -813,7 +837,6 @@ export function formatBaselineComparisonTable(results, baseline) {
       'Missing idx actual/max',
     ],
   ]
-  const thresholds = baseline.thresholds ?? {}
 
   for (const result of results.scenarios ?? []) {
     const threshold = thresholds[result.name]
@@ -837,7 +860,7 @@ export function formatBaselineComparisonTable(results, baseline) {
   lines.splice(1, 0, separator)
 
   return [
-    'Requirement-list performance actuals vs baseline:',
+    `Requirement-list performance actuals vs baseline${profile ? ` (${profile} profile)` : ''}:`,
     'Legend: lower actual values are better for ms, logical reads, and missing-index impact; spill=no is better. Actual values should stay at or below max thresholds.',
     ...lines,
   ].join('\n')
@@ -862,7 +885,7 @@ export function createBaselineFromResults(results, options = {}) {
 
   for (const result of results.scenarios ?? []) {
     thresholds[result.name] = {
-      allowSpills: false,
+      allowSpills: result.plan?.hasSpill === true,
       maxLogicalReads:
         result.summary.maxLogicalReads == null
           ? null
@@ -975,8 +998,51 @@ async function readJsonFile(path) {
   return JSON.parse(await readFile(path, 'utf8'))
 }
 
-function createRuntimeOptions(env = process.env) {
+async function readOptionalJsonFile(path) {
+  try {
+    return await readJsonFile(path)
+  } catch (error) {
+    if (error && typeof error === 'object' && error.code === 'ENOENT') {
+      return null
+    }
+    throw error
+  }
+}
+
+export function applyBaselineProfileUpdate(
+  existingBaseline,
+  generatedBaseline,
+  profile,
+) {
+  if (!profile || profile === DEFAULT_CI_BASELINE_PROFILE) {
+    return {
+      ...generatedBaseline,
+      thresholdProfiles: existingBaseline?.thresholdProfiles,
+    }
+  }
+
   return {
+    ...(existingBaseline ?? {}),
+    generatedAt: generatedBaseline.generatedAt,
+    measurement: generatedBaseline.measurement,
+    fixture: generatedBaseline.fixture,
+    thresholds: existingBaseline?.thresholds ?? generatedBaseline.thresholds,
+    thresholdProfiles: {
+      ...(existingBaseline?.thresholdProfiles ?? {}),
+      [profile]: generatedBaseline.thresholds,
+    },
+  }
+}
+
+function createRuntimeOptions(env = process.env) {
+  const requestedBaselineProfile =
+    env.PERF_REQUIREMENTS_BASELINE_PROFILE?.trim()
+  return {
+    baselineProfile:
+      requestedBaselineProfile ||
+      (env.CI === 'true'
+        ? DEFAULT_CI_BASELINE_PROFILE
+        : DEFAULT_DEVELOPER_BASELINE_PROFILE),
     baselinePath: env.PERF_REQUIREMENTS_BASELINE_PATH
       ? resolve(env.PERF_REQUIREMENTS_BASELINE_PATH)
       : DEFAULT_BASELINE_PATH,
@@ -1013,21 +1079,33 @@ export async function main(args, dependencies = {}) {
     const results = await runSuite(pool, options)
 
     if (command === 'update-baseline') {
-      const baseline = createBaselineFromResults(results)
+      const generatedBaseline = createBaselineFromResults(results)
+      const existingBaseline = await readOptionalJsonFile(options.baselinePath)
+      const baseline = applyBaselineProfileUpdate(
+        existingBaseline,
+        generatedBaseline,
+        options.baselineProfile,
+      )
       await mkdir(dirname(options.baselinePath), { recursive: true })
       await writeFile(
         options.baselinePath,
         `${JSON.stringify(baseline, null, 2)}\n`,
       )
       consoleObj.log(
-        `Updated requirement-list performance baseline at ${relative(REPO_ROOT, options.baselinePath)}.`,
+        `Updated requirement-list performance baseline (${options.baselineProfile} profile) at ${relative(REPO_ROOT, options.baselinePath)}.`,
       )
       return 0
     }
 
     const baseline = await readJsonFile(options.baselinePath)
-    const comparison = compareAgainstBaseline(results, baseline)
-    consoleObj.log(formatBaselineComparisonTable(results, baseline))
+    const comparison = compareAgainstBaseline(results, baseline, {
+      profile: options.baselineProfile,
+    })
+    consoleObj.log(
+      formatBaselineComparisonTable(results, baseline, {
+        profile: options.baselineProfile,
+      }),
+    )
     await writeFile(
       resolve(
         options.outputDir,

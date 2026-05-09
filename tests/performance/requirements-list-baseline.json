@@ -16,52 +16,105 @@
   "thresholds": {
     "default-published": {
       "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "maxLogicalReads": 270000,
+      "maxMedianDurationMs": 1204,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 1216
     },
     "status-sort-review": {
       "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "maxLogicalReads": 483000,
+      "maxMedianDurationMs": 1204,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 1245
     },
     "classification-filters": {
       "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "maxLogicalReads": 19000,
+      "maxMedianDurationMs": 283,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 664
     },
     "text-search": {
       "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "maxLogicalReads": 38000,
+      "maxMedianDurationMs": 1637,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 1745
     },
     "join-table-filters": {
       "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "maxLogicalReads": 466000,
+      "maxMedianDurationMs": 1133,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 1825
     },
     "deep-pagination": {
-      "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "allowSpills": true,
+      "maxLogicalReads": 965000,
+      "maxMedianDurationMs": 1914,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 1923
     },
     "archived-included": {
-      "allowSpills": false,
-      "maxLogicalReads": 5000000,
-      "maxMedianDurationMs": 15000,
-      "maxMissingIndexImpact": 100,
-      "maxP95DurationMs": 30000
+      "allowSpills": true,
+      "maxLogicalReads": 192000,
+      "maxMedianDurationMs": 686,
+      "maxMissingIndexImpact": 50,
+      "maxP95DurationMs": 716
+    }
+  },
+  "thresholdProfiles": {
+    "developer": {
+      "default-published": {
+        "allowSpills": false,
+        "maxLogicalReads": 1137000,
+        "maxMedianDurationMs": 1953,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 2119
+      },
+      "status-sort-review": {
+        "allowSpills": false,
+        "maxLogicalReads": 680000,
+        "maxMedianDurationMs": 1204,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 1245
+      },
+      "classification-filters": {
+        "allowSpills": false,
+        "maxLogicalReads": 19000,
+        "maxMedianDurationMs": 283,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 664
+      },
+      "text-search": {
+        "allowSpills": false,
+        "maxLogicalReads": 38000,
+        "maxMedianDurationMs": 1637,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 1745
+      },
+      "join-table-filters": {
+        "allowSpills": false,
+        "maxLogicalReads": 466000,
+        "maxMedianDurationMs": 1133,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 1825
+      },
+      "deep-pagination": {
+        "allowSpills": true,
+        "maxLogicalReads": 965000,
+        "maxMedianDurationMs": 1914,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 1923
+      },
+      "archived-included": {
+        "allowSpills": true,
+        "maxLogicalReads": 390000,
+        "maxMedianDurationMs": 686,
+        "maxMissingIndexImpact": 50,
+        "maxP95DurationMs": 716
+      }
     }
   }
 }

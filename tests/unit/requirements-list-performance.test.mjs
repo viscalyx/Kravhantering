@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyBaselineProfileUpdate,
   buildPerformanceFixtureStatusSql,
   buildSeedPerformanceFixtureSql,
   compareAgainstBaseline,
@@ -10,6 +11,7 @@ import {
   extractShowPlanXmls,
   formatBaselineComparisonTable,
   parseStatisticsIoMessages,
+  selectBaselineThresholds,
   summarizeSamples,
 } from '../../scripts/requirements-list-performance.mjs'
 
@@ -109,6 +111,15 @@ describe('requirements-list-performance.mjs', () => {
             p95DurationMs: 900,
           },
         },
+        {
+          name: 'deep-pagination',
+          plan: { hasSpill: true, maxMissingIndexImpact: 10 },
+          summary: {
+            maxLogicalReads: 300,
+            medianDurationMs: 120,
+            p95DurationMs: 150,
+          },
+        },
       ],
     }
     const baseline = {
@@ -122,6 +133,13 @@ describe('requirements-list-performance.mjs', () => {
         },
         'text-search': {
           allowSpills: false,
+          maxLogicalReads: 500,
+          maxMedianDurationMs: 250,
+          maxMissingIndexImpact: 75,
+          maxP95DurationMs: 500,
+        },
+        'deep-pagination': {
+          allowSpills: true,
           maxLogicalReads: 500,
           maxMedianDurationMs: 250,
           maxMissingIndexImpact: 75,
@@ -141,6 +159,123 @@ describe('requirements-list-performance.mjs', () => {
         expect.stringContaining('text-search: missing-index impact'),
       ]),
     )
+    expect(comparison.failures).not.toEqual(
+      expect.arrayContaining([expect.stringContaining('deep-pagination')]),
+    )
+  })
+
+  it('uses the requested threshold profile when comparing and formatting', () => {
+    const results = {
+      scenarios: [
+        {
+          name: 'default-published',
+          plan: { hasSpill: false, maxMissingIndexImpact: 10 },
+          summary: {
+            maxLogicalReads: 800,
+            medianDurationMs: 120,
+            p95DurationMs: 150,
+          },
+        },
+      ],
+    }
+    const baseline = {
+      thresholds: {
+        'default-published': {
+          allowSpills: false,
+          maxLogicalReads: 500,
+          maxMedianDurationMs: 250,
+          maxMissingIndexImpact: 75,
+          maxP95DurationMs: 500,
+        },
+      },
+      thresholdProfiles: {
+        developer: {
+          'default-published': {
+            allowSpills: false,
+            maxLogicalReads: 1000,
+            maxMedianDurationMs: 250,
+            maxMissingIndexImpact: 75,
+            maxP95DurationMs: 500,
+          },
+        },
+      },
+    }
+
+    expect(
+      compareAgainstBaseline(results, baseline, { profile: 'ci' }).ok,
+    ).toBe(false)
+    expect(
+      compareAgainstBaseline(results, baseline, { profile: 'developer' }).ok,
+    ).toBe(true)
+    expect(
+      selectBaselineThresholds(baseline, { profile: 'developer' }).thresholds[
+        'default-published'
+      ].maxLogicalReads,
+    ).toBe(1000)
+    expect(
+      formatBaselineComparisonTable(results, baseline, {
+        profile: 'developer',
+      }),
+    ).toContain(
+      'Requirement-list performance actuals vs baseline (developer profile):',
+    )
+  })
+
+  it('updates only the active local threshold profile', () => {
+    const generatedBaseline = {
+      fixture: { requirementCount: 10_000 },
+      generatedAt: '2026-05-09T00:00:00.000Z',
+      measurement: { sampleCount: 5, warmupCount: 2 },
+      thresholds: {
+        'default-published': {
+          allowSpills: false,
+          maxLogicalReads: 1000,
+          maxMedianDurationMs: 250,
+          maxMissingIndexImpact: 75,
+          maxP95DurationMs: 500,
+        },
+      },
+    }
+    const existingBaseline = {
+      fixture: { requirementCount: 10_000 },
+      generatedAt: '2026-05-01T00:00:00.000Z',
+      measurement: { sampleCount: 5, warmupCount: 2 },
+      thresholds: {
+        'default-published': {
+          allowSpills: false,
+          maxLogicalReads: 500,
+          maxMedianDurationMs: 250,
+          maxMissingIndexImpact: 75,
+          maxP95DurationMs: 500,
+        },
+      },
+      thresholdProfiles: {
+        developer: {
+          'default-published': {
+            allowSpills: false,
+            maxLogicalReads: 800,
+            maxMedianDurationMs: 250,
+            maxMissingIndexImpact: 75,
+            maxP95DurationMs: 500,
+          },
+        },
+      },
+    }
+
+    const updated = applyBaselineProfileUpdate(
+      existingBaseline,
+      generatedBaseline,
+      'developer',
+    )
+
+    expect(updated.thresholds).toEqual(existingBaseline.thresholds)
+    expect(
+      updated.thresholdProfiles.developer['default-published'].maxLogicalReads,
+    ).toBe(1000)
+    expect(
+      applyBaselineProfileUpdate(existingBaseline, generatedBaseline, 'ci')
+        .thresholds['default-published'].maxLogicalReads,
+    ).toBe(1000)
   })
 
   it('creates a baseline with deterministic headroom from results', () => {
@@ -151,10 +286,20 @@ describe('requirements-list-performance.mjs', () => {
         scenarios: [
           {
             name: 'default-published',
+            plan: { hasSpill: false },
             summary: {
               maxLogicalReads: 100,
               medianDurationMs: 100,
               p95DurationMs: 300,
+            },
+          },
+          {
+            name: 'archived-included',
+            plan: { hasSpill: true },
+            summary: {
+              maxLogicalReads: 200,
+              medianDurationMs: 200,
+              p95DurationMs: 400,
             },
           },
         ],
@@ -174,6 +319,13 @@ describe('requirements-list-performance.mjs', () => {
           maxMedianDurationMs: 250,
           maxMissingIndexImpact: 75,
           maxP95DurationMs: 750,
+        },
+        'archived-included': {
+          allowSpills: true,
+          maxLogicalReads: 270,
+          maxMedianDurationMs: 500,
+          maxMissingIndexImpact: 75,
+          maxP95DurationMs: 1000,
         },
       },
     })
