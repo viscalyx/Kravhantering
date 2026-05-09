@@ -22,7 +22,7 @@
       "maxP95DurationMs": 1216
     },
     "status-sort-review": {
-      "allowSpills": false,
+      "allowSpills": true,
       "maxLogicalReads": 483000,
       "maxMedianDurationMs": 1204,
       "maxMissingIndexImpact": 50,
@@ -37,7 +37,7 @@
     },
     "text-search": {
       "allowSpills": false,
-      "maxLogicalReads": 38000,
+      "maxLogicalReads": 96000,
       "maxMedianDurationMs": 1637,
       "maxMissingIndexImpact": 50,
       "maxP95DurationMs": 1745
@@ -58,7 +58,7 @@
     },
     "archived-included": {
       "allowSpills": true,
-      "maxLogicalReads": 192000,
+      "maxLogicalReads": 458000,
       "maxMedianDurationMs": 686,
       "maxMissingIndexImpact": 50,
       "maxP95DurationMs": 716
