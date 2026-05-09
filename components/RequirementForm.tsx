@@ -13,7 +13,6 @@ import { useTaxonomyOptions } from '@/hooks/useTaxonomyOptions'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { dialogPanelMotion, offsetPanelMotion } from '@/lib/reduced-motion'
-import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 interface RequirementFormProps {
   baseRevisionToken?: string | null
@@ -34,10 +33,15 @@ interface RequirementFormProps {
 interface RequirementEditErrorPayload {
   code?: string
   details?: {
-    latest?: RequirementDetailResponse | null
+    latest?: LatestEditConflictSummary | null
     reason?: string
   }
   error?: string
+}
+
+interface LatestEditConflictSummary {
+  uniqueId: string
+  versionNumber: number | null
 }
 
 interface NormReferenceOption {
@@ -98,7 +102,7 @@ export default function RequirementForm({
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [staleConflict, setStaleConflict] = useState<{
-    latest: RequirementDetailResponse | null
+    latest: LatestEditConflictSummary | null
   } | null>(null)
   const [saveDestination, setSaveDestination] = useState<'inline' | 'page'>(
     () => {
@@ -251,11 +255,10 @@ export default function RequirementForm({
     }
   }
 
-  const latestConflictVersion = staleConflict?.latest?.versions[0]
   const latestConflictTarget = staleConflict?.latest?.uniqueId
   const latestConflictHref = staleConflict?.latest
-    ? latestConflictVersion?.versionNumber
-      ? `/requirements/${latestConflictTarget}/${latestConflictVersion.versionNumber}`
+    ? staleConflict.latest.versionNumber
+      ? `/requirements/${latestConflictTarget}/${staleConflict.latest.versionNumber}`
       : `/requirements/${latestConflictTarget}`
     : null
 

@@ -221,12 +221,7 @@ describe('RequirementForm', () => {
               details: {
                 latest: {
                   uniqueId: 'REQ-001',
-                  versions: [
-                    {
-                      revisionToken: '22222222-2222-4222-8222-222222222222',
-                      versionNumber: 2,
-                    },
-                  ],
+                  versionNumber: 2,
                 },
                 reason: 'stale_requirement_edit',
               },
@@ -278,6 +273,10 @@ describe('RequirementForm', () => {
     expect(
       screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
     ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: /requirement\.staleEditViewLatest/ }),
+    )
+    expect(pushMock).toHaveBeenCalledWith('/requirements/REQ-001/2')
   })
 
   it('hides the latest-version action when a stale conflict omits latest data', async () => {
@@ -350,12 +349,7 @@ describe('RequirementForm', () => {
               details: {
                 latest: {
                   uniqueId: 'REQ-001',
-                  versions: [
-                    {
-                      revisionToken: '22222222-2222-4222-8222-222222222222',
-                      versionNumber: 2,
-                    },
-                  ],
+                  versionNumber: 2,
                 },
                 reason: 'stale_requirement_edit',
               },
