@@ -19,8 +19,9 @@ See `package.json` for the full list of test-related scripts.
 - Error-boundary smoke tests and notes: [tests/integration/error-boundary-smoke.md](tests/integration/error-boundary-smoke.md)
 - Global Playwright setup: [tests/integration/global-setup.ts](tests/integration/global-setup.ts)
 
-Test-only routes (used to exercise App Router error boundaries) are gated behind the
-`ENABLE_ERROR_BOUNDARY_TEST_ROUTE` environment variable. See these locations:
+Test-only routes (used to exercise App Router error boundaries) are gated
+behind then `ENABLE_ERROR_BOUNDARY_TEST_ROUTE` environment variable. See
+these locations:
 
 - Gate in test pages: [app/[locale]/error-boundary-test/page.tsx](app/[locale]/error-boundary-test/page.tsx)
   and [app/[locale]/admin/error-boundary-test/page.tsx](app/[locale]/admin/error-boundary-test/page.tsx)
