@@ -1,0 +1,27 @@
+id: kravhantering-mcp-api-unauthenticated
+
+info:
+  name: MCP API Accessible Without Bearer Token
+  author: viscalyx
+  severity: high
+  description: |
+    Detects whether the MCP JSON-RPC endpoint accepts tool requests without a
+    verified Bearer token.
+  tags: kravhantering,mcp,auth,exposure
+
+http:
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/mcp"
+    headers:
+      Content-Type: application/json
+    body: |
+      {"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+          - 202
+          - 204

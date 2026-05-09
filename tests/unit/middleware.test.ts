@@ -21,6 +21,7 @@ vi.mock('@/i18n/routing', () => ({ routing: {} }))
 // filename is the legacy name. See docs/security-ci.md.
 const { config, default: middleware } = await import('@/middleware')
 const { resetAuthConfigForTests } = await import('@/lib/auth/config')
+const { getSessionFromRequest } = await import('@/lib/auth/session')
 
 const COOKIE_PASSWORD =
   'test-cookie-password-must-be-at-least-32-characters-long'
@@ -53,16 +54,66 @@ function withEnv(env: Record<string, string | undefined>) {
 
 function buildRequest(
   url: string,
-  init: { method?: string; accept?: string; bearer?: string } = {},
+  init: {
+    accept?: string
+    bearer?: string
+    cookie?: string
+    method?: string
+    origin?: string
+    referer?: string
+    xRequestedWith?: string
+  } = {},
 ): NextRequest {
   const headers = new Headers()
   if (init.accept) headers.set('accept', init.accept)
   if (init.bearer) headers.set('authorization', `Bearer ${init.bearer}`)
+  if (init.cookie) headers.set('cookie', init.cookie)
+  if (init.origin) headers.set('origin', init.origin)
+  if (init.referer) headers.set('referer', init.referer)
+  if (init.xRequestedWith) {
+    headers.set('x-requested-with', init.xRequestedWith)
+  }
   // Headers an attacker could try to inject. Always present so the stripping
   // path is exercised on every request.
   headers.set('x-user-id', 'attacker')
   headers.set('x-user-roles', 'Admin')
   return new NextRequest(url, { method: init.method ?? 'GET', headers })
+}
+
+async function writeSignedInCookie(): Promise<string> {
+  const response = new Response()
+  const session = await getSessionFromRequest(
+    new Request('http://localhost/'),
+    response,
+  )
+  session.sub = 'user-1'
+  session.givenName = 'Alice'
+  session.familyName = 'Reviewer'
+  session.name = 'Alice Reviewer'
+  session.hsaId = 'SE2321000032-rev1'
+  session.roles = ['Reviewer']
+  session.accessTokenExpiresAt = 1
+  await session.save()
+  return response.headers.get('set-cookie')?.split(';')[0] ?? ''
+}
+
+function parseSecurityEvents(
+  infoSpy: ReturnType<typeof vi.spyOn>,
+): Array<Record<string, unknown>> {
+  return infoSpy.mock.calls
+    .map((call: unknown[]) => {
+      try {
+        return JSON.parse(String(call[0])) as Record<string, unknown>
+      } catch {
+        return null
+      }
+    })
+    .filter(
+      (
+        event: Record<string, unknown> | null,
+      ): event is Record<string, unknown> =>
+        event !== null && event.channel === 'security-audit',
+    )
 }
 
 describe('middleware', () => {
@@ -202,6 +253,29 @@ describe('middleware', () => {
     }
   })
 
+  it('emits auth.session.rejected for invalid session cookies', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/api/owners', {
+          cookie: 'kravhantering_session=this-is-not-a-real-session',
+        }),
+      )
+      expect(response.status).toBe(401)
+      const events = parseSecurityEvents(infoSpy)
+      expect(events).toHaveLength(1)
+      expect(events[0]).toMatchObject({
+        event: 'auth.session.rejected',
+        outcome: 'failure',
+        detail: { reason: 'invalid_session_cookie' },
+      })
+    } finally {
+      infoSpy.mockRestore()
+      restore()
+    }
+  })
+
   it('passes through public allow-list paths', async () => {
     const restore = withEnv(AUTH_ON_ENV)
     try {
@@ -284,6 +358,72 @@ describe('middleware', () => {
         }),
       )
       expect(withBearer.status).toBe(200)
+    } finally {
+      restore()
+    }
+  })
+
+  it('rejects signed-in REST mutations without X-Requested-With', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await middleware(
+        buildRequest('http://localhost/api/owners', {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+        }),
+      )
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Forbidden',
+        detail: 'Missing X-Requested-With header.',
+      })
+    } finally {
+      restore()
+    }
+  })
+
+  it('rejects signed-in cross-origin REST mutations', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await middleware(
+        buildRequest('http://localhost/api/owners', {
+          cookie,
+          method: 'POST',
+          origin: 'https://evil.example',
+          xRequestedWith: 'XMLHttpRequest',
+        }),
+      )
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Forbidden',
+        detail: 'Cross-origin request rejected.',
+      })
+    } finally {
+      restore()
+    }
+  })
+
+  it('passes signed-in same-origin REST mutations through', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await middleware(
+        buildRequest('http://localhost/api/owners', {
+          cookie,
+          method: 'POST',
+          origin: 'http://localhost',
+          xRequestedWith: 'XMLHttpRequest',
+        }),
+      )
+      expect(response.status).toBe(200)
+      const overrides = (
+        response.headers.get('x-middleware-override-headers') ?? ''
+      ).split(',')
+      expect(overrides).not.toContain('x-user-id')
+      expect(overrides).not.toContain('x-user-roles')
     } finally {
       restore()
     }

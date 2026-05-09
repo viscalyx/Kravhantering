@@ -24,7 +24,15 @@ vi.mock('@/lib/requirements/service', async () => {
 })
 
 vi.mock('@/lib/auth/mcp-token', () => ({
-  McpAuthError: class McpAuthError extends Error {},
+  McpAuthError: class McpAuthError extends Error {
+    readonly status: number
+
+    constructor(message: string, status = 401) {
+      super(message)
+      this.name = 'McpAuthError'
+      this.status = status
+    }
+  },
   verifyMcpBearerToken: vi.fn(async () => ({
     actor: {
       id: 'mcp-test-actor',
@@ -41,8 +49,10 @@ vi.mock('@/lib/auth/mcp-token', () => ({
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import { handleRequirementsMcpRequest } from '@/lib/mcp/http'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
+import { RequirementsServiceError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 function createFakeService(
@@ -269,14 +279,21 @@ describe('handleRequirementsMcpRequest', () => {
       return tools.find(tool => tool.name === name)
     }
 
-    it('lists the core MCP tools', async () => {
-      expect(tools.map(tool => tool.name)).toEqual(
-        expect.arrayContaining([
+    it('lists the exact documented MCP tool allowlist', async () => {
+      expect(tools.map(tool => tool.name).sort()).toEqual(
+        [
+          'requirements_add_to_specification',
+          'requirements_generate_requirements',
           'requirements_get_requirement',
+          'requirements_get_specification_items',
+          'requirements_list_improvement_suggestions',
+          'requirements_list_specifications',
           'requirements_manage_requirement',
+          'requirements_manage_improvement_suggestion',
           'requirements_query_catalog',
+          'requirements_remove_from_specification',
           'requirements_transition_requirement',
-        ]),
+        ].sort(),
       )
     })
 
@@ -489,9 +506,13 @@ describe('handleRequirementsMcpRequest', () => {
     await transport.close()
   })
 
-  it('returns tool-level errors as isError results instead of protocol failures', async () => {
+  it('returns unexpected tool errors as generic isError results', async () => {
     const fakeService = createFakeService()
-    fakeService.getRequirement.mockRejectedValueOnce(new Error('Boom'))
+    fakeService.getRequirement.mockRejectedValueOnce(
+      new Error(
+        'SELECT * FROM users; Authorization: Bearer secret-token; stack trace',
+      ),
+    )
     serviceState.getService.mockReturnValue(fakeService)
 
     const { client, transport } = await createClient()
@@ -508,12 +529,77 @@ describe('handleRequirementsMcpRequest', () => {
       type: string
     }>
     expect(content[0]).toMatchObject({
-      text: 'Error: Boom',
+      text: 'Error: An internal error occurred',
       type: 'text',
     })
+    expect(content[0]?.text).not.toContain('secret-token')
+    expect(content[0]?.text).not.toContain('SELECT')
 
     await client.close()
     await transport.close()
+  })
+
+  it('keeps domain service errors readable as isError results', async () => {
+    const fakeService = createFakeService()
+    fakeService.manageRequirement.mockRejectedValueOnce(
+      new RequirementsServiceError('conflict', 'Requirement has changed'),
+    )
+    serviceState.getService.mockReturnValue(fakeService)
+
+    const { client, transport } = await createClient()
+    const result = await client.callTool({
+      arguments: {
+        operation: 'edit',
+        uniqueId: 'INT0001',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated description',
+        },
+      },
+      name: 'requirements_manage_requirement',
+    })
+
+    expect(result.isError).toBe(true)
+    expect(result.content).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          text: 'Error: Requirement has changed',
+          type: 'text',
+        }),
+      ]),
+    )
+
+    await client.close()
+    await transport.close()
+  })
+
+  it('returns a bearer challenge and skips service creation when MCP auth fails', async () => {
+    vi.mocked(verifyMcpBearerToken).mockRejectedValueOnce(
+      new McpAuthError('Missing Bearer token.', 401),
+    )
+
+    const response = await handleRequirementsMcpRequest(
+      new Request('https://example.test/api/mcp', {
+        body: JSON.stringify({
+          id: 1,
+          jsonrpc: '2.0',
+          method: 'tools/list',
+        }),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      }),
+      {} as never,
+    )
+
+    expect(response.status).toBe(401)
+    expect(response.headers.get('WWW-Authenticate')).toBe('Bearer')
+    expect(await response.json()).toEqual({
+      error: { code: -32000, message: 'Missing Bearer token.' },
+      id: null,
+      jsonrpc: '2.0',
+    })
+    expect(serviceState.getService).not.toHaveBeenCalled()
   })
 
   it('rejects specification tools unless exactly one specification identifier is provided', async () => {

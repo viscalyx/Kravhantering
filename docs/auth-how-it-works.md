@@ -197,6 +197,10 @@ sequenceDiagram
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
+  `middleware.ts` enforces this centrally for mutating REST API requests after
+  authentication has succeeded, excluding `/api/mcp`, which uses Bearer-token
+  auth. Route-level checks remain as defense-in-depth for existing
+  `createRequestContext` and logout paths.
 - Page responses get a per-request CSP nonce from `middleware.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:

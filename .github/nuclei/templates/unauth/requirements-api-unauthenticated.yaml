@@ -1,0 +1,23 @@
+id: kravhantering-requirements-api-unauthenticated
+
+info:
+  name: Requirements API Accessible Without Browser Session
+  author: viscalyx
+  severity: high
+  description: |
+    Detects whether the requirements REST API returns a successful response
+    without an authenticated browser session.
+  tags: kravhantering,auth,exposure
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/requirements"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 201
+          - 202
+          - 204

@@ -175,6 +175,60 @@ describe('verifyMcpBearerToken', () => {
       ),
     ).rejects.toSatisfy(e => e instanceof McpAuthError && e.status === 401)
   })
+
+  it('rejects tokens whose issuer does not match auth config', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockRejectedValue(new Error('unexpected "iss" claim value'))
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer wrong.issuer.token' },
+        }),
+      ),
+    ).rejects.toSatisfy(e => e instanceof McpAuthError && e.status === 401)
+    expect(jwtVerifyMock).toHaveBeenCalledWith(
+      'wrong.issuer.token',
+      { kind: 'jwks' },
+      expect.objectContaining({
+        issuer: 'https://issuer.example.com',
+      }),
+    )
+  })
+
+  it('rejects tokens whose audience does not match auth config', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockRejectedValue(new Error('unexpected "aud" claim value'))
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer wrong.audience.token' },
+        }),
+      ),
+    ).rejects.toSatisfy(e => e instanceof McpAuthError && e.status === 401)
+    expect(jwtVerifyMock).toHaveBeenCalledWith(
+      'wrong.audience.token',
+      { kind: 'jwks' },
+      expect.objectContaining({
+        audience: 'kravhantering-app',
+      }),
+    )
+  })
 })
 
 describe('verifyMcpBearerToken security audit events', () => {

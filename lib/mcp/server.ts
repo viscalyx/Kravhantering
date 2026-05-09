@@ -11,6 +11,7 @@ import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
+import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import {
   buildRequirementViewUri,
   createRequirementsService,
@@ -281,7 +282,9 @@ function toRequirementResourceUri(uniqueId: string, versionNumber?: number) {
 
 function formatError(error: unknown) {
   const message =
-    error instanceof Error ? error.message : 'An internal error occurred'
+    isRequirementsServiceError(error) && error.code !== 'internal'
+      ? error.message
+      : 'An internal error occurred'
 
   return {
     content: [

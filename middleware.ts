@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
 import { recordSecurityEvent } from '@/lib/auth/audit'
+import { assertSameOriginRequest, CsrfError } from '@/lib/auth/csrf'
 import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
@@ -194,6 +195,29 @@ function isApiPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/')
 }
 
+function isMutatingMethod(method: string): boolean {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())
+}
+
+function enforceRestCsrf(request: NextRequest): NextResponse | null {
+  const pathname = request.nextUrl.pathname
+  if (!isApiPath(pathname) || isMcpPath(pathname)) return null
+  if (!isMutatingMethod(request.method)) return null
+
+  try {
+    assertSameOriginRequest(request)
+    return null
+  } catch (error) {
+    if (error instanceof CsrfError) {
+      return NextResponse.json(
+        { error: 'Forbidden', detail: error.message },
+        { status: error.status },
+      )
+    }
+    throw error
+  }
+}
+
 // Locale roots (`/sv`, `/en`) only exist to redirect to `/<locale>/requirements`.
 // The original implementation lived in `app/[locale]/page.tsx` as a Server
 // Component `redirect('/requirements')`, but Server-Component redirects emit a
@@ -302,6 +326,9 @@ function applyPageHeaders(request: NextRequest): NextResponse {
 export default async function middleware(request: NextRequest) {
   const authResponse = await enforceAuth(request)
   if (authResponse) return authResponse
+
+  const csrfResponse = enforceRestCsrf(request)
+  if (csrfResponse) return csrfResponse
 
   if (isLocaleRootPath(request.nextUrl.pathname)) {
     return redirectLocaleRootToRequirements(request)

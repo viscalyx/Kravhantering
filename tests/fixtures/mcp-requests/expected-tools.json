@@ -1,0 +1,15 @@
+{
+  "tools": [
+    "requirements_add_to_specification",
+    "requirements_generate_requirements",
+    "requirements_get_requirement",
+    "requirements_get_specification_items",
+    "requirements_list_improvement_suggestions",
+    "requirements_list_specifications",
+    "requirements_manage_requirement",
+    "requirements_manage_improvement_suggestion",
+    "requirements_query_catalog",
+    "requirements_remove_from_specification",
+    "requirements_transition_requirement"
+  ]
+}

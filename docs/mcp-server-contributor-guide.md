@@ -300,6 +300,10 @@ Rules:
   failures.
 - MCP tool handlers should catch and return tool-level failures with
   `isError: true`.
+- Validation, conflict, authorization, and not-found domain errors may expose
+  their user-facing message.
+- Unexpected errors and `internal` domain errors must return only
+  `Error: An internal error occurred`.
 - REST routes should map errors with `toHttpErrorPayload`.
 - Do not leak stack traces or raw database errors into tool results.
 
@@ -380,16 +384,41 @@ Unit and transport coverage for the MCP server lives in:
 
 - `tests/unit/requirements-service.test.ts`
 - `tests/unit/mcp-http.test.ts`
+- `tests/unit/mcp-security.test.ts`
+- `tests/unit/mcp-authz.test.ts`
+- `tests/unit/mcp-property.test.ts`
 
 Useful commands:
 
 - `npm run type-check`
-- `npm test -- tests/unit/requirements-service.test.ts tests/unit/mcp-http.test.ts`
-- `npm run lint -- app/api/mcp/route.ts lib/mcp/http.ts lib/mcp/server.ts lib/requirements/service.ts`
+- Focused MCP security suite:
+
+  ```sh
+  npm exec -- vitest run \
+    tests/unit/mcp-http.test.ts \
+    tests/unit/mcp-token.test.ts \
+    tests/unit/mcp-security.test.ts \
+    tests/unit/mcp-authz.test.ts \
+    tests/unit/mcp-property.test.ts
+  ```
+
+- Focused MCP lint:
+
+  ```sh
+  npm run lint -- \
+    app/api/mcp/route.ts \
+    lib/mcp/http.ts \
+    lib/mcp/server.ts \
+    lib/requirements/service.ts \
+    tests/unit/mcp-http.test.ts \
+    tests/unit/mcp-security.test.ts \
+    tests/unit/mcp-authz.test.ts \
+    tests/unit/mcp-property.test.ts
+  ```
 
 Manual verification should still include:
 
-- connecting an MCP client to `/api/mcp`
+- connecting an MCP client to `/api/mcp` with a non-production Bearer token
 - checking that all eleven tools appear
 - checking that the JSON resource resolves
 - checking that the requirement view app renders in a client with MCP Apps
@@ -422,8 +451,8 @@ for the full setup.
   OpenShift-compatible container deployment later.
 - The current implementation is stateless and creates a fresh transport per
   request.
-- If you expose the route publicly before the auth phase lands, protect the
-  route at the ingress, reverse proxy, or platform edge.
+- Public deployments must keep `/api/mcp` behind HTTPS and the configured IdP
+  Bearer-token validation.
 
 ## Related Docs
 

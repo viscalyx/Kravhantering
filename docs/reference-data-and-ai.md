@@ -150,6 +150,25 @@ reasoning tokens.
 request uses `json_schema` response format. Otherwise it
 falls back to `json_object`.
 
+### OpenRouter Test Policy
+
+Automated repository tests and security gates do not call live OpenRouter
+endpoints. OpenRouter is an external service, and this project assumes the
+provider's published API works independently of the repository.
+
+The repo-owned responsibility is to verify the integration boundary:
+
+- request shape, model selection, response parsing, timeout handling, and error
+  handling with mocked network calls;
+- prompt and taxonomy generation behavior before a provider call is made;
+- disabled-provider behavior when OpenRouter credentials are absent;
+- sanitization so provider keys, prompts, SQL fragments, stack traces, and
+  other sensitive details are not written to scan artifacts.
+
+Do not add production OpenRouter keys or live provider calls to CI. A manual
+provider smoke test may be run outside CI when changing provider configuration
+or investigating an integration incident.
+
 ### Prompt Contracts
 
 **Locale-dependent:** full system and user prompts exist in

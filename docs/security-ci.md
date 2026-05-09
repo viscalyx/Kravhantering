@@ -4,16 +4,93 @@ Continuous-integration security checks specific to this repository. The
 canonical scanner choice and rationale, plus instructions for tuning,
 extending, and replicating the scan locally.
 
+## Repository and supply-chain workflow
+
+Workflow file:
+[.github/workflows/security-repository.yml](../.github/workflows/security-repository.yml).
+
+Each pull request to `main`, push to `main`, weekly scheduled run, and manual
+dispatch runs the repository-owned supply-chain gate. The workflow uses the
+normal `pull_request` event, never `pull_request_target`, and does not receive
+production secrets or custom secret values.
+
+### GitHub-owned controls
+
+CodeQL and GitHub Secret Protection are repository or organization controls,
+not repo-owned workflow steps in this phase.
+
+- CodeQL default setup is already enabled in GitHub for pull requests and
+  `main`.
+- GitHub secret scanning and push protection are already enabled in GitHub.
+- Gitleaks is intentionally skipped for now to avoid duplicate
+  secret-scanning noise. Reconsider it only if future evidence shows GitHub
+  custom patterns cannot cover repo-specific secret formats.
+
+Trivy secret scanning is also disabled in this workflow. GitHub Secret
+Protection owns the secret-detection surface.
+
+### Repository workflow steps
+
+1. Checks out the PR and installs dependencies with `npm ci`, using the Node
+   version pinned in [.nvmrc](../.nvmrc).
+2. Runs `npm audit --audit-level=high`.
+3. Runs Trivy filesystem vulnerability scanning for `HIGH` and `CRITICAL`
+   findings across OS and library packages.
+4. Runs Trivy config/IaC scanning for `HIGH` and `CRITICAL` findings.
+5. Uploads Trivy SARIF to GitHub code scanning for same-repository PRs and
+   other events where `security-events: write` is available.
+6. Uploads the Trivy SARIF files as the **`trivy-repository-security`**
+   artifact even when a scan fails.
+
+### Trivy pinning and safety
+
+The workflow pins the Trivy action to the immutable peeled commit for
+`aquasecurity/trivy-action` `v0.36.0`:
+
+```text
+aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+```
+
+It also pins the Trivy binary with `version: v0.70.0`. Do not replace either
+pin with `latest`. Bumps should land in their own PR, use patched releases, and
+cite the upstream release or advisory that motivated the change.
+
+There is no `.trivyignore` file initially. If an ignore becomes unavoidable,
+add the smallest possible exception with an issue link and an expiry rationale.
+
+### Repository failure policy
+
+- `npm audit` fails the workflow only for high or critical audit findings.
+- Trivy filesystem scanning fails on `HIGH` or `CRITICAL` vulnerability
+  findings.
+- Trivy config scanning fails on `HIGH` or `CRITICAL` configuration findings.
+- SARIF upload is skipped for fork PRs so read-only fork permissions do not
+  break the job.
+- GitHub-managed CodeQL and secret scanning keep their existing repository
+  policies outside this workflow.
+
+### Related DAST issues
+
+Issue `#106` (Nuclei alongside OWASP ZAP) and issue `#119` (deeper ZAP
+scanning) are DAST expansion work. They are intentionally not part of the
+repository and supply-chain gate.
+
+Phase 4 implements `#106` in the existing pull-request DAST workflow by adding
+Nuclei beside ZAP against the same localhost prodlike app. Issue `#119` remains
+later DAST expansion because it introduces API scanning, role matrices, full
+active scans, OpenAPI generation, workflow refactoring, throwaway realms, and
+runtime scan guards.
+
 ## Pull-request DAST workflow
 
 Workflow file:
 [.github/workflows/security-dast.yml](../.github/workflows/security-dast.yml).
 
-Each pull request to `main` runs an authenticated **OWASP ZAP baseline**
-(passive) scan against a fresh, ephemeral copy of the application
-running on the GitHub Actions runner. Results are uploaded as workflow
-artifacts and the PR fails on any alert that is not explicitly
-suppressed in the rules file.
+Each pull request to `main` runs the existing authenticated **OWASP ZAP
+baseline** passive scan and a **Nuclei** template scan against a fresh,
+ephemeral copy of the application running on the GitHub Actions runner. Both
+scanners target only `http://localhost:3001`; the workflow fails before Nuclei
+runs if the configured target is not local.
 
 ### What the workflow does
 
@@ -35,8 +112,29 @@ suppressed in the rules file.
    action against `http://localhost:3001/sv` with the captured cookie
    injected as a `Cookie` header on every request via ZAP's `replacer`
    add-on.
-7. Uploads the ZAP HTML / Markdown / JSON reports (created by the
-   action itself) plus the application log as workflow artifacts.
+7. Installs Nuclei with <!-- cSpell:ignore nuclei projectdiscovery -->
+   [`projectdiscovery/nuclei-action@v3`](https://github.com/projectdiscovery/nuclei-action),
+   pins the Nuclei binary to `v3.8.0`, and runs repo-owned unauthenticated
+   boundary templates from
+   [.github/nuclei/templates/unauth](../.github/nuclei/templates/unauth).
+8. Runs an authenticated Nuclei pass with the same masked session cookie used
+   by ZAP. Nuclei output omits raw request/response data and redacts
+   `Cookie` and `Authorization` values.
+9. Uploads the ZAP HTML / Markdown / JSON reports (created by the action
+   itself), the Nuclei JSONL / SARIF / Markdown / log output, and the
+   application log as workflow artifacts.
+
+### Scanner responsibility split
+
+- **ZAP baseline:** authenticated crawl, passive web checks, response headers,
+  cookie attributes, and browser-facing page coverage.
+- **Nuclei:** known CVE/template checks, exposures, misconfigurations, exposed
+  panels, technology checks, and accidentally exposed files.
+
+The workflow extends
+[.github/workflows/security-dast.yml](../.github/workflows/security-dast.yml).
+Do not add a second PR-time web DAST workflow unless the scan shape changes
+enough to require a separate lifecycle.
 
 ### Why ZAP baseline (passive) was chosen
 
@@ -81,6 +179,18 @@ Rule files are named `rules.<scenario>.tsv` so future scan scenarios
 ship their own policy file alongside without disturbing the PR
 baseline.
 
+Nuclei uses a different failure policy:
+
+- Medium findings are reported in artifacts and SARIF but do not fail the PR.
+- High or critical findings fail the workflow after artifacts are uploaded.
+- Empty or absent Nuclei result files mean no findings and do not fail.
+- Scanner execution errors fail the workflow.
+- SARIF upload runs only for same-repository pull requests and only when the
+  SARIF file exists, so fork PRs do not fail because of read-only permissions.
+
+The final workflow failure combines the ZAP outcome and Nuclei high/critical
+findings after report artifacts are available.
+
 ### Tuning the rules
 
 Edit [.github/zap/rules.prodlike.tsv](../.github/zap/rules.prodlike.tsv)
@@ -103,6 +213,22 @@ out to be local-CI artefacts (e.g. test-only cookies missing
    comment.
 2. Mentions in `docs/security-ci.md` why the suppression is safe.
 
+### Tuning Nuclei
+
+Nuclei runs with safe PR flags: `-severity medium,high,critical`, `-jsonl`,
+`-sarif-export`, `-markdown-export`, `-rate-limit 50`, `-retries 1`,
+`-timeout 5`, `-duc`, `-ni`, `-omit-raw`, and redaction for `Cookie` and
+`Authorization`.
+<!-- cSpell:ignore interactsh -->
+The authenticated community-template pass excludes intrusive categories and
+tags, including fuzzing, brute force, denial of service, default-login
+attempts, OAST/interactsh, file upload, destructive checks, and headless
+browser templates.
+
+There are no Nuclei suppressions initially. If community template noise needs
+tuning, prefer the smallest tag/template exclusion that keeps the PR scan safe,
+and document the reason here with an issue link.
+
 ### Reading reports
 
 After the workflow finishes, download the **`zap_scan`** artifact from
@@ -115,6 +241,134 @@ the workflow run summary. It contains:
 The application log captured during the scan is uploaded separately as
 **`dast-app-log`** and is the first thing to inspect when ZAP cannot
 reach the app.
+
+Download the **`nuclei_scan`** artifact for Nuclei triage. It contains JSONL,
+SARIF, Markdown exports, stdout/stderr logs, and the local target file used by
+the scan. The SARIF files are also uploaded to GitHub code scanning for
+same-repository PRs when they exist.
+
+## REST API Schema And Schemathesis Workflow
+
+<!-- cSpell:ignore Schemathesis -->
+
+Workflow file:
+[.github/workflows/security-api.yml](../.github/workflows/security-api.yml).
+
+Phase 5 adds a repo-owned OpenAPI contract and Schemathesis scan for the
+authenticated requirements REST API. The scan runs only against
+`http://localhost:3001` after starting the same disposable SQL Server,
+Keycloak, and prodlike Next.js stack used by the PR DAST workflow.
+
+The static contract lives in
+[openapi/requirements-api.yaml](../openapi/requirements-api.yaml). It is not
+served by the app and does not add a runtime `/openapi` route.
+
+### API scan scope
+
+Covered in Phase 5:
+
+- `/api/auth/me`
+- Requirement list, detail, create, edit, archive, version read,
+  delete-draft, restore, reactivate, and transition routes.
+- Read-only requirement catalog routes used by the requirements UI.
+
+Deferred from Phase 5:
+
+- CSV export, MCP, AI routes, admin catalog mutations, specifications,
+  deviations, and improvement suggestions.
+- ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
+  that require service-specific CI secrets.
+
+Those deferred items are later issue `#119` work. Phase 5 creates the API
+contract and bounded property-test foundation, but does not close `#119`.
+
+### API workflow steps
+
+1. Installs Node dependencies with `npm ci`.
+2. Installs pinned `schemathesis==4.15.2` with Python.
+3. Starts SQL Server and runs `npm run db:setup`.
+4. Starts the local Keycloak realm.
+5. Builds and starts the prodlike app on `127.0.0.1:3001`.
+6. Polls `/api/health`.
+7. Acquires the local admin session cookie for `ada.admin`.
+8. Fails before scanning unless the target is exactly
+   `http://localhost:3001`.
+9. Runs Schemathesis with deterministic bounded settings and browser REST
+   auth/CSRF headers.
+10. Uploads JUnit, NDJSON, stdout/stderr, and app logs with `if: always()`.
+
+The mutating scan requests include the masked local session cookie,
+`Origin: http://localhost:3001`, and
+`X-Requested-With: XMLHttpRequest`. Schemathesis output sanitization stays
+enabled. HAR export is intentionally not used in Phase 5.
+
+### API failure policy
+
+Schemathesis fails the workflow on server errors, undocumented status codes,
+content-type mismatches, response-schema mismatches, scanner execution errors,
+or schema configuration errors. Artifacts are uploaded before the final failure
+is emitted.
+
+See [docs/api-security.md](api-security.md) for local run instructions and path
+addition rules.
+
+## MCP Seeded HTTP Workflow
+
+Workflow file:
+[.github/workflows/security-mcp.yml](../.github/workflows/security-mcp.yml).
+
+Phase 6 adds a repo-owned MCP seeded HTTP security gate. It starts the
+prodlike localhost stack, obtains a local Keycloak service-account token, and
+uses the MCP Streamable HTTP client against `http://localhost:3001/api/mcp`.
+
+This is not a paid vendor DAST scan. HAR generation, role-matrix DAST, ZAP API
+scan, active scans, production targets, and production secrets remain out of
+scope for this workflow. The Nuclei template from Phase 4 remains the
+unauthenticated `/api/mcp` exposure check, while the Phase 3 MCP unit/property
+tests remain the main protocol contract.
+
+The workflow deliberately does not call live OpenRouter endpoints. OpenRouter
+is an external service, so CI validates this repository's request construction,
+response handling, and disabled-provider safety path instead of depending on a
+paid provider's availability, account state, rate limits, or production-like
+secrets.
+
+### MCP workflow steps
+
+1. Installs Node dependencies with `npm ci`.
+2. Starts SQL Server and runs `npm run db:setup`.
+3. Starts the local Keycloak realm.
+4. Builds and starts the prodlike app on `127.0.0.1:3001` with OpenRouter
+   env vars blank.
+5. Polls `/api/health`.
+6. Fails before scanning unless the target is exactly
+   `http://localhost:3001`.
+7. Runs [scripts/security/get-mcp-token.mjs](../scripts/security/get-mcp-token.mjs)
+   to acquire the local `kravhantering-mcp` client-credentials token.
+8. Masks the token and runs
+   [tests/integration/mcp-seeded-scan.spec.ts](../tests/integration/mcp-seeded-scan.spec.ts).
+9. Uploads MCP JSONL/summary artifacts and the application log before the
+   final failure step.
+
+The seeded corpus lives under
+[tests/fixtures/mcp-requests](../tests/fixtures/mcp-requests). Cases resolve
+IDs from the disposable seeded database at runtime so the fixture does not
+hard-code requirement, version, or specification IDs.
+
+### MCP failure policy
+
+The workflow fails on localhost guard failure, token acquisition failure,
+missing or extra MCP tools, unauthenticated 2xx responses, valid-token
+transport failures, unexpected 5xx responses, unexpected MCP errors for
+positive cases, unsafe mutation behavior, sensitive output, or AI generation
+success while OpenRouter env vars are unset. The last check proves the scan is
+exercising the local disabled-provider path, not live provider availability.
+
+Allowed expected negatives are limited to missing or invalid Bearer tokens,
+unknown tool, stale edit conflict, and sanitized AI-disabled error.
+
+See [docs/mcp-seeded-dast.md](mcp-seeded-dast.md) for local run instructions
+and corpus extension rules.
 
 ## Static security headers
 
@@ -163,6 +417,9 @@ Current static headers and rationale:
 - **Active scanning** (`zap-full-scan`, fuzzers, payload mutation).
   These probe destructively and require an isolated, throwaway
   environment.
+- **Deeper ZAP scanning from issue `#119`.** API scans, role matrices, full
+  active scans, OpenAPI generation, composite action refactors, and throwaway
+  realms are later DAST work.
 - **Authenticated coverage of every role.** Only the `Admin` realm
   user is scanned; other roles (`Reviewer`, area owner, specification
   owner, etc.) are exercised by the Playwright integration tests but
@@ -172,7 +429,8 @@ Current static headers and rationale:
   (e.g. Trivy, Grype) in a separate workflow rather than ZAP.
 - **External services.** No production endpoints, no third-party
   hosts, no externally controlled URLs are ever scanned. The target is
-  always `http://localhost:3001`.
+  always `http://localhost:3001`. Live OpenRouter calls are intentionally
+  outside security CI; mocked tests cover this repository's client contract.
 
 ## Adding active or scheduled scanning later
 

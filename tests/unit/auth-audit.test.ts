@@ -205,6 +205,54 @@ describe('recordSecurityEvent', () => {
     })
   })
 
+  it('never serializes sensitive detail values and breadcrumbs carry key names only', () => {
+    const sensitiveValues = [
+      'sensitive-access-token-value',
+      'sensitive-client-secret-value',
+      'sensitive-authorization-code-value',
+      'sensitive-code-verifier-value',
+      'sensitive-state-value',
+      'sensitive-nonce-value',
+    ]
+
+    recordSecurityEvent({
+      event: 'auth.login.failed',
+      outcome: 'failure',
+      actor: { source: 'oidc' },
+      request: new Request('https://app.example.test/api/auth/callback'),
+      detail: {
+        accessToken: sensitiveValues[0],
+        clientSecret: sensitiveValues[1],
+        authorizationCode: sensitiveValues[2],
+        codeVerifier: sensitiveValues[3],
+        state: sensitiveValues[4],
+        nonce: sensitiveValues[5],
+        reason: 'token_exchange_failed',
+      },
+    })
+
+    const serialized = emittedJsonLines()
+      .map(line => JSON.stringify(line))
+      .join('\n')
+    for (const value of sensitiveValues) {
+      expect(serialized).not.toContain(value)
+    }
+
+    const breadcrumbs = emittedRedactionBreadcrumbs()
+    expect(breadcrumbs).toHaveLength(6)
+    expect(breadcrumbs.map(breadcrumb => breadcrumb.detailKey)).toEqual([
+      'accessToken',
+      'clientSecret',
+      'authorizationCode',
+      'codeVerifier',
+      'state',
+      'nonce',
+    ])
+    expect(
+      breadcrumbs.every(breadcrumb => breadcrumb.detail === undefined),
+    ).toBe(true)
+  })
+
   it('omits detail entirely when every field is denied', () => {
     recordSecurityEvent({
       event: 'auth.login.failed',

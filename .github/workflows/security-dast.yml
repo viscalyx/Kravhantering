@@ -1,8 +1,8 @@
 name: Security DAST
 
 # PR-level dynamic application security test using OWASP ZAP baseline
-# (passive scanning) against an authenticated session. See
-# docs/security-ci.md for the full design and tuning guide.
+# (passive scanning) and Nuclei against a localhost authenticated session.
+# See docs/security-ci.md for the full design and tuning guide.
 
 on:
   pull_request:
@@ -15,10 +15,11 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  security-events: write
 
 jobs:
   zap-baseline:
-    name: ZAP baseline (authenticated)
+    name: Web DAST (ZAP + Nuclei)
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -27,6 +28,7 @@ jobs:
       KEYCLOAK_USERNAME: ada.admin
       KEYCLOAK_PASSWORD: devpass
       AUTH_SESSION_COOKIE_NAME: kravhantering_session
+      NUCLEI_VERSION: v3.8.0
 
     steps:
       - name: Checkout code
@@ -130,6 +132,8 @@ jobs:
           cp .github/zap/rules.prodlike.tsv .zap/rules.tsv
 
       - name: Run OWASP ZAP baseline scan
+        id: zap_scan
+        continue-on-error: true
         uses: zaproxy/action-baseline@v0.15.0
         with:
           target: ${{ env.APP_BASE_URL }}/sv
@@ -161,6 +165,114 @@ jobs:
                 -config replacer.full_list(0).regex=false
                 -config replacer.full_list(0).replacement=${{ steps.session.outputs.cookie }}"
 
+      - name: Install Nuclei
+        uses: projectdiscovery/nuclei-action@v3
+        with:
+          version: ${{ env.NUCLEI_VERSION }}
+          install-only: true
+
+      - name: Prepare Nuclei scan target
+        run: |
+          set -euo pipefail
+          case "${APP_BASE_URL}" in
+            http://localhost:3001)
+              ;;
+            *)
+              echo "::error::Refusing to run Nuclei against target: ${APP_BASE_URL}"
+              exit 1
+              ;;
+          esac
+          mkdir -p \
+            test-results/nuclei/markdown-auth \
+            test-results/nuclei/markdown-unauth
+          printf '%s\n' "${APP_BASE_URL}" > test-results/nuclei/targets.txt
+
+      - name: Run Nuclei unauthenticated boundary scan
+        id: nuclei_unauth
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          nuclei \
+            -u "${APP_BASE_URL}" \
+            -t .github/nuclei/templates/unauth \
+            -severity medium,high,critical \
+            -jsonl \
+            -o test-results/nuclei/unauth.jsonl \
+            -sarif-export test-results/nuclei/unauth.sarif \
+            -markdown-export test-results/nuclei/markdown-unauth \
+            -rate-limit 50 \
+            -retries 1 \
+            -timeout 5 \
+            -duc \
+            -ni \
+            -omit-raw \
+            -redact Cookie \
+            -redact Authorization \
+            > test-results/nuclei/unauth.stdout.log \
+            2> test-results/nuclei/unauth.stderr.log
+
+      - name: Run Nuclei authenticated template scan
+        id: nuclei_auth
+        continue-on-error: true
+        env:
+          SESSION_COOKIE: ${{ steps.session.outputs.cookie }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${SESSION_COOKIE}"
+          nuclei \
+            -u "${APP_BASE_URL}" \
+            -tags exposure,exposures,misconfig,misconfiguration,exposed-panels,tech,technology,cve,cves \
+            -exclude-tags intrusive,fuzzing,bruteforce,brute-force,dos,oast,interactsh,default-login,file-upload,destructive,headless \
+            -severity medium,high,critical \
+            -H "Cookie: ${SESSION_COOKIE}" \
+            -jsonl \
+            -o test-results/nuclei/auth.jsonl \
+            -sarif-export test-results/nuclei/auth.sarif \
+            -markdown-export test-results/nuclei/markdown-auth \
+            -rate-limit 50 \
+            -retries 1 \
+            -timeout 5 \
+            -duc \
+            -ni \
+            -omit-raw \
+            -redact Cookie \
+            -redact Authorization \
+            > test-results/nuclei/auth.stdout.log \
+            2> test-results/nuclei/auth.stderr.log
+
+      - name: Upload Nuclei artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuclei_scan
+          path: test-results/nuclei/**
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Nuclei unauthenticated SARIF
+        if: >-
+          ${{
+            always() &&
+            hashFiles('test-results/nuclei/unauth.sarif') != '' &&
+            github.event.pull_request.head.repo.full_name == github.repository
+          }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: test-results/nuclei/unauth.sarif
+          category: nuclei-unauthenticated
+
+      - name: Upload Nuclei authenticated SARIF
+        if: >-
+          ${{
+            always() &&
+            hashFiles('test-results/nuclei/auth.sarif') != '' &&
+            github.event.pull_request.head.repo.full_name == github.repository
+          }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: test-results/nuclei/auth.sarif
+          category: nuclei-authenticated
+
       - name: Upload app log
         if: always()
         uses: actions/upload-artifact@v7
@@ -171,7 +283,16 @@ jobs:
           if-no-files-found: warn
 
       - name: Comment on PR with app log on failure
-        if: failure() && github.event_name == 'pull_request'
+        if: >-
+          ${{
+            github.event_name == 'pull_request' &&
+            (
+              failure() ||
+              steps.zap_scan.outcome == 'failure' ||
+              steps.nuclei_unauth.outcome == 'failure' ||
+              steps.nuclei_auth.outcome == 'failure'
+            )
+          }}
         uses: actions/github-script@v9
         with:
           script: |
@@ -223,6 +344,76 @@ jobs:
               issue_number: context.payload.pull_request.number,
               body,
             });
+
+      - name: Evaluate DAST scan outcomes
+        if: always()
+        run: |
+          set -euo pipefail
+          failed=0
+
+          if [ "${{ steps.zap_scan.outcome }}" = "failure" ]; then
+            echo "::error::OWASP ZAP baseline reported unsuppressed alerts."
+            failed=1
+          fi
+
+          if [ "${{ steps.nuclei_unauth.outcome }}" = "failure" ]; then
+            echo "::error::Nuclei unauthenticated scan failed to execute."
+            failed=1
+          fi
+
+          if [ "${{ steps.nuclei_auth.outcome }}" = "failure" ]; then
+            echo "::error::Nuclei authenticated scan failed to execute."
+            failed=1
+          fi
+
+          if ! node <<'NODE'
+          const fs = require('fs');
+          const files = [
+            'test-results/nuclei/unauth.jsonl',
+            'test-results/nuclei/auth.jsonl',
+          ];
+          const counts = { medium: 0, high: 0, critical: 0 };
+
+          for (const file of files) {
+            if (!fs.existsSync(file)) {
+              continue;
+            }
+
+            const lines = fs.readFileSync(file, 'utf8')
+              .split(/\r?\n/)
+              .filter(Boolean);
+
+            for (const line of lines) {
+              let entry;
+              try {
+                entry = JSON.parse(line);
+              } catch {
+                continue;
+              }
+
+              const severity = String(
+                entry?.info?.severity ?? entry?.severity ?? '',
+              ).toLowerCase();
+              if (Object.prototype.hasOwnProperty.call(counts, severity)) {
+                counts[severity] += 1;
+              }
+            }
+          }
+
+          console.log(
+            `Nuclei findings: medium=${counts.medium}, high=${counts.high}, critical=${counts.critical}`,
+          );
+
+          if (counts.high > 0 || counts.critical > 0) {
+            console.error('Nuclei high or critical findings are present.');
+            process.exit(1);
+          }
+          NODE
+          then
+            failed=1
+          fi
+
+          exit "${failed}"
 
       - name: Stop prodlike app
         if: always()

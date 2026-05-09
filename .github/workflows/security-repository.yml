@@ -1,0 +1,143 @@
+name: Repository Security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 2 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  supply-chain:
+    name: npm audit and Trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        id: npm_audit
+        continue-on-error: true
+        run: npm audit --audit-level=high
+
+      - name: Run Trivy filesystem vulnerability scan
+        id: trivy_fs
+        continue-on-error: true
+        # aquasecurity/trivy-action v0.36.0, pinned after GHSA-69fq-xp46-6x23.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          version: 'v0.70.0'
+          scanners: 'vuln'
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
+          format: 'sarif'
+          output: 'trivy-fs.sarif'
+          exit-code: '1'
+          ignore-unfixed: 'false'
+          hide-progress: 'true'
+          timeout: '10m'
+          limit-severities-for-sarif: 'true'
+          skip-dirs: 'node_modules,.next,.cache,coverage,test-results,playwright-report,playwright-report-dev,playwright-report-prodlike'
+
+      - name: Run Trivy config scan
+        id: trivy_config
+        continue-on-error: true
+        # aquasecurity/trivy-action v0.36.0, pinned after GHSA-69fq-xp46-6x23.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          version: 'v0.70.0'
+          scanners: 'config'
+          severity: 'HIGH,CRITICAL'
+          format: 'sarif'
+          output: 'trivy-config.sarif'
+          exit-code: '1'
+          hide-progress: 'true'
+          timeout: '10m'
+          limit-severities-for-sarif: 'true'
+          skip-dirs: 'node_modules,.next,.cache,coverage,test-results,playwright-report,playwright-report-dev,playwright-report-prodlike'
+
+      - name: Upload Trivy filesystem SARIF
+        if: >-
+          ${{
+            always() &&
+            hashFiles('trivy-fs.sarif') != '' &&
+            (
+              github.event_name != 'pull_request' ||
+              github.event.pull_request.head.repo.full_name == github.repository
+            )
+          }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      - name: Upload Trivy config SARIF
+        if: >-
+          ${{
+            always() &&
+            hashFiles('trivy-config.sarif') != '' &&
+            (
+              github.event_name != 'pull_request' ||
+              github.event.pull_request.head.repo.full_name == github.repository
+            )
+          }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+      - name: Upload Trivy artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-repository-security
+          path: trivy-*.sarif
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Fail on repository security findings
+        if: always()
+        run: |
+          failed=0
+
+          if [ '${{ steps.npm_audit.outcome }}' = 'failure' ]; then
+            echo '::error::npm audit found high or critical vulnerabilities.'
+            failed=1
+          fi
+
+          if [ '${{ steps.trivy_fs.outcome }}' = 'failure' ]; then
+            echo '::error::Trivy found high or critical filesystem vulnerabilities.'
+            failed=1
+          fi
+
+          if [ '${{ steps.trivy_config.outcome }}' = 'failure' ]; then
+            echo '::error::Trivy found high or critical configuration findings.'
+            failed=1
+          fi
+
+          exit "$failed"

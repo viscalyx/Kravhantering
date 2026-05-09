@@ -89,11 +89,19 @@ Add `?version=<number>` to either URI to target a specific version.
 
 ## Current Security Status
 
-As of March 8, 2026, the MCP route is designed for future authentication and
-authorization, but the in-route auth phase has not been enabled yet.
+The MCP route is authenticated. Every request to `/api/mcp` must include an
+`Authorization: Bearer <token>` header.
 
-If you expose `/api/mcp` outside local development before that phase lands,
-protect it at the platform edge.
+The middleware checks that the Bearer header is present. The MCP HTTP route then
+validates the JWT against the configured issuer JWKS and API audience before any
+MCP transport or tool handler runs. Accepted tokens must contain an
+`employeeHsaId` claim. Service-account tokens may use the documented synthetic
+form `mcp-client:<client-id>`.
+
+Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer`. MCP does
+not use browser cookies and is intentionally excluded from browser CSRF checks.
+Tool handlers build their actor context only from the verified token attached at
+the HTTP edge.
 
 ## Run It Locally
 
@@ -105,7 +113,8 @@ TypeORM stack. For the full developer setup, see
 2. Start the local SQL Server with `npm run db:up`.
 3. Migrate and seed the local database with `npm run db:setup`.
 4. Start the app with `npm run dev`.
-5. Connect your MCP client to `http://localhost:3000/api/mcp`.
+5. Configure your MCP client with a non-production Bearer token for the local
+   issuer/audience and connect to `http://localhost:3000/api/mcp`.
 
 The server is implemented inside the Next.js app, so there is no separate MCP
 process to start.
@@ -122,11 +131,17 @@ Create `.vscode/mcp.json` with:
   "servers": {
     "requirement-management": {
       "type": "http",
-      "url": "http://localhost:3000/api/mcp"
+      "url": "http://localhost:3000/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <non-production-token>"
+      }
     }
   }
 }
 ```
+
+Do not commit real tokens in workspace configuration. Prefer user-level MCP
+configuration or secret/env substitution supported by your MCP client.
 
 For a deployed environment, replace the URL with your public HTTPS origin:
 
@@ -135,7 +150,10 @@ For a deployed environment, replace the URL with your public HTTPS origin:
   "servers": {
     "requirement-management": {
       "type": "http",
-      "url": "https://your-domain.example/api/mcp"
+      "url": "https://your-domain.example/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <token>"
+      }
     }
   }
 }
@@ -274,10 +292,10 @@ Use a configuration like this:
 This explicit allowlist is preferable to `"*"` because coding agent
 can use the tools autonomously.
 
-### Future Auth Example For Coding Agent
+### Auth Header Example For Coding Agent
 
-When the auth phase is enabled, configure headers with Copilot environment
-variables or secrets prefixed with `COPILOT_MCP_`.
+Configure headers with Copilot environment variables or secrets prefixed with
+`COPILOT_MCP_`.
 
 Example:
 

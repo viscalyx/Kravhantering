@@ -1,0 +1,115 @@
+{
+  "description": "Phase 6 seeded MCP HTTP corpus. Placeholder values are resolved from the disposable seeded database by tests/integration/mcp-seeded-scan.spec.ts.",
+  "cases": [
+    {
+      "name": "lookup requirement catalogs",
+      "tool": "requirements_query_catalog",
+      "kind": "read",
+      "arguments": {
+        "catalog": "requirements",
+        "limit": 1,
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "read requirement detail",
+      "tool": "requirements_get_requirement",
+      "kind": "read",
+      "arguments": {
+        "uniqueId": "${publishedRequirement.uniqueId}",
+        "view": "detail",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "create disposable requirement",
+      "tool": "requirements_manage_requirement",
+      "kind": "mutation",
+      "arguments": {
+        "operation": "create",
+        "requirement": {
+          "areaId": "${area.id}",
+          "description": "Phase 6 disposable MCP seeded scan requirement"
+        },
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "transition disposable requirement",
+      "tool": "requirements_transition_requirement",
+      "kind": "mutation",
+      "arguments": {
+        "uniqueId": "${disposableRequirement.uniqueId}",
+        "toStatusId": "${transition.toStatusId}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "list specifications",
+      "tool": "requirements_list_specifications",
+      "kind": "read",
+      "arguments": {
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "list specification items",
+      "tool": "requirements_get_specification_items",
+      "kind": "read",
+      "arguments": {
+        "specificationId": "${specification.id}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "add published requirement to specification",
+      "tool": "requirements_add_to_specification",
+      "kind": "mutation",
+      "arguments": {
+        "specificationId": "${specification.id}",
+        "requirementIds": ["${publishedRequirement.id}"],
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "remove published requirement from specification",
+      "tool": "requirements_remove_from_specification",
+      "kind": "mutation",
+      "arguments": {
+        "specificationId": "${specification.id}",
+        "requirementIds": ["${publishedRequirement.id}"],
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "list improvement suggestions",
+      "tool": "requirements_list_improvement_suggestions",
+      "kind": "read",
+      "arguments": {
+        "requirementId": "${disposableRequirement.id}",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "create improvement suggestion",
+      "tool": "requirements_manage_improvement_suggestion",
+      "kind": "mutation",
+      "arguments": {
+        "operation": "create",
+        "requirementId": "${disposableRequirement.id}",
+        "content": "Phase 6 disposable improvement suggestion",
+        "responseFormat": "json"
+      }
+    },
+    {
+      "name": "AI generation stays local-safe when OpenRouter is unset",
+      "tool": "requirements_generate_requirements",
+      "kind": "expected-error",
+      "arguments": {
+        "topic": "Phase 6 OpenRouter disabled smoke",
+        "areaId": "${area.id}",
+        "locale": "en"
+      }
+    }
+  ]
+}
