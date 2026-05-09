@@ -331,10 +331,15 @@ test.describe('MCP seeded HTTP security gate', () => {
     const targetUrl = getMcpUrl(testInfo)
     const expectedTools = await loadExpectedTools()
     const fixtureTools = new Set(await loadSeededCaseTools())
-    const token = await getBearerToken()
-    const { client, transport } = await createMcpClient(targetUrl, token)
+    let client: Client | undefined
+    let transport: StreamableHTTPClientTransport | undefined
 
     try {
+      const token = await getBearerToken()
+      const connection = await createMcpClient(targetUrl, token)
+      client = connection.client
+      transport = connection.transport
+
       expect([...fixtureTools].sort()).toEqual(expectedTools.sort())
 
       const listed = await client.listTools()
@@ -662,8 +667,8 @@ test.describe('MCP seeded HTTP security gate', () => {
       ])
       throw err
     } finally {
-      await client.close().catch(() => undefined)
-      await transport.close().catch(() => undefined)
+      await client?.close().catch(() => undefined)
+      await transport?.close().catch(() => undefined)
     }
   })
 })

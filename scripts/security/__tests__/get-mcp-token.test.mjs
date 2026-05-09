@@ -71,6 +71,33 @@ describe('get-mcp-token', () => {
       accept: 'application/json',
       'content-type': 'application/x-www-form-urlencoded',
     })
+    expect(init?.signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('times out token endpoint requests', async () => {
+    vi.useFakeTimers()
+    try {
+      const fetchImpl = vi.fn(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            init.signal.addEventListener('abort', () => {
+              const error = new Error('aborted')
+              error.name = 'AbortError'
+              reject(error)
+            })
+          }),
+      )
+
+      const token = fetchMcpToken({ fetchImpl, timeoutMs: 10 })
+      const expectation = expect(token).rejects.toThrow(
+        'Token endpoint request timed out after 10 ms',
+      )
+      await vi.advanceTimersByTimeAsync(10)
+
+      await expectation
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('rejects token endpoint errors without echoing response bodies', async () => {

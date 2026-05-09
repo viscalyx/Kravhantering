@@ -384,6 +384,7 @@ Unit and transport coverage for the MCP server lives in:
 
 - `tests/unit/requirements-service.test.ts`
 - `tests/unit/mcp-http.test.ts`
+- `tests/unit/mcp-token.test.ts`
 - `tests/unit/mcp-security.test.ts`
 - `tests/unit/mcp-authz.test.ts`
 - `tests/unit/mcp-property.test.ts`
@@ -411,6 +412,7 @@ Useful commands:
     lib/mcp/server.ts \
     lib/requirements/service.ts \
     tests/unit/mcp-http.test.ts \
+    tests/unit/mcp-token.test.ts \
     tests/unit/mcp-security.test.ts \
     tests/unit/mcp-authz.test.ts \
     tests/unit/mcp-property.test.ts

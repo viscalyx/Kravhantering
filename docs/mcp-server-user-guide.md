@@ -283,14 +283,18 @@ Use a configuration like this:
         "requirements_list_improvement_suggestions",
         "requirements_manage_improvement_suggestion",
         "requirements_generate_requirements"
-      ]
+      ],
+      "headers": {
+        "Authorization": "$COPILOT_MCP_REQUIREMENT_MANAGEMENT_AUTHORIZATION"
+      }
     }
   }
 }
 ```
 
-This explicit allowlist is preferable to `"*"` because coding agent
-can use the tools autonomously.
+This explicit allowlist is preferable to `"*"` because coding agent can use the
+tools autonomously. The `Authorization` value must contain the full Bearer
+header value, usually supplied through a Copilot environment secret.
 
 ### Auth Header Example For Coding Agent
 

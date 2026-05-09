@@ -85,19 +85,33 @@ export async function fetchMcpToken({
   clientSecret = DEFAULT_CLIENT_SECRET,
   fetchImpl = globalThis.fetch,
   issuerUrl = DEFAULT_ISSUER_URL,
+  timeoutMs = 5000,
 } = {}) {
   if (typeof fetchImpl !== 'function') {
     throw new Error('fetch is not available in this Node.js runtime')
   }
 
-  const response = await fetchImpl(buildTokenEndpoint(issuerUrl), {
-    body: createClientCredentialsBody({ clientId, clientSecret }),
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/x-www-form-urlencoded',
-    },
-    method: 'POST',
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  let response
+  try {
+    response = await fetchImpl(buildTokenEndpoint(issuerUrl), {
+      body: createClientCredentialsBody({ clientId, clientSecret }),
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      method: 'POST',
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error(`Token endpoint request timed out after ${timeoutMs} ms`)
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
 
   if (!response.ok) {
     throw new Error(`Token endpoint returned HTTP ${response.status}`)

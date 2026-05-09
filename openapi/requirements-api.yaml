@@ -20,6 +20,7 @@ paths:
       tags: [auth]
       operationId: getCurrentSession
       summary: Return the current session projection.
+      security: []
       responses:
         '200':
           description: Current session projection.
@@ -51,6 +52,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -58,6 +60,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -65,6 +68,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -72,6 +76,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -79,6 +84,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -86,6 +92,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -93,6 +100,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -100,6 +108,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -107,6 +116,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items:
               type: string
               enum: ['true', 'false']
@@ -400,6 +410,7 @@ paths:
           in: query
           schema:
             type: array
+            maxItems: 100
             items: { type: integer, minimum: 1 }
           style: form
           explode: true
@@ -668,11 +679,13 @@ components:
         description: { type: string, minLength: 1, maxLength: 4000 }
         normReferenceIds:
           type: array
+          maxItems: 100
           items: { type: integer, minimum: 1 }
         ownerId: { type: string, maxLength: 80 }
         qualityCharacteristicId: { type: integer, minimum: 1 }
         requirementPackageIds:
           type: array
+          maxItems: 100
           items: { type: integer, minimum: 1 }
         requiresTesting: { type: boolean }
         riskLevelId: { type: integer, minimum: 1 }
