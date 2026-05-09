@@ -6,6 +6,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -42,8 +46,6 @@ jobs:
 
       - name: Run requirement list performance baseline
         run: npm run perf:requirements-list
-        env:
-          CI: true
 
       - name: Upload performance artifacts
         if: always()
