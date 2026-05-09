@@ -1,0 +1,67 @@
+{
+  "generatedAt": "2026-05-09T00:00:00.000Z",
+  "measurement": {
+    "sampleCount": 5,
+    "warmupCount": 2
+  },
+  "fixture": {
+    "areaCount": 4,
+    "areaIdBase": -9000,
+    "requirementCount": 10000,
+    "requirementIdBase": -900000,
+    "seededAt": "2026-05-09 00:00:00",
+    "uniqueIdPrefix": "PERF",
+    "versionIdBase": -9000000
+  },
+  "thresholds": {
+    "default-published": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    },
+    "status-sort-review": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    },
+    "classification-filters": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    },
+    "text-search": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    },
+    "join-table-filters": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    },
+    "deep-pagination": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    },
+    "archived-included": {
+      "allowSpills": false,
+      "maxLogicalReads": 5000000,
+      "maxMedianDurationMs": 15000,
+      "maxMissingIndexImpact": 100,
+      "maxP95DurationMs": 30000
+    }
+  }
+}

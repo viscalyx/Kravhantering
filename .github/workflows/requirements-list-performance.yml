@@ -1,0 +1,58 @@
+name: Requirement List Performance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  requirements-list-performance:
+    name: Requirement List SQL Server Baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Clean server and database state
+        run: npm run clean:all
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Setup local SQL Server database
+        run: npm run db:setup
+
+      - name: Run requirement list performance baseline
+        run: npm run perf:requirements-list
+        env:
+          CI: true
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: requirements-list-performance
+          path: test-results/requirements-list-performance/
+          retention-days: 7
+
+      - name: Stop local database service
+        if: always()
+        run: npm run db:down
