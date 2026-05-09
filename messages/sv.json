@@ -105,6 +105,15 @@
     "description": "Sidan kunde inte hittas",
     "goHome": "Gå till kravkatalogen"
   },
+  "errorBoundary": {
+    "eyebrow": "Oväntat fel",
+    "title": "Något gick fel",
+    "description": "Sidan kunde inte visas. Försök igen eller gå tillbaka till en säker startsida.",
+    "retry": "Försök igen",
+    "goToCatalog": "Gå till kravkatalogen",
+    "goToAdmin": "Gå till administration",
+    "referenceLabel": "Felreferens"
+  },
   "requirement": {
     "statusStepperAriaLabel": "Arbetsflöde för kravstatus",
     "tableCaption": "Lista över krav",

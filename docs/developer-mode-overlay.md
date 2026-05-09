@@ -108,6 +108,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   `crud-admin-visible-error` in the affected admin page context so
   scanner checks can distinguish the visible banner from row/form
   controls.
+- App Router error recovery pages expose the `error boundary` context with
+  `error recovery: locale`, `error recovery: root`, or
+  `error recovery: global` on the visible fallback surface. Their retry
+  control uses `button: retry`, and safe navigation links use
+  `link: requirements recovery` or `link: admin recovery`.
 - Requirement specification list filtering exposes
   `specifications > text field: name filter` on the Name search input above
   the table, while the specification create trigger keeps the existing

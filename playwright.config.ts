@@ -125,6 +125,7 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,
           env: {
+            ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
             NODE_ENV: 'development',
           },
         },
