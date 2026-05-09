@@ -7,8 +7,10 @@ import {
   type Page,
   test,
 } from '@playwright/test'
-import { getSqlServerDataSource } from '../../lib/db'
+import type { DataSource } from 'typeorm'
+import { sqlServerEntities } from '../../lib/typeorm/entities'
 import {
+  createSqlServerDataSource,
   getSqlServerDatabaseUrl,
   type SqlServerRuntimeEnv,
 } from '../../lib/typeorm/sqlserver-config'
@@ -49,6 +51,8 @@ const archiveFixtures = {
     mobile: 'PWT0010',
   },
 } as const
+
+let playwrightSqlServerDataSource: Promise<DataSource> | null = null
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -128,18 +132,39 @@ function readEnvFile(path: string): Record<string, string> {
   )
 }
 
-function getPlaywrightSqlServerUrl() {
-  const env = {
+function getPlaywrightSqlServerEnv(): SqlServerRuntimeEnv {
+  return {
     ...readEnvFile('.env.prodlike'),
     ...readEnvFile('.env.sqlserver'),
     ...process.env,
   } as SqlServerRuntimeEnv
+}
 
-  return getSqlServerDatabaseUrl(env)
+async function getPlaywrightSqlServerDataSource(): Promise<DataSource> {
+  if (playwrightSqlServerDataSource) return playwrightSqlServerDataSource
+
+  const env = getPlaywrightSqlServerEnv()
+  const url = getSqlServerDatabaseUrl(env)
+  const dataSource = createSqlServerDataSource({
+    entities: sqlServerEntities,
+    env,
+    name: 'archive-lifecycle-fixtures',
+    url,
+  })
+
+  playwrightSqlServerDataSource = dataSource
+    .initialize()
+    .then(() => dataSource)
+    .catch(error => {
+      playwrightSqlServerDataSource = null
+      throw error
+    })
+
+  return playwrightSqlServerDataSource
 }
 
 async function resetRequirementToPublished(uniqueId: string) {
-  const db = await getSqlServerDataSource(getPlaywrightSqlServerUrl())
+  const db = await getPlaywrightSqlServerDataSource()
   const now = new Date()
 
   await db.transaction(async manager => {

@@ -65,7 +65,9 @@ flowchart TD
   of the seeded PWT fixture: the newest version becomes Published, archive flags
   are cleared, and older history is kept Archived. The reset reads
   `.env.prodlike` and `.env.sqlserver` when the Playwright runner process does
-  not already have SQL Server variables exported.
+  not already have SQL Server variables exported, and passes that resolved env
+  into the SQL Server DataSource so local certificate settings are honored in
+  pruned prod-like runs.
 - After archive initiation, the spec waits for the API state and catalog row to
   show `Granskning`, then `selectLatestVersion()` clicks the newest
   `Arkiveringsgranskning` version pill. This keeps assertions on the review
