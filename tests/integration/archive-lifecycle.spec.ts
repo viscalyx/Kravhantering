@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import {
   type APIRequestContext,
   type APIResponse,
@@ -7,14 +8,20 @@ import {
   test,
 } from '@playwright/test'
 import { getSqlServerDataSource } from '../../lib/db'
+import {
+  getSqlServerDatabaseUrl,
+  type SqlServerRuntimeEnv,
+} from '../../lib/typeorm/sqlserver-config'
 
 const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
 
 interface RequirementDetail {
+  id?: number
   isArchived: boolean
-  versions: RequirementVersion[]
+  uniqueId?: string
+  versions?: RequirementVersion[]
 }
 
 interface RequirementVersion {
@@ -55,10 +62,19 @@ async function expectOk(response: APIResponse, context: string) {
   )
 }
 
-function latestVersion(detail: RequirementDetail) {
-  return [...detail.versions].sort(
+function latestVersion(detail: RequirementDetail): RequirementVersion {
+  const latest = [...(detail.versions ?? [])].sort(
     (left, right) => right.versionNumber - left.versionNumber,
   )[0]
+  if (!latest) {
+    const identifier =
+      detail.uniqueId && detail.id != null
+        ? `${detail.uniqueId} (${detail.id})`
+        : (detail.uniqueId ?? `id ${detail.id ?? 'unknown'}`)
+    throw new Error(`RequirementDetail has no versions for ${identifier}`)
+  }
+
+  return latest
 }
 
 async function getRequirement(
@@ -82,8 +98,48 @@ async function ensurePublishedRequirement(
   })
 }
 
+function readEnvFile(path: string): Record<string, string> {
+  if (!existsSync(path)) return {}
+
+  return Object.fromEntries(
+    readFileSync(path, 'utf8')
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('#'))
+      .map(line => {
+        const normalized = line.startsWith('export ')
+          ? line.slice('export '.length).trim()
+          : line
+        const separatorIndex = normalized.indexOf('=')
+        if (separatorIndex === -1) return null
+
+        const key = normalized.slice(0, separatorIndex).trim()
+        let value = normalized.slice(separatorIndex + 1).trim()
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1)
+        }
+
+        return [key, value] as const
+      })
+      .filter((entry): entry is readonly [string, string] => entry !== null),
+  )
+}
+
+function getPlaywrightSqlServerUrl() {
+  const env = {
+    ...readEnvFile('.env.prodlike'),
+    ...readEnvFile('.env.sqlserver'),
+    ...process.env,
+  } as SqlServerRuntimeEnv
+
+  return getSqlServerDatabaseUrl(env)
+}
+
 async function resetRequirementToPublished(uniqueId: string) {
-  const db = await getSqlServerDataSource()
+  const db = await getSqlServerDataSource(getPlaywrightSqlServerUrl())
   const now = new Date()
 
   await db.transaction(async manager => {
@@ -114,22 +170,22 @@ async function resetRequirementToPublished(uniqueId: string) {
     )
     await manager.query(
       `UPDATE requirement_versions
-        SET requirement_status_id = ${STATUS_ARCHIVED},
+        SET requirement_status_id = @3,
             archived_at = COALESCE(archived_at, @1),
             archive_initiated_at = NULL,
             revision_token = NEWID()
         WHERE requirement_id = @0 AND id <> @2`,
-      [requirementId, now, latestVersionId],
+      [requirementId, now, latestVersionId, STATUS_ARCHIVED],
     )
     await manager.query(
       `UPDATE requirement_versions
-        SET requirement_status_id = ${STATUS_PUBLISHED},
+        SET requirement_status_id = @2,
             published_at = COALESCE(published_at, @1),
             archived_at = NULL,
             archive_initiated_at = NULL,
             revision_token = NEWID()
         WHERE id = @0`,
-      [latestVersionId, now],
+      [latestVersionId, now, STATUS_PUBLISHED],
     )
   })
 }

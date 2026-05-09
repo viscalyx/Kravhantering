@@ -63,7 +63,9 @@ flowchart TD
   archiving review.
 - `ensurePublishedRequirement()` repairs local reruns with a test-only SQL reset
   of the seeded PWT fixture: the newest version becomes Published, archive flags
-  are cleared, and older history is kept Archived.
+  are cleared, and older history is kept Archived. The reset reads
+  `.env.prodlike` and `.env.sqlserver` when the Playwright runner process does
+  not already have SQL Server variables exported.
 - After archive initiation, the spec waits for the API state and catalog row to
   show `Granskning`, then `selectLatestVersion()` clicks the newest
   `Arkiveringsgranskning` version pill. This keeps assertions on the review

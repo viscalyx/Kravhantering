@@ -211,7 +211,7 @@ for (const viewport of viewports) {
         })
 
         await test.step('request review and cancel the revert confirmation', async () => {
-          await detailPane.getByRole('button', { name: /Granskning/ }).click()
+          await detailPane.getByRole('button', { name: 'Granskning ↗' }).click()
           await expectLatestDeviationState(request, fixture.itemRef, {
             decision: null,
             isReviewRequested: 1,
@@ -220,7 +220,7 @@ for (const viewport of viewports) {
           detailPane = await openSpecificationFixtureRow(page, fixture.uniqueId)
           await assertActiveStepperStep(detailPane, 'Granskning begärd')
 
-          await detailPane.getByRole('button', { name: /Utkast/ }).click()
+          await detailPane.getByRole('button', { name: '← Utkast' }).click()
           const confirmDialog = page.getByRole('alertdialog')
           await expect(confirmDialog).toContainText(
             'Är du säker på att du vill återställa detta avsteg till utkast?',
@@ -229,12 +229,12 @@ for (const viewport of viewports) {
 
           await assertActiveStepperStep(detailPane, 'Granskning begärd')
           await expect(
-            detailPane.getByRole('button', { name: /Beslutad/ }),
+            detailPane.getByRole('button', { name: 'Beslutad ↗' }),
           ).toBeVisible()
         })
 
         await test.step(`record a ${deviationCase.expectedStatus.toLowerCase()} decision`, async () => {
-          await detailPane.getByRole('button', { name: /Beslutad/ }).click()
+          await detailPane.getByRole('button', { name: 'Beslutad ↗' }).click()
 
           const decisionDialog = page.getByRole('dialog', {
             name: 'Registrera beslut',

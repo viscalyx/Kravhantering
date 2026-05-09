@@ -80,6 +80,9 @@ describe('queryRequirementList', () => {
       context,
     )
     expect(mocks.listRequirements).toHaveBeenCalled()
+    expect(
+      authorization.assertAuthorized.mock.invocationCallOrder[0],
+    ).toBeLessThan(mocks.listRequirements.mock.invocationCallOrder[0])
   })
 
   it('allows callers to opt out of authorization explicitly', async () => {
