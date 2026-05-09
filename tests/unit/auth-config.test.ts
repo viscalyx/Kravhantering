@@ -42,6 +42,25 @@ function setBaseAuthEnv() {
   env.AUTH_SESSION_COOKIE_PASSWORD = COOKIE_PASSWORD
 }
 
+function expectInvalidAuthUrl(
+  name: 'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI' | 'AUTH_OIDC_REDIRECT_URI',
+  value: string,
+) {
+  env[name] = value
+  resetAuthConfigForTests()
+  try {
+    getAuthConfig()
+  } catch (error) {
+    expect(error).toBeInstanceOf(AuthConfigError)
+    expect((error as Error).message).toContain(`Invalid ${name}=`)
+    expect((error as Error).message).toContain(
+      'expected an absolute http:// or https:// URL',
+    )
+    return
+  }
+  throw new Error(`expected ${name}=${value} to be rejected`)
+}
+
 describe('auth config', () => {
   beforeEach(() => {
     setBaseAuthEnv()
@@ -57,6 +76,8 @@ describe('auth config', () => {
     const cfg = getAuthConfig()
     expect(cfg.issuerUrl).toBe('https://issuer.example.com')
     expect(cfg.clientId).toBe('kravhantering-app-prod')
+    expect(cfg.redirectUri).toBe('https://app.example.com/api/auth/callback')
+    expect(cfg.postLogoutRedirectUri).toBe('https://app.example.com/')
     expect(cfg.cookiePassword.length).toBeGreaterThanOrEqual(32)
   })
 
@@ -70,5 +91,21 @@ describe('auth config', () => {
     env.AUTH_SESSION_COOKIE_PASSWORD = 'too-short'
     resetAuthConfigForTests()
     expect(() => getAuthConfig()).toThrow(/at least 32 characters/)
+  })
+
+  it.each([
+    ['relative', '/api/auth/callback'],
+    ['malformed', 'https://[::1'],
+    ['non-HTTP(S)', 'ftp://app.example.com/api/auth/callback'],
+  ])('throws when AUTH_OIDC_REDIRECT_URI is %s', (_label, value) => {
+    expectInvalidAuthUrl('AUTH_OIDC_REDIRECT_URI', value)
+  })
+
+  it.each([
+    ['relative', '/'],
+    ['malformed', 'https://[::1'],
+    ['non-HTTP(S)', 'ftp://app.example.com/'],
+  ])('throws when AUTH_OIDC_POST_LOGOUT_REDIRECT_URI is %s', (_label, value) => {
+    expectInvalidAuthUrl('AUTH_OIDC_POST_LOGOUT_REDIRECT_URI', value)
   })
 })

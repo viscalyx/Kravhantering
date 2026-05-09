@@ -51,30 +51,9 @@ function recordCsrfRejection(
   })
 }
 
-function firstForwardedValue(value: string | null): string | null {
-  if (!value) return null
-  const first = value.split(',')[0]?.trim()
-  return first && first.length > 0 ? first : null
-}
-
-function resolveExpectedOrigin(request: Request): string {
+function resolveExpectedOrigin(): string {
   const cfg = getAuthConfig()
-  const configuredOrigin = originFromUrl(cfg.redirectUri)
-  if (configuredOrigin) {
-    return configuredOrigin
-  }
-
-  const forwardedProto = firstForwardedValue(
-    request.headers.get('x-forwarded-proto'),
-  )
-  const forwardedHost = firstForwardedValue(
-    request.headers.get('x-forwarded-host'),
-  )
-  if (forwardedProto && forwardedHost) {
-    return `${forwardedProto}://${forwardedHost}`
-  }
-
-  return new URL(request.url).origin
+  return new URL(cfg.redirectUri).origin
 }
 
 /**
@@ -84,7 +63,7 @@ function resolveExpectedOrigin(request: Request): string {
 export function assertSameOriginRequest(request: Request): void {
   if (SAFE_METHODS.has(request.method.toUpperCase())) return
 
-  const expected = resolveExpectedOrigin(request)
+  const expected = resolveExpectedOrigin()
   const originHeader = request.headers.get('origin')
   const refererOrigin = originFromUrl(request.headers.get('referer'))
   const claimed = originHeader ?? refererOrigin

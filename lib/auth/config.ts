@@ -52,6 +52,22 @@ function readNumber(name: string, defaultValue: number): number {
   return parsed
 }
 
+function assertAbsoluteHttpUrl(name: string, value: string): void {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new AuthConfigError(
+      `Invalid ${name}=${value} — expected an absolute http:// or https:// URL`,
+    )
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new AuthConfigError(
+      `Invalid ${name}=${value} — expected an absolute http:// or https:// URL`,
+    )
+  }
+}
+
 export interface AuthConfig {
   /** Audience expected on access tokens (defaults to clientId). */
   apiAudience: string
@@ -115,6 +131,12 @@ function loadAuthConfig(): AuthConfig {
       'AUTH_SESSION_COOKIE_PASSWORD must be at least 32 characters.',
     )
   }
+
+  assertAbsoluteHttpUrl('AUTH_OIDC_REDIRECT_URI', redirectUri as string)
+  assertAbsoluteHttpUrl(
+    'AUTH_OIDC_POST_LOGOUT_REDIRECT_URI',
+    postLogoutRedirectUri as string,
+  )
 
   return {
     issuerUrl: issuerUrl as string,

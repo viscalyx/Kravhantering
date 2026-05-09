@@ -197,6 +197,8 @@ sequenceDiagram
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
+  The accepted origin is the origin of `AUTH_OIDC_REDIRECT_URI`;
+  `X-Forwarded-Proto` and `X-Forwarded-Host` are ignored for this check.
   `middleware.ts` enforces this centrally for mutating REST API requests after
   authentication has succeeded, excluding `/api/mcp`, which uses Bearer-token
   auth. Route-level checks remain as defense-in-depth for existing
@@ -291,14 +293,17 @@ flowchart LR
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
   `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`, and
   `AUTH_TRUST_PROXY=true`.
-- Terminate TLS at the public reverse proxy or load balancer and preserve
-  forwarded host/proto information so redirects and origin checks use the
-  public HTTPS origin. The same edge layer may also distribute traffic across
-  multiple app replicas; because the session is carried in the encrypted
-  cookie, the app does not require sticky sessions.
+- Terminate TLS at the public reverse proxy or load balancer and set
+  `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` to the
+  public HTTPS host. CSRF origin checks derive their allowed origin from
+  `AUTH_OIDC_REDIRECT_URI` and ignore inbound forwarded headers. The same edge
+  layer may also distribute traffic across multiple app replicas; because the
+  session is carried in the encrypted cookie, the app does not require sticky
+  sessions.
 - Allow the application instances to reach the IdP over `443`.
 - Pre-register the exact redirect URI and post-logout URI for every
-  environment. Public hostname changes require an IdP update as well.
+  environment. Public hostname changes require both app configuration and IdP
+  updates.
 - Auth is mandatory in every build target. The insecure-issuer allowance
   is now a build-target constant that is `true` only for `dev` and `local-prod`.
   The `local-prod` target (booted via `npm run start:prodlike` on port
