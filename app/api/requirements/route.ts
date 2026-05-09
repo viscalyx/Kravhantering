@@ -2,7 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
-import { createRequestContext } from '@/lib/requirements/auth'
+import {
+  createDefaultAuthorizationService,
+  createRequestContext,
+} from '@/lib/requirements/auth'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
@@ -117,7 +120,7 @@ export async function GET(request: NextRequest) {
               : DEFAULT_REQUIREMENT_SORT.direction,
         },
       },
-      { context },
+      { authorization: createDefaultAuthorizationService(), context },
     )
     const requirements = result.requirements
 

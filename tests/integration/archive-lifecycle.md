@@ -61,11 +61,13 @@ flowchart TD
 - The tests open requirements through `/sv/requirements?selected={uniqueId}`
   so the catalog inline detail stays actionable when a Published version enters
   archiving review.
-- `ensurePublishedRequirement()` repairs local reruns by cancelling an
-  archiving review, restoring archived requirements, or completing draft and
-  review states back to Published.
-- `selectLatestVersion()` keeps assertions on the newest version after archive
-  initiation when a rerun fixture also has older archived history.
+- `ensurePublishedRequirement()` repairs local reruns with a test-only SQL reset
+  of the seeded PWT fixture: the newest version becomes Published, archive flags
+  are cleared, and older history is kept Archived.
+- After archive initiation, the spec waits for the API state and catalog row to
+  show `Granskning`, then `selectLatestVersion()` clicks the newest
+  `Arkiveringsgranskning` version pill. This keeps assertions on the review
+  version when a rerun fixture also has older archived history.
 - `assertActiveStepperStep()` verifies the active requirement lifecycle step
   via `[aria-current="step"]`.
 - Final state is asserted through `/api/requirements/{uniqueId}`.
@@ -120,14 +122,16 @@ approval confirmation leaves the requirement in archiving review.
 2. Open `PWT0005` on desktop or `PWT0006` on mobile in the catalog inline
    detail.
 3. Click "Arkivera" and confirm.
-4. Assert the active lifecycle step is "Arkiveringsgranskning".
-5. Click "Godkänn arkivering".
-6. Click "Avbryt" in the confirmation.
-7. Assert the requirement is still in archiving review through UI and API.
-8. Click "Godkänn arkivering" again and confirm.
-9. Assert the inline detail closes after the archived requirement leaves the
+4. Wait for the API and catalog row to show archiving review, then select the
+   latest "Arkiveringsgranskning" version pill.
+5. Assert the active lifecycle step is "Arkiveringsgranskning".
+6. Click "Godkänn arkivering".
+7. Click "Avbryt" in the confirmation.
+8. Assert the requirement is still in archiving review through UI and API.
+9. Click "Godkänn arkivering" again and confirm.
+10. Assert the inline detail closes after the archived requirement leaves the
    active list.
-10. Assert the API state is Archived and no archive flag remains.
+11. Assert the API state is Archived and no archive flag remains.
 
 ### Sequence Diagram: Archive Approval
 
@@ -140,6 +144,10 @@ sequenceDiagram
     API->>API: Repair fixture to Published
     U->>P: Open catalog inline detail
     U->>P: Start archiving and confirm
+    P->>API: Poll until archiving review is persisted
+    Note over API: ✓ status = 2, archive flag set
+    Note over P: ✓ Catalog row = Granskning
+    U->>P: Select latest Arkiveringsgranskning version
     Note over P: ✓ Step = Arkiveringsgranskning
     U->>P: Click Godkänn arkivering
     U->>P: Click Avbryt
@@ -163,13 +171,15 @@ then confirms the user can return the requirement to Published.
 2. Open `PWT0007` on desktop or `PWT0008` on mobile in the catalog inline
    detail.
 3. Click "Arkivera" and confirm.
-4. Assert the active lifecycle step is "Arkiveringsgranskning".
-5. Click "Avbryt arkivering".
-6. Click "Avbryt" in the confirmation.
-7. Assert the requirement is still in archiving review through UI and API.
-8. Click "Avbryt arkivering" again and confirm.
-9. Assert the active lifecycle step returns to "Publicerad".
-10. Assert the API state is Published, not archived, and has no archive flag.
+4. Wait for the API and catalog row to show archiving review, then select the
+   latest "Arkiveringsgranskning" version pill.
+5. Assert the active lifecycle step is "Arkiveringsgranskning".
+6. Click "Avbryt arkivering".
+7. Click "Avbryt" in the confirmation.
+8. Assert the requirement is still in archiving review through UI and API.
+9. Click "Avbryt arkivering" again and confirm.
+10. Assert the active lifecycle step returns to "Publicerad".
+11. Assert the API state is Published, not archived, and has no archive flag.
 
 ### Sequence Diagram: Archive Cancellation
 
@@ -182,6 +192,10 @@ sequenceDiagram
     API->>API: Repair fixture to Published
     U->>P: Open catalog inline detail
     U->>P: Start archiving and confirm
+    P->>API: Poll until archiving review is persisted
+    Note over API: ✓ status = 2, archive flag set
+    Note over P: ✓ Catalog row = Granskning
+    U->>P: Select latest Arkiveringsgranskning version
     Note over P: ✓ Step = Arkiveringsgranskning
     U->>P: Click Avbryt arkivering
     U->>P: Click Avbryt

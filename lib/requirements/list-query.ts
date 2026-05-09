@@ -5,11 +5,11 @@ import {
   STATUS_ARCHIVED,
 } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
-import {
-  type AuthorizationService,
-  createDefaultAuthorizationService,
-  type RequestContext,
+import type {
+  AuthorizationService,
+  RequestContext,
 } from '@/lib/requirements/auth'
+import { unauthorizedError } from '@/lib/requirements/errors'
 import {
   DEFAULT_REQUIREMENT_SORT,
   type FilterValues,
@@ -44,8 +44,9 @@ export interface RequirementListQueryInput {
 }
 
 export interface RequirementListQueryAuthorization {
+  allowUnauthenticated?: boolean
   authorization?: AuthorizationService
-  context: RequestContext
+  context?: RequestContext
 }
 
 const DEFAULT_LIMIT = 200
@@ -70,11 +71,27 @@ function clampOffset(offset: number): number {
 async function authorizeRequirementListQuery(
   options?: RequirementListQueryAuthorization,
 ): Promise<void> {
-  if (!options) return
+  if (options?.allowUnauthenticated === true) return
 
-  const authorization =
-    options.authorization ?? createDefaultAuthorizationService()
-  await authorization.assertAuthorized(
+  if (!options) {
+    throw unauthorizedError(
+      'Authorization options are required for requirement list queries',
+    )
+  }
+
+  if (!options.context) {
+    throw unauthorizedError(
+      'Authorization context is required for requirement list queries',
+    )
+  }
+
+  if (!options.authorization) {
+    throw unauthorizedError(
+      'Authorization service is required for requirement list queries',
+    )
+  }
+
+  await options.authorization.assertAuthorized(
     { kind: 'query_catalog', catalog: 'requirements' },
     options.context,
   )

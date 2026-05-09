@@ -45,6 +45,10 @@ const deviationCases = [
   },
 ] as const
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 async function expectOk(response: APIResponse) {
   if (response.ok()) return
 
@@ -134,14 +138,18 @@ async function openSpecificationFixtureRow(page: Page, uniqueId: string) {
     '[data-specification-detail-list-panel="items"]',
   )
   const rowButton = itemsPanel.getByRole('button', {
-    name: new RegExp(`^${uniqueId}\\b`),
+    name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
   })
+  const detailPaneId = await rowButton.getAttribute('aria-controls')
+  if (!detailPaneId) {
+    throw new Error(
+      `Specification item row ${uniqueId} does not control a detail pane`,
+    )
+  }
 
   await rowButton.click()
 
-  const detailPane = page.locator(
-    `[data-developer-mode-name="inline detail pane"][data-developer-mode-value="${uniqueId}"]`,
-  )
+  const detailPane = itemsPanel.locator(`#${detailPaneId}`)
   await expect(detailPane).toBeVisible()
   return detailPane
 }

@@ -7,6 +7,7 @@ vi.mock('@/lib/db', () => ({
 const mockQueryCatalog = vi.fn()
 const mockQueryRequirementList = vi.fn()
 const mockManageRequirement = vi.fn()
+const mockAuthorization = { assertAuthorized: vi.fn() }
 const mockRequestContext = {
   actor: {
     id: null,
@@ -30,6 +31,7 @@ vi.mock('@/lib/requirements/service', () => ({
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
+  createDefaultAuthorizationService: vi.fn(() => mockAuthorization),
   createRequestContext: mockCreateRequestContext,
 }))
 
@@ -83,7 +85,7 @@ describe('requirements route', () => {
       expect(mockQueryRequirementList).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        { context: mockRequestContext },
+        { authorization: mockAuthorization, context: mockRequestContext },
       )
     })
 
@@ -131,7 +133,7 @@ describe('requirements route', () => {
             typeIds: [3],
           }),
         }),
-        { context: mockRequestContext },
+        { authorization: mockAuthorization, context: mockRequestContext },
       )
     })
 

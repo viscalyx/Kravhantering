@@ -40,6 +40,26 @@ describe('queryRequirementList', () => {
     mocks.listRequirements.mockResolvedValue([])
   })
 
+  it('fails closed when authorization options are missing', async () => {
+    await expect(queryRequirementList({} as never, {})).rejects.toMatchObject({
+      code: 'unauthorized',
+    })
+
+    expect(mocks.listRequirements).not.toHaveBeenCalled()
+    expect(mocks.countRequirements).not.toHaveBeenCalled()
+  })
+
+  it('requires an explicit authorization service when a context is provided', async () => {
+    await expect(
+      queryRequirementList({} as never, {}, { context: makeContext() }),
+    ).rejects.toMatchObject({
+      code: 'unauthorized',
+    })
+
+    expect(mocks.listRequirements).not.toHaveBeenCalled()
+    expect(mocks.countRequirements).not.toHaveBeenCalled()
+  })
+
   it('authorizes requirements list queries before reading rows', async () => {
     const context = makeContext()
     const authorization = {
@@ -59,6 +79,12 @@ describe('queryRequirementList', () => {
       { kind: 'query_catalog', catalog: 'requirements' },
       context,
     )
+    expect(mocks.listRequirements).toHaveBeenCalled()
+  })
+
+  it('allows callers to opt out of authorization explicitly', async () => {
+    await queryRequirementList({} as never, {}, { allowUnauthenticated: true })
+
     expect(mocks.listRequirements).toHaveBeenCalled()
   })
 
@@ -83,30 +109,42 @@ describe('queryRequirementList', () => {
   })
 
   it('clamps invalid, negative, and oversized pagination input', async () => {
-    await queryRequirementList({} as never, {
-      limit: Number.NaN,
-      offset: Number.NaN,
-    })
+    await queryRequirementList(
+      {} as never,
+      {
+        limit: Number.NaN,
+        offset: Number.NaN,
+      },
+      { allowUnauthenticated: true },
+    )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({ limit: 200, offset: 0 }),
     )
 
-    await queryRequirementList({} as never, {
-      limit: 9999,
-      offset: -5,
-    })
+    await queryRequirementList(
+      {} as never,
+      {
+        limit: 9999,
+        offset: -5,
+      },
+      { allowUnauthenticated: true },
+    )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({ limit: 200, offset: 0 }),
     )
 
-    await queryRequirementList({} as never, {
-      limit: 0,
-      offset: 3.7,
-    })
+    await queryRequirementList(
+      {} as never,
+      {
+        limit: 0,
+        offset: 3.7,
+      },
+      { allowUnauthenticated: true },
+    )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
@@ -115,18 +153,26 @@ describe('queryRequirementList', () => {
   })
 
   it('uses the archived status constant when inferring archived inclusion', async () => {
-    await queryRequirementList({} as never, {
-      filters: { statuses: [4] },
-    })
+    await queryRequirementList(
+      {} as never,
+      {
+        filters: { statuses: [4] },
+      },
+      { allowUnauthenticated: true },
+    )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.objectContaining({ includeArchived: true, statuses: [4] }),
     )
 
-    await queryRequirementList({} as never, {
-      filters: { statuses: [3] },
-    })
+    await queryRequirementList(
+      {} as never,
+      {
+        filters: { statuses: [3] },
+      },
+      { allowUnauthenticated: true },
+    )
 
     expect(mocks.listRequirements).toHaveBeenLastCalledWith(
       expect.anything(),

@@ -6,8 +6,8 @@ import {
   type Page,
   test,
 } from '@playwright/test'
+import { getSqlServerDataSource } from '../../lib/db'
 
-const STATUS_DRAFT = 1
 const STATUS_REVIEW = 2
 const STATUS_PUBLISHED = 3
 const STATUS_ARCHIVED = 4
@@ -43,6 +43,10 @@ const archiveFixtures = {
   },
 } as const
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 async function expectOk(response: APIResponse, context: string) {
   if (response.ok()) return
 
@@ -66,77 +70,86 @@ async function getRequirement(
   return (await response.json()) as RequirementDetail
 }
 
-async function transitionRequirement(
-  request: APIRequestContext,
-  uniqueId: string,
-  statusId: number,
-) {
-  await expectOk(
-    await request.post(`/api/requirement-transitions/${uniqueId}`, {
-      data: { statusId },
-    }),
-    `Transition ${uniqueId} to ${statusId}`,
-  )
-}
-
 async function ensurePublishedRequirement(
   request: APIRequestContext,
   uniqueId: string,
 ) {
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const detail = await getRequirement(request, uniqueId)
-    const latest = latestVersion(detail)
+  await resetRequirementToPublished(uniqueId)
+  await assertRequirementApiState(request, uniqueId, {
+    archiveInitiated: false,
+    isArchived: false,
+    status: STATUS_PUBLISHED,
+  })
+}
 
-    if (
-      latest?.status === STATUS_PUBLISHED &&
-      !latest.archiveInitiatedAt &&
-      !detail.isArchived
-    ) {
-      return
+async function resetRequirementToPublished(uniqueId: string) {
+  const db = await getSqlServerDataSource()
+  const now = new Date()
+
+  await db.transaction(async manager => {
+    const requirementRows = (await manager.query(
+      `SELECT TOP (1) id FROM requirements WHERE unique_id = @0`,
+      [uniqueId],
+    )) as Array<{ id: number }>
+    const requirementId = requirementRows[0]?.id
+    if (requirementId == null) {
+      throw new Error(`Requirement ${uniqueId} not found`)
     }
 
-    if (latest?.status === STATUS_REVIEW && latest.archiveInitiatedAt) {
-      await transitionRequirement(request, uniqueId, STATUS_PUBLISHED)
-      continue
+    const latestRows = (await manager.query(
+      `SELECT TOP (1) id
+        FROM requirement_versions
+        WHERE requirement_id = @0
+        ORDER BY version_number DESC`,
+      [requirementId],
+    )) as Array<{ id: number }>
+    const latestVersionId = latestRows[0]?.id
+    if (latestVersionId == null) {
+      throw new Error(`Requirement ${uniqueId} has no versions`)
     }
 
-    if (latest?.status === STATUS_ARCHIVED || detail.isArchived) {
-      await expectOk(
-        await request.post(`/api/requirements/${uniqueId}/restore`, {
-          data: { versionNumber: latest.versionNumber },
-        }),
-        `Restore ${uniqueId}`,
-      )
-      await transitionRequirement(request, uniqueId, STATUS_REVIEW)
-      await transitionRequirement(request, uniqueId, STATUS_PUBLISHED)
-      continue
-    }
-
-    if (latest?.status === STATUS_DRAFT) {
-      await transitionRequirement(request, uniqueId, STATUS_REVIEW)
-      await transitionRequirement(request, uniqueId, STATUS_PUBLISHED)
-      continue
-    }
-
-    if (latest?.status === STATUS_REVIEW) {
-      await transitionRequirement(request, uniqueId, STATUS_PUBLISHED)
-    }
-  }
-
-  throw new Error(`Could not repair ${uniqueId} to Published before test`)
+    await manager.query(
+      `UPDATE requirements SET is_archived = 0 WHERE id = @0`,
+      [requirementId],
+    )
+    await manager.query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = ${STATUS_ARCHIVED},
+            archived_at = COALESCE(archived_at, @1),
+            archive_initiated_at = NULL,
+            revision_token = NEWID()
+        WHERE requirement_id = @0 AND id <> @2`,
+      [requirementId, now, latestVersionId],
+    )
+    await manager.query(
+      `UPDATE requirement_versions
+        SET requirement_status_id = ${STATUS_PUBLISHED},
+            published_at = COALESCE(published_at, @1),
+            archived_at = NULL,
+            archive_initiated_at = NULL,
+            revision_token = NEWID()
+        WHERE id = @0`,
+      [latestVersionId, now],
+    )
+  })
 }
 
 async function openRequirement(page: Page, uniqueId: string): Promise<Locator> {
   await page.goto(`/sv/requirements?selected=${encodeURIComponent(uniqueId)}`)
 
-  const row = page.locator(
-    `[data-developer-mode-name="table row"][data-developer-mode-value="${uniqueId}"]`,
-  )
-  await expect(row).toBeVisible()
+  const rowButton = page.getByRole('button', {
+    name: new RegExp(`^${escapeRegExp(uniqueId)}\\b`),
+  })
+  await expect(rowButton).toBeVisible()
 
-  const detailPane = page.locator(
-    `[data-developer-mode-name="inline detail pane"][data-developer-mode-value="${uniqueId}"]`,
-  )
+  const detailPaneId = await rowButton.getAttribute('aria-controls')
+  if (!detailPaneId) {
+    throw new Error(
+      `Requirement row ${uniqueId} does not control a detail pane`,
+    )
+  }
+
+  const detailPane = page.locator(`#${detailPaneId}`)
   await expect(detailPane).toBeVisible()
 
   return detailPane
@@ -146,13 +159,19 @@ async function selectLatestVersion(
   detailPane: Locator,
   request: APIRequestContext,
   uniqueId: string,
+  expectedStatusText?: string,
 ) {
   const detail = await getRequirement(request, uniqueId)
   const latest = latestVersion(detail)
+  const latestVersionPill = detailPane.locator(
+    `button[data-version-number="${latest.versionNumber}"]`,
+  )
 
-  await detailPane
-    .locator(`[data-version-number="${latest.versionNumber}"]`)
-    .click()
+  await expect(latestVersionPill).toBeVisible()
+  if (expectedStatusText) {
+    await expect(latestVersionPill).toContainText(expectedStatusText)
+  }
+  await latestVersionPill.click()
 }
 
 async function assertActiveStepperStep(
@@ -175,16 +194,31 @@ async function assertRequirementApiState(
     status: number
   },
 ) {
-  const detail = await getRequirement(request, uniqueId)
-  const latest = latestVersion(detail)
+  await expect
+    .poll(async () => {
+      const detail = await getRequirement(request, uniqueId)
+      const latest = latestVersion(detail)
 
-  expect(detail.isArchived).toBe(expected.isArchived)
-  expect(latest?.status).toBe(expected.status)
-  if (expected.archiveInitiated) {
-    expect(latest?.archiveInitiatedAt).toBeTruthy()
-  } else {
-    expect(latest?.archiveInitiatedAt).toBeNull()
-  }
+      return {
+        archiveInitiated: Boolean(latest?.archiveInitiatedAt),
+        isArchived: detail.isArchived,
+        status: latest?.status ?? null,
+      }
+    })
+    .toEqual(expected)
+}
+
+async function assertRequirementListStatus(
+  page: Page,
+  uniqueId: string,
+  expectedStatusText: string,
+) {
+  const rowButton = page.getByRole('button', {
+    name: new RegExp(`\\b${escapeRegExp(uniqueId)}\\b`),
+  })
+  const row = rowButton.locator('xpath=ancestor::tr[1]')
+
+  await expect(row).toContainText(expectedStatusText)
 }
 
 async function confirmLatestDialog(page: Page) {
@@ -252,7 +286,18 @@ for (const viewport of viewports) {
           .getByRole('button', { exact: true, name: 'Arkivera' })
           .click()
         await confirmLatestDialog(page)
-        await selectLatestVersion(detailPane, request, uniqueId)
+        await assertRequirementApiState(request, uniqueId, {
+          archiveInitiated: true,
+          isArchived: false,
+          status: STATUS_REVIEW,
+        })
+        await assertRequirementListStatus(page, uniqueId, 'Granskning')
+        await selectLatestVersion(
+          detailPane,
+          request,
+          uniqueId,
+          'Arkiveringsgranskning',
+        )
 
         await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
       })
@@ -306,7 +351,18 @@ for (const viewport of viewports) {
           .getByRole('button', { exact: true, name: 'Arkivera' })
           .click()
         await confirmLatestDialog(page)
-        await selectLatestVersion(detailPane, request, uniqueId)
+        await assertRequirementApiState(request, uniqueId, {
+          archiveInitiated: true,
+          isArchived: false,
+          status: STATUS_REVIEW,
+        })
+        await assertRequirementListStatus(page, uniqueId, 'Granskning')
+        await selectLatestVersion(
+          detailPane,
+          request,
+          uniqueId,
+          'Arkiveringsgranskning',
+        )
 
         await assertActiveStepperStep(detailPane, 'Arkiveringsgranskning')
       })

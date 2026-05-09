@@ -98,12 +98,16 @@ async function loadAvailableRequirements(
 ): Promise<
   RequirementsSpecificationDetailInitialData['availableRequirements']
 > {
-  const result = await queryRequirementList(db, {
-    filters: { statuses: [3] },
-    limit: PAGE_SIZE,
-    locale,
-    sort: DEFAULT_REQUIREMENT_SORT,
-  })
+  const result = await queryRequirementList(
+    db,
+    {
+      filters: { statuses: [3] },
+      limit: PAGE_SIZE,
+      locale,
+      sort: DEFAULT_REQUIREMENT_SORT,
+    },
+    { allowUnauthenticated: true },
+  )
   return {
     hasMore: result.pagination.hasMore,
     rows: result.requirements as RequirementRow[],
