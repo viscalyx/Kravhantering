@@ -88,6 +88,7 @@ export default defineConfig({
           reuseExistingServer: !process.env.CI,
           env: {
             ...process.env,
+            ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1',
             NODE_ENV: 'production',
           },
         },

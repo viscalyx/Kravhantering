@@ -166,6 +166,8 @@ jobs:
       # longer needed after the build completes.
       - name: Build prod-like bundle (full deps)
         run: npm run build:local-prod
+        env:
+          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
 
       # Snapshot the dev-dep tree, then install a prod-only one in its
       # place. The snapshot is restored after the server is started so the
@@ -184,6 +186,8 @@ jobs:
           nohup npm run start:prodlike-pruned \
             > test-results/prodlike-pruned/server.log 2>&1 &
           echo "$!" > test-results/prodlike-pruned/server.pid
+        env:
+          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
 
       - name: Wait for pruned server to respond
         run: |
@@ -210,6 +214,7 @@ jobs:
         run: npm run test:integration:prodlike
         env:
           CI: true
+          ENABLE_ERROR_BOUNDARY_TEST_ROUTE: '1'
           PLAYWRIGHT_SKIP_WEBSERVER: '1'
           PLAYWRIGHT_FORCE_AUTH_SETUP: '1'
           PLAYWRIGHT_BASE_URL: 'http://localhost:3001'

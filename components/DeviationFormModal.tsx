@@ -3,12 +3,21 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import { createPortal } from 'react-dom'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useModalFocus } from '@/hooks/useModalFocus'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { dialogPanelMotion, fadeMotion } from '@/lib/reduced-motion'
+
+const useClientLayoutEffect =
+  typeof window === 'undefined' ? useEffect : useLayoutEffect
 
 interface DeviationFormModalProps {
   initialCreatedBy?: string
@@ -41,7 +50,7 @@ export default function DeviationFormModal({
   const shouldReduceMotion = useReducedMotion()
 
   // Reset fields when opening
-  useEffect(() => {
+  useClientLayoutEffect(() => {
     if (open) {
       setMotivation(initialMotivation ?? '')
       setCreatedBy(initialCreatedBy ?? '')

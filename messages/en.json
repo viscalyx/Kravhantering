@@ -105,6 +105,15 @@
     "description": "Page not found",
     "goHome": "Go to catalog"
   },
+  "errorBoundary": {
+    "eyebrow": "Unexpected error",
+    "title": "Something went wrong",
+    "description": "The page could not be rendered. Try again or go back to a safe starting point.",
+    "retry": "Try again",
+    "goToCatalog": "Go to catalog",
+    "goToAdmin": "Go to admin",
+    "referenceLabel": "Error reference"
+  },
   "requirement": {
     "statusStepperAriaLabel": "Requirement status workflow steps",
     "tableCaption": "Requirements list",
