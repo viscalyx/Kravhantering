@@ -70,11 +70,13 @@ export const ERROR_BOUNDARY_FALLBACK_COPY: Record<
   },
 }
 
-export function normalizeAppLocale(locale: string | null | undefined) {
+export function normalizeAppLocale(
+  locale: string | null | undefined,
+): AppLocale {
   return isAppLocale(locale) ? locale : DEFAULT_LOCALE
 }
 
-export function normalizePathname(pathname: string | null | undefined) {
+export function normalizePathname(pathname: string | null | undefined): string {
   if (!pathname) return '/'
   const pathOnly = pathname.split(/[?#]/, 1)[0]
   if (!pathOnly) return '/'
@@ -99,7 +101,9 @@ export function getErrorRecoveryLocale(
   )
 }
 
-export function stripLocaleFromPathname(pathname: string | null | undefined) {
+export function stripLocaleFromPathname(
+  pathname: string | null | undefined,
+): string {
   const normalized = normalizePathname(pathname)
   const segments = normalized.split('/').filter(Boolean)
 
@@ -111,7 +115,9 @@ export function stripLocaleFromPathname(pathname: string | null | undefined) {
   return normalized
 }
 
-export function isAdminRecoveryPath(pathname: string | null | undefined) {
+export function isAdminRecoveryPath(
+  pathname: string | null | undefined,
+): boolean {
   const path = stripLocaleFromPathname(pathname)
 
   return ADMIN_RECOVERY_PREFIXES.some(
@@ -126,7 +132,7 @@ export function getErrorRecoveryCopy(locale: AppLocale): ErrorBoundaryCopy {
 export function buildErrorRecoveryHref(
   locale: AppLocale,
   destination: ErrorRecoveryDestination,
-) {
+): string {
   return `/${locale}${destination === 'admin' ? '/admin' : '/requirements'}`
 }
 
