@@ -221,7 +221,10 @@ for (const viewport of viewports) {
           await assertActiveStepperStep(detailPane, 'Granskning begärd')
 
           await detailPane.getByRole('button', { name: '← Utkast' }).click()
-          const confirmDialog = page.getByRole('alertdialog')
+          const confirmDialog = page.getByRole('alertdialog').filter({
+            hasText:
+              'Är du säker på att du vill återställa detta avsteg till utkast?',
+          })
           await expect(confirmDialog).toContainText(
             'Är du säker på att du vill återställa detta avsteg till utkast?',
           )

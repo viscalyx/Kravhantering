@@ -163,6 +163,19 @@ async function getPlaywrightSqlServerDataSource(): Promise<DataSource> {
   return playwrightSqlServerDataSource
 }
 
+test.afterAll(async () => {
+  if (!playwrightSqlServerDataSource) return
+
+  try {
+    const dataSource = await playwrightSqlServerDataSource
+    if (dataSource.isInitialized) {
+      await dataSource.destroy()
+    }
+  } finally {
+    playwrightSqlServerDataSource = null
+  }
+})
+
 async function resetRequirementToPublished(uniqueId: string) {
   const db = await getPlaywrightSqlServerDataSource()
   const now = new Date()
@@ -281,9 +294,9 @@ async function assertRequirementApiState(
       const latest = latestVersion(detail)
 
       return {
-        archiveInitiated: Boolean(latest?.archiveInitiatedAt),
+        archiveInitiated: Boolean(latest.archiveInitiatedAt),
         isArchived: detail.isArchived,
-        status: latest?.status ?? null,
+        status: latest.status,
       }
     })
     .toEqual(expected)
