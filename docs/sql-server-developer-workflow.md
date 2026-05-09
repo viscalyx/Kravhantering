@@ -115,6 +115,105 @@ Under the hood `scripts/db-sqlserver-admin.mjs` builds a TypeORM `DataSource`,
 applies the migrations in `typeorm/migrations/`, and seeds via
 `typeorm/seed.mjs`.
 
+## Requirement List Performance Baseline
+
+The requirement list SQL path has a required SQL Server performance check for
+`listRequirements` and `countRequirements`. It uses the same parameterized SQL
+builder as production code and seeds a dedicated medium fixture of roughly
+10,000 `PERF-*` requirements with two to four versions each.
+
+Use the regular check when you want to verify that the current branch still
+fits the committed baseline:
+
+```bash
+npm run db:setup
+npm run perf:requirements-list
+```
+
+Use the update command only when the measured baseline is intentionally
+changing, for example after a deliberate query rewrite, a measured index
+change, a SQL Server image/runtime change, or a fixture-size change:
+
+```bash
+npm run db:setup
+npm run perf:requirements-list:update
+npm run perf:requirements-list
+```
+
+The update command rewrites
+`tests/performance/requirements-list-baseline.json`. Review the diff and
+commit it with the code or schema change that justifies the new numbers. Do
+not use it to silence a one-off noisy failure; first rerun the check on an
+idle, comparable SQL Server environment.
+
+The baseline has profiles because SQL Server can choose different execution
+plans in GitHub Actions and in local containers, especially on Apple Silicon.
+CI runs with the strict `ci` profile from the top-level `thresholds` object.
+Normal local runs use the `developer` profile from `thresholdProfiles`, which
+allows the higher logical-read plan seen in local Mac containers while keeping
+the CI gate tighter. Override the profile explicitly when needed:
+
+```bash
+PERF_REQUIREMENTS_BASELINE_PROFILE=ci npm run perf:requirements-list
+PERF_REQUIREMENTS_BASELINE_PROFILE=developer npm run perf:requirements-list
+```
+
+`perf:requirements-list:update` updates the active profile. On a normal local
+machine that means the `developer` profile; in CI, or when
+`PERF_REQUIREMENTS_BASELINE_PROFILE=ci` is set, it updates the top-level CI
+thresholds. Commit profile changes only when that environment was intentionally
+remeasured.
+
+Run baseline updates against an isolated local or CI-like SQL Server Developer
+container, not a shared or production database. The script creates or refreshes
+the `PERF-*` fixture rows in the target database. The fixture is created
+outside `typeorm/seed.mjs` so normal seed identifiers and business examples
+stay stable. It uses dedicated `PERF-*` requirement areas and negative
+database IDs to avoid advancing normal SQL Server identity counters.
+
+For each scenario, the script:
+
+1. Builds the list and count SQL from the same helpers used by the DAL.
+2. Captures actual SQL Server execution plans with `STATISTICS XML`.
+3. Runs warm-up queries so cold connection/setup cost is not the baseline.
+4. Runs measured samples with `STATISTICS IO` enabled.
+5. Writes results and `.sqlplan` files under
+   `test-results/requirements-list-performance/`.
+
+The baseline file contains threshold counters:
+
+- `sampleCount` and `warmupCount`: how many measured and warm-up runs were
+  used per scenario.
+- `maxMedianDurationMs`: maximum allowed median elapsed time across measured
+  warm-cache samples.
+- `maxP95DurationMs`: maximum allowed 95th-percentile elapsed time. This
+  catches occasional slow samples better than the median.
+- `maxLogicalReads`: maximum allowed SQL Server logical page reads reported by
+  `STATISTICS IO` for the combined list and count query. This is usually the
+  most stable regression signal because it tracks work done by SQL Server
+  rather than host CPU noise.
+- `allowSpills`: whether execution-plan spill warnings are accepted. Keep this
+  `false` unless a spill has been reviewed and deliberately accepted. The
+  console table shows this as `actual/allowed`, so `yes/no` means SQL Server
+  produced a spill warning and the committed baseline does not accept it. When
+  `update-baseline` is used, scenarios with measured spills are recorded with
+  `allowSpills: true`; review the saved `.sqlplan` files before committing that
+  change. In practical terms, a spill means SQL Server needed more working
+  memory for a query step than it was granted, so it used `tempdb` scratch
+  space instead. The query result is still correct, but the plan may be slower
+  or more sensitive under load. Treat a spill as a performance warning: fix or
+  investigate it when it comes with high duration, high logical reads, `tempdb`
+  pressure, or a new plan change; accept it only when the measured timings and
+  reads are still comfortably inside the baseline budget.
+- `maxMissingIndexImpact`: maximum accepted SQL Server missing-index impact in
+  the captured plan. A high value is not proof that the suggested index is
+  correct, but it is a prompt to inspect the plan before raising thresholds.
+
+Only refactor the query, add indexes, or introduce projections after the
+captured SQL Server execution plans and baseline results show a real
+bottleneck. If the update lowers thresholds after an improvement, keep the
+stricter baseline so future regressions are caught.
+
 ### Adding a new migration
 
 Create a new file in `typeorm/migrations/` named `NNNN_short_description.mjs`
