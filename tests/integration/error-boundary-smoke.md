@@ -12,7 +12,7 @@ navigation links, and suppression of raw technical error messages.
 
 ```mermaid
 flowchart TD
-    A[Playwright dev server] --> B[ENABLE_ERROR_BOUNDARY_TEST_ROUTE=1]
+    A[Playwright dev or prodlike server] --> B[ENABLE_ERROR_BOUNDARY_TEST_ROUTE=1]
     B --> C{Throwing route}
     C -- /sv/error-boundary-test --> D[Locale boundary renders Swedish copy]
     C -- /en/admin/error-boundary-test --> E[Locale boundary renders English copy]
@@ -24,8 +24,12 @@ flowchart TD
 
 ## Test Setup
 
-- The Playwright dev-server configuration sets
-  `ENABLE_ERROR_BOUNDARY_TEST_ROUTE=1`.
+- The Playwright dev-server and prodlike integration configurations set
+  `ENABLE_ERROR_BOUNDARY_TEST_ROUTE=1`; the prodlike CI job also passes it to
+  the build and externally managed pruned server.
+- The test-only pages are force-dynamic and read request headers before checking
+  the environment gate, so the pruned prodlike server evaluates the gate at
+  request time instead of reusing a static build-time result.
 - The test-only routes return `notFound()` when that environment variable is
   not set, so normal development and production builds do not expose these
   throw triggers.
