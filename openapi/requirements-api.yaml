@@ -241,7 +241,7 @@ paths:
           description: Deleted draft result.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequirementVersion' }
+              schema: { $ref: '#/components/schemas/DeleteDraftResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -665,6 +665,14 @@ components:
       properties:
         ok: { type: boolean }
         version: { $ref: '#/components/schemas/RequirementVersion' }
+    DeleteDraftResult:
+      type: object
+      required: [deleted]
+      additionalProperties: false
+      properties:
+        deleted:
+          type: string
+          enum: [requirement, version]
     RequirementVersion:
       type: object
       additionalProperties: true
