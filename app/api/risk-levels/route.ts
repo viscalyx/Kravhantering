@@ -7,6 +7,11 @@ import {
 } from '@/lib/dal/risk-levels'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  INTERNAL_SERVER_ERROR_MESSAGE,
+  isDuplicateKeyError,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
   boundedDbStringSchema,
   nonNegativeIntegerSchema,
   readJsonWithSchema,
@@ -44,12 +49,14 @@ export async function POST(request: Request) {
     const riskLevel = await createRiskLevel(db, parsedBody.data)
     return NextResponse.json(riskLevel, { status: 201 })
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Internal server error'
-    const isDuplicate =
-      message.includes('UNIQUE') || message.includes('duplicate')
+    const isDuplicate = isDuplicateKeyError(error)
+    if (!isDuplicate) {
+      logSanitizedError('Failed to create risk level', error)
+    }
     return NextResponse.json(
-      { error: isDuplicate ? 'Duplicate entry' : 'Internal server error' },
+      {
+        error: isDuplicate ? 'Duplicate entry' : INTERNAL_SERVER_ERROR_MESSAGE,
+      },
       { status: isDuplicate ? 409 : 500 },
     )
   }

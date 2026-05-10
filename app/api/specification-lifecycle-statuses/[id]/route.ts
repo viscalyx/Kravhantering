@@ -6,6 +6,10 @@ import {
 } from '@/lib/dal/specification-lifecycle-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  INTERNAL_SERVER_ERROR_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
   boundedDbStringSchema,
   idParamSchema,
   parseRouteParams,
@@ -49,8 +53,11 @@ export async function PUT(
     }
     return NextResponse.json(status)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Validation error'
-    return NextResponse.json({ error: message }, { status: 400 })
+    logSanitizedError('Failed to update specification lifecycle status', err)
+    return NextResponse.json(
+      { error: INTERNAL_SERVER_ERROR_MESSAGE },
+      { status: 500 },
+    )
   }
 }
 

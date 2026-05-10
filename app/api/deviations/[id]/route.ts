@@ -6,6 +6,7 @@ import {
   updateDeviation,
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   idParamSchema,
   nullableBusinessTextSchema,
@@ -14,6 +15,7 @@ import {
   readJsonWithSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,7 +42,8 @@ export async function GET(
     return NextResponse.json(deviation)
   } catch (error) {
     if (isRequirementsServiceError(error) && error.code === 'not_found') {
-      return NextResponse.json({ error: error.message }, { status: 404 })
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
     throw error
   }
@@ -61,12 +64,10 @@ export async function PUT(
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
-    console.error('Failed to update deviation', error)
+    logSanitizedError('Failed to update deviation', error)
     return NextResponse.json(
       { error: 'Failed to update deviation' },
       { status: 500 },
@@ -87,12 +88,10 @@ export async function DELETE(
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
-    console.error('Failed to delete deviation', error)
+    logSanitizedError('Failed to delete deviation', error)
     return NextResponse.json(
       { error: 'Failed to delete deviation' },
       { status: 500 },

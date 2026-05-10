@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { deleteStatus, updateStatus } from '@/lib/dal/requirement-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   boundedDbStringSchema,
   idParamSchema,
@@ -9,6 +10,7 @@ import {
   parseRouteParams,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,8 +49,10 @@ export async function DELETE(
     await deleteStatus(db, parsedParams.data.id)
     return NextResponse.json({ ok: true })
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Failed to delete status'
-    return NextResponse.json({ error: message }, { status: 400 })
+    const { body, status } = toHttpErrorPayload(error)
+    if (body.code === 'internal') {
+      logSanitizedError('Failed to delete requirement status', error)
+    }
+    return NextResponse.json(body, { status })
   }
 }

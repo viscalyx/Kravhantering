@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { revertToDraft } from '@/lib/dal/improvement-suggestions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,12 +23,10 @@ export async function POST(
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
-    console.error('Failed to revert suggestion to draft', error)
+    logSanitizedError('Failed to revert suggestion to draft', error)
     return NextResponse.json(
       { error: 'Failed to revert to draft' },
       { status: 500 },

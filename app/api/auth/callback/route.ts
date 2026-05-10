@@ -13,6 +13,7 @@ import {
   type LoggedInSession,
   type SessionData,
 } from '@/lib/auth/session'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import { parseSearchParams } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
@@ -208,13 +209,12 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     loginState.destroy()
-    const message =
-      error instanceof Error ? error.message : 'Token exchange failed'
+    logSanitizedError('OIDC token exchange failed', error)
     recordLoginFailure(request, 'token_exchange_failed', {
       errorName: error instanceof Error ? error.name : 'Error',
     })
     return NextResponse.json(
-      { error: 'OIDC callback failed', detail: message },
+      { error: 'OIDC callback failed', detail: 'Token exchange failed' },
       { status: 400 },
     )
   }

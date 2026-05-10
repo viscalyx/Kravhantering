@@ -8,6 +8,11 @@ import {
 } from '@/lib/dal/requirement-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  INTERNAL_SERVER_ERROR_MESSAGE,
+  isForeignKeyOrConstraintError,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
   boundedDbStringSchema,
   idParamSchema,
   parseRouteParams,
@@ -77,15 +82,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (/foreign.key/i.test(message) || /constraint/i.test(message)) {
+    if (isForeignKeyOrConstraintError(error)) {
       return NextResponse.json(
         { error: 'In use by requirements' },
         { status: 409 },
       )
     }
+    logSanitizedError('Failed to delete quality characteristic', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: INTERNAL_SERVER_ERROR_MESSAGE },
       { status: 500 },
     )
   }

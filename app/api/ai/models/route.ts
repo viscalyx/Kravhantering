@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { listModels, type OpenRouterModel } from '@/lib/ai/openrouter-client'
 import {
+  AI_PROVIDER_UNAVAILABLE_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
   ARRAY_INPUT_MAX_ITEMS,
   boundedDbStringSchema,
   parseSearchParams,
@@ -84,8 +88,10 @@ export async function GET(request: NextRequest) {
     modelCache.set(cacheKey, { models: enriched, timestamp: Date.now() })
     return NextResponse.json({ models: enriched })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    const status = message.includes('401') ? 401 : 503
-    return NextResponse.json({ error: message, models: [] }, { status })
+    logSanitizedError('Failed to list AI models', err)
+    return NextResponse.json(
+      { error: AI_PROVIDER_UNAVAILABLE_MESSAGE, models: [] },
+      { status: 503 },
+    )
   }
 }

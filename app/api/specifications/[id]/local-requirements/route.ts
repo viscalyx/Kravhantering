@@ -7,6 +7,7 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   ARRAY_INPUT_MAX_ITEMS,
   businessTextSchema,
@@ -17,6 +18,7 @@ import {
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,13 +116,11 @@ export async function POST(
     return NextResponse.json({ localRequirement, ok: true }, { status: 201 })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error('Failed to create specification-local requirement', error)
+    logSanitizedError('Failed to create specification-local requirement', error)
     return NextResponse.json(
       { error: 'Failed to create specification-local requirement' },
       { status: 500 },

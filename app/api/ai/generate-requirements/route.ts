@@ -13,6 +13,10 @@ import {
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
+  AI_PROVIDER_UNAVAILABLE_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
   ARRAY_INPUT_MAX_ITEMS,
   localeSchema,
   readJsonWithSchema,
@@ -188,13 +192,17 @@ export async function POST(request: Request) {
               break
             }
             case 'error':
-              send('error', { message: event.message })
+              logSanitizedError(
+                'AI requirement generation stream failed',
+                event.cause ?? event.message,
+              )
+              send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
               break
           }
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        send('error', { message })
+        logSanitizedError('AI requirement generation failed', err)
+        send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
       } finally {
         controller.close()
       }

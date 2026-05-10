@@ -6,6 +6,7 @@ import {
   updateSpecificationLocalDeviation,
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   idParamSchema,
   nullableBusinessTextSchema,
@@ -14,6 +15,7 @@ import {
   readJsonWithSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,13 +41,11 @@ export async function GET(
     return NextResponse.json(await getSpecificationLocalDeviation(db, id))
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error('Failed to get specification-local deviation', error)
+    logSanitizedError('Failed to get specification-local deviation', error)
     return NextResponse.json(
       { error: 'Failed to get specification-local deviation' },
       { status: 500 },
@@ -75,13 +75,11 @@ export async function PUT(
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error('Failed to update specification-local deviation', error)
+    logSanitizedError('Failed to update specification-local deviation', error)
     return NextResponse.json(
       { error: 'Failed to update specification-local deviation' },
       { status: 500 },
@@ -102,13 +100,11 @@ export async function DELETE(
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error('Failed to delete specification-local deviation', error)
+    logSanitizedError('Failed to delete specification-local deviation', error)
     return NextResponse.json(
       { error: 'Failed to delete specification-local deviation' },
       { status: 500 },

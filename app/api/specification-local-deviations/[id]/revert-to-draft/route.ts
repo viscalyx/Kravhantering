@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { revertSpecificationLocalToDraft } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,13 +20,11 @@ export async function POST(_request: Request, { params }: { params: Params }) {
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error(
+    logSanitizedError(
       'Failed to revert specification-local deviation to draft',
       error,
     )

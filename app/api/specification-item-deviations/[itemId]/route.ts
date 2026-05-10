@@ -8,6 +8,7 @@ import {
 } from '@/lib/dal/deviations'
 import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   boundedDbStringSchema,
   businessTextSchema,
@@ -18,6 +19,7 @@ import {
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 type Params = Promise<{ itemId: string }>
 type ParsedSpecificationItemId =
@@ -114,7 +116,7 @@ export async function GET(
         : await listDeviationsForSpecificationItem(db, numericItemId ?? 0)
     return NextResponse.json({ deviations })
   } catch (error) {
-    console.error('Failed to list deviations for specification item', error)
+    logSanitizedError('Failed to list deviations for specification item', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -158,12 +160,10 @@ export async function POST(
     return NextResponse.json({ id: result.id, ok: true }, { status: 201 })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
-    console.error('Failed to create deviation', error)
+    logSanitizedError('Failed to create deviation', error)
     return NextResponse.json(
       { error: 'Failed to create deviation' },
       { status: 500 },

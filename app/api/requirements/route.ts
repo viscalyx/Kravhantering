@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   businessTextSchema,
   nonNegativeIntegerStringSchema,
@@ -250,7 +251,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result.result, { status: 201 })
   } catch (error) {
-    console.error('[API] Failed to create requirement:', error)
+    logSanitizedError('[API] Failed to create requirement', error)
     const { body: errorBody, status } = toHttpErrorPayload(error)
     return NextResponse.json(errorBody, { status })
   }

@@ -11,6 +11,7 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   ARRAY_INPUT_MAX_ITEMS,
   nullableBoundedDbStringSchema,
@@ -21,6 +22,7 @@ import {
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -156,13 +158,12 @@ export async function POST(
       { status: addedCount > 0 ? 201 : 200 },
     )
   } catch (error) {
-    if (isRequirementsServiceError(error) && error.code === 'validation') {
-      const status =
-        error.details?.httpStatus === 422 ? 422 : (error.status ?? 400)
-      return NextResponse.json({ error: error.message }, { status })
+    if (isRequirementsServiceError(error)) {
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error(
+    logSanitizedError(
       'Failed to add requirements to requirements specification',
       error,
     )
@@ -204,11 +205,12 @@ export async function DELETE(
         removedCount: deletedLibraryCount + deletedSpecificationLocalCount,
       })
     } catch (error) {
-      if (isRequirementsServiceError(error) && error.code === 'validation') {
-        return NextResponse.json({ error: error.message }, { status: 400 })
+      if (isRequirementsServiceError(error)) {
+        const { body, status } = toHttpErrorPayload(error)
+        return NextResponse.json(body, { status })
       }
 
-      console.error('Failed to delete specification items by refs', error)
+      logSanitizedError('Failed to delete specification items by refs', error)
       return NextResponse.json(
         { error: 'Failed to remove items' },
         { status: 500 },
@@ -224,7 +226,7 @@ export async function DELETE(
     )
     return NextResponse.json({ ok: true, removedCount })
   } catch (error) {
-    console.error('Failed to unlink requirements from specification', error)
+    logSanitizedError('Failed to unlink requirements from specification', error)
     return NextResponse.json(
       { error: 'Failed to unlink requirements' },
       { status: 500 },

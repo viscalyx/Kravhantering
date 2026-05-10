@@ -5,6 +5,7 @@ import {
   listSuggestionsForRequirement,
 } from '@/lib/dal/improvement-suggestions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   businessTextSchema,
   idParamSchema,
@@ -14,6 +15,7 @@ import {
   readJsonWithSchema,
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,12 +63,10 @@ export async function POST(
     return NextResponse.json(result, { status: 201 })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
-    console.error('Failed to create improvement suggestion', error)
+    logSanitizedError('Failed to create improvement suggestion', error)
     return NextResponse.json(
       { error: 'Failed to create improvement suggestion' },
       { status: 500 },
