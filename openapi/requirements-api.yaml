@@ -457,7 +457,7 @@ components:
         type: string
         minLength: 1
         maxLength: 80
-        pattern: '^(?:[1-9]\d*|(?!-?\d+(?:\.\d+)?$).+)$'
+        pattern: '^.+$'
       description: Numeric database id or stable requirement unique id.
     VersionNumber:
       name: version
@@ -595,6 +595,7 @@ components:
         email: { type: string, nullable: true }
         roles:
           type: array
+          maxItems: 10
           items: { type: string }
         expiresAt: { type: number, nullable: true }
     RequirementListResponse:

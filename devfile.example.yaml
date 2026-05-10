@@ -89,8 +89,6 @@ components:
           value: kravhantering_session
         - name: AUTH_SESSION_TTL_SECONDS
           value: '28800'
-        - name: AUTH_TRUST_PROXY
-          value: 'true'
         # The Keycloak sidecar publishes its issuer on the public Dev
         # Spaces route, not on localhost. AUTH_ISSUER and related vars
         # should be injected via a Dev Spaces Secret per workspace —

@@ -241,8 +241,10 @@ For local and prodlike Keycloak realms that were imported before that mapper
 existed, the app also accepts the same synthetic identity by deriving
 `mcp-client:<client_id>` from a verified service-account token when
 `client_id` or `azp` matches the configured MCP client id. The expected client
-id is `AUTH_OIDC_MCP_CLIENT_ID`, then `MCP_CLIENT_ID`, then the local default
-`kravhantering-mcp`.
+id is read by `getExpectedMcpClientId()` from `AUTH_OIDC_MCP_CLIENT_ID`,
+falling back to `MCP_CLIENT_ID`, and finally to the local default
+`kravhantering-mcp`. If both variables are set differently,
+`AUTH_OIDC_MCP_CLIENT_ID` is canonical and `MCP_CLIENT_ID` is ignored.
 
 ### No refresh tokens
 
@@ -381,12 +383,11 @@ Production values are set per environment by ops on the real IdP.
   `AUTH_SESSION_TTL_SECONDS` to a comparable value. There is no
   app-level idle timer to configure.
 
-### Reverse-proxy trust
+### Build-target auth constants
 
 <!-- markdownlint-disable MD013 -->
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `AUTH_TRUST_PROXY` | no | `true` | Reserved for trusted reverse-proxy deployments. Do not rely on it for CSRF origin resolution: CSRF checks ignore `X-Forwarded-Proto` / `X-Forwarded-Host` and use the configured `AUTH_OIDC_REDIRECT_URI` origin. |
 | `AUTH_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Build-target constant (not a runtime env var). Both the `dev` and `local-prod` build targets set it to `true` so the local Keycloak on `http://localhost:8080` works; the `prod` build target hard-codes it to `false`. |
 <!-- markdownlint-enable MD013 -->
 
@@ -399,8 +400,7 @@ For OpenShift, this is the split between Secret and ConfigMap:
 - **ConfigMap**: `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
-  `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`,
-  `AUTH_TRUST_PROXY`.
+  `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS`.
 
 `AUTH_OIDC_CLIENT_ID` is technically not secret (it's quoted in every
 authorization request), but it's grouped with the secret because ops

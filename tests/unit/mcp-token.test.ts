@@ -31,6 +31,8 @@ function mockOidcConfiguration(jwksUri = discoveredJwksUri) {
 
 describe('verifyMcpBearerToken', () => {
   beforeEach(() => {
+    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'kravhantering-mcp')
+    vi.stubEnv('MCP_CLIENT_ID', 'kravhantering-mcp')
     getAuthConfigMock.mockReset()
     getOidcConfigurationMock.mockReset()
     jwtVerifyMock.mockReset()
@@ -41,6 +43,7 @@ describe('verifyMcpBearerToken', () => {
   afterEach(async () => {
     const { resetMcpJwksCacheForTests } = await import('@/lib/auth/mcp-token')
     resetMcpJwksCacheForTests()
+    vi.unstubAllEnvs()
   })
 
   it('throws McpAuthError when bearer is missing', async () => {
@@ -173,6 +176,39 @@ describe('verifyMcpBearerToken', () => {
     expect(result?.actor.hsaId).toBe('mcp-client:kravhantering-mcp')
   })
 
+  it('warns and prefers AUTH_OIDC_MCP_CLIENT_ID when MCP client ids differ', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'canonical-client')
+    vi.stubEnv('MCP_CLIENT_ID', 'legacy-client')
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'service-account-canonical-client',
+        roles: ['Admin'],
+        client_id: 'canonical-client',
+      },
+    })
+
+    try {
+      const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+      const result = await verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      )
+
+      expect(result?.actor.hsaId).toBe('mcp-client:canonical-client')
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('AUTH_OIDC_MCP_CLIENT_ID takes precedence'),
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
   it('rejects when employeeHsaId is missing', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
@@ -303,7 +339,34 @@ describe('verifyMcpBearerToken', () => {
     )
   })
 
-  it('rejects tokens whose issuer does not match auth config', async () => {
+  it('rejects OIDC discovery jwks_uri with unsupported protocol', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    mockOidcConfiguration('file:///tmp/jwks.json')
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      ),
+    ).rejects.toSatisfy(
+      e =>
+        e instanceof McpAuthError &&
+        e.status === 401 &&
+        /unsupported JWKS URI protocol/.test(e.message),
+    )
+    expect(createRemoteJWKSetMock).not.toHaveBeenCalled()
+    expect(jwtVerifyMock).not.toHaveBeenCalled()
+  })
+
+  it('wraps issuer-mismatch verify failures as McpAuthError(401)', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
@@ -330,7 +393,7 @@ describe('verifyMcpBearerToken', () => {
     )
   })
 
-  it('rejects tokens whose audience does not match auth config', async () => {
+  it('wraps audience-mismatch verify failures as McpAuthError(401)', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
       apiAudience: 'kravhantering-app',
@@ -362,6 +425,8 @@ describe('verifyMcpBearerToken security audit events', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'kravhantering-mcp')
+    vi.stubEnv('MCP_CLIENT_ID', 'kravhantering-mcp')
     getAuthConfigMock.mockReset()
     getOidcConfigurationMock.mockReset()
     jwtVerifyMock.mockReset()
@@ -378,6 +443,7 @@ describe('verifyMcpBearerToken security audit events', () => {
     infoSpy.mockRestore()
     const { resetMcpJwksCacheForTests } = await import('@/lib/auth/mcp-token')
     resetMcpJwksCacheForTests()
+    vi.unstubAllEnvs()
   })
 
   function emittedSecurityEvents(): Array<Record<string, unknown>> {

@@ -3,6 +3,7 @@ import { recordSecurityEvent } from '@/lib/auth/audit'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { parseRolesClaim } from '@/lib/auth/roles'
 import type { ActorContext } from '@/lib/requirements/auth'
+import { ALLOW_INSECURE_OIDC_ISSUER } from '@/lib/runtime/build-target'
 
 type VerifiedMcpToken = {
   actor: ActorContext
@@ -19,18 +20,51 @@ type JwksCacheEntry = {
 const DEFAULT_MCP_CLIENT_ID = 'kravhantering-mcp'
 
 let jwksCache: JwksCacheEntry | null = null
+let mcpClientIdConflictWarningKey: string | null = null
 
 function getExpectedMcpClientId(): string {
-  return (
-    process.env.AUTH_OIDC_MCP_CLIENT_ID?.trim() ||
-    process.env.MCP_CLIENT_ID?.trim() ||
-    DEFAULT_MCP_CLIENT_ID
-  )
+  const canonicalClientId = process.env.AUTH_OIDC_MCP_CLIENT_ID?.trim()
+  const legacyClientId = process.env.MCP_CLIENT_ID?.trim()
+  if (
+    canonicalClientId &&
+    legacyClientId &&
+    canonicalClientId !== legacyClientId
+  ) {
+    const warningKey = `${canonicalClientId}\0${legacyClientId}`
+    if (mcpClientIdConflictWarningKey !== warningKey) {
+      console.warn(
+        '[auth] AUTH_OIDC_MCP_CLIENT_ID and MCP_CLIENT_ID differ; ' +
+          'AUTH_OIDC_MCP_CLIENT_ID takes precedence and MCP_CLIENT_ID will be ignored.',
+      )
+      mcpClientIdConflictWarningKey = warningKey
+    }
+  }
+  return canonicalClientId || legacyClientId || DEFAULT_MCP_CLIENT_ID
 }
 
 function syntheticMcpHsaId(clientId: string | undefined): string | null {
   if (!clientId || clientId !== getExpectedMcpClientId()) return null
   return `mcp-client:${clientId}`
+}
+
+function parseJwksUrl(jwksUri: string): URL {
+  let url: URL
+  try {
+    url = new URL(jwksUri)
+  } catch {
+    throw new Error('OIDC discovery metadata included an invalid `jwks_uri`.')
+  }
+  if (url.protocol === 'https:') return url
+  if (url.protocol === 'http:' && ALLOW_INSECURE_OIDC_ISSUER) return url
+  if (url.protocol === 'http:') {
+    throw new Error(
+      'Refusing to use insecure http:// JWKS URI in this build. ' +
+        'Production builds require an https:// JWKS URI.',
+    )
+  }
+  throw new Error(
+    `Refusing to use unsupported JWKS URI protocol: ${url.protocol}`,
+  )
 }
 
 async function getOrCreateJwks(issuer: string): Promise<RemoteJwks> {
@@ -47,13 +81,14 @@ async function getOrCreateJwks(issuer: string): Promise<RemoteJwks> {
   ) {
     return jwksCache.jwks
   }
-  const jwks = createRemoteJWKSet(new URL(jwksUri))
+  const jwks = createRemoteJWKSet(parseJwksUrl(jwksUri))
   jwksCache = { issuer, jwksUri, jwks }
   return jwks
 }
 
 export function resetMcpJwksCacheForTests(): void {
   jwksCache = null
+  mcpClientIdConflictWarningKey = null
 }
 
 export class McpAuthError extends Error {
@@ -143,7 +178,7 @@ export async function verifyMcpBearerToken(
         401,
       )
     }
-    const scopeRaw = (payload as Record<string, unknown>).scope
+    const scopeRaw = payloadRecord.scope
     const scopes =
       typeof scopeRaw === 'string' ? scopeRaw.split(/\s+/).filter(Boolean) : []
     recordSecurityEvent({

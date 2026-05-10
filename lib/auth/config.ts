@@ -9,26 +9,6 @@
  * for the committed env-var contract and deployment expectations.
  */
 
-const FLAG_TRUE_VALUES = new Set(['1', 'true', 'yes', 'on'])
-const FLAG_FALSE_VALUES = new Set(['0', 'false', 'no', 'off'])
-
-function parseBooleanFlag(
-  value: string | undefined,
-  defaultValue: boolean,
-): boolean {
-  if (value === undefined || value === '') {
-    return defaultValue
-  }
-  const normalized = value.trim().toLowerCase()
-  if (FLAG_TRUE_VALUES.has(normalized)) {
-    return true
-  }
-  if (FLAG_FALSE_VALUES.has(normalized)) {
-    return false
-  }
-  return defaultValue
-}
-
 function readString(name: string): string | undefined {
   const raw = process.env[name]
   if (raw === undefined) {
@@ -91,8 +71,6 @@ export interface AuthConfig {
   scopes: string
   /** Session TTL in seconds. */
   sessionTtlSeconds: number
-  /** Honor X-Forwarded-Proto / X-Forwarded-Host (true behind a proxy). */
-  trustProxy: boolean
 }
 
 export class AuthConfigError extends Error {
@@ -151,7 +129,6 @@ function loadAuthConfig(): AuthConfig {
       readString('AUTH_SESSION_COOKIE_NAME') ?? 'kravhantering_session',
     cookiePassword: cookiePassword as string,
     sessionTtlSeconds: readNumber('AUTH_SESSION_TTL_SECONDS', 28_800),
-    trustProxy: parseBooleanFlag(process.env.AUTH_TRUST_PROXY, true),
   }
 }
 

@@ -115,8 +115,13 @@ TypeORM stack. For the full developer setup, see
 2. Start the local SQL Server with `npm run db:up`.
 3. Migrate and seed the local database with `npm run db:setup`.
 4. Start the app with `npm run dev`.
-5. Configure your MCP client with a non-production Bearer token for the local
-   issuer/audience and connect to `http://localhost:3000/api/mcp`.
+
+   To obtain a dev MCP token, first make sure the local IdP is running with
+   `npm run idp:up`, then run `node scripts/security/get-mcp-token.mjs`.
+
+5. Configure your MCP client with the non-production Bearer token from
+   `scripts/security/get-mcp-token.mjs` for the local issuer/audience and
+   connect to `http://localhost:3000/api/mcp`.
 
 The server is implemented inside the Next.js app, so there is no separate MCP
 process to start.
@@ -135,7 +140,7 @@ Create `.vscode/mcp.json` with:
       "type": "http",
       "url": "http://localhost:3000/api/mcp",
       "headers": {
-        "Authorization": "Bearer <non-production-token>"
+        "Authorization": "Bearer ${env:MCP_TOKEN}"
       }
     }
   }
@@ -143,7 +148,11 @@ Create `.vscode/mcp.json` with:
 ```
 
 Do not commit real tokens in workspace configuration. Prefer user-level MCP
-configuration or secret/env substitution supported by your MCP client.
+configuration or secret/env substitution supported by your MCP client; the
+`${env:MCP_TOKEN}` pattern above is the safe default. If your client cannot
+substitute environment variables, use a placeholder such as
+`Bearer <paste-non-production-token-here-do-not-commit>` only in local,
+uncommitted configuration.
 
 For a deployed environment, replace the URL with your public HTTPS origin:
 

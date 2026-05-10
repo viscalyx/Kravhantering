@@ -43,11 +43,14 @@ const requirementEditSchema = z
   .object({
     acceptanceCriteria: optionalBusinessTextSchema,
     areaId: optionalBodyIdSchema,
-    baseRevisionToken: z.string().uuid(),
+    baseRevisionToken: z.uuid(),
     baseVersionId: positiveIntegerSchema,
     categoryId: optionalBodyIdSchema,
     description: businessTextSchema,
     normReferenceIds: optionalBodyIdArraySchema,
+    // Accepted for edit-requirement-client.tsx compatibility; the PUT handler
+    // below intentionally omits ownerId from the requirement object passed to
+    // manageRequirement().
     ownerId: optionalBusinessTextSchema,
     qualityCharacteristicId: optionalBodyIdSchema,
     requirementPackageIds: optionalBodyIdArraySchema,
