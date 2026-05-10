@@ -308,9 +308,13 @@ contract and bounded property-test foundation, but does not close `#119`.
 7. Acquires the local admin session cookie for `ada.admin`.
 8. Fails before scanning unless the target is exactly
    `http://localhost:3001`.
-9. Runs Schemathesis with deterministic bounded settings and browser REST
-   auth/CSRF headers.
-10. Uploads JUnit, NDJSON, stdout/stderr, and app logs with `if: always()`.
+9. Runs Schemathesis with deterministic bounded settings, a local-only request
+   rate that fits inside the CI timeout budget, and browser REST auth/CSRF
+   headers.
+10. Prints the Schemathesis runtime in an `always()` step so scan-speed
+    regressions are visible even when the scanner fails.
+11. Uploads JUnit, NDJSON, stdout/stderr, timing files, and app logs with
+    `if: always()`.
 
 The mutating scan requests include the masked local session cookie,
 `Origin: http://localhost:3001`, and

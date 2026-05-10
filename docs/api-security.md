@@ -71,8 +71,12 @@ The workflow:
 6. Polls `/api/health`.
 7. Acquires the local admin session cookie for `ada.admin`.
 8. Refuses to scan unless the target is exactly `http://localhost:3001`.
-9. Runs Schemathesis with deterministic, bounded settings.
-10. Uploads JUnit, NDJSON, stdout/stderr, and app logs even on failure.
+9. Runs Schemathesis with deterministic, bounded settings and a local-only
+   request rate that fits inside the CI timeout budget.
+10. Prints the Schemathesis runtime in an `always()` step so scan-speed
+    regressions are visible even when the scanner fails.
+11. Uploads JUnit, NDJSON, stdout/stderr, timing files, and app logs even on
+    failure.
 
 The mutating scan requests include:
 
@@ -142,7 +146,7 @@ schemathesis run openapi/requirements-api.yaml \
   --generation-deterministic \
   --request-timeout 5 \
   --request-retries 0 \
-  --rate-limit 30/m \
+  --rate-limit 120/m \
   --max-failures 10 \
   --checks not_a_server_error,status_code_conformance,content_type_conformance,response_schema_conformance \
   --report junit,ndjson \

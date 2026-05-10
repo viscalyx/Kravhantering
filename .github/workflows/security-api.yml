@@ -147,6 +147,9 @@ jobs:
         run: |
           set -euo pipefail
           echo "::add-mask::${SESSION_COOKIE}"
+          start_epoch="$(date +%s)"
+          echo "${start_epoch}" > test-results/schemathesis/start-epoch.txt
+          set +e
           schemathesis run openapi/requirements-api.yaml \
             --url "${APP_BASE_URL}" \
             --header "Cookie: ${SESSION_COOKIE}" \
@@ -159,7 +162,7 @@ jobs:
             --generation-deterministic \
             --request-timeout 5 \
             --request-retries 0 \
-            --rate-limit 30/m \
+            --rate-limit 120/m \
             --max-failures 10 \
             --checks not_a_server_error,status_code_conformance,content_type_conformance,response_schema_conformance \
             --report junit,ndjson \
@@ -169,6 +172,48 @@ jobs:
             --no-color \
             > test-results/schemathesis/stdout.log \
             2> test-results/schemathesis/stderr.log
+          scan_exit=$?
+          set -e
+          end_epoch="$(date +%s)"
+          duration_seconds=$((end_epoch - start_epoch))
+          echo "${end_epoch}" > test-results/schemathesis/end-epoch.txt
+          echo "${duration_seconds}" > test-results/schemathesis/duration-seconds.txt
+          exit "${scan_exit}"
+
+      - name: Print Schemathesis runtime
+        if: always()
+        run: |
+          set -euo pipefail
+          duration_path="test-results/schemathesis/duration-seconds.txt"
+          if [ ! -s "${duration_path}" ]; then
+            echo "Schemathesis REST API scan runtime: unavailable."
+            {
+              echo "### Schemathesis runtime"
+              echo
+              echo "Runtime unavailable; the scan step did not write a duration file."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          duration_seconds="$(cat "${duration_path}")"
+          case "${duration_seconds}" in
+            ''|*[!0-9]*)
+              echo "Schemathesis REST API scan runtime: invalid duration '${duration_seconds}'."
+              exit 0
+              ;;
+          esac
+
+          hours=$((duration_seconds / 3600))
+          minutes=$(((duration_seconds % 3600) / 60))
+          seconds=$((duration_seconds % 60))
+          formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
+
+          echo "Schemathesis REST API scan runtime: ${formatted} (${duration_seconds}s)"
+          {
+            echo "### Schemathesis runtime"
+            echo
+            echo "- Runtime: ${formatted} (${duration_seconds}s)"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Print Schemathesis failure summary
         if: always() && steps.schemathesis_scan.outcome == 'failure'
