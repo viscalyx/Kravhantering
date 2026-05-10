@@ -305,6 +305,24 @@ describe('specification-lifecycle-statuses routes', () => {
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
   })
+  it('PUT rejects empty update payloads', async () => {
+    const r = await putLifecycle(jsonReq('PUT', {}), makeParams('1'))
+    const body = (await r.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(r.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'At least one of nameEn or nameSv must be provided',
+        }),
+      ]),
+    )
+    expect(mockUpdateLifecycle).not.toHaveBeenCalled()
+  })
   it('DELETE deletes', async () => {
     mockDeleteLifecycle.mockResolvedValue(undefined)
     const r = await deleteLifecycle(

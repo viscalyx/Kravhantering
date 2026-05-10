@@ -608,6 +608,8 @@ components:
           additionalProperties: true
         requirements:
           type: array
+          minItems: 0
+          maxItems: 200
           items: { $ref: '#/components/schemas/RequirementSummary' }
     RequirementSummary:
       type: object
@@ -635,6 +637,8 @@ components:
             - $ref: '#/components/schemas/RequirementVersion'
         versions:
           type: array
+          minItems: 0
+          maxItems: 100
           items: { $ref: '#/components/schemas/RequirementVersion' }
     RequirementVersionResponse:
       type: object

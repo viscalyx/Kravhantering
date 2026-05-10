@@ -1286,7 +1286,8 @@ export function createRequirementsService(
         async () => {
           if (input.operation === 'create') {
             const payload = input.requirement
-            if (!payload?.areaId || !payload.description) {
+            const description = payload?.description?.trim()
+            if (!payload?.areaId || !description) {
               throw validationError(
                 'Create operation requires requirement.areaId and requirement.description',
               )
@@ -1296,7 +1297,7 @@ export function createRequirementsService(
             const created = await createRequirement(db, {
               acceptanceCriteria: payload.acceptanceCriteria,
               createdBy: payload.createdBy ?? context.actor.id ?? undefined,
-              description: payload.description,
+              description,
               normReferenceIds: payload.normReferenceIds,
               requirementAreaId: payload.areaId,
               requirementCategoryId: payload.categoryId,
@@ -1346,7 +1347,8 @@ export function createRequirementsService(
 
           if (input.operation === 'edit') {
             const payload = input.requirement
-            if (!payload?.description) {
+            const description = payload?.description?.trim()
+            if (!payload || !description) {
               throw validationError(
                 'Edit operation requires requirement.description',
               )
@@ -1370,7 +1372,7 @@ export function createRequirementsService(
                 baseRevisionToken: payload.baseRevisionToken,
                 baseVersionId: payload.baseVersionId,
                 createdBy: payload.createdBy ?? context.actor.id ?? undefined,
-                description: payload.description,
+                description,
                 normReferenceIds: payload.normReferenceIds,
                 requirementAreaId: payload.areaId,
                 requirementCategoryId: payload.categoryId,
@@ -1867,6 +1869,18 @@ export function createRequirementsService(
                 needsReferenceText: input.needsReferenceText,
               },
             )
+          }
+          if (addedCount > 0) {
+            recordHighRiskMutationSucceeded(context, {
+              action: 'specification.requirements.added',
+              addedCount,
+              locale,
+              operation: 'add_to_specification',
+              requirementCount: input.requirementIds.length,
+              requirementIds: succeeded.map(r => r.id),
+              specificationId,
+              specificationSlug: input.specificationSlug,
+            })
           }
 
           const ref = getSpecificationReferenceLabel(input, specificationId)

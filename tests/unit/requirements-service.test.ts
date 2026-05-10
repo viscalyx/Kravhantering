@@ -527,7 +527,7 @@ describe('createRequirementsService', () => {
       operation: 'create',
       requirement: {
         areaId: 1,
-        description: 'Support secure integration',
+        description: '  Support secure integration  ',
         requirementPackageIds: [7],
       },
     })
@@ -819,7 +819,7 @@ describe('createRequirementsService', () => {
       requirement: {
         baseRevisionToken: '11111111-1111-4111-8111-111111111111',
         baseVersionId: 10,
-        description: 'Updated text',
+        description: '  Updated text  ',
       },
     })
     expect(result.operation).toBe('edit')
@@ -829,6 +829,7 @@ describe('createRequirementsService', () => {
       expect.objectContaining({
         baseRevisionToken: '11111111-1111-4111-8111-111111111111',
         baseVersionId: 10,
+        description: 'Updated text',
       }),
     )
   })
@@ -1037,6 +1038,25 @@ describe('createRequirementsService', () => {
     ).rejects.toMatchObject({ code: 'validation' })
   })
 
+  it('rejects edit with blank description', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'edit',
+        requirement: {
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: '   ',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    expect(mocks.editRequirement).not.toHaveBeenCalled()
+  })
+
   it('rejects create without areaId', async () => {
     const service = createRequirementsService({} as never, {
       logger,
@@ -1048,6 +1068,20 @@ describe('createRequirementsService', () => {
         requirement: { description: 'test' },
       }),
     ).rejects.toMatchObject({ code: 'validation' })
+  })
+
+  it('rejects create with blank description', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+    await expect(
+      service.manageRequirement(makeContext(), {
+        operation: 'create',
+        requirement: { areaId: 1, description: '   ' },
+      }),
+    ).rejects.toMatchObject({ code: 'validation' })
+    expect(mocks.createRequirement).not.toHaveBeenCalled()
   })
 
   it('rejects restore_version when version not found', async () => {
@@ -1226,6 +1260,21 @@ describe('createRequirementsService', () => {
     })
   })
 
+  it('does not emit specification addition audit events when no links are added', async () => {
+    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.addToSpecification(makeContext(), {
+      specificationSlug: 'IAM-SPECIFICATION',
+      requirementIds: [10],
+    })
+
+    expect(emittedSecurityEvents()).toEqual([])
+  })
+
   it('emits security audit events for high-risk requirement mutations', async () => {
     mocks.approveArchiving.mockResolvedValue(undefined)
     const service = createRequirementsService({} as never, {
@@ -1274,6 +1323,40 @@ describe('createRequirementsService', () => {
           operation: 'remove_from_specification',
           removedCount: 2,
           requirementCount: 3,
+          specificationId: 7,
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+      }),
+    ])
+  })
+
+  it('emits security audit events for specification additions', async () => {
+    mocks.getPublishedVersionIdForRequirement
+      .mockResolvedValueOnce(201)
+      .mockResolvedValueOnce(202)
+    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(2)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.addToSpecification(makeContext(), {
+      locale: 'sv',
+      specificationSlug: 'IAM-SPECIFICATION',
+      requirementIds: [10, 11],
+    })
+
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          action: 'specification.requirements.added',
+          addedCount: 2,
+          locale: 'sv',
+          operation: 'add_to_specification',
+          requirementCount: 2,
+          requirementIds: [10, 11],
+          requestSource: 'rest',
           specificationId: 7,
           specificationSlug: 'IAM-SPECIFICATION',
         }),

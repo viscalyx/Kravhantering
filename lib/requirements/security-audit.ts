@@ -18,13 +18,16 @@ type SecurityAuditDetailInput = Record<
 
 export interface HighRiskMutationAuditDetail {
   action: string
+  addedCount?: number
   decision?: number
   deleted?: string
   deviationId?: number
+  locale?: string
   operation?: string
   removedCount?: number
   requirementCount?: number
   requirementId?: number
+  requirementIds?: readonly number[]
   requirementUniqueId?: string
   resolution?: number
   restoredVersionNumber?: number

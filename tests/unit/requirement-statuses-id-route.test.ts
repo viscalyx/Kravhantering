@@ -15,7 +15,7 @@ vi.mock('@/lib/dal/requirement-statuses', () => ({
 }))
 
 import { DELETE, PUT } from '@/app/api/requirement-statuses/[id]/route'
-import { conflictError } from '@/lib/requirements/errors'
+import { conflictError, notFoundError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -77,6 +77,17 @@ describe('requirement-statuses/[id] route', () => {
     expect(res.status).toBe(409)
     const json = (await res.json()) as { code: string; error: string }
     expect(json).toEqual({ code: 'conflict', error: 'Cannot delete' })
+    expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
+    expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+  })
+
+  it('DELETE maps not_found business errors to 404', async () => {
+    mockDeleteStatus.mockRejectedValue(notFoundError('Status not found'))
+    const req = new NextRequest('http://localhost', { method: 'DELETE' })
+    const res = await DELETE(req, makeParams('1'))
+    expect(res.status).toBe(404)
+    const json = (await res.json()) as { code: string; error: string }
+    expect(json).toEqual({ code: 'not_found', error: 'Status not found' })
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })

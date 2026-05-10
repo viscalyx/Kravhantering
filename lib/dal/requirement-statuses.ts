@@ -108,7 +108,10 @@ export async function updateStatus(
   return row ? mapStatus(row) : undefined
 }
 
-export async function deleteStatus(db: SqlServerDatabase, id: number) {
+export async function deleteStatus(
+  db: SqlServerDatabase,
+  id: number,
+): Promise<void> {
   const status = await getStatusById(db, id)
   if (!status) throw notFoundError('Status not found')
   if (status.isSystem) throw conflictError('Cannot delete a system status')

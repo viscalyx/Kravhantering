@@ -52,14 +52,18 @@ function withEnv(env: Record<string, string | undefined>) {
   }
 }
 
-function buildRequest(url: string, cookie: string): NextRequest {
+function buildRequest(url: string, cookie?: string): NextRequest {
   const headers = new Headers({
     accept: 'text/html',
-    cookie,
     'x-user-id': 'attacker',
     'x-user-roles': 'Admin',
   })
+  if (cookie) headers.set('cookie', cookie)
   return new NextRequest(url, { headers })
+}
+
+function futureEpochSeconds(): number {
+  return Math.floor(Date.now() / 1000) + 60 * 60
 }
 
 async function writeSignedInCookie(): Promise<string> {
@@ -74,7 +78,7 @@ async function writeSignedInCookie(): Promise<string> {
   session.name = 'Alice Reviewer'
   session.hsaId = 'SE2321000032-rev1'
   session.roles = ['Reviewer']
-  session.accessTokenExpiresAt = 1
+  session.accessTokenExpiresAt = futureEpochSeconds()
   await session.save()
   return response.headers.get('set-cookie')?.split(';')[0] ?? ''
 }
@@ -97,6 +101,69 @@ describe('middleware production CSP', () => {
       expect(csp).not.toContain('ws://localhost:*')
       expect(nonceMatch?.[1]).toBeTruthy()
       expect(requestNonce).toBe(nonceMatch?.[1])
+      expect(response.headers.get('x-user-id')).toBeNull()
+      expect(response.headers.get('x-user-roles')).toBeNull()
+      expect(response.headers.get('x-middleware-request-x-user-id')).toBeNull()
+      expect(
+        response.headers.get('x-middleware-request-x-user-roles'),
+      ).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it('redirects missing sessions without emitting a production nonce', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/sv/requirements'),
+      )
+
+      expect(response.status).toBe(302)
+      expect(response.headers.get('location') ?? '').toContain(
+        '/api/auth/login',
+      )
+      expect(response.headers.get('content-security-policy')).toBeNull()
+      expect(response.headers.get('x-middleware-request-x-nonce')).toBeNull()
+    } finally {
+      restore()
+    }
+  })
+
+  it('redirects invalid sessions without reusing a spoofed nonce', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    try {
+      const response = await middleware(
+        buildRequest(
+          'http://localhost/sv/requirements',
+          'kravhantering_session=this-is-not-a-real-session',
+        ),
+      )
+
+      expect(response.status).toBe(302)
+      expect(response.headers.get('content-security-policy')).toBeNull()
+      expect(response.headers.get('x-middleware-request-x-nonce')).toBeNull()
+      expect(response.headers.get('x-user-id')).toBeNull()
+      expect(response.headers.get('x-user-roles')).toBeNull()
+    } finally {
+      infoSpy.mockRestore()
+      restore()
+    }
+  })
+
+  it('passes public API routes without page CSP headers', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const response = await middleware(
+        buildRequest('http://localhost/api/health'),
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-security-policy')).toBeNull()
+      expect(response.headers.get('x-middleware-request-x-nonce')).toBeNull()
+      expect(response.headers.get('x-user-id')).toBeNull()
+      expect(response.headers.get('x-user-roles')).toBeNull()
     } finally {
       restore()
     }
