@@ -1,4 +1,5 @@
 import type { SqlServerDatabase } from '@/lib/db'
+import { conflictError, notFoundError } from '@/lib/requirements/errors'
 import {
   type RequirementStatusEntity,
   requirementStatusEntity,
@@ -109,8 +110,8 @@ export async function updateStatus(
 
 export async function deleteStatus(db: SqlServerDatabase, id: number) {
   const status = await getStatusById(db, id)
-  if (!status) throw new Error('Status not found')
-  if (status.isSystem) throw new Error('Cannot delete a system status')
+  if (!status) throw notFoundError('Status not found')
+  if (status.isSystem) throw conflictError('Cannot delete a system status')
 
   const usage = (
     await db.query(
@@ -123,7 +124,7 @@ export async function deleteStatus(db: SqlServerDatabase, id: number) {
     )
   )[0]
   if (usage.count > 0) {
-    throw new Error(
+    throw conflictError(
       'Cannot delete a status that is in use by requirement versions',
     )
   }

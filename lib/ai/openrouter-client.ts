@@ -1,3 +1,5 @@
+import { AI_PROVIDER_UNAVAILABLE_MESSAGE } from '@/lib/http/safe-errors'
+
 /**
  * OpenRouter API client for AI requirement generation.
  * Uses the OpenAI-compatible chat completions API with reasoning support.
@@ -34,7 +36,7 @@ export type StreamEvent =
       stats: GenerationStats
       thinking: string
     }
-  | { message: string; phase: 'error' }
+  | { cause?: string; message: string; phase: 'error' }
 
 export interface NonStreamingResult<T> {
   content: T
@@ -300,7 +302,11 @@ export async function* generateChatStream(
     clearTimeout(streamTimeoutId)
     options.signal?.removeEventListener('abort', onCallerAbort)
     const message = err instanceof Error ? err.message : 'Fetch failed'
-    yield { message: `OpenRouter fetch error: ${message}`, phase: 'error' }
+    yield {
+      cause: `OpenRouter fetch error: ${message}`,
+      message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+      phase: 'error',
+    }
     return
   }
 
@@ -309,7 +315,8 @@ export async function* generateChatStream(
     options.signal?.removeEventListener('abort', onCallerAbort)
     const text = await response.text().catch(() => '')
     yield {
-      message: `OpenRouter error (${response.status}): ${text}`,
+      cause: `OpenRouter error (${response.status}): ${text}`,
+      message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
       phase: 'error',
     }
     return
@@ -318,7 +325,11 @@ export async function* generateChatStream(
   if (!response.body) {
     clearTimeout(streamTimeoutId)
     options.signal?.removeEventListener('abort', onCallerAbort)
-    yield { message: 'No response body from OpenRouter', phase: 'error' }
+    yield {
+      cause: 'No response body from OpenRouter',
+      message: AI_PROVIDER_UNAVAILABLE_MESSAGE,
+      phase: 'error',
+    }
     return
   }
 
