@@ -217,10 +217,18 @@ describe('admin requirement columns route', () => {
         method: 'PUT',
       }),
     )
-    const body = (await response.json()) as { error?: string }
+    const body = (await response.json()) as {
+      error?: string
+      issues?: Array<{ message: string }>
+    }
 
     expect(response.status).toBe(400)
-    expect(body.error).toBe('Malformed JSON body.')
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: 'Malformed JSON body' }),
+      ]),
+    )
     expect(
       routeState.updateRequirementListColumnDefaults,
     ).not.toHaveBeenCalled()

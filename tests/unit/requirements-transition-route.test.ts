@@ -30,6 +30,23 @@ function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('requirements/[id]/transition route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -43,8 +60,7 @@ describe('requirements/[id]/transition route', () => {
     })
     const res = await POST(req, makeParams('1'))
     expect(res.status).toBe(400)
-    const json = (await res.json()) as { error: string }
-    expect(json.error).toMatch(/statusId/)
+    await expectInvalidRequest(res, 'statusId')
   })
 
   it('returns 400 for invalid JSON bodies', async () => {
@@ -56,9 +72,7 @@ describe('requirements/[id]/transition route', () => {
     const res = await POST(req, makeParams('1'))
 
     expect(res.status).toBe(400)
-    await expect(res.json()).resolves.toEqual({
-      error: 'Invalid JSON body',
-    })
+    await expectInvalidRequest(res, '$')
     expect(mockTransitionRequirement).not.toHaveBeenCalled()
   })
 

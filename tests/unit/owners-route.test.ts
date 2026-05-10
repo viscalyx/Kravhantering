@@ -37,6 +37,23 @@ function makeJsonPostRequest(body: unknown): Request {
   return makePostRequest(JSON.stringify(body))
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('owners routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -74,7 +91,7 @@ describe('owners routes', () => {
       const res = await POST(makePostRequest('{'))
 
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error: 'Invalid JSON body' })
+      await expectInvalidRequest(res, '$')
       expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
       expect(mocks.createOwner).not.toHaveBeenCalled()
     })
@@ -82,13 +99,13 @@ describe('owners routes', () => {
     it.each([
       {
         body: 'not-object',
-        error: 'Invalid body',
         name: 'non-object body',
+        path: '$',
       },
       {
         body: [1, 2],
-        error: 'Invalid body',
         name: 'array body',
+        path: '$',
       },
       {
         body: {
@@ -97,24 +114,24 @@ describe('owners routes', () => {
           lastName: 'L',
           role: 'admin',
         },
-        error: 'Unknown fields',
         name: 'unknown fields',
+        path: '$',
       },
       {
         body: { email: 'e@t.com', firstName: 'Erik' },
-        error: 'Invalid field types',
         name: 'missing required fields',
+        path: 'lastName',
       },
       {
         body: { email: 123, firstName: 'Erik', lastName: 'L' },
-        error: 'Invalid field types',
         name: 'non-string field values',
+        path: 'email',
       },
-    ])('returns 400 for $name', async ({ body, error }) => {
+    ])('returns 400 for $name', async ({ body, path }) => {
       const res = await POST(makeJsonPostRequest(body))
 
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error })
+      await expectInvalidRequest(res, path)
       expect(mocks.getRequestSqlServerDataSource).not.toHaveBeenCalled()
       expect(mocks.createOwner).not.toHaveBeenCalled()
     })
@@ -129,7 +146,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('abc') })
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error: 'Invalid id' })
+      await expectInvalidRequest(res, 'id')
     })
 
     it('returns 400 for float id', async () => {
@@ -150,7 +167,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error: 'Invalid body' })
+      await expectInvalidRequest(res, '$')
     })
 
     it('returns 400 for array body', async () => {
@@ -161,7 +178,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error: 'Invalid body' })
+      await expectInvalidRequest(res, '$')
     })
 
     it('returns 400 for unknown fields', async () => {
@@ -172,7 +189,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error: 'Unknown fields' })
+      await expectInvalidRequest(res, '$')
     })
 
     it('returns 400 for non-string field types', async () => {
@@ -183,7 +200,7 @@ describe('owners routes', () => {
       })
       const res = await PUT(req, { params: makeParams('1') })
       expect(res.status).toBe(400)
-      expect(await res.json()).toEqual({ error: 'Invalid field types' })
+      await expectInvalidRequest(res, 'firstName')
     })
 
     it('returns 404 when owner not found', async () => {

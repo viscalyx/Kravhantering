@@ -41,7 +41,12 @@ describe('requirement-statuses route', () => {
     })
     const req = new Request('http://localhost', {
       method: 'POST',
-      body: JSON.stringify({ nameSv: 'Ny', nameEn: 'New' }),
+      body: JSON.stringify({
+        color: '#22c55e',
+        nameEn: 'New',
+        nameSv: 'Ny',
+        sortOrder: 1,
+      }),
       headers: { 'Content-Type': 'application/json' },
     })
     const res = await POST(req)

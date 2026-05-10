@@ -35,6 +35,23 @@ function makeParams(id: string, itemId: string) {
   return { params: Promise.resolve({ id, itemId }) }
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('requirements-specifications/[id]/items/[itemId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -129,9 +146,7 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'Malformed payload',
-    })
+    await expectInvalidRequest(response, 'specificationItemStatusId')
     expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
   })

@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('localized App Router error boundaries', () => {
-  test('shows Swedish catalog recovery for a locale route render failure', async ({
+  test('shows Swedish catalog recovery for a locale client render failure', async ({
     page,
   }) => {
-    await test.step('open the gated throwing route', async () => {
+    await test.step('open the gated client-error route', async () => {
       await page.goto('/sv/error-boundary-test')
     })
 
@@ -35,10 +35,10 @@ test.describe('localized App Router error boundaries', () => {
     })
   })
 
-  test('shows English admin recovery for an admin route render failure', async ({
+  test('shows English admin recovery for an admin client render failure', async ({
     page,
   }) => {
-    await test.step('open the gated throwing admin route', async () => {
+    await test.step('open the gated client-error admin route', async () => {
       await page.goto('/en/admin/error-boundary-test')
     })
 

@@ -18,6 +18,23 @@ vi.mock('@/lib/dal/risk-levels', () => ({
 
 import { POST } from '@/app/api/risk-levels/route'
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('risk-levels route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -33,9 +50,7 @@ describe('risk-levels route', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'Invalid JSON body',
-    })
+    await expectInvalidRequest(response, '$')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.createRiskLevel).not.toHaveBeenCalled()
   })
@@ -44,11 +59,9 @@ describe('risk-levels route', () => {
     const mockDb = { session: 'db' }
     const payload = {
       color: '#dc2626',
-      descriptionEn: 'High risk',
-      descriptionSv: 'Hog risk',
       nameEn: 'High',
       nameSv: 'Hog',
-      severity: 4,
+      sortOrder: 4,
     }
     const createdRiskLevel = { id: 7, ...payload }
 

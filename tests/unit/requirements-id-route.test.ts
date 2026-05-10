@@ -47,6 +47,23 @@ function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('requirements/[id] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -114,9 +131,8 @@ describe('requirements/[id] route', () => {
           baseRevisionToken: '11111111-1111-4111-8111-111111111111',
           baseVersionId: 10,
           description: 'Updated',
-          normReferenceIds: [5, 5, 0, -1, '6', 1.5],
-          references: [{ name: 'Ref1', uri: 'http://example.com' }],
-          requirementPackageIds: [1, 2, 2, 0, -1, 'abc', 1.5],
+          normReferenceIds: [5, 6],
+          requirementPackageIds: [1, 2],
         }),
         headers: { 'Content-Type': 'application/json' },
       })
@@ -179,7 +195,11 @@ describe('requirements/[id] route', () => {
 
       const req = new NextRequest('http://localhost/api/requirements/1', {
         method: 'PUT',
-        body: JSON.stringify({ description: '' }),
+        body: JSON.stringify({
+          baseRevisionToken: '11111111-1111-4111-8111-111111111111',
+          baseVersionId: 10,
+          description: 'Updated',
+        }),
         headers: { 'Content-Type': 'application/json' },
       })
       const res = await PUT(req, makeParams('1'))
@@ -195,9 +215,7 @@ describe('requirements/[id] route', () => {
       const res = await PUT(req, makeParams('1'))
 
       expect(res.status).toBe(400)
-      await expect(res.json()).resolves.toEqual({
-        error: 'Invalid JSON body',
-      })
+      await expectInvalidRequest(res, '$')
       expect(mockManageRequirement).not.toHaveBeenCalled()
     })
   })

@@ -30,6 +30,23 @@ function makeParams(id: string, localRequirementId: string) {
   return { params: Promise.resolve({ id, localRequirementId }) }
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('specifications/[id]/local-requirements/[localRequirementId] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -79,9 +96,7 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'Invalid localRequirementId',
-    })
+    await expectInvalidRequest(response, 'localRequirementId')
     expect(mocks.deleteSpecificationLocalRequirement).not.toHaveBeenCalled()
   })
 

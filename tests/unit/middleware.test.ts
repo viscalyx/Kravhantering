@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { describe, expect, it, vi } from 'vitest'
 
+// cSpell:ignore PROPFIND
+
 // next-intl's middleware module imports `next/server` via a path that the
 // Vitest ESM resolver cannot follow. Replace it with a pass-through that
 // the individual tests can override per-call via `intlMiddlewareMock`.
@@ -251,6 +253,19 @@ describe('middleware', () => {
     } finally {
       restore()
     }
+  })
+
+  it('returns 405 JSON for unsupported API methods that reach middleware', async () => {
+    const response = await middleware(
+      buildRequest('http://localhost/api/auth/me', { method: 'PROPFIND' }),
+    )
+
+    expect(response.status).toBe(405)
+    expect(response.headers.get('allow')).toContain('GET')
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Method Not Allowed',
+      detail: 'HTTP method PROPFIND is not allowed for API routes.',
+    })
   })
 
   it('emits auth.session.rejected for invalid session cookies', async () => {

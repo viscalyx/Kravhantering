@@ -44,7 +44,7 @@ describe('lifecycle routes', () => {
   describe('delete-draft', () => {
     it('POST returns result on success', async () => {
       mockManageRequirement.mockResolvedValue({
-        result: { deleted: true },
+        result: { deleted: 'version' },
       })
 
       const { POST } = await import(
@@ -60,7 +60,7 @@ describe('lifecycle routes', () => {
         params: Promise.resolve({ id: '1' }),
       })
       const json = await res.json()
-      expect(json).toEqual({ deleted: true })
+      expect(json).toEqual({ deleted: 'version' })
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ id: 1, operation: 'delete_draft' }),
@@ -179,8 +179,15 @@ describe('lifecycle routes', () => {
       })
 
       expect(res.status).toBe(400)
-      await expect(res.json()).resolves.toEqual({
-        error: 'Invalid JSON body',
+      await expect(res.json()).resolves.toMatchObject({
+        error: 'Invalid request',
+        issues: [
+          {
+            code: 'invalid_json',
+            message: 'Malformed JSON body',
+            path: '$',
+          },
+        ],
       })
       expect(mockManageRequirement).not.toHaveBeenCalled()
     })
