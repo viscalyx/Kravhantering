@@ -33,5 +33,8 @@ RUN git config --system --add safe.directory /workspace
 # Expose the ports that Next.js, Playwright, and Vitest use
 EXPOSE 3000 3001 4443 9323 51204
 
-# Keep container running (remoteUser in devcontainer.json handles user switching)
+# Run the long-lived container process as the same non-root user VS Code uses.
+USER vscode
+
+# Keep container running
 CMD ["sleep", "infinity"]

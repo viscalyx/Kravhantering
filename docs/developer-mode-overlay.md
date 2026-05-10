@@ -31,9 +31,14 @@ the full contract.
 ## Build wiring
 
 - Local development enables Developer Mode automatically.
-- Non-development builds alias both specifications to first-party noop stubs in
+- Production builds (`NODE_ENV=production`, including prodlike builds) always
+  alias both specifications to first-party noop stubs in
   [`lib/runtime/`](../lib/runtime/) so neither the overlay runtime nor
   any reference to the upstream specifications is shipped to clients.
+  `ENABLE_DEVELOPER_MODE=true` is ignored in production and logs a build-time
+  warning.
+- Non-production builds outside local development may set
+  `ENABLE_DEVELOPER_MODE=true` for explicit local experiments.
 - Tailwind v4 source detection ignores `node_modules`; the overlay's
   utility classes are opted back in by importing the published
   `@viscalyx/developer-mode-react/safelist.css` artifact from
@@ -49,9 +54,6 @@ the full contract.
   exercises this build → prune → start sequence using the
   [`start:prodlike-pruned`](../package.json) script, which avoids the
   dev-only `dotenv-cli` / `cross-env` wrappers.
-- Set `ENABLE_DEVELOPER_MODE=true` only when you explicitly want a
-  non-development build to include the real Developer Mode runtime.
-
 For the full wiring rationale, two alias-swap strategies, and the
 drift-guard test pattern, see the upstream
 [production-noop-guide][upstream-noop-guide].

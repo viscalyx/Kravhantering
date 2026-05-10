@@ -147,10 +147,13 @@ The overlay runtime is provided by the upstream packages
 `devMarker(...)` from
 [`lib/developer-mode-markers.ts`](lib/developer-mode-markers.ts) instead of
 hardcoding `data-developer-mode-*` attributes directly. Local development
-enables the real Developer Mode runtime automatically. Non-development builds
-alias both packages to first-party noop stubs in
+enables the real Developer Mode runtime automatically. Production and prodlike
+builds alias both packages to first-party noop stubs in
 [`lib/runtime/`](lib/runtime/), so the overlay runtime and marker output are
-excluded unless `ENABLE_DEVELOPER_MODE=true` is set explicitly.
+always excluded when `NODE_ENV=production`; `ENABLE_DEVELOPER_MODE=true` is
+ignored in that mode and logs a build-time warning. For local non-production
+experiments outside normal dev, `ENABLE_DEVELOPER_MODE=true` can opt in to the
+real runtime.
 
 To enable Developer Mode in a browser, focus a non-editable part of the page and
 press `Command+Option+Shift+H` on macOS or `Ctrl+Alt+Shift+H` on Windows/Linux.

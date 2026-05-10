@@ -47,8 +47,18 @@ const buildTargetModulePath = fileURLToPath(
 // the project root and 404. Use a project-relative path with `./` prefix.
 const buildTargetModulePathRelative = `./lib/runtime/build-target${buildTargetSuffix}.ts`
 
+const explicitDeveloperModeEnabled =
+  process.env.ENABLE_DEVELOPER_MODE === 'true'
 const enableDeveloperMode =
-  process.env.ENABLE_DEVELOPER_MODE === 'true' || resolvedBuildTarget === 'dev'
+  !isProduction &&
+  (resolvedBuildTarget === 'dev' || explicitDeveloperModeEnabled)
+
+if (explicitDeveloperModeEnabled && isProduction) {
+  console.warn(
+    'ENABLE_DEVELOPER_MODE=true was ignored because NODE_ENV=production. ' +
+      'Production builds always alias Developer Mode packages to no-op stubs.',
+  )
+}
 // When developer mode is disabled, swap the `@viscalyx/developer-mode-*`
 // packages for first-party stubs in `lib/runtime/`. This deliberately avoids
 // pointing the alias at the published package's own `/noop` subpath so that

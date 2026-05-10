@@ -110,7 +110,6 @@ schemathesis run openapi/requirements-api.yaml \
   --max-examples 10 \
   --seed 20260509 \
   --generation-deterministic \
-  --generation-database :memory: \
   --request-timeout 5 \
   --request-retries 0 \
   --rate-limit 30/m \
