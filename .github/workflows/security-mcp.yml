@@ -27,7 +27,9 @@ jobs:
 
     env:
       APP_BASE_URL: http://localhost:3001
-      AUTH_OIDC_ISSUER_URL: http://localhost:8080/realms/kravhantering-dev
+      # CI-only service-to-service issuer. Keep the app scan target on localhost,
+      # but fetch Keycloak token/JWKS over explicit IPv4 loopback.
+      AUTH_OIDC_ISSUER_URL: http://127.0.0.1:8080/realms/kravhantering-dev
       MCP_CLIENT_ID: kravhantering-mcp
       MCP_CLIENT_SECRET: dev-only-mcp-secret
 
@@ -63,14 +65,15 @@ jobs:
         run: |
           echo "Waiting for Keycloak to be ready..."
           for i in $(seq 1 30); do
-            if curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/.well-known/openid-configuration" > /dev/null 2>&1; then
+            if curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/.well-known/openid-configuration" > /dev/null 2>&1 &&
+               curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/protocol/openid-connect/certs" > /dev/null 2>&1; then
               echo "Keycloak is ready."
               exit 0
             fi
-            echo "Attempt $i/30 - not ready yet, retrying in 5s..."
+            echo "Attempt $i/30 - discovery or JWKS not ready yet, retrying in 5s..."
             sleep 5
           done
-          echo "Keycloak did not become ready in time."
+          echo "Keycloak discovery and JWKS did not become ready in time."
           exit 1
 
       - name: Build prodlike app
@@ -144,6 +147,22 @@ jobs:
           set -euo pipefail
           echo "::add-mask::${MCP_BEARER_TOKEN}"
           npm run test:integration:prodlike -- tests/integration/mcp-seeded-scan.spec.ts
+
+      - name: Print MCP seeded scan summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f test-results/mcp-seeded/summary.md ]; then
+            echo "MCP seeded scan summary:"
+            cat test-results/mcp-seeded/summary.md
+            {
+              echo "## MCP seeded scan summary"
+              echo
+              cat test-results/mcp-seeded/summary.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No MCP seeded scan summary was written."
+          fi
 
       - name: Upload MCP seeded scan artifacts
         if: always()

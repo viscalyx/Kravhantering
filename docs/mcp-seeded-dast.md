@@ -89,6 +89,12 @@ MCP_CLIENT_SECRET=dev-only-mcp-secret
 These are local development values only. Do not replace them with production
 client credentials.
 
+In GitHub Actions, the workflow sets
+`AUTH_OIDC_ISSUER_URL=http://127.0.0.1:8080/realms/kravhantering-dev` for this
+machine-to-machine scan and waits for both discovery and JWKS before starting
+the MCP corpus. Local browser-oriented prodlike runs can keep the default
+`localhost` issuer.
+
 ## Artifacts
 
 The workflow uploads:

@@ -342,7 +342,8 @@ secrets.
 
 1. Installs Node dependencies with `npm ci`.
 2. Starts SQL Server and runs `npm run db:setup`.
-3. Starts the local Keycloak realm.
+3. Starts the local Keycloak realm and waits for both OIDC discovery and JWKS
+   to answer on `http://127.0.0.1:8080`.
 4. Builds and starts the prodlike app on `127.0.0.1:3001` with OpenRouter
    env vars blank.
 5. Polls `/api/health`.
@@ -352,13 +353,21 @@ secrets.
    to acquire the local `kravhantering-mcp` client-credentials token.
 8. Masks the token and runs
    [tests/integration/mcp-seeded-scan.spec.ts](../tests/integration/mcp-seeded-scan.spec.ts).
-9. Uploads MCP JSONL/summary artifacts and the application log before the
-   final failure step.
+9. Prints `test-results/mcp-seeded/summary.md` to the job log and GitHub step
+   summary when the scan writes one.
+10. Uploads MCP JSONL/summary artifacts and the application log before the
+    final failure step.
 
 The seeded corpus lives under
 [tests/fixtures/mcp-requests](../tests/fixtures/mcp-requests). Cases resolve
 IDs from the disposable seeded database at runtime so the fixture does not
 hard-code requirement, version, or specification IDs.
+
+The workflow keeps the scan target as `http://localhost:3001`, but uses
+`http://127.0.0.1:8080/realms/kravhantering-dev` for Keycloak token and JWKS
+traffic. That keeps the CI-only service-to-service issuer stable for Node's
+server-side JWKS fetch while preserving the localhost-only application target
+guard.
 
 ### MCP failure policy
 
