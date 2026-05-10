@@ -1,13 +1,13 @@
-import type {
-  RequirementDetailResponse,
-  RequirementVersionDetail,
-} from '@/lib/requirements/types'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
-} from './types'
+} from '@/lib/requirements/status-constants.mjs'
+import type {
+  RequirementDetailResponse,
+  RequirementVersionDetail,
+} from '@/lib/requirements/types'
 
 interface GetDisplayVersionNumberOptions {
   defaultVersion?: number

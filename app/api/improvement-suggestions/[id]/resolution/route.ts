@@ -1,11 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
-  recordResolution,
   SUGGESTION_DISMISSED,
   SUGGESTION_RESOLVED,
 } from '@/lib/dal/improvement-suggestions'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   businessTextSchema,
@@ -15,6 +13,7 @@ import {
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,10 +38,19 @@ export async function POST(
   if (!parsedParams.ok) return parsedParams.response
   const parsedBody = await readJsonWithSchema(request, resolutionBodySchema)
   if (!parsedBody.ok) return parsedBody.response
-  const db = await getRequestSqlServerDataSource()
 
   try {
-    await recordResolution(db, parsedParams.data.id, parsedBody.data)
+    const { context, service } = await createRequirementsRestRuntime(request)
+    await service.manageSuggestion(context, {
+      operation:
+        parsedBody.data.resolution === SUGGESTION_RESOLVED
+          ? 'resolve'
+          : 'dismiss',
+      suggestionId: parsedParams.data.id,
+      resolutionMotivation: parsedBody.data.resolutionMotivation,
+      resolvedBy: parsedBody.data.resolvedBy,
+      responseFormat: 'json',
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

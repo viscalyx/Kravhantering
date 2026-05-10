@@ -4,20 +4,31 @@ import {
   notFoundError,
   validationError,
 } from '@/lib/requirements/errors'
+import {
+  canArchivingReviewTransitionTo,
+  isArchivingCancellationTransition,
+  isArchivingInitiationTransition,
+  isArchivingReviewState,
+  isRequirementArchivedStatus,
+  isRequirementDraftStatus,
+  isRequirementReviewStatus,
+  resolveRequirementArchivedFlag,
+  shouldAutoArchivePublishedPredecessor,
+} from '@/lib/requirements/lifecycle'
 import type {
   RequirementSortDirection,
   RequirementSortField,
 } from '@/lib/requirements/list-view'
 import {
-  buildRequirementCountSql,
-  buildRequirementListSql,
   STATUS_ARCHIVED,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
+import {
+  buildRequirementCountSql,
+  buildRequirementListSql,
 } from './requirements-list-sql.mjs'
-
-export { STATUS_ARCHIVED, STATUS_DRAFT, STATUS_PUBLISHED, STATUS_REVIEW }
 
 export interface ListRequirementsOptions {
   areaIds?: number[]
@@ -545,16 +556,16 @@ export async function editRequirement(
     ) {
       throw staleRequirementEditError(requirementId, baseVersionId, current.id)
     }
-    if (current.statusId === STATUS_REVIEW) {
+    if (isRequirementReviewStatus(current.statusId)) {
       throw conflictError('Cannot edit a requirement in Review status')
     }
-    if (current.statusId === STATUS_ARCHIVED) {
+    if (isRequirementArchivedStatus(current.statusId)) {
       throw conflictError(
         'Cannot edit an archived requirement — restore it first',
       )
     }
 
-    if (current.statusId === STATUS_DRAFT) {
+    if (isRequirementDraftStatus(current.statusId)) {
       const updateRows = (await tx.query(
         `UPDATE requirement_versions
           SET description = @0,
@@ -718,7 +729,10 @@ export async function approveArchiving(
   // be the target of approve/cancel.
   await db.transaction('SERIALIZABLE', async manager => {
     const rows = (await manager.query(
-      `SELECT TOP (1) id, requirement_status_id AS statusId
+      `SELECT TOP (1)
+          id,
+          requirement_status_id AS statusId,
+          archive_initiated_at AS archiveInitiatedAt
         FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
         WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
       [requirementId],
@@ -726,7 +740,12 @@ export async function approveArchiving(
     if (!rows[0]) {
       throw conflictError('No version with archiving initiated found')
     }
-    if (Number(rows[0].statusId) !== STATUS_REVIEW) {
+    if (
+      !isArchivingReviewState({
+        archiveInitiatedAt: rows[0].archiveInitiatedAt as Date | string | null,
+        statusId: Number(rows[0].statusId),
+      })
+    ) {
       throw conflictError(
         'Can only approve archiving from Review status with archiving initiated',
       )
@@ -766,7 +785,10 @@ export async function cancelArchiving(
   // be the target of approve/cancel.
   await db.transaction('SERIALIZABLE', async manager => {
     const rows = (await manager.query(
-      `SELECT TOP (1) id, requirement_status_id AS statusId
+      `SELECT TOP (1)
+          id,
+          requirement_status_id AS statusId,
+          archive_initiated_at AS archiveInitiatedAt
         FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
         WHERE requirement_id = @0 AND archive_initiated_at IS NOT NULL`,
       [requirementId],
@@ -774,7 +796,12 @@ export async function cancelArchiving(
     if (!rows[0]) {
       throw conflictError('No version with archiving initiated found')
     }
-    if (Number(rows[0].statusId) !== STATUS_REVIEW) {
+    if (
+      !isArchivingReviewState({
+        archiveInitiatedAt: rows[0].archiveInitiatedAt as Date | string | null,
+        statusId: Number(rows[0].statusId),
+      })
+    ) {
       throw conflictError(
         'Can only cancel archiving from Review status with archiving initiated',
       )
@@ -807,7 +834,7 @@ export async function deleteDraftVersion(
       query: (sql, params) => manager.query(sql, params),
     }
     const latest = await getLatestVersionLite(tx, requirementId)
-    if (!latest || latest.statusId !== STATUS_DRAFT) {
+    if (!latest || !isRequirementDraftStatus(latest.statusId)) {
       throw conflictError('Only draft versions can be deleted')
     }
 
@@ -879,17 +906,14 @@ export async function transitionStatus(
       )
     }
 
-    if (current.statusId === STATUS_REVIEW) {
-      if (current.archiveInitiatedAt) {
-        if (
-          newStatusId !== STATUS_ARCHIVED &&
-          newStatusId !== STATUS_PUBLISHED
-        ) {
+    if (isRequirementReviewStatus(current.statusId)) {
+      if (isArchivingReviewState(current)) {
+        if (!canArchivingReviewTransitionTo(newStatusId)) {
           throw conflictError(
             'Archiving review can only transition to Archived or back to Published',
           )
         }
-      } else if (newStatusId === STATUS_ARCHIVED) {
+      } else if (isRequirementArchivedStatus(newStatusId)) {
         throw conflictError(
           'Cannot archive from publishing review; initiate archiving from Published state first',
         )
@@ -900,21 +924,18 @@ export async function transitionStatus(
     const sets: string[] = ['requirement_status_id = @P_status']
     const params: Record<string, unknown> = { P_status: newStatusId }
 
-    if (
-      current.statusId === STATUS_PUBLISHED &&
-      newStatusId === STATUS_REVIEW
-    ) {
+    if (isArchivingInitiationTransition(current.statusId, newStatusId)) {
       sets.push('archive_initiated_at = @P_archInit')
       params.P_archInit = now
     }
-    const isCancellingArchiving =
-      current.statusId === STATUS_REVIEW &&
-      newStatusId === STATUS_PUBLISHED &&
-      !!current.archiveInitiatedAt
+    const isCancellingArchiving = isArchivingCancellationTransition(
+      current,
+      newStatusId,
+    )
     if (isCancellingArchiving) {
       sets.push('archive_initiated_at = NULL')
     }
-    if (newStatusId === STATUS_PUBLISHED && !isCancellingArchiving) {
+    if (shouldAutoArchivePublishedPredecessor(current, newStatusId)) {
       sets.push('published_at = @P_published')
       params.P_published = now
       await tx.query(
@@ -926,20 +947,18 @@ export async function transitionStatus(
         [now, requirementId],
       )
     }
-    if (newStatusId === STATUS_ARCHIVED) {
+    if (isRequirementArchivedStatus(newStatusId)) {
       sets.push('archived_at = @P_archived')
       sets.push('archive_initiated_at = NULL')
       params.P_archived = now
     }
 
-    const nextIsArchived =
-      newStatusId === STATUS_ARCHIVED
-        ? 1
-        : newStatusId === STATUS_PUBLISHED
-          ? 0
-          : isArchived
-            ? 1
-            : 0
+    const nextIsArchived = resolveRequirementArchivedFlag(
+      isArchived,
+      newStatusId,
+    )
+      ? 1
+      : 0
     await tx.query(`UPDATE requirements SET is_archived = @0 WHERE id = @1`, [
       nextIsArchived,
       requirementId,
@@ -1072,7 +1091,7 @@ export async function reactivateRequirement(
   if (!rows[0]) {
     throw notFoundError('No version found for requirement')
   }
-  if (Number(rows[0].statusId) !== STATUS_ARCHIVED) {
+  if (!isRequirementArchivedStatus(Number(rows[0].statusId))) {
     throw conflictError('Only fully archived requirements can be reactivated')
   }
   return restoreVersion(db, requirementId, Number(rows[0].id), createdBy)

@@ -6,10 +6,12 @@ import { fileURLToPath } from 'node:url'
 import {
   buildRequirementCountSql,
   buildRequirementListSql,
+} from '../lib/dal/requirements-list-sql.mjs'
+import {
   STATUS_ARCHIVED,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
-} from '../lib/dal/requirements-list-sql.mjs'
+} from '../lib/requirements/status-constants.mjs'
 import {
   createMssqlConfig,
   getSqlServerDatabaseUrl,

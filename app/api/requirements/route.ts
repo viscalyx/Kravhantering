@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
@@ -17,19 +15,13 @@ import {
   readJsonWithSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
-import {
-  createDefaultAuthorizationService,
-  createRequestContext,
-} from '@/lib/requirements/auth'
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
   REQUIREMENT_SORT_FIELDS,
 } from '@/lib/requirements/list-view'
-import {
-  createRequirementsService,
-  toHttpErrorPayload,
-} from '@/lib/requirements/service'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { toHttpErrorPayload } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
 const optionalBodyIdSchema = positiveIntegerSchema
@@ -120,11 +112,10 @@ export async function GET(request: NextRequest) {
     typeIds = [],
     uniqueIdSearch,
   } = parsedQuery.data
-  const db = await getRequestSqlServerDataSource()
-  const uiSettings = createUiSettingsLoader(db)
 
   try {
-    const context = await createRequestContext(request, 'rest')
+    const { authorization, context, db, uiSettings } =
+      await createRequirementsRestRuntime(request)
     const result = await queryRequirementList(
       db,
       {
@@ -157,7 +148,7 @@ export async function GET(request: NextRequest) {
           direction: sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
         },
       },
-      { authorization: createDefaultAuthorizationService(), context },
+      { authorization, context },
     )
     const requirements = result.requirements
 
@@ -227,11 +218,9 @@ export async function POST(request: NextRequest) {
   )
   if (!parsedBody.ok) return parsedBody.response
   const body = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
-  const service = createRequirementsService(db)
 
   try {
-    const context = await createRequestContext(request, 'rest')
+    const { context, service } = await createRequirementsRestRuntime(request)
     const result = await service.manageRequirement(context, {
       operation: 'create',
       requirement: {

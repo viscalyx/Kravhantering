@@ -3,18 +3,16 @@ import {
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js'
 import * as z from 'zod'
-import {
-  createUiSettingsLoader,
-  type UiSettingsLoader,
-} from '@/lib/dal/ui-settings'
+import type { UiSettingsLoader } from '@/lib/dal/ui-settings'
+import type { SqlServerDatabase } from '@/lib/db'
 import {
   createRequestContext,
   type RequestContext,
 } from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { createRequirementsRuntime } from '@/lib/requirements/server'
 import {
   buildRequirementViewUri,
-  createRequirementsService,
   type GenerateRequirementsInput,
   type GetRequirementInput,
   type ManageRequirementInput,
@@ -1970,10 +1968,9 @@ export function createKravhanteringMcpServer(
 }
 
 export function createRequirementsMcpServerFromDb(
-  db: Parameters<typeof createRequirementsService>[0],
+  db: SqlServerDatabase,
   request: Request,
 ): McpServer {
-  const uiSettings = createUiSettingsLoader(db)
-  const service = createRequirementsService(db, { uiSettings })
+  const { service, uiSettings } = createRequirementsRuntime(db)
   return createKravhanteringMcpServer(service, request, uiSettings)
 }

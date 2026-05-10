@@ -3,8 +3,7 @@ import { McpAuthError, verifyMcpBearerToken } from '@/lib/auth/mcp-token'
 import type { SqlServerDatabase } from '@/lib/db'
 import { createKravhanteringMcpServer } from '@/lib/mcp/server'
 import { attachVerifiedActor } from '@/lib/requirements/auth'
-import { createRequirementsLogger } from '@/lib/requirements/logging'
-import { createRequirementsService } from '@/lib/requirements/service'
+import { createRequirementsRuntime } from '@/lib/requirements/server'
 
 function createMethodNotAllowedResponse() {
   return new Response(
@@ -56,9 +55,8 @@ export async function handleRequirementsMcpRequest(
     throw err
   }
 
-  const logger = createRequirementsLogger()
-  const service = createRequirementsService(db, { logger })
-  const server = createKravhanteringMcpServer(service, request)
+  const { service, uiSettings } = createRequirementsRuntime(db)
+  const server = createKravhanteringMcpServer(service, request, uiSettings)
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
   })

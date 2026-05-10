@@ -15,17 +15,17 @@ import VersionHistory from '@/components/VersionHistory'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
-import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
-import ImprovementSuggestionsSection from './_detail/ImprovementSuggestionsSection'
-import { getLocalizedName } from './_detail/localized-name'
-import RequirementActionRail from './_detail/RequirementActionRail'
-import SpecificationDeviationRail from './_detail/SpecificationDeviationRail'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
-} from './_detail/types'
+} from '@/lib/requirements/status-constants.mjs'
+import AddToSpecificationDialog from './_detail/AddToSpecificationDialog'
+import ImprovementSuggestionsSection from './_detail/ImprovementSuggestionsSection'
+import { getLocalizedName } from './_detail/localized-name'
+import RequirementActionRail from './_detail/RequirementActionRail'
+import SpecificationDeviationRail from './_detail/SpecificationDeviationRail'
 import { useAddToSpecificationDialog } from './_detail/use-add-to-specification-dialog'
 import { useDeviationWorkflow } from './_detail/use-deviation-workflow'
 import { useRequirementDetailData } from './_detail/use-requirement-detail-data'

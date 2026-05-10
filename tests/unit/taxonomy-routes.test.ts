@@ -7,8 +7,27 @@ const routeState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(() => ({})),
 }))
 
+const requirementsRuntimeState = vi.hoisted(() => {
+  const listSpecifications = vi.fn(async () => ({
+    message: 'ok',
+    specifications: [{ id: 1 }],
+  }))
+  return {
+    createRequirementsRestRuntime: vi.fn(async () => ({
+      context: { source: 'rest' },
+      service: { listSpecifications },
+    })),
+    listSpecifications,
+  }
+})
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime:
+    requirementsRuntimeState.createRequirementsRestRuntime,
 }))
 
 /* ── DAL mocks ───────────────────────────────────────────────────── */
@@ -521,9 +540,13 @@ describe('requirement-specifications routes', () => {
   })
 
   it('GET returns specifications', async () => {
-    const r = await getPkgs()
+    const r = await getPkgs(new NextRequest('http://l'))
     const j = (await r.json()) as { specifications: { id: number }[] }
     expect(j.specifications).toHaveLength(1)
+    expect(requirementsRuntimeState.listSpecifications).toHaveBeenCalledWith(
+      { source: 'rest' },
+      { includeRestFields: true, responseFormat: 'json' },
+    )
   })
   it('POST creates with 201', async () => {
     const r = await postPkg(

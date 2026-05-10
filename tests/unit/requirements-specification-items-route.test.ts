@@ -8,12 +8,21 @@ const mockDb = {
 const mockTx = {}
 
 const mocks = {
+  addToSpecification: vi.fn(),
+  createRequirementsRestRuntime: vi.fn(),
   deleteSpecificationItemsByRefs: vi.fn(),
   getSpecificationById: vi.fn(),
   getSpecificationBySlug: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
   listSpecificationItems: vi.fn(),
+  removeFromSpecification: vi.fn(),
   unlinkRequirementsFromSpecification: vi.fn(),
+}
+
+const mockContext = {
+  actor: { id: 'route-test' },
+  requestId: 'request-1',
+  source: 'rest',
 }
 
 vi.mock('@/lib/db', () => ({
@@ -37,6 +46,11 @@ vi.mock('@/lib/dal/requirements-specifications', () => ({
 
 vi.mock('@/lib/dal/deviations', () => ({
   countDeviationsPerItemRef: vi.fn(async () => new Map()),
+}))
+
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime: (...args: unknown[]) =>
+    mocks.createRequirementsRestRuntime(...args),
 }))
 
 import { DELETE, GET, POST } from '@/app/api/specifications/[id]/items/route'
@@ -73,13 +87,33 @@ describe('specifications/[id]/items route', () => {
       deletedLibraryCount: 1,
       deletedSpecificationLocalCount: 1,
     })
+    mocks.addToSpecification.mockResolvedValue({
+      addedCount: 1,
+      message: 'ok',
+      skippedCount: 0,
+      skippedIds: [],
+    })
+    mocks.createRequirementsRestRuntime.mockImplementation(
+      async (_request: Request, options?: { db?: unknown }) => ({
+        context: mockContext,
+        db: options?.db ?? mockDb,
+        service: {
+          addToSpecification: mocks.addToSpecification,
+          removeFromSpecification: mocks.removeFromSpecification,
+        },
+      }),
+    )
     mocks.getSpecificationBySlug.mockResolvedValue({ id: 5 })
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(1)
+    mocks.removeFromSpecification.mockResolvedValue({
+      message: 'ok',
+      removedCount: 2,
+    })
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
   })
 
   it('rejects needsReferenceId values that belong to another specification', async () => {
-    mocks.linkRequirementsToSpecificationAtomically.mockRejectedValue(
+    mocks.addToSpecification.mockRejectedValue(
       validationError(
         'needsReferenceId does not belong to this requirements specification',
       ),
@@ -105,12 +139,12 @@ describe('specifications/[id]/items route', () => {
       error:
         'needsReferenceId does not belong to this requirements specification',
     })
-    expect(
-      mocks.linkRequirementsToSpecificationAtomically,
-    ).toHaveBeenCalledWith(mockDb, 5, {
+    expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
+      specificationId: 5,
       requirementIds: [1],
       needsReferenceId: 99,
       needsReferenceText: undefined,
+      responseFormat: 'json',
     })
   })
 
@@ -164,7 +198,7 @@ describe('specifications/[id]/items route', () => {
     expect(countDeviationsPerItemRef).toHaveBeenCalledWith(mockDb, 7)
   })
 
-  it('delegates requirement linking to the transactional helper', async () => {
+  it('delegates requirement linking to the requirements service', async () => {
     const request = new NextRequest(
       'http://localhost/api/specifications/spec/items',
       {
@@ -180,17 +214,25 @@ describe('specifications/[id]/items route', () => {
     const response = await POST(request, makeParams('spec'))
 
     expect(response.status).toBe(201)
-    expect(
-      mocks.linkRequirementsToSpecificationAtomically,
-    ).toHaveBeenCalledWith(mockDb, 5, {
+    expect(mocks.createRequirementsRestRuntime).toHaveBeenCalledWith(request, {
+      db: mockDb,
+    })
+    expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
+      specificationId: 5,
       requirementIds: [1],
       needsReferenceId: undefined,
       needsReferenceText: 'Shared need',
+      responseFormat: 'json',
     })
   })
 
   it('returns 200 when linking is a no-op', async () => {
-    mocks.linkRequirementsToSpecificationAtomically.mockResolvedValueOnce(0)
+    mocks.addToSpecification.mockResolvedValueOnce({
+      addedCount: 0,
+      message: 'ok',
+      skippedCount: 0,
+      skippedIds: [],
+    })
 
     const request = new NextRequest(
       'http://localhost/api/specifications/spec/items',
@@ -208,12 +250,12 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ addedCount: 0, ok: true })
-    expect(
-      mocks.linkRequirementsToSpecificationAtomically,
-    ).toHaveBeenCalledWith(mockDb, 5, {
+    expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
+      specificationId: 5,
       requirementIds: [1],
       needsReferenceId: undefined,
       needsReferenceText: 'Shared need',
+      responseFormat: 'json',
     })
   })
 
@@ -233,9 +275,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds.1')
-    expect(
-      mocks.linkRequirementsToSpecificationAtomically,
-    ).not.toHaveBeenCalled()
+    expect(mocks.addToSpecification).not.toHaveBeenCalled()
   })
 
   it('rejects duplicate requirementIds before any database work runs', async () => {
@@ -254,9 +294,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds')
-    expect(
-      mocks.linkRequirementsToSpecificationAtomically,
-    ).not.toHaveBeenCalled()
+    expect(mocks.addToSpecification).not.toHaveBeenCalled()
   })
 
   it('rejects ambiguous needs-reference payloads', async () => {
@@ -277,13 +315,11 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'needsReferenceText')
-    expect(
-      mocks.linkRequirementsToSpecificationAtomically,
-    ).not.toHaveBeenCalled()
+    expect(mocks.addToSpecification).not.toHaveBeenCalled()
   })
 
   it('returns 422 when a requirement has no published version', async () => {
-    mocks.linkRequirementsToSpecificationAtomically.mockRejectedValueOnce(
+    mocks.addToSpecification.mockRejectedValueOnce(
       validationError(
         'Requirement 1 has no published version and cannot be added to a specification',
         {
@@ -331,14 +367,14 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expectInvalidRequest(response, 'requirementIds.0')
-    expect(mocks.unlinkRequirementsFromSpecification).not.toHaveBeenCalled()
+    expect(mocks.removeFromSpecification).not.toHaveBeenCalled()
   })
 
   it('returns a JSON 500 error when linking requirements fails unexpectedly', async () => {
     const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined)
-    mocks.linkRequirementsToSpecificationAtomically.mockRejectedValue(
+    mocks.addToSpecification.mockRejectedValue(
       new Error('SQL transaction failed'),
     )
 
@@ -361,12 +397,12 @@ describe('specifications/[id]/items route', () => {
       await expect(response.json()).resolves.toEqual({
         error: 'Failed to add requirements',
       })
-      expect(
-        mocks.linkRequirementsToSpecificationAtomically,
-      ).toHaveBeenCalledWith(mockDb, 5, {
+      expect(mocks.addToSpecification).toHaveBeenCalledWith(mockContext, {
+        specificationId: 5,
         requirementIds: [1],
         needsReferenceId: undefined,
         needsReferenceText: 'Shared need',
+        responseFormat: 'json',
       })
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to add requirements to requirements specification',
@@ -400,41 +436,56 @@ describe('specifications/[id]/items route', () => {
       ok: true,
       removedCount: 2,
     })
-    expect(mocks.unlinkRequirementsFromSpecification).toHaveBeenCalledTimes(1)
-    expect(mocks.unlinkRequirementsFromSpecification).toHaveBeenCalledWith(
-      mockDb,
-      5,
-      [1, 2],
-    )
+    expect(mocks.removeFromSpecification).toHaveBeenCalledTimes(1)
+    expect(mocks.removeFromSpecification).toHaveBeenCalledWith(mockContext, {
+      specificationId: 5,
+      requirementIds: [1, 2],
+      responseFormat: 'json',
+    })
   })
 
   it('returns a JSON 500 error when unlinking requirements fails unexpectedly', async () => {
-    mocks.unlinkRequirementsFromSpecification.mockRejectedValueOnce(
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    mocks.removeFromSpecification.mockRejectedValueOnce(
       new Error('SQL unlink failed'),
     )
 
-    const request = new NextRequest(
-      'http://localhost/api/specifications/spec/items',
-      {
-        body: JSON.stringify({
-          requirementIds: [1, 2],
+    try {
+      const request = new NextRequest(
+        'http://localhost/api/specifications/spec/items',
+        {
+          body: JSON.stringify({
+            requirementIds: [1, 2],
+          }),
+          headers: { 'Content-Type': 'application/json' },
+          method: 'DELETE',
+        },
+      )
+
+      const response = await DELETE(request, makeParams('spec'))
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to unlink requirements',
+      })
+      expect(mocks.removeFromSpecification).toHaveBeenCalledWith(mockContext, {
+        specificationId: 5,
+        requirementIds: [1, 2],
+        responseFormat: 'json',
+      })
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to unlink requirements from specification',
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'SQL unlink failed',
+          }),
         }),
-        headers: { 'Content-Type': 'application/json' },
-        method: 'DELETE',
-      },
-    )
-
-    const response = await DELETE(request, makeParams('spec'))
-
-    expect(response.status).toBe(500)
-    await expect(response.json()).resolves.toEqual({
-      error: 'Failed to unlink requirements',
-    })
-    expect(mocks.unlinkRequirementsFromSpecification).toHaveBeenCalledWith(
-      mockDb,
-      5,
-      [1, 2],
-    )
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('deletes mixed specification items by itemRef when itemRefs are supplied', async () => {
@@ -463,6 +514,6 @@ describe('specifications/[id]/items route', () => {
       5,
       ['lib:31', 'local:2'],
     )
-    expect(mocks.unlinkRequirementsFromSpecification).not.toHaveBeenCalled()
+    expect(mocks.removeFromSpecification).not.toHaveBeenCalled()
   })
 })

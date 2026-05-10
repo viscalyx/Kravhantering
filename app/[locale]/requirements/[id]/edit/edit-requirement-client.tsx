@@ -5,6 +5,11 @@ import { useTranslations } from 'next-intl'
 import { useCallback, useEffect, useState } from 'react'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import RequirementForm from '@/components/RequirementForm'
+import {
+  STATUS_ARCHIVED,
+  STATUS_PUBLISHED,
+  STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 
 const EDIT_REQUIREMENT_HELP: HelpContent = {
@@ -33,10 +38,6 @@ export default function EditRequirementClient({
   useHelpContent(EDIT_REQUIREMENT_HELP)
   const t = useTranslations('requirement')
   const tc = useTranslations('common')
-
-  const STATUS_REVIEW = 2
-  const STATUS_PUBLISHED = 3
-  const STATUS_ARCHIVED = 4
 
   const [initialData, setInitialData] = useState<Record<
     string,

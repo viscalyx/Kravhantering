@@ -1,12 +1,15 @@
+import { isArchivingReviewState } from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import type { ReportModel, ReportSection } from '../types'
 import { buildReviewReport } from './review-template'
 
-const STATUS_REVIEW = 2
-
 function isArchivingReview(req: RequirementReportData): boolean {
-  const reviewVersion = req.versions.find(v => v.status === STATUS_REVIEW)
-  return !!reviewVersion?.archiveInitiatedAt
+  return req.versions.some(version =>
+    isArchivingReviewState({
+      archiveInitiatedAt: version.archiveInitiatedAt,
+      statusId: version.status,
+    }),
+  )
 }
 
 export function buildCombinedReviewReport(

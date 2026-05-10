@@ -3,8 +3,8 @@ import {
   buildRequirementCountSql,
   buildRequirementListSql,
   escapeLike,
-  STATUS_PUBLISHED,
 } from '@/lib/dal/requirements-list-sql.mjs'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 describe('requirement list SQL builders', () => {
   it('builds the list query with stable parameter ordering', () => {

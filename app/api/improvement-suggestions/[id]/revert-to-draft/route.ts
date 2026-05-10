@@ -1,25 +1,28 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { revertToDraft } from '@/lib/dal/improvement-suggestions'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
-  const db = await getRequestSqlServerDataSource()
 
   try {
-    await revertToDraft(db, parsedParams.data.id)
+    const { context, service } = await createRequirementsRestRuntime(request)
+    await service.manageSuggestion(context, {
+      operation: 'revert_to_draft',
+      suggestionId: parsedParams.data.id,
+      responseFormat: 'json',
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

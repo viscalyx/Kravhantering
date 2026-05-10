@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOwnerById } from '@/lib/dal/owners'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   businessTextSchema,
   optionalBusinessTextSchema,
@@ -11,11 +10,8 @@ import {
   refOrPositiveIntegerSegmentSchema,
   uniquePositiveIntegerArraySchema,
 } from '@/lib/http/validation'
-import { createRequestContext } from '@/lib/requirements/auth'
-import {
-  createRequirementsService,
-  toHttpErrorPayload,
-} from '@/lib/requirements/service'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { toHttpErrorPayload } from '@/lib/requirements/service'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import { parseRequirementRef } from '../parse-requirement-ref'
 
@@ -71,11 +67,10 @@ export async function GET(
   )
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const service = createRequirementsService(db)
 
   try {
-    const context = await createRequestContext(_request, 'rest')
+    const { context, db, service } =
+      await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
       ...ref,
@@ -111,11 +106,9 @@ export async function PUT(
   const parsedBody = await readJsonWithSchema(request, requirementEditSchema)
   if (!parsedBody.ok) return parsedBody.response
   const body = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
-  const service = createRequirementsService(db)
 
   try {
-    const context = await createRequestContext(request, 'rest')
+    const { context, service } = await createRequirementsRestRuntime(request)
     const ref = parseRequirementRef(id)
     const result = await service.manageRequirement(context, {
       ...ref,
@@ -157,11 +150,9 @@ export async function DELETE(
   )
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const service = createRequirementsService(db)
 
   try {
-    const context = await createRequestContext(_request, 'rest')
+    const { context, service } = await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
     await service.manageRequirement(context, {
       ...ref,

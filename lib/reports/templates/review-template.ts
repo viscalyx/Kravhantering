@@ -1,3 +1,9 @@
+import {
+  isArchivingReviewState,
+  isRequirementArchivedStatus,
+  isRequirementPublishedStatus,
+  isRequirementReviewStatus,
+} from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import { diffText } from '../text-diff'
 import type {
@@ -6,10 +12,6 @@ import type {
   ReportSection,
   VersionSummaryData,
 } from '../types'
-
-const STATUS_REVIEW = 2
-const STATUS_PUBLISHED = 3
-const STATUS_ARCHIVED = 4
 
 type LocalizedNameItem = {
   nameSv: string | null
@@ -238,12 +240,19 @@ export function buildReviewReport(
     (a, b) => b.versionNumber - a.versionNumber,
   )
 
-  const reviewVersion = sortedVersions.find(v => v.status === STATUS_REVIEW)
+  const reviewVersion = sortedVersions.find(v =>
+    isRequirementReviewStatus(v.status),
+  )
   const baseVersion =
-    sortedVersions.find(v => v.status === STATUS_PUBLISHED) ??
-    sortedVersions.find(v => v.status === STATUS_ARCHIVED)
+    sortedVersions.find(v => isRequirementPublishedStatus(v.status)) ??
+    sortedVersions.find(v => isRequirementArchivedStatus(v.status))
 
-  const isArchivingReview = !!reviewVersion?.archiveInitiatedAt
+  const isArchivingReview =
+    reviewVersion != null &&
+    isArchivingReviewState({
+      archiveInitiatedAt: reviewVersion.archiveInitiatedAt,
+      statusId: reviewVersion.status,
+    })
 
   sections.push({
     type: 'header',
@@ -312,14 +321,13 @@ export function buildReviewReport(
     return { sections }
   }
 
-  const baseLabel =
-    baseVersion.status === STATUS_PUBLISHED
-      ? locale === 'sv'
-        ? 'Publicerad'
-        : 'Published'
-      : locale === 'sv'
-        ? 'Arkiverad'
-        : 'Archived'
+  const baseLabel = isRequirementPublishedStatus(baseVersion.status)
+    ? locale === 'sv'
+      ? 'Publicerad'
+      : 'Published'
+    : locale === 'sv'
+      ? 'Arkiverad'
+      : 'Archived'
 
   if (isArchivingReview) {
     sections.push({

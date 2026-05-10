@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getRequirementById, STATUS_PUBLISHED } from '@/lib/dal/requirements'
+import { getRequirementById } from '@/lib/dal/requirements'
 import {
   getSpecificationById,
   getSpecificationBySlug,
@@ -20,6 +20,7 @@ import {
   specificationIdOrSlugSchema,
 } from '@/lib/http/validation'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 
 export const dynamic = 'force-dynamic'
 

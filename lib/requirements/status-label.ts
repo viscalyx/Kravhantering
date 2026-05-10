@@ -1,4 +1,4 @@
-const STATUS_REVIEW = 2
+import { isArchivingReviewState } from '@/lib/requirements/lifecycle'
 
 export interface ResolveStatusLabelInput {
   archiveInitiatedAt: string | null | undefined
@@ -29,7 +29,12 @@ export function resolveStatusLabel(
   locale: StatusLabelLocale,
   t: StatusLabelTranslator,
 ): string {
-  if (input.status === STATUS_REVIEW && input.archiveInitiatedAt != null) {
+  if (
+    isArchivingReviewState({
+      archiveInitiatedAt: input.archiveInitiatedAt,
+      statusId: input.status,
+    })
+  ) {
     return t('Arkiveringsgranskning')
   }
   const fallback = locale === 'sv' ? input.statusNameSv : input.statusNameEn

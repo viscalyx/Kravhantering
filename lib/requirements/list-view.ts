@@ -1,3 +1,5 @@
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
+
 export interface FilterValues {
   areaIds?: number[]
   categoryIds?: number[]
@@ -112,7 +114,7 @@ export interface RequirementRow {
   } | null
 }
 
-export const DEFAULT_PUBLISHED_STATUS_ID = 3
+export const DEFAULT_PUBLISHED_STATUS_ID = STATUS_PUBLISHED
 
 export const DEFAULT_FILTERS: FilterValues = {
   statuses: [DEFAULT_PUBLISHED_STATUS_ID],

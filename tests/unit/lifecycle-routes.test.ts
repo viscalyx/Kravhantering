@@ -20,6 +20,8 @@ const mockCreateRequestContext = vi.fn(() => ({
   requestId: 'test',
   source: 'rest',
 }))
+const mockAuthorization = { assertAuthorized: vi.fn() }
+const mockCreateDefaultAuthorizationService = vi.fn(() => mockAuthorization)
 const mockToHttpErrorPayload = vi
   .fn()
   .mockReturnValue({ body: { error: 'fail' }, status: 500 })
@@ -33,6 +35,7 @@ vi.mock('@/lib/requirements/service', () => ({
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
+  createDefaultAuthorizationService: mockCreateDefaultAuthorizationService,
   createRequestContext: mockCreateRequestContext,
 }))
 
