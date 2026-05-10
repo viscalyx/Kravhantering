@@ -170,6 +170,22 @@ jobs:
             > test-results/schemathesis/stdout.log \
             2> test-results/schemathesis/stderr.log
 
+      - name: Print Schemathesis failure summary
+        if: always() && steps.schemathesis_scan.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          echo "::group::Schemathesis stdout"
+          sed -n '1,260p' test-results/schemathesis/stdout.log || true
+          echo "::endgroup::"
+          echo "::group::Schemathesis stderr"
+          sed -n '1,160p' test-results/schemathesis/stderr.log || true
+          echo "::endgroup::"
+          echo "::group::Schemathesis JUnit failures"
+          if [ -f test-results/schemathesis/junit.xml ]; then
+            grep -nE "<failure|<error|testcase" test-results/schemathesis/junit.xml | head -n 120 || true
+          fi
+          echo "::endgroup::"
+
       - name: Upload Schemathesis artifacts
         if: always()
         uses: actions/upload-artifact@v7
