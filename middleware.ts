@@ -195,6 +195,32 @@ function isApiPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/')
 }
 
+const SUPPORTED_API_METHODS = new Set([
+  'DELETE',
+  'GET',
+  'HEAD',
+  'OPTIONS',
+  'PATCH',
+  'POST',
+  'PUT',
+])
+const SUPPORTED_API_METHOD_ALLOW = Array.from(SUPPORTED_API_METHODS).join(', ')
+
+function rejectUnsupportedApiMethod(request: NextRequest): NextResponse | null {
+  if (!isApiPath(request.nextUrl.pathname)) return null
+
+  const method = request.method.toUpperCase()
+  if (SUPPORTED_API_METHODS.has(method)) return null
+
+  return NextResponse.json(
+    {
+      error: 'Method Not Allowed',
+      detail: `HTTP method ${method} is not allowed for API routes.`,
+    },
+    { status: 405, headers: { Allow: SUPPORTED_API_METHOD_ALLOW } },
+  )
+}
+
 function createMcpUnauthorizedResponse(message: string): NextResponse {
   return NextResponse.json(
     {
@@ -332,6 +358,9 @@ function applyPageHeaders(request: NextRequest): NextResponse {
 }
 
 export default async function middleware(request: NextRequest) {
+  const methodResponse = rejectUnsupportedApiMethod(request)
+  if (methodResponse) return methodResponse
+
   const authResponse = await enforceAuth(request)
   if (authResponse) return authResponse
 
