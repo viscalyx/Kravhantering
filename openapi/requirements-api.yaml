@@ -128,6 +128,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RequirementListResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
@@ -151,6 +152,7 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
 
   /api/requirements/{id}:
@@ -166,6 +168,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RequirementDetail' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -416,6 +419,7 @@ paths:
           explode: true
       responses:
         '200': { $ref: '#/components/responses/JsonObject' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
@@ -453,6 +457,7 @@ components:
         type: string
         minLength: 1
         maxLength: 80
+        pattern: '^(?:[1-9]\d*|(?!-?\d+(?:\.\d+)?$).+)$'
       description: Numeric database id or stable requirement unique id.
     VersionNumber:
       name: version
@@ -689,7 +694,7 @@ components:
         revisionToken: { type: string }
     RequirementMutation:
       type: object
-      required: [areaId, description, requiresTesting]
+      required: [areaId, description]
       additionalProperties: true
       properties:
         acceptanceCriteria: { type: string, maxLength: 4000 }

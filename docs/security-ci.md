@@ -114,12 +114,14 @@ runs if the configured target is not local.
    add-on.
 7. Installs Nuclei with <!-- cSpell:ignore nuclei projectdiscovery -->
    [`projectdiscovery/nuclei-action@v3`](https://github.com/projectdiscovery/nuclei-action),
-   pins the Nuclei binary to `v3.8.0`, and runs repo-owned unauthenticated
-   boundary templates from
+   pins the Nuclei binary to `v3.8.0`, downloads the ProjectDiscovery
+   community templates with `nuclei -update-templates -ni`, and runs
+   repo-owned unauthenticated boundary templates from
    [.github/nuclei/templates/unauth](../.github/nuclei/templates/unauth).
 8. Runs an authenticated Nuclei pass with the same masked session cookie used
-   by ZAP. Nuclei output omits raw request/response data and redacts
-   `Cookie` and `Authorization` values.
+   by ZAP against the installed community templates under
+   `${HOME}/nuclei-templates`. Nuclei output omits raw request/response data
+   and redacts `Cookie` and `Authorization` values.
 9. Uploads the ZAP HTML / Markdown / JSON reports (created by the action
    itself), the Nuclei JSONL / SARIF / Markdown / log output, and the
    application log as workflow artifacts.
@@ -187,6 +189,8 @@ Nuclei uses a different failure policy:
 - Scanner execution errors fail the workflow.
 - SARIF upload runs only for same-repository pull requests and only when the
   SARIF file exists, so fork PRs do not fail because of read-only permissions.
+- The workflow does not write failure comments to pull requests; fork PR tokens
+  are read-only, so artifacts and job logs are the review surface.
 
 The final workflow failure combines the ZAP outcome and Nuclei high/critical
 findings after report artifacts are available.
@@ -219,6 +223,10 @@ Nuclei runs with safe PR flags: `-severity medium,high,critical`, `-jsonl`,
 `-sarif-export`, `-markdown-export`, `-rate-limit 50`, `-retries 1`,
 `-timeout 5`, `-duc`, `-ni`, `-omit-raw`, and redaction for `Cookie` and
 `Authorization`.
+
+The community-template update is a separate setup step
+(`nuclei -update-templates -ni`); scan commands keep `-duc` so scan execution
+does not also update template state.
 <!-- cSpell:ignore interactsh -->
 The authenticated community-template pass excludes intrusive categories and
 tags, including fuzzing, brute force, denial of service, default-login
@@ -246,6 +254,13 @@ Download the **`nuclei_scan`** artifact for Nuclei triage. It contains JSONL,
 SARIF, Markdown exports, stdout/stderr logs, and the local target file used by
 the scan. The SARIF files are also uploaded to GitHub code scanning for
 same-repository PRs when they exist.
+
+The workflow also prints a bounded DAST summary to the job log and GitHub step
+summary: the ZAP outcome, template-update, unauthenticated-scan, and
+authenticated-scan outcomes, the last 200 lines of each Nuclei stdout/stderr
+log, and parsed medium/high/critical finding counts. When findings exist, the
+first entries are listed in the log and step summary; the full JSONL and
+Markdown output remains in the artifact.
 
 ## REST API Schema And Schemathesis Workflow
 
