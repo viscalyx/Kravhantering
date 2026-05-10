@@ -20,6 +20,8 @@ export type SecurityEventName =
   | 'auth.mcp.token.accepted'
   | 'auth.roles.changed'
   | 'auth.csrf.rejected'
+  | 'auth.authorization.denied'
+  | 'requirements.high_risk_mutation.succeeded'
 
 export type SecurityEventOutcome = 'success' | 'failure'
 

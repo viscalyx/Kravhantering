@@ -1,3 +1,4 @@
+import type { SecurityEventRequest } from '@/lib/auth/audit'
 import { getAuthConfig } from '@/lib/auth/config'
 import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import {
@@ -43,6 +44,7 @@ export interface ActorContext {
 
 export interface RequestContext {
   actor: ActorContext
+  request?: SecurityEventRequest
   requestId: string
   source: RequestSource
   toolName?: string
@@ -141,7 +143,9 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
 
     if (requiredRoles === undefined) {
       throw forbiddenError(`No policy defined for action ${action.kind}`, {
+        actionKind: action.kind,
         actorRoles: context.actor.roles,
+        reason: 'policy_missing',
       })
     }
 
@@ -154,8 +158,9 @@ export class RoleBasedAuthorizationService implements AuthorizationService {
     )
     if (!hasRole) {
       throw forbiddenError(`Missing required role for ${action.kind}`, {
-        requiredRoles,
         actorRoles: context.actor.roles,
+        reason: 'required_role_missing',
+        requiredRoles,
       })
     }
   }
@@ -207,14 +212,41 @@ async function getActorContextFromSession(
   }
 }
 
+function stripQueryAndFragment(path: string): string {
+  return path.split(/[?#]/, 1)[0] ?? ''
+}
+
+function buildSecurityEventRequest(
+  request: Request,
+  requestId: string,
+): SecurityEventRequest {
+  let path = ''
+  try {
+    path = new URL(request.url).pathname
+  } catch {
+    path = stripQueryAndFragment(request.url)
+  }
+
+  const out: SecurityEventRequest = {
+    method: request.method,
+    path,
+    requestId,
+  }
+  const userAgent = request.headers.get('user-agent')
+  if (userAgent) out.userAgent = userAgent
+  return out
+}
+
 export async function createRequestContext(
   request: Request,
   source: RequestSource,
   toolName?: string,
 ): Promise<RequestContext> {
+  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID()
   return {
     actor: await getActorContextFromSession(request),
-    requestId: request.headers.get('x-request-id') ?? crypto.randomUUID(),
+    request: buildSecurityEventRequest(request, requestId),
+    requestId,
     source,
     toolName,
   }

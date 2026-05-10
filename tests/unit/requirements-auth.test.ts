@@ -75,6 +75,24 @@ describe('requirements auth', () => {
       expect(ctx.actor.isAuthenticated).toBe(true)
     })
 
+    it('adds normalized request metadata for security audit events', async () => {
+      const req = buildAuthedRequest('http://localhost/api/test?code=secret', {
+        method: 'POST',
+        headers: {
+          'user-agent': 'TestAgent/1.0',
+          'x-request-id': 'req-audit',
+        },
+      })
+      const ctx = await createRequestContext(req, 'rest')
+
+      expect(ctx.request).toEqual({
+        method: 'POST',
+        path: '/api/test',
+        requestId: 'req-audit',
+        userAgent: 'TestAgent/1.0',
+      })
+    })
+
     it('generates request ID when not provided', async () => {
       const req = buildAuthedRequest('http://localhost/test')
       const ctx = await createRequestContext(req, 'mcp', 'list_requirements')

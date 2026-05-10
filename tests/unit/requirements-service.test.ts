@@ -1,14 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { conflictError, forbiddenError } from '@/lib/requirements/errors'
 import { normalizeUiTerminology } from '@/lib/ui-terminology'
 
 const mocks = vi.hoisted(() => ({
   approveArchiving: vi.fn(),
   cancelArchiving: vi.fn(),
+  countDeviationsBySpecification: vi.fn(),
+  countSuggestionsByRequirement: vi.fn(),
+  createDeviation: vi.fn(),
   initiateArchiving: vi.fn(),
   countRequirements: vi.fn(),
   createRequirement: vi.fn(),
+  createSuggestion: vi.fn(),
+  deleteDeviation: vi.fn(),
   deleteDraftVersion: vi.fn(),
+  deleteSuggestion: vi.fn(),
   editRequirement: vi.fn(),
   getAreaById: vi.fn(),
   getRequirementById: vi.fn(),
@@ -27,12 +33,20 @@ const mocks = vi.hoisted(() => ({
   getOrCreateSpecificationNeedsReference: vi.fn(),
   linkRequirementsToSpecificationAtomically: vi.fn(),
   linkRequirementsToSpecification: vi.fn(),
+  listDeviationsForSpecification: vi.fn(),
   unlinkRequirementsFromSpecification: vi.fn(),
+  listSuggestionsForRequirement: vi.fn(),
   listQualityCharacteristics: vi.fn(),
   listTypes: vi.fn(),
   reactivateRequirement: vi.fn(),
+  recordDecision: vi.fn(),
+  recordResolution: vi.fn(),
+  requestReview: vi.fn(),
+  revertToDraft: vi.fn(),
   restoreVersion: vi.fn(),
   transitionStatus: vi.fn(),
+  updateDeviation: vi.fn(),
+  updateSuggestion: vi.fn(),
 }))
 
 vi.mock('@/lib/dal/requirement-areas', () => ({
@@ -42,6 +56,30 @@ vi.mock('@/lib/dal/requirement-areas', () => ({
 
 vi.mock('@/lib/dal/requirement-categories', () => ({
   listCategories: mocks.listCategories,
+}))
+
+vi.mock('@/lib/dal/deviations', () => ({
+  countDeviationsBySpecification: mocks.countDeviationsBySpecification,
+  createDeviation: mocks.createDeviation,
+  deleteDeviation: mocks.deleteDeviation,
+  DEVIATION_APPROVED: 1,
+  DEVIATION_REJECTED: 2,
+  listDeviationsForSpecification: mocks.listDeviationsForSpecification,
+  recordDecision: mocks.recordDecision,
+  updateDeviation: mocks.updateDeviation,
+}))
+
+vi.mock('@/lib/dal/improvement-suggestions', () => ({
+  countSuggestionsByRequirement: mocks.countSuggestionsByRequirement,
+  createSuggestion: mocks.createSuggestion,
+  deleteSuggestion: mocks.deleteSuggestion,
+  listSuggestionsForRequirement: mocks.listSuggestionsForRequirement,
+  recordResolution: mocks.recordResolution,
+  requestReview: mocks.requestReview,
+  revertToDraft: mocks.revertToDraft,
+  SUGGESTION_DISMISSED: 2,
+  SUGGESTION_RESOLVED: 1,
+  updateSuggestion: mocks.updateSuggestion,
 }))
 
 vi.mock('@/lib/dal/requirements-specifications', () => ({
@@ -210,9 +248,27 @@ describe('createRequirementsService', () => {
     error: vi.fn(),
     info: vi.fn(),
   }
+  let infoSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
+    mocks.countDeviationsBySpecification.mockResolvedValue({
+      approved: 0,
+      pending: 0,
+      rejected: 0,
+      total: 0,
+    })
+    mocks.countSuggestionsByRequirement.mockResolvedValue({
+      dismissed: 0,
+      pending: 0,
+      resolved: 0,
+      total: 0,
+    })
+    mocks.createDeviation.mockResolvedValue({ id: 5 })
+    mocks.createSuggestion.mockResolvedValue({ id: 6 })
+    mocks.deleteDeviation.mockResolvedValue(undefined)
+    mocks.deleteSuggestion.mockResolvedValue(undefined)
     mocks.listRequirements.mockResolvedValue([])
     mocks.countRequirements.mockResolvedValue(0)
     mocks.getRequirementById.mockResolvedValue(makeRequirementRecord())
@@ -237,12 +293,35 @@ describe('createRequirementsService', () => {
     mocks.getPublishedVersionIdForRequirement.mockResolvedValue(101)
     mocks.linkRequirementsToSpecificationAtomically.mockResolvedValue(0)
     mocks.linkRequirementsToSpecification.mockResolvedValue(0)
+    mocks.listDeviationsForSpecification.mockResolvedValue([])
     mocks.listSpecificationItems.mockResolvedValue([])
     mocks.listSpecifications.mockResolvedValue([])
+    mocks.listSuggestionsForRequirement.mockResolvedValue([])
+    mocks.recordDecision.mockResolvedValue(undefined)
+    mocks.recordResolution.mockResolvedValue(undefined)
+    mocks.requestReview.mockResolvedValue(undefined)
+    mocks.revertToDraft.mockResolvedValue(undefined)
     mocks.restoreVersion.mockResolvedValue({ id: 22, versionNumber: 4 })
     mocks.transitionStatus.mockResolvedValue({ id: 10, versionNumber: 1 })
     mocks.unlinkRequirementsFromSpecification.mockResolvedValue(0)
+    mocks.updateDeviation.mockResolvedValue(undefined)
+    mocks.updateSuggestion.mockResolvedValue(undefined)
   })
+
+  afterEach(() => {
+    infoSpy.mockRestore()
+  })
+
+  function emittedSecurityEvents(): Array<Record<string, unknown>> {
+    return infoSpy.mock.calls
+      .map(
+        (call: unknown[]) =>
+          JSON.parse(String(call[0])) as Record<string, unknown>,
+      )
+      .filter(
+        (event: Record<string, unknown>) => event.channel === 'security-audit',
+      )
+  }
 
   it('returns paginated requirement catalog results', async () => {
     mocks.listRequirements.mockResolvedValue([
@@ -580,9 +659,12 @@ describe('createRequirementsService', () => {
 
   it('applies authorization hooks before executing operations', async () => {
     const authorization = {
-      assertAuthorized: vi
-        .fn()
-        .mockRejectedValueOnce(forbiddenError('Blocked by policy')),
+      assertAuthorized: vi.fn().mockRejectedValueOnce(
+        forbiddenError('Blocked by policy', {
+          reason: 'policy_missing',
+          requiredRoles: ['Admin'],
+        }),
+      ),
     }
     const service = createRequirementsService({} as never, {
       authorization,
@@ -598,6 +680,22 @@ describe('createRequirementsService', () => {
       message: 'Blocked by policy',
     })
     expect(authorization.assertAuthorized).toHaveBeenCalled()
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        actor: expect.objectContaining({ source: 'oidc', sub: 'alice' }),
+        detail: expect.objectContaining({
+          actionKind: 'query_catalog',
+          catalog: 'requirements',
+          errorCode: 'forbidden',
+          reason: 'policy_missing',
+          requiredRoles: ['Admin'],
+          requestSource: 'rest',
+        }),
+        event: 'auth.authorization.denied',
+        outcome: 'failure',
+        request: expect.objectContaining({ requestId: 'req-1' }),
+      }),
+    ])
   })
 
   it('queries areas catalog', async () => {
@@ -1126,5 +1224,122 @@ describe('createRequirementsService', () => {
       lines: ['Removed 1 requirement from specification IAM-SPECIFICATION.'],
       title: 'Requirements Removed from Specification',
     })
+  })
+
+  it('emits security audit events for high-risk requirement mutations', async () => {
+    mocks.approveArchiving.mockResolvedValue(undefined)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.manageRequirement(makeContext(), {
+      id: 1,
+      operation: 'approve_archiving',
+    })
+
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        actor: expect.objectContaining({ source: 'oidc', sub: 'alice' }),
+        detail: expect.objectContaining({
+          action: 'requirement.archiving.approved',
+          operation: 'approve_archiving',
+          requestSource: 'rest',
+          requirementId: 1,
+          requirementUniqueId: 'INT0001',
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+        outcome: 'success',
+        request: expect.objectContaining({ requestId: 'req-1' }),
+      }),
+    ])
+  })
+
+  it('emits security audit events for specification removals', async () => {
+    mocks.unlinkRequirementsFromSpecification.mockResolvedValue(2)
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.removeFromSpecification(makeContext(), {
+      specificationSlug: 'IAM-SPECIFICATION',
+      requirementIds: [10, 11, 12],
+    })
+
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          action: 'specification.requirements.removed',
+          operation: 'remove_from_specification',
+          removedCount: 2,
+          requirementCount: 3,
+          specificationId: 7,
+          specificationSlug: 'IAM-SPECIFICATION',
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+      }),
+    ])
+  })
+
+  it('emits security audit events for deviation decisions', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.manageDeviation(makeContext(), {
+      decision: 1,
+      decisionMotivation: 'Approved by security reviewer',
+      deviationId: 9,
+      operation: 'record_decision',
+    })
+
+    expect(mocks.recordDecision).toHaveBeenCalledWith(expect.anything(), 9, {
+      decision: 1,
+      decisionMotivation: 'Approved by security reviewer',
+      decidedBy: 'alice',
+    })
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          action: 'deviation.decision.recorded',
+          decision: 1,
+          deviationId: 9,
+          operation: 'record_decision',
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+      }),
+    ])
+  })
+
+  it('emits security audit events for suggestion resolutions', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await service.manageSuggestion(makeContext(), {
+      operation: 'resolve',
+      resolutionMotivation: 'Implemented in the current draft',
+      suggestionId: 12,
+    })
+
+    expect(mocks.recordResolution).toHaveBeenCalledWith(expect.anything(), 12, {
+      resolution: 1,
+      resolutionMotivation: 'Implemented in the current draft',
+      resolvedBy: 'alice',
+    })
+    expect(emittedSecurityEvents()).toEqual([
+      expect.objectContaining({
+        detail: expect.objectContaining({
+          action: 'suggestion.resolution.recorded',
+          operation: 'resolve',
+          resolution: 1,
+          suggestionId: 12,
+        }),
+        event: 'requirements.high_risk_mutation.succeeded',
+      }),
+    ])
   })
 })

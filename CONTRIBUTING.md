@@ -192,8 +192,12 @@ docs when working on it:
 - [docs/mcp-server-user-guide.md](docs/mcp-server-user-guide.md)
 - [docs/mcp-server-contributor-guide.md](docs/mcp-server-contributor-guide.md)
 
-MCP authentication and authorization are not yet enforced. Protect
-`/api/mcp` at the platform edge if you expose it outside local development.
+MCP authentication is enforced for `/api/mcp`: clients must send
+`Authorization: Bearer <token>`.
+
+Authorization policy remains permissive until planned authorization lands.
+If you expose MCP outside local development, keep it on HTTPS and restrict
+platform or network access to approved MCP clients.
 
 ## OpenRouter (AI Requirement Generation)
 

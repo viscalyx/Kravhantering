@@ -213,8 +213,9 @@ sequenceDiagram
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
   `auth.session.rejected`, `auth.token.rejected`,
-  `auth.mcp.token.accepted`, `auth.roles.changed`, and
-  `auth.csrf.rejected`.
+  `auth.mcp.token.accepted`, `auth.roles.changed`,
+  `auth.csrf.rejected`, `auth.authorization.denied`, and
+  `requirements.high_risk_mutation.succeeded`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured
@@ -237,6 +238,10 @@ sequenceDiagram
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
   are not emitted. Redaction breadcrumbs use the same `security-audit` channel
   and carry `breadcrumb: "detail-key-redacted"` instead of an audit `event`.
+- Requirements authorization denials and high-risk business mutations use the
+  same stream. Their `detail` payloads carry stable identifiers, counts, and
+  action names only; free-text requirement content, motivations, and suggestion
+  text are not emitted.
 - The audit writer is intentionally transport-free: it does not push directly
   to Kafka, a webhook, a SIEM, or a database. It writes structured events to
   the process log stream and does not buffer them in the app.

@@ -94,6 +94,10 @@ import {
   createRequirementsLogger,
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
+import {
+  recordAuthorizationDenied,
+  recordHighRiskMutationSucceeded,
+} from '@/lib/requirements/security-audit'
 import type {
   RequirementDetail,
   RequirementVersionDetail,
@@ -835,8 +839,13 @@ async function authorize(
   authorization: AuthorizationService,
   action: RequirementsAction,
   context: RequestContext,
-) {
-  await authorization.assertAuthorized(action, context)
+): Promise<void> {
+  try {
+    await authorization.assertAuthorized(action, context)
+  } catch (error) {
+    recordAuthorizationDenied(context, action, error)
+    throw error
+  }
 }
 
 async function withLogging<T>(
@@ -1418,6 +1427,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.archiving.initiated',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1440,6 +1455,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.archiving.approved',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1462,6 +1483,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.archiving.cancelled',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1477,6 +1504,13 @@ export function createRequirementsService(
           if (input.operation === 'delete_draft') {
             const result = await deleteDraftVersion(db, requirementId)
             const detail = await getRequirementById(db, requirementId)
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.draft.deleted',
+              deleted: result.deleted,
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail?.uniqueId ?? input.uniqueId,
+            })
             return {
               detail: detail ? formatRequirementDetail(detail) : undefined,
               message: createServiceMessage(
@@ -1507,6 +1541,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.reactivated',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1546,6 +1586,15 @@ export function createRequirementsService(
                 )
               })(),
           )
+
+          recordHighRiskMutationSucceeded(context, {
+            action: 'requirement.version.restored',
+            operation: input.operation,
+            requirementId,
+            requirementUniqueId: detail.uniqueId,
+            restoredVersionNumber: restored.versionNumber,
+            versionNumber: input.versionNumber,
+          })
 
           return {
             detail,
@@ -1879,6 +1928,14 @@ export function createRequirementsService(
             specificationId,
             input.requirementIds,
           )
+          recordHighRiskMutationSucceeded(context, {
+            action: 'specification.requirements.removed',
+            operation: 'remove_from_specification',
+            removedCount,
+            requirementCount: input.requirementIds.length,
+            specificationId,
+            specificationSlug: input.specificationSlug,
+          })
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary =
             locale === 'sv'
@@ -2058,6 +2115,12 @@ export function createRequirementsService(
               decisionMotivation: trimmedDecisionMotivation,
               decidedBy: context.actor.id,
             })
+            recordHighRiskMutationSucceeded(context, {
+              action: 'deviation.decision.recorded',
+              decision: input.decision,
+              deviationId: input.deviationId,
+              operation: input.operation,
+            })
             const decisionLabel =
               input.decision === DEVIATION_APPROVED
                 ? locale === 'sv'
@@ -2082,6 +2145,11 @@ export function createRequirementsService(
 
           // delete
           await deleteDeviation(db, input.deviationId)
+          recordHighRiskMutationSucceeded(context, {
+            action: 'deviation.deleted',
+            deviationId: input.deviationId,
+            operation: input.operation,
+          })
           const summary =
             locale === 'sv'
               ? `Avvikelse ${input.deviationId} borttagen.`
@@ -2303,6 +2371,12 @@ export function createRequirementsService(
               resolutionMotivation: trimmedMotivation,
               resolvedBy,
             })
+            recordHighRiskMutationSucceeded(context, {
+              action: 'suggestion.resolution.recorded',
+              operation: input.operation,
+              resolution,
+              suggestionId: input.suggestionId,
+            })
             const resolutionLabel =
               resolution === SUGGESTION_RESOLVED
                 ? locale === 'sv'
@@ -2332,6 +2406,11 @@ export function createRequirementsService(
 
           // delete
           await deleteSuggestion(db, input.suggestionId)
+          recordHighRiskMutationSucceeded(context, {
+            action: 'suggestion.deleted',
+            operation: input.operation,
+            suggestionId: input.suggestionId,
+          })
           const summary =
             locale === 'sv'
               ? `Förbättringsförslag ${input.suggestionId} borttaget.`
