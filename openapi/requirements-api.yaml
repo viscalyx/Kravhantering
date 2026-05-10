@@ -147,7 +147,7 @@ paths:
           description: Created requirement version.
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/RequirementVersion' }
+              schema: { $ref: '#/components/schemas/RequirementCreateResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -180,7 +180,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/RequirementMutation' }
+            schema: { $ref: '#/components/schemas/RequirementEditMutation' }
       responses:
         '200':
           description: Updated requirement version wrapper.
@@ -645,6 +645,19 @@ components:
         id: { type: integer }
         uniqueId: { type: string }
         version: { $ref: '#/components/schemas/RequirementVersion' }
+    RequirementCreateResult:
+      type: object
+      required: [requirement, version]
+      additionalProperties: true
+      properties:
+        requirement:
+          type: object
+          required: [id, uniqueId]
+          additionalProperties: true
+          properties:
+            id: { type: integer }
+            uniqueId: { type: string }
+        version: { $ref: '#/components/schemas/RequirementVersion' }
     RestoreResult:
       type: object
       required: [ok, version]
@@ -691,3 +704,8 @@ components:
         riskLevelId: { type: integer, minimum: 1 }
         typeId: { type: integer, minimum: 1 }
         verificationMethod: { type: string, maxLength: 4000 }
+    RequirementEditMutation:
+      allOf:
+        - $ref: '#/components/schemas/RequirementMutation'
+        - type: object
+          required: [baseRevisionToken, baseVersionId]

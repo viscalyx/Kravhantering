@@ -34,6 +34,13 @@ describe('exportToCsv', () => {
     expect(csv).toContain('"Rad1\nRad2"')
   })
 
+  it('escapes fields with tabs', () => {
+    const data = [{ Namn: 'Namn\tmed tabb', Beskrivning: 'Ok', Antal: '1' }]
+    const csv = exportToCsv(headers, data)
+
+    expect(csv).toContain('"Namn\tmed tabb"')
+  })
+
   it('prefixes and quotes formula-leading fields', () => {
     const data = [
       { Namn: '=SUM(A1:A2)', Beskrivning: '+cmd', Antal: '-1' },

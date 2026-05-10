@@ -19,6 +19,7 @@ function escapeCsvField(field: string): string {
     isFormulaLeading ||
     safeField.includes(';') ||
     safeField.includes('"') ||
+    safeField.includes('\t') ||
     safeField.includes('\n') ||
     safeField.includes('\r')
   ) {

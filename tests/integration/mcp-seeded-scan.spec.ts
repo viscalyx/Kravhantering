@@ -326,7 +326,9 @@ test.describe('MCP seeded HTTP security gate', () => {
     }
   })
 
-  test('runs the authenticated seeded MCP corpus', async (_fixtures, testInfo) => {
+  test('runs the authenticated seeded MCP corpus', async ({
+    browserName: _browserName,
+  }, testInfo) => {
     const events: string[] = []
     const targetUrl = getMcpUrl(testInfo)
     const expectedTools = await loadExpectedTools()
