@@ -7,12 +7,17 @@ const mockGetOwnerById = vi.fn()
 const mockCreateRequestContext = vi.hoisted(() =>
   vi.fn(() => ({ source: 'rest' })),
 )
+const mockAuthorization = vi.hoisted(() => ({ assertAuthorized: vi.fn() }))
+const mockCreateDefaultAuthorizationService = vi.hoisted(() =>
+  vi.fn(() => mockAuthorization),
+)
 
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: () => ({}),
 }))
 
 vi.mock('@/lib/requirements/auth', () => ({
+  createDefaultAuthorizationService: mockCreateDefaultAuthorizationService,
   createRequestContext: mockCreateRequestContext,
 }))
 

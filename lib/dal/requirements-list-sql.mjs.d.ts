@@ -3,11 +3,6 @@ import type {
   RequirementSortField,
 } from '@/lib/requirements/list-view'
 
-export const STATUS_DRAFT: number
-export const STATUS_REVIEW: number
-export const STATUS_PUBLISHED: number
-export const STATUS_ARCHIVED: number
-
 export interface ListRequirementsOptions {
   areaIds?: number[]
   categoryIds?: number[]

@@ -100,9 +100,11 @@ history sidebar, and other UI surfaces derives its label
 from a requirement-level effective status combined with
 `requirement_versions.archive_initiated_at` (relevant for
 Review only). For the requirements list view the effective
-status is computed server-side by `EFFECTIVE_STATUS_SQL` in
-[`lib/dal/requirements.ts`](../lib/dal/requirements.ts),
-which consolidates each requirement's
+status is computed server-side by the list SQL builder in
+[`lib/dal/requirements-list-sql.mjs`](../lib/dal/requirements-list-sql.mjs),
+using the shared status constants from
+[`lib/requirements/status-constants.mjs`](../lib/requirements/status-constants.mjs).
+The query consolidates each requirement's
 `requirement_versions.requirement_status_id` rows into a
 single status; for the version history sidebar each row's
 own `requirement_status_id` is used directly. In both cases

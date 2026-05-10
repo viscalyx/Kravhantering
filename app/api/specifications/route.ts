@@ -3,7 +3,6 @@ import { z } from 'zod'
 import {
   createSpecification,
   isSlugTaken,
-  listSpecifications,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -12,6 +11,8 @@ import {
   positiveIntegerSchema,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 const createSpecificationSchema = z
   .object({
@@ -28,10 +29,18 @@ const createSpecificationSchema = z
   })
   .strict()
 
-export async function GET() {
-  const db = await getRequestSqlServerDataSource()
-  const specifications = await listSpecifications(db)
-  return NextResponse.json({ specifications })
+export async function GET(request: NextRequest) {
+  try {
+    const { context, service } = await createRequirementsRestRuntime(request)
+    const payload = await service.listSpecifications(context, {
+      includeRestFields: true,
+      responseFormat: 'json',
+    })
+    return NextResponse.json({ specifications: payload.specifications })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
+  }
 }
 
 export async function POST(request: NextRequest) {

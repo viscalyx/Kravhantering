@@ -5,9 +5,7 @@ import {
   deleteSpecificationItemsByRefs,
   getSpecificationById,
   getSpecificationBySlug,
-  linkRequirementsToSpecificationAtomically,
   listSpecificationItems,
-  unlinkRequirementsFromSpecification,
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
@@ -23,6 +21,7 @@ import {
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -144,18 +143,19 @@ export async function POST(
     parsedBody.data
 
   try {
-    const addedCount = await linkRequirementsToSpecificationAtomically(
+    const { context, service } = await createRequirementsRestRuntime(request, {
       db,
+    })
+    const payload = await service.addToSpecification(context, {
       specificationId,
-      {
-        requirementIds,
-        needsReferenceId,
-        needsReferenceText,
-      },
-    )
+      requirementIds,
+      needsReferenceId,
+      needsReferenceText,
+      responseFormat: 'json',
+    })
     return NextResponse.json(
-      { addedCount, ok: true },
-      { status: addedCount > 0 ? 201 : 200 },
+      { addedCount: payload.addedCount, ok: true },
+      { status: payload.addedCount > 0 ? 201 : 200 },
     )
   } catch (error) {
     if (isRequirementsServiceError(error)) {
@@ -219,13 +219,21 @@ export async function DELETE(
   }
 
   try {
-    const removedCount = await unlinkRequirementsFromSpecification(
+    const { context, service } = await createRequirementsRestRuntime(request, {
       db,
+    })
+    const payload = await service.removeFromSpecification(context, {
       specificationId,
-      parsedBody.data.requirementIds,
-    )
-    return NextResponse.json({ ok: true, removedCount })
+      requirementIds: parsedBody.data.requirementIds,
+      responseFormat: 'json',
+    })
+    return NextResponse.json({ ok: true, removedCount: payload.removedCount })
   } catch (error) {
+    if (isRequirementsServiceError(error)) {
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
+    }
+
     logSanitizedError('Failed to unlink requirements from specification', error)
     return NextResponse.json(
       { error: 'Failed to unlink requirements' },

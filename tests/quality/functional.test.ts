@@ -29,10 +29,6 @@ import {
   initiateArchiving,
   listRequirements,
   restoreVersion,
-  STATUS_ARCHIVED,
-  STATUS_DRAFT,
-  STATUS_PUBLISHED,
-  STATUS_REVIEW,
   transitionStatus,
 } from '@/lib/dal/requirements'
 import {
@@ -49,6 +45,12 @@ import {
   type RequestContext,
 } from '@/lib/requirements/auth'
 import { createRequirementsService } from '@/lib/requirements/service'
+import {
+  STATUS_ARCHIVED,
+  STATUS_DRAFT,
+  STATUS_PUBLISHED,
+  STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,

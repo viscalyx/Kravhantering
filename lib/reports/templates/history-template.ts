@@ -1,3 +1,7 @@
+import {
+  isRequirementPendingStatus,
+  isRequirementPublishedStatus,
+} from '@/lib/requirements/lifecycle'
 import type { RequirementReportData } from '../data/fetch-requirement'
 import type {
   ReportModel,
@@ -5,10 +9,6 @@ import type {
   TimelineEntryData,
   VersionSummaryData,
 } from '../types'
-
-const STATUS_DRAFT = 1
-const STATUS_REVIEW = 2
-const STATUS_PUBLISHED = 3
 
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
@@ -113,12 +113,12 @@ export function buildHistoryReport(
     (a, b) => b.versionNumber - a.versionNumber,
   )
 
-  const publishedVersion = sortedVersions.find(
-    v => v.status === STATUS_PUBLISHED,
+  const publishedVersion = sortedVersions.find(v =>
+    isRequirementPublishedStatus(v.status),
   )
 
-  const unpublishedVersions = sortedVersions.filter(
-    v => v.status === STATUS_DRAFT || v.status === STATUS_REVIEW,
+  const unpublishedVersions = sortedVersions.filter(v =>
+    isRequirementPendingStatus(v.status),
   )
 
   sections.push({

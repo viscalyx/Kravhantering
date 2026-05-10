@@ -1,10 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import {
-  createSuggestion,
-  listSuggestionsForRequirement,
-} from '@/lib/dal/improvement-suggestions'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   businessTextSchema,
@@ -16,6 +11,7 @@ import {
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,16 +26,27 @@ const createSuggestionSchema = z
   .strict()
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Params },
 ) {
   const parsedParams = await parseRouteParams(params, idParamSchema)
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
 
-  const items = await listSuggestionsForRequirement(db, id)
-  return NextResponse.json({ suggestions: items })
+  try {
+    const { context, service } = await createRequirementsRestRuntime(request)
+    const payload = await service.listSuggestions(context, {
+      requirementId: id,
+      responseFormat: 'json',
+    })
+    return NextResponse.json({ suggestions: payload.suggestions })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    if (!isRequirementsServiceError(error) && status === 500) {
+      logSanitizedError('Failed to list improvement suggestions', error)
+    }
+    return NextResponse.json(body, { status })
+  }
 }
 
 export async function POST(
@@ -51,16 +58,18 @@ export async function POST(
   const parsedBody = await readJsonWithSchema(request, createSuggestionSchema)
   if (!parsedBody.ok) return parsedBody.response
   const { content, createdBy, requirementVersionId } = parsedBody.data
-  const db = await getRequestSqlServerDataSource()
 
   try {
-    const result = await createSuggestion(db, {
+    const { context, service } = await createRequirementsRestRuntime(request)
+    const payload = await service.manageSuggestion(context, {
+      operation: 'create',
       requirementId: parsedParams.data.id,
       requirementVersionId: requirementVersionId ?? null,
       content,
       createdBy: createdBy ?? null,
+      responseFormat: 'json',
     })
-    return NextResponse.json(result, { status: 201 })
+    return NextResponse.json(payload.result, { status: 201 })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)

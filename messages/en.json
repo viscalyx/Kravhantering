@@ -799,6 +799,24 @@
       "definitePlural": "MCP Requirement View"
     }
   },
+  "requirements": {
+    "specifications": {
+      "summary": {
+        "none": "No specifications found.",
+        "count": "Found {count} {specificationWord}."
+      },
+      "items": {
+        "count": "Found {count} {requirementWord} in specification {reference}."
+      },
+      "add": {
+        "count": "Added {count} {requirementWord} to specification {reference}.",
+        "skipped": "Skipped {count} {requirementWord} with no published version: {ids}."
+      },
+      "remove": {
+        "count": "Removed {count} {requirementWord} from specification {reference}."
+      }
+    }
+  },
   "footer": {
     "copyright": "© {year} Contributors to Requirements Management. All rights reserved."
   },

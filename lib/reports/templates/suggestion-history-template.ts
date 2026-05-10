@@ -1,3 +1,8 @@
+import {
+  isRequirementPendingStatus,
+  isRequirementPublishedStatus,
+  isRequirementReviewStatus,
+} from '@/lib/requirements/lifecycle'
 import type {
   RequirementReportData,
   SuggestionReportRow,
@@ -11,10 +16,6 @@ import type {
 
 const SUGGESTION_RESOLVED = 1
 const SUGGESTION_DISMISSED = 2
-
-const STATUS_DRAFT = 1
-const STATUS_REVIEW = 2
-const STATUS_PUBLISHED = 3
 
 function getStatusLabel(
   version: RequirementReportData['versions'][number],
@@ -119,8 +120,8 @@ function toSuggestionItem(
 }
 
 function getVersionBorderColor(status: number): string | undefined {
-  if (status === STATUS_PUBLISHED) return '#22c55e'
-  if (status === STATUS_REVIEW) return '#eab308'
+  if (isRequirementPublishedStatus(status)) return '#22c55e'
+  if (isRequirementReviewStatus(status)) return '#eab308'
   return undefined
 }
 
@@ -163,8 +164,7 @@ export function buildSuggestionHistoryReport(
     locale === 'sv' ? 'Inga ändringsförslag' : 'No improvement suggestions'
 
   for (const version of sortedVersions) {
-    const isUnpublished =
-      version.status === STATUS_DRAFT || version.status === STATUS_REVIEW
+    const isUnpublished = isRequirementPendingStatus(version.status)
 
     sections.push({
       type: 'version-summary',

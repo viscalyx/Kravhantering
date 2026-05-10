@@ -84,6 +84,11 @@ Klicka på en rad i kravkatalogen för att öppna inline-detaljvyn direkt i
 tabellen. Detta är det primära arbetsflödet — du behöver inte lämna katalogen
 för att se eller hantera ett krav.
 
+Du kan också öppna kravets detaljsida direkt via kravets stabila ID:
+`http://localhost:3000/sv/requirements/IDN0001`. Lägg till versionsnumret efter
+ID:t för att visa en specifik version:
+`http://localhost:3000/sv/requirements/IDN0001/10`.
+
 ![Inline-detaljvy](images/008-inline-detaljvy.png)
 
 ### Detaljpanelen — övre del

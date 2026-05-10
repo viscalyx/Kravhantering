@@ -33,6 +33,7 @@ import {
   serializeRequirementColumnWidths,
   serializeRequirementVisibleColumns,
 } from '@/lib/requirements/list-view'
+import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import RequirementDetailClient from './[id]/requirement-detail-client'
 
@@ -716,7 +717,6 @@ export default function RequirementsClient({
   const shouldShowInitialLoadingState =
     !columnPreferencesReady || !hasResolvedInitialRows
 
-  const STATUS_REVIEW = 2
   const selectedRows = useMemo(
     () => rows.filter(r => selectedIds.has(r.id)),
     [rows, selectedIds],

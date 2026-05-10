@@ -1,7 +1,7 @@
-import { STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type { RequirementRow } from '@/lib/requirements/list-view'
+import { STATUS_PUBLISHED } from '@/lib/requirements/status-constants.mjs'
 import {
   DEFAULT_SPECIFICATION_ITEM_STATUS_ID,
   DEVIATED_SPECIFICATION_ITEM_STATUS_ID,

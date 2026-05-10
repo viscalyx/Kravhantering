@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { validationError } from '@/lib/requirements/errors'
 
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
@@ -7,8 +8,27 @@ const routeState = vi.hoisted(() => ({
   getRequestSqlServerDataSource: vi.fn(() => ({})),
 }))
 
+const requirementsRuntimeState = vi.hoisted(() => {
+  const listSpecifications = vi.fn(async () => ({
+    message: 'ok',
+    specifications: [{ id: 1 }],
+  }))
+  return {
+    createRequirementsRestRuntime: vi.fn(async () => ({
+      context: { source: 'rest' },
+      service: { listSpecifications },
+    })),
+    listSpecifications,
+  }
+})
+
 vi.mock('@/lib/db', () => ({
   getRequestSqlServerDataSource: routeState.getRequestSqlServerDataSource,
+}))
+
+vi.mock('@/lib/requirements/server', () => ({
+  createRequirementsRestRuntime:
+    requirementsRuntimeState.createRequirementsRestRuntime,
 }))
 
 /* ── DAL mocks ───────────────────────────────────────────────────── */
@@ -521,9 +541,26 @@ describe('requirement-specifications routes', () => {
   })
 
   it('GET returns specifications', async () => {
-    const r = await getPkgs()
+    const r = await getPkgs(new NextRequest('http://l'))
     const j = (await r.json()) as { specifications: { id: number }[] }
     expect(j.specifications).toHaveLength(1)
+    expect(requirementsRuntimeState.listSpecifications).toHaveBeenCalledWith(
+      { source: 'rest' },
+      { includeRestFields: true, responseFormat: 'json' },
+    )
+  })
+  it('GET maps runtime failures to the requirements error contract', async () => {
+    requirementsRuntimeState.createRequirementsRestRuntime.mockRejectedValueOnce(
+      validationError('Missing specification reference'),
+    )
+
+    const r = await getPkgs(new NextRequest('http://l'))
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toEqual({
+      code: 'validation',
+      error: 'Missing specification reference',
+    })
   })
   it('POST creates with 201', async () => {
     const r = await postPkg(

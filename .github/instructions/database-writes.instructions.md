@@ -1,5 +1,5 @@
 ---
-applyTo: "{lib/dal/**/*.ts,lib/requirements/service.ts,app/api/**/*.ts}"
+applyTo: "{lib/dal/**/*.ts,lib/requirements/service*.ts,app/api/**/*.ts}"
 ---
 
 # Database Writes

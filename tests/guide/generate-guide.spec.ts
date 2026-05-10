@@ -588,7 +588,8 @@ test.describe('Kravhantering — Guidegenerering', () => {
           page,
           'inline-detaljvy',
           'Inline-detaljvy',
-          'Klicka på en rad i kravkatalogen för att öppna inline-detaljvyn direkt i tabellen. Detta är det primära arbetsflödet — du behöver inte lämna katalogen för att se eller hantera ett krav.',
+          'Klicka på en rad i kravkatalogen för att öppna inline-detaljvyn direkt i tabellen. Detta är det primära arbetsflödet — du behöver inte lämna katalogen för att se eller hantera ett krav.\n\n' +
+            'Du kan också öppna kravets detaljsida direkt via kravets stabila ID: `http://localhost:3000/sv/requirements/IDN0001`. Lägg till versionsnumret efter ID:t för att visa en specifik version: `http://localhost:3000/sv/requirements/IDN0001/10`.',
         )
       }
     })

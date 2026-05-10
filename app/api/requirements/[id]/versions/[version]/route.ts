@@ -1,17 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
   parseRouteParams,
   positiveIntegerStringSchema,
   refOrPositiveIntegerSegmentSchema,
 } from '@/lib/http/validation'
-import { createRequestContext } from '@/lib/requirements/auth'
 import { internalError } from '@/lib/requirements/errors'
-import {
-  createRequirementsService,
-  toHttpErrorPayload,
-} from '@/lib/requirements/service'
+import { createRequirementsRestRuntime } from '@/lib/requirements/server'
+import { toHttpErrorPayload } from '@/lib/requirements/service'
 import type { RequirementVersionResponse } from '@/lib/requirements/types'
 import { parseRequirementRef } from '../../../parse-requirement-ref'
 
@@ -33,11 +29,9 @@ export async function GET(
   const parsedParams = await parseRouteParams(params, versionParamsSchema)
   if (!parsedParams.ok) return parsedParams.response
   const { id, version } = parsedParams.data
-  const db = await getRequestSqlServerDataSource()
-  const service = createRequirementsService(db)
 
   try {
-    const context = await createRequestContext(_request, 'rest')
+    const { context, service } = await createRequirementsRestRuntime(_request)
     const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
       ...ref,

@@ -14,14 +14,14 @@ import type { MouseEvent as ReactMouseEvent } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
-import RequirementReportMenu from './RequirementReportMenu'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
   STATUS_PUBLISHED,
   STATUS_REVIEW,
-  type TransitionTarget,
-} from './types'
+} from '@/lib/requirements/status-constants.mjs'
+import RequirementReportMenu from './RequirementReportMenu'
+import type { TransitionTarget } from './types'
 
 interface RequirementActionRailProps {
   canAddToSpecification: boolean

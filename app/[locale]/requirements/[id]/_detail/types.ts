@@ -1,10 +1,12 @@
 import type { DeviationStep } from '@/components/DeviationStepper'
 import type { SuggestionStep } from '@/components/SuggestionStepper'
 
-export const STATUS_DRAFT = 1
-export const STATUS_REVIEW = 2
-export const STATUS_PUBLISHED = 3
-export const STATUS_ARCHIVED = 4
+export {
+  STATUS_ARCHIVED,
+  STATUS_DRAFT,
+  STATUS_PUBLISHED,
+  STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
 
 export interface StatusInfo {
   color: string | null

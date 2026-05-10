@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
+import {
+  STATUS_ARCHIVED,
+  STATUS_DRAFT,
+  STATUS_PUBLISHED,
+  STATUS_REVIEW,
+} from '@/lib/requirements/status-constants.mjs'
 import { resolveStatusLabel } from '@/lib/requirements/status-label'
-
-const STATUS_DRAFT = 1
-const STATUS_REVIEW = 2
-const STATUS_PUBLISHED = 3
-const STATUS_ARCHIVED = 4
 
 const t = vi.fn((key: 'Arkiveringsgranskning') =>
   key === 'Arkiveringsgranskning' ? 'Arkiveringsgranskning' : key,

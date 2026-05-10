@@ -503,7 +503,13 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
     it('runs reads and writes inside a SERIALIZABLE transaction and targets the row with archive_initiated_at IS NOT NULL', async () => {
       const { db, query, transaction } = createSqlServerDb()
       query
-        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([
+          {
+            archiveInitiatedAt: new Date('2026-04-20T09:00:00.000Z'),
+            id: 21,
+            statusId: 2,
+          },
+        ])
         .mockResolvedValueOnce([{ id: 21 }])
         .mockResolvedValueOnce([])
 
@@ -535,7 +541,13 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
 
     it('throws conflict when the targeted version is no longer in Review', async () => {
       const { db, query } = createSqlServerDb()
-      query.mockResolvedValueOnce([{ id: 21, statusId: 1 }])
+      query.mockResolvedValueOnce([
+        {
+          archiveInitiatedAt: new Date('2026-04-20T09:00:00.000Z'),
+          id: 21,
+          statusId: 1,
+        },
+      ])
 
       await expect(approveArchiving(db, 7)).rejects.toMatchObject({
         code: 'conflict',
@@ -547,7 +559,13 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
     it('throws conflict when the conditional UPDATE affects zero rows', async () => {
       const { db, query } = createSqlServerDb()
       query
-        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([
+          {
+            archiveInitiatedAt: new Date('2026-04-20T09:00:00.000Z'),
+            id: 21,
+            statusId: 2,
+          },
+        ])
         .mockResolvedValueOnce([])
 
       await expect(approveArchiving(db, 7)).rejects.toMatchObject({
@@ -561,7 +579,13 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
     it('runs reads and writes inside a SERIALIZABLE transaction and targets the row with archive_initiated_at IS NOT NULL', async () => {
       const { db, query, transaction } = createSqlServerDb()
       query
-        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([
+          {
+            archiveInitiatedAt: new Date('2026-04-20T09:00:00.000Z'),
+            id: 21,
+            statusId: 2,
+          },
+        ])
         .mockResolvedValueOnce([{ id: 21 }])
 
       await cancelArchiving(db, 7)
@@ -591,7 +615,13 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
 
     it('throws conflict when the targeted version is no longer in Review', async () => {
       const { db, query } = createSqlServerDb()
-      query.mockResolvedValueOnce([{ id: 21, statusId: 3 }])
+      query.mockResolvedValueOnce([
+        {
+          archiveInitiatedAt: new Date('2026-04-20T09:00:00.000Z'),
+          id: 21,
+          statusId: 3,
+        },
+      ])
 
       await expect(cancelArchiving(db, 7)).rejects.toMatchObject({
         code: 'conflict',
@@ -603,7 +633,13 @@ describe('archiving helpers (atomicity & strict-target rule)', () => {
     it('throws conflict when the conditional UPDATE affects zero rows', async () => {
       const { db, query } = createSqlServerDb()
       query
-        .mockResolvedValueOnce([{ id: 21, statusId: 2 }])
+        .mockResolvedValueOnce([
+          {
+            archiveInitiatedAt: new Date('2026-04-20T09:00:00.000Z'),
+            id: 21,
+            statusId: 2,
+          },
+        ])
         .mockResolvedValueOnce([])
 
       await expect(cancelArchiving(db, 7)).rejects.toMatchObject({

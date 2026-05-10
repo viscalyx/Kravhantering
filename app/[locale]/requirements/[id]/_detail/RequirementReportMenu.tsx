@@ -4,7 +4,8 @@ import { Printer } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
-import { type DeviationStep, STATUS_REVIEW } from './types'
+import { STATUS_REVIEW } from '@/lib/requirements/status-constants.mjs'
+import type { DeviationStep } from './types'
 
 interface RequirementReportMenuBaseProps {
   currentStatusId: number

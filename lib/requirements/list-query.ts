@@ -2,7 +2,6 @@ import {
   countRequirements,
   type ListRequirementsOptions,
   listRequirements,
-  STATUS_ARCHIVED,
 } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
 import type {
@@ -19,6 +18,7 @@ import {
   formatRequirementListItem,
   type RequirementListItem,
 } from '@/lib/requirements/service'
+import { STATUS_ARCHIVED } from '@/lib/requirements/status-constants.mjs'
 
 export interface RequirementListPagination {
   count: number
