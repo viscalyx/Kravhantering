@@ -21,6 +21,8 @@ import {
 } from '@/lib/http/validation'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
 
 const specificationParamSchema = z

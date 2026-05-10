@@ -4,6 +4,8 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
 
 export async function POST(_request: Request, { params }: { params: Params }) {

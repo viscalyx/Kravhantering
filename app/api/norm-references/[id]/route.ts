@@ -15,6 +15,8 @@ import {
   readJsonWithSchema,
 } from '@/lib/http/validation'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
 
 const nullableOptionalTextSchema = optionalBusinessTextSchema

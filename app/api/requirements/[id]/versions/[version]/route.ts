@@ -15,6 +15,8 @@ import {
 import type { RequirementVersionResponse } from '@/lib/requirements/types'
 import { parseRequirementRef } from '../../../parse-requirement-ref'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string; version: string }>
 
 const versionParamsSchema = z

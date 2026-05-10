@@ -15,6 +15,8 @@ import {
 } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
 
 const createSuggestionSchema = z

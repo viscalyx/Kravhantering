@@ -14,6 +14,8 @@ import {
 } from '@/lib/requirements/service'
 import { parseRequirementRef } from '../../parse-requirement-ref'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
 
 const requirementRefParamsSchema = z
