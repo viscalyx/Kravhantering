@@ -49,9 +49,11 @@ suffixes.
 
 ### Input Validation
 
-No input validation beyond database constraints. When
-`normReferenceId` is provided and non-empty after trim, it is
-used as-is — uniqueness is enforced by the DB unique index.
+API routes validate norm-reference payloads before calling the DAL:
+unknown fields are rejected, DB-backed strings are capped, linked-status
+query arrays are bounded, and route IDs must be positive integers.
+When `normReferenceId` is provided and non-empty after trim, the DAL
+still uses it as-is; uniqueness remains enforced by the DB unique index.
 
 ## 2 — Owners
 
@@ -75,7 +77,10 @@ Source: `lib/dal/owners.ts`
 
 ### Owner Validation
 
-No business validation beyond database schema constraints.
+API routes validate owner payload shape, unknown fields, required
+strings, email length, and positive integer route IDs before calling the
+DAL. The DAL does not add additional owner-specific business validation
+beyond database constraints.
 
 ## 3 — Specification Taxonomy Lookups
 
@@ -92,22 +97,24 @@ All three DALs follow the same structure:
 - CRUD operations: `list`, `create`, `update`, `delete`.
 - All linked from `requirements_specifications` via foreign keys.
 
-### Validation Variance
+### Validation
 
 <!-- markdownlint-disable MD013 -->
 
-| DAL | Create validation | Update validation |
+| Layer | Create validation | Update validation |
 | --- | --- | --- |
+| API routes | Strict object schemas, unknown-field rejection, bounded bilingual names, and positive integer IDs | Strict object schemas, unknown-field rejection, bounded optional fields, and positive integer IDs |
 | `specification-lifecycle-statuses.ts` | Trims both `nameSv`/`nameEn`; throws if either is empty | Trims each provided field; throws if empty |
 | `specification-implementation-types.ts` | None | None |
 | `specification-responsibility-areas.ts` | None | None |
 
 <!-- markdownlint-enable MD013 -->
 
-This variance is intentional. Lifecycle statuses are
-safety-critical (they determine specification workflow gates), while
-implementation types and responsibility areas are informational
-taxonomy values.
+The API layer now provides the common request-shape guardrails for all
+three taxonomy groups. The remaining DAL variance is intentional:
+lifecycle statuses are safety-critical because they determine
+specification workflow gates, while implementation types and
+responsibility areas are informational taxonomy values.
 
 ### Delete Return Values
 

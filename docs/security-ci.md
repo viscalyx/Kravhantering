@@ -302,6 +302,11 @@ The mutating scan requests include the masked local session cookie,
 `X-Requested-With: XMLHttpRequest`. Schemathesis output sanitization stays
 enabled. HAR export is intentionally not used in Phase 5.
 
+The root `schemathesis.toml` disables coverage probes for unexpected HTTP
+methods. Next.js constructs a web `Request` before application middleware runs,
+and forbidden Fetch methods such as `TRACE` fail inside the framework before the
+app can return a controlled `405`.
+
 ### API failure policy
 
 Schemathesis fails the workflow on server errors, undocumented status codes,

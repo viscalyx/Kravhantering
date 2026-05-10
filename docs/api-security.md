@@ -29,6 +29,29 @@ Deferred from Phase 5:
 
 Those deferred items are later issue `#119` work.
 
+## Runtime Validation
+
+Application-owned REST routes validate caller-controlled path params, query
+params, and JSON bodies with shared Zod schemas in
+`lib/http/validation.ts`. Invalid route input returns a typed `400` response
+before database or service work whenever the route can validate independently:
+
+```json
+{
+  "error": "Invalid request",
+  "issues": [{ "path": "id", "code": "invalid_format", "message": "..." }]
+}
+```
+
+JSON objects are strict: unknown body fields and unknown app-owned query params
+are rejected instead of being ignored. Integer IDs must be positive SQL Server
+integers, booleans must use the documented representation for their transport,
+strings are bounded, arrays are capped, and malformed JSON receives the same
+typed validation envelope.
+
+`/api/mcp` is the intentional exception. It keeps validation inside its
+JSON-RPC/MCP schema layer so MCP tool contracts remain the source of truth.
+
 ## Workflow
 
 Workflow file:
@@ -59,6 +82,13 @@ The mutating scan requests include:
 
 The cookie is masked in workflow logs. Schemathesis output sanitization remains
 enabled and HAR export is intentionally not used in Phase 5.
+
+The repository `schemathesis.toml` disables coverage probes for unexpected HTTP
+methods. Next.js constructs a web `Request` before application middleware runs,
+and forbidden Fetch methods such as `TRACE` fail inside the framework before the
+app can return a controlled `405`. The scan still covers documented operations,
+parameter/body variants, server errors, status codes, content types, and
+response schemas.
 
 ## Failure Policy
 
