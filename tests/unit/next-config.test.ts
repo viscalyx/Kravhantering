@@ -89,10 +89,10 @@ describe('next.config Developer Mode wiring', () => {
     expect(getTurbopackAliases(config)).toMatchObject(NOOP_ALIASES)
     expect(getWebpackAliases(config)).toMatchObject({
       '@viscalyx/developer-mode-core': expect.stringMatching(
-        /lib\/runtime\/developer-mode-core-noop\.ts$/,
+        /lib[/\\]runtime[/\\]developer-mode-core-noop\.ts$/,
       ),
       '@viscalyx/developer-mode-react': expect.stringMatching(
-        /lib\/runtime\/developer-mode-react-noop\.tsx$/,
+        /lib[/\\]runtime[/\\]developer-mode-react-noop\.tsx$/,
       ),
     })
     expect(warn).toHaveBeenCalledTimes(1)
@@ -128,10 +128,10 @@ describe('next.config Developer Mode wiring', () => {
     expect(getTurbopackAliases(config)).toMatchObject(NOOP_ALIASES)
     expect(getWebpackAliases(config)).toMatchObject({
       '@viscalyx/developer-mode-core': expect.stringMatching(
-        /lib\/runtime\/developer-mode-core-noop\.ts$/,
+        /lib[/\\]runtime[/\\]developer-mode-core-noop\.ts$/,
       ),
       '@viscalyx/developer-mode-react': expect.stringMatching(
-        /lib\/runtime\/developer-mode-react-noop\.tsx$/,
+        /lib[/\\]runtime[/\\]developer-mode-react-noop\.tsx$/,
       ),
     })
     expect(warn).not.toHaveBeenCalled()

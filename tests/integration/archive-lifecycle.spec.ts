@@ -312,17 +312,19 @@ async function assertRequirementListStatus(
   })
   const row = rowButton.locator('xpath=ancestor::tr[1]')
 
-  await expect(row).toContainText(expectedStatusText)
+  await expect(row).toContainText(expectedStatusText, { timeout: 15_000 })
 }
 
 async function confirmLatestDialog(page: Page) {
   const dialog = page.getByRole('alertdialog')
   await dialog.getByRole('button', { name: 'Bekräfta' }).click()
+  await expect(dialog).toBeHidden()
 }
 
 async function cancelLatestDialog(page: Page) {
   const dialog = page.getByRole('alertdialog')
   await dialog.getByRole('button', { name: 'Avbryt' }).click()
+  await expect(dialog).toBeHidden()
 }
 
 for (const viewport of viewports) {

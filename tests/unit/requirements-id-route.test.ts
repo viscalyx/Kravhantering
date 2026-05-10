@@ -185,6 +185,21 @@ describe('requirements/[id] route', () => {
       const res = await PUT(req, makeParams('1'))
       expect(res.status).toBe(500)
     })
+
+    it('returns 400 for invalid JSON bodies', async () => {
+      const req = new NextRequest('http://localhost/api/requirements/1', {
+        method: 'PUT',
+        body: 'not-json',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await PUT(req, makeParams('1'))
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toEqual({
+        error: 'Invalid JSON body',
+      })
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
   })
 
   describe('DELETE', () => {

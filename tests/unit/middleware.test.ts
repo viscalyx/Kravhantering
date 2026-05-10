@@ -350,6 +350,11 @@ describe('middleware', () => {
       )
       expect(without.status).toBe(401)
       expect(without.headers.get('www-authenticate')).toBe('Bearer')
+      await expect(without.json()).resolves.toEqual({
+        error: { code: -32000, message: 'Missing Bearer token.' },
+        id: null,
+        jsonrpc: '2.0',
+      })
 
       const withBearer = await middleware(
         buildRequest('http://localhost/api/mcp', {

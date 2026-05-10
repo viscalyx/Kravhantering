@@ -98,10 +98,10 @@ MCP transport or tool handler runs. Accepted tokens must contain an
 `employeeHsaId` claim. Service-account tokens may use the documented synthetic
 form `mcp-client:<client-id>`.
 
-Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer`. MCP does
-not use browser cookies and is intentionally excluded from browser CSRF checks.
-Tool handlers build their actor context only from the verified token attached at
-the HTTP edge.
+Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
+JSON-RPC error body. MCP does not use browser cookies and is intentionally
+excluded from browser CSRF checks. Tool handlers build their actor context only
+from the verified token attached at the HTTP edge.
 
 ## Run It Locally
 

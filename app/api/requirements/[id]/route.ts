@@ -8,6 +8,7 @@ import {
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
+import { readJsonObject } from '../json-body'
 import { parseRequirementRef } from '../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
@@ -56,9 +57,11 @@ export async function PUT(
   { params }: { params: Params },
 ) {
   const { id } = await params
+  const parsed = await readJsonObject(request)
+  if (parsed.response) return parsed.response
+  const { body } = parsed
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const body = (await request.json()) as Record<string, unknown>
 
   try {
     const context = await createRequestContext(request, 'rest')

@@ -5,6 +5,7 @@ import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
+import { isPositiveInteger, readJsonObject } from '../../json-body'
 import { parseRequirementRef } from '../../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
@@ -14,7 +15,15 @@ export async function POST(
   { params }: { params: Params },
 ) {
   const { id } = await params
-  const body = (await request.json()) as { versionNumber: number }
+  const parsed = await readJsonObject(request)
+  if (parsed.response) return parsed.response
+  const { body } = parsed
+  if (!isPositiveInteger(body.versionNumber)) {
+    return NextResponse.json(
+      { error: 'Missing or invalid versionNumber' },
+      { status: 400 },
+    )
+  }
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 
@@ -24,7 +33,7 @@ export async function POST(
     const result = await service.manageRequirement(context, {
       ...ref,
       operation: 'restore_version',
-      versionNumber: Number(body.versionNumber),
+      versionNumber: body.versionNumber,
     })
     return NextResponse.json({ ok: true, version: result.result })
   } catch (error) {

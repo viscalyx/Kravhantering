@@ -241,5 +241,21 @@ describe('requirements route', () => {
       expect(res.status).toBe(500)
       expect(mockManageRequirement).not.toHaveBeenCalled()
     })
+
+    it('returns 400 for invalid JSON bodies', async () => {
+      const { POST } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements', {
+        method: 'POST',
+        body: 'not-json',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never)
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toEqual({
+        error: 'Invalid JSON body',
+      })
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
   })
 })

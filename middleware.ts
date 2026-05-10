@@ -195,6 +195,17 @@ function isApiPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/')
 }
 
+function createMcpUnauthorizedResponse(message: string): NextResponse {
+  return NextResponse.json(
+    {
+      error: { code: -32000, message },
+      id: null,
+      jsonrpc: '2.0',
+    },
+    { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
+  )
+}
+
 function isMutatingMethod(method: string): boolean {
   return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())
 }
@@ -255,10 +266,7 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   if (isMcpPath(pathname)) {
     const auth = request.headers.get('authorization') ?? ''
     if (!/^Bearer\s+\S+/i.test(auth)) {
-      return NextResponse.json(
-        { error: 'Unauthorized', detail: 'Missing Bearer token.' },
-        { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
-      )
+      return createMcpUnauthorizedResponse('Missing Bearer token.')
     }
     return null
   }

@@ -164,9 +164,9 @@ sequenceDiagram
     Handler-->>Client: JSON-RPC response
 
     alt Missing or invalid token
-        Middleware-->>Client: 401 if Authorization header is missing
+        Middleware-->>Client: JSON-RPC 401 if Authorization header is missing
         Verify->>Audit: auth.token.rejected
-        Route-->>Client: 401 + WWW-Authenticate: Bearer
+        Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
     end
 ```
 <!-- markdownlint-enable MD013 -->
@@ -174,6 +174,8 @@ sequenceDiagram
 - `middleware.ts` only checks that a Bearer token is present for `/api/mcp`.
   Cryptographic verification is done later in
   [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
+- Missing-header and invalid-token failures use a JSON-RPC error body so MCP
+  clients receive the same response shape at both auth gates.
 - `verifyMcpBearerToken()` derives the JWKS URL directly from the issuer as
   `${issuer}/.well-known/jwks.json` and caches the resulting
   `RemoteJWKSet`.

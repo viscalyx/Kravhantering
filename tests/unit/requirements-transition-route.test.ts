@@ -47,6 +47,33 @@ describe('requirements/[id]/transition route', () => {
     expect(json.error).toMatch(/statusId/)
   })
 
+  it('returns 400 for invalid JSON bodies', async () => {
+    const req = new NextRequest('http://localhost', {
+      method: 'POST',
+      body: 'not-json',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const res = await POST(req, makeParams('1'))
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({
+      error: 'Invalid JSON body',
+    })
+    expect(mockTransitionRequirement).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 for non-integer statusId', async () => {
+    const req = new NextRequest('http://localhost', {
+      method: 'POST',
+      body: JSON.stringify({ statusId: '5' }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    const res = await POST(req, makeParams('1'))
+
+    expect(res.status).toBe(400)
+    expect(mockTransitionRequirement).not.toHaveBeenCalled()
+  })
+
   it('transitions requirement successfully', async () => {
     mockTransitionRequirement.mockResolvedValue({
       detail: { id: 1, uniqueId: 'TST0001' },

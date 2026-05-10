@@ -42,6 +42,9 @@ these locations:
 - Developer-mode and test infra notes live in `tests/integration` specs
   (see `developer-mode-overlay.md`) and in `playwright.prodlike.config.ts`
   where developer-mode surfaces are intentionally excluded for prodlike runs.
+- The MCP seeded scan is prodlike-only. The dev Playwright config excludes
+  `tests/integration/mcp-seeded-scan.spec.ts`; run it with
+  `npm run test:integration:prodlike`.
 - When running integration tests locally, ensure the IdP and database are
   available (see `npm run idp:up` and `npm run db:setup`).
 

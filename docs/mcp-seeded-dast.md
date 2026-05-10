@@ -14,7 +14,7 @@ signal comes from a known request corpus and explicit assertions.
 Covered by Phase 6:
 
 - Missing and invalid Bearer tokens return `401` with `WWW-Authenticate:
-  Bearer`.
+  Bearer` and a JSON-RPC error body.
 - A valid local `kravhantering-mcp` token can connect to `/api/mcp`.
 - The server exposes exactly the documented 11 MCP tools.
 - The seeded corpus exercises read, requirement mutation, transition,

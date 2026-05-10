@@ -936,7 +936,7 @@ describe('createRequirementsService', () => {
         operation: 'edit',
         requirement: {},
       }),
-    ).rejects.toMatchObject({ code: 'internal' })
+    ).rejects.toMatchObject({ code: 'validation' })
   })
 
   it('rejects create without areaId', async () => {
@@ -949,7 +949,7 @@ describe('createRequirementsService', () => {
         operation: 'create',
         requirement: { description: 'test' },
       }),
-    ).rejects.toMatchObject({ code: 'internal' })
+    ).rejects.toMatchObject({ code: 'validation' })
   })
 
   it('rejects restore_version when version not found', async () => {

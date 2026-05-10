@@ -18,6 +18,7 @@ import {
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
+import { readJsonObject } from './json-body'
 
 function normalizeOptionalPositiveIntegerIds(
   value: unknown,
@@ -184,9 +185,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const parsed = await readJsonObject(request)
+  if (parsed.response) return parsed.response
+  const { body } = parsed
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const body = (await request.json()) as Record<string, unknown>
 
   try {
     const context = await createRequestContext(request, 'rest')

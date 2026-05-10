@@ -336,6 +336,8 @@ Current behavior:
   picks it up through `createRequestContext(request, 'mcp', ...)` without
   trusting any request header. Tests can use the same seam to inject
   verified actors.
+- Missing or invalid Bearer tokens return `401` with `WWW-Authenticate:
+  Bearer` and a JSON-RPC error body before service or tool handling runs.
 - The default service wiring uses `AllowAllAuthorizationService` via
   `createDefaultAuthorizationService()`. Replace with
   `RoleBasedAuthorizationService` when role policies are declared

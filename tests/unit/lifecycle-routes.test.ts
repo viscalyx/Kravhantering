@@ -166,6 +166,39 @@ describe('lifecycle routes', () => {
       })
       expect(res.status).toBe(500)
     })
+
+    it('POST returns 400 for invalid JSON bodies', async () => {
+      const { POST } = await import('@/app/api/requirements/[id]/restore/route')
+      const req = new Request('http://localhost/api/requirements/1/restore', {
+        method: 'POST',
+        body: 'not-json',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never, {
+        params: Promise.resolve({ id: '1' }),
+      })
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toEqual({
+        error: 'Invalid JSON body',
+      })
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
+
+    it('POST returns 400 for invalid versionNumber', async () => {
+      const { POST } = await import('@/app/api/requirements/[id]/restore/route')
+      const req = new Request('http://localhost/api/requirements/1/restore', {
+        method: 'POST',
+        body: JSON.stringify({ versionNumber: '2' }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never, {
+        params: Promise.resolve({ id: '1' }),
+      })
+
+      expect(res.status).toBe(400)
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
   })
 
   describe('versions/[version]', () => {

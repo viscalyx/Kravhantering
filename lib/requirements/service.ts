@@ -1274,7 +1274,7 @@ export function createRequirementsService(
           if (input.operation === 'create') {
             const payload = input.requirement
             if (!payload?.areaId || !payload.description) {
-              throw internalError(
+              throw validationError(
                 'Create operation requires requirement.areaId and requirement.description',
               )
             }
@@ -1334,7 +1334,7 @@ export function createRequirementsService(
           if (input.operation === 'edit') {
             const payload = input.requirement
             if (!payload?.description) {
-              throw internalError(
+              throw validationError(
                 'Edit operation requires requirement.description',
               )
             }
