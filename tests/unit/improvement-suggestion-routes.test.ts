@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { validationError } from '@/lib/requirements/errors'
 
 const mocks = vi.hoisted(() => {
   const context = {
@@ -89,6 +90,23 @@ describe('improvement suggestion REST service boundary', () => {
     expect(mocks.service.listSuggestions).toHaveBeenCalledWith(mocks.context, {
       requirementId: 7,
       responseFormat: 'json',
+    })
+  })
+
+  it('maps requirement suggestion listing errors to the requirements error contract', async () => {
+    mocks.service.listSuggestions.mockRejectedValueOnce(
+      validationError('Either requirementId or uniqueId is required'),
+    )
+
+    const response = await getRequirementSuggestions(
+      new NextRequest('http://localhost/api/requirement-suggestions/7'),
+      makeParams('7'),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      code: 'validation',
+      error: 'Either requirementId or uniqueId is required',
     })
   })
 

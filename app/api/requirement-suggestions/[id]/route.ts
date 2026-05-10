@@ -33,12 +33,20 @@ export async function GET(
   if (!parsedParams.ok) return parsedParams.response
   const { id } = parsedParams.data
 
-  const { context, service } = await createRequirementsRestRuntime(request)
-  const payload = await service.listSuggestions(context, {
-    requirementId: id,
-    responseFormat: 'json',
-  })
-  return NextResponse.json({ suggestions: payload.suggestions })
+  try {
+    const { context, service } = await createRequirementsRestRuntime(request)
+    const payload = await service.listSuggestions(context, {
+      requirementId: id,
+      responseFormat: 'json',
+    })
+    return NextResponse.json({ suggestions: payload.suggestions })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    if (!isRequirementsServiceError(error) && status === 500) {
+      logSanitizedError('Failed to list improvement suggestions', error)
+    }
+    return NextResponse.json(body, { status })
+  }
 }
 
 export async function POST(

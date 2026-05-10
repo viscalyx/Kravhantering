@@ -1057,6 +1057,40 @@ describe('createRequirementsService', () => {
     expect(mocks.editRequirement).not.toHaveBeenCalled()
   })
 
+  it('rejects missing requirement references as validation errors', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.getRequirement(makeContext(), { view: 'detail' }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Requirement reference is missing',
+      status: 400,
+    })
+    await expect(
+      service.manageRequirement(makeContext(), {
+        operation: 'edit',
+        requirement: { description: 'Updated text' },
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Requirement reference is missing',
+      status: 400,
+    })
+    await expect(
+      service.transitionRequirement(makeContext(), { toStatusId: 2 }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Requirement reference is missing',
+      status: 400,
+    })
+    expect(mocks.getRequirementById).not.toHaveBeenCalled()
+    expect(mocks.getRequirementByUniqueId).not.toHaveBeenCalled()
+  })
+
   it('rejects create without areaId', async () => {
     const service = createRequirementsService({} as never, {
       logger,
@@ -1097,6 +1131,26 @@ describe('createRequirementsService', () => {
         versionNumber: 99,
       }),
     ).rejects.toMatchObject({ code: 'not_found' })
+    expect(mocks.restoreVersion).not.toHaveBeenCalled()
+  })
+
+  it('rejects restore_version without a valid versionNumber before reading history', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.manageRequirement(makeContext(), {
+        id: 1,
+        operation: 'restore_version',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Missing or invalid versionNumber',
+      status: 400,
+    })
+    expect(mocks.getVersionHistory).not.toHaveBeenCalled()
     expect(mocks.restoreVersion).not.toHaveBeenCalled()
   })
 
@@ -1147,6 +1201,7 @@ describe('createRequirementsService', () => {
       expect.anything(),
     )
     expect(JSON.parse(result.message)).toMatchObject({
+      lines: ['Hittade 1 kravunderlag.'],
       title: 'Kravunderlag',
     })
     expect(logger.info).toHaveBeenCalledWith(
@@ -1156,6 +1211,31 @@ describe('createRequirementsService', () => {
         source: 'rest',
       }),
     )
+  })
+
+  it('rejects specification workflows without a specification reference', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.getSpecificationItems(makeContext(), {}),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Missing specification reference',
+      status: 400,
+    })
+    await expect(
+      service.listDeviations(makeContext(), {}),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Missing specification reference',
+      status: 400,
+    })
+    expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
+    expect(mocks.listSpecificationItems).not.toHaveBeenCalled()
+    expect(mocks.listDeviationsForSpecification).not.toHaveBeenCalled()
   })
 
   it('localizes specification item labels using the requested locale', async () => {
@@ -1424,5 +1504,24 @@ describe('createRequirementsService', () => {
         event: 'requirements.high_risk_mutation.succeeded',
       }),
     ])
+  })
+
+  it('rejects unsupported suggestion operations without deleting', async () => {
+    const service = createRequirementsService({} as never, {
+      logger,
+      uiSettings: makeUiSettings(),
+    })
+
+    await expect(
+      service.manageSuggestion(makeContext(), {
+        operation: 'unsupported' as never,
+        suggestionId: 12,
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Unsupported suggestion operation',
+      status: 400,
+    })
+    expect(mocks.deleteSuggestion).not.toHaveBeenCalled()
   })
 })

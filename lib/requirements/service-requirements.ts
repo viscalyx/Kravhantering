@@ -42,7 +42,6 @@ import type { SqlServerDatabase } from '@/lib/db'
 import type { AuthorizationService } from '@/lib/requirements/auth'
 import {
   conflictError,
-  internalError,
   isRequirementsServiceError,
   notFoundError,
   validationError,
@@ -267,7 +266,10 @@ async function resolveRequirement(
     return getRequirementById(db, ref.id)
   }
 
-  throw internalError('Requirement reference is missing')
+  throw validationError('Requirement reference is missing', {
+    id: ref.id,
+    uniqueId: ref.uniqueId,
+  })
 }
 
 async function resolveRequirementId(
@@ -1002,6 +1004,17 @@ export function createRequirementWorkflow({
               operation: input.operation,
               result: { ok: true },
             }
+          }
+
+          if (
+            input.versionNumber == null ||
+            !Number.isInteger(input.versionNumber) ||
+            input.versionNumber < 1
+          ) {
+            throw validationError('Missing or invalid versionNumber', {
+              requirementId,
+              versionNumber: input.versionNumber,
+            })
           }
 
           const history = await getVersionHistory(db, requirementId)

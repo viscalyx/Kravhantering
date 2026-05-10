@@ -8,7 +8,7 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import type { AuthorizationService } from '@/lib/requirements/auth'
-import { notFoundError } from '@/lib/requirements/errors'
+import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { recordHighRiskMutationSucceeded } from '@/lib/requirements/security-audit'
 import type {
@@ -26,6 +26,7 @@ import {
   getSpecificationServiceTitle,
   getSpecificationWord,
   localizeName,
+  translateServiceMessage,
   withLogging,
 } from '@/lib/requirements/service-shared'
 
@@ -39,6 +40,13 @@ async function resolveSpecificationIdOrThrow(
   db: SqlServerDatabase,
   input: SpecificationRefInput,
 ) {
+  if (input.specificationId == null && input.specificationSlug == null) {
+    throw validationError('Missing specification reference', {
+      specificationId: input.specificationId,
+      specificationSlug: input.specificationSlug,
+    })
+  }
+
   const specificationId =
     input.specificationId != null
       ? input.specificationId
@@ -105,13 +113,22 @@ export function createSpecificationWorkflow({
           }
 
           const summary =
-            locale === 'sv'
-              ? specifications.length === 0
-                ? 'Inga kravunderlag hittades.'
-                : `Hittade ${specifications.length} ${getSpecificationWord(locale, specifications.length)}.`
-              : specifications.length === 0
-                ? 'No specifications found.'
-                : `Found ${specifications.length} ${getSpecificationWord(locale, specifications.length)}.`
+            specifications.length === 0
+              ? translateServiceMessage(
+                  locale,
+                  'requirements.specifications.summary.none',
+                )
+              : translateServiceMessage(
+                  locale,
+                  'requirements.specifications.summary.count',
+                  {
+                    count: specifications.length,
+                    specificationWord: getSpecificationWord(
+                      locale,
+                      specifications.length,
+                    ),
+                  },
+                )
 
           const outputSpecifications = specifications.map(p => {
             const base = {
@@ -219,10 +236,15 @@ export function createSpecificationWorkflow({
           }
 
           const ref = getSpecificationReferenceLabel(input, specificationId)
-          const summary =
-            locale === 'sv'
-              ? `Hittade ${items.length} ${getRequirementWord(locale, items.length)} i kravunderlag ${ref}.`
-              : `Found ${items.length} ${getRequirementWord(locale, items.length)} in specification ${ref}.`
+          const summary = translateServiceMessage(
+            locale,
+            'requirements.specifications.items.count',
+            {
+              count: items.length,
+              reference: ref,
+              requirementWord: getRequirementWord(locale, items.length),
+            },
+          )
 
           return {
             items: items.map(item => ({
@@ -330,15 +352,30 @@ export function createSpecificationWorkflow({
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const skippedIds = skipped.map(r => r.id)
           const lines: string[] = [
-            locale === 'sv'
-              ? `Lade till ${addedCount} ${getRequirementWord(locale, addedCount)} i kravunderlag ${ref}.`
-              : `Added ${addedCount} ${getRequirementWord(locale, addedCount)} to specification ${ref}.`,
+            translateServiceMessage(
+              locale,
+              'requirements.specifications.add.count',
+              {
+                count: addedCount,
+                reference: ref,
+                requirementWord: getRequirementWord(locale, addedCount),
+              },
+            ),
           ]
           if (skippedIds.length > 0) {
             lines.push(
-              locale === 'sv'
-                ? `Hoppade over ${skippedIds.length} ${getRequirementWord(locale, skippedIds.length)} utan publicerad version: ${skippedIds.join(', ')}.`
-                : `Skipped ${skippedIds.length} ${getRequirementWord(locale, skippedIds.length)} with no published version: ${skippedIds.join(', ')}.`,
+              translateServiceMessage(
+                locale,
+                'requirements.specifications.add.skipped',
+                {
+                  count: skippedIds.length,
+                  ids: skippedIds.join(', '),
+                  requirementWord: getRequirementWord(
+                    locale,
+                    skippedIds.length,
+                  ),
+                },
+              ),
             )
           }
           return {
@@ -398,10 +435,15 @@ export function createSpecificationWorkflow({
             specificationSlug: input.specificationSlug,
           })
           const ref = getSpecificationReferenceLabel(input, specificationId)
-          const summary =
-            locale === 'sv'
-              ? `Tog bort ${removedCount} ${getRequirementWord(locale, removedCount)} fran kravunderlag ${ref}.`
-              : `Removed ${removedCount} ${getRequirementWord(locale, removedCount)} from specification ${ref}.`
+          const summary = translateServiceMessage(
+            locale,
+            'requirements.specifications.remove.count',
+            {
+              count: removedCount,
+              reference: ref,
+              requirementWord: getRequirementWord(locale, removedCount),
+            },
+          )
           return {
             message: createServiceMessage(
               getSpecificationServiceTitle('remove', locale),

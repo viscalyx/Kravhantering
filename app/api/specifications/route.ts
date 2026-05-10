@@ -11,6 +11,7 @@ import {
   positiveIntegerSchema,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 import { createRequirementsRestRuntime } from '@/lib/requirements/server'
 
 const createSpecificationSchema = z
@@ -29,12 +30,17 @@ const createSpecificationSchema = z
   .strict()
 
 export async function GET(request: NextRequest) {
-  const { context, service } = await createRequirementsRestRuntime(request)
-  const payload = await service.listSpecifications(context, {
-    includeRestFields: true,
-    responseFormat: 'json',
-  })
-  return NextResponse.json({ specifications: payload.specifications })
+  try {
+    const { context, service } = await createRequirementsRestRuntime(request)
+    const payload = await service.listSpecifications(context, {
+      includeRestFields: true,
+      responseFormat: 'json',
+    })
+    return NextResponse.json({ specifications: payload.specifications })
+  } catch (error) {
+    const { body, status } = toHttpErrorPayload(error)
+    return NextResponse.json(body, { status })
+  }
 }
 
 export async function POST(request: NextRequest) {

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { validationError } from '@/lib/requirements/errors'
 
 /* ── shared request DB mocks ─────────────────────────────────────── */
 
@@ -547,6 +548,19 @@ describe('requirement-specifications routes', () => {
       { source: 'rest' },
       { includeRestFields: true, responseFormat: 'json' },
     )
+  })
+  it('GET maps runtime failures to the requirements error contract', async () => {
+    requirementsRuntimeState.createRequirementsRestRuntime.mockRejectedValueOnce(
+      validationError('Missing specification reference'),
+    )
+
+    const r = await getPkgs(new NextRequest('http://l'))
+
+    expect(r.status).toBe(400)
+    await expect(r.json()).resolves.toEqual({
+      code: 'validation',
+      error: 'Missing specification reference',
+    })
   })
   it('POST creates with 201', async () => {
     const r = await postPkg(

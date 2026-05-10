@@ -12,10 +12,7 @@ import {
 } from '@/lib/dal/improvement-suggestions'
 import { getRequirementByUniqueId } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
-import type {
-  AuthorizationService,
-  RequirementsAction,
-} from '@/lib/requirements/auth'
+import type { AuthorizationService } from '@/lib/requirements/auth'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { recordHighRiskMutationSucceeded } from '@/lib/requirements/security-audit'
@@ -51,7 +48,7 @@ export function createSuggestionWorkflow({
           kind: 'list_suggestions',
           requirementId: input.requirementId,
           uniqueId: input.uniqueId,
-        } as RequirementsAction,
+        },
         context,
       )
 
@@ -120,7 +117,7 @@ export function createSuggestionWorkflow({
           operation: input.operation,
           suggestionId: input.suggestionId,
           requirementId: input.requirementId,
-        } as RequirementsAction,
+        },
         context,
       )
 
@@ -282,26 +279,32 @@ export function createSuggestionWorkflow({
             }
           }
 
-          await deleteSuggestion(db, input.suggestionId)
-          recordHighRiskMutationSucceeded(context, {
-            action: 'suggestion.deleted',
-            operation: input.operation,
-            suggestionId: input.suggestionId,
-          })
-          const summary =
-            locale === 'sv'
-              ? `Förbättringsförslag ${input.suggestionId} borttaget.`
-              : `Improvement suggestion ${input.suggestionId} deleted.`
-          return {
-            message: createServiceMessage(
+          if (input.operation === 'delete') {
+            await deleteSuggestion(db, input.suggestionId)
+            recordHighRiskMutationSucceeded(context, {
+              action: 'suggestion.deleted',
+              operation: input.operation,
+              suggestionId: input.suggestionId,
+            })
+            const summary =
               locale === 'sv'
-                ? 'Förbättringsförslag'
-                : 'Improvement suggestion',
-              [summary],
-              responseFormat,
-            ),
-            result: { id: input.suggestionId },
+                ? `Förbättringsförslag ${input.suggestionId} borttaget.`
+                : `Improvement suggestion ${input.suggestionId} deleted.`
+            return {
+              message: createServiceMessage(
+                locale === 'sv'
+                  ? 'Förbättringsförslag'
+                  : 'Improvement suggestion',
+                [summary],
+                responseFormat,
+              ),
+              result: { id: input.suggestionId },
+            }
           }
+
+          throw validationError('Unsupported suggestion operation', {
+            operation: input.operation,
+          })
         },
       )
     },

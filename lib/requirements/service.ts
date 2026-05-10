@@ -423,6 +423,13 @@ async function resolveSpecificationIdOrThrow(
   db: SqlServerDatabase,
   input: SpecificationRefInput,
 ) {
+  if (input.specificationId == null && input.specificationSlug == null) {
+    throw validationError('Missing specification reference', {
+      specificationId: input.specificationId,
+      specificationSlug: input.specificationSlug,
+    })
+  }
+
   const specificationId =
     input.specificationId != null
       ? input.specificationId

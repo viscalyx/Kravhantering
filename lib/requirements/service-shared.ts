@@ -7,19 +7,33 @@ import type {
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { recordAuthorizationDenied } from '@/lib/requirements/security-audit'
 import type { ResponseFormat, ResponseLocale } from '@/lib/requirements/service'
+import enMessages from '@/messages/en.json'
+import svMessages from '@/messages/sv.json'
 
 const DEFAULT_PAGE_SIZE = 20
 const MAX_PAGE_SIZE = 200
+const SERVICE_MESSAGES = {
+  en: enMessages,
+  sv: svMessages,
+}
 
-export function clampLimit(limit?: number) {
-  if (limit == null) {
+type ServiceMessageKey =
+  | 'requirements.specifications.add.count'
+  | 'requirements.specifications.add.skipped'
+  | 'requirements.specifications.items.count'
+  | 'requirements.specifications.remove.count'
+  | 'requirements.specifications.summary.count'
+  | 'requirements.specifications.summary.none'
+
+export function clampLimit(limit?: number): number {
+  if (limit == null || Number.isNaN(limit)) {
     return DEFAULT_PAGE_SIZE
   }
 
   return Math.min(Math.max(Math.trunc(limit), 1), MAX_PAGE_SIZE)
 }
 
-export function clampOffset(offset?: number) {
+export function clampOffset(offset?: number): number {
   if (offset == null || Number.isNaN(offset)) {
     return 0
   }
@@ -30,7 +44,7 @@ export function clampOffset(offset?: number) {
 export function localizeName(
   value: { nameEn?: string | null; nameSv?: string | null } | null | undefined,
   locale: ResponseLocale,
-) {
+): string | null {
   if (!value) {
     return null
   }
@@ -42,7 +56,7 @@ export function createServiceMessage(
   title: string,
   lines: string[],
   responseFormat: ResponseFormat,
-) {
+): string {
   if (responseFormat === 'json') {
     return JSON.stringify({ title, lines }, null, 2)
   }
@@ -53,11 +67,14 @@ export function createServiceMessage(
 export function getVersionDisplayName(
   status: { nameEn?: string | null; nameSv?: string | null } | null | undefined,
   locale: ResponseLocale,
-) {
-  return localizeName(status, locale) ?? (locale === 'sv' ? 'Okand' : 'Unknown')
+): string {
+  return localizeName(status, locale) ?? (locale === 'sv' ? 'Okänd' : 'Unknown')
 }
 
-export function getRequirementWord(locale: ResponseLocale, count: number) {
+export function getRequirementWord(
+  locale: ResponseLocale,
+  count: number,
+): string {
   if (locale === 'sv') {
     return 'krav'
   }
@@ -65,7 +82,10 @@ export function getRequirementWord(locale: ResponseLocale, count: number) {
   return count === 1 ? 'requirement' : 'requirements'
 }
 
-export function getSpecificationWord(locale: ResponseLocale, count: number) {
+export function getSpecificationWord(
+  locale: ResponseLocale,
+  count: number,
+): string {
   if (locale === 'sv') {
     return 'kravunderlag'
   }
@@ -76,7 +96,7 @@ export function getSpecificationWord(locale: ResponseLocale, count: number) {
 export function getSpecificationServiceTitle(
   kind: 'add' | 'items' | 'list' | 'remove',
   locale: ResponseLocale,
-) {
+): string {
   if (locale === 'sv') {
     switch (kind) {
       case 'add':
@@ -84,7 +104,7 @@ export function getSpecificationServiceTitle(
       case 'items':
         return 'Krav i kravunderlag'
       case 'remove':
-        return 'Krav borttagna fran kravunderlag'
+        return 'Krav borttagna från kravunderlag'
       default:
         return 'Kravunderlag'
     }
@@ -100,6 +120,35 @@ export function getSpecificationServiceTitle(
     default:
       return 'Requirements Specifications'
   }
+}
+
+function getServiceMessageTemplate(
+  locale: ResponseLocale,
+  key: ServiceMessageKey,
+): string {
+  const value = key
+    .split('.')
+    .reduce<unknown>(
+      (current, part) =>
+        current && typeof current === 'object'
+          ? (current as Record<string, unknown>)[part]
+          : undefined,
+      SERVICE_MESSAGES[locale],
+    )
+
+  return typeof value === 'string' ? value : key
+}
+
+export function translateServiceMessage(
+  locale: ResponseLocale,
+  key: ServiceMessageKey,
+  values: Record<string, number | string> = {},
+): string {
+  return getServiceMessageTemplate(locale, key).replace(
+    /\{(\w+)\}/g,
+    (placeholder, name: string) =>
+      Object.hasOwn(values, name) ? String(values[name]) : placeholder,
+  )
 }
 
 export async function authorize(
@@ -121,7 +170,7 @@ export async function withLogging<T>(
   event: string,
   metadata: Record<string, string | number | boolean | null | undefined>,
   operation: () => Promise<T>,
-) {
+): Promise<T> {
   const startedAt = Date.now()
 
   try {

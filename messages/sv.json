@@ -799,6 +799,24 @@
       "definitePlural": "Kravvy från MCP"
     }
   },
+  "requirements": {
+    "specifications": {
+      "summary": {
+        "none": "Inga kravunderlag hittades.",
+        "count": "Hittade {count} {specificationWord}."
+      },
+      "items": {
+        "count": "Hittade {count} {requirementWord} i kravunderlag {reference}."
+      },
+      "add": {
+        "count": "Lade till {count} {requirementWord} i kravunderlag {reference}.",
+        "skipped": "Hoppade över {count} {requirementWord} utan publicerad version: {ids}."
+      },
+      "remove": {
+        "count": "Tog bort {count} {requirementWord} från kravunderlag {reference}."
+      }
+    }
+  },
   "footer": {
     "copyright": "© {year} Bidragsgivare till Kravhantering. Alla rättigheter förbehållna."
   },
