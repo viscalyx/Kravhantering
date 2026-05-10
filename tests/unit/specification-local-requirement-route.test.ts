@@ -80,7 +80,11 @@ describe('specifications/[id]/local-requirements/[localRequirementId] route', ()
       )
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to delete specification-local requirement',
-        expect.any(Error),
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'delete failed',
+          }),
+        }),
       )
     } finally {
       consoleErrorSpy.mockRestore()

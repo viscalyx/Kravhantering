@@ -69,19 +69,38 @@ describe('GET /api/ai/models', () => {
     )
   })
 
-  it('returns error when OpenRouter is unavailable', async () => {
+  it('returns sanitized error when OpenRouter is unavailable', async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
     const { listModels } = await import('@/lib/ai/openrouter-client')
     vi.mocked(listModels)
-      .mockRejectedValueOnce(new Error('Connection refused'))
-      .mockRejectedValueOnce(new Error('Connection refused'))
+      .mockRejectedValueOnce(
+        new Error('Connection refused: sk-or-v1-secret SELECT token FROM keys'),
+      )
+      .mockRejectedValueOnce(
+        new Error('Connection refused: sk-or-v1-secret SELECT token FROM keys'),
+      )
 
-    const response = await GET(
-      makeRequest('http://localhost:3000/api/ai/models?refresh=1'),
-    )
+    try {
+      const response = await GET(
+        makeRequest('http://localhost:3000/api/ai/models?refresh=1'),
+      )
 
-    const data = (await response.json()) as { models: unknown[]; error: string }
-    expect(data.models).toEqual([])
-    expect(data.error).toBe('Connection refused')
+      expect(response.status).toBe(503)
+      const data = (await response.json()) as {
+        models: unknown[]
+        error: string
+      }
+      expect(data.models).toEqual([])
+      expect(data.error).toBe('AI provider is unavailable')
+      expect(JSON.stringify(data)).not.toMatch(/sk-or-v1|SELECT/)
+      expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toMatch(
+        /sk-or-v1-secret|SELECT token/,
+      )
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 
   it('passes supported_parameters and adds structured_outputs filter', async () => {

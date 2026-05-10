@@ -120,6 +120,7 @@ describe('specification-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
       error: 'Already requested',
     })
   })
@@ -213,6 +214,7 @@ describe('specification-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
       error: 'Already decided',
     })
   })
@@ -367,6 +369,7 @@ describe('specification-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
       error: 'Not in review',
     })
   })

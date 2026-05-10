@@ -301,7 +301,7 @@ describe('generateChatStream', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 503,
-      text: async () => 'Service unavailable',
+      text: async () => 'Service unavailable with sk-or-v1-secret',
     })
 
     const events = []
@@ -310,7 +310,13 @@ describe('generateChatStream', () => {
     }
 
     expect(events).toHaveLength(1)
-    expect(events[0].phase).toBe('error')
+    const [event] = events
+    expect(event?.phase).toBe('error')
+    if (event?.phase !== 'error') {
+      throw new Error('Expected an error event')
+    }
+    expect(event.message).toBe('AI provider is unavailable')
+    expect(event.message).not.toContain('Service unavailable')
   })
 
   it('skips SSE comment lines', async () => {

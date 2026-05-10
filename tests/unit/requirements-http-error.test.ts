@@ -110,6 +110,24 @@ describe('toHttpErrorPayload', () => {
     })
   })
 
+  it('allows explicit safe validation status overrides', () => {
+    const result = toHttpErrorPayload(
+      validationError('Requirement has no published version', {
+        httpStatus: 422,
+        reason: 'missing_published_version',
+        requirementId: 1,
+      }),
+    )
+
+    expect(result).toEqual({
+      body: {
+        code: 'validation',
+        error: 'Requirement has no published version',
+      },
+      status: 422,
+    })
+  })
+
   it('returns generic payloads for internal and unknown errors', () => {
     expect(
       toHttpErrorPayload(

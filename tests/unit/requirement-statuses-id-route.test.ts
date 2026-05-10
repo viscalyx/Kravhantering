@@ -15,6 +15,7 @@ vi.mock('@/lib/dal/requirement-statuses', () => ({
 }))
 
 import { DELETE, PUT } from '@/app/api/requirement-statuses/[id]/route'
+import { conflictError } from '@/lib/requirements/errors'
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
@@ -58,13 +59,24 @@ describe('requirement-statuses/[id] route', () => {
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })
 
-  it('DELETE returns error on failure', async () => {
+  it('DELETE returns sanitized error on unexpected failure', async () => {
     mockDeleteStatus.mockRejectedValue(new Error('Cannot delete'))
     const req = new NextRequest('http://localhost', { method: 'DELETE' })
     const res = await DELETE(req, makeParams('1'))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(500)
     const json = (await res.json()) as { error: string }
-    expect(json.error).toBe('Cannot delete')
+    expect(json.error).toBe('An internal error occurred')
+    expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
+    expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
+  })
+
+  it('DELETE preserves known business errors', async () => {
+    mockDeleteStatus.mockRejectedValue(conflictError('Cannot delete'))
+    const req = new NextRequest('http://localhost', { method: 'DELETE' })
+    const res = await DELETE(req, makeParams('1'))
+    expect(res.status).toBe(409)
+    const json = (await res.json()) as { code: string; error: string }
+    expect(json).toEqual({ code: 'conflict', error: 'Cannot delete' })
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })
@@ -73,9 +85,9 @@ describe('requirement-statuses/[id] route', () => {
     mockDeleteStatus.mockRejectedValue('unexpected')
     const req = new NextRequest('http://localhost', { method: 'DELETE' })
     const res = await DELETE(req, makeParams('1'))
-    expect(res.status).toBe(400)
+    expect(res.status).toBe(500)
     const json = (await res.json()) as { error: string }
-    expect(json.error).toBe('Failed to delete status')
+    expect(json.error).toBe('An internal error occurred')
     expect(mockDeleteStatus).toHaveBeenCalledTimes(1)
     expect(mockDeleteStatus).toHaveBeenCalledWith(expect.anything(), 1)
   })

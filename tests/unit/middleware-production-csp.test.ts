@@ -1,0 +1,104 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { describe, expect, it, vi } from 'vitest'
+
+// next-intl's middleware module imports `next/server` via a path that the
+// Vitest ESM resolver cannot follow. Match the main middleware test's
+// pass-through mock so this file only varies the build target.
+const { intlMiddlewareMock } = vi.hoisted(() => ({
+  intlMiddlewareMock: vi.fn(() => NextResponse.next()),
+}))
+
+vi.mock('next-intl/middleware', () => ({
+  default: () => intlMiddlewareMock,
+}))
+vi.mock('@/i18n/routing', () => ({ routing: {} }))
+vi.mock('@/lib/runtime/build-target', () => ({
+  ALLOW_INSECURE_OIDC_ISSUER: false,
+  BUILD_TARGET: 'prod',
+  USE_DEV_CSP: false,
+  USE_INSECURE_COOKIE: false,
+}))
+
+const { default: middleware } = await import('@/middleware')
+const { resetAuthConfigForTests } = await import('@/lib/auth/config')
+const { getSessionFromRequest } = await import('@/lib/auth/session')
+
+const COOKIE_PASSWORD =
+  'test-cookie-password-must-be-at-least-32-characters-long'
+
+const AUTH_ON_ENV: Record<string, string> = {
+  AUTH_OIDC_ISSUER_URL: 'https://idp.example.test/oidc',
+  AUTH_OIDC_CLIENT_ID: 'kravhantering-app',
+  AUTH_OIDC_CLIENT_SECRET: 'test-secret',
+  AUTH_OIDC_REDIRECT_URI: 'http://localhost/api/auth/callback',
+  AUTH_OIDC_POST_LOGOUT_REDIRECT_URI: 'http://localhost/',
+  AUTH_SESSION_COOKIE_PASSWORD: COOKIE_PASSWORD,
+}
+
+function withEnv(env: Record<string, string | undefined>) {
+  const previous: Record<string, string | undefined> = {}
+  for (const [key, value] of Object.entries(env)) {
+    previous[key] = process.env[key]
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+  resetAuthConfigForTests()
+  return () => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+    resetAuthConfigForTests()
+  }
+}
+
+function buildRequest(url: string, cookie: string): NextRequest {
+  const headers = new Headers({
+    accept: 'text/html',
+    cookie,
+    'x-user-id': 'attacker',
+    'x-user-roles': 'Admin',
+  })
+  return new NextRequest(url, { headers })
+}
+
+async function writeSignedInCookie(): Promise<string> {
+  const response = new Response()
+  const session = await getSessionFromRequest(
+    new Request('http://localhost/'),
+    response,
+  )
+  session.sub = 'user-1'
+  session.givenName = 'Alice'
+  session.familyName = 'Reviewer'
+  session.name = 'Alice Reviewer'
+  session.hsaId = 'SE2321000032-rev1'
+  session.roles = ['Reviewer']
+  session.accessTokenExpiresAt = 1
+  await session.save()
+  return response.headers.get('set-cookie')?.split(';')[0] ?? ''
+}
+
+describe('middleware production CSP', () => {
+  it('emits the strict production policy and request nonce override', async () => {
+    const restore = withEnv(AUTH_ON_ENV)
+    try {
+      const cookie = await writeSignedInCookie()
+      const response = await middleware(
+        buildRequest('http://localhost/sv/requirements', cookie),
+      )
+
+      const csp = response.headers.get('content-security-policy') ?? ''
+      const nonceMatch = csp.match(/script-src 'self' 'nonce-([^']+)'/)
+      const requestNonce = response.headers.get('x-middleware-request-x-nonce')
+
+      expect(csp).toContain("frame-ancestors 'none'")
+      expect(csp).not.toContain("'unsafe-eval'")
+      expect(csp).not.toContain('ws://localhost:*')
+      expect(nonceMatch?.[1]).toBeTruthy()
+      expect(requestNonce).toBe(nonceMatch?.[1])
+    } finally {
+      restore()
+    }
+  })
+})

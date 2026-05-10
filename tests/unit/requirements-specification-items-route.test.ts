@@ -101,6 +101,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
+      code: 'validation',
       error:
         'needsReferenceId does not belong to this requirements specification',
     })
@@ -308,6 +309,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toEqual({
+      code: 'validation',
       error:
         'Requirement 1 has no published version and cannot be added to a specification',
     })
@@ -368,7 +370,11 @@ describe('specifications/[id]/items route', () => {
       })
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to add requirements to requirements specification',
-        expect.any(Error),
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'SQL transaction failed',
+          }),
+        }),
       )
     } finally {
       consoleErrorSpy.mockRestore()
