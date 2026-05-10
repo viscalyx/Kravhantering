@@ -132,6 +132,7 @@ describe('requirements/[id] route', () => {
           baseVersionId: 10,
           description: 'Updated',
           normReferenceIds: [5, 6],
+          ownerId: 'spoofed-actor',
           requirementPackageIds: [1, 2],
         }),
         headers: { 'Content-Type': 'application/json' },
@@ -154,6 +155,10 @@ describe('requirements/[id] route', () => {
           }),
         }),
       )
+      const manageInput = mockManageRequirement.mock.calls[0]?.[1] as {
+        requirement: Record<string, unknown>
+      }
+      expect(manageInput.requirement).not.toHaveProperty('createdBy')
     })
 
     it('returns stale edit conflicts with details from the service', async () => {

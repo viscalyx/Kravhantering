@@ -22,6 +22,9 @@ const updateImplementationTypeSchema = z
     nameSv: boundedDbStringSchema.optional(),
   })
   .strict()
+  .refine(data => data.nameEn !== undefined || data.nameSv !== undefined, {
+    message: 'At least one of nameEn or nameSv must be provided',
+  })
 
 export async function PUT(
   request: NextRequest,

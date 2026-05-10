@@ -156,7 +156,7 @@ sequenceDiagram
     Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
     JWKS-->>Verify: JWK set
     Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
-    Verify->>Verify: Extract sub, employeeHsaId, roles, optional client_id, optional scope
+    Verify->>Verify: Extract sub, employeeHsaId or MCP client_id fallback,<br/>roles, optional scope
     Verify->>Audit: auth.mcp.token.accepted
     Verify-->>Route: Verified actor
     Route->>Attach: attachVerifiedActor(request, actor)
@@ -176,14 +176,15 @@ sequenceDiagram
   [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
 - Missing-header and invalid-token failures use a JSON-RPC error body so MCP
   clients receive the same response shape at both auth gates.
-- `verifyMcpBearerToken()` derives the JWKS URL directly from the issuer as
-  `${issuer}/.well-known/jwks.json` and caches the resulting
-  `RemoteJWKSet`.
+- `verifyMcpBearerToken()` uses OIDC discovery metadata to read the issuer's
+  `jwks_uri` and caches the resulting `RemoteJWKSet`.
 - JWT verification checks signature, issuer, audience, and a 30-second clock
   tolerance.
-- The required MCP identity claim is `employeeHsaId`. Values prefixed with
+- The required MCP identity is `employeeHsaId`. Values prefixed with
   `mcp-client:` are accepted as synthetic service identities; other values
-  must match the HSA-id validator.
+  must match the HSA-id validator. For the configured MCP service-account
+  client, the app derives `mcp-client:<client_id>` when the token omits the
+  hardcoded claim but still has a verified `client_id`/`azp`.
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active
   `Request` before the requirements service builds its request context.
@@ -356,7 +357,9 @@ flowchart LR
 - Issue signed JWT access tokens that can be verified against the IdP JWKS.
   Opaque access tokens are not sufficient for the current MCP implementation.
 - Ensure MCP access tokens match the configured issuer and audience.
-- Include `sub` and `employeeHsaId` on the MCP access token.
+- Include `sub` and `employeeHsaId` on the MCP access token, or use the
+  configured MCP service-account client so the app can derive
+  `mcp-client:<client_id>` from a verified `client_id`/`azp`.
 - The current MCP implementation may also consume `roles` and/or `scope`.
   If role-based behavior is needed there, emit the canonical app roles on a
   `roles` claim.

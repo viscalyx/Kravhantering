@@ -41,7 +41,7 @@ export async function GET(
     const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
       ...ref,
-      versionNumber: version,
+      versionNumber: Number(version),
       view: 'version',
     })
     const versionDetail = result.version

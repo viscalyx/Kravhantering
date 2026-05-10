@@ -44,6 +44,14 @@ const patchSpecificationItemSchema = z
     specificationItemStatusId: positiveIntegerSchema.nullable().optional(),
   })
   .strict()
+  .refine(
+    data =>
+      data.note !== undefined || data.specificationItemStatusId !== undefined,
+    {
+      message:
+        'At least one of note or specificationItemStatusId must be supplied',
+    },
+  )
 
 async function resolveSpecificationId(idOrSlug: string, db: SqlServerDatabase) {
   const bySlug = await getSpecificationBySlug(db, idOrSlug)

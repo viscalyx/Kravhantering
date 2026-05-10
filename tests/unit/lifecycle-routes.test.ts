@@ -224,6 +224,13 @@ describe('lifecycle routes', () => {
       })
       const json = (await res.json()) as { uniqueId: string }
       expect(json.uniqueId).toBe('TST-001')
+      expect(mockGetRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          versionNumber: 2,
+          view: 'version',
+        }),
+      )
     })
 
     it('GET returns error on failure', async () => {

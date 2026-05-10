@@ -2,7 +2,6 @@ import { z } from 'zod'
 import {
   type ContentPart,
   generateChatStream,
-  type ProviderPreferences,
 } from '@/lib/ai/openrouter-client'
 import {
   buildSystemPrompt,
@@ -105,9 +104,7 @@ export async function POST(request: Request) {
     return parsedBody.response
   }
   const body = parsedBody.data
-  const providerPreferences = body.providerPreferences as
-    | ProviderPreferences
-    | undefined
+  const providerPreferences = body.providerPreferences
   const { images, locale } = body
   const db = await getRequestSqlServerDataSource()
 

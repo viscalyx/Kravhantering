@@ -34,6 +34,18 @@ const oidcCallbackQuerySchema = z
     state: z.string().min(1).max(4096).optional(),
   })
   .strict()
+  .superRefine((query, context) => {
+    const hasCode = query.code !== undefined
+    const hasError = query.error !== undefined
+
+    if (hasCode === hasError) {
+      context.addIssue({
+        code: 'custom',
+        message: 'OIDC callback must include exactly one of code or error.',
+        path: hasCode ? ['error'] : ['code'],
+      })
+    }
+  })
 
 function sanitizeReturnTo(raw: string | null | undefined): string {
   const fallback = `/${routing.defaultLocale}`
@@ -151,6 +163,20 @@ export async function GET(request: NextRequest) {
     loginState.destroy()
     return NextResponse.json(
       { error: 'Login session expired or missing. Please retry.' },
+      { status: 400 },
+    )
+  }
+
+  if (parsedQuery.data.error !== undefined) {
+    recordLoginFailure(request, 'oidc_error', {
+      error: parsedQuery.data.error,
+    })
+    loginState.destroy()
+    return NextResponse.json(
+      {
+        error: 'OIDC callback failed',
+        detail: parsedQuery.data.error_description || parsedQuery.data.error,
+      },
       { status: 400 },
     )
   }

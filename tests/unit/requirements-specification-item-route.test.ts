@@ -150,4 +150,37 @@ describe('requirements-specifications/[id]/items/[itemId] route', () => {
     expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
     expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
   })
+
+  it('rejects empty patch payloads before resolving the specification', async () => {
+    const request = new NextRequest(
+      'http://localhost/api/specifications/ETJANST-UPP-2026/items/lib%3A31',
+      {
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      },
+    )
+
+    const response = await PATCH(
+      request,
+      makeParams('ETJANST-UPP-2026', 'lib%3A31'),
+    )
+    const body = (await response.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message:
+            'At least one of note or specificationItemStatusId must be supplied',
+        }),
+      ]),
+    )
+    expect(mocks.getSpecificationBySlug).not.toHaveBeenCalled()
+    expect(mocks.updateSpecificationItemFieldsByItemRef).not.toHaveBeenCalled()
+  })
 })

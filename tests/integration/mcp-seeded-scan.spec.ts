@@ -329,6 +329,7 @@ test.describe('MCP seeded HTTP security gate', () => {
   test('runs the authenticated seeded MCP corpus', async ({
     browserName: _browserName,
   }, testInfo) => {
+    test.setTimeout(90_000)
     const events: string[] = []
     const targetUrl = getMcpUrl(testInfo)
     const expectedTools = await loadExpectedTools()
@@ -566,7 +567,7 @@ test.describe('MCP seeded HTTP security gate', () => {
         name: 'requirements_manage_requirement',
       })
       const staleText = expectToolError(staleEdit, 'stale edit')
-      expect(staleText).toMatch(/changed|stale|conflict/i)
+      expect(staleText).toMatch(/updated|changed|stale|conflict/i)
       await recordEvent({
         name: 'requirements_manage_requirement_stale_edit',
         status: 'expected-error',

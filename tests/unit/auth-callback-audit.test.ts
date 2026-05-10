@@ -121,6 +121,84 @@ describe('auth callback security audit events', () => {
     return mod.GET
   }
 
+  it('rejects callbacks without code or error before login state lookup', async () => {
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest('http://localhost/api/auth/callback?state=state'),
+    )
+    const body = (await response.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'OIDC callback must include exactly one of code or error.',
+        }),
+      ]),
+    )
+    expect(getLoginStateMock).not.toHaveBeenCalled()
+    expect(authorizationCodeGrantMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects callbacks with both code and error before login state lookup', async () => {
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest(
+        'http://localhost/api/auth/callback?code=abc&error=access_denied&state=state',
+      ),
+    )
+    const body = (await response.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'OIDC callback must include exactly one of code or error.',
+        }),
+      ]),
+    )
+    expect(getLoginStateMock).not.toHaveBeenCalled()
+    expect(authorizationCodeGrantMock).not.toHaveBeenCalled()
+  })
+
+  it('returns provider callback errors without token exchange', async () => {
+    const loginState = freshLoginState()
+    getLoginStateMock.mockResolvedValue(loginState)
+    getSessionMock.mockResolvedValue(freshPriorSession())
+
+    const GET = await importGet()
+    const response = await GET(
+      buildCallbackRequest(
+        'http://localhost/api/auth/callback?error=access_denied&error_description=Denied&state=state',
+      ),
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: 'OIDC callback failed',
+      detail: 'Denied',
+    })
+    expect(authorizationCodeGrantMock).not.toHaveBeenCalled()
+    expect(loginState.destroy).toHaveBeenCalledOnce()
+    expect(emittedSecurityEvents()).toContainEqual(
+      expect.objectContaining({
+        event: 'auth.login.failed',
+        detail: {
+          error: 'access_denied',
+          reason: 'oidc_error',
+        },
+      }),
+    )
+  })
+
   it('emits auth.login.failed with reason=code_verifier_missing', async () => {
     const loginState = freshLoginState({ codeVerifier: '' as never })
     getLoginStateMock.mockResolvedValue(loginState)

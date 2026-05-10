@@ -237,7 +237,6 @@ export async function POST(request: NextRequest) {
         acceptanceCriteria: body.acceptanceCriteria,
         areaId: body.areaId,
         categoryId: body.categoryId,
-        createdBy: body.ownerId,
         description: body.description,
         normReferenceIds: body.normReferenceIds,
         requiresTesting: body.requiresTesting,

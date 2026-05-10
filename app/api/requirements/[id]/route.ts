@@ -123,7 +123,6 @@ export async function PUT(
         baseRevisionToken: body.baseRevisionToken,
         baseVersionId: body.baseVersionId,
         categoryId: body.categoryId,
-        createdBy: body.ownerId,
         description: body.description,
         normReferenceIds: body.normReferenceIds,
         requiresTesting: body.requiresTesting,

@@ -12,17 +12,43 @@ type RemoteJwks = ReturnType<typeof createRemoteJWKSet>
 
 type JwksCacheEntry = {
   issuer: string
+  jwksUri: string
   jwks: RemoteJwks
 }
 
+const DEFAULT_MCP_CLIENT_ID = 'kravhantering-mcp'
+
 let jwksCache: JwksCacheEntry | null = null
 
-function getOrCreateJwks(issuer: string): RemoteJwks {
-  if (jwksCache && jwksCache.issuer === issuer) return jwksCache.jwks
-  const jwks = createRemoteJWKSet(
-    new URL(`${issuer.replace(/\/$/, '')}/.well-known/jwks.json`),
+function getExpectedMcpClientId(): string {
+  return (
+    process.env.AUTH_OIDC_MCP_CLIENT_ID?.trim() ||
+    process.env.MCP_CLIENT_ID?.trim() ||
+    DEFAULT_MCP_CLIENT_ID
   )
-  jwksCache = { issuer, jwks }
+}
+
+function syntheticMcpHsaId(clientId: string | undefined): string | null {
+  if (!clientId || clientId !== getExpectedMcpClientId()) return null
+  return `mcp-client:${clientId}`
+}
+
+async function getOrCreateJwks(issuer: string): Promise<RemoteJwks> {
+  const { getOidcConfiguration } = await import('@/lib/auth/oidc')
+  const metadata = (await getOidcConfiguration()).serverMetadata()
+  const jwksUri = metadata.jwks_uri
+  if (!jwksUri) {
+    throw new Error('OIDC discovery metadata did not include `jwks_uri`.')
+  }
+  if (
+    jwksCache &&
+    jwksCache.issuer === issuer &&
+    jwksCache.jwksUri === jwksUri
+  ) {
+    return jwksCache.jwks
+  }
+  const jwks = createRemoteJWKSet(new URL(jwksUri))
+  jwksCache = { issuer, jwksUri, jwks }
   return jwks
 }
 
@@ -67,9 +93,9 @@ export async function verifyMcpBearerToken(
 
   const issuer = cfg.issuerUrl
   const audience = cfg.apiAudience
-  const jwks = getOrCreateJwks(issuer)
 
   try {
+    const jwks = await getOrCreateJwks(issuer)
     const { payload } = await jwtVerify(token, jwks, {
       issuer,
       audience,
@@ -77,12 +103,19 @@ export async function verifyMcpBearerToken(
     })
     const sub = typeof payload.sub === 'string' ? payload.sub : null
     const roles = parseRolesClaim(payload.roles)
+    const payloadRecord = payload as Record<string, unknown>
     const clientId =
-      typeof (payload as Record<string, unknown>).client_id === 'string'
-        ? ((payload as Record<string, unknown>).client_id as string)
-        : undefined
-    const hsaIdRaw = (payload as Record<string, unknown>).employeeHsaId
-    if (typeof hsaIdRaw !== 'string' || hsaIdRaw === '') {
+      typeof payloadRecord.client_id === 'string'
+        ? payloadRecord.client_id
+        : typeof payloadRecord.azp === 'string'
+          ? payloadRecord.azp
+          : undefined
+    const hsaIdClaim = payloadRecord.employeeHsaId
+    const hsaIdRaw =
+      typeof hsaIdClaim === 'string' && hsaIdClaim !== ''
+        ? hsaIdClaim
+        : syntheticMcpHsaId(clientId)
+    if (!hsaIdRaw) {
       recordSecurityEvent({
         event: 'auth.token.rejected',
         outcome: 'failure',

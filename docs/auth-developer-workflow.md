@@ -237,6 +237,13 @@ by the MCP service-account flow. Values that begin with `mcp-client:`
 deliberately bypass the HSA-id format validator; assignment-based
 authorization treats the literal string as the actor identity.
 
+For local and prodlike Keycloak realms that were imported before that mapper
+existed, the app also accepts the same synthetic identity by deriving
+`mcp-client:<client_id>` from a verified service-account token when
+`client_id` or `azp` matches the configured MCP client id. The expected client
+id is `AUTH_OIDC_MCP_CLIENT_ID`, then `MCP_CLIENT_ID`, then the local default
+`kravhantering-mcp`.
+
 ### No refresh tokens
 
 Browser sessions intentionally do **not** carry a refresh token. When

@@ -10,6 +10,8 @@ import {
   readJsonWithSchema,
 } from '@/lib/http/validation'
 
+export const dynamic = 'force-dynamic'
+
 const implementationTypeSchema = z
   .object({
     nameEn: boundedDbStringSchema,

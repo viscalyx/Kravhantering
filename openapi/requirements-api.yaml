@@ -717,3 +717,12 @@ components:
         - $ref: '#/components/schemas/RequirementMutation'
         - type: object
           required: [baseRevisionToken, baseVersionId]
+          properties:
+            baseRevisionToken:
+              type: string
+              nullable: false
+              maxLength: 200
+            baseVersionId:
+              type: integer
+              minimum: 1
+              nullable: false

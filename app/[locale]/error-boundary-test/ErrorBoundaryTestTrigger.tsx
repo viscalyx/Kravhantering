@@ -13,6 +13,8 @@ export default function ErrorBoundaryTestTrigger({ message }: ComponentProps) {
     setShouldThrow(true)
   }, [])
 
+  // useEffect calls setShouldThrow, then shouldThrow makes render throw
+  // Error(message), which lets the error boundary catch this test failure.
   if (shouldThrow) {
     throw new Error(message)
   }

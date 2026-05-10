@@ -171,6 +171,7 @@ describe('requirements route', () => {
         body: JSON.stringify({
           description: 'New requirement',
           areaId: 1,
+          ownerId: 'spoofed-actor',
           typeId: 2,
           requirementPackageIds: [1, 2],
         }),
@@ -188,6 +189,10 @@ describe('requirements route', () => {
           }),
         }),
       )
+      const manageInput = mockManageRequirement.mock.calls[0]?.[1] as {
+        requirement: Record<string, unknown>
+      }
+      expect(manageInput.requirement).not.toHaveProperty('createdBy')
     })
 
     it('returns 400 when POST contains invalid requirement package ids', async () => {
