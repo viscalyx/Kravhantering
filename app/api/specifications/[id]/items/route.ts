@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { countDeviationsPerItemRef } from '@/lib/dal/deviations'
 import {
   deleteSpecificationItemsByRefs,
@@ -10,165 +11,74 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  nullableBoundedDbStringSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+  routeSegmentSchema,
+  specificationIdOrSlugSchema,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
 
 const ADD_REQUIREMENTS_ERROR = 'Failed to add requirements'
 
-type ParseResult<T> =
-  | { ok: true; value: T }
-  | { ok: false; response: NextResponse<{ error: string }> }
+const specificationParamSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+  })
+  .strict()
 
-interface ParsedDeleteBody {
-  itemRefs?: string[]
-  requirementIds: number[]
-}
+const requirementIdsSchema = z
+  .array(positiveIntegerSchema)
+  .min(1)
+  .max(ARRAY_INPUT_MAX_ITEMS)
+  .refine(values => new Set(values).size === values.length, {
+    message: 'Expected unique positive integers',
+  })
 
-interface ParsedPostBody extends ParsedDeleteBody {
-  needsReferenceId?: number | null
-  needsReferenceText?: string | null
-}
+const itemRefsSchema = z
+  .array(routeSegmentSchema)
+  .min(1)
+  .max(ARRAY_INPUT_MAX_ITEMS)
+  .refine(values => new Set(values).size === values.length, {
+    message: 'Expected unique item references',
+  })
 
-function invalidBody(message: string): ParseResult<never> {
-  return {
-    ok: false,
-    response: NextResponse.json({ error: message }, { status: 400 }),
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function parseRequirementIds(
-  value: unknown,
-): ParseResult<ParsedDeleteBody['requirementIds']> {
-  if (
-    !Array.isArray(value) ||
-    value.length === 0 ||
-    value.some(
-      requirementId =>
-        !Number.isInteger(requirementId) || (requirementId as number) <= 0,
-    )
-  ) {
-    return invalidBody(
-      'requirementIds must be a non-empty array of positive integers',
-    )
-  }
-
-  if (new Set(value as number[]).size !== (value as number[]).length) {
-    return invalidBody(
-      'requirementIds must be a non-empty array of unique positive integers',
-    )
-  }
-
-  return { ok: true, value: value as number[] }
-}
-
-function parseDeleteBody(body: unknown): ParseResult<ParsedDeleteBody> {
-  if (!isRecord(body)) {
-    return invalidBody('Invalid request body')
-  }
-
-  if (Array.isArray(body.itemRefs)) {
-    const itemRefs = body.itemRefs
-    if (
-      itemRefs.length === 0 ||
-      itemRefs.some(
-        itemRef => typeof itemRef !== 'string' || itemRef.trim().length === 0,
-      ) ||
-      new Set(itemRefs).size !== itemRefs.length
-    ) {
-      return invalidBody('itemRefs must be a non-empty array of unique strings')
-    }
-
-    return {
-      ok: true,
-      value: {
-        itemRefs,
-        requirementIds: [],
-      },
-    }
-  }
-
-  const requirementIds = parseRequirementIds(body.requirementIds)
-  if (!requirementIds.ok) {
-    return requirementIds
-  }
-
-  return {
-    ok: true,
-    value: {
-      requirementIds: requirementIds.value,
+const postItemsSchema = z
+  .object({
+    needsReferenceId: positiveIntegerSchema.nullable().optional(),
+    needsReferenceText: nullableBoundedDbStringSchema.optional(),
+    requirementIds: requirementIdsSchema,
+  })
+  .strict()
+  .refine(
+    value =>
+      value.needsReferenceId == null ||
+      value.needsReferenceText == null ||
+      value.needsReferenceText.trim() === '',
+    {
+      message:
+        'Provide either needsReferenceId or needsReferenceText, not both',
+      path: ['needsReferenceText'],
     },
-  }
-}
+  )
 
-function parsePostBody(body: unknown): ParseResult<ParsedPostBody> {
-  if (!isRecord(body)) {
-    return invalidBody('Invalid request body')
-  }
-
-  const requirementIds = parseRequirementIds(body.requirementIds)
-  if (!requirementIds.ok) {
-    return requirementIds
-  }
-
-  const needsReferenceId = Object.hasOwn(body, 'needsReferenceId')
-    ? body.needsReferenceId
-    : undefined
-  if (
-    needsReferenceId !== undefined &&
-    needsReferenceId !== null &&
-    (typeof needsReferenceId !== 'number' ||
-      !Number.isInteger(needsReferenceId) ||
-      needsReferenceId < 0)
-  ) {
-    return invalidBody(
-      'needsReferenceId must be a non-negative integer, null, or undefined',
-    )
-  }
-
-  const needsReferenceText = Object.hasOwn(body, 'needsReferenceText')
-    ? body.needsReferenceText
-    : undefined
-  if (
-    needsReferenceText !== undefined &&
-    needsReferenceText !== null &&
-    typeof needsReferenceText !== 'string'
-  ) {
-    return invalidBody(
-      'needsReferenceText must be a string, null, or undefined',
-    )
-  }
-
-  if (
-    needsReferenceId !== undefined &&
-    needsReferenceId !== null &&
-    typeof needsReferenceText === 'string' &&
-    needsReferenceText.trim() !== ''
-  ) {
-    return invalidBody(
-      'Provide either needsReferenceId or needsReferenceText, not both',
-    )
-  }
-
-  return {
-    ok: true,
-    value: {
-      needsReferenceId:
-        needsReferenceId === undefined
-          ? undefined
-          : (needsReferenceId as number | null),
-      needsReferenceText:
-        needsReferenceText === undefined
-          ? undefined
-          : (needsReferenceText as string | null),
-      requirementIds: requirementIds.value,
-    },
-  }
-}
+const deleteItemsSchema = z.union([
+  z
+    .object({
+      itemRefs: itemRefsSchema,
+    })
+    .strict(),
+  z
+    .object({
+      requirementIds: requirementIdsSchema,
+    })
+    .strict(),
+])
 
 async function resolveSpecificationId(db: SqlServerDatabase, idOrSlug: string) {
   const bySlug = await getSpecificationBySlug(db, idOrSlug)
@@ -184,7 +94,11 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(params, specificationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
+  }
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null)
@@ -207,25 +121,23 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(params, specificationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
+  }
+  const parsedBody = await readJsonWithSchema(request, postItemsSchema)
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
   const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  let rawBody: unknown
-  try {
-    rawBody = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-  const parsedBody = parsePostBody(rawBody)
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
   const { requirementIds, needsReferenceId, needsReferenceText } =
-    parsedBody.value
+    parsedBody.data
 
   try {
     const addedCount = await linkRequirementsToSpecificationAtomically(
@@ -260,31 +172,28 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(params, specificationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
+  }
+  const parsedBody = await readJsonWithSchema(request, deleteItemsSchema)
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
   const specificationId = await resolveSpecificationId(db, id)
   if (specificationId === null)
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  let rawBody: unknown
-  try {
-    rawBody = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-  const parsedBody = parseDeleteBody(rawBody)
-  if (!parsedBody.ok) {
-    return parsedBody.response
-  }
-
-  if (parsedBody.value.itemRefs?.length) {
+  if ('itemRefs' in parsedBody.data) {
     try {
       const { deletedLibraryCount, deletedSpecificationLocalCount } =
         await deleteSpecificationItemsByRefs(
           db,
           specificationId,
-          parsedBody.value.itemRefs,
+          parsedBody.data.itemRefs,
         )
       return NextResponse.json({
         deletedLibraryCount,
@@ -309,7 +218,7 @@ export async function DELETE(
     const removedCount = await unlinkRequirementsFromSpecification(
       db,
       specificationId,
-      parsedBody.value.requirementIds,
+      parsedBody.data.requirementIds,
     )
     return NextResponse.json({ ok: true, removedCount })
   } catch (error) {

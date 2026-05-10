@@ -1,29 +1,46 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+  refOrPositiveIntegerSegmentSchema,
+} from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
-import { isPositiveInteger, readJsonObject } from '../../json-body'
 import { parseRequirementRef } from '../../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
+
+const requirementRefParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
+
+const restoreBodySchema = z
+  .object({
+    versionNumber: positiveIntegerSchema,
+  })
+  .strict()
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const parsed = await readJsonObject(request)
-  if (parsed.response) return parsed.response
-  const { body } = parsed
-  if (!isPositiveInteger(body.versionNumber)) {
-    return NextResponse.json(
-      { error: 'Missing or invalid versionNumber' },
-      { status: 400 },
-    )
-  }
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
+  const parsedBody = await readJsonWithSchema(request, restoreBodySchema)
+  if (!parsedBody.ok) return parsedBody.response
+  const { versionNumber } = parsedBody.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 
@@ -33,7 +50,7 @@ export async function POST(
     const result = await service.manageRequirement(context, {
       ...ref,
       operation: 'restore_version',
-      versionNumber: body.versionNumber,
+      versionNumber,
     })
     return NextResponse.json({ ok: true, version: result.result })
   } catch (error) {

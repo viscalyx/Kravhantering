@@ -6,6 +6,10 @@ import {
   updateUiTerminology,
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  invalidRequestResponse,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
 import { buildUiTerminologyPayload, UI_TERM_KEYS } from '@/lib/ui-terminology'
 
 const termFormsSchema = z
@@ -30,20 +34,6 @@ const terminologyPayloadSchema = z
   })
   .strict()
 
-function toValidationError(error: unknown) {
-  if (error instanceof z.ZodError) {
-    return NextResponse.json(
-      {
-        error: 'Invalid terminology payload',
-        issues: error.issues,
-      },
-      { status: 400 },
-    )
-  }
-
-  return null
-}
-
 export async function GET() {
   try {
     const db = await getRequestSqlServerDataSource()
@@ -66,29 +56,22 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    let payload: unknown
-
-    try {
-      payload = await request.json()
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        return NextResponse.json(
-          { error: 'Malformed JSON body.' },
-          { status: 400 },
-        )
-      }
-
-      throw error
-    }
-
-    const body = terminologyPayloadSchema.parse(payload)
+    const parsedBody = await readJsonWithSchema(
+      request,
+      terminologyPayloadSchema,
+    )
+    if (!parsedBody.ok) return parsedBody.response
+    const body = parsedBody.data
     const uniqueKeys = new Set(body.terminology.map(entry => entry.key))
 
     if (uniqueKeys.size !== UI_TERM_KEYS.length) {
-      return NextResponse.json(
-        { error: 'Each terminology key must be provided exactly once.' },
-        { status: 400 },
-      )
+      return invalidRequestResponse([
+        {
+          code: 'custom',
+          message: 'Each terminology key must be provided exactly once.',
+          path: 'terminology',
+        },
+      ])
     }
     const db = await getRequestSqlServerDataSource()
     const terminology = await updateUiTerminology(db, body.terminology)
@@ -96,12 +79,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({
       terminology: buildUiTerminologyPayload(terminology),
     })
-  } catch (error) {
-    const validationError = toValidationError(error)
-    if (validationError) {
-      return validationError
-    }
-
+  } catch {
     return NextResponse.json(
       { error: 'Failed to save terminology.' },
       { status: 500 },

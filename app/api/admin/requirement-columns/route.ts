@@ -6,6 +6,10 @@ import {
   updateRequirementListColumnDefaults,
 } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  invalidRequestResponse,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
 import { REQUIREMENT_COLUMN_ORDER } from '@/lib/requirements/list-view'
 
 const columnDefaultsEntrySchema = z
@@ -23,20 +27,6 @@ const columnDefaultsPayloadSchema = z
       .length(REQUIREMENT_COLUMN_ORDER.length),
   })
   .strict()
-
-function toValidationError(error: unknown) {
-  if (error instanceof z.ZodError) {
-    return NextResponse.json(
-      {
-        error: 'Invalid requirement column payload',
-        issues: error.issues,
-      },
-      { status: 400 },
-    )
-  }
-
-  return null
-}
 
 export async function GET() {
   try {
@@ -58,55 +48,43 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  let jsonBody: unknown
-
   try {
-    jsonBody = await request.json()
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      return NextResponse.json(
-        { error: 'Malformed JSON body.' },
-        { status: 400 },
-      )
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to read requirement column defaults payload.' },
-      { status: 500 },
+    const parsedBody = await readJsonWithSchema(
+      request,
+      columnDefaultsPayloadSchema,
     )
-  }
-
-  try {
-    const body = columnDefaultsPayloadSchema.parse(jsonBody)
+    if (!parsedBody.ok) return parsedBody.response
+    const body = parsedBody.data
     const uniqueColumnIds = new Set(body.columns.map(column => column.columnId))
     const uniqueSortOrders = new Set(
       body.columns.map(column => column.sortOrder),
     )
 
     if (uniqueColumnIds.size !== REQUIREMENT_COLUMN_ORDER.length) {
-      return NextResponse.json(
-        { error: 'Each requirement column must be provided exactly once.' },
-        { status: 400 },
-      )
+      return invalidRequestResponse([
+        {
+          code: 'custom',
+          message: 'Each requirement column must be provided exactly once.',
+          path: 'columns',
+        },
+      ])
     }
 
     if (uniqueSortOrders.size !== REQUIREMENT_COLUMN_ORDER.length) {
-      return NextResponse.json(
-        { error: 'Each requirement column sort order must be unique.' },
-        { status: 400 },
-      )
+      return invalidRequestResponse([
+        {
+          code: 'custom',
+          message: 'Each requirement column sort order must be unique.',
+          path: 'columns',
+        },
+      ])
     }
     const db = await getRequestSqlServerDataSource()
 
     return NextResponse.json({
       columns: await updateRequirementListColumnDefaults(db, body.columns),
     })
-  } catch (error) {
-    const validationError = toValidationError(error)
-    if (validationError) {
-      return validationError
-    }
-
+  } catch {
     return NextResponse.json(
       { error: 'Failed to save requirement column defaults.' },
       { status: 500 },

@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
+import ErrorBoundaryTestTrigger from '../../error-boundary-test/ErrorBoundaryTestTrigger'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,5 +11,7 @@ export default async function AdminErrorBoundaryTestPage() {
     notFound()
   }
 
-  throw new Error('Test-only admin error boundary trigger')
+  return (
+    <ErrorBoundaryTestTrigger message="Test-only admin error boundary trigger" />
+  )
 }

@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
+import ErrorBoundaryTestTrigger from './ErrorBoundaryTestTrigger'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,5 +11,7 @@ export default async function ErrorBoundaryTestPage() {
     notFound()
   }
 
-  throw new Error('Test-only route error boundary trigger')
+  return (
+    <ErrorBoundaryTestTrigger message="Test-only route error boundary trigger" />
+  )
 }

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   deleteQualityCharacteristic,
   listQualityCharacteristics,
@@ -6,30 +7,41 @@ import {
   updateQualityCharacteristic,
 } from '@/lib/dal/requirement-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  idParamSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
 
 type Params = Promise<{ id: string }>
+
+const qualityCharacteristicUpdateSchema = z
+  .object({
+    nameEn: boundedDbStringSchema.optional(),
+    nameSv: boundedDbStringSchema.optional(),
+    parentId: positiveIntegerSchema.nullable().optional(),
+    requirementTypeId: positiveIntegerSchema.optional(),
+  })
+  .strict()
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(
+    request,
+    qualityCharacteristicUpdateSchema,
+  )
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Record<string, unknown>
-  if (
-    (body.nameSv != null && typeof body.nameSv !== 'string') ||
-    (body.nameEn != null && typeof body.nameEn !== 'string')
-  ) {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
-  }
   const category = await updateQualityCharacteristic(
     db,
-    numericId,
-    body as Parameters<typeof updateQualityCharacteristic>[2],
+    parsedParams.data.id,
+    parsedBody.data,
   )
   if (!category) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -41,16 +53,14 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
   const allCategories = await listQualityCharacteristics(db)
   const hasChildren = allCategories.some(
-    (category: QualityCharacteristicRow) => category.parentId === numericId,
+    (category: QualityCharacteristicRow) => category.parentId === id,
   )
   if (hasChildren) {
     return NextResponse.json(
@@ -60,7 +70,7 @@ export async function DELETE(
   }
 
   try {
-    const deleted = await deleteQualityCharacteristic(db, numericId)
+    const deleted = await deleteQualityCharacteristic(db, id)
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

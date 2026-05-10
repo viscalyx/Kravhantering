@@ -1,25 +1,40 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   createSuggestion,
   listSuggestionsForRequirement,
 } from '@/lib/dal/improvement-suggestions'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  businessTextSchema,
+  idParamSchema,
+  nullableBusinessTextSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
+
+const createSuggestionSchema = z
+  .object({
+    content: businessTextSchema,
+    createdBy: nullableBusinessTextSchema.optional(),
+    requirementVersionId: positiveIntegerSchema.nullable().optional(),
+  })
+  .strict()
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
-  const items = await listSuggestionsForRequirement(db, numericId)
+  const items = await listSuggestionsForRequirement(db, id)
   return NextResponse.json({ suggestions: items })
 }
 
@@ -27,40 +42,16 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { content?: unknown }).content !== 'string'
-  ) {
-    return NextResponse.json(
-      { error: 'content (string) is required' },
-      { status: 400 },
-    )
-  }
-
-  const { content, createdBy, requirementVersionId } = body as {
-    content: string
-    createdBy?: string
-    requirementVersionId?: number
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(request, createSuggestionSchema)
+  if (!parsedBody.ok) return parsedBody.response
+  const { content, createdBy, requirementVersionId } = parsedBody.data
   const db = await getRequestSqlServerDataSource()
 
   try {
     const result = await createSuggestion(db, {
-      requirementId: numericId,
+      requirementId: parsedParams.data.id,
       requirementVersionId: requirementVersionId ?? null,
       content,
       createdBy: createdBy ?? null,

@@ -1,5 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  parseRouteParams,
+  positiveIntegerStringSchema,
+  refOrPositiveIntegerSegmentSchema,
+} from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import { internalError } from '@/lib/requirements/errors'
 import {
@@ -11,11 +17,20 @@ import { parseRequirementRef } from '../../../parse-requirement-ref'
 
 type Params = Promise<{ id: string; version: string }>
 
+const versionParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
+    version: positiveIntegerStringSchema,
+  })
+  .strict()
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id, version } = await params
+  const parsedParams = await parseRouteParams(params, versionParamsSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id, version } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 
@@ -24,7 +39,7 @@ export async function GET(
     const ref = parseRequirementRef(id)
     const result = await service.getRequirement(context, {
       ...ref,
-      versionNumber: Number(version),
+      versionNumber: version,
       view: 'version',
     })
     const versionDetail = result.version

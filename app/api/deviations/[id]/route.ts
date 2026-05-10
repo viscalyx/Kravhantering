@@ -1,27 +1,40 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   deleteDeviation,
   getDeviation,
   updateDeviation,
 } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  idParamSchema,
+  nullableBusinessTextSchema,
+  optionalBusinessTextSchema,
+  parseRouteParams,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ id: string }>
+
+const updateDeviationSchema = z
+  .object({
+    createdBy: nullableBusinessTextSchema.optional(),
+    motivation: optionalBusinessTextSchema,
+  })
+  .strict()
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
   try {
-    const deviation = await getDeviation(db, numericId)
+    const deviation = await getDeviation(db, id)
     return NextResponse.json(deviation)
   } catch (error) {
     if (isRequirementsServiceError(error) && error.code === 'not_found') {
@@ -35,49 +48,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-
-  if (typeof body !== 'object' || body === null) {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
-  }
-
-  const { motivation, createdBy } = body as Record<string, unknown>
-
-  if (motivation !== undefined && typeof motivation !== 'string') {
-    return NextResponse.json(
-      { error: 'motivation must be a string' },
-      { status: 400 },
-    )
-  }
-
-  if (
-    createdBy !== undefined &&
-    createdBy !== null &&
-    typeof createdBy !== 'string'
-  ) {
-    return NextResponse.json(
-      { error: 'createdBy must be a string or null' },
-      { status: 400 },
-    )
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(request, updateDeviationSchema)
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
 
   try {
-    await updateDeviation(db, numericId, {
-      motivation: motivation as string | undefined,
-      createdBy: createdBy as string | null | undefined,
-    })
+    await updateDeviation(db, parsedParams.data.id, parsedBody.data)
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
@@ -98,15 +76,12 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
   const db = await getRequestSqlServerDataSource()
 
   try {
-    await deleteDeviation(db, numericId)
+    await deleteDeviation(db, parsedParams.data.id)
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

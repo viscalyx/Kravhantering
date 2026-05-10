@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   createDeviation,
   createDeviationForItemRef,
@@ -7,9 +8,41 @@ import {
 } from '@/lib/dal/deviations'
 import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  businessTextSchema,
+  invalidRequestResponse,
+  parseRouteParams,
+  readJsonWithSchema,
+  routeSegmentSchema,
+  SQL_SERVER_INT_MAX,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
 type Params = Promise<{ itemId: string }>
+type ParsedSpecificationItemId =
+  | {
+      decodedItemId: string
+      numericItemId: number | null
+      ok: true
+      parsedItemRef: ReturnType<typeof parseSpecificationItemRef>
+    }
+  | { ok: false; response: NextResponse }
+
+const itemDeviationParamSchema = z
+  .object({
+    itemId: routeSegmentSchema,
+  })
+  .strict()
+
+const createDeviationSchema = z
+  .object({
+    createdBy: boundedDbStringSchema.optional(),
+    motivation: businessTextSchema,
+  })
+  .strict()
+
+export const dynamic = 'force-dynamic'
 
 function safeDecodeURIComponent(value: string): string | null {
   try {
@@ -19,15 +52,22 @@ function safeDecodeURIComponent(value: string): string | null {
   }
 }
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Params },
-) {
-  const { itemId } = await params
+function invalidItemIdResponse() {
+  return invalidRequestResponse([
+    {
+      code: 'invalid_format',
+      message: 'Invalid itemId',
+      path: 'itemId',
+    },
+  ])
+}
+
+function parseItemId(itemId: string): ParsedSpecificationItemId {
   const decodedItemId = safeDecodeURIComponent(itemId)
   if (decodedItemId == null) {
-    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+    return { ok: false, response: invalidItemIdResponse() }
   }
+
   const parsedItemRef = parseSpecificationItemRef(decodedItemId)
   const numericItemId =
     parsedItemRef == null && /^\d+$/.test(decodedItemId)
@@ -35,9 +75,33 @@ export async function GET(
       : parsedItemRef?.kind === 'library'
         ? parsedItemRef.id
         : null
-  if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
-    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+
+  if (
+    parsedItemRef == null &&
+    (numericItemId == null ||
+      !Number.isInteger(numericItemId) ||
+      numericItemId < 1 ||
+      numericItemId > SQL_SERVER_INT_MAX)
+  ) {
+    return { ok: false, response: invalidItemIdResponse() }
   }
+
+  return { decodedItemId, numericItemId, ok: true, parsedItemRef }
+}
+
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Params },
+) {
+  const parsedParams = await parseRouteParams(params, itemDeviationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
+  }
+  const itemIdResult = parseItemId(parsedParams.data.itemId)
+  if (!itemIdResult.ok) {
+    return itemIdResult.response
+  }
+  const { parsedItemRef, numericItemId } = itemIdResult
   const db = await getRequestSqlServerDataSource()
 
   try {
@@ -62,44 +126,20 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { itemId } = await params
-  const decodedItemId = safeDecodeURIComponent(itemId)
-  if (decodedItemId == null) {
-    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+  const parsedParams = await parseRouteParams(params, itemDeviationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
   }
-  const parsedItemRef = parseSpecificationItemRef(decodedItemId)
-  const numericItemId =
-    parsedItemRef == null && /^\d+$/.test(decodedItemId)
-      ? Number(decodedItemId)
-      : parsedItemRef?.kind === 'library'
-        ? parsedItemRef.id
-        : null
-  if (parsedItemRef == null && (numericItemId == null || numericItemId < 1)) {
-    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+  const parsedBody = await readJsonWithSchema(request, createDeviationSchema)
+  if (!parsedBody.ok) {
+    return parsedBody.response
   }
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  const itemIdResult = parseItemId(parsedParams.data.itemId)
+  if (!itemIdResult.ok) {
+    return itemIdResult.response
   }
-
-  if (
-    typeof body !== 'object' ||
-    body === null ||
-    typeof (body as { motivation?: unknown }).motivation !== 'string'
-  ) {
-    return NextResponse.json(
-      { error: 'motivation (string) is required' },
-      { status: 400 },
-    )
-  }
-
-  const { motivation, createdBy } = body as {
-    createdBy?: string
-    motivation: string
-  }
+  const { decodedItemId, parsedItemRef, numericItemId } = itemIdResult
+  const { motivation, createdBy } = parsedBody.data
   const db = await getRequestSqlServerDataSource()
 
   try {

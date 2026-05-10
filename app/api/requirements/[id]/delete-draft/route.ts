@@ -1,5 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  parseRouteParams,
+  refOrPositiveIntegerSegmentSchema,
+} from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   createRequirementsService,
@@ -9,11 +14,22 @@ import { parseRequirementRef } from '../../parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
 
+const requirementRefParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { routing } from '@/i18n/routing'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getAuthConfig } from '@/lib/auth/config'
@@ -12,6 +13,7 @@ import {
   type LoggedInSession,
   type SessionData,
 } from '@/lib/auth/session'
+import { parseSearchParams } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +21,19 @@ const LOCALE_FREE_ALLOWED_PATHS = new Set(['/'])
 
 const ACCESS_TOKEN_EXPIRY_FALLBACK_SECONDS = 300
 const SESSION_COOKIE_SAFE_MAX_LENGTH = 3800
+
+const oidcCallbackQuerySchema = z
+  .object({
+    code: z.string().min(1).max(4096).optional(),
+    error: z.string().min(1).max(450).optional(),
+    error_description: z.string().max(4096).optional(),
+    error_uri: z.string().max(2048).optional(),
+    iss: z.string().min(1).max(2048).optional(),
+    scope: z.string().max(2048).optional(),
+    session_state: z.string().min(1).max(2048).optional(),
+    state: z.string().min(1).max(4096).optional(),
+  })
+  .strict()
 
 function sanitizeReturnTo(raw: string | null | undefined): string {
   const fallback = `/${routing.defaultLocale}`
@@ -94,6 +109,13 @@ async function resolveSessionIdToken(
 }
 
 export async function GET(request: NextRequest) {
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    oidcCallbackQuerySchema,
+  )
+  if (!parsedQuery.ok) {
+    return parsedQuery.response
+  }
   const cfg = getAuthConfig()
 
   // Capture prior session roles BEFORE we overwrite the cookie. Used by the
@@ -143,10 +165,11 @@ export async function GET(request: NextRequest) {
   // the URL using the configured redirect URI as the canonical origin +
   // pathname, carrying over the OIDC query params (`code`, `state`, `iss`,
   // `session_state`) from the incoming request.
-  const incomingUrl = new URL(request.url)
   const callbackUrl = new URL(cfg.redirectUri)
-  for (const [key, value] of incomingUrl.searchParams) {
-    callbackUrl.searchParams.set(key, value)
+  for (const [key, value] of Object.entries(parsedQuery.data)) {
+    if (value !== undefined) {
+      callbackUrl.searchParams.set(key, value)
+    }
   }
 
   let tokens: Awaited<ReturnType<typeof oidcClient.authorizationCodeGrant>>

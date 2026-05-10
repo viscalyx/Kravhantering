@@ -1,30 +1,46 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+  refOrPositiveIntegerSegmentSchema,
+} from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
-import { isPositiveInteger, readJsonObject } from '../../requirements/json-body'
 import { parseRequirementRef } from '../../requirements/parse-requirement-ref'
 
 type Params = Promise<{ id: string }>
+
+const requirementRefParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
+
+const transitionBodySchema = z
+  .object({
+    statusId: positiveIntegerSchema,
+  })
+  .strict()
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const parsed = await readJsonObject(request)
-  if (parsed.response) return parsed.response
-  const { body } = parsed
-
-  if (!isPositiveInteger(body.statusId)) {
-    return NextResponse.json(
-      { error: 'Missing or invalid statusId' },
-      { status: 400 },
-    )
-  }
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
+  const parsedBody = await readJsonWithSchema(request, transitionBodySchema)
+  if (!parsedBody.ok) return parsedBody.response
+  const { statusId } = parsedBody.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 
@@ -34,7 +50,7 @@ export async function POST(
     const result = await service.transitionRequirement(context, {
       ...ref,
       responseFormat: 'json',
-      toStatusId: body.statusId,
+      toStatusId: statusId,
     })
     return NextResponse.json({
       id: result.detail.id,
