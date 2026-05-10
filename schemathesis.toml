@@ -1,0 +1,6 @@
+# Next.js constructs a web Request before application middleware runs. Forbidden
+# Fetch methods such as TRACE fail inside the framework before app code can
+# return a controlled 405, so keep Schemathesis coverage focused on documented
+# operations and parameter/body variants.
+[phases.coverage]
+unexpected-methods = []

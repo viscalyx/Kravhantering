@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { routing } from '@/i18n/routing'
 import { recordSecurityEvent } from '@/lib/auth/audit'
 import { getAuthConfig } from '@/lib/auth/config'
@@ -12,6 +13,8 @@ import {
   type LoggedInSession,
   type SessionData,
 } from '@/lib/auth/session'
+import { logSanitizedError } from '@/lib/http/safe-errors'
+import { parseSearchParams } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +22,31 @@ const LOCALE_FREE_ALLOWED_PATHS = new Set(['/'])
 
 const ACCESS_TOKEN_EXPIRY_FALLBACK_SECONDS = 300
 const SESSION_COOKIE_SAFE_MAX_LENGTH = 3800
+
+const oidcCallbackQuerySchema = z
+  .object({
+    code: z.string().min(1).max(4096).optional(),
+    error: z.string().min(1).max(450).optional(),
+    error_description: z.string().max(4096).optional(),
+    error_uri: z.string().max(2048).optional(),
+    iss: z.string().min(1).max(2048).optional(),
+    scope: z.string().max(2048).optional(),
+    session_state: z.string().min(1).max(2048).optional(),
+    state: z.string().min(1).max(4096).optional(),
+  })
+  .strict()
+  .superRefine((query, context) => {
+    const hasCode = query.code !== undefined
+    const hasError = query.error !== undefined
+
+    if (hasCode === hasError) {
+      context.addIssue({
+        code: 'custom',
+        message: 'OIDC callback must include exactly one of code or error.',
+        path: hasCode ? ['error'] : ['code'],
+      })
+    }
+  })
 
 function sanitizeReturnTo(raw: string | null | undefined): string {
   const fallback = `/${routing.defaultLocale}`
@@ -94,6 +122,13 @@ async function resolveSessionIdToken(
 }
 
 export async function GET(request: NextRequest) {
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    oidcCallbackQuerySchema,
+  )
+  if (!parsedQuery.ok) {
+    return parsedQuery.response
+  }
   const cfg = getAuthConfig()
 
   // Capture prior session roles BEFORE we overwrite the cookie. Used by the
@@ -133,6 +168,20 @@ export async function GET(request: NextRequest) {
     )
   }
 
+  if (parsedQuery.data.error !== undefined) {
+    recordLoginFailure(request, 'oidc_error', {
+      error: parsedQuery.data.error,
+    })
+    loginState.destroy()
+    return NextResponse.json(
+      {
+        error: 'OIDC callback failed',
+        detail: parsedQuery.data.error_description || parsedQuery.data.error,
+      },
+      { status: 400 },
+    )
+  }
+
   const config = await getOidcConfiguration()
 
   // openid-client derives the `redirect_uri` it sends to the token endpoint
@@ -143,10 +192,11 @@ export async function GET(request: NextRequest) {
   // the URL using the configured redirect URI as the canonical origin +
   // pathname, carrying over the OIDC query params (`code`, `state`, `iss`,
   // `session_state`) from the incoming request.
-  const incomingUrl = new URL(request.url)
   const callbackUrl = new URL(cfg.redirectUri)
-  for (const [key, value] of incomingUrl.searchParams) {
-    callbackUrl.searchParams.set(key, value)
+  for (const [key, value] of Object.entries(parsedQuery.data)) {
+    if (value !== undefined) {
+      callbackUrl.searchParams.set(key, value)
+    }
   }
 
   let tokens: Awaited<ReturnType<typeof oidcClient.authorizationCodeGrant>>
@@ -159,13 +209,12 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     loginState.destroy()
-    const message =
-      error instanceof Error ? error.message : 'Token exchange failed'
+    logSanitizedError('OIDC token exchange failed', error)
     recordLoginFailure(request, 'token_exchange_failed', {
       errorName: error instanceof Error ? error.name : 'Error',
     })
     return NextResponse.json(
-      { error: 'OIDC callback failed', detail: message },
+      { error: 'OIDC callback failed', detail: 'Token exchange failed' },
       { status: 400 },
     )
   }

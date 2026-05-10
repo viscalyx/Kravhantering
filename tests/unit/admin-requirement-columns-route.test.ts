@@ -118,6 +118,72 @@ describe('admin requirement columns route', () => {
     ).not.toHaveBeenCalled()
   })
 
+  it('rejects duplicate requirement column ids', async () => {
+    const columns = normalizeRequirementListColumnDefaults([])
+    const duplicateColumns = columns.map((column, index) =>
+      index === 1 ? { ...column, columnId: columns[0].columnId } : column,
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/requirement-columns', {
+        body: JSON.stringify({
+          columns: duplicateColumns,
+        }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as {
+      error?: string
+      issues?: Array<{ message: string }>
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Each requirement column must be provided exactly once.',
+        }),
+      ]),
+    )
+    expect(
+      routeState.updateRequirementListColumnDefaults,
+    ).not.toHaveBeenCalled()
+  })
+
+  it('rejects duplicate requirement column sort orders', async () => {
+    const columns = normalizeRequirementListColumnDefaults([])
+    const duplicateSortOrders = columns.map((column, index) =>
+      index === 1 ? { ...column, sortOrder: columns[0].sortOrder } : column,
+    )
+
+    const response = await PUT(
+      new NextRequest('https://example.test/api/admin/requirement-columns', {
+        body: JSON.stringify({
+          columns: duplicateSortOrders,
+        }),
+        method: 'PUT',
+      }),
+    )
+    const body = (await response.json()) as {
+      error?: string
+      issues?: Array<{ message: string }>
+    }
+
+    expect(response.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'Each requirement column sort order must be unique.',
+        }),
+      ]),
+    )
+    expect(
+      routeState.updateRequirementListColumnDefaults,
+    ).not.toHaveBeenCalled()
+  })
+
   it('returns the reordered column defaults payload after a successful save', async () => {
     const reorderedColumns = normalizeRequirementListColumnDefaults([
       { columnId: 'uniqueId', defaultVisible: true, sortOrder: 0 },
@@ -217,10 +283,18 @@ describe('admin requirement columns route', () => {
         method: 'PUT',
       }),
     )
-    const body = (await response.json()) as { error?: string }
+    const body = (await response.json()) as {
+      error?: string
+      issues?: Array<{ message: string }>
+    }
 
     expect(response.status).toBe(400)
-    expect(body.error).toBe('Malformed JSON body.')
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: 'Malformed JSON body' }),
+      ]),
+    )
     expect(
       routeState.updateRequirementListColumnDefaults,
     ).not.toHaveBeenCalled()

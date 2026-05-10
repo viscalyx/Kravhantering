@@ -4,6 +4,7 @@ import { getAuthConfig } from '@/lib/auth/config'
 import { assertSameOriginRequest } from '@/lib/auth/csrf'
 import { getOidcConfiguration, oidcClient } from '@/lib/auth/oidc'
 import { getSession } from '@/lib/auth/session'
+import { redactSensitiveText } from '@/lib/http/safe-errors'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,7 +83,9 @@ export async function POST(request: NextRequest) {
     return createPostLogoutResponse(request, endSessionUrl)
   } catch (error) {
     console.warn('OIDC end_session_endpoint discovery/build failed', {
-      error: error instanceof Error ? error.message : String(error),
+      error: redactSensitiveText(
+        error instanceof Error ? error.message : String(error),
+      ),
       hasIdTokenHint: Boolean(idTokenHint),
       postLogoutRedirectUri: cfg.postLogoutRedirectUri,
     })

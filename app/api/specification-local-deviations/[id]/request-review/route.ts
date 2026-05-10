@@ -1,30 +1,30 @@
 import { NextResponse } from 'next/server'
 import { requestSpecificationLocalReview } from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
+import { idParamSchema, parseRouteParams } from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
 export async function POST(_request: Request, { params }: { params: Params }) {
-  const { id } = await params
-  const deviationId = Number(id)
-  if (!Number.isInteger(deviationId) || deviationId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
 
   try {
     const db = await getRequestSqlServerDataSource()
-    await requestSpecificationLocalReview(db, deviationId)
+    await requestSpecificationLocalReview(db, parsedParams.data.id)
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error(
+    logSanitizedError(
       'Failed to request specification-local deviation review',
       error,
     )

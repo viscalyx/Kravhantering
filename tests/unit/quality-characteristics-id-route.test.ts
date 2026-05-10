@@ -32,6 +32,23 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
   })
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('quality-characteristics/[id] route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -56,8 +73,7 @@ describe('quality-characteristics/[id] route', () => {
     it('returns 400 for invalid id', async () => {
       const res = await PUT(jsonReq('PUT', { nameEn: 'X' }), makeParams('abc'))
       expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: string }
-      expect(json.error).toBe('Invalid id')
+      await expectInvalidRequest(res, 'id')
     })
 
     it('returns 400 for invalid payload', async () => {
@@ -66,8 +82,7 @@ describe('quality-characteristics/[id] route', () => {
         makeParams('1'),
       )
       expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: string }
-      expect(json.error).toBe('Invalid payload')
+      await expectInvalidRequest(res, 'nameSv')
     })
 
     it('returns 404 when not found', async () => {
@@ -96,8 +111,7 @@ describe('quality-characteristics/[id] route', () => {
       const req = new NextRequest('http://localhost', { method: 'DELETE' })
       const res = await DELETE(req, makeParams('0'))
       expect(res.status).toBe(400)
-      const json = (await res.json()) as { error: string }
-      expect(json.error).toBe('Invalid id')
+      await expectInvalidRequest(res, 'id')
     })
 
     it('returns 409 when has sub-characteristics', async () => {

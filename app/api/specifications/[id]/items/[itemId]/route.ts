@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   getSpecificationById,
   getSpecificationBySlug,
@@ -8,9 +9,49 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  nullableBusinessTextSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  positiveIntegerStringSchema,
+  readJsonWithSchema,
+  routeSegmentSchema,
+  specificationIdOrSlugSchema,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string; itemId: string }>
+
+const specificationItemParamSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+    itemId: positiveIntegerStringSchema,
+  })
+  .strict()
+
+const specificationItemRefParamSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+    itemId: routeSegmentSchema,
+  })
+  .strict()
+
+const patchSpecificationItemSchema = z
+  .object({
+    note: nullableBusinessTextSchema.optional(),
+    specificationItemStatusId: positiveIntegerSchema.nullable().optional(),
+  })
+  .strict()
+  .refine(
+    data =>
+      data.note !== undefined || data.specificationItemStatusId !== undefined,
+    {
+      message:
+        'At least one of note or specificationItemStatusId must be supplied',
+    },
+  )
 
 async function resolveSpecificationId(idOrSlug: string, db: SqlServerDatabase) {
   const bySlug = await getSpecificationBySlug(db, idOrSlug)
@@ -30,12 +71,14 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id, itemId } = await params
-  const numericItemId = Number(itemId)
-
-  if (!Number.isInteger(numericItemId) || numericItemId < 1) {
-    return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 })
+  const parsedParams = await parseRouteParams(
+    params,
+    specificationItemParamSchema,
+  )
+  if (!parsedParams.ok) {
+    return parsedParams.response
   }
+  const { id, itemId: numericItemId } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const specificationId = await resolveSpecificationId(id, db)
 
@@ -72,36 +115,22 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id, itemId } = await params
-  let body: { specificationItemStatusId?: number | null; note?: string | null }
-  try {
-    const raw: unknown = await request.json()
-    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-      return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
-    }
-    const obj = raw as Record<string, unknown>
-    if (
-      'specificationItemStatusId' in obj &&
-      obj.specificationItemStatusId !== null &&
-      obj.specificationItemStatusId !== undefined &&
-      (typeof obj.specificationItemStatusId !== 'number' ||
-        !Number.isInteger(obj.specificationItemStatusId) ||
-        obj.specificationItemStatusId <= 0)
-    ) {
-      return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
-    }
-    if (
-      'note' in obj &&
-      obj.note !== null &&
-      obj.note !== undefined &&
-      typeof obj.note !== 'string'
-    ) {
-      return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
-    }
-    body = obj as typeof body
-  } catch {
-    return NextResponse.json({ error: 'Malformed payload' }, { status: 400 })
+  const parsedParams = await parseRouteParams(
+    params,
+    specificationItemRefParamSchema,
+  )
+  if (!parsedParams.ok) {
+    return parsedParams.response
   }
+  const parsedBody = await readJsonWithSchema(
+    request,
+    patchSpecificationItemSchema,
+  )
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const { id, itemId } = parsedParams.data
+  const body = parsedBody.data
   const db = await getRequestSqlServerDataSource()
   const specificationId = await resolveSpecificationId(id, db)
   if (specificationId === null) {

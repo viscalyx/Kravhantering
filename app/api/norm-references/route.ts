@@ -1,24 +1,57 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   countLinkedRequirements,
   createNormReference,
   listNormReferences,
 } from '@/lib/dal/norm-references'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  optionalBusinessTextSchema,
+  optionalQueryArraySchema,
+  parseSearchParams,
+  positiveIntegerStringSchema,
+  queryBooleanSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+const nullableOptionalTextSchema = optionalBusinessTextSchema
+  .nullable()
+  .transform(value => (value === '' ? null : value))
+
+const normReferencesQuerySchema = z
+  .object({
+    linked: queryBooleanSchema.optional().default(false),
+    statuses: optionalQueryArraySchema(positiveIntegerStringSchema),
+  })
+  .strict()
+
+const normReferenceCreateSchema = z
+  .object({
+    issuer: boundedDbStringSchema,
+    name: boundedDbStringSchema,
+    normReferenceId: optionalBusinessTextSchema,
+    reference: boundedDbStringSchema,
+    type: boundedDbStringSchema,
+    uri: nullableOptionalTextSchema.optional(),
+    version: nullableOptionalTextSchema.optional(),
+  })
+  .strict()
 
 export async function GET(request: Request) {
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    normReferencesQuerySchema,
+  )
+  if (!parsedQuery.ok) return parsedQuery.response
+  const { linked: linkedOnly, statuses } = parsedQuery.data
   const db = await getRequestSqlServerDataSource()
-  const searchParams = new URL(request.url).searchParams
-  const linkedOnly = searchParams.get('linked') === 'true'
-  const statuses = searchParams
-    .getAll('statuses')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
   const [normRefs, counts] = await Promise.all([
     listNormReferences(db),
     countLinkedRequirements(
       db,
-      linkedOnly && statuses.length > 0 ? { statuses } : undefined,
+      linkedOnly && statuses && statuses.length > 0 ? { statuses } : undefined,
     ),
   ])
   let results = normRefs.map(r => ({
@@ -32,32 +65,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const parsedBody = await readJsonWithSchema(
+    request,
+    normReferenceCreateSchema,
+  )
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Record<string, unknown>
-  const name = typeof body.name === 'string' ? body.name.trim() : ''
-  const type = typeof body.type === 'string' ? body.type.trim() : ''
-  const reference =
-    typeof body.reference === 'string' ? body.reference.trim() : ''
-  const issuer = typeof body.issuer === 'string' ? body.issuer.trim() : ''
-  if (!name || !type || !reference || !issuer) {
-    return NextResponse.json(
-      { error: 'Missing required fields: name, type, reference, issuer' },
-      { status: 400 },
-    )
-  }
   try {
-    const normReference = await createNormReference(db, {
-      normReferenceId:
-        typeof body.normReferenceId === 'string'
-          ? body.normReferenceId
-          : undefined,
-      name,
-      type,
-      reference,
-      version: typeof body.version === 'string' ? body.version || null : null,
-      issuer,
-      uri: typeof body.uri === 'string' ? body.uri.trim() || null : null,
-    })
+    const normReference = await createNormReference(db, parsedBody.data)
     return NextResponse.json(normReference, { status: 201 })
   } catch {
     return NextResponse.json(

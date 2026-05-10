@@ -90,8 +90,11 @@ describe('assertSameOriginRequest', () => {
     ).not.toThrow()
   })
 
-  it('accepts forwarded-origin requests when auth is disabled', () => {
-    getAuthConfigMock.mockReturnValue({ enabled: false, redirectUri: '' })
+  it('ignores forwarded host and proto when resolving the expected origin', () => {
+    getAuthConfigMock.mockReturnValue({
+      enabled: true,
+      redirectUri: 'https://configured.example.test/api/auth/callback',
+    })
 
     expect(() =>
       assertSameOriginRequest(
@@ -103,7 +106,7 @@ describe('assertSameOriginRequest', () => {
           xrw: 'XMLHttpRequest',
         }),
       ),
-    ).not.toThrow()
+    ).toThrow(CsrfError)
   })
 
   it('rejects a cross-origin Origin header', () => {

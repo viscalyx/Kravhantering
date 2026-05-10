@@ -1,10 +1,30 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   countLinkedRequirements,
   createRiskLevel,
   listRiskLevels,
 } from '@/lib/dal/risk-levels'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  INTERNAL_SERVER_ERROR_MESSAGE,
+  isDuplicateKeyError,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
+  boundedDbStringSchema,
+  nonNegativeIntegerSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+const createRiskLevelSchema = z
+  .object({
+    color: boundedDbStringSchema,
+    nameEn: boundedDbStringSchema,
+    nameSv: boundedDbStringSchema,
+    sortOrder: nonNegativeIntegerSchema.optional(),
+  })
+  .strict()
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
@@ -21,32 +41,22 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  let body: Parameters<typeof createRiskLevel>[1]
-
-  try {
-    body = (await request.json()) as Parameters<typeof createRiskLevel>[1]
-  } catch (error) {
-    if (
-      error instanceof SyntaxError ||
-      (error instanceof Error && error.message.includes('JSON'))
-    ) {
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-    }
-
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
+  const parsedBody = await readJsonWithSchema(request, createRiskLevelSchema)
+  if (!parsedBody.ok) return parsedBody.response
 
   try {
     const db = await getRequestSqlServerDataSource()
-    const riskLevel = await createRiskLevel(db, body)
+    const riskLevel = await createRiskLevel(db, parsedBody.data)
     return NextResponse.json(riskLevel, { status: 201 })
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Internal server error'
-    const isDuplicate =
-      message.includes('UNIQUE') || message.includes('duplicate')
+    const isDuplicate = isDuplicateKeyError(error)
+    if (!isDuplicate) {
+      logSanitizedError('Failed to create risk level', error)
+    }
     return NextResponse.json(
-      { error: isDuplicate ? 'Duplicate entry' : 'Internal server error' },
+      {
+        error: isDuplicate ? 'Duplicate entry' : INTERNAL_SERVER_ERROR_MESSAGE,
+      },
       { status: isDuplicate ? 409 : 500 },
     )
   }

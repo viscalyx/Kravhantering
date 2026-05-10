@@ -3,7 +3,7 @@
 # Includes: git, curl, wget, sudo, zsh, and the vscode user
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 
-# cSPell:ignore mkcert socat bubblewrap
+# cSPell:ignore mkcert socat bubblewrap pip venv
 # Install system dependencies needed for npm native modules (node-gyp).
 # socat is used by the devcontainer postStartCommand to forward
 # 127.0.0.1:8080 inside this container to the Keycloak container
@@ -13,7 +13,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         bubblewrap \
+        python-is-python3 \
         python3 \
+        python3-pip \
+        python3-venv \
         python3-yaml \
         ripgrep \
         socat \
@@ -33,5 +36,8 @@ RUN git config --system --add safe.directory /workspace
 # Expose the ports that Next.js, Playwright, and Vitest use
 EXPOSE 3000 3001 4443 9323 51204
 
-# Keep container running (remoteUser in devcontainer.json handles user switching)
+# Run the long-lived container process as the same non-root user VS Code uses.
+USER vscode
+
+# Keep container running
 CMD ["sleep", "infinity"]

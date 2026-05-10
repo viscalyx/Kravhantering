@@ -1,10 +1,32 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   createSpecification,
   isSlugTaken,
   listSpecifications,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  nullableBusinessTextSchema,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+const createSpecificationSchema = z
+  .object({
+    businessNeedsReference: nullableBusinessTextSchema.optional(),
+    name: boundedDbStringSchema,
+    specificationImplementationTypeId: positiveIntegerSchema
+      .nullable()
+      .optional(),
+    specificationLifecycleStatusId: positiveIntegerSchema.nullable().optional(),
+    specificationResponsibilityAreaId: positiveIntegerSchema
+      .nullable()
+      .optional(),
+    uniqueId: boundedDbStringSchema,
+  })
+  .strict()
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
@@ -13,18 +35,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Parameters<
-    typeof createSpecification
-  >[1]
-
-  if (
-    !body?.uniqueId ||
-    typeof body.uniqueId !== 'string' ||
-    !body.uniqueId.trim()
-  ) {
-    return NextResponse.json({ error: 'invalid_request' }, { status: 400 })
+  const parsedBody = await readJsonWithSchema(
+    request,
+    createSpecificationSchema,
+  )
+  if (!parsedBody.ok) {
+    return parsedBody.response
   }
+
+  const db = await getRequestSqlServerDataSource()
+  const body = parsedBody.data
 
   if (await isSlugTaken(db, body.uniqueId)) {
     return NextResponse.json({ error: 'slug_taken' }, { status: 409 })

@@ -156,7 +156,7 @@ sequenceDiagram
     Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
     JWKS-->>Verify: JWK set
     Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
-    Verify->>Verify: Extract sub, employeeHsaId, roles, optional client_id, optional scope
+    Verify->>Verify: Extract sub, employeeHsaId or MCP client_id fallback,<br/>roles, optional scope
     Verify->>Audit: auth.mcp.token.accepted
     Verify-->>Route: Verified actor
     Route->>Attach: attachVerifiedActor(request, actor)
@@ -164,9 +164,9 @@ sequenceDiagram
     Handler-->>Client: JSON-RPC response
 
     alt Missing or invalid token
-        Middleware-->>Client: 401 if Authorization header is missing
+        Middleware-->>Client: JSON-RPC 401 if Authorization header is missing
         Verify->>Audit: auth.token.rejected
-        Route-->>Client: 401 + WWW-Authenticate: Bearer
+        Route-->>Client: JSON-RPC 401 + WWW-Authenticate: Bearer
     end
 ```
 <!-- markdownlint-enable MD013 -->
@@ -174,14 +174,17 @@ sequenceDiagram
 - `middleware.ts` only checks that a Bearer token is present for `/api/mcp`.
   Cryptographic verification is done later in
   [`lib/auth/mcp-token.ts`](../lib/auth/mcp-token.ts).
-- `verifyMcpBearerToken()` derives the JWKS URL directly from the issuer as
-  `${issuer}/.well-known/jwks.json` and caches the resulting
-  `RemoteJWKSet`.
+- Missing-header and invalid-token failures use a JSON-RPC error body so MCP
+  clients receive the same response shape at both auth gates.
+- `verifyMcpBearerToken()` uses OIDC discovery metadata to read the issuer's
+  `jwks_uri` and caches the resulting `RemoteJWKSet`.
 - JWT verification checks signature, issuer, audience, and a 30-second clock
   tolerance.
-- The required MCP identity claim is `employeeHsaId`. Values prefixed with
+- The required MCP identity is `employeeHsaId`. Values prefixed with
   `mcp-client:` are accepted as synthetic service identities; other values
-  must match the HSA-id validator.
+  must match the HSA-id validator. For the configured MCP service-account
+  client, the app derives `mcp-client:<client_id>` when the token omits the
+  hardcoded claim but still has a verified `client_id`/`azp`.
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active
   `Request` before the requirements service builds its request context.
@@ -197,13 +200,22 @@ sequenceDiagram
 - Cookie-authenticated mutating requests go through the same-origin check in
   [`lib/auth/csrf.ts`](../lib/auth/csrf.ts). They must present a same-origin
   `Origin` or `Referer` and `X-Requested-With: XMLHttpRequest`.
+  `lib/auth/csrf.ts` and `middleware.ts` compare only the URL origin
+  (scheme + host + port) of `AUTH_OIDC_REDIRECT_URI`; path and query values are
+  ignored. `X-Forwarded-Proto` and `X-Forwarded-Host` are ignored for this
+  check.
+  `middleware.ts` enforces this centrally for mutating REST API requests after
+  authentication has succeeded, excluding `/api/mcp`, which uses Bearer-token
+  auth. Route-level checks remain as defense-in-depth for existing
+  `createRequestContext` and logout paths.
 - Page responses get a per-request CSP nonce from `middleware.ts`.
 - Security audit events are emitted through
   [`lib/auth/audit.ts`](../lib/auth/audit.ts). The current event set is:
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
   `auth.session.rejected`, `auth.token.rejected`,
-  `auth.mcp.token.accepted`, `auth.roles.changed`, and
-  `auth.csrf.rejected`.
+  `auth.mcp.token.accepted`, `auth.roles.changed`,
+  `auth.csrf.rejected`, `auth.authorization.denied`, and
+  `requirements.high_risk_mutation.succeeded`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured
@@ -226,6 +238,10 @@ sequenceDiagram
   tokens, secrets, authorization codes, PKCE verifiers, `state`, and `nonce`
   are not emitted. Redaction breadcrumbs use the same `security-audit` channel
   and carry `breadcrumb: "detail-key-redacted"` instead of an audit `event`.
+- Requirements authorization denials and high-risk business mutations use the
+  same stream. Their `detail` payloads carry stable identifiers, counts, and
+  action names only; free-text requirement content, motivations, and suggestion
+  text are not emitted.
 - The audit writer is intentionally transport-free: it does not push directly
   to Kafka, a webhook, a SIEM, or a database. It writes structured events to
   the process log stream and does not buffer them in the app.
@@ -285,16 +301,19 @@ flowchart LR
   `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
-  `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`, and
-  `AUTH_TRUST_PROXY=true`.
-- Terminate TLS at the public reverse proxy or load balancer and preserve
-  forwarded host/proto information so redirects and origin checks use the
-  public HTTPS origin. The same edge layer may also distribute traffic across
-  multiple app replicas; because the session is carried in the encrypted
+  `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS`.
+- Terminate TLS at the public reverse proxy or load balancer and set
+  `AUTH_OIDC_REDIRECT_URI` and `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` to the
+  public HTTPS host. CSRF origin checks in `lib/auth/csrf.ts` and
+  `middleware.ts` compare only the URL origin (scheme + host + port) of
+  `AUTH_OIDC_REDIRECT_URI`, not its path or query, and ignore inbound
+  `X-Forwarded-*` headers. The same edge layer may also distribute traffic
+  across multiple app replicas; because the session is carried in the encrypted
   cookie, the app does not require sticky sessions.
 - Allow the application instances to reach the IdP over `443`.
 - Pre-register the exact redirect URI and post-logout URI for every
-  environment. Public hostname changes require an IdP update as well.
+  environment. Public hostname changes require both app configuration and IdP
+  updates.
 - Auth is mandatory in every build target. The insecure-issuer allowance
   is now a build-target constant that is `true` only for `dev` and `local-prod`.
   The `local-prod` target (booted via `npm run start:prodlike` on port
@@ -345,7 +364,9 @@ flowchart LR
 - Issue signed JWT access tokens that can be verified against the IdP JWKS.
   Opaque access tokens are not sufficient for the current MCP implementation.
 - Ensure MCP access tokens match the configured issuer and audience.
-- Include `sub` and `employeeHsaId` on the MCP access token.
+- Include `sub` and `employeeHsaId` on the MCP access token, or use the
+  configured MCP service-account client so the app can derive
+  `mcp-client:<client_id>` from a verified `client_id`/`azp`.
 - The current MCP implementation may also consume `roles` and/or `scope`.
   If role-based behavior is needed there, emit the canonical app roles on a
   `roles` claim.

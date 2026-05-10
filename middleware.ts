@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import createMiddleware from 'next-intl/middleware'
 import { routing } from '@/i18n/routing'
 import { recordSecurityEvent } from '@/lib/auth/audit'
+import { assertSameOriginRequest, CsrfError } from '@/lib/auth/csrf'
 import {
   getSessionFromRequestWithDiagnostics,
   isSignedIn,
@@ -194,6 +195,66 @@ function isApiPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/')
 }
 
+const SUPPORTED_API_METHODS = new Set([
+  'DELETE',
+  'GET',
+  'HEAD',
+  'OPTIONS',
+  'PATCH',
+  'POST',
+  'PUT',
+])
+const SUPPORTED_API_METHOD_ALLOW = Array.from(SUPPORTED_API_METHODS).join(', ')
+
+function rejectUnsupportedApiMethod(request: NextRequest): NextResponse | null {
+  if (!isApiPath(request.nextUrl.pathname)) return null
+
+  const method = request.method.toUpperCase()
+  if (SUPPORTED_API_METHODS.has(method)) return null
+
+  return NextResponse.json(
+    {
+      error: 'Method Not Allowed',
+      detail: `HTTP method ${method} is not allowed for API routes.`,
+    },
+    { status: 405, headers: { Allow: SUPPORTED_API_METHOD_ALLOW } },
+  )
+}
+
+function createMcpUnauthorizedResponse(message: string): NextResponse {
+  return NextResponse.json(
+    {
+      error: { code: -32000, message },
+      id: null,
+      jsonrpc: '2.0',
+    },
+    { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
+  )
+}
+
+function isMutatingMethod(method: string): boolean {
+  return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())
+}
+
+function enforceRestCsrf(request: NextRequest): NextResponse | null {
+  const pathname = request.nextUrl.pathname
+  if (!isApiPath(pathname) || isMcpPath(pathname)) return null
+  if (!isMutatingMethod(request.method)) return null
+
+  try {
+    assertSameOriginRequest(request)
+    return null
+  } catch (error) {
+    if (error instanceof CsrfError) {
+      return NextResponse.json(
+        { error: 'Forbidden', detail: error.message },
+        { status: error.status },
+      )
+    }
+    throw error
+  }
+}
+
 // Locale roots (`/sv`, `/en`) only exist to redirect to `/<locale>/requirements`.
 // The original implementation lived in `app/[locale]/page.tsx` as a Server
 // Component `redirect('/requirements')`, but Server-Component redirects emit a
@@ -231,10 +292,7 @@ async function enforceAuth(request: NextRequest): Promise<NextResponse | null> {
   if (isMcpPath(pathname)) {
     const auth = request.headers.get('authorization') ?? ''
     if (!/^Bearer\s+\S+/i.test(auth)) {
-      return NextResponse.json(
-        { error: 'Unauthorized', detail: 'Missing Bearer token.' },
-        { status: 401, headers: { 'WWW-Authenticate': 'Bearer' } },
-      )
+      return createMcpUnauthorizedResponse('Missing Bearer token.')
     }
     return null
   }
@@ -300,8 +358,14 @@ function applyPageHeaders(request: NextRequest): NextResponse {
 }
 
 export default async function middleware(request: NextRequest) {
+  const methodResponse = rejectUnsupportedApiMethod(request)
+  if (methodResponse) return methodResponse
+
   const authResponse = await enforceAuth(request)
   if (authResponse) return authResponse
+
+  const csrfResponse = enforceRestCsrf(request)
+  if (csrfResponse) return csrfResponse
 
   if (isLocaleRootPath(request.nextUrl.pathname)) {
     return redirectLocaleRootToRequirements(request)

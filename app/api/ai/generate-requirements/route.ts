@@ -1,7 +1,7 @@
+import { z } from 'zod'
 import {
   type ContentPart,
   generateChatStream,
-  type ProviderPreferences,
 } from '@/lib/ai/openrouter-client'
 import {
   buildSystemPrompt,
@@ -12,166 +12,104 @@ import {
 } from '@/lib/ai/requirement-prompt'
 import { loadTaxonomy } from '@/lib/ai/taxonomy'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  AI_PROVIDER_UNAVAILABLE_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  localeSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+const ALLOWED_IMAGE_MIMES = [
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+] as const
+
+const MAX_AI_IMAGE_BYTES = 10 * 1024 * 1024
+const MAX_AI_IMAGES = 3
+const MAX_AI_INSTRUCTION_LENGTH = 4000
+const MAX_AI_MODEL_LENGTH = 100
+const MAX_AI_PARAMETER_LENGTH = 100
+const MAX_AI_TOPIC_LENGTH = 4000
+
+const imageDataUrlSchema = z.string().superRefine((dataUrl, context) => {
+  const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/)
+  if (
+    !mimeMatch ||
+    !ALLOWED_IMAGE_MIMES.includes(
+      mimeMatch[1] as (typeof ALLOWED_IMAGE_MIMES)[number],
+    )
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Unsupported image type. Use PNG, JPEG, GIF or WebP.',
+    })
+    return
+  }
+
+  const base64Data = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  const approxBytes = (base64Data.length * 3) / 4
+  if (approxBytes > MAX_AI_IMAGE_BYTES) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Image exceeds the 10 MB size limit',
+    })
+  }
+})
+
+const providerPreferencesSchema = z
+  .object({
+    data_collection: z.enum(['allow', 'deny']).optional(),
+    enforce_distillable_text: z.boolean().optional(),
+    zdr: z.boolean().optional(),
+  })
+  .strict()
+
+const generateRequirementsSchema = z
+  .object({
+    customInstruction: z
+      .string()
+      .trim()
+      .max(MAX_AI_INSTRUCTION_LENGTH)
+      .optional(),
+    images: z
+      .array(
+        z
+          .object({
+            dataUrl: imageDataUrlSchema,
+          })
+          .strict(),
+      )
+      .max(MAX_AI_IMAGES)
+      .optional()
+      .default([]),
+    locale: localeSchema.optional().default('en'),
+    model: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
+    providerPreferences: providerPreferencesSchema.optional(),
+    reasoningEffort: z.string().trim().max(MAX_AI_MODEL_LENGTH).optional(),
+    supportedParameters: z
+      .array(z.string().trim().min(1).max(MAX_AI_PARAMETER_LENGTH))
+      .max(ARRAY_INPUT_MAX_ITEMS)
+      .optional(),
+    topic: z.string().trim().min(1).max(MAX_AI_TOPIC_LENGTH),
+  })
+  .strict()
 
 export async function POST(request: Request) {
-  let body: {
-    customInstruction?: string
-    images?: Array<{ dataUrl: string }>
-    locale?: string
-    model?: string
-    providerPreferences?: ProviderPreferences
-    reasoningEffort?: string
-    supportedParameters?: string[]
-    topic?: string
+  const parsedBody = await readJsonWithSchema(
+    request,
+    generateRequirementsSchema,
+  )
+  if (!parsedBody.ok) {
+    return parsedBody.response
   }
-  try {
-    body = (await request.json()) as typeof body
-  } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 400,
-    })
-  }
-
-  if (typeof body.topic !== 'string' || !body.topic.trim()) {
-    return new Response(JSON.stringify({ error: 'topic is required' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 400,
-    })
-  }
-
-  if (body.topic.length > 4000) {
-    return new Response(
-      JSON.stringify({ error: 'topic exceeds maximum length of 4000' }),
-      { headers: { 'Content-Type': 'application/json' }, status: 400 },
-    )
-  }
-
-  if (
-    body.customInstruction !== undefined &&
-    (typeof body.customInstruction !== 'string' ||
-      body.customInstruction.length > 4000)
-  ) {
-    return new Response(
-      JSON.stringify({
-        error: 'customInstruction must be a string with max length 4000',
-      }),
-      { headers: { 'Content-Type': 'application/json' }, status: 400 },
-    )
-  }
-
-  if (
-    body.model !== undefined &&
-    (typeof body.model !== 'string' || body.model.length > 100)
-  ) {
-    return new Response(
-      JSON.stringify({ error: 'model must be a string with max length 100' }),
-      { headers: { 'Content-Type': 'application/json' }, status: 400 },
-    )
-  }
-
-  // Validate providerPreferences
-  let providerPreferences: ProviderPreferences | undefined
-  if (body.providerPreferences !== undefined) {
-    const pp = body.providerPreferences
-    if (typeof pp !== 'object' || pp === null || Array.isArray(pp)) {
-      return new Response(
-        JSON.stringify({ error: 'providerPreferences must be an object' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 400 },
-      )
-    }
-    providerPreferences = {}
-    if (pp.data_collection !== undefined) {
-      if (pp.data_collection !== 'allow' && pp.data_collection !== 'deny') {
-        return new Response(
-          JSON.stringify({
-            error:
-              'providerPreferences.data_collection must be "allow" or "deny"',
-          }),
-          { headers: { 'Content-Type': 'application/json' }, status: 400 },
-        )
-      }
-      providerPreferences.data_collection = pp.data_collection
-    }
-    if (pp.zdr !== undefined) {
-      if (typeof pp.zdr !== 'boolean') {
-        return new Response(
-          JSON.stringify({
-            error: 'providerPreferences.zdr must be a boolean',
-          }),
-          { headers: { 'Content-Type': 'application/json' }, status: 400 },
-        )
-      }
-      providerPreferences.zdr = pp.zdr
-    }
-    if (pp.enforce_distillable_text !== undefined) {
-      if (typeof pp.enforce_distillable_text !== 'boolean') {
-        return new Response(
-          JSON.stringify({
-            error:
-              'providerPreferences.enforce_distillable_text must be a boolean',
-          }),
-          { headers: { 'Content-Type': 'application/json' }, status: 400 },
-        )
-      }
-      providerPreferences.enforce_distillable_text = pp.enforce_distillable_text
-    }
-  }
-
-  const locale: 'en' | 'sv' =
-    body.locale === 'en' || body.locale === 'sv' ? body.locale : 'en'
-
-  // Validate images (optional)
-  const ALLOWED_IMAGE_MIMES = [
-    'image/png',
-    'image/jpeg',
-    'image/gif',
-    'image/webp',
-  ]
-  const MAX_IMAGES = 3
-  const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10 MB
-
-  const images = body.images ?? []
-  if (!Array.isArray(images)) {
-    return new Response(JSON.stringify({ error: 'images must be an array' }), {
-      headers: { 'Content-Type': 'application/json' },
-      status: 400,
-    })
-  }
-  if (images.length > MAX_IMAGES) {
-    return new Response(
-      JSON.stringify({
-        error: `Maximum ${MAX_IMAGES} images allowed`,
-      }),
-      { headers: { 'Content-Type': 'application/json' }, status: 400 },
-    )
-  }
-  for (const img of images) {
-    if (typeof img?.dataUrl !== 'string') {
-      return new Response(
-        JSON.stringify({ error: 'Each image must have a dataUrl string' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 400 },
-      )
-    }
-    const mimeMatch = img.dataUrl.match(/^data:([^;]+);base64,/)
-    if (!mimeMatch || !ALLOWED_IMAGE_MIMES.includes(mimeMatch[1])) {
-      return new Response(
-        JSON.stringify({
-          error: 'Unsupported image type. Use PNG, JPEG, GIF or WebP.',
-        }),
-        { headers: { 'Content-Type': 'application/json' }, status: 400 },
-      )
-    }
-    // Check approximate decoded size (base64 inflates ~33%)
-    const base64Data = img.dataUrl.slice(img.dataUrl.indexOf(',') + 1)
-    const approxBytes = (base64Data.length * 3) / 4
-    if (approxBytes > MAX_IMAGE_BYTES) {
-      return new Response(
-        JSON.stringify({ error: 'Image exceeds the 10 MB size limit' }),
-        { headers: { 'Content-Type': 'application/json' }, status: 400 },
-      )
-    }
-  }
+  const body = parsedBody.data
+  const providerPreferences = body.providerPreferences
+  const { images, locale } = body
   const db = await getRequestSqlServerDataSource()
 
   const taxonomy = await loadTaxonomy(db, locale)
@@ -254,13 +192,17 @@ export async function POST(request: Request) {
               break
             }
             case 'error':
-              send('error', { message: event.message })
+              logSanitizedError(
+                'AI requirement generation stream failed',
+                event.cause ?? event.message,
+              )
+              send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
               break
           }
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error'
-        send('error', { message })
+        logSanitizedError('AI requirement generation failed', err)
+        send('error', { message: AI_PROVIDER_UNAVAILABLE_MESSAGE })
       } finally {
         controller.close()
       }

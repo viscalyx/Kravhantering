@@ -25,6 +25,23 @@ vi.mock('@/lib/dal/ui-settings', () => ({
 
 import { GET, PUT } from '@/app/api/admin/terminology/route'
 
+async function expectInvalidRequest(
+  response: Response,
+  message?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ message: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (message) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message })]),
+    )
+  }
+}
+
 describe('admin terminology route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -135,10 +152,9 @@ describe('admin terminology route', () => {
         method: 'PUT',
       }),
     )
-    const body = (await response.json()) as { error?: string }
 
     expect(response.status).toBe(400)
-    expect(body.error).toBe('Malformed JSON body.')
+    await expectInvalidRequest(response, 'Malformed JSON body')
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()
   })
 
@@ -162,10 +178,10 @@ describe('admin terminology route', () => {
         method: 'PUT',
       }),
     )
-    const body = (await response.json()) as { error?: string }
 
     expect(response.status).toBe(400)
-    expect(body.error).toBe(
+    await expectInvalidRequest(
+      response,
       'Each terminology key must be provided exactly once.',
     )
     expect(routeState.updateUiTerminology).not.toHaveBeenCalled()

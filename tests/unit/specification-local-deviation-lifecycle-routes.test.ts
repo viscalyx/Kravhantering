@@ -13,6 +13,8 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/dal/deviations', () => ({
+  DEVIATION_APPROVED: 1,
+  DEVIATION_REJECTED: 2,
   recordSpecificationLocalDecision: routeState.recordSpecificationLocalDecision,
   requestSpecificationLocalReview: routeState.requestSpecificationLocalReview,
   revertSpecificationLocalToDraft: routeState.revertSpecificationLocalToDraft,
@@ -27,6 +29,23 @@ const mockDb = {}
 
 function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
+}
+
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
 }
 
 describe('specification-local deviation lifecycle routes', () => {
@@ -101,6 +120,7 @@ describe('specification-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
       error: 'Already requested',
     })
   })
@@ -194,6 +214,7 @@ describe('specification-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
       error: 'Already decided',
     })
   })
@@ -216,7 +237,7 @@ describe('specification-local deviation lifecycle routes', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({ error: 'Invalid id' })
+    await expectInvalidRequest(response, 'id')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
   })
@@ -235,9 +256,7 @@ describe('specification-local deviation lifecycle routes', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'Invalid JSON body',
-    })
+    await expectInvalidRequest(response, '$')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
   })
@@ -256,10 +275,7 @@ describe('specification-local deviation lifecycle routes', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error:
-        'decision (number), decisionMotivation (string), and decidedBy (string) are required',
-    })
+    await expectInvalidRequest(response, 'decisionMotivation')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
   })
@@ -282,10 +298,7 @@ describe('specification-local deviation lifecycle routes', () => {
     )
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error:
-        'decision (number), decisionMotivation (string), and decidedBy (string) are required',
-    })
+    await expectInvalidRequest(response, 'decision')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
     expect(routeState.recordSpecificationLocalDecision).not.toHaveBeenCalled()
   })
@@ -356,6 +369,7 @@ describe('specification-local deviation lifecycle routes', () => {
 
     expect(response.status).toBe(409)
     await expect(response.json()).resolves.toEqual({
+      code: 'conflict',
       error: 'Not in review',
     })
   })

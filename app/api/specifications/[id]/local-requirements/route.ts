@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   createSpecificationLocalRequirement,
   getSpecificationById,
@@ -6,40 +7,56 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  businessTextSchema,
+  nullableBusinessTextSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+  specificationIdOrSlugSchema,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
+const specificationParamSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+  })
+  .strict()
 
-function parseOptionalPositiveInteger(value: unknown) {
-  if (value === undefined || value === null || value === '') {
-    return null
-  }
+const uniquePositiveIntegerArrayFieldSchema = z
+  .array(positiveIntegerSchema)
+  .max(ARRAY_INPUT_MAX_ITEMS)
+  .refine(values => new Set(values).size === values.length, {
+    message: 'Expected unique positive integers',
+  })
 
-  if (!Number.isInteger(value) || Number(value) < 1) {
-    throw new Error('Expected a positive integer')
-  }
-
-  return Number(value)
-}
-
-function parseOptionalIntegerArray(value: unknown): number[] {
-  if (value === undefined || value === null) {
-    return []
-  }
-
-  if (
-    !Array.isArray(value) ||
-    value.some(entry => !Number.isInteger(entry) || Number(entry) < 1)
-  ) {
-    throw new Error('Expected an array of positive integers')
-  }
-
-  return value.map(entry => Number(entry))
-}
+const specificationLocalRequirementSchema = z
+  .object({
+    acceptanceCriteria: nullableBusinessTextSchema.optional(),
+    description: businessTextSchema,
+    needsReferenceId: positiveIntegerSchema.nullable().optional(),
+    normReferenceIds: uniquePositiveIntegerArrayFieldSchema
+      .optional()
+      .default([]),
+    qualityCharacteristicId: positiveIntegerSchema.nullable().optional(),
+    requirementAreaId: positiveIntegerSchema.nullable().optional(),
+    requirementCategoryId: positiveIntegerSchema.nullable().optional(),
+    requirementPackageIds: uniquePositiveIntegerArrayFieldSchema
+      .optional()
+      .default([]),
+    requirementTypeId: positiveIntegerSchema.nullable().optional(),
+    requiresTesting: z.boolean().optional().default(false),
+    riskLevelId: positiveIntegerSchema.nullable().optional(),
+    verificationMethod: nullableBusinessTextSchema.optional(),
+  })
+  .strict()
 
 async function resolveSpecificationId(
   db: SqlServerDatabase,
@@ -56,7 +73,19 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(params, specificationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
+  }
+  const parsedBody = await readJsonWithSchema(
+    request,
+    specificationLocalRequirementSchema,
+  )
+  if (!parsedBody.ok) {
+    return parsedBody.response
+  }
+  const { id } = parsedParams.data
+  const body = parsedBody.data
   const db = await getRequestSqlServerDataSource()
 
   const specificationId = await resolveSpecificationId(db, id)
@@ -64,74 +93,34 @@ export async function POST(
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  let rawBody: unknown
-  try {
-    rawBody = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-
-  if (!isRecord(rawBody) || typeof rawBody.description !== 'string') {
-    return NextResponse.json(
-      { error: 'description (string) is required' },
-      { status: 400 },
-    )
-  }
-
   try {
     const localRequirement = await createSpecificationLocalRequirement(
       db,
       specificationId,
       {
-        acceptanceCriteria:
-          typeof rawBody.acceptanceCriteria === 'string'
-            ? rawBody.acceptanceCriteria
-            : null,
-        description: rawBody.description,
-        needsReferenceId: parseOptionalPositiveInteger(
-          rawBody.needsReferenceId,
-        ),
-        normReferenceIds: parseOptionalIntegerArray(rawBody.normReferenceIds),
-        qualityCharacteristicId: parseOptionalPositiveInteger(
-          rawBody.qualityCharacteristicId,
-        ),
-        requirementAreaId:
-          parseOptionalPositiveInteger(rawBody.requirementAreaId) ?? null,
-        requirementCategoryId: parseOptionalPositiveInteger(
-          rawBody.requirementCategoryId,
-        ),
-        requirementTypeId: parseOptionalPositiveInteger(
-          rawBody.requirementTypeId,
-        ),
-        requiresTesting:
-          typeof rawBody.requiresTesting === 'boolean'
-            ? rawBody.requiresTesting
-            : false,
-        riskLevelId: parseOptionalPositiveInteger(rawBody.riskLevelId),
-        requirementPackageIds: parseOptionalIntegerArray(
-          rawBody.requirementPackageIds,
-        ),
-        verificationMethod:
-          typeof rawBody.verificationMethod === 'string'
-            ? rawBody.verificationMethod
-            : null,
+        acceptanceCriteria: body.acceptanceCriteria ?? null,
+        description: body.description,
+        needsReferenceId: body.needsReferenceId ?? null,
+        normReferenceIds: body.normReferenceIds,
+        qualityCharacteristicId: body.qualityCharacteristicId ?? null,
+        requirementAreaId: body.requirementAreaId ?? null,
+        requirementCategoryId: body.requirementCategoryId ?? null,
+        requirementPackageIds: body.requirementPackageIds,
+        requirementTypeId: body.requirementTypeId ?? null,
+        requiresTesting: body.requiresTesting,
+        riskLevelId: body.riskLevelId ?? null,
+        verificationMethod: body.verificationMethod ?? null,
       },
     )
 
     return NextResponse.json({ localRequirement, ok: true }, { status: 201 })
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('Expected')) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
-
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error('Failed to create specification-local requirement', error)
+    logSanitizedError('Failed to create specification-local requirement', error)
     return NextResponse.json(
       { error: 'Failed to create specification-local requirement' },
       { status: 500 },

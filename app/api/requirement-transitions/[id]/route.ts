@@ -1,5 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+  refOrPositiveIntegerSegmentSchema,
+} from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
 import {
   createRequirementsService,
@@ -7,24 +14,37 @@ import {
 } from '@/lib/requirements/service'
 import { parseRequirementRef } from '../../requirements/parse-requirement-ref'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
+
+const requirementRefParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
+
+const transitionBodySchema = z
+  .object({
+    statusId: positiveIntegerSchema,
+  })
+  .strict()
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
+  const parsedBody = await readJsonWithSchema(request, transitionBodySchema)
+  if (!parsedBody.ok) return parsedBody.response
+  const { statusId } = parsedBody.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const body = (await request.json()) as Record<string, unknown>
-
-  const statusId = Number(body.statusId)
-  if (Number.isNaN(statusId)) {
-    return NextResponse.json(
-      { error: 'Missing or invalid statusId' },
-      { status: 400 },
-    )
-  }
 
   try {
     const context = await createRequestContext(request, 'rest')

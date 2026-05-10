@@ -237,6 +237,15 @@ by the MCP service-account flow. Values that begin with `mcp-client:`
 deliberately bypass the HSA-id format validator; assignment-based
 authorization treats the literal string as the actor identity.
 
+For local and prodlike Keycloak realms that were imported before that mapper
+existed, the app also accepts the same synthetic identity by deriving
+`mcp-client:<client_id>` from a verified service-account token when
+`client_id` or `azp` matches the configured MCP client id. The expected client
+id is read by `getExpectedMcpClientId()` from `AUTH_OIDC_MCP_CLIENT_ID`,
+falling back to `MCP_CLIENT_ID`, and finally to the local default
+`kravhantering-mcp`. If both variables are set differently,
+`AUTH_OIDC_MCP_CLIENT_ID` is canonical and `MCP_CLIENT_ID` is ignored.
+
 ### No refresh tokens
 
 Browser sessions intentionally do **not** carry a refresh token. When
@@ -305,8 +314,8 @@ envs at the per-env OIDC issuer and client registration.
 | `AUTH_OIDC_ISSUER_URL` | yes | _(none)_ | Issuer base URL. The app appends `/.well-known/openid-configuration` to discover the authorization, token, JWKS, and end-session endpoints. Must exactly match the `iss` claim the IdP emits — trailing slash matters. |
 | `AUTH_OIDC_CLIENT_ID` | yes | `kravhantering-app` (dev) | Confidential web-client id registered in the IdP. In OpenShift this comes from the `kravhantering-auth` Secret in the per-environment production setup. |
 | `AUTH_OIDC_CLIENT_SECRET` | yes | _(none)_ | Web-client secret. **Secret**: never commit a real value, never log. Local dev uses the placeholder `dev-only-app-secret` baked into the Keycloak realm JSON. |
-| `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. **Must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. Re-register on every OpenShift Route hostname change (blue/green cutover). |
-| `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Also pre-registered per env. |
+| `AUTH_OIDC_REDIRECT_URI` | yes | `http://localhost:3000/api/auth/callback` | Full callback URL, scheme + host + path. Must be an absolute `http://` or `https://` URL and **must be pre-registered in the IdP**; mismatches surface as `redirect_uri_mismatch` from the configured OIDC provider. This URL's origin is also the canonical origin for CSRF checks; forwarded headers do not override it. Re-register on every OpenShift Route hostname change (blue/green cutover). |
+| `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI` | yes | `http://localhost:3000/` | Where the IdP sends the browser after `end_session_endpoint`. Must be an absolute `http://` or `https://` URL and also pre-registered per env. |
 | `AUTH_OIDC_SCOPES` | no | `openid profile email` | Space-separated. `openid` is mandatory; `profile` carries `name` / `given_name` / `family_name`; `email` carries `email` / `email_verified`. Add custom scopes if your OIDC provider requires them to release the `roles` claim. |
 | `AUTH_OIDC_ROLES_CLAIM` | no | `roles` | Claim name the parser in [lib/auth/roles.ts](../lib/auth/roles.ts) reads. Override only if the IdP cannot emit `roles` and the committed auth contract has been updated accordingly. |
 | `AUTH_OIDC_API_AUDIENCE` | no | falls back to `AUTH_OIDC_CLIENT_ID` | Audience expected on **access tokens** validated by the MCP path ([lib/auth/mcp-token.ts](../lib/auth/mcp-token.ts)). Set explicitly when the MCP client receives tokens scoped to a different `aud` than the web client. |
@@ -374,12 +383,11 @@ Production values are set per environment by ops on the real IdP.
   `AUTH_SESSION_TTL_SECONDS` to a comparable value. There is no
   app-level idle timer to configure.
 
-### Reverse-proxy trust
+### Build-target auth constants
 
 <!-- markdownlint-disable MD013 -->
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
-| `AUTH_TRUST_PROXY` | no | `true` | When `true`, the app honours `X-Forwarded-Proto` / `X-Forwarded-Host` so generated redirect URIs use `https://<route-host>` instead of the in-pod scheme/host. Required behind the OpenShift Route. Set `false` only if exposing the pod directly without a proxy (rare). |
 | `AUTH_OIDC_ALLOW_INSECURE_ISSUER` | no | `false` | Build-target constant (not a runtime env var). Both the `dev` and `local-prod` build targets set it to `true` so the local Keycloak on `http://localhost:8080` works; the `prod` build target hard-codes it to `false`. |
 <!-- markdownlint-enable MD013 -->
 
@@ -392,8 +400,7 @@ For OpenShift, this is the split between Secret and ConfigMap:
 - **ConfigMap**: `AUTH_OIDC_ISSUER_URL`, `AUTH_OIDC_REDIRECT_URI`,
   `AUTH_OIDC_POST_LOGOUT_REDIRECT_URI`, `AUTH_OIDC_SCOPES`,
   `AUTH_OIDC_ROLES_CLAIM`, `AUTH_OIDC_API_AUDIENCE`,
-  `AUTH_SESSION_COOKIE_NAME`, `AUTH_SESSION_TTL_SECONDS`,
-  `AUTH_TRUST_PROXY`.
+  `AUTH_SESSION_COOKIE_NAME`, and `AUTH_SESSION_TTL_SECONDS`.
 
 `AUTH_OIDC_CLIENT_ID` is technically not secret (it's quoted in every
 authorization request), but it's grouped with the secret because ops
@@ -463,11 +470,12 @@ discovery URL above and exchange a code manually.
 
 ## Tailing the security audit stream
 
-Auth-related security events (`auth.login.succeeded`, `auth.login.failed`,
-`auth.logout`, `auth.session.rejected`, `auth.token.rejected`,
-`auth.mcp.token.accepted`, `auth.roles.changed`, `auth.csrf.rejected`)
-are emitted as single-line JSON to `console.info` and tagged with
-`"channel":"security-audit"`. To watch them locally:
+Security events (`auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
+`auth.session.rejected`, `auth.token.rejected`, `auth.mcp.token.accepted`,
+`auth.roles.changed`, `auth.csrf.rejected`, `auth.authorization.denied`, and
+`requirements.high_risk_mutation.succeeded`) are emitted as single-line JSON
+to `console.info` and tagged with `"channel":"security-audit"`. To watch them
+locally:
 
 ```bash
 npm run dev | grep '"channel":"security-audit"' | jq .

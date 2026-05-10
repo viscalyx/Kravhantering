@@ -202,6 +202,23 @@ function jsonReq(method: string, body: Record<string, unknown>): NextRequest {
   })
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 /* ── tests ───────────────────────────────────────────────────────── */
 
 describe('specification-implementation-types routes', () => {
@@ -231,6 +248,24 @@ describe('specification-implementation-types routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+  it('PUT rejects empty update payloads', async () => {
+    const r = await putImplType(jsonReq('PUT', {}), makeParams('1'))
+    const body = (await r.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(r.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'At least one of nameEn or nameSv must be provided',
+        }),
+      ]),
+    )
+    expect(mockUpdateImpl).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
     mockDeleteImpl.mockResolvedValue(undefined)
@@ -269,6 +304,24 @@ describe('specification-lifecycle-statuses routes', () => {
       makeParams('1'),
     )
     expect(((await r.json()) as { id: number }).id).toBe(1)
+  })
+  it('PUT rejects empty update payloads', async () => {
+    const r = await putLifecycle(jsonReq('PUT', {}), makeParams('1'))
+    const body = (await r.json()) as {
+      error: string
+      issues: Array<{ message: string }>
+    }
+
+    expect(r.status).toBe(400)
+    expect(body.error).toBe('Invalid request')
+    expect(body.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: 'At least one of nameEn or nameSv must be provided',
+        }),
+      ]),
+    )
+    expect(mockUpdateLifecycle).not.toHaveBeenCalled()
   })
   it('DELETE deletes', async () => {
     mockDeleteLifecycle.mockResolvedValue(undefined)
@@ -365,7 +418,7 @@ describe('specification-item-statuses catalog routes', () => {
   it('POST creates a catalog status with 201', async () => {
     const r = await postSpecItemStatus(
       new Request('http://l', {
-        body: '{"nameSv":"Ny","nameEn":"New"}',
+        body: '{"nameSv":"Ny","nameEn":"New","color":"#22c55e"}',
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       }),
@@ -423,7 +476,7 @@ describe('requirement-areas routes', () => {
     const r = await postReqArea(
       new Request('http://l', {
         method: 'POST',
-        body: '{"name":"Test area"}',
+        body: '{"name":"Test area","prefix":"TA"}',
         headers: { 'Content-Type': 'application/json' },
       }),
     )
@@ -484,7 +537,7 @@ describe('requirement-specifications routes', () => {
   })
   it('PUT updates', async () => {
     mockUpdatePkg.mockResolvedValue({ id: 1 })
-    const r = await putPkg(jsonReq('PUT', { nameEn: 'X' }), makeParams('1'))
+    const r = await putPkg(jsonReq('PUT', { name: 'X' }), makeParams('1'))
     await expect(r.json()).resolves.toEqual({ id: 1 })
   })
   it('DELETE deletes', async () => {
@@ -526,10 +579,7 @@ describe('requirement-packages routes', () => {
       }),
     )
     expect(r.status).toBe(400)
-    const j = (await r.json()) as { details: string[]; error: string }
-    expect(j.error).toBe('Invalid payload')
-    expect(j.details).toContain('nameEn must be a non-empty string')
-    expect(j.details).toContain('ownerId must be a positive integer or null')
+    await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
   it('PUT updates', async () => {
@@ -581,8 +631,7 @@ describe('read-only taxonomy routes', () => {
     )
     const r = await getTypeCats(req)
     expect(r.status).toBe(400)
-    const j = (await r.json()) as { error: string }
-    expect(j.error).toBe('Invalid typeId')
+    await expectInvalidRequest(r, 'typeId')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
@@ -610,8 +659,7 @@ describe('read-only taxonomy routes', () => {
       }),
     )
     expect(r.status).toBe(400)
-    const j = (await r.json()) as { error: string }
-    expect(j.error).toBe('Invalid payload')
+    await expectInvalidRequest(r)
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
@@ -629,8 +677,7 @@ describe('read-only taxonomy routes', () => {
       }),
     )
     expect(r.status).toBe(400)
-    const j = (await r.json()) as { error: string }
-    expect(j.error).toBe('Invalid payload')
+    await expectInvalidRequest(r, 'parentId')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 

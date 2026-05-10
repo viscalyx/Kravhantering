@@ -1,32 +1,53 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   deleteSpecificationLifecycleStatus,
   updateSpecificationLifecycleStatus,
 } from '@/lib/dal/specification-lifecycle-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  INTERNAL_SERVER_ERROR_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
+  boundedDbStringSchema,
+  idParamSchema,
+  parseRouteParams,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
-function parseId(raw: string): number | null {
-  const n = Number(raw)
-  return Number.isFinite(n) && Number.isInteger(n) && n > 0 ? n : null
-}
+const updateLifecycleStatusSchema = z
+  .object({
+    nameEn: boundedDbStringSchema.optional(),
+    nameSv: boundedDbStringSchema.optional(),
+  })
+  .strict()
+  .refine(data => data.nameEn !== undefined || data.nameSv !== undefined, {
+    message: 'At least one of nameEn or nameSv must be provided',
+  })
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id: rawId } = await params
-  const id = parseId(rawId)
-  if (id === null) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(
+    request,
+    updateLifecycleStatusSchema,
+  )
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Parameters<
-    typeof updateSpecificationLifecycleStatus
-  >[2]
   try {
-    const status = await updateSpecificationLifecycleStatus(db, id, body)
+    const status = await updateSpecificationLifecycleStatus(
+      db,
+      parsedParams.data.id,
+      parsedBody.data,
+    )
     if (!status) {
       return NextResponse.json(
         { error: 'Lifecycle status not found' },
@@ -35,8 +56,11 @@ export async function PUT(
     }
     return NextResponse.json(status)
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Validation error'
-    return NextResponse.json({ error: message }, { status: 400 })
+    logSanitizedError('Failed to update specification lifecycle status', err)
+    return NextResponse.json(
+      { error: INTERNAL_SERVER_ERROR_MESSAGE },
+      { status: 500 },
+    )
   }
 }
 
@@ -44,14 +68,14 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id: rawId } = await params
-  const id = parseId(rawId)
-  if (id === null) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
   const db = await getRequestSqlServerDataSource()
   try {
-    const deletedCount = await deleteSpecificationLifecycleStatus(db, id)
+    const deletedCount = await deleteSpecificationLifecycleStatus(
+      db,
+      parsedParams.data.id,
+    )
     if (deletedCount === 0) {
       return NextResponse.json(
         { error: 'Lifecycle status not found' },

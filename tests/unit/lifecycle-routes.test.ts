@@ -44,7 +44,7 @@ describe('lifecycle routes', () => {
   describe('delete-draft', () => {
     it('POST returns result on success', async () => {
       mockManageRequirement.mockResolvedValue({
-        result: { deleted: true },
+        result: { deleted: 'version' },
       })
 
       const { POST } = await import(
@@ -60,7 +60,7 @@ describe('lifecycle routes', () => {
         params: Promise.resolve({ id: '1' }),
       })
       const json = await res.json()
-      expect(json).toEqual({ deleted: true })
+      expect(json).toEqual({ deleted: 'version' })
       expect(mockManageRequirement).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({ id: 1, operation: 'delete_draft' }),
@@ -166,6 +166,46 @@ describe('lifecycle routes', () => {
       })
       expect(res.status).toBe(500)
     })
+
+    it('POST returns 400 for invalid JSON bodies', async () => {
+      const { POST } = await import('@/app/api/requirements/[id]/restore/route')
+      const req = new Request('http://localhost/api/requirements/1/restore', {
+        method: 'POST',
+        body: 'not-json',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never, {
+        params: Promise.resolve({ id: '1' }),
+      })
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toMatchObject({
+        error: 'Invalid request',
+        issues: [
+          {
+            code: 'invalid_json',
+            message: 'Malformed JSON body',
+            path: '$',
+          },
+        ],
+      })
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
+
+    it('POST returns 400 for invalid versionNumber', async () => {
+      const { POST } = await import('@/app/api/requirements/[id]/restore/route')
+      const req = new Request('http://localhost/api/requirements/1/restore', {
+        method: 'POST',
+        body: JSON.stringify({ versionNumber: '2' }),
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never, {
+        params: Promise.resolve({ id: '1' }),
+      })
+
+      expect(res.status).toBe(400)
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
   })
 
   describe('versions/[version]', () => {
@@ -184,6 +224,13 @@ describe('lifecycle routes', () => {
       })
       const json = (await res.json()) as { uniqueId: string }
       expect(json.uniqueId).toBe('TST-001')
+      expect(mockGetRequirement).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          versionNumber: 2,
+          view: 'version',
+        }),
+      )
     })
 
     it('GET returns error on failure', async () => {

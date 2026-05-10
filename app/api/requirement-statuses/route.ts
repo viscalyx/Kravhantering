@@ -1,10 +1,26 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   createStatus,
   listStatuses,
   listTransitions,
 } from '@/lib/dal/requirement-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  nonNegativeIntegerSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+const createStatusSchema = z
+  .object({
+    color: boundedDbStringSchema,
+    isSystem: z.boolean().optional(),
+    nameEn: boundedDbStringSchema,
+    nameSv: boundedDbStringSchema,
+    sortOrder: nonNegativeIntegerSchema,
+  })
+  .strict()
 
 export async function GET() {
   const db = await getRequestSqlServerDataSource()
@@ -16,8 +32,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const parsedBody = await readJsonWithSchema(request, createStatusSchema)
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Parameters<typeof createStatus>[1]
-  const status = await createStatus(db, body)
+  const status = await createStatus(db, parsedBody.data)
   return NextResponse.json(status, { status: 201 })
 }

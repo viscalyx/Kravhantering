@@ -1,68 +1,60 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { recordSpecificationLocalDecision } from '@/lib/dal/deviations'
+import { z } from 'zod'
+import {
+  DEVIATION_APPROVED,
+  DEVIATION_REJECTED,
+  recordSpecificationLocalDecision,
+} from '@/lib/dal/deviations'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import { logSanitizedError } from '@/lib/http/safe-errors'
+import {
+  businessTextSchema,
+  idParamSchema,
+  parseRouteParams,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
+import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
+
+const decisionBodySchema = z
+  .object({
+    decidedBy: businessTextSchema,
+    decision: z.union([
+      z.literal(DEVIATION_APPROVED),
+      z.literal(DEVIATION_REJECTED),
+    ]),
+    decisionMotivation: businessTextSchema,
+  })
+  .strict()
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const deviationId = Number(id)
-  if (!Number.isInteger(deviationId) || deviationId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
-
-  let body: unknown
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-
-  if (typeof body !== 'object' || body === null) {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
-  }
-
-  const { decision, decisionMotivation, decidedBy } = body as {
-    decidedBy?: string
-    decision?: number
-    decisionMotivation?: string
-  }
-
-  if (
-    typeof decision !== 'number' ||
-    typeof decisionMotivation !== 'string' ||
-    typeof decidedBy !== 'string'
-  ) {
-    return NextResponse.json(
-      {
-        error:
-          'decision (number), decisionMotivation (string), and decidedBy (string) are required',
-      },
-      { status: 400 },
-    )
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(request, decisionBodySchema)
+  if (!parsedBody.ok) return parsedBody.response
 
   try {
     const db = await getRequestSqlServerDataSource()
-    await recordSpecificationLocalDecision(db, deviationId, {
-      decision,
-      decisionMotivation,
-      decidedBy,
-    })
+    await recordSpecificationLocalDecision(
+      db,
+      parsedParams.data.id,
+      parsedBody.data,
+    )
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.status },
-      )
+      const { body, status } = toHttpErrorPayload(error)
+      return NextResponse.json(body, { status })
     }
 
-    console.error(
+    logSanitizedError(
       'Failed to record specification-local deviation decision',
       error,
     )

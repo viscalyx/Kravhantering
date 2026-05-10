@@ -1,21 +1,45 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   createQualityCharacteristic,
   listQualityCharacteristics,
 } from '@/lib/dal/requirement-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  parseSearchParams,
+  positiveIntegerSchema,
+  positiveIntegerStringSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+const qualityCharacteristicsQuerySchema = z
+  .object({
+    typeId: positiveIntegerStringSchema.optional(),
+  })
+  .strict()
+
+const qualityCharacteristicCreateSchema = z
+  .object({
+    nameEn: boundedDbStringSchema,
+    nameSv: boundedDbStringSchema,
+    parentId: positiveIntegerSchema.nullable().optional(),
+    requirementTypeId: positiveIntegerSchema,
+  })
+  .strict()
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
-  const typeId = url.searchParams.get('typeId')
+  const parsedQuery = parseSearchParams(
+    url.searchParams,
+    qualityCharacteristicsQuerySchema,
+  )
+  if (!parsedQuery.ok) return parsedQuery.response
+  const { typeId } = parsedQuery.data
 
   if (typeId != null) {
-    const parsed = Number(typeId)
-    if (!Number.isInteger(parsed) || parsed < 1) {
-      return NextResponse.json({ error: 'Invalid typeId' }, { status: 400 })
-    }
     const db = await getRequestSqlServerDataSource()
-    const qualityCharacteristics = await listQualityCharacteristics(db, parsed)
+    const qualityCharacteristics = await listQualityCharacteristics(db, typeId)
     return NextResponse.json({ qualityCharacteristics })
   }
 
@@ -25,24 +49,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
-  let body: Record<string, unknown>
-  try {
-    body = (await request.json()) as Record<string, unknown>
-  } catch {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
-  }
-  if (
-    typeof body.nameSv !== 'string' ||
-    typeof body.nameEn !== 'string' ||
-    typeof body.requirementTypeId !== 'number' ||
-    (body.parentId != null && typeof body.parentId !== 'number')
-  ) {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
-  }
-  const db = await getRequestSqlServerDataSource()
-  const category = await createQualityCharacteristic(
-    db,
-    body as unknown as Parameters<typeof createQualityCharacteristic>[1],
+  const parsedBody = await readJsonWithSchema(
+    request,
+    qualityCharacteristicCreateSchema,
   )
+  if (!parsedBody.ok) return parsedBody.response
+  const db = await getRequestSqlServerDataSource()
+  const category = await createQualityCharacteristic(db, parsedBody.data)
   return NextResponse.json(category, { status: 201 })
 }

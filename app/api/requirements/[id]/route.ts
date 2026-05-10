@@ -1,8 +1,17 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getOwnerById } from '@/lib/dal/owners'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  businessTextSchema,
+  optionalBusinessTextSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+  refOrPositiveIntegerSegmentSchema,
+  uniquePositiveIntegerArraySchema,
+} from '@/lib/http/validation'
 import { createRequestContext } from '@/lib/requirements/auth'
-import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
   toHttpErrorPayload,
@@ -10,20 +19,58 @@ import {
 import type { RequirementDetailResponse } from '@/lib/requirements/types'
 import { parseRequirementRef } from '../parse-requirement-ref'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
 
-function normalizePositiveIntegerIds(value: unknown): number[] | undefined {
-  if (!Array.isArray(value)) return undefined
+const requirementRefParamsSchema = z
+  .object({
+    id: refOrPositiveIntegerSegmentSchema,
+  })
+  .strict()
 
-  const ids = parsePositiveIntegerIds(value)
-  return ids.length > 0 ? ids : undefined
-}
+const optionalBodyIdSchema = positiveIntegerSchema
+  .nullable()
+  .optional()
+  .transform(value => value ?? undefined)
+
+const optionalBodyIdArraySchema = uniquePositiveIntegerArraySchema()
+  .nullable()
+  .optional()
+  .transform(value => value ?? undefined)
+
+const requirementEditSchema = z
+  .object({
+    acceptanceCriteria: optionalBusinessTextSchema,
+    areaId: optionalBodyIdSchema,
+    baseRevisionToken: z.uuid(),
+    baseVersionId: positiveIntegerSchema,
+    categoryId: optionalBodyIdSchema,
+    description: businessTextSchema,
+    normReferenceIds: optionalBodyIdArraySchema,
+    // Accepted for edit-requirement-client.tsx compatibility; the PUT handler
+    // below intentionally omits ownerId from the requirement object passed to
+    // manageRequirement().
+    ownerId: optionalBusinessTextSchema,
+    qualityCharacteristicId: optionalBodyIdSchema,
+    requirementPackageIds: optionalBodyIdArraySchema,
+    requiresTesting: z.boolean().optional().default(false),
+    riskLevelId: optionalBodyIdSchema,
+    typeId: optionalBodyIdSchema,
+    verificationMethod: optionalBusinessTextSchema,
+  })
+  .strict()
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 
@@ -55,10 +102,17 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
+  const parsedBody = await readJsonWithSchema(request, requirementEditSchema)
+  if (!parsedBody.ok) return parsedBody.response
+  const body = parsedBody.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const body = (await request.json()) as Record<string, unknown>
 
   try {
     const context = await createRequestContext(request, 'rest')
@@ -67,36 +121,23 @@ export async function PUT(
       ...ref,
       operation: 'edit',
       requirement: {
-        acceptanceCriteria: body.acceptanceCriteria
-          ? String(body.acceptanceCriteria)
-          : undefined,
-        areaId: body.areaId ? Number(body.areaId) : undefined,
-        baseRevisionToken:
-          body.baseRevisionToken != null
-            ? String(body.baseRevisionToken)
-            : undefined,
-        baseVersionId:
-          body.baseVersionId != null ? Number(body.baseVersionId) : undefined,
-        categoryId: body.categoryId ? Number(body.categoryId) : undefined,
-        createdBy: body.ownerId ? String(body.ownerId) : undefined,
-        description: String(body.description ?? ''),
-        normReferenceIds: normalizePositiveIntegerIds(body.normReferenceIds),
-        requiresTesting: (body.requiresTesting as boolean) ?? false,
-        verificationMethod: body.verificationMethod
-          ? String(body.verificationMethod)
-          : undefined,
-        requirementPackageIds: normalizePositiveIntegerIds(
-          body.requirementPackageIds,
-        ),
-        qualityCharacteristicId: body.qualityCharacteristicId
-          ? Number(body.qualityCharacteristicId)
-          : undefined,
-        riskLevelId: body.riskLevelId ? Number(body.riskLevelId) : undefined,
-        typeId: body.typeId ? Number(body.typeId) : undefined,
+        acceptanceCriteria: body.acceptanceCriteria,
+        areaId: body.areaId,
+        baseRevisionToken: body.baseRevisionToken,
+        baseVersionId: body.baseVersionId,
+        categoryId: body.categoryId,
+        description: body.description,
+        normReferenceIds: body.normReferenceIds,
+        requiresTesting: body.requiresTesting,
+        verificationMethod: body.verificationMethod,
+        requirementPackageIds: body.requirementPackageIds,
+        qualityCharacteristicId: body.qualityCharacteristicId,
+        riskLevelId: body.riskLevelId,
+        typeId: body.typeId,
       },
     })
     return NextResponse.json({
-      id: result.detail?.id ?? ref.id ?? Number(id),
+      id: result.detail?.id ?? ref.id ?? null,
       uniqueId: result.detail?.uniqueId,
       version: result.result,
     })
@@ -110,7 +151,12 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(
+    params,
+    requirementRefParamsSchema,
+  )
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
 

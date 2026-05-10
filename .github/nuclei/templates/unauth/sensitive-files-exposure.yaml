@@ -1,0 +1,38 @@
+id: kravhantering-sensitive-files-exposure
+
+info:
+  name: Sensitive Repository Or Environment File Exposed
+  author: viscalyx
+  severity: high
+  description: |
+    Detects accidentally exposed local environment files, npm credentials, or
+    Git repository metadata from the prodlike Next.js server.
+  tags: kravhantering,exposure,files
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.env"
+      - "{{BaseURL}}/.env.local"
+      - "{{BaseURL}}/.env.prodlike"
+      - "{{BaseURL}}/.env.sqlserver"
+      - "{{BaseURL}}/.env.sqlserver.ci"
+      - "{{BaseURL}}/.npmrc"
+      - "{{BaseURL}}/.git/config"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        condition: or
+        words:
+          - "DATABASE_URL"
+          - "AUTH_SECRET"
+          - "AUTH_OIDC"
+          - "KEYCLOAK"
+          - "registry="
+          - "[core]"
+          - "repositoryformatversion"

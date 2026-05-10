@@ -46,6 +46,23 @@ function makeParams(id: string) {
   return { params: Promise.resolve({ id }) }
 }
 
+async function expectInvalidRequest(
+  response: Response,
+  path?: string,
+): Promise<void> {
+  const body = (await response.json()) as {
+    error: string
+    issues: Array<{ path: string }>
+  }
+  expect(body.error).toBe('Invalid request')
+  expect(body.issues.length).toBeGreaterThan(0)
+  if (path) {
+    expect(body.issues).toEqual(
+      expect.arrayContaining([expect.objectContaining({ path })]),
+    )
+  }
+}
+
 describe('specifications/[id]/items route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -84,6 +101,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({
+      code: 'validation',
       error:
         'needsReferenceId does not belong to this requirements specification',
     })
@@ -214,9 +232,7 @@ describe('specifications/[id]/items route', () => {
     const response = await POST(request, makeParams('spec'))
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'requirementIds must be a non-empty array of positive integers',
-    })
+    await expectInvalidRequest(response, 'requirementIds.1')
     expect(
       mocks.linkRequirementsToSpecificationAtomically,
     ).not.toHaveBeenCalled()
@@ -237,10 +253,7 @@ describe('specifications/[id]/items route', () => {
     const response = await POST(request, makeParams('spec'))
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error:
-        'requirementIds must be a non-empty array of unique positive integers',
-    })
+    await expectInvalidRequest(response, 'requirementIds')
     expect(
       mocks.linkRequirementsToSpecificationAtomically,
     ).not.toHaveBeenCalled()
@@ -263,9 +276,7 @@ describe('specifications/[id]/items route', () => {
     const response = await POST(request, makeParams('spec'))
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'Provide either needsReferenceId or needsReferenceText, not both',
-    })
+    await expectInvalidRequest(response, 'needsReferenceText')
     expect(
       mocks.linkRequirementsToSpecificationAtomically,
     ).not.toHaveBeenCalled()
@@ -298,6 +309,7 @@ describe('specifications/[id]/items route', () => {
 
     expect(response.status).toBe(422)
     await expect(response.json()).resolves.toEqual({
+      code: 'validation',
       error:
         'Requirement 1 has no published version and cannot be added to a specification',
     })
@@ -318,9 +330,7 @@ describe('specifications/[id]/items route', () => {
     const response = await DELETE(request, makeParams('spec'))
 
     expect(response.status).toBe(400)
-    await expect(response.json()).resolves.toEqual({
-      error: 'requirementIds must be a non-empty array of positive integers',
-    })
+    await expectInvalidRequest(response, 'requirementIds.0')
     expect(mocks.unlinkRequirementsFromSpecification).not.toHaveBeenCalled()
   })
 
@@ -360,7 +370,11 @@ describe('specifications/[id]/items route', () => {
       })
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'Failed to add requirements to requirements specification',
-        expect.any(Error),
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message: 'SQL transaction failed',
+          }),
+        }),
       )
     } finally {
       consoleErrorSpy.mockRestore()

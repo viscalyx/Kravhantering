@@ -55,6 +55,9 @@ const originHeader = deriveOrigin(baseUrl)
 
 export default defineConfig({
   testDir: './tests/integration',
+  // The MCP seeded scan is the prodlike security gate. It intentionally
+  // refuses the dev-server base URL and is run by playwright.prodlike.config.ts.
+  testIgnore: ['**/mcp-seeded-scan.spec.ts'],
   globalSetup: './tests/integration/global-setup.ts',
   outputDir: 'test-results/dev',
   fullyParallel: true,

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   deleteQualityCharacteristic,
   listQualityCharacteristics,
@@ -6,30 +7,48 @@ import {
   updateQualityCharacteristic,
 } from '@/lib/dal/requirement-types'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  INTERNAL_SERVER_ERROR_MESSAGE,
+  isForeignKeyOrConstraintError,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
+  boundedDbStringSchema,
+  idParamSchema,
+  parseRouteParams,
+  positiveIntegerSchema,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
+
+const qualityCharacteristicUpdateSchema = z
+  .object({
+    nameEn: boundedDbStringSchema.optional(),
+    nameSv: boundedDbStringSchema.optional(),
+    parentId: positiveIntegerSchema.nullable().optional(),
+    requirementTypeId: positiveIntegerSchema.optional(),
+  })
+  .strict()
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(
+    request,
+    qualityCharacteristicUpdateSchema,
+  )
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Record<string, unknown>
-  if (
-    (body.nameSv != null && typeof body.nameSv !== 'string') ||
-    (body.nameEn != null && typeof body.nameEn !== 'string')
-  ) {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
-  }
   const category = await updateQualityCharacteristic(
     db,
-    numericId,
-    body as Parameters<typeof updateQualityCharacteristic>[2],
+    parsedParams.data.id,
+    parsedBody.data,
   )
   if (!category) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -41,16 +60,14 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
   const allCategories = await listQualityCharacteristics(db)
   const hasChildren = allCategories.some(
-    (category: QualityCharacteristicRow) => category.parentId === numericId,
+    (category: QualityCharacteristicRow) => category.parentId === id,
   )
   if (hasChildren) {
     return NextResponse.json(
@@ -60,20 +77,20 @@ export async function DELETE(
   }
 
   try {
-    const deleted = await deleteQualityCharacteristic(db, numericId)
+    const deleted = await deleteQualityCharacteristic(db, id)
     if (!deleted) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (/foreign.key/i.test(message) || /constraint/i.test(message)) {
+    if (isForeignKeyOrConstraintError(error)) {
       return NextResponse.json(
         { error: 'In use by requirements' },
         { status: 409 },
       )
     }
+    logSanitizedError('Failed to delete quality characteristic', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: INTERNAL_SERVER_ERROR_MESSAGE },
       { status: 500 },
     )
   }

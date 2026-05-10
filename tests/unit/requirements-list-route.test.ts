@@ -47,6 +47,7 @@ vi.mock('@/lib/dal/ui-settings', () => ({
 
 vi.mock('@/lib/requirements/list-view', () => ({
   DEFAULT_REQUIREMENT_SORT: { by: 'uniqueId', direction: 'asc' },
+  REQUIREMENT_SORT_FIELDS: ['uniqueId', 'description', 'area', 'status'],
   isRequirementSortField: (v: string) =>
     ['uniqueId', 'description', 'area', 'status'].includes(v),
   isRequirementSortDirection: (v: string) => ['asc', 'desc'].includes(v),
@@ -114,7 +115,7 @@ describe('requirements route', () => {
 
       const { GET } = await import('@/app/api/requirements/route')
       const req = new Request(
-        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5&requirementPackageIds=0&requirementPackageIds=-1&requirementPackageIds=1.5&requirementPackageIds=abc',
+        'http://localhost/api/requirements?sortBy=uniqueId&sortDirection=desc&limit=10&offset=5&areaIds=1&statuses=1&requiresTesting=true&categoryIds=2&typeIds=3&qualityCharacteristicIds=4&requirementPackageIds=5',
       )
       await GET(req as never)
       expect(mockQueryRequirementList).toHaveBeenCalledWith(
@@ -170,9 +171,9 @@ describe('requirements route', () => {
         body: JSON.stringify({
           description: 'New requirement',
           areaId: 1,
+          ownerId: 'spoofed-actor',
           typeId: 2,
-          requirementPackageIds: [1, 2, 2, 0, -1, 1.5, 'abc'],
-          references: [{ name: 'Ref 1', uri: 'https://example.com' }],
+          requirementPackageIds: [1, 2],
         }),
         headers: { 'Content-Type': 'application/json' },
       })
@@ -188,13 +189,13 @@ describe('requirements route', () => {
           }),
         }),
       )
+      const manageInput = mockManageRequirement.mock.calls[0]?.[1] as {
+        requirement: Record<string, unknown>
+      }
+      expect(manageInput.requirement).not.toHaveProperty('createdBy')
     })
 
-    it('omits requirement package ids when POST contains no valid ids', async () => {
-      mockManageRequirement.mockResolvedValue({
-        result: { id: 42, uniqueId: 'TST-042' },
-      })
-
+    it('returns 400 when POST contains invalid requirement package ids', async () => {
       const { POST } = await import('@/app/api/requirements/route')
       const req = new Request('http://localhost/api/requirements', {
         method: 'POST',
@@ -206,12 +207,8 @@ describe('requirements route', () => {
         headers: { 'Content-Type': 'application/json' },
       })
       const res = await POST(req as never)
-      expect(res.status).toBe(201)
-      const payload = mockManageRequirement.mock.calls.at(-1)?.[1] as
-        | { requirement?: Record<string, unknown> }
-        | undefined
-      expect(payload?.requirement).toBeDefined()
-      expect(payload?.requirement).not.toHaveProperty('requirementPackageIds')
+      expect(res.status).toBe(400)
+      expect(mockManageRequirement).not.toHaveBeenCalled()
     })
 
     it('returns error on failure', async () => {
@@ -220,7 +217,7 @@ describe('requirements route', () => {
       const { POST } = await import('@/app/api/requirements/route')
       const req = new Request('http://localhost/api/requirements', {
         method: 'POST',
-        body: JSON.stringify({ description: 'Bad' }),
+        body: JSON.stringify({ description: 'Bad', areaId: 1 }),
         headers: { 'Content-Type': 'application/json' },
       })
       const res = await POST(req as never)
@@ -239,6 +236,29 @@ describe('requirements route', () => {
       const res = await POST(req as never)
 
       expect(res.status).toBe(500)
+      expect(mockManageRequirement).not.toHaveBeenCalled()
+    })
+
+    it('returns 400 for invalid JSON bodies', async () => {
+      const { POST } = await import('@/app/api/requirements/route')
+      const req = new Request('http://localhost/api/requirements', {
+        method: 'POST',
+        body: 'not-json',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const res = await POST(req as never)
+
+      expect(res.status).toBe(400)
+      await expect(res.json()).resolves.toMatchObject({
+        error: 'Invalid request',
+        issues: [
+          {
+            code: 'invalid_json',
+            message: 'Malformed JSON body',
+            path: '$',
+          },
+        ],
+      })
       expect(mockManageRequirement).not.toHaveBeenCalled()
     })
   })

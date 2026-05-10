@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   countDeviationsBySpecification,
   listDeviationsForSpecification,
@@ -9,8 +10,20 @@ import {
 } from '@/lib/dal/requirements-specifications'
 import type { SqlServerDatabase } from '@/lib/db'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  parseRouteParams,
+  specificationIdOrSlugSchema,
+} from '@/lib/http/validation'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
+
+const specificationParamSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+  })
+  .strict()
 
 async function resolveSpecificationId(
   db: SqlServerDatabase,
@@ -28,7 +41,11 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
+  const parsedParams = await parseRouteParams(params, specificationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
+  }
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
 
   const specificationId = await resolveSpecificationId(db, id)

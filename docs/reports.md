@@ -89,6 +89,9 @@ CSV with the following conventions:
 - **Line endings:** CRLF (`\r\n`).
 - **Escaping:** fields containing `;`, `"`, `\n`, or `\r`
   are wrapped in double-quotes with internal `"` doubled.
+- **Formula hardening:** fields beginning with `=`, `+`, `-`, `@`,
+  tab, or carriage return are prefixed with `'` and wrapped in
+  double-quotes.
 - **Encoding:** UTF-8, no BOM.
 
 ## Architecture

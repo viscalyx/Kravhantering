@@ -1,12 +1,20 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { routing } from '@/i18n/routing'
 import { getAuthConfig } from '@/lib/auth/config'
 import { getLoginState } from '@/lib/auth/login-state'
 import { getOidcConfiguration, oidcClient } from '@/lib/auth/oidc'
+import { parseSearchParams } from '@/lib/http/validation'
 
 export const dynamic = 'force-dynamic'
 
 const LOCALE_FREE_ALLOWED_PATHS = new Set(['/'])
+
+const loginQuerySchema = z
+  .object({
+    returnTo: z.string().max(2048).optional(),
+  })
+  .strict()
 
 /**
  * Validate `?returnTo=` against an allow-list of same-origin paths so an
@@ -33,10 +41,16 @@ function sanitizeReturnTo(raw: string | null): string {
 }
 
 export async function GET(request: NextRequest) {
+  const parsedQuery = parseSearchParams(
+    new URL(request.url).searchParams,
+    loginQuerySchema,
+  )
+  if (!parsedQuery.ok) {
+    return parsedQuery.response
+  }
   const cfg = getAuthConfig()
 
-  const url = new URL(request.url)
-  const returnTo = sanitizeReturnTo(url.searchParams.get('returnTo'))
+  const returnTo = sanitizeReturnTo(parsedQuery.data.returnTo ?? null)
 
   const codeVerifier = oidcClient.randomPKCECodeVerifier()
   const codeChallenge =

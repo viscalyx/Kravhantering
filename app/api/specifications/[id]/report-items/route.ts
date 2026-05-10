@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getRequirementById, STATUS_PUBLISHED } from '@/lib/dal/requirements'
 import {
   getSpecificationById,
@@ -8,9 +9,38 @@ import {
   parseSpecificationItemRef,
 } from '@/lib/dal/requirements-specifications'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  businessTextSchema,
+  invalidRequestResponse,
+  parseRouteParams,
+  parseSearchParams,
+  parseWithSchema,
+  routeSegmentSchema,
+  specificationIdOrSlugSchema,
+} from '@/lib/http/validation'
 import type { RequirementReportData } from '@/lib/reports/data/fetch-requirement'
 
+export const dynamic = 'force-dynamic'
+
 type Params = Promise<{ id: string }>
+
+const specificationParamSchema = z
+  .object({
+    id: specificationIdOrSlugSchema,
+  })
+  .strict()
+
+const reportItemsQuerySchema = z
+  .object({
+    refs: businessTextSchema,
+  })
+  .strict()
+
+const itemRefsSchema = z
+  .array(routeSegmentSchema)
+  .min(1)
+  .max(ARRAY_INPUT_MAX_ITEMS)
 
 function mapSpecificationLocalRequirementToReportData(
   requirement: NonNullable<
@@ -105,21 +135,41 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const refsParam = request.nextUrl.searchParams.get('refs')
-
-  if (!refsParam) {
-    return NextResponse.json({ error: 'Missing refs' }, { status: 400 })
+  const parsedParams = await parseRouteParams(params, specificationParamSchema)
+  if (!parsedParams.ok) {
+    return parsedParams.response
   }
-
-  const itemRefs = refsParam
-    .split(',')
-    .map(ref => decodeURIComponent(ref.trim()))
-    .filter(Boolean)
-
-  if (itemRefs.length === 0) {
-    return NextResponse.json({ error: 'Missing refs' }, { status: 400 })
+  const parsedQuery = parseSearchParams(
+    request.nextUrl.searchParams,
+    reportItemsQuerySchema,
+  )
+  if (!parsedQuery.ok) {
+    return parsedQuery.response
   }
+  let decodedRefs: string[]
+  try {
+    decodedRefs = parsedQuery.data.refs
+      .split(',')
+      .map(ref => decodeURIComponent(ref.trim()))
+      .filter(Boolean)
+  } catch (error) {
+    if (error instanceof URIError) {
+      return invalidRequestResponse([
+        {
+          code: 'invalid_format',
+          message: 'Invalid refs',
+          path: 'refs',
+        },
+      ])
+    }
+    throw error
+  }
+  const parsedItemRefs = parseWithSchema(itemRefsSchema, decodedRefs)
+  if (!parsedItemRefs.ok) {
+    return parsedItemRefs.response
+  }
+  const { id } = parsedParams.data
+  const itemRefs = parsedItemRefs.data
   const db = await getRequestSqlServerDataSource()
   const spec = /^\d+$/.test(id)
     ? await getSpecificationById(db, Number(id))

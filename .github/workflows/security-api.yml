@@ -1,0 +1,274 @@
+name: Security API
+
+# PR-level REST API contract and property testing against the localhost
+# prodlike app. See docs/api-security.md for the design and tuning guide.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '27 4 * * 2'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  schemathesis:
+    name: Schemathesis REST API
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      APP_BASE_URL: http://localhost:3001
+      AUTH_SESSION_COOKIE_NAME: kravhantering_session
+      KEYCLOAK_USERNAME: ada.admin
+      KEYCLOAK_PASSWORD: devpass
+      SCHEMATHESIS_VERSION: 4.15.2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Schemathesis
+        run: python -m pip install "schemathesis==${SCHEMATHESIS_VERSION}"
+
+      - name: Clean server and database state
+        run: npm run clean:all
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Setup local SQL Server database
+        run: npm run db:setup
+
+      - name: Start local IdP service
+        run: npm run idp:up
+
+      - name: Wait for IdP to be ready
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 5 http://localhost:8080/realms/kravhantering-dev/.well-known/openid-configuration > /dev/null 2>&1; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 - not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Keycloak did not become ready in time."
+          exit 1
+
+      - name: Build prodlike app
+        run: npm run build:local-prod
+
+      - name: Start prodlike app
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/security-api
+          NODE_ENV=production BUILD_TARGET=local-prod \
+            nohup npx dotenv -e .env.prodlike -- \
+            npx next start --hostname 127.0.0.1 --port 3001 \
+            > test-results/security-api/app.log 2>&1 &
+          echo $! > test-results/security-api/app.pid
+
+      - name: Wait for app health endpoint
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
+              echo "App is healthy."
+              exit 0
+            fi
+            echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "App did not become healthy in time. Last 200 lines of app.log:"
+          tail -n 200 test-results/security-api/app.log || true
+          exit 1
+
+      - name: Acquire authenticated session cookie
+        id: session
+        run: |
+          set -euo pipefail
+          COOKIE="$(node scripts/security/get-session-cookie.mjs "${KEYCLOAK_USERNAME}")"
+          if [ -z "${COOKIE}" ]; then
+            echo "Empty cookie returned from helper" >&2
+            exit 1
+          fi
+          echo "::add-mask::${COOKIE}"
+          {
+            echo "cookie<<COOKIE_EOF"
+            echo "${COOKIE}"
+            echo "COOKIE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare Schemathesis output
+        run: |
+          set -euo pipefail
+          case "${APP_BASE_URL}" in
+            http://localhost:3001)
+              ;;
+            *)
+              echo "::error::Refusing to run Schemathesis against target: ${APP_BASE_URL}"
+              exit 1
+              ;;
+          esac
+          mkdir -p test-results/schemathesis
+
+      - name: Run Schemathesis REST API scan
+        id: schemathesis_scan
+        continue-on-error: true
+        env:
+          SESSION_COOKIE: ${{ steps.session.outputs.cookie }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${SESSION_COOKIE}"
+          start_epoch="$(date +%s)"
+          echo "${start_epoch}" > test-results/schemathesis/start-epoch.txt
+          set +e
+          schemathesis run openapi/requirements-api.yaml \
+            --url "${APP_BASE_URL}" \
+            --header "Cookie: ${SESSION_COOKIE}" \
+            --header "Origin: ${APP_BASE_URL}" \
+            --header "X-Requested-With: XMLHttpRequest" \
+            --phases examples,coverage,fuzzing \
+            --mode all \
+            --max-examples 10 \
+            --seed 20260509 \
+            --generation-deterministic \
+            --request-timeout 5 \
+            --request-retries 0 \
+            --rate-limit 120/m \
+            --max-failures 10 \
+            --checks not_a_server_error,status_code_conformance,content_type_conformance,response_schema_conformance \
+            --report junit,ndjson \
+            --report-junit-path test-results/schemathesis/junit.xml \
+            --report-ndjson-path test-results/schemathesis/events.ndjson \
+            --output-sanitize true \
+            --no-color \
+            > test-results/schemathesis/stdout.log \
+            2> test-results/schemathesis/stderr.log
+          scan_exit=$?
+          set -e
+          end_epoch="$(date +%s)"
+          duration_seconds=$((end_epoch - start_epoch))
+          echo "${end_epoch}" > test-results/schemathesis/end-epoch.txt
+          echo "${duration_seconds}" > test-results/schemathesis/duration-seconds.txt
+          exit "${scan_exit}"
+
+      - name: Print Schemathesis runtime
+        if: always()
+        run: |
+          set -euo pipefail
+          duration_path="test-results/schemathesis/duration-seconds.txt"
+          if [ ! -s "${duration_path}" ]; then
+            echo "Schemathesis REST API scan runtime: unavailable."
+            {
+              echo "### Schemathesis runtime"
+              echo
+              echo "Runtime unavailable; the scan step did not write a duration file."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          duration_seconds="$(cat "${duration_path}")"
+          case "${duration_seconds}" in
+            ''|*[!0-9]*)
+              echo "Schemathesis REST API scan runtime: invalid duration '${duration_seconds}'."
+              exit 0
+              ;;
+          esac
+
+          hours=$((duration_seconds / 3600))
+          minutes=$(((duration_seconds % 3600) / 60))
+          seconds=$((duration_seconds % 60))
+          formatted="$(printf '%02dh %02dm %02ds' "${hours}" "${minutes}" "${seconds}")"
+
+          echo "Schemathesis REST API scan runtime: ${formatted} (${duration_seconds}s)"
+          {
+            echo "### Schemathesis runtime"
+            echo
+            echo "- Runtime: ${formatted} (${duration_seconds}s)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Print Schemathesis failure summary
+        if: always() && steps.schemathesis_scan.outcome == 'failure'
+        run: |
+          set -euo pipefail
+          echo "::group::Schemathesis stdout"
+          sed -n '1,260p' test-results/schemathesis/stdout.log || true
+          echo "::endgroup::"
+          echo "::group::Schemathesis stderr"
+          sed -n '1,160p' test-results/schemathesis/stderr.log || true
+          echo "::endgroup::"
+          echo "::group::Schemathesis JUnit failures"
+          if [ -f test-results/schemathesis/junit.xml ]; then
+            grep -nE "<failure|<error|testcase" test-results/schemathesis/junit.xml | head -n 120 || true
+          fi
+          echo "::endgroup::"
+
+      - name: Upload Schemathesis artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: schemathesis-api-scan
+          path: test-results/schemathesis/**
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload API app log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-api-app-log
+          path: test-results/security-api/app.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Evaluate Schemathesis outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.schemathesis_scan.outcome }}" = "failure" ]; then
+            echo "::error::Schemathesis reported API contract or server-error failures."
+            exit 1
+          fi
+
+      - name: Stop prodlike app
+        if: always()
+        run: |
+          if [ -f test-results/security-api/app.pid ]; then
+            kill "$(cat test-results/security-api/app.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop IdP service
+        if: always()
+        run: npm run idp:down || true
+
+      - name: Stop database service
+        if: always()
+        run: npm run db:down || true

@@ -1,0 +1,207 @@
+name: Security MCP
+
+# Repo-owned MCP seeded HTTP security gate against the localhost prodlike app.
+# See docs/mcp-seeded-dast.md for the design and tuning guide.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '39 4 * * 3'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-seeded-scan:
+    name: MCP seeded HTTP
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    env:
+      APP_BASE_URL: http://localhost:3001
+      # CI-only service-to-service issuer. Keep the app scan target on localhost,
+      # but fetch Keycloak token/JWKS over explicit IPv4 loopback.
+      AUTH_OIDC_ISSUER_URL: http://127.0.0.1:8080/realms/kravhantering-dev
+      MCP_CLIENT_ID: kravhantering-mcp
+      MCP_CLIENT_SECRET: dev-only-mcp-secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Clean server and database state
+        run: npm run clean:all
+
+      - name: Prepare SQL Server env file
+        run: cp .env.sqlserver.ci .env.sqlserver
+
+      - name: Start local database service
+        run: npm run db:up
+
+      - name: Setup local SQL Server database
+        run: npm run db:setup
+
+      - name: Start local IdP service
+        run: npm run idp:up
+
+      - name: Wait for IdP to be ready
+        run: |
+          echo "Waiting for Keycloak to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/.well-known/openid-configuration" > /dev/null 2>&1 &&
+               curl -sf --max-time 5 "${AUTH_OIDC_ISSUER_URL}/protocol/openid-connect/certs" > /dev/null 2>&1; then
+              echo "Keycloak is ready."
+              exit 0
+            fi
+            echo "Attempt $i/30 - discovery or JWKS not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Keycloak discovery and JWKS did not become ready in time."
+          exit 1
+
+      - name: Build prodlike app
+        run: npm run build:local-prod
+
+      - name: Start prodlike app
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/security-mcp
+          OPENROUTER_API_KEY= OPENROUTER_MGMT_API_KEY= \
+            NODE_ENV=production BUILD_TARGET=local-prod \
+            nohup npx dotenv -e .env.prodlike -- \
+            npx next start --hostname 127.0.0.1 --port 3001 \
+            > test-results/security-mcp/app.log 2>&1 &
+          echo $! > test-results/security-mcp/app.pid
+
+      - name: Wait for app health endpoint
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -sf --max-time 5 "${APP_BASE_URL}/api/health" > /dev/null 2>&1; then
+              echo "App is healthy."
+              exit 0
+            fi
+            echo "Attempt $i/60 - /api/health not ready yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "App did not become healthy in time. Last 200 lines of app.log:"
+          tail -n 200 test-results/security-mcp/app.log || true
+          exit 1
+
+      - name: Guard MCP scan target
+        run: |
+          set -euo pipefail
+          case "${APP_BASE_URL}" in
+            http://localhost:3001)
+              ;;
+            *)
+              echo "::error::Refusing to run MCP seeded scan against target: ${APP_BASE_URL}"
+              exit 1
+              ;;
+          esac
+
+      - name: Acquire MCP bearer token
+        id: mcp_token
+        run: |
+          set -euo pipefail
+          TOKEN="$(node scripts/security/get-mcp-token.mjs)"
+          if [ -z "${TOKEN}" ]; then
+            echo "Empty token returned from helper" >&2
+            exit 1
+          fi
+          echo "::add-mask::${TOKEN}"
+          {
+            echo "token<<TOKEN_EOF"
+            echo "${TOKEN}"
+            echo "TOKEN_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Run MCP seeded scan
+        id: mcp_scan
+        continue-on-error: true
+        env:
+          MCP_BEARER_TOKEN: ${{ steps.mcp_token.outputs.token }}
+          OPENROUTER_API_KEY: ''
+          OPENROUTER_MGMT_API_KEY: ''
+          PLAYWRIGHT_BASE_URL: http://localhost:3001
+          PLAYWRIGHT_SKIP_AUTH_SETUP: '1'
+          PLAYWRIGHT_SKIP_WEBSERVER: '1'
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${MCP_BEARER_TOKEN}"
+          npm run test:integration:prodlike -- tests/integration/mcp-seeded-scan.spec.ts
+
+      - name: Print MCP seeded scan summary
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ -f test-results/mcp-seeded/summary.md ]; then
+            echo "MCP seeded scan summary:"
+            cat test-results/mcp-seeded/summary.md
+            {
+              echo "## MCP seeded scan summary"
+              echo
+              cat test-results/mcp-seeded/summary.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No MCP seeded scan summary was written."
+          fi
+
+      - name: Upload MCP seeded scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mcp_seeded_scan
+          path: test-results/mcp-seeded/**
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload MCP app log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: security-mcp-app-log
+          path: test-results/security-mcp/app.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Evaluate MCP scan outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.mcp_scan.outcome }}" = "failure" ]; then
+            echo "::error::MCP seeded scan reported security gate failures."
+            exit 1
+          fi
+
+      - name: Stop prodlike app
+        if: always()
+        run: |
+          if [ -f test-results/security-mcp/app.pid ]; then
+            kill "$(cat test-results/security-mcp/app.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop IdP service
+        if: always()
+        run: npm run idp:down || true
+
+      - name: Stop database service
+        if: always()
+        run: npm run db:down || true

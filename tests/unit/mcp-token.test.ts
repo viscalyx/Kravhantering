@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getAuthConfigMock = vi.fn()
+const getOidcConfigurationMock = vi.fn()
 const jwtVerifyMock = vi.fn()
 const createRemoteJWKSetMock = vi.fn()
+const discoveredJwksUri =
+  'https://issuer.example.com/protocol/openid-connect/certs'
 
 vi.mock('@/lib/auth/config', () => ({
   getAuthConfig: () => getAuthConfigMock(),
+}))
+
+vi.mock('@/lib/auth/oidc', () => ({
+  getOidcConfiguration: () => getOidcConfigurationMock(),
 }))
 
 vi.mock('jose', () => ({
@@ -16,16 +23,27 @@ vi.mock('jose', () => ({
   },
 }))
 
+function mockOidcConfiguration(jwksUri = discoveredJwksUri) {
+  getOidcConfigurationMock.mockResolvedValue({
+    serverMetadata: () => ({ jwks_uri: jwksUri }),
+  })
+}
+
 describe('verifyMcpBearerToken', () => {
   beforeEach(() => {
+    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'kravhantering-mcp')
+    vi.stubEnv('MCP_CLIENT_ID', 'kravhantering-mcp')
     getAuthConfigMock.mockReset()
+    getOidcConfigurationMock.mockReset()
     jwtVerifyMock.mockReset()
     createRemoteJWKSetMock.mockReset()
+    mockOidcConfiguration()
   })
 
   afterEach(async () => {
     const { resetMcpJwksCacheForTests } = await import('@/lib/auth/mcp-token')
     resetMcpJwksCacheForTests()
+    vi.unstubAllEnvs()
   })
 
   it('throws McpAuthError when bearer is missing', async () => {
@@ -69,6 +87,9 @@ describe('verifyMcpBearerToken', () => {
       roles: ['Admin'],
       source: 'mcp',
     })
+    expect(createRemoteJWKSetMock).toHaveBeenCalledWith(
+      new URL(discoveredJwksUri),
+    )
     expect(jwtVerifyMock).toHaveBeenCalledWith(
       'abc.def.ghi',
       { kind: 'jwks' },
@@ -102,6 +123,92 @@ describe('verifyMcpBearerToken', () => {
     expect(result?.actor.hsaId).toBe('SE2321000032-reviewer1')
   })
 
+  it('derives a synthetic HSA-id for the configured MCP service client', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'service-account-kravhantering-mcp',
+        roles: ['Admin'],
+        client_id: 'kravhantering-mcp',
+      },
+    })
+
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+    const result = await verifyMcpBearerToken(
+      new Request('http://x/', {
+        headers: { authorization: 'Bearer abc.def.ghi' },
+      }),
+    )
+
+    expect(result?.actor).toEqual({
+      id: 'service-account-kravhantering-mcp',
+      displayName: 'service-account-kravhantering-mcp',
+      hsaId: 'mcp-client:kravhantering-mcp',
+      isAuthenticated: true,
+      roles: ['Admin'],
+      source: 'mcp',
+    })
+  })
+
+  it('derives a synthetic HSA-id from azp for providers without client_id', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'service-account-kravhantering-mcp',
+        roles: ['Admin'],
+        azp: 'kravhantering-mcp',
+      },
+    })
+
+    const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+    const result = await verifyMcpBearerToken(
+      new Request('http://x/', {
+        headers: { authorization: 'Bearer abc.def.ghi' },
+      }),
+    )
+
+    expect(result?.actor.hsaId).toBe('mcp-client:kravhantering-mcp')
+  })
+
+  it('warns and prefers AUTH_OIDC_MCP_CLIENT_ID when MCP client ids differ', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'canonical-client')
+    vi.stubEnv('MCP_CLIENT_ID', 'legacy-client')
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'service-account-canonical-client',
+        roles: ['Admin'],
+        client_id: 'canonical-client',
+      },
+    })
+
+    try {
+      const { verifyMcpBearerToken } = await import('@/lib/auth/mcp-token')
+      const result = await verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      )
+
+      expect(result?.actor.hsaId).toBe('mcp-client:canonical-client')
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('AUTH_OIDC_MCP_CLIENT_ID takes precedence'),
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
   it('rejects when employeeHsaId is missing', async () => {
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
@@ -109,6 +216,35 @@ describe('verifyMcpBearerToken', () => {
     })
     jwtVerifyMock.mockResolvedValue({
       payload: { sub: 'svc-account', roles: ['Admin'] },
+    })
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      ),
+    ).rejects.toSatisfy(
+      e =>
+        e instanceof McpAuthError &&
+        e.status === 401 &&
+        /employeeHsaId/.test(e.message),
+    )
+  })
+
+  it('rejects another service client when employeeHsaId is missing', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockResolvedValue({
+      payload: {
+        sub: 'other-service-account',
+        roles: ['Admin'],
+        client_id: 'other-client',
+      },
     })
     const { verifyMcpBearerToken, McpAuthError } = await import(
       '@/lib/auth/mcp-token'
@@ -175,15 +311,127 @@ describe('verifyMcpBearerToken', () => {
       ),
     ).rejects.toSatisfy(e => e instanceof McpAuthError && e.status === 401)
   })
+
+  it('rejects when OIDC discovery does not expose jwks_uri', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    getOidcConfigurationMock.mockResolvedValue({
+      serverMetadata: () => ({}),
+    })
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      ),
+    ).rejects.toSatisfy(
+      e =>
+        e instanceof McpAuthError &&
+        e.status === 401 &&
+        /jwks_uri/.test(e.message),
+    )
+  })
+
+  it('rejects OIDC discovery jwks_uri with unsupported protocol', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    mockOidcConfiguration('file:///tmp/jwks.json')
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer abc.def.ghi' },
+        }),
+      ),
+    ).rejects.toSatisfy(
+      e =>
+        e instanceof McpAuthError &&
+        e.status === 401 &&
+        /unsupported JWKS URI protocol/.test(e.message),
+    )
+    expect(createRemoteJWKSetMock).not.toHaveBeenCalled()
+    expect(jwtVerifyMock).not.toHaveBeenCalled()
+  })
+
+  it('wraps issuer-mismatch verify failures as McpAuthError(401)', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockRejectedValue(new Error('unexpected "iss" claim value'))
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer wrong.issuer.token' },
+        }),
+      ),
+    ).rejects.toSatisfy(e => e instanceof McpAuthError && e.status === 401)
+    expect(jwtVerifyMock).toHaveBeenCalledWith(
+      'wrong.issuer.token',
+      { kind: 'jwks' },
+      expect.objectContaining({
+        issuer: 'https://issuer.example.com',
+      }),
+    )
+  })
+
+  it('wraps audience-mismatch verify failures as McpAuthError(401)', async () => {
+    getAuthConfigMock.mockReturnValue({
+      issuerUrl: 'https://issuer.example.com',
+      apiAudience: 'kravhantering-app',
+    })
+    jwtVerifyMock.mockRejectedValue(new Error('unexpected "aud" claim value'))
+
+    const { verifyMcpBearerToken, McpAuthError } = await import(
+      '@/lib/auth/mcp-token'
+    )
+
+    await expect(
+      verifyMcpBearerToken(
+        new Request('http://x/', {
+          headers: { authorization: 'Bearer wrong.audience.token' },
+        }),
+      ),
+    ).rejects.toSatisfy(e => e instanceof McpAuthError && e.status === 401)
+    expect(jwtVerifyMock).toHaveBeenCalledWith(
+      'wrong.audience.token',
+      { kind: 'jwks' },
+      expect.objectContaining({
+        audience: 'kravhantering-app',
+      }),
+    )
+  })
 })
 
 describe('verifyMcpBearerToken security audit events', () => {
   let infoSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    vi.stubEnv('AUTH_OIDC_MCP_CLIENT_ID', 'kravhantering-mcp')
+    vi.stubEnv('MCP_CLIENT_ID', 'kravhantering-mcp')
     getAuthConfigMock.mockReset()
+    getOidcConfigurationMock.mockReset()
     jwtVerifyMock.mockReset()
     createRemoteJWKSetMock.mockReset()
+    mockOidcConfiguration()
     infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     getAuthConfigMock.mockReturnValue({
       issuerUrl: 'https://issuer.example.com',
@@ -195,6 +443,7 @@ describe('verifyMcpBearerToken security audit events', () => {
     infoSpy.mockRestore()
     const { resetMcpJwksCacheForTests } = await import('@/lib/auth/mcp-token')
     resetMcpJwksCacheForTests()
+    vi.unstubAllEnvs()
   })
 
   function emittedSecurityEvents(): Array<Record<string, unknown>> {

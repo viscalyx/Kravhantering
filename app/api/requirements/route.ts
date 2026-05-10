@@ -1,7 +1,22 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createUiSettingsLoader } from '@/lib/dal/ui-settings'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { exportToCsv } from '@/lib/export-csv'
+import { logSanitizedError } from '@/lib/http/safe-errors'
+import {
+  businessTextSchema,
+  nonNegativeIntegerStringSchema,
+  optionalBusinessTextSchema,
+  optionalQueryArraySchema,
+  optionalSearchStringSchema,
+  parseSearchParams,
+  positiveIntegerSchema,
+  positiveIntegerStringSchema,
+  queryBooleanStringSchema,
+  readJsonWithSchema,
+  uniquePositiveIntegerArraySchema,
+} from '@/lib/http/validation'
 import {
   createDefaultAuthorizationService,
   createRequestContext,
@@ -9,72 +24,104 @@ import {
 import { queryRequirementList } from '@/lib/requirements/list-query'
 import {
   DEFAULT_REQUIREMENT_SORT,
-  isRequirementSortDirection,
-  isRequirementSortField,
+  REQUIREMENT_SORT_FIELDS,
 } from '@/lib/requirements/list-view'
-import { parsePositiveIntegerIds } from '@/lib/requirements/parse-ids'
 import {
   createRequirementsService,
   toHttpErrorPayload,
 } from '@/lib/requirements/service'
 import { getRequirementCsvHeaders } from '@/lib/ui-terminology'
 
-function normalizeOptionalPositiveIntegerIds(
-  value: unknown,
-): number[] | undefined {
-  if (!Array.isArray(value)) return undefined
+const optionalBodyIdSchema = positiveIntegerSchema
+  .nullable()
+  .optional()
+  .transform(value => value ?? undefined)
 
-  const ids = parsePositiveIntegerIds(value)
-  return ids.length > 0 ? ids : undefined
-}
+const optionalBodyIdArraySchema = uniquePositiveIntegerArraySchema()
+  .nullable()
+  .optional()
+  .transform(value => value ?? undefined)
+
+const requirementsQuerySchema = z
+  .object({
+    areaIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    categoryIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    descriptionSearch: optionalSearchStringSchema,
+    format: z.enum(['csv']).optional(),
+    limit: positiveIntegerStringSchema
+      .refine(value => value <= 200, {
+        message: 'Expected a page size no greater than 200',
+      })
+      .optional(),
+    locale: z.enum(['en', 'sv']).optional().default('en'),
+    needsReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    normReferenceIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    offset: nonNegativeIntegerStringSchema.optional(),
+    qualityCharacteristicIds: optionalQueryArraySchema(
+      positiveIntegerStringSchema,
+    ),
+    requirementPackageIds: optionalQueryArraySchema(
+      positiveIntegerStringSchema,
+    ),
+    requiresTesting: optionalQueryArraySchema(queryBooleanStringSchema),
+    riskLevelIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    sortBy: z.enum(REQUIREMENT_SORT_FIELDS).optional(),
+    sortDirection: z.enum(['asc', 'desc']).optional(),
+    specificationItemStatusIds: optionalQueryArraySchema(
+      positiveIntegerStringSchema,
+    ),
+    statuses: optionalQueryArraySchema(positiveIntegerStringSchema),
+    typeIds: optionalQueryArraySchema(positiveIntegerStringSchema),
+    uniqueIdSearch: optionalSearchStringSchema,
+  })
+  .strict()
+
+const requirementMutationSchema = z
+  .object({
+    acceptanceCriteria: optionalBusinessTextSchema,
+    areaId: positiveIntegerSchema,
+    categoryId: optionalBodyIdSchema,
+    description: businessTextSchema,
+    normReferenceIds: optionalBodyIdArraySchema,
+    ownerId: optionalBusinessTextSchema,
+    qualityCharacteristicId: optionalBodyIdSchema,
+    requirementPackageIds: optionalBodyIdArraySchema,
+    requiresTesting: z.boolean().optional().default(false),
+    riskLevelId: optionalBodyIdSchema,
+    typeId: optionalBodyIdSchema,
+    verificationMethod: optionalBusinessTextSchema,
+  })
+  .strict()
 
 export async function GET(request: NextRequest) {
+  const url = new URL(request.url)
+  const parsedQuery = parseSearchParams(
+    url.searchParams,
+    requirementsQuerySchema,
+  )
+  if (!parsedQuery.ok) return parsedQuery.response
+
+  const {
+    areaIds = [],
+    categoryIds = [],
+    descriptionSearch,
+    format,
+    limit,
+    locale,
+    normReferenceIds = [],
+    offset,
+    qualityCharacteristicIds = [],
+    requirementPackageIds = [],
+    requiresTesting = [],
+    riskLevelIds = [],
+    sortBy,
+    sortDirection,
+    statuses = [],
+    typeIds = [],
+    uniqueIdSearch,
+  } = parsedQuery.data
   const db = await getRequestSqlServerDataSource()
   const uiSettings = createUiSettingsLoader(db)
-
-  const url = new URL(request.url)
-  const format = url.searchParams.get('format')
-  const localeParam = url.searchParams.get('locale')
-  const locale: 'en' | 'sv' = localeParam === 'sv' ? 'sv' : 'en'
-  const uniqueIdSearch = url.searchParams.get('uniqueIdSearch') ?? undefined
-  const descriptionSearch =
-    url.searchParams.get('descriptionSearch') ?? undefined
-  const sortByParam = url.searchParams.get('sortBy')
-  const sortDirectionParam = url.searchParams.get('sortDirection')
-  const areaIds = url.searchParams
-    .getAll('areaIds')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
-  const categoryIds = url.searchParams
-    .getAll('categoryIds')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
-  const typeIds = url.searchParams
-    .getAll('typeIds')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
-  const qualityCharacteristicIds = url.searchParams
-    .getAll('qualityCharacteristicIds')
-    .map(Number)
-    .filter(n => !Number.isNaN(n))
-  const requiresTestingParams = url.searchParams.getAll('requiresTesting')
-  const requiresTesting = requiresTestingParams.filter(
-    value => value === 'true' || value === 'false',
-  )
-  const statusParams = url.searchParams.getAll('statuses')
-  const statuses = statusParams.map(Number).filter(n => !Number.isNaN(n))
-  const normReferenceIds = url.searchParams
-    .getAll('normReferenceIds')
-    .filter(v => v.trim() !== '')
-    .map(Number)
-    .filter(n => Number.isInteger(n) && n > 0)
-  const requirementPackageIds = parsePositiveIntegerIds(
-    url.searchParams.getAll('requirementPackageIds'),
-  )
-  const riskLevelIds = url.searchParams
-    .getAll('riskLevelIds')
-    .map(Number)
-    .filter(n => Number.isInteger(n) && n > 0)
 
   try {
     const context = await createRequestContext(request, 'rest')
@@ -102,22 +149,12 @@ export async function GET(request: NextRequest) {
           typeIds: typeIds.length > 0 ? typeIds : undefined,
           uniqueIdSearch,
         },
-        limit: url.searchParams.get('limit')
-          ? Number(url.searchParams.get('limit'))
-          : undefined,
+        limit,
         locale,
-        offset: url.searchParams.get('offset')
-          ? Number(url.searchParams.get('offset'))
-          : undefined,
+        offset,
         sort: {
-          by:
-            sortByParam && isRequirementSortField(sortByParam)
-              ? sortByParam
-              : DEFAULT_REQUIREMENT_SORT.by,
-          direction:
-            sortDirectionParam && isRequirementSortDirection(sortDirectionParam)
-              ? sortDirectionParam
-              : DEFAULT_REQUIREMENT_SORT.direction,
+          by: sortBy ?? DEFAULT_REQUIREMENT_SORT.by,
+          direction: sortDirection ?? DEFAULT_REQUIREMENT_SORT.direction,
         },
       },
       { authorization: createDefaultAuthorizationService(), context },
@@ -184,52 +221,37 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const parsedBody = await readJsonWithSchema(
+    request,
+    requirementMutationSchema,
+  )
+  if (!parsedBody.ok) return parsedBody.response
+  const body = parsedBody.data
   const db = await getRequestSqlServerDataSource()
   const service = createRequirementsService(db)
-  const body = (await request.json()) as Record<string, unknown>
 
   try {
     const context = await createRequestContext(request, 'rest')
-    const requirementPackageIds = normalizeOptionalPositiveIntegerIds(
-      body.requirementPackageIds,
-    )
     const result = await service.manageRequirement(context, {
       operation: 'create',
       requirement: {
-        acceptanceCriteria: body.acceptanceCriteria
-          ? String(body.acceptanceCriteria)
-          : undefined,
-        areaId: Number(body.areaId),
-        categoryId: body.categoryId ? Number(body.categoryId) : undefined,
-        createdBy: body.ownerId ? String(body.ownerId) : undefined,
-        description: String(body.description ?? ''),
-        normReferenceIds: Array.isArray(body.normReferenceIds)
-          ? body.normReferenceIds
-              .filter(
-                (value: unknown): value is number | string =>
-                  (typeof value === 'number' &&
-                    Number.isInteger(value) &&
-                    value > 0) ||
-                  (typeof value === 'string' && /^\d+$/.test(value)),
-              )
-              .map((value: number | string) => Number(value))
-          : undefined,
-        requiresTesting: (body.requiresTesting as boolean) ?? false,
-        verificationMethod: body.verificationMethod
-          ? String(body.verificationMethod)
-          : undefined,
-        ...(requirementPackageIds ? { requirementPackageIds } : {}),
-        qualityCharacteristicId: body.qualityCharacteristicId
-          ? Number(body.qualityCharacteristicId)
-          : undefined,
-        riskLevelId: body.riskLevelId ? Number(body.riskLevelId) : undefined,
-        typeId: body.typeId ? Number(body.typeId) : undefined,
+        acceptanceCriteria: body.acceptanceCriteria,
+        areaId: body.areaId,
+        categoryId: body.categoryId,
+        description: body.description,
+        normReferenceIds: body.normReferenceIds,
+        requiresTesting: body.requiresTesting,
+        verificationMethod: body.verificationMethod,
+        requirementPackageIds: body.requirementPackageIds,
+        qualityCharacteristicId: body.qualityCharacteristicId,
+        riskLevelId: body.riskLevelId,
+        typeId: body.typeId,
       },
     })
 
     return NextResponse.json(result.result, { status: 201 })
   } catch (error) {
-    console.error('[API] Failed to create requirement:', error)
+    logSanitizedError('[API] Failed to create requirement', error)
     const { body: errorBody, status } = toHttpErrorPayload(error)
     return NextResponse.json(errorBody, { status })
   }

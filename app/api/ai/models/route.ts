@@ -1,5 +1,16 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { listModels, type OpenRouterModel } from '@/lib/ai/openrouter-client'
+import {
+  AI_PROVIDER_UNAVAILABLE_MESSAGE,
+  logSanitizedError,
+} from '@/lib/http/safe-errors'
+import {
+  ARRAY_INPUT_MAX_ITEMS,
+  boundedDbStringSchema,
+  parseSearchParams,
+  parseWithSchema,
+} from '@/lib/http/validation'
 
 // ---------------------------------------------------------------------------
 // In-memory cache (24 h TTL, keyed by supported_parameters)
@@ -12,12 +23,39 @@ const modelCache = new Map<
   { models: OpenRouterModel[]; timestamp: number }
 >()
 
+const modelsQuerySchema = z
+  .object({
+    refresh: z.literal('1').optional(),
+    supported_parameters: z.string().trim().max(10_000).optional(),
+  })
+  .strict()
+
+const supportedParametersSchema = z
+  .array(boundedDbStringSchema)
+  .max(ARRAY_INPUT_MAX_ITEMS)
+  .refine(values => new Set(values).size === values.length, {
+    message: 'Expected unique supported parameters',
+  })
+
 export async function GET(request: NextRequest) {
-  const refresh = request.nextUrl.searchParams.get('refresh') === '1'
-  const extraParams = request.nextUrl.searchParams.get('supported_parameters')
-  const paramList = extraParams
-    ? extraParams.split(',').filter(Boolean)
-    : undefined
+  const parsedQuery = parseSearchParams(
+    request.nextUrl.searchParams,
+    modelsQuerySchema,
+  )
+  if (!parsedQuery.ok) {
+    return parsedQuery.response
+  }
+  const refresh = parsedQuery.data.refresh === '1'
+  const extraParams = parsedQuery.data.supported_parameters
+  const parsedParameters = parseWithSchema(
+    supportedParametersSchema,
+    extraParams ? extraParams.split(',').filter(Boolean) : [],
+  )
+  if (!parsedParameters.ok) {
+    return parsedParameters.response
+  }
+  const paramList =
+    parsedParameters.data.length > 0 ? parsedParameters.data : undefined
 
   const cacheKey = paramList ? paramList.sort().join(',') : '__default__'
 
@@ -50,8 +88,10 @@ export async function GET(request: NextRequest) {
     modelCache.set(cacheKey, { models: enriched, timestamp: Date.now() })
     return NextResponse.json({ models: enriched })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    const status = message.includes('401') ? 401 : 503
-    return NextResponse.json({ error: message, models: [] }, { status })
+    logSanitizedError('Failed to list AI models', err)
+    return NextResponse.json(
+      { error: AI_PROVIDER_UNAVAILABLE_MESSAGE, models: [] },
+      { status: 503 },
+    )
   }
 }

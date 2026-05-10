@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import {
   deleteSpecificationItemStatus,
   getLinkedSpecificationItems,
@@ -6,22 +7,41 @@ import {
   updateSpecificationItemStatus,
 } from '@/lib/dal/specification-item-statuses'
 import { getRequestSqlServerDataSource } from '@/lib/db'
+import {
+  boundedDbStringSchema,
+  idParamSchema,
+  nonNegativeIntegerSchema,
+  nullableBusinessTextSchema,
+  parseRouteParams,
+  readJsonWithSchema,
+} from '@/lib/http/validation'
+
+export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
+
+const specificationItemStatusUpdateSchema = z
+  .object({
+    color: boundedDbStringSchema.optional(),
+    descriptionEn: nullableBusinessTextSchema.optional(),
+    descriptionSv: nullableBusinessTextSchema.optional(),
+    nameEn: boundedDbStringSchema.optional(),
+    nameSv: boundedDbStringSchema.optional(),
+    sortOrder: nonNegativeIntegerSchema.optional(),
+  })
+  .strict()
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const { id } = parsedParams.data
   const db = await getRequestSqlServerDataSource()
   const [status, linkedItems] = await Promise.all([
-    getSpecificationItemStatusById(db, numericId),
-    getLinkedSpecificationItems(db, numericId),
+    getSpecificationItemStatusById(db, id),
+    getLinkedSpecificationItems(db, id),
   ])
   if (!status) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -33,16 +53,19 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
+  const parsedBody = await readJsonWithSchema(
+    request,
+    specificationItemStatusUpdateSchema,
+  )
+  if (!parsedBody.ok) return parsedBody.response
   const db = await getRequestSqlServerDataSource()
-  const body = (await request.json()) as Parameters<
-    typeof updateSpecificationItemStatus
-  >[2]
-  const status = await updateSpecificationItemStatus(db, numericId, body)
+  const status = await updateSpecificationItemStatus(
+    db,
+    parsedParams.data.id,
+    parsedBody.data,
+  )
   if (!status) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -53,12 +76,9 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Params },
 ) {
-  const { id } = await params
-  const numericId = Number(id)
-  if (!Number.isInteger(numericId) || numericId < 1) {
-    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
-  }
+  const parsedParams = await parseRouteParams(params, idParamSchema)
+  if (!parsedParams.ok) return parsedParams.response
   const db = await getRequestSqlServerDataSource()
-  await deleteSpecificationItemStatus(db, numericId)
+  await deleteSpecificationItemStatus(db, parsedParams.data.id)
   return NextResponse.json({ ok: true })
 }

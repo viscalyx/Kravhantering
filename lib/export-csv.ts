@@ -9,14 +9,27 @@ export function exportToCsv(
   return [headerLine, ...dataLines].join('\r\n')
 }
 
+const FORMULA_LEADING_CHARACTERS = ['=', '+', '-', '@', '\t', '\r'] as const
+
 function escapeCsvField(field: string): string {
+  const isFormulaLeading = startsWithFormulaLeadingCharacter(field)
+  const safeField = isFormulaLeading ? `'${field}` : field
+
   if (
-    field.includes(';') ||
-    field.includes('"') ||
-    field.includes('\n') ||
-    field.includes('\r')
+    isFormulaLeading ||
+    safeField.includes(';') ||
+    safeField.includes('"') ||
+    safeField.includes('\t') ||
+    safeField.includes('\n') ||
+    safeField.includes('\r')
   ) {
-    return `"${field.replace(/"/g, '""')}"`
+    return `"${safeField.replace(/"/g, '""')}"`
   }
-  return field
+  return safeField
+}
+
+function startsWithFormulaLeadingCharacter(field: string): boolean {
+  return FORMULA_LEADING_CHARACTERS.some(character =>
+    field.startsWith(character),
+  )
 }

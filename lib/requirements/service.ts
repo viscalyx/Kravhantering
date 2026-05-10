@@ -72,6 +72,7 @@ import {
   type UiSettingsLoader,
 } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
+import { redactSensitiveText } from '@/lib/http/safe-errors'
 import {
   type AuthorizationService,
   createDefaultAuthorizationService,
@@ -83,7 +84,6 @@ import {
   internalError,
   isRequirementsServiceError,
   notFoundError,
-  type RequirementsErrorCode,
   validationError,
 } from '@/lib/requirements/errors'
 import type {
@@ -94,11 +94,17 @@ import {
   createRequirementsLogger,
   type RequirementsLogger,
 } from '@/lib/requirements/logging'
+import {
+  recordAuthorizationDenied,
+  recordHighRiskMutationSucceeded,
+} from '@/lib/requirements/security-audit'
 import type {
   RequirementDetail,
   RequirementVersionDetail,
 } from '@/lib/requirements/types'
 import { getCatalogTitle } from '@/lib/ui-terminology'
+
+export { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
 export type {
   RequirementDetail,
@@ -833,8 +839,13 @@ async function authorize(
   authorization: AuthorizationService,
   action: RequirementsAction,
   context: RequestContext,
-) {
-  await authorization.assertAuthorized(action, context)
+): Promise<void> {
+  try {
+    await authorization.assertAuthorized(action, context)
+  } catch (error) {
+    recordAuthorizationDenied(context, action, error)
+    throw error
+  }
 }
 
 async function withLogging<T>(
@@ -865,7 +876,9 @@ async function withLogging<T>(
       tool_name: context.toolName,
       duration_ms: Date.now() - startedAt,
       error:
-        error instanceof Error ? error.message : 'Unknown requirements error',
+        error instanceof Error
+          ? redactSensitiveText(error.message)
+          : 'Unknown requirements error',
       ...metadata,
     })
     throw error
@@ -1273,8 +1286,9 @@ export function createRequirementsService(
         async () => {
           if (input.operation === 'create') {
             const payload = input.requirement
-            if (!payload?.areaId || !payload.description) {
-              throw internalError(
+            const description = payload?.description?.trim()
+            if (!payload?.areaId || !description) {
+              throw validationError(
                 'Create operation requires requirement.areaId and requirement.description',
               )
             }
@@ -1283,7 +1297,7 @@ export function createRequirementsService(
             const created = await createRequirement(db, {
               acceptanceCriteria: payload.acceptanceCriteria,
               createdBy: payload.createdBy ?? context.actor.id ?? undefined,
-              description: payload.description,
+              description,
               normReferenceIds: payload.normReferenceIds,
               requirementAreaId: payload.areaId,
               requirementCategoryId: payload.categoryId,
@@ -1333,8 +1347,9 @@ export function createRequirementsService(
 
           if (input.operation === 'edit') {
             const payload = input.requirement
-            if (!payload?.description) {
-              throw internalError(
+            const description = payload?.description?.trim()
+            if (!payload || !description) {
+              throw validationError(
                 'Edit operation requires requirement.description',
               )
             }
@@ -1357,7 +1372,7 @@ export function createRequirementsService(
                 baseRevisionToken: payload.baseRevisionToken,
                 baseVersionId: payload.baseVersionId,
                 createdBy: payload.createdBy ?? context.actor.id ?? undefined,
-                description: payload.description,
+                description,
                 normReferenceIds: payload.normReferenceIds,
                 requirementAreaId: payload.areaId,
                 requirementCategoryId: payload.categoryId,
@@ -1414,6 +1429,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.archiving.initiated',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1436,6 +1457,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.archiving.approved',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1458,6 +1485,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.archiving.cancelled',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1473,6 +1506,13 @@ export function createRequirementsService(
           if (input.operation === 'delete_draft') {
             const result = await deleteDraftVersion(db, requirementId)
             const detail = await getRequirementById(db, requirementId)
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.draft.deleted',
+              deleted: result.deleted,
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail?.uniqueId ?? input.uniqueId,
+            })
             return {
               detail: detail ? formatRequirementDetail(detail) : undefined,
               message: createServiceMessage(
@@ -1503,6 +1543,12 @@ export function createRequirementsService(
                   )
                 })(),
             )
+            recordHighRiskMutationSucceeded(context, {
+              action: 'requirement.reactivated',
+              operation: input.operation,
+              requirementId,
+              requirementUniqueId: detail.uniqueId,
+            })
             return {
               detail,
               message: createServiceMessage(
@@ -1542,6 +1588,15 @@ export function createRequirementsService(
                 )
               })(),
           )
+
+          recordHighRiskMutationSucceeded(context, {
+            action: 'requirement.version.restored',
+            operation: input.operation,
+            requirementId,
+            requirementUniqueId: detail.uniqueId,
+            restoredVersionNumber: restored.versionNumber,
+            versionNumber: input.versionNumber,
+          })
 
           return {
             detail,
@@ -1815,6 +1870,18 @@ export function createRequirementsService(
               },
             )
           }
+          if (addedCount > 0) {
+            recordHighRiskMutationSucceeded(context, {
+              action: 'specification.requirements.added',
+              addedCount,
+              locale,
+              operation: 'add_to_specification',
+              requirementCount: input.requirementIds.length,
+              requirementIds: succeeded.map(r => r.id),
+              specificationId,
+              specificationSlug: input.specificationSlug,
+            })
+          }
 
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const skippedIds = skipped.map(r => r.id)
@@ -1875,6 +1942,14 @@ export function createRequirementsService(
             specificationId,
             input.requirementIds,
           )
+          recordHighRiskMutationSucceeded(context, {
+            action: 'specification.requirements.removed',
+            operation: 'remove_from_specification',
+            removedCount,
+            requirementCount: input.requirementIds.length,
+            specificationId,
+            specificationSlug: input.specificationSlug,
+          })
           const ref = getSpecificationReferenceLabel(input, specificationId)
           const summary =
             locale === 'sv'
@@ -2054,6 +2129,12 @@ export function createRequirementsService(
               decisionMotivation: trimmedDecisionMotivation,
               decidedBy: context.actor.id,
             })
+            recordHighRiskMutationSucceeded(context, {
+              action: 'deviation.decision.recorded',
+              decision: input.decision,
+              deviationId: input.deviationId,
+              operation: input.operation,
+            })
             const decisionLabel =
               input.decision === DEVIATION_APPROVED
                 ? locale === 'sv'
@@ -2078,6 +2159,11 @@ export function createRequirementsService(
 
           // delete
           await deleteDeviation(db, input.deviationId)
+          recordHighRiskMutationSucceeded(context, {
+            action: 'deviation.deleted',
+            deviationId: input.deviationId,
+            operation: input.operation,
+          })
           const summary =
             locale === 'sv'
               ? `Avvikelse ${input.deviationId} borttagen.`
@@ -2299,6 +2385,12 @@ export function createRequirementsService(
               resolutionMotivation: trimmedMotivation,
               resolvedBy,
             })
+            recordHighRiskMutationSucceeded(context, {
+              action: 'suggestion.resolution.recorded',
+              operation: input.operation,
+              resolution,
+              suggestionId: input.suggestionId,
+            })
             const resolutionLabel =
               resolution === SUGGESTION_RESOLVED
                 ? locale === 'sv'
@@ -2328,6 +2420,11 @@ export function createRequirementsService(
 
           // delete
           await deleteSuggestion(db, input.suggestionId)
+          recordHighRiskMutationSucceeded(context, {
+            action: 'suggestion.deleted',
+            operation: input.operation,
+            suggestionId: input.suggestionId,
+          })
           const summary =
             locale === 'sv'
               ? `Förbättringsförslag ${input.suggestionId} borttaget.`
@@ -2459,56 +2556,4 @@ export function toResponseFormat(format?: string): ResponseFormat {
 
 export function toResponseLocale(locale?: string): ResponseLocale {
   return locale === 'sv' ? 'sv' : 'en'
-}
-
-function isStatusError(error: unknown): error is Error & {
-  details?: Record<string, unknown>
-  status: 401 | 403
-} {
-  if (!(error instanceof Error)) {
-    return false
-  }
-
-  const maybeStatus = error as { status?: unknown }
-  return maybeStatus.status === 401 || maybeStatus.status === 403
-}
-
-function toRequirementsCode(status: 401 | 403): RequirementsErrorCode {
-  return status === 401 ? 'unauthorized' : 'forbidden'
-}
-
-export function toHttpErrorPayload(error: unknown) {
-  if (isRequirementsServiceError(error)) {
-    return {
-      body: {
-        code: error.code,
-        details: error.details,
-        error: error.message,
-      },
-      status: error.status,
-    }
-  }
-
-  if (isStatusError(error)) {
-    return {
-      body: {
-        code: toRequirementsCode(error.status),
-        details: error.details,
-        error: error.message,
-      },
-      status: error.status,
-    }
-  }
-
-  const normalized = internalError(
-    error instanceof Error ? error.message : 'An internal error occurred',
-  )
-  return {
-    body: {
-      code: normalized.code,
-      details: normalized.details,
-      error: normalized.message,
-    },
-    status: normalized.status,
-  }
 }

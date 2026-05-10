@@ -49,9 +49,11 @@ suffixes.
 
 ### Input Validation
 
-No input validation beyond database constraints. When
-`normReferenceId` is provided and non-empty after trim, it is
-used as-is — uniqueness is enforced by the DB unique index.
+API routes validate norm-reference payloads before calling the DAL:
+unknown fields are rejected, DB-backed strings are capped, linked-status
+query arrays are bounded, and route IDs must be positive integers.
+When `normReferenceId` is provided and non-empty after trim, the DAL
+still uses it as-is; uniqueness remains enforced by the DB unique index.
 
 ## 2 — Owners
 
@@ -75,7 +77,10 @@ Source: `lib/dal/owners.ts`
 
 ### Owner Validation
 
-No business validation beyond database schema constraints.
+API routes validate owner payload shape, unknown fields, required
+strings, email length, and positive integer route IDs before calling the
+DAL. The DAL does not add additional owner-specific business validation
+beyond database constraints.
 
 ## 3 — Specification Taxonomy Lookups
 
@@ -92,22 +97,24 @@ All three DALs follow the same structure:
 - CRUD operations: `list`, `create`, `update`, `delete`.
 - All linked from `requirements_specifications` via foreign keys.
 
-### Validation Variance
+### Validation
 
 <!-- markdownlint-disable MD013 -->
 
-| DAL | Create validation | Update validation |
+| Layer | Create validation | Update validation |
 | --- | --- | --- |
+| API routes | Strict object schemas, unknown-field rejection, bounded bilingual names, and positive integer IDs | Strict object schemas, unknown-field rejection, bounded optional fields, and positive integer IDs |
 | `specification-lifecycle-statuses.ts` | Trims both `nameSv`/`nameEn`; throws if either is empty | Trims each provided field; throws if empty |
 | `specification-implementation-types.ts` | None | None |
 | `specification-responsibility-areas.ts` | None | None |
 
 <!-- markdownlint-enable MD013 -->
 
-This variance is intentional. Lifecycle statuses are
-safety-critical (they determine specification workflow gates), while
-implementation types and responsibility areas are informational
-taxonomy values.
+The API layer now provides the common request-shape guardrails for all
+three taxonomy groups. The remaining DAL variance is intentional:
+lifecycle statuses are safety-critical because they determine
+specification workflow gates, while implementation types and
+responsibility areas are informational taxonomy values.
 
 ### Delete Return Values
 
@@ -149,6 +156,25 @@ reasoning tokens.
 `supportedParameters` includes `structured_outputs`, the
 request uses `json_schema` response format. Otherwise it
 falls back to `json_object`.
+
+### OpenRouter Test Policy
+
+Automated repository tests and security gates do not call live OpenRouter
+endpoints. OpenRouter is an external service, and this project assumes the
+provider's published API works independently of the repository.
+
+The repo-owned responsibility is to verify the integration boundary:
+
+- request shape, model selection, response parsing, timeout handling, and error
+  handling with mocked network calls;
+- prompt and taxonomy generation behavior before a provider call is made;
+- disabled-provider behavior when OpenRouter credentials are absent;
+- sanitization so provider keys, prompts, SQL fragments, stack traces, and
+  other sensitive details are not written to scan artifacts.
+
+Do not add production OpenRouter keys or live provider calls to CI. A manual
+provider smoke test may be run outside CI when changing provider configuration
+or investigating an integration incident.
 
 ### Prompt Contracts
 
