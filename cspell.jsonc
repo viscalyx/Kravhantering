@@ -442,7 +442,8 @@
     "Infographics",
     "kravkontrakt",
     "SARIF",
-    "aquasecurity"
+    "aquasecurity",
+    "schemathesis"
   ],
   "flagWords": [],
   "ignorePaths": [
