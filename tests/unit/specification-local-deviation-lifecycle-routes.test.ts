@@ -2,9 +2,11 @@ import { NextRequest } from 'next/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const routeState = vi.hoisted(() => ({
+  createRequestContext: vi.fn(),
   getRequestSqlServerDataSource: vi.fn(),
   recordSpecificationLocalDecision: vi.fn(),
   requestSpecificationLocalReview: vi.fn(),
+  requireHumanActorSnapshot: vi.fn(),
   revertSpecificationLocalToDraft: vi.fn(),
 }))
 
@@ -18,6 +20,11 @@ vi.mock('@/lib/dal/deviations', () => ({
   recordSpecificationLocalDecision: routeState.recordSpecificationLocalDecision,
   requestSpecificationLocalReview: routeState.requestSpecificationLocalReview,
   revertSpecificationLocalToDraft: routeState.revertSpecificationLocalToDraft,
+}))
+
+vi.mock('@/lib/requirements/auth', () => ({
+  createRequestContext: routeState.createRequestContext,
+  requireHumanActorSnapshot: routeState.requireHumanActorSnapshot,
 }))
 
 import { POST as postDecision } from '@/app/api/specification-local-deviations/[id]/decision/route'
@@ -52,6 +59,22 @@ describe('specification-local deviation lifecycle routes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     routeState.getRequestSqlServerDataSource.mockResolvedValue(mockDb)
+    routeState.createRequestContext.mockResolvedValue({
+      actor: {
+        displayName: 'Reviewer',
+        hsaId: 'SE2321000032-reviewer1',
+        id: 'reviewer-sub',
+        isAuthenticated: true,
+        roles: ['Reviewer'],
+        source: 'oidc',
+      },
+      requestId: 'req-1',
+      source: 'rest',
+    })
+    routeState.requireHumanActorSnapshot.mockReturnValue({
+      displayName: 'Reviewer',
+      hsaId: 'SE2321000032-reviewer1',
+    })
   })
 
   it('request-review returns JSON 500 when DB acquisition fails', async () => {
@@ -187,6 +210,7 @@ describe('specification-local deviation lifecycle routes', () => {
         decision: 1,
         decisionMotivation: 'Looks good',
         decidedBy: 'Reviewer',
+        decidedByHsaId: 'SE2321000032-reviewer1',
       },
     )
   })

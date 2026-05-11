@@ -23,6 +23,7 @@ const sampleTypes = [
 
 const sampleCategories = [
   {
+    chapterId: '3.7',
     id: 10,
     nameSv: 'Kat sv',
     nameEn: 'Cat en',
@@ -30,6 +31,7 @@ const sampleCategories = [
     requirementTypeId: 1,
   },
   {
+    chapterId: '3.7.3',
     id: 11,
     nameSv: 'Barn sv',
     nameEn: 'Child en',
@@ -71,6 +73,8 @@ describe('RequirementTypesClient', () => {
     expect(screen.getByText('Type B')).toBeInTheDocument()
     expect(screen.getByText('Cat en')).toBeInTheDocument()
     expect(screen.getByText('Child en')).toBeInTheDocument()
+    expect(screen.getByText('3.7')).toBeInTheDocument()
+    expect(screen.getByText('3.7.3')).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {
@@ -131,5 +135,60 @@ describe('RequirementTypesClient', () => {
       '[data-developer-mode-name="type card"]',
     )
     expect(cards).toHaveLength(sampleTypes.length)
+  })
+
+  it('sorts quality characteristics by chapter number', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/quality-characteristics')
+        return Promise.resolve(
+          okJson({
+            qualityCharacteristics: [
+              {
+                chapterId: '3.7',
+                id: 10,
+                nameSv: 'Underhållbarhet',
+                nameEn: 'Maintainability',
+                parentId: null,
+                requirementTypeId: 1,
+              },
+              {
+                chapterId: '3.7.2',
+                id: 12,
+                nameSv: 'Återanvändbarhet',
+                nameEn: 'Reusability',
+                parentId: 10,
+                requirementTypeId: 1,
+              },
+              {
+                chapterId: '3.2',
+                id: 13,
+                nameSv: 'Prestandaeffektivitet',
+                nameEn: 'Performance efficiency',
+                parentId: null,
+                requirementTypeId: 1,
+              },
+              {
+                chapterId: '3.7.1',
+                id: 11,
+                nameSv: 'Modularitet',
+                nameEn: 'Modularity',
+                parentId: 10,
+                requirementTypeId: 1,
+              },
+            ],
+          }),
+        )
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<RequirementTypesClient />)
+    await waitFor(() => {
+      expect(screen.getByText('Performance efficiency')).toBeInTheDocument()
+    })
+    const text = document.body.textContent ?? ''
+    expect(text.indexOf('3.2')).toBeLessThan(text.indexOf('3.7'))
+    expect(text.indexOf('3.7.1')).toBeLessThan(text.indexOf('3.7.2'))
   })
 })

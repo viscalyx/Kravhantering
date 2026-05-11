@@ -677,6 +677,7 @@ describe('read-only taxonomy routes', () => {
       new Request('http://l', {
         method: 'POST',
         body: JSON.stringify({
+          chapterId: '3.1',
           nameSv: 'Sv',
           nameEn: 'En',
           requirementTypeId: 1,
@@ -705,6 +706,7 @@ describe('read-only taxonomy routes', () => {
       new Request('http://l', {
         method: 'POST',
         body: JSON.stringify({
+          chapterId: '3.1',
           nameSv: 'Sv',
           nameEn: 'En',
           requirementTypeId: 1,
@@ -715,6 +717,24 @@ describe('read-only taxonomy routes', () => {
     )
     expect(r.status).toBe(400)
     await expectInvalidRequest(r, 'parentId')
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
+  })
+
+  it('quality-characteristics POST returns 400 for invalid chapterId', async () => {
+    const r = await postTypeCat(
+      new Request('http://l', {
+        method: 'POST',
+        body: JSON.stringify({
+          chapterId: 'chapter-3',
+          nameSv: 'Sv',
+          nameEn: 'En',
+          requirementTypeId: 1,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    expect(r.status).toBe(400)
+    await expectInvalidRequest(r, 'chapterId')
     expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 

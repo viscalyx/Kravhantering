@@ -1,11 +1,11 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sqlServerEntities } from '@/lib/typeorm/entities'
 
 /**
  * Offline drift guard between TypeORM `EntitySchema` definitions and the
- * hand-authored initial migration. For every registered entity this test
+ * hand-authored migration chain. For every registered entity this test
  * asserts that:
  *
  *  1. Every entity `columns[*].name` exists in the migration's
@@ -21,14 +21,13 @@ import { sqlServerEntities } from '@/lib/typeorm/entities'
  * live SQL Server connection.
  */
 
-const MIGRATION_PATH = join(
-  process.cwd(),
-  'typeorm',
-  'migrations',
-  '0001_initial_sqlserver.mjs',
-)
+const MIGRATIONS_DIR = join(process.cwd(), 'typeorm', 'migrations')
 
-const migrationSource = readFileSync(MIGRATION_PATH, 'utf8')
+const migrationSource = readdirSync(MIGRATIONS_DIR)
+  .filter(file => file.endsWith('.mjs'))
+  .sort()
+  .map(file => readFileSync(join(MIGRATIONS_DIR, file), 'utf8'))
+  .join('\n')
 
 interface EntityOptionsLike {
   columns?: Record<string, { name?: string }>
@@ -51,18 +50,27 @@ function getOptions(entity: unknown): EntityOptionsLike {
 }
 
 function extractTableColumns(table: string): Set<string> {
-  // Match `CREATE TABLE [<table>] ( ... );` capturing the body.
-  const pattern = new RegExp(
-    `CREATE TABLE \\[${table}\\] \\(([\\s\\S]*?)\\);`,
-    'm',
-  )
-  const match = migrationSource.match(pattern)
-  if (!match) return new Set()
-  const body = match[1]
   const columns = new Set<string>()
-  // Each column line looks like:  [column_name] <type> ...
-  for (const colMatch of body.matchAll(/\[([a-z_][a-z0-9_]*)\]/g)) {
-    columns.add(colMatch[1])
+  // Match `CREATE TABLE [<table>] ( ... );` capturing the body.
+  const createPattern = new RegExp(
+    `CREATE TABLE \\[${table}\\] \\(([\\s\\S]*?)\\);`,
+    'gm',
+  )
+  for (const match of migrationSource.matchAll(createPattern)) {
+    for (const colMatch of match[1].matchAll(/\[([a-z_][a-z0-9_]*)\]/g)) {
+      columns.add(colMatch[1])
+    }
+  }
+
+  // Later migrations may extend a table with `ALTER TABLE ... ADD ...`.
+  const alterAddPattern = new RegExp(
+    `ALTER TABLE \\[${table}\\] ADD ([\\s\\S]*?);`,
+    'gm',
+  )
+  for (const match of migrationSource.matchAll(alterAddPattern)) {
+    for (const colMatch of match[1].matchAll(/\[([a-z_][a-z0-9_]*)\]/g)) {
+      columns.add(colMatch[1])
+    }
   }
   return columns
 }

@@ -226,7 +226,7 @@ function makeContext() {
     actor: {
       id: 'alice',
       displayName: 'alice',
-      hsaId: null,
+      hsaId: 'SE2321000032-alice1',
       isAuthenticated: true,
       roles: ['Admin'],
       source: 'oidc' as const,
@@ -566,6 +566,7 @@ describe('createRequirementsService', () => {
       1,
       44,
       'alice',
+      'SE2321000032-alice1',
     )
     expect(result.result).toMatchObject({ id: 22, versionNumber: 4 })
   })
@@ -1462,6 +1463,7 @@ describe('createRequirementsService', () => {
       decision: 1,
       decisionMotivation: 'Approved by security reviewer',
       decidedBy: 'alice',
+      decidedByHsaId: 'SE2321000032-alice1',
     })
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({
@@ -1492,6 +1494,7 @@ describe('createRequirementsService', () => {
       resolution: 1,
       resolutionMotivation: 'Implemented in the current draft',
       resolvedBy: 'alice',
+      resolvedByHsaId: 'SE2321000032-alice1',
     })
     expect(emittedSecurityEvents()).toEqual([
       expect.objectContaining({

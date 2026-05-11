@@ -44,6 +44,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
     ])
     query.mockResolvedValueOnce([
       {
+        chapterId: '3.5.2',
         id: 10,
         nameSv: 'Tillgänglighet',
         nameEn: 'Availability',
@@ -51,6 +52,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
         parentId: null,
       },
       {
+        chapterId: '3.6.2',
         id: 11,
         nameSv: 'Integritet',
         nameEn: 'Integrity',
@@ -82,6 +84,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
       expect.stringContaining('WHERE requirement_type_id = @0'),
       [5],
     )
+    expect(query.mock.calls[0][0]).toContain('ORDER BY chapter_id ASC')
   })
 
   it('listQualityCharacteristics omits WHERE clause when no typeId', async () => {
@@ -92,6 +95,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
 
     const [sql, params] = query.mock.calls[0]
     expect(sql).not.toContain('WHERE')
+    expect(sql).toContain('chapter_id AS chapterId')
     expect(params).toEqual([])
   })
 
@@ -147,6 +151,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
+        chapterId: '3.2',
         id: 50,
         nameSv: 'Prestanda',
         nameEn: 'Performance',
@@ -156,6 +161,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
     ])
 
     const result = await createQualityCharacteristic(db, {
+      chapterId: '3.2',
       nameSv: 'Prestanda',
       nameEn: 'Performance',
       requirementTypeId: 1,
@@ -163,15 +169,16 @@ describe('requirement-types DAL (SQL Server path)', () => {
 
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO quality_characteristics'),
-      ['Prestanda', 'Performance', 1, null],
+      ['3.2', 'Prestanda', 'Performance', 1, null],
     )
-    expect(result).toMatchObject({ id: 50, parentId: null })
+    expect(result).toMatchObject({ chapterId: '3.2', id: 50, parentId: null })
   })
 
   it('updateQualityCharacteristic builds a dynamic SET clause for provided fields', async () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
+        chapterId: '3.2',
         id: 50,
         nameSv: 'Ny',
         nameEn: 'New',
@@ -181,15 +188,17 @@ describe('requirement-types DAL (SQL Server path)', () => {
     ])
 
     const result = await updateQualityCharacteristic(db, 50, {
+      chapterId: '3.2',
       nameSv: 'Ny',
       requirementTypeId: 2,
     })
 
     const [sql, params] = query.mock.calls[0]
-    expect(sql).toContain('name_sv = @0')
-    expect(sql).toContain('requirement_type_id = @1')
-    expect(sql).toContain('WHERE id = @2')
-    expect(params).toEqual(['Ny', 2, 50])
+    expect(sql).toContain('chapter_id = @0')
+    expect(sql).toContain('name_sv = @1')
+    expect(sql).toContain('requirement_type_id = @2')
+    expect(sql).toContain('WHERE id = @3')
+    expect(params).toEqual(['3.2', 'Ny', 2, 50])
     expect(result).toMatchObject({ id: 50 })
   })
 
@@ -197,6 +206,7 @@ describe('requirement-types DAL (SQL Server path)', () => {
     const { db, query } = createSqlServerDb()
     query.mockResolvedValueOnce([
       {
+        chapterId: '3.2',
         id: 50,
         nameSv: 'Unchanged',
         nameEn: 'Unchanged',

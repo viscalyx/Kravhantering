@@ -58,11 +58,17 @@ describe('quality-characteristics/[id] route', () => {
   describe('PUT', () => {
     it('updates and returns the characteristic', async () => {
       mockUpdateQualityCharacteristic.mockResolvedValue({
+        chapterId: '3.1',
         id: 1,
         nameEn: 'Updated',
       })
       const res = await PUT(
-        jsonReq('PUT', { nameEn: 'Updated' }),
+        jsonReq('PUT', {
+          chapterId: '3.1',
+          nameEn: 'Updated',
+          nameSv: 'Uppdaterad',
+          requirementTypeId: 1,
+        }),
         makeParams('1'),
       )
       expect(res.status).toBe(200)
@@ -71,24 +77,69 @@ describe('quality-characteristics/[id] route', () => {
     })
 
     it('returns 400 for invalid id', async () => {
-      const res = await PUT(jsonReq('PUT', { nameEn: 'X' }), makeParams('abc'))
+      const res = await PUT(
+        jsonReq('PUT', {
+          chapterId: '3.1',
+          nameEn: 'X',
+          nameSv: 'X',
+          requirementTypeId: 1,
+        }),
+        makeParams('abc'),
+      )
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, 'id')
     })
 
     it('returns 400 for invalid payload', async () => {
       const res = await PUT(
-        jsonReq('PUT', { nameSv: 123 as unknown as string }),
+        jsonReq('PUT', {
+          chapterId: '3.1',
+          nameEn: 'X',
+          nameSv: 123 as unknown as string,
+          requirementTypeId: 1,
+        }),
         makeParams('1'),
       )
       expect(res.status).toBe(400)
       await expectInvalidRequest(res, 'nameSv')
     })
 
+    it('returns 400 when chapterId is missing', async () => {
+      const res = await PUT(
+        jsonReq('PUT', {
+          nameEn: 'X',
+          nameSv: 'X',
+          requirementTypeId: 1,
+        }),
+        makeParams('1'),
+      )
+      expect(res.status).toBe(400)
+      await expectInvalidRequest(res, 'chapterId')
+    })
+
+    it('returns 400 when chapterId is invalid', async () => {
+      const res = await PUT(
+        jsonReq('PUT', {
+          chapterId: 'chapter-3',
+          nameEn: 'X',
+          nameSv: 'X',
+          requirementTypeId: 1,
+        }),
+        makeParams('1'),
+      )
+      expect(res.status).toBe(400)
+      await expectInvalidRequest(res, 'chapterId')
+    })
+
     it('returns 404 when not found', async () => {
       mockUpdateQualityCharacteristic.mockResolvedValue(null)
       const res = await PUT(
-        jsonReq('PUT', { nameEn: 'Missing' }),
+        jsonReq('PUT', {
+          chapterId: '3.1',
+          nameEn: 'Missing',
+          nameSv: 'Saknas',
+          requirementTypeId: 1,
+        }),
         makeParams('1'),
       )
       expect(res.status).toBe(404)

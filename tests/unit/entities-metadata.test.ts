@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sqlServerEntities } from '@/lib/typeorm/entities'
@@ -10,14 +10,13 @@ import { sqlServerEntities } from '@/lib/typeorm/entities'
  * between the EntitySchema definitions and the SQL DDL we actually ship.
  */
 
-const MIGRATION_PATH = join(
-  process.cwd(),
-  'typeorm',
-  'migrations',
-  '0001_initial_sqlserver.mjs',
-)
+const MIGRATIONS_DIR = join(process.cwd(), 'typeorm', 'migrations')
 
-const migrationSource = readFileSync(MIGRATION_PATH, 'utf8')
+const migrationSource = readdirSync(MIGRATIONS_DIR)
+  .filter(file => file.endsWith('.mjs'))
+  .sort()
+  .map(file => readFileSync(join(MIGRATIONS_DIR, file), 'utf8'))
+  .join('\n')
 
 const NAMING_PATTERNS = {
   table: /^[a-z][a-z0-9_]*$/,
@@ -139,7 +138,7 @@ describe('sqlServerEntities metadata conventions', () => {
         }
       })
 
-      it('has its table created in the initial migration', () => {
+      it('has its table created in a migration', () => {
         expect(
           migrationSource.includes(`CREATE TABLE [${tableName}]`),
           `migration must contain CREATE TABLE [${tableName}]`,

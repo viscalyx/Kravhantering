@@ -35,8 +35,10 @@ describe('deviations DAL (SQL Server path)', () => {
         decision: null,
         decisionMotivation: null,
         decidedBy: null,
+        decidedByHsaId: null,
         decidedAt: null,
         createdBy: 'reviewer',
+        createdByHsaId: 'SE2321000032-reviewer1',
         createdAt: new Date('2026-04-20T10:00:00.000Z'),
         updatedAt: new Date('2026-04-20T11:00:00.000Z'),
         requirementUniqueId: 'REQ-001',
@@ -65,8 +67,10 @@ describe('deviations DAL (SQL Server path)', () => {
         decision: null,
         decisionMotivation: null,
         decidedBy: null,
+        decidedByHsaId: null,
         decidedAt: null,
         createdBy: 'reviewer',
+        createdByHsaId: 'SE2321000032-reviewer1',
         createdAt: '2026-04-20T10:00:00.000Z',
         updatedAt: '2026-04-20T11:00:00.000Z',
         requirementUniqueId: 'REQ-001',
@@ -88,13 +92,20 @@ describe('deviations DAL (SQL Server path)', () => {
       specificationItemId: 3,
       motivation: '  Legacy exception  ',
       createdBy: 'tester',
+      createdByHsaId: 'SE2321000032-tester1',
     })
 
     expect(result).toEqual({ id: 42 })
     expect(query).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining('INSERT INTO deviations'),
-      [3, 'Legacy exception', 'tester', expect.any(Date)],
+      [
+        3,
+        'Legacy exception',
+        'tester',
+        'SE2321000032-tester1',
+        expect.any(Date),
+      ],
     )
   })
 

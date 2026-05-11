@@ -233,6 +233,43 @@ for (const { name, viewport } of viewportVariants) {
     })
 
     if (name === 'desktop') {
+      test.describe('admin-only permissions', () => {
+        test.use({ storageState: 'test-results/auth/admin-only.json' })
+
+        test('keeps Swedish admin tabs fully visible in the header', async ({
+          page,
+        }) => {
+          await page.goto('/sv/admin')
+
+          const tablist = page.getByRole('tablist', {
+            name: 'Administrationscenter',
+          })
+          const privacyTab = page.getByRole('tab', { name: 'Dataskydd' })
+          await expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
+          await expect(privacyTab).toHaveAttribute(
+            'title',
+            /Dataskyddshandläggare/,
+          )
+          const tablistMetrics = await tablist.evaluate(element => ({
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+          }))
+          const tablistBox = await tablist.boundingBox()
+          const privacyBox = await privacyTab.boundingBox()
+
+          expect(tablistMetrics.scrollWidth).toBeLessThanOrEqual(
+            tablistMetrics.clientWidth + 1,
+          )
+          expect(tablistBox).not.toBeNull()
+          expect(privacyBox).not.toBeNull()
+          expect(
+            (privacyBox?.x ?? 0) + (privacyBox?.width ?? 0),
+          ).toBeLessThanOrEqual(
+            (tablistBox?.x ?? 0) + (tablistBox?.width ?? 0) + 1,
+          )
+        })
+      })
+
       test('browser back returns to the reference data tab after opening a reference page', async ({
         page,
       }) => {
