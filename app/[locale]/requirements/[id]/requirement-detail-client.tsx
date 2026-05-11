@@ -15,6 +15,7 @@ import VersionHistory from '@/components/VersionHistory'
 import { useRouter } from '@/i18n/routing'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { readResponseMessage } from '@/lib/http/response-message'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import {
   STATUS_ARCHIVED,
   STATUS_DRAFT,
@@ -273,6 +274,10 @@ export default function RequirementDetailClient({
   const currentStatusColor = selectedVersion?.statusColor ?? null
   const canAddToSpecification =
     currentStatusId === STATUS_PUBLISHED && isViewingDisplayVersion
+  const areaOwnerName = formatActorDisplayNameForLocale(
+    req.area?.ownerName,
+    locale,
+  )
   const detailContext = inline
     ? `requirements table > inline detail pane: ${req.uniqueId}`
     : `requirement detail: ${req.uniqueId}`
@@ -290,9 +295,9 @@ export default function RequirementDetailClient({
             value: (
               <>
                 {req.area.name}
-                {req.area.ownerName ? (
+                {areaOwnerName ? (
                   <p className="mt-0.5 text-xs text-secondary-500 dark:text-secondary-400">
-                    {t('areaOwner')}: {req.area.ownerName}
+                    {t('areaOwner')}: {areaOwnerName}
                   </p>
                 ) : null}
               </>

@@ -9,6 +9,7 @@ import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
 import { apiFetch } from '@/lib/http/api-fetch'
+import { formatActorDisplayName } from '@/lib/privacy/display-name'
 
 const REQUIREMENT_AREAS_HELP: HelpContent = {
   sections: [
@@ -85,6 +86,8 @@ export default function RequirementAreasClient() {
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
   const [owners, setOwners] = useState<OwnerOption[]>([])
+  const formatOwnerName = (value: string | null) =>
+    formatActorDisplayName(value, tc('anonymousUser')) ?? '—'
 
   useEffect(() => {
     let cancelled = false
@@ -143,7 +146,7 @@ export default function RequirementAreasClient() {
       className: 'py-3 px-4 text-secondary-600 dark:text-secondary-400',
       header: t('owner'),
       key: 'owner',
-      render: area => area.ownerName ?? '—',
+      render: area => formatOwnerName(area.ownerName),
     },
   ]
 
@@ -243,7 +246,7 @@ export default function RequirementAreasClient() {
               <option value="">{t('owner')}...</option>
               {owners.map(owner => (
                 <option key={owner.id} value={owner.id}>
-                  {owner.name}
+                  {formatOwnerName(owner.name)}
                 </option>
               ))}
             </select>

@@ -7,6 +7,7 @@ import CrudAdminPanel, {
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { formatActorDisplayName } from '@/lib/privacy/display-name'
 
 const OWNERS_HELP: HelpContent = {
   sections: [
@@ -60,6 +61,11 @@ export default function OwnersClient() {
   const t = useTranslations('ownerMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
+  const formatOwnerName = (owner: Owner) =>
+    formatActorDisplayName(
+      `${owner.firstName} ${owner.lastName}`.trim(),
+      tc('anonymousUser'),
+    ) ?? ''
 
   const controller = useCrudAdminResource<Owner, OwnerForm>({
     confirmDeleteMessage: tc('confirm'),
@@ -77,7 +83,7 @@ export default function OwnersClient() {
       className: 'py-3 px-4 font-medium',
       header: t('name'),
       key: 'name',
-      render: item => `${item.firstName} ${item.lastName}`,
+      render: item => formatOwnerName(item),
     },
     {
       className: 'py-3 px-4 text-secondary-600 dark:text-secondary-400',
