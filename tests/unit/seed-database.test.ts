@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { seedDatabase, seedPositionDetail } from '../../typeorm/seed.mjs'
 
@@ -41,49 +39,6 @@ function seedRowsFor(rows: SeedInsertRow[], table: string) {
     .map(seedRow => seedRow.row)
 }
 
-function displayName(value: string) {
-  return `${value.slice(0, 1).toLocaleUpperCase('sv-SE')}${value.slice(1)}`
-}
-
-function parseQualityCharacteristicsSource() {
-  const swedishNames = new Map(
-    readFileSync(
-      join(process.cwd(), 'docs', 'kvalitetsegenskaper-svenska.csv'),
-      'utf8',
-    )
-      .trim()
-      .split(/\r?\n/)
-      .slice(1)
-      .map(line => {
-        const [english, swedish] = line.split(';')
-        return [english, swedish] as const
-      }),
-  )
-  let parentId: number | null = null
-  return readFileSync(
-    join(process.cwd(), 'docs', 'kvalitetsegenskaper.csv'),
-    'utf8',
-  )
-    .trim()
-    .split(/\r?\n/)
-    .slice(1)
-    .map((line, index) => {
-      const [chapterId, groupName, characteristicName] = line.split(';')
-      const isParent = groupName !== '-'
-      const sourceNameEn = isParent ? groupName : characteristicName
-      if (isParent) parentId = index + 1
-      return {
-        chapter_id: chapterId,
-        id: index + 1,
-        name_en: displayName(sourceNameEn),
-        name_sv: displayName(swedishNames.get(sourceNameEn) ?? ''),
-        parent_id: isParent ? null : parentId,
-        requirement_type_id:
-          chapterId === '3.1' || chapterId.startsWith('3.1.') ? 1 : 2,
-      }
-    })
-}
-
 describe('seedDatabase', () => {
   it('reports seed failures without serializing the full seed row', async () => {
     const executor = {
@@ -117,14 +72,57 @@ describe('seedDatabase', () => {
     ).toBe(" while seeding table='norm_references' rowIndex=0 pk={id=1}")
   })
 
-  it('seeds quality characteristics from the CSV source files', async () => {
+  it('seeds the inline ISO quality characteristics model', async () => {
     const { executor, rows } = collectSeedInsertRows()
 
     await seedDatabase(executor)
 
     const qualityCharacteristics = seedRowsFor(rows, 'quality_characteristics')
     expect(qualityCharacteristics).toHaveLength(49)
-    expect(qualityCharacteristics).toEqual(parseQualityCharacteristicsSource())
+    expect(qualityCharacteristics.map(row => row.id)).toEqual(
+      Array.from({ length: 49 }, (_, index) => index + 1),
+    )
+    expect(
+      qualityCharacteristics.every(
+        row =>
+          typeof row.name_sv === 'string' &&
+          row.name_sv.length > 0 &&
+          typeof row.name_en === 'string' &&
+          row.name_en.length > 0 &&
+          typeof row.chapter_id === 'string' &&
+          row.chapter_id.length > 0,
+      ),
+    ).toBe(true)
+    expect(
+      qualityCharacteristics
+        .filter(row => row.parent_id == null)
+        .map(row => row.chapter_id),
+    ).toEqual(['3.1', '3.2', '3.3', '3.4', '3.5', '3.6', '3.7', '3.8', '3.9'])
+    expect(qualityCharacteristics[0]).toMatchObject({
+      chapter_id: '3.1',
+      id: 1,
+      name_en: 'Functional suitability',
+      name_sv: 'Funktionell lämplighet',
+      parent_id: null,
+      requirement_type_id: 1,
+    })
+    expect(qualityCharacteristics[48]).toMatchObject({
+      chapter_id: '3.9.5',
+      id: 49,
+      name_en: 'Safe integration',
+      name_sv: 'Säker integration',
+      parent_id: 44,
+      requirement_type_id: 2,
+    })
+    const rowById = new Map(qualityCharacteristics.map(row => [row.id, row]))
+    for (const row of qualityCharacteristics) {
+      if (row.parent_id == null) continue
+      const parent = rowById.get(row.parent_id)
+      expect(parent).toBeDefined()
+      expect(row.chapter_id).toEqual(
+        expect.stringContaining(`${String(parent?.chapter_id)}.`),
+      )
+    }
   })
 
   it('seeds duplicate-name privacy data with distinct HSA-ID decisions', async () => {
