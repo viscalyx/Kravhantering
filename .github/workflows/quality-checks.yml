@@ -138,32 +138,3 @@ jobs:
           fail_ci_if_error: false
           verbose: true
           token: ${{ vars.CODECOV_TOKEN }}
-
-      - name: Comment on PR if checks failed
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const checks = [
-              { name: 'Formatting', command: 'npm run format:check' },
-              { name: 'Spell Check', command: 'npm run spell:check' },
-              { name: 'Lint', command: 'npm run lint' },
-              { name: 'Markdown Lint', command: 'npm run lint:md' },
-              { name: 'Type Check', command: 'npm run type-check' },
-              { name: 'Python Type Check', command: 'npm run lint:py' },
-              { name: 'dotenv-linter', command: 'npm run dotenv:check' },
-              { name: 'Prod build-target contract', command: 'npm run verify:prod-bundle' }
-            ];
-
-            let body = '❌ **Quality checks failed!** Please fix the following issues:\n\n';
-            body += checks.map(check =>
-              `- **${check.name}**: Run \`${check.command}\` locally to see and fix issues`
-            ).join('\n');
-            body += '\n\nYou can also run `npm run check` to run all checks at once.';
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            })
