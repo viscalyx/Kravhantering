@@ -106,6 +106,7 @@ erDiagram
         text first_name
         text last_name
         text email UK
+        text hsa_id UK
         text created_at
         text updated_at
     }
@@ -137,6 +138,7 @@ erDiagram
         integer id PK
         text name_sv
         text name_en
+        text chapter_id
         integer requirement_type_id FK
         integer parent_id FK "self-referencing"
     }
@@ -213,6 +215,7 @@ erDiagram
         text archive_initiated_at
         text archived_at
         text created_by
+        text created_by_hsa_id
     }
 
     norm_references {
@@ -286,6 +289,9 @@ erDiagram
         integer specification_implementation_type_id FK
         integer specification_lifecycle_status_id FK
         text business_needs_reference
+        text responsible_hsa_id
+        text responsible_display_name
+        integer can_responsible_generate_ai "boolean"
         text created_at
         text updated_at
     }
@@ -337,8 +343,10 @@ erDiagram
         integer decision
         text decision_motivation
         text decided_by
+        text decided_by_hsa_id
         text decided_at
         text created_by
+        text created_by_hsa_id
         text created_at
         text updated_at
     }
@@ -364,14 +372,37 @@ erDiagram
         integer decision
         text decision_motivation
         text decided_by
+        text decided_by_hsa_id
         text decided_at
         text created_by
+        text created_by_hsa_id
         text created_at
         text updated_at
     }
 
+    requirement_area_co_authors {
+        integer area_id PK, FK
+        text hsa_id PK
+        text display_name
+        integer can_generate_ai "boolean"
+        text created_at
+        text created_by_hsa_id
+        text created_by_display_name
+    }
+
+    specification_co_authors {
+        integer specification_id PK, FK
+        text hsa_id PK
+        text display_name
+        integer can_generate_ai "boolean"
+        text created_at
+        text created_by_hsa_id
+        text created_by_display_name
+    }
+
     %% Relationships
     owners |o--o{ requirement_areas : "owns"
+    requirement_areas ||--o{ requirement_area_co_authors : "has co-authors"
     requirement_areas ||--o{ requirements : "has many"
     requirements ||--o{ requirement_versions : "has many versions"
     requirement_versions }o--|| requirement_statuses : "has status"
@@ -389,6 +420,7 @@ erDiagram
     requirement_statuses ||--o{ requirement_status_transitions : "from"
     requirement_statuses ||--o{ requirement_status_transitions : "to"
     requirements_specifications ||--o{ specification_needs_references : "stores needs references"
+    requirements_specifications ||--o{ specification_co_authors : "has co-authors"
     requirements_specifications ||--o{ requirements_specification_items : "contains"
     requirements_specifications ||--o{ specification_local_requirements : "contains local"
     specification_responsibility_areas ||--o{ requirements_specifications : "responsibility area"
@@ -418,11 +450,13 @@ erDiagram
         integer requirement_version_id FK
         text content
         text created_by
+        text created_by_hsa_id
         integer is_review_requested
         text review_requested_at
         integer resolution
         text resolution_motivation
         text resolved_by
+        text resolved_by_hsa_id
         text resolved_at
         text created_at
         text updated_at
@@ -487,9 +521,12 @@ Forms a self-referencing tree: top-level categories
 | `id` | integer PK | Auto-increment primary key |
 | `name_sv` | text | Swedish display name |
 | `name_en` | text | English display name |
+| `chapter_id` | text | ISO/IEC 25010 chapter number (e.g. `3.1.1`) |
 | `requirement_type_id` | integer FK → `requirement_types.id` | Which type this category belongs to |
 | `parent_id` | integer FK → `quality_characteristics.id` | Parent category (NULL for top-level) |
 <!-- markdownlint-enable MD013 -->
+
+The seed catalog contains 49 ISO/IEC 25010:2023 quality-characteristic rows.
 
 **Indexes:**
 `idx_quality_characteristics_requirement_type_id`,
@@ -826,10 +863,32 @@ Organization-wide default layout for the requirements list.
 
 ## Core Domain Tables
 
+### Actor Identity Policy
+
+Human actor writes store both a display-name snapshot and a durable HSA-ID.
+The display name is for UI/reporting at the time of the action; the HSA-ID is
+the identity key used for authorization, separation of duties, and GDPR erasure
+matching. New workflows must stamp these values from the verified
+`RequestContext.actor`, not from client-submitted name fields.
+
+Description and other free-text columns are governed by UI help text that
+forbids names or other details that can identify a living person. The privacy
+erasure workflow therefore does not scan or rewrite free-text descriptions.
+
 ### `owners`
 
 People who can be assigned as responsible owners for requirement areas.
-Managed via the area owners reference data page.
+Managed via the area owners reference data page. `hsa_id` is the durable
+identity key; names and email are display/contact snapshots.
+
+Privacy erasure cannot anonymize or delete an owner while requirement areas
+still reference that owner. The handler must switch those areas to a replacement
+owner first, or skip the owner row. Requirement-area owner references are shown
+as informational rows in the preview and are controlled by the owner action; a
+`Switch` owner action updates the linked requirement areas in the same
+transaction. When no requirement area references the owner, privacy erasure may
+delete or skip the owner row; it does not switch or anonymize that standalone
+owner identity.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
@@ -837,27 +896,40 @@ Managed via the area owners reference data page.
 | `id` | integer PK | Auto-increment primary key |
 | `first_name` | text | First name |
 | `last_name` | text | Last name |
-| `email` | text, unique | Email address |
+| `email` | text, unique, nullable | Email address |
+| `hsa_id` | text, unique, nullable | HSA-ID used for assignment and privacy matching |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
-**Unique index:** `uq_owners_email`.
+**Unique indexes:** `uq_owners_email`, `uq_owners_hsa_id`.
 
 **Seed data:**
 
+<!-- cSpell:ignore annaj erikl -->
 <!-- markdownlint-disable MD013 MD034 -->
-| id | first\_name | last\_name | email |
-| --- | --- | --- | --- |
-| 1 | Anna | Johansson | anna.johansson@example.com |
-| 2 | Erik | Lindberg | erik.lindberg@example.com |
-| 3 | Maria | Svensson | maria.svensson@example.com |
+| id | first\_name | last\_name | email | hsa\_id |
+| --- | --- | --- | --- | --- |
+| 1 | Anna | Johansson | anna.johansson@example.com | SE2321000032-annaj |
+| 2 | Erik | Lindberg | erik.lindberg@example.com | SE2321000032-erikl |
+| 3 | Maria | Svensson | maria.svensson@example.com | SE2321000032-marias |
 <!-- markdownlint-enable MD013 MD034 -->
 
 These owners are assigned to requirement areas via `owner_id`:
 Anna (1) → Integration, Prestanda, Lagring, Loggning, Data;
 Erik (2) → Säkerhet, Behörighet, Identitet;
 Maria (3) → Användbarhet, Drift.
+
+<!-- cspell:ignore linneab -->
+
+Seed data also includes duplicate display names with different `hsa_id` values
+so tests prove that privacy erasure and authorization disambiguate by HSA-ID,
+not by name. The `SE2321000032-linneab` fixture appears across every privacy
+preview group: owner rows, area and package owner assignments, requirement
+versions, deviation creator and decision fields, improvement-suggestion creator
+and resolver fields, specification responsibility, and area/specification
+co-author assignment rows. This gives privacy-erasure tests a single HSA-ID
+with varied live-assignment and historical occurrences.
 
 ---
 
@@ -938,14 +1010,16 @@ precondition.
 | `published_at` | text (ISO 8601) | When status changed to Published (nullable) |
 | `archive_initiated_at` | text (ISO 8601) | When archiving was initiated — set when status moves from Published to Review for archiving (nullable). When set, the UI swaps the status badge label to "Arkiveringsgranskning" / "Archiving Review" — see [UI status labels](lifecycle-workflow.md#ui-status-labels). |
 | `archived_at` | text (ISO 8601) | When status changed to Archived (nullable) |
-| `created_by` | text | User or system that created this version (nullable) |
+| `created_by` | text | Display-name snapshot for the actor that created this version (nullable) |
+| `created_by_hsa_id` | text | HSA-ID for the actor that created this version (nullable after privacy erasure) |
 <!-- markdownlint-enable MD013 -->
 
 **Unique constraints:**
 `uq_requirement_versions_requirement_id_version_number`
 on `(requirement_id, version_number)`;
 `uq_requirement_versions_revision_token` on `revision_token`.
-**Indexes:** `idx_requirement_versions_requirement_id`.
+**Indexes:** `idx_requirement_versions_requirement_id`,
+`idx_requirement_versions_created_by_hsa_id`.
 
 **Lifecycle invariant:** `created_at` < `published_at`
 < `archived_at` (when applicable).
@@ -976,6 +1050,9 @@ specific procurement or project.
 | `specification_implementation_type_id` | integer FK → `specification_implementation_types.id` | Implementation type classification (nullable) |
 | `specification_lifecycle_status_id` | integer FK → `specification_lifecycle_statuses.id` | Lifecycle status classification (nullable) |
 | `business_needs_reference` | text | Optional free-text reference to the underlying business need |
+| `responsible_hsa_id` | text | HSA-ID for the live responsible person (nullable) |
+| `responsible_display_name` | text | Display-name snapshot for the live responsible person (nullable) |
+| `can_responsible_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the responsible assignment may use live AI generation |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
@@ -983,6 +1060,8 @@ specific procurement or project.
 **Seed note:** Specification `ETJANST-UPP-2026` has
 `local_requirement_next_sequence = 3` because the seed
 includes `KRAV0001` and `KRAV0002`.
+
+**Index:** `idx_requirements_specifications_responsible_hsa_id`.
 
 ---
 
@@ -1054,6 +1133,46 @@ feature.
 ---
 
 ## Join / Bridge Tables
+
+### `requirement_area_co_authors`
+
+Live co-author assignments for requirement areas. Rows are keyed by HSA-ID
+directly and do not reference `owners`.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `area_id` | integer FK → `requirement_areas.id` (CASCADE DELETE), PK part 1 | Area assignment |
+| `hsa_id` | text, PK part 2 | HSA-ID for the co-author |
+| `display_name` | text | Display-name snapshot for the co-author |
+| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI generation |
+| `created_at` | text (ISO 8601) | Assignment creation timestamp |
+| `created_by_hsa_id` | text | HSA-ID of the actor that created the assignment (nullable after privacy erasure) |
+| `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_requirement_area_co_authors_hsa_id`,
+`idx_requirement_area_co_authors_created_by_hsa_id`.
+
+### `specification_co_authors`
+
+Live co-author assignments for requirements specifications. Rows are keyed by
+HSA-ID directly and do not reference `owners`.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `specification_id` | integer FK → `requirements_specifications.id` (CASCADE DELETE), PK part 1 | Specification assignment |
+| `hsa_id` | text, PK part 2 | HSA-ID for the co-author |
+| `display_name` | text | Display-name snapshot for the co-author |
+| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether this assignment may use live AI generation |
+| `created_at` | text (ISO 8601) | Assignment creation timestamp |
+| `created_by_hsa_id` | text | HSA-ID of the actor that created the assignment (nullable after privacy erasure) |
+| `created_by_display_name` | text | Display-name snapshot for the actor that created the assignment |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_specification_co_authors_hsa_id`,
+`idx_specification_co_authors_created_by_hsa_id`.
 
 ### `requirement_version_requirement_packages`
 
@@ -1201,15 +1320,19 @@ library requirement pinned into a specification.
 | `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
 | `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
 | `decision_motivation` | text | Rationale for the decision |
-| `decided_by` | text | Who recorded the decision |
+| `decided_by` | text | Display-name snapshot for the actor that recorded the decision |
+| `decided_by_hsa_id` | text | HSA-ID for the actor that recorded the decision (nullable after privacy erasure) |
 | `decided_at` | text (ISO 8601) | When the decision was recorded |
-| `created_by` | text | Who registered the deviation |
+| `created_by` | text | Display-name snapshot for the actor that registered the deviation |
+| `created_by_hsa_id` | text | HSA-ID for the actor that registered the deviation (nullable after privacy erasure) |
 | `created_at` | text (ISO 8601) | When registered |
 | `updated_at` | text (ISO 8601) | When last updated |
 <!-- markdownlint-enable MD013 -->
 
 **Index:**
-`idx_specification_local_requirement_deviations_specification_local_requirement_id`.
+`idx_specification_local_requirement_deviations_specification_local_requirement_id`,
+`idx_specification_local_requirement_deviations_created_by_hsa_id`,
+`idx_specification_local_requirement_deviations_decided_by_hsa_id`.
 
 ---
 
@@ -1228,14 +1351,18 @@ a decision (approved or rejected) with its own rationale.
 | `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
 | `decision` | integer | Null = pending, 1 = approved, 2 = rejected |
 | `decision_motivation` | text | Rationale behind the approval or rejection |
-| `decided_by` | text | Who recorded the decision |
+| `decided_by` | text | Display-name snapshot for the actor that recorded the decision |
+| `decided_by_hsa_id` | text | HSA-ID for the actor that recorded the decision (nullable after privacy erasure) |
 | `decided_at` | text (ISO 8601) | When the decision was recorded |
-| `created_by` | text | Who registered the deviation |
+| `created_by` | text | Display-name snapshot for the actor that registered the deviation |
+| `created_by_hsa_id` | text | HSA-ID for the actor that registered the deviation (nullable after privacy erasure) |
 | `created_at` | text (ISO 8601) | When registered (default: now) |
 | `updated_at` | text (ISO 8601) | When last updated (default: now) |
 <!-- markdownlint-enable MD013 -->
 
-**Index:** `idx_deviations_specification_item_id`.
+**Indexes:** `idx_deviations_specification_item_id`,
+`idx_deviations_created_by_hsa_id`,
+`idx_deviations_decided_by_hsa_id`.
 
 ### `improvement_suggestions`
 
@@ -1250,19 +1377,23 @@ draft → review requested → resolved or dismissed.
 | `requirement_id` | integer FK → `requirements.id` (CASCADE DELETE) | The requirement this suggestion applies to |
 | `requirement_version_id` | integer FK → `requirement_versions.id` (SET NULL) | Optional: the specific version being reviewed |
 | `content` | text NOT NULL | The suggestion text |
-| `created_by` | text | Who submitted the suggestion |
+| `created_by` | text | Display-name snapshot for the actor that submitted the suggestion |
+| `created_by_hsa_id` | text | HSA-ID for the actor that submitted the suggestion (nullable after privacy erasure) |
 | `is_review_requested` | integer NOT NULL DEFAULT 0 | 0 = draft, 1 = submitted for review |
 | `review_requested_at` | text (ISO 8601) | When review was requested (null = draft) |
 | `resolution` | integer | Null = pending, 1 = resolved, 2 = dismissed |
 | `resolution_motivation` | text | Rationale for resolving or dismissing |
-| `resolved_by` | text | Who resolved/dismissed the suggestion |
+| `resolved_by` | text | Display-name snapshot for the actor that resolved/dismissed |
+| `resolved_by_hsa_id` | text | HSA-ID for the actor that resolved/dismissed (nullable after privacy erasure) |
 | `resolved_at` | text (ISO 8601) | When the resolution was recorded |
 | `created_at` | text (ISO 8601) | When registered (default: now) |
 | `updated_at` | text (ISO 8601) | When last updated (default: now) |
 <!-- markdownlint-enable MD013 -->
 
 **Indexes:** `idx_improvement_suggestions_requirement_id`,
-`idx_improvement_suggestions_requirement_version_id`.
+`idx_improvement_suggestions_requirement_version_id`,
+`idx_improvement_suggestions_created_by_hsa_id`,
+`idx_improvement_suggestions_resolved_by_hsa_id`.
 
 **Triggers:**
 
@@ -1303,6 +1434,7 @@ its purpose and the table/column(s) it covers.
 | `uq_specification_responsibility_areas_name_sv` | `specification_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
 | `uq_specification_responsibility_areas_name_en` | `specification_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
 | `uq_owners_email` | `owners` | `email` | Prevents duplicate owner email addresses |
+| `uq_owners_hsa_id` | `owners` | `hsa_id` | Prevents duplicate live owner identities by HSA-ID |
 | `uq_specification_implementation_types_name_sv` | `specification_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_specification_implementation_types_name_en` | `specification_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
 | `uq_specification_lifecycle_statuses_name_sv` | `specification_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish lifecycle status names |
@@ -1328,6 +1460,12 @@ its purpose and the table/column(s) it covers.
 | `idx_requirements_requirement_area_id` | `requirements` | `requirement_area_id` | Speed up listing requirements by area |
 | `idx_requirements_is_archived` | `requirements` | `is_archived` | Speed up filtering active vs archived requirements |
 | `idx_requirement_versions_requirement_id` | `requirement_versions` | `requirement_id` | Speed up fetching all versions of a requirement |
+| `idx_requirement_versions_created_by_hsa_id` | `requirement_versions` | `created_by_hsa_id` | Speed up privacy erasure and actor-history lookups |
+| `idx_requirements_specifications_responsible_hsa_id` | `requirements_specifications` | `responsible_hsa_id` | Speed up responsible assignment and privacy lookups |
+| `idx_requirement_area_co_authors_hsa_id` | `requirement_area_co_authors` | `hsa_id` | Speed up assignment authorization and privacy lookups |
+| `idx_requirement_area_co_authors_created_by_hsa_id` | `requirement_area_co_authors` | `created_by_hsa_id` | Speed up privacy erasure of historical assignment creators |
+| `idx_specification_co_authors_hsa_id` | `specification_co_authors` | `hsa_id` | Speed up assignment authorization and privacy lookups |
+| `idx_specification_co_authors_created_by_hsa_id` | `specification_co_authors` | `created_by_hsa_id` | Speed up privacy erasure of historical assignment creators |
 | `idx_specification_local_requirements_specification_id` | `specification_local_requirements` | `specification_id` | Speed up listing specification-local requirements per specification |
 | `idx_specification_local_requirements_requirement_area_id` | `specification_local_requirements` | `requirement_area_id` | Speed up area-based summaries/filtering for specification-local requirements |
 | `idx_specification_local_requirements_specification_item_status_id` | `specification_local_requirements` | `specification_item_status_id` | Speed up usage-status filtering for specification-local requirements |
@@ -1340,8 +1478,14 @@ its purpose and the table/column(s) it covers.
 | `idx_specification_local_requirement_norm_references_norm_reference_id` | `specification_local_requirement_norm_references` | `norm_reference_id` | Speed up lookups of specification-local requirements by norm reference |
 | `idx_deviations_specification_item_id` | `deviations` | `specification_item_id` | Speed up lookups of deviations by specification item |
 | `idx_specification_local_requirement_deviations_specification_local_requirement_id` | `specification_local_requirement_deviations` | `specification_local_requirement_id` | Speed up lookups of deviations by specification-local requirement |
+| `idx_specification_local_requirement_deviations_created_by_hsa_id` | `specification_local_requirement_deviations` | `created_by_hsa_id` | Speed up privacy erasure of local deviation creators |
+| `idx_specification_local_requirement_deviations_decided_by_hsa_id` | `specification_local_requirement_deviations` | `decided_by_hsa_id` | Speed up privacy erasure of local deviation decision makers |
+| `idx_deviations_created_by_hsa_id` | `deviations` | `created_by_hsa_id` | Speed up privacy erasure of deviation creators |
+| `idx_deviations_decided_by_hsa_id` | `deviations` | `decided_by_hsa_id` | Speed up privacy erasure of deviation decision makers |
 | `idx_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | Speed up lookups of suggestions by requirement |
 | `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
+| `idx_improvement_suggestions_created_by_hsa_id` | `improvement_suggestions` | `created_by_hsa_id` | Speed up privacy erasure of suggestion creators |
+| `idx_improvement_suggestions_resolved_by_hsa_id` | `improvement_suggestions` | `resolved_by_hsa_id` | Speed up privacy erasure of suggestion resolvers |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -1367,9 +1511,11 @@ The following table lists every named FK constraint:
 | Constraint Name | Table | Column(s) | References | On Delete | On Update |
 | --------------- | ----- | --------- | ---------- | --------- | --------- |
 | `fk_requirement_areas_owner_id` | `requirement_areas` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
+| `fk_requirement_area_co_authors_area_id` | `requirement_area_co_authors` | `area_id` | `requirement_areas.id` | CASCADE | NO ACTION |
 | `fk_requirements_specifications_specification_implementation_type_id` | `requirements_specifications` | `specification_implementation_type_id` | `specification_implementation_types.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specifications_specification_responsibility_area_id` | `requirements_specifications` | `specification_responsibility_area_id` | `specification_responsibility_areas.id` | NO ACTION | NO ACTION |
 | `fk_requirements_specifications_specification_lifecycle_status_id` | `requirements_specifications` | `specification_lifecycle_status_id` | `specification_lifecycle_statuses.id` | NO ACTION | NO ACTION |
+| `fk_specification_co_authors_specification_id` | `specification_co_authors` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
 | `fk_specification_needs_references_specification_id` | `specification_needs_references` | `specification_id` | `requirements_specifications.id` | CASCADE | NO ACTION |
 | `fk_requirement_status_transitions_to_requirement_status_id` | `requirement_status_transitions` | `to_requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |
 | `fk_requirement_status_transitions_from_requirement_status_id` | `requirement_status_transitions` | `from_requirement_status_id` | `requirement_statuses.id` | NO ACTION | NO ACTION |

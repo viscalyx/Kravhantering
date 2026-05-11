@@ -215,12 +215,19 @@ sequenceDiagram
   `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`, and
-  `requirements.high_risk_mutation.succeeded`.
+  `requirements.high_risk_mutation.succeeded`,
+  `privacy.erasure.previewed`, `privacy.erasure.executed`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured
   `detail-key-redacted` breadcrumb with the source event, actor source, and
   redacted key name.
+- Privacy erasure audit events are emitted to the platform security-log stream,
+  not stored in the application database. They include the handler identity,
+  request id, grouped action counts, and a non-reversible target fingerprint.
+  They must not include the raw target HSA-ID. Retention or redaction of handler
+  identity in those logs is handled by the platform logging policy because
+  removing it can reduce traceability.
 
 ### Audit event stream
 
@@ -350,9 +357,10 @@ flowchart LR
   the IdP session.
 - Issue ID tokens that include the required claims:
   `sub`, `given_name`, `family_name`, and `employeeHsaId`.
-- Emit reviewer/admin role information in a way that resolves to the
-  canonical app roles `Reviewer` and `Admin`. For the least friction, emit
-  those exact values on a `roles` claim.
+- Emit global role information in a way that resolves to the canonical app
+  roles `Reviewer`, `Admin`, and `PrivacyOfficer`. For the least friction,
+  emit those exact values on a `roles` claim. `PrivacyOfficer` is only for
+  GDPR erasure work and does not imply `Admin`.
 - Do not model authoring rights as IdP roles. The application derives
   authoring rights from area and specification assignments matched on
   `employeeHsaId`.
