@@ -5,6 +5,7 @@ import { ownerEntity } from '@/lib/typeorm/entities/owner'
 import { qualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 import { requirementEntity } from '@/lib/typeorm/entities/requirement'
 import { requirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
+import { requirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requirement-area-co-author'
 import { requirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 import { requirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 import { requirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
@@ -17,6 +18,7 @@ import { requirementVersionRequirementPackageEntity } from '@/lib/typeorm/entiti
 import { requirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
 import { requirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 import { riskLevelEntity } from '@/lib/typeorm/entities/risk-level'
+import { specificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
 import { specificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
 import { specificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
 import { specificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
@@ -45,6 +47,7 @@ export const sqlServerEntities = [
   qualityCharacteristicEntity,
   requirementEntity,
   requirementAreaEntity,
+  requirementAreaCoAuthorEntity,
   requirementCategoryEntity,
   requirementListColumnDefaultEntity,
   requirementsSpecificationEntity,
@@ -56,6 +59,7 @@ export const sqlServerEntities = [
   requirementVersionNormReferenceEntity,
   requirementVersionRequirementPackageEntity,
   riskLevelEntity,
+  specificationCoAuthorEntity,
   uiTerminologyEntity,
   requirementPackageEntity,
 ]
@@ -67,6 +71,7 @@ export type { OwnerEntity } from '@/lib/typeorm/entities/owner'
 export type { QualityCharacteristicEntity } from '@/lib/typeorm/entities/quality-characteristic'
 export type { RequirementEntity } from '@/lib/typeorm/entities/requirement'
 export type { RequirementAreaEntity } from '@/lib/typeorm/entities/requirement-area'
+export type { RequirementAreaCoAuthorEntity } from '@/lib/typeorm/entities/requirement-area-co-author'
 export type { RequirementCategoryEntity } from '@/lib/typeorm/entities/requirement-category'
 export type { RequirementListColumnDefaultEntity } from '@/lib/typeorm/entities/requirement-list-column-default'
 export type { RequirementPackageEntity } from '@/lib/typeorm/entities/requirement-package'
@@ -79,6 +84,7 @@ export type { RequirementVersionRequirementPackageEntity } from '@/lib/typeorm/e
 export type { RequirementsSpecificationEntity } from '@/lib/typeorm/entities/requirements-specification'
 export type { RequirementsSpecificationItemEntity } from '@/lib/typeorm/entities/requirements-specification-item'
 export type { RiskLevelEntity } from '@/lib/typeorm/entities/risk-level'
+export type { SpecificationCoAuthorEntity } from '@/lib/typeorm/entities/specification-co-author'
 export type { SpecificationImplementationTypeEntity } from '@/lib/typeorm/entities/specification-implementation-type'
 export type { SpecificationItemStatusEntity } from '@/lib/typeorm/entities/specification-item-status'
 export type { SpecificationLifecycleStatusEntity } from '@/lib/typeorm/entities/specification-lifecycle-status'
@@ -96,6 +102,7 @@ export {
   normReferenceEntity,
   ownerEntity,
   qualityCharacteristicEntity,
+  requirementAreaCoAuthorEntity,
   requirementAreaEntity,
   requirementCategoryEntity,
   requirementEntity,
@@ -110,6 +117,7 @@ export {
   requirementVersionNormReferenceEntity,
   requirementVersionRequirementPackageEntity,
   riskLevelEntity,
+  specificationCoAuthorEntity,
   specificationImplementationTypeEntity,
   specificationItemStatusEntity,
   specificationLifecycleStatusEntity,

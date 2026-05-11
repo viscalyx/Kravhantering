@@ -12,6 +12,7 @@ interface SafeErrorLogValue {
 const OPENROUTER_KEY_PATTERN = /\bsk-or-(?:v1|mgmt)-[A-Za-z0-9_-]+\b/g
 const BEARER_TOKEN_PATTERN = /\bBearer\s+[A-Za-z0-9._~+/=-]+\b/gi
 const JWT_PATTERN = /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g
+const HSA_ID_PATTERN = /\bSE\d{10}-[A-Za-z0-9_-]+\b/g
 const SECRET_ASSIGNMENT_PATTERN =
   /\b([A-Za-z0-9_.-]*(?:api[_-]?key|authorization[_-]?code|code[_-]?verifier|nonce|password|secret|state|token)[A-Za-z0-9_.-]*)\s*[:=]\s*["']?[^"',\s}]+/gi
 
@@ -28,6 +29,7 @@ export function redactSensitiveText(value: string): string {
     .replace(BEARER_TOKEN_PATTERN, 'Bearer [REDACTED]')
     .replace(OPENROUTER_KEY_PATTERN, '[OPENROUTER_KEY_REDACTED]')
     .replace(JWT_PATTERN, '[JWT_REDACTED]')
+    .replace(HSA_ID_PATTERN, '[HSA_ID_REDACTED]')
     .replace(SECRET_ASSIGNMENT_PATTERN, '$1=[REDACTED]')
 
   for (const pattern of SQL_FRAGMENT_PATTERNS) {

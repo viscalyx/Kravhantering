@@ -13,6 +13,10 @@ import {
   parseRouteParams,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import {
+  createRequestContext,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -22,7 +26,7 @@ type Params = Promise<{ id: string }>
 
 const decisionBodySchema = z
   .object({
-    decidedBy: businessTextSchema,
+    decidedBy: businessTextSchema.optional(),
     decision: z.union([
       z.literal(DEVIATION_APPROVED),
       z.literal(DEVIATION_REJECTED),
@@ -42,7 +46,14 @@ export async function POST(
   const db = await getRequestSqlServerDataSource()
 
   try {
-    await recordDecision(db, parsedParams.data.id, parsedBody.data)
+    const context = await createRequestContext(request, 'rest')
+    const actor = requireHumanActorSnapshot(context)
+    await recordDecision(db, parsedParams.data.id, {
+      decision: parsedBody.data.decision,
+      decisionMotivation: parsedBody.data.decisionMotivation,
+      decidedBy: actor.displayName,
+      decidedByHsaId: actor.hsaId,
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

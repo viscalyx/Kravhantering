@@ -1,5 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer'
 import { localizedName } from '@/lib/i18n/localized'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
   DiffSegment,
   MetadataChange,
@@ -413,6 +414,7 @@ function PdfVersionSummary({
   const requirementPackageNames = version.requirementPackages
     .map(requirementPackage => localizedName(requirementPackage, locale))
     .filter(name => name.length > 0)
+  const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
 
   return (
     <View style={[styles.versionBox, { borderColor }]}>
@@ -478,10 +480,10 @@ function PdfVersionSummary({
                 : 'No'
           }
         />
-        {version.createdBy && (
+        {createdBy && (
           <PdfMetadataItem
             label={locale === 'sv' ? 'Skapad av' : 'Created By'}
-            value={version.createdBy}
+            value={createdBy}
           />
         )}
       </View>
@@ -600,6 +602,7 @@ function PdfTimelineEntry({
   section: Extract<ReportSection, { type: 'timeline-entry' }>
 }) {
   const { entry } = section
+  const createdBy = formatActorDisplayNameForLocale(entry.createdBy, locale)
 
   return (
     <View style={styles.timelineEntry}>
@@ -609,7 +612,7 @@ function PdfTimelineEntry({
       </View>
       <View style={styles.timelineContent}>
         <Text style={styles.timelineMeta}>
-          {entry.createdBy ? `${entry.createdBy} \u00B7 ` : ''}
+          {createdBy ? `${createdBy} \u00B7 ` : ''}
           {formatTimelineDate(entry, locale)}
         </Text>
         {entry.descriptionExcerpt && (
@@ -760,6 +763,7 @@ function PdfDeviationSummary({
       ? section.riskLevel.nameSv
       : section.riskLevel.nameEn
     : null
+  const createdBy = formatActorDisplayNameForLocale(section.createdBy, locale)
   return (
     <View
       style={{
@@ -804,8 +808,8 @@ function PdfDeviationSummary({
         }}
       >
         <Text style={{ fontSize: 8, color: '#6b7280' }}>
-          {section.createdBy
-            ? `${locale === 'sv' ? 'Inlämnad av' : 'Submitted by'}: ${section.createdBy} · `
+          {createdBy
+            ? `${locale === 'sv' ? 'Inlämnad av' : 'Submitted by'}: ${createdBy} · `
             : ''}
           {new Date(section.createdAt).toLocaleDateString(locale)}
         </Text>
@@ -861,6 +865,8 @@ function PdfSuggestionCard({
   locale: string
 }) {
   const isResolved = item.resolvedAt !== null
+  const createdBy = formatActorDisplayNameForLocale(item.createdBy, locale)
+  const resolvedBy = formatActorDisplayNameForLocale(item.resolvedBy, locale)
 
   return (
     <View
@@ -884,7 +890,7 @@ function PdfSuggestionCard({
       >
         <PdfBadge color={item.status.color} label={item.status.label} />
         <Text style={{ fontSize: 7, color: '#6b7280' }}>
-          {item.createdBy ? `${item.createdBy} \u00B7 ` : ''}
+          {createdBy ? `${createdBy} \u00B7 ` : ''}
           {new Date(item.createdAt).toLocaleDateString(locale)}
         </Text>
       </View>
@@ -913,10 +919,10 @@ function PdfSuggestionCard({
           <Text style={{ fontSize: 8, color: '#4b5563' }}>
             {item.resolutionMotivation}
           </Text>
-          {(item.resolvedBy || item.resolvedAt) && (
+          {(resolvedBy || item.resolvedAt) && (
             <Text style={{ fontSize: 7, color: '#6b7280', marginTop: 2 }}>
-              {item.resolvedBy}
-              {item.resolvedBy && item.resolvedAt && ' \u00B7 '}
+              {resolvedBy}
+              {resolvedBy && item.resolvedAt && ' \u00B7 '}
               {item.resolvedAt &&
                 new Date(item.resolvedAt).toLocaleDateString(locale)}
             </Text>

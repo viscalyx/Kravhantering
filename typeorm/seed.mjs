@@ -6,9 +6,11 @@ const TABLE_ORDER = [
   'specification_lifecycle_statuses',
   'specification_responsibility_areas',
   'requirement_areas',
+  'requirement_area_co_authors',
   'requirement_categories',
   'requirement_list_column_defaults',
   'requirements_specifications',
+  'specification_co_authors',
   'specification_needs_references',
   'requirement_statuses',
   'requirement_status_transitions',
@@ -732,57 +734,86 @@ const SEED_DATA = {
     ],
   },
   quality_characteristics: {
-    columns: ['id', 'name_sv', 'name_en', 'requirement_type_id', 'parent_id'],
+    columns: [
+      'id',
+      'name_sv',
+      'name_en',
+      'requirement_type_id',
+      'parent_id',
+      'chapter_id',
+    ],
     pk: ['id'],
     rows: [
-      [1, 'Funktionell lämplighet', 'Functional suitability', 1, null],
-      [2, 'Funktionell fullständighet', 'Functional completeness', 1, 1],
-      [3, 'Funktionell korrekthet', 'Functional correctness', 1, 1],
-      [4, 'Funktionell ändamålsenlighet', 'Functional appropriateness', 1, 1],
-      [5, 'Prestandaeffektivitet', 'Performance efficiency', 2, null],
-      [6, 'Tidsbeteende', 'Time behavior', 2, 5],
-      [7, 'Resursanvändning', 'Resource utilization', 2, 5],
-      [8, 'Kapacitet', 'Capacity', 2, 5],
-      [9, 'Kompatibilitet', 'Compatibility', 2, null],
-      [10, 'Samexistens', 'Co-existence', 2, 9],
-      [11, 'Interoperabilitet', 'Interoperability', 2, 9],
-      [12, 'Interaktionsförmåga', 'Interaction capability', 2, null],
-      [13, 'Igenkännlighet', 'Appropriateness recognizability', 2, 12],
-      [14, 'Inlärningsbarhet', 'Learnability', 2, 12],
-      [15, 'Användbarhet', 'Operability', 2, 12],
-      [16, 'Skydd mot användarfel', 'User error protection', 2, 12],
-      [17, 'Engagemang', 'User engagement', 2, 12],
-      [18, 'Inkludering', 'Inclusivity', 2, 12],
-      [19, 'Hjälpmedelsanpassning', 'User assistance', 2, 12],
-      [20, 'Självbeskrivningsförmåga', 'Self-descriptiveness', 2, 12],
-      [21, 'Tillförlitlighet', 'Reliability', 2, null],
-      [22, 'Mognad', 'Maturity', 2, 21],
-      [23, 'Tillgänglighet', 'Availability', 2, 21],
-      [24, 'Feltolerans', 'Fault tolerance', 2, 21],
-      [25, 'Återställningsbarhet', 'Recoverability', 2, 21],
-      [26, 'Säkerhet', 'Security', 2, null],
-      [27, 'Konfidentialitet', 'Confidentiality', 2, 26],
-      [28, 'Integritet', 'Integrity', 2, 26],
-      [29, 'Oavvislighet', 'Non-repudiation', 2, 26],
-      [30, 'Ansvarsskyldighet', 'Accountability', 2, 26],
-      [31, 'Äkthet', 'Authenticity', 2, 26],
-      [32, 'Motståndskraft', 'Resistance', 2, 26],
-      [33, 'Underhållbarhet', 'Maintainability', 2, null],
-      [34, 'Modularitet', 'Modularity', 2, 33],
-      [35, 'Återanvändningsbarhet', 'Reusability', 2, 33],
-      [36, 'Analyserbarhet', 'Analyzability', 2, 33],
-      [37, 'Ändringsbarhet', 'Modifiability', 2, 33],
-      [38, 'Testbarhet', 'Testability', 2, 33],
-      [39, 'Flexibilitet', 'Flexibility', 2, null],
-      [40, 'Anpassningsbarhet', 'Adaptability', 2, 39],
-      [41, 'Skalbarhet', 'Scalability', 2, 39],
-      [42, 'Installerbarhet', 'Installability', 2, 39],
-      [43, 'Utbytbarhet', 'Replaceability', 2, 39],
-      [44, 'Driftsäkerhet', 'Safety', 2, null],
-      [45, 'Operativ begränsning', 'Operational constraint', 2, 44],
-      [46, 'Riskidentifiering', 'Risk identification', 2, 44],
-      [47, 'Felsäkert beteende', 'Fail safe', 2, 44],
-      [48, 'Riskvarning', 'Hazard warning', 2, 44],
+      [1, 'Funktionell lämplighet', 'Functional suitability', 1, null, '3.1'],
+      [
+        2,
+        'Funktionell fullständighet',
+        'Functional completeness',
+        1,
+        1,
+        '3.1.1',
+      ],
+      [3, 'Funktionell korrekthet', 'Functional correctness', 1, 1, '3.1.2'],
+      [
+        4,
+        'Funktionell ändamålsenlighet',
+        'Functional appropriateness',
+        1,
+        1,
+        '3.1.3',
+      ],
+      [5, 'Prestandaeffektivitet', 'Performance efficiency', 2, null, '3.2'],
+      [6, 'Tidsbeteende', 'Time behaviour', 2, 5, '3.2.1'],
+      [7, 'Resursutnyttjande', 'Resource utilization', 2, 5, '3.2.2'],
+      [8, 'Kapacitet', 'Capacity', 2, 5, '3.2.3'],
+      [9, 'Kompatibilitet', 'Compatibility', 2, null, '3.3'],
+      [10, 'Samexistens', 'Co-existence', 2, 9, '3.3.1'],
+      [11, 'Interoperabilitet', 'Interoperability', 2, 9, '3.3.2'],
+      [12, 'Interaktionsförmåga', 'Interaction capability', 2, null, '3.4'],
+      [
+        13,
+        'Igenkännbar ändamålsenlighet',
+        'Appropriateness recognizability',
+        2,
+        12,
+        '3.4.1',
+      ],
+      [14, 'Lärbarhet', 'Learnability', 2, 12, '3.4.2'],
+      [15, 'Användbar driftbarhet', 'Operability', 2, 12, '3.4.3'],
+      [16, 'Skydd mot användarfel', 'User error protection', 2, 12, '3.4.4'],
+      [17, 'Användarengagemang', 'User engagement', 2, 12, '3.4.5'],
+      [18, 'Inkluderande användning', 'Inclusivity', 2, 12, '3.4.6'],
+      [19, 'Användarstöd', 'User assistance', 2, 12, '3.4.7'],
+      [20, 'Självbeskrivande förmåga', 'Self-descriptiveness', 2, 12, '3.4.8'],
+      [21, 'Tillförlitlighet', 'Reliability', 2, null, '3.5'],
+      [22, 'Felfrihet', 'Faultlessness', 2, 21, '3.5.1'],
+      [23, 'Tillgänglighet', 'Availability', 2, 21, '3.5.2'],
+      [24, 'Feltolerans', 'Fault tolerance', 2, 21, '3.5.3'],
+      [25, 'Återställbarhet', 'Recoverability', 2, 21, '3.5.4'],
+      [26, 'Informationssäkerhet', 'Security', 2, null, '3.6'],
+      [27, 'Konfidentialitet', 'Confidentiality', 2, 26, '3.6.1'],
+      [28, 'Integritet', 'Integrity', 2, 26, '3.6.2'],
+      [29, 'Oavvislighet', 'Non-repudiation', 2, 26, '3.6.3'],
+      [30, 'Ansvarsskyldighet', 'Accountability', 2, 26, '3.6.4'],
+      [31, 'Autenticitet', 'Authenticity', 2, 26, '3.6.5'],
+      [32, 'Motståndskraft', 'Resistance', 2, 26, '3.6.6'],
+      [33, 'Underhållbarhet', 'Maintainability', 2, null, '3.7'],
+      [34, 'Modularitet', 'Modularity', 2, 33, '3.7.1'],
+      [35, 'Återanvändbarhet', 'Reusability', 2, 33, '3.7.2'],
+      [36, 'Analyserbarhet', 'Analysability', 2, 33, '3.7.3'],
+      [37, 'Ändringsbarhet', 'Modifiability', 2, 33, '3.7.4'],
+      [38, 'Testbarhet', 'Testability', 2, 33, '3.7.5'],
+      [39, 'Flexibilitet', 'Flexibility', 2, null, '3.8'],
+      [40, 'Anpassningsbarhet', 'Adaptability', 2, 39, '3.8.1'],
+      [41, 'Skalbarhet', 'Scalability', 2, 39, '3.8.2'],
+      [42, 'Installerbarhet', 'Installability', 2, 39, '3.8.3'],
+      [43, 'Utbytbarhet', 'Replaceability', 2, 39, '3.8.4'],
+      [44, 'Säkerhet mot skada', 'Safety', 2, null, '3.9'],
+      [45, 'Driftsbegränsning', 'Operational constraint', 2, 44, '3.9.1'],
+      [46, 'Riskidentifiering', 'Risk identification', 2, 44, '3.9.2'],
+      [47, 'Felsäkert beteende', 'Fail safe', 2, 44, '3.9.3'],
+      [48, 'Farovarning', 'Hazard warning', 2, 44, '3.9.4'],
+      [49, 'Säker integration', 'Safe integration', 2, 44, '3.9.5'],
     ],
   },
   requirements: {
@@ -12112,6 +12143,410 @@ const SEED_DATA = {
 // typeorm/seed-dogfood-build.mjs for the builder logic.
 const { appendDogfoodSeed } = await import('./seed-dogfood-build.mjs')
 appendDogfoodSeed(SEED_DATA)
+
+const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
+
+const HSA_BY_DISPLAY_NAME = new Map([
+  ['seed', 'SE2321000032-seed'],
+  ['seed-dogfood', 'SE2321000032-seeddogfood'],
+  ['Anna Johansson', 'SE2321000032-annaj'],
+  ['Erik Lindberg', 'SE2321000032-erikl'],
+  ['Maria Svensson', 'SE2321000032-marias'],
+  ['Sara Holm', 'SE2321000032-saraholm'],
+  ['Karl Persson', 'SE2321000032-karlpersson'],
+  ['Linnéa Bergström', 'SE2321000032-linneab'],
+  ['Oscar Nilsson', 'SE2321000032-oscarn'],
+  ['Emma Lindqvist', 'SE2321000032-emmal'],
+  ['Anna Lindqvist', 'SE2321000032-annalindq'],
+  ['Karl Nilsson', 'SE2321000032-karlnilsson'],
+  ['Maria Johansson', 'SE2321000032-mariaj'],
+  ['Erik Svensson', 'SE2321000032-eriks'],
+  ['Johan Eriksson', 'SE2321000032-johanerik'],
+  ['Kalle Svensson', 'SE2321000032-kalle1'],
+])
+
+const OWNER_HSA_BY_ID = new Map([
+  [1, 'SE2321000032-annaj'],
+  [2, 'SE2321000032-erikl'],
+  [3, 'SE2321000032-marias'],
+  [4, 'SE2321000032-kalle1'],
+  [5, 'SE2321000032-kalle2'],
+  [1001, 'SE2321000032-saraholm'],
+  [1002, 'SE2321000032-karlpersson'],
+  [1003, 'SE2321000032-linneab'],
+  [1004, 'SE2321000032-oscarn'],
+  [1005, 'SE2321000032-emmal'],
+])
+
+const SPEC_RESPONSIBLE_BY_ID = new Map([
+  [1, { displayName: 'Kalle Svensson', hsaId: 'SE2321000032-kalle1' }],
+  [2, { displayName: 'Kalle Svensson', hsaId: 'SE2321000032-kalle2' }],
+  [3, { displayName: 'Maria Svensson', hsaId: 'SE2321000032-marias' }],
+  [4, { displayName: 'Sara Holm', hsaId: 'SE2321000032-saraholm' }],
+  [5, { displayName: 'Karl Persson', hsaId: 'SE2321000032-karlpersson' }],
+  [6, { displayName: 'Linnéa Bergström', hsaId: 'SE2321000032-linneab' }],
+  [7, { displayName: 'Oscar Nilsson', hsaId: 'SE2321000032-oscarn' }],
+  [8, { displayName: 'Emma Lindqvist', hsaId: 'SE2321000032-emmal' }],
+  [9, { displayName: 'Anna Johansson', hsaId: 'SE2321000032-annaj' }],
+  [10, { displayName: 'Erik Lindberg', hsaId: 'SE2321000032-erikl' }],
+  [11, { displayName: 'Maria Johansson', hsaId: 'SE2321000032-mariaj' }],
+  [1001, { displayName: 'Sara Holm', hsaId: 'SE2321000032-saraholm' }],
+  [1002, { displayName: 'Kalle Svensson', hsaId: 'SE2321000032-kalle2' }],
+])
+
+function seedTable(name) {
+  const table = SEED_DATA[name]
+  if (!table) throw new Error(`Privacy seed: missing table '${name}'`)
+  return table
+}
+
+function ensureColumn(table, columnName, valueForRow) {
+  if (table.columns.includes(columnName)) return
+  table.columns.push(columnName)
+  for (const row of table.rows) {
+    row.push(valueForRow(row, table))
+  }
+}
+
+function ensureSeedRow(table, row) {
+  const pkIndexes = table.pk.map(pkColumn => table.columns.indexOf(pkColumn))
+  const matches = existing =>
+    pkIndexes.every(index => existing[index] === row[index])
+  if (!table.rows.some(matches)) table.rows.push(row)
+}
+
+function seedRowFromColumns(table, values) {
+  return table.columns.map(column => values[column] ?? null)
+}
+
+function setSeedRowValues(table, matchColumn, matchValue, values) {
+  const matchIndex = table.columns.indexOf(matchColumn)
+  if (matchIndex < 0) {
+    throw new Error(`Privacy seed: table lacks match column '${matchColumn}'`)
+  }
+  const row = table.rows.find(candidate => candidate[matchIndex] === matchValue)
+  if (!row) {
+    throw new Error(
+      `Privacy seed: missing row where '${matchColumn}' is '${matchValue}'`,
+    )
+  }
+  for (const [column, value] of Object.entries(values)) {
+    const index = table.columns.indexOf(column)
+    if (index < 0) {
+      throw new Error(`Privacy seed: table lacks column '${column}'`)
+    }
+    row[index] = value
+  }
+}
+
+function generatedHsaId(value) {
+  const text = String(value ?? 'seed')
+  let hash = 0x811c9dc5
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return `SE2321000032-${hash.toString(36).slice(0, 18)}`
+}
+
+function hsaForDisplayName(displayName) {
+  if (displayName == null || displayName === '') return null
+  return HSA_BY_DISPLAY_NAME.get(displayName) ?? generatedHsaId(displayName)
+}
+
+function addHsaColumnForDisplay(tableName, displayColumn, hsaColumn) {
+  const table = seedTable(tableName)
+  const displayIndex = table.columns.indexOf(displayColumn)
+  if (displayIndex < 0) {
+    throw new Error(
+      `Privacy seed: table '${tableName}' lacks display column '${displayColumn}'`,
+    )
+  }
+  ensureColumn(table, hsaColumn, row => hsaForDisplayName(row[displayIndex]))
+}
+
+function addDuplicateNameImprovementSuggestionSeed() {
+  const suggestions = seedTable('improvement_suggestions')
+  ensureSeedRow(
+    suggestions,
+    seedRowFromColumns(suggestions, {
+      content:
+        'Privacy seed proves duplicate display names are matched by HSA-ID.',
+      created_at: PRIVACY_SEED_TS,
+      created_by: 'seed',
+      created_by_hsa_id: 'SE2321000032-seed',
+      id: 990001,
+      is_review_requested: 1,
+      requirement_id: 1,
+      requirement_version_id: 1,
+      resolution: 1,
+      resolution_motivation:
+        'Resolved by the second duplicate-name HSA identity.',
+      resolved_at: PRIVACY_SEED_TS,
+      resolved_by: 'Kalle Svensson',
+      resolved_by_hsa_id: 'SE2321000032-kalle2',
+      review_requested_at: PRIVACY_SEED_TS,
+      updated_at: PRIVACY_SEED_TS,
+    }),
+  )
+}
+
+function addLinneaPrivacyExerciseSeed() {
+  setSeedRowValues(seedTable('requirement_versions'), 'id', 3, {
+    created_by: 'Linnéa Bergström',
+    created_by_hsa_id: 'SE2321000032-linneab',
+  })
+
+  const suggestions = seedTable('improvement_suggestions')
+  ensureSeedRow(
+    suggestions,
+    seedRowFromColumns(suggestions, {
+      content:
+        'Privacy seed: submitted improvement suggestion for HSA-ID erasure preview coverage.',
+      created_at: PRIVACY_SEED_TS,
+      created_by: 'Linnéa Bergström',
+      created_by_hsa_id: 'SE2321000032-linneab',
+      id: 990002,
+      is_review_requested: 1,
+      requirement_id: 2,
+      requirement_version_id: 3,
+      review_requested_at: PRIVACY_SEED_TS,
+      updated_at: PRIVACY_SEED_TS,
+    }),
+  )
+  ensureSeedRow(
+    suggestions,
+    seedRowFromColumns(suggestions, {
+      content:
+        'Privacy seed: improvement suggestion resolved by the Linnea HSA identity.',
+      created_at: PRIVACY_SEED_TS,
+      created_by: 'seed',
+      created_by_hsa_id: 'SE2321000032-seed',
+      id: 990003,
+      is_review_requested: 1,
+      requirement_id: 3,
+      requirement_version_id: 4,
+      resolution: 1,
+      resolution_motivation:
+        'Approved by the Linnea HSA identity for privacy preview coverage.',
+      resolved_at: PRIVACY_SEED_TS,
+      resolved_by: 'Linnéa Bergström',
+      resolved_by_hsa_id: 'SE2321000032-linneab',
+      review_requested_at: PRIVACY_SEED_TS,
+      updated_at: PRIVACY_SEED_TS,
+    }),
+  )
+
+  const deviations = seedTable('deviations')
+  ensureSeedRow(
+    deviations,
+    seedRowFromColumns(deviations, {
+      created_at: PRIVACY_SEED_TS,
+      created_by: 'Linnéa Bergström',
+      created_by_hsa_id: 'SE2321000032-linneab',
+      decided_at: PRIVACY_SEED_TS,
+      decided_by: 'Linnéa Bergström',
+      decided_by_hsa_id: 'SE2321000032-linneab',
+      decision: 1,
+      decision_motivation:
+        'Approved by the Linnea HSA identity for privacy preview coverage.',
+      id: 990001,
+      is_review_requested: 1,
+      motivation:
+        'Privacy seed deviation used to verify HSA-ID based decision erasure.',
+      specification_item_id: 1,
+      updated_at: PRIVACY_SEED_TS,
+    }),
+  )
+
+  const localDeviations = seedTable(
+    'specification_local_requirement_deviations',
+  )
+  ensureSeedRow(
+    localDeviations,
+    seedRowFromColumns(localDeviations, {
+      created_at: PRIVACY_SEED_TS,
+      created_by: 'Linnéa Bergström',
+      created_by_hsa_id: 'SE2321000032-linneab',
+      decided_at: PRIVACY_SEED_TS,
+      decided_by: 'Linnéa Bergström',
+      decided_by_hsa_id: 'SE2321000032-linneab',
+      decision: 2,
+      decision_motivation:
+        'Rejected by the Linnea HSA identity for privacy preview coverage.',
+      id: 990001,
+      is_review_requested: 1,
+      motivation:
+        'Privacy seed local deviation used to verify HSA-ID based decision erasure.',
+      specification_local_requirement_id: 2,
+      updated_at: PRIVACY_SEED_TS,
+    }),
+  )
+}
+
+function applyPrivacyIdentitySeed() {
+  const owners = seedTable('owners')
+  ensureColumn(owners, 'hsa_id', row => OWNER_HSA_BY_ID.get(row[0]) ?? null)
+  ensureSeedRow(owners, [
+    4,
+    'Kalle',
+    'Svensson',
+    'kalle.svensson.one@example.com',
+    PRIVACY_SEED_TS,
+    PRIVACY_SEED_TS,
+    'SE2321000032-kalle1',
+  ])
+  ensureSeedRow(owners, [
+    5,
+    'Kalle',
+    'Svensson',
+    'kalle.svensson.two@example.com',
+    PRIVACY_SEED_TS,
+    PRIVACY_SEED_TS,
+    'SE2321000032-kalle2',
+  ])
+
+  addHsaColumnForDisplay(
+    'requirement_versions',
+    'created_by',
+    'created_by_hsa_id',
+  )
+  addHsaColumnForDisplay(
+    'specification_local_requirement_deviations',
+    'created_by',
+    'created_by_hsa_id',
+  )
+  addHsaColumnForDisplay(
+    'specification_local_requirement_deviations',
+    'decided_by',
+    'decided_by_hsa_id',
+  )
+  addHsaColumnForDisplay('deviations', 'created_by', 'created_by_hsa_id')
+  addHsaColumnForDisplay('deviations', 'decided_by', 'decided_by_hsa_id')
+  addHsaColumnForDisplay(
+    'improvement_suggestions',
+    'created_by',
+    'created_by_hsa_id',
+  )
+  addHsaColumnForDisplay(
+    'improvement_suggestions',
+    'resolved_by',
+    'resolved_by_hsa_id',
+  )
+  addDuplicateNameImprovementSuggestionSeed()
+  addLinneaPrivacyExerciseSeed()
+
+  const specifications = seedTable('requirements_specifications')
+  const specIdIndex = specifications.columns.indexOf('id')
+  ensureColumn(
+    specifications,
+    'responsible_hsa_id',
+    row =>
+      SPEC_RESPONSIBLE_BY_ID.get(row[specIdIndex])?.hsaId ??
+      'SE2321000032-seed',
+  )
+  ensureColumn(
+    specifications,
+    'responsible_display_name',
+    row => SPEC_RESPONSIBLE_BY_ID.get(row[specIdIndex])?.displayName ?? 'seed',
+  )
+  ensureColumn(specifications, 'can_responsible_generate_ai', () => 0)
+
+  SEED_DATA.requirement_area_co_authors = {
+    columns: [
+      'area_id',
+      'hsa_id',
+      'display_name',
+      'can_generate_ai',
+      'created_at',
+      'created_by_hsa_id',
+      'created_by_display_name',
+    ],
+    pk: ['area_id', 'hsa_id'],
+    rows: [
+      [
+        1,
+        'SE2321000032-kalle1',
+        'Kalle Svensson',
+        1,
+        PRIVACY_SEED_TS,
+        'SE2321000032-seed',
+        'seed',
+      ],
+      [
+        2,
+        'SE2321000032-kalle2',
+        'Kalle Svensson',
+        0,
+        PRIVACY_SEED_TS,
+        'SE2321000032-seed',
+        'seed',
+      ],
+      [
+        1001,
+        'SE2321000032-linneab',
+        'Linnéa Bergström',
+        1,
+        PRIVACY_SEED_TS,
+        'SE2321000032-linneab',
+        'Linnéa Bergström',
+      ],
+    ],
+  }
+
+  SEED_DATA.specification_co_authors = {
+    columns: [
+      'specification_id',
+      'hsa_id',
+      'display_name',
+      'can_generate_ai',
+      'created_at',
+      'created_by_hsa_id',
+      'created_by_display_name',
+    ],
+    pk: ['specification_id', 'hsa_id'],
+    rows: [
+      [
+        1,
+        'SE2321000032-kalle1',
+        'Kalle Svensson',
+        1,
+        PRIVACY_SEED_TS,
+        'SE2321000032-seed',
+        'seed',
+      ],
+      [
+        2,
+        'SE2321000032-kalle2',
+        'Kalle Svensson',
+        0,
+        PRIVACY_SEED_TS,
+        'SE2321000032-seed',
+        'seed',
+      ],
+      [
+        1001,
+        'SE2321000032-saraholm',
+        'Sara Holm',
+        1,
+        PRIVACY_SEED_TS,
+        'SE2321000032-seeddogfood',
+        'seed-dogfood',
+      ],
+      [
+        6,
+        'SE2321000032-linneab',
+        'Linnéa Bergström',
+        1,
+        PRIVACY_SEED_TS,
+        'SE2321000032-linneab',
+        'Linnéa Bergström',
+      ],
+    ],
+  }
+}
+
+applyPrivacyIdentitySeed()
 
 export function seedPositionDetail({
   table,

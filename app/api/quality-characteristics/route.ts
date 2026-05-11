@@ -19,8 +19,16 @@ const qualityCharacteristicsQuerySchema = z
   })
   .strict()
 
+const chapterIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(/^\d+(?:\.\d+)*$/, 'Expected an ISO chapter number')
+
 const qualityCharacteristicCreateSchema = z
   .object({
+    chapterId: chapterIdSchema,
     nameEn: boundedDbStringSchema,
     nameSv: boundedDbStringSchema,
     parentId: positiveIntegerSchema.nullable().optional(),

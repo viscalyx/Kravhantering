@@ -30,6 +30,7 @@ const QUALITY_CHARACTERISTICS_HELP: HelpContent = {
 }
 
 interface TypeCategory {
+  chapterId: string
   id: number
   nameEn: string
   nameSv: string
@@ -38,6 +39,7 @@ interface TypeCategory {
 }
 
 interface TypeCategoryForm {
+  chapterId: string
   nameEn: string
   nameSv: string
   parentId: string
@@ -51,6 +53,7 @@ interface Type {
 }
 
 const getInitialForm = (): TypeCategoryForm => ({
+  chapterId: '',
   nameEn: '',
   nameSv: '',
   parentId: '',
@@ -58,6 +61,7 @@ const getInitialForm = (): TypeCategoryForm => ({
 })
 
 const toForm = (category: TypeCategory): TypeCategoryForm => ({
+  chapterId: category.chapterId,
   nameEn: category.nameEn,
   nameSv: category.nameSv,
   parentId: category.parentId?.toString() ?? '',
@@ -65,6 +69,7 @@ const toForm = (category: TypeCategory): TypeCategoryForm => ({
 })
 
 const toPayload = (form: TypeCategoryForm) => ({
+  chapterId: form.chapterId,
   nameSv: form.nameSv,
   nameEn: form.nameEn,
   requirementTypeId: Number(form.requirementTypeId),
@@ -73,6 +78,25 @@ const toPayload = (form: TypeCategoryForm) => ({
 
 const inputClassName =
   'w-full rounded-xl border bg-white dark:bg-secondary-800/50 py-2.5 px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-500 transition-all duration-200'
+
+function compareChapterIds(a: string, b: string) {
+  const left = a.split('.').map(part => Number(part))
+  const right = b.split('.').map(part => Number(part))
+  const length = Math.max(left.length, right.length)
+  for (let index = 0; index < length; index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
+function ChapterBadge({ chapterId }: { chapterId: string }) {
+  return (
+    <span className="inline-flex shrink-0 rounded border border-primary-200 bg-primary-50 px-1.5 py-0.5 font-mono text-[0.7rem] leading-none text-primary-700 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
+      {chapterId}
+    </span>
+  )
+}
 
 export default function QualityCharacteristicsClient() {
   useHelpContent(QUALITY_CHARACTERISTICS_HELP)
@@ -164,15 +188,17 @@ export default function QualityCharacteristicsClient() {
     }
   }, [errorFallback, getCaughtErrorMessage, presentMutationError])
 
-  const parentOptions = controller.items.filter(
-    category =>
-      category.parentId === null &&
-      category.id !== controller.editId &&
-      (controller.form.requirementTypeId
-        ? category.requirementTypeId ===
-          Number(controller.form.requirementTypeId)
-        : true),
-  )
+  const parentOptions = controller.items
+    .filter(
+      category =>
+        category.parentId === null &&
+        category.id !== controller.editId &&
+        (controller.form.requirementTypeId
+          ? category.requirementTypeId ===
+            Number(controller.form.requirementTypeId)
+          : true),
+    )
+    .sort((a, b) => compareChapterIds(a.chapterId, b.chapterId))
   const loading = controller.loading || typesLoading
   const renderEditActionContent = (iconClassName: string) =>
     controller.submitting ? (
@@ -255,6 +281,29 @@ export default function QualityCharacteristicsClient() {
               <h2 className="text-lg font-semibold">
                 {controller.editId ? tc('edit') : tc('create')}
               </h2>
+              <div>
+                <FieldLabelWithHelp
+                  help={t('chapterIdHelp')}
+                  htmlFor="qc-chapter-id"
+                  label={t('chapterId')}
+                  required
+                />
+                <input
+                  className={inputClassName}
+                  disabled={controller.submitting}
+                  id="qc-chapter-id"
+                  onChange={event =>
+                    controller.setForm(previousForm => ({
+                      ...previousForm,
+                      chapterId: event.target.value,
+                    }))
+                  }
+                  pattern="\d+(?:\.\d+)*"
+                  placeholder="3.1.1"
+                  required
+                  value={controller.form.chapterId}
+                />
+              </div>
               <div>
                 <FieldLabelWithHelp
                   help={t('nameSvHelp')}
@@ -396,33 +445,39 @@ export default function QualityCharacteristicsClient() {
             })}
           >
             {types.map(type => {
-              const topLevel = controller.items.filter(
-                category =>
-                  category.requirementTypeId === type.id && !category.parentId,
-              )
+              const topLevel = controller.items
+                .filter(
+                  category =>
+                    category.requirementTypeId === type.id &&
+                    !category.parentId,
+                )
+                .sort((a, b) => compareChapterIds(a.chapterId, b.chapterId))
               return (
                 <div key={type.id}>
                   <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100 mb-4">
                     {getTypeName(type)}
                   </h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
                     {topLevel.map(parent => {
                       const parentDeleting = controller.deletingIds.has(
                         parent.id,
                       )
                       const parentActionDisabled =
                         controller.submitting || parentDeleting
-                      const children = controller.items.filter(
-                        category => category.parentId === parent.id,
-                      )
+                      const children = controller.items
+                        .filter(category => category.parentId === parent.id)
+                        .sort((a, b) =>
+                          compareChapterIds(a.chapterId, b.chapterId),
+                        )
                       return (
                         <div
                           className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border shadow-sm p-5 transition-all duration-200 hover:shadow-md"
                           key={parent.id}
                         >
                           <div className="flex items-start justify-between gap-2 mb-3">
-                            <h3 className="text-sm font-semibold text-primary-700 dark:text-primary-300">
-                              {getName(parent)}
+                            <h3 className="flex min-w-0 items-start gap-2 text-sm font-semibold leading-snug text-primary-700 dark:text-primary-300">
+                              <ChapterBadge chapterId={parent.chapterId} />
+                              <span className="min-w-0">{getName(parent)}</span>
                             </h3>
                             <span className="flex shrink-0 gap-1">
                               <button
@@ -479,11 +534,18 @@ export default function QualityCharacteristicsClient() {
 
                                 return (
                                   <li
-                                    className="group text-sm text-secondary-700 dark:text-secondary-300 pl-3 border-l-2 border-primary-200 dark:border-primary-800 flex items-center justify-between gap-1"
+                                    className="group relative min-h-11 border-l-2 border-primary-200 py-1 pl-3 pr-1 text-sm text-secondary-700 dark:border-primary-800 dark:text-secondary-300"
                                     key={child.id}
                                   >
-                                    <span>{getName(child)}</span>
-                                    <span className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                    <span className="flex min-w-0 items-start gap-2">
+                                      <ChapterBadge
+                                        chapterId={child.chapterId}
+                                      />
+                                      <span className="min-w-0 leading-snug">
+                                        {getName(child)}
+                                      </span>
+                                    </span>
+                                    <span className="absolute right-0 top-1/2 flex shrink-0 -translate-y-1/2 gap-0.5 rounded bg-white/95 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 dark:bg-secondary-900/95">
                                       <button
                                         className="text-primary-700 dark:text-primary-300 hover:text-primary-900 dark:hover:text-primary-100 min-h-11 min-w-11 inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary-400/50 focus-visible:ring-offset-2 rounded"
                                         {...devMarker({

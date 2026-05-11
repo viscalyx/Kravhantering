@@ -16,8 +16,10 @@ export const DEVIATION_REJECTED = 2
 export interface DeviationRow {
   createdAt: string
   createdBy: string | null
+  createdByHsaId: string | null
   decidedAt: string | null
   decidedBy: string | null
+  decidedByHsaId: string | null
   decision: number | null
   decisionMotivation: string | null
   id: number
@@ -83,8 +85,12 @@ function mapSqlServerDeviationRow(row: Record<string, unknown>): DeviationRow {
   return {
     createdAt: toIsoString(row.createdAt) ?? new Date(0).toISOString(),
     createdBy: row.createdBy == null ? null : String(row.createdBy),
+    createdByHsaId:
+      row.createdByHsaId == null ? null : String(row.createdByHsaId),
     decidedAt: toIsoString(row.decidedAt),
     decidedBy: row.decidedBy == null ? null : String(row.decidedBy),
+    decidedByHsaId:
+      row.decidedByHsaId == null ? null : String(row.decidedByHsaId),
     decision: toOptionalNumber(row.decision),
     decisionMotivation:
       row.decisionMotivation == null ? null : String(row.decisionMotivation),
@@ -345,6 +351,7 @@ export async function createDeviation(
     specificationItemId: number
     motivation: string
     createdBy?: string | null
+    createdByHsaId?: string | null
   },
 ): Promise<{ id: number }> {
   if (!data.motivation.trim()) {
@@ -373,15 +380,17 @@ export async function createDeviation(
         specification_item_id,
         motivation,
         created_by,
+        created_by_hsa_id,
         created_at
       )
       OUTPUT INSERTED.id AS id
-      VALUES (@0, @1, @2, @3)
+      VALUES (@0, @1, @2, @3, @4)
     `,
     [
       data.specificationItemId,
       data.motivation.trim(),
       data.createdBy ?? null,
+      data.createdByHsaId ?? null,
       now,
     ],
   )) as Array<Record<string, unknown>>
@@ -432,6 +441,7 @@ export async function createSpecificationLocalDeviation(
   db: SqlServerDatabase,
   data: {
     createdBy?: string | null
+    createdByHsaId?: string | null
     motivation: string
     specificationLocalRequirementId: number
   },
@@ -462,15 +472,17 @@ export async function createSpecificationLocalDeviation(
         specification_local_requirement_id,
         motivation,
         created_by,
+        created_by_hsa_id,
         created_at
       )
       OUTPUT INSERTED.id AS id
-      VALUES (@0, @1, @2, @3)
+      VALUES (@0, @1, @2, @3, @4)
     `,
     [
       data.specificationLocalRequirementId,
       data.motivation.trim(),
       data.createdBy ?? null,
+      data.createdByHsaId ?? null,
       now,
     ],
   )) as Array<Record<string, unknown>>
@@ -482,6 +494,7 @@ export async function createDeviationForItemRef(
   db: SqlServerDatabase,
   data: {
     createdBy?: string | null
+    createdByHsaId?: string | null
     itemRef: string
     motivation: string
   },
@@ -494,6 +507,7 @@ export async function createDeviationForItemRef(
   if (parsed.kind === 'library') {
     return createDeviation(db, {
       createdBy: data.createdBy,
+      createdByHsaId: data.createdByHsaId,
       motivation: data.motivation,
       specificationItemId: parsed.id,
     })
@@ -501,6 +515,7 @@ export async function createDeviationForItemRef(
 
   return createSpecificationLocalDeviation(db, {
     createdBy: data.createdBy,
+    createdByHsaId: data.createdByHsaId,
     motivation: data.motivation,
     specificationLocalRequirementId: parsed.id,
   })
@@ -553,7 +568,11 @@ export async function getSpecificationLocalDeviation(
 export async function updateDeviation(
   db: SqlServerDatabase,
   deviationId: number,
-  data: { motivation?: string; createdBy?: string | null },
+  data: {
+    createdBy?: string | null
+    createdByHsaId?: string | null
+    motivation?: string
+  },
 ): Promise<void> {
   const existing = await findSqlServerDeviationState(db, deviationId)
 
@@ -586,10 +605,17 @@ export async function updateDeviation(
           SET
             motivation = @0,
             created_by = @1,
-            updated_at = @2
-          WHERE id = @3
+            created_by_hsa_id = @2,
+            updated_at = @3
+          WHERE id = @4
         `,
-        [data.motivation.trim(), data.createdBy, now, deviationId],
+        [
+          data.motivation.trim(),
+          data.createdBy,
+          data.createdByHsaId ?? null,
+          now,
+          deviationId,
+        ],
       )
     } else {
       await db.query(
@@ -612,10 +638,11 @@ export async function updateDeviation(
         UPDATE deviations
         SET
           created_by = @0,
-          updated_at = @1
-        WHERE id = @2
+          created_by_hsa_id = @1,
+          updated_at = @2
+        WHERE id = @3
       `,
-      [data.createdBy, now, deviationId],
+      [data.createdBy, data.createdByHsaId ?? null, now, deviationId],
     )
     return
   }
@@ -638,6 +665,7 @@ export async function recordDecision(
     decision: number
     decisionMotivation: string
     decidedBy: string
+    decidedByHsaId: string
   },
 ): Promise<void> {
   if (
@@ -681,14 +709,16 @@ export async function recordDecision(
         decision = @0,
         decision_motivation = @1,
         decided_by = @2,
-        decided_at = @3,
-        updated_at = @3
-      WHERE id = @4
+        decided_by_hsa_id = @3,
+        decided_at = @4,
+        updated_at = @4
+      WHERE id = @5
     `,
     [
       data.decision,
       data.decisionMotivation.trim(),
       data.decidedBy.trim(),
+      data.decidedByHsaId,
       now,
       deviationId,
     ],
@@ -725,7 +755,11 @@ export async function deleteDeviation(
 export async function updateSpecificationLocalDeviation(
   db: SqlServerDatabase,
   deviationId: number,
-  data: { motivation?: string; createdBy?: string | null },
+  data: {
+    createdBy?: string | null
+    createdByHsaId?: string | null
+    motivation?: string
+  },
 ): Promise<void> {
   const existing = await findSqlServerSpecificationLocalDeviationState(
     db,
@@ -763,10 +797,17 @@ export async function updateSpecificationLocalDeviation(
           SET
             motivation = @0,
             created_by = @1,
-            updated_at = @2
-          WHERE id = @3
+            created_by_hsa_id = @2,
+            updated_at = @3
+          WHERE id = @4
         `,
-        [data.motivation.trim(), data.createdBy, now, deviationId],
+        [
+          data.motivation.trim(),
+          data.createdBy,
+          data.createdByHsaId ?? null,
+          now,
+          deviationId,
+        ],
       )
     } else {
       await db.query(
@@ -789,10 +830,11 @@ export async function updateSpecificationLocalDeviation(
         UPDATE specification_local_requirement_deviations
         SET
           created_by = @0,
-          updated_at = @1
-        WHERE id = @2
+          created_by_hsa_id = @1,
+          updated_at = @2
+        WHERE id = @3
       `,
-      [data.createdBy, now, deviationId],
+      [data.createdBy, data.createdByHsaId ?? null, now, deviationId],
     )
     return
   }
@@ -815,6 +857,7 @@ export async function recordSpecificationLocalDecision(
     decision: number
     decisionMotivation: string
     decidedBy: string
+    decidedByHsaId: string
   },
 ): Promise<void> {
   if (
@@ -863,14 +906,16 @@ export async function recordSpecificationLocalDecision(
         decision = @0,
         decision_motivation = @1,
         decided_by = @2,
-        decided_at = @3,
-        updated_at = @3
-      WHERE id = @4
+        decided_by_hsa_id = @3,
+        decided_at = @4,
+        updated_at = @4
+      WHERE id = @5
     `,
     [
       data.decision,
       data.decisionMotivation.trim(),
       data.decidedBy.trim(),
+      data.decidedByHsaId,
       now,
       deviationId,
     ],

@@ -2,8 +2,9 @@ import type { SqlServerDatabase } from '@/lib/db'
 import { type OwnerEntity, ownerEntity } from '@/lib/typeorm/entities'
 
 export interface Owner {
-  email: string
+  email: string | null
   firstName: string
+  hsaId: string | null
   id: number
   lastName: string
 }
@@ -14,11 +15,12 @@ export interface PersistedOwner extends Owner {
 }
 
 function mapOwnerRecord(
-  owner: Pick<OwnerEntity, 'email' | 'firstName' | 'id' | 'lastName'>,
+  owner: Pick<OwnerEntity, 'email' | 'firstName' | 'hsaId' | 'id' | 'lastName'>,
 ): Owner {
   return {
     email: owner.email,
     firstName: owner.firstName,
+    hsaId: owner.hsaId,
     id: owner.id,
     lastName: owner.lastName,
   }
@@ -52,7 +54,12 @@ export async function getOwnerById(
 
 export async function createOwner(
   db: SqlServerDatabase,
-  data: { firstName: string; lastName: string; email: string },
+  data: {
+    email: string | null
+    firstName: string
+    hsaId: string
+    lastName: string
+  },
 ): Promise<PersistedOwner> {
   const repository = db.getRepository(ownerEntity)
   const now = new Date()
@@ -61,6 +68,7 @@ export async function createOwner(
       createdAt: now,
       email: data.email,
       firstName: data.firstName,
+      hsaId: data.hsaId,
       lastName: data.lastName,
       updatedAt: now,
     }),
@@ -71,7 +79,12 @@ export async function createOwner(
 export async function updateOwner(
   db: SqlServerDatabase,
   id: number,
-  data: { firstName?: string; lastName?: string; email?: string },
+  data: {
+    email?: string | null
+    firstName?: string
+    hsaId?: string | null
+    lastName?: string
+  },
 ): Promise<Owner | null> {
   const repository = db.getRepository(ownerEntity)
   const result = await repository.update(id, {

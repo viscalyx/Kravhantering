@@ -4,8 +4,10 @@ import type { RequirementsSpecificationItemEntity } from '@/lib/typeorm/entities
 export interface DeviationEntity {
   createdAt: Date
   createdBy: string | null
+  createdByHsaId: string | null
   decidedAt: Date | null
   decidedBy: string | null
+  decidedByHsaId: string | null
   decision: number | null
   decisionMotivation: string | null
   id: number
@@ -39,11 +41,23 @@ export const deviationEntity = new EntitySchema<DeviationEntity>({
       length: 'MAX',
       nullable: true,
     },
+    decidedByHsaId: {
+      name: 'decided_by_hsa_id',
+      type: 'nvarchar',
+      length: 64,
+      nullable: true,
+    },
     decidedAt: { name: 'decided_at', type: 'datetime2', nullable: true },
     createdBy: {
       name: 'created_by',
       type: 'nvarchar',
       length: 'MAX',
+      nullable: true,
+    },
+    createdByHsaId: {
+      name: 'created_by_hsa_id',
+      type: 'nvarchar',
+      length: 64,
       nullable: true,
     },
     createdAt: { name: 'created_at', type: 'datetime2' },
@@ -58,6 +72,14 @@ export const deviationEntity = new EntitySchema<DeviationEntity>({
     {
       name: 'idx_deviations_specification_item_id',
       columns: ['specificationItem'],
+    },
+    {
+      name: 'idx_deviations_created_by_hsa_id',
+      columns: ['createdByHsaId'],
+    },
+    {
+      name: 'idx_deviations_decided_by_hsa_id',
+      columns: ['decidedByHsaId'],
     },
   ],
   relations: {

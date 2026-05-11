@@ -269,3 +269,5 @@ tests/quality/spec_audits
 devcontainer-lock.json
 
 .npm-cache
+
+.playwright-mcp

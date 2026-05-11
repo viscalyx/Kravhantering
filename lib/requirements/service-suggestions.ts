@@ -12,7 +12,10 @@ import {
 } from '@/lib/dal/improvement-suggestions'
 import { getRequirementByUniqueId } from '@/lib/dal/requirements'
 import type { SqlServerDatabase } from '@/lib/db'
-import type { AuthorizationService } from '@/lib/requirements/auth'
+import {
+  type AuthorizationService,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type { RequirementsLogger } from '@/lib/requirements/logging'
 import { recordHighRiskMutationSucceeded } from '@/lib/requirements/security-audit'
@@ -139,13 +142,12 @@ export function createSuggestionWorkflow({
             if (!trimmedContent) {
               throw validationError('Content is required')
             }
+            const actor = requireHumanActorSnapshot(context)
             const result = await createSuggestion(db, {
               requirementId: input.requirementId,
               content: trimmedContent,
-              createdBy:
-                input.createdBy === null
-                  ? null
-                  : (input.createdBy ?? context.actor.id ?? null),
+              createdBy: actor.displayName,
+              createdByHsaId: actor.hsaId,
               requirementVersionId: input.requirementVersionId ?? null,
             })
             const summary =
@@ -237,14 +239,12 @@ export function createSuggestionWorkflow({
             if (!trimmedMotivation) {
               throw validationError('Resolution motivation is required')
             }
-            const resolvedBy = input.resolvedBy ?? context.actor.id ?? undefined
-            if (!resolvedBy) {
-              throw validationError('Resolved-by is required')
-            }
+            const actor = requireHumanActorSnapshot(context)
             await recordResolution(db, input.suggestionId, {
               resolution,
               resolutionMotivation: trimmedMotivation,
-              resolvedBy,
+              resolvedBy: actor.displayName,
+              resolvedByHsaId: actor.hsaId,
             })
             recordHighRiskMutationSucceeded(context, {
               action: 'suggestion.resolution.recorded',

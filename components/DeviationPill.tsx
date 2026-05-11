@@ -4,6 +4,7 @@ import { CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { formatActorDisplayName } from '@/lib/privacy/display-name'
 
 interface DeviationData {
   createdAt: string
@@ -30,6 +31,15 @@ function DeviationPillContent({
 }: DeviationPillProps) {
   const format = useFormatter()
   const t = useTranslations('deviation')
+  const tc = useTranslations('common')
+  const createdBy = formatActorDisplayName(
+    deviation.createdBy,
+    tc('anonymousUser'),
+  )
+  const decidedBy = formatActorDisplayName(
+    deviation.decidedBy,
+    tc('anonymousUser'),
+  )
   const isDecided = deviation.decision !== null
   const isApproved = deviation.decision === 1
 
@@ -94,8 +104,8 @@ function DeviationPillContent({
         {deviation.motivation}
       </p>
       <p className="text-xs text-secondary-500 dark:text-secondary-400">
-        {deviation.createdBy && <span>{deviation.createdBy}</span>}
-        {deviation.createdBy && deviation.createdAt && <span> · </span>}
+        {createdBy && <span>{createdBy}</span>}
+        {createdBy && deviation.createdAt && <span> · </span>}
         {deviation.createdAt && (
           <span>
             {format.dateTime(new Date(deviation.createdAt), {
@@ -125,8 +135,8 @@ function DeviationPillContent({
             </p>
           )}
           <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            {deviation.decidedBy && <span>{deviation.decidedBy}</span>}
-            {deviation.decidedBy && deviation.decidedAt && <span> · </span>}
+            {decidedBy && <span>{decidedBy}</span>}
+            {decidedBy && deviation.decidedAt && <span> · </span>}
             {deviation.decidedAt && (
               <span>
                 {format.dateTime(new Date(deviation.decidedAt), {

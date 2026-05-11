@@ -19,6 +19,7 @@ import {
   createDefaultAuthorizationService,
   type RequestContext,
   type RequirementsAction,
+  requireHumanActorSnapshot,
 } from '@/lib/requirements/auth'
 import { notFoundError, validationError } from '@/lib/requirements/errors'
 import type {
@@ -559,10 +560,12 @@ export function createRequirementsService(
             if (!trimmedMotivation) {
               throw validationError('Motivation is required')
             }
+            const actor = requireHumanActorSnapshot(context)
             const result = await createDeviation(db, {
               specificationItemId: input.specificationItemId,
               motivation: trimmedMotivation,
-              createdBy: context.actor.id,
+              createdBy: actor.displayName,
+              createdByHsaId: actor.hsaId,
             })
             const summary =
               locale === 'sv'
@@ -617,15 +620,12 @@ export function createRequirementsService(
             ) {
               throw validationError('Invalid decision value')
             }
-            if (!context.actor.id) {
-              throw validationError(
-                'Authenticated actor is required to record a decision',
-              )
-            }
+            const actor = requireHumanActorSnapshot(context)
             await recordDecision(db, input.deviationId, {
               decision: input.decision,
               decisionMotivation: trimmedDecisionMotivation,
-              decidedBy: context.actor.id,
+              decidedBy: actor.displayName,
+              decidedByHsaId: actor.hsaId,
             })
             recordHighRiskMutationSucceeded(context, {
               action: 'deviation.decision.recorded',

@@ -52,6 +52,7 @@
     "copied": "Copied",
     "help": "Help",
     "backToTop": "Back to top",
+    "anonymousUser": "Anonymous",
     "selectAll": "Select all",
     "selectRow": "Select {id}",
     "showShortText": "Show short text",
@@ -98,7 +99,8 @@
   },
   "roles": {
     "reviewer": "Reviewer",
-    "admin": "Administrator"
+    "admin": "Administrator",
+    "privacyOfficer": "Privacy officer"
   },
   "notFound": {
     "title": "404",
@@ -132,11 +134,11 @@
     "requiresTestingOff": "Not verifiable",
     "specificationCount": "Used in specification",
     "verificationMethod": "Verification method",
-    "verificationMethodHelp": "<strong>Specify how the acceptance criteria will be verified.</strong>\nChoose or describe an appropriate method, such as inspection, analysis/simulation, demonstration, or test, in line with ISO/IEC/IEEE 29148:2018.",
+    "verificationMethodHelp": "<strong>Specify how the acceptance criteria will be verified.</strong>\nChoose or describe an appropriate method, such as inspection, analysis/simulation, demonstration, or test, in line with ISO/IEC/IEEE 29148:2018.\n\nDo not enter names or other details that can identify a living person.",
     "areaHelp": "<strong>Select the area this requirement belongs to.</strong>\nThe area controls the requirement ID prefix and links the requirement to a responsible owner.",
     "areaHelpOptional": "<strong>Optionally select an area to group this requirement.</strong>\nThe area is not required for unique requirements but can be used to organize them within an existing area.",
-    "descriptionHelp": "<strong>Formulate the requirement clearly, concretely, and verifiably.</strong>\nDescribe who or what the requirement applies to and what should be achieved. Focus on what should apply, not how the solution should be implemented. Where relevant, specify measurable conditions such as time, threshold, precision, or capacity so the requirement can be understood and verified. Avoid vague words like fast, simple, appropriate, or as needed. This follows the principles in ISO/IEC/IEEE 29148:2018 for clear and unambiguous requirements and ISO/IEC 25030:2019 for measurable quality requirements.\n\nExamples:\nGood: The system shall display search results within 2 seconds.\nLess good: The system should be fast and user-friendly.",
-    "acceptanceCriteriaHelp": "<strong>Specify the objective conditions that must be met for the requirement to be accepted.</strong>\nWrite clearly, concretely, and measurably where relevant, such as time, threshold, precision, capacity, or observable outcome. Describe what should be fulfilled, not how it should be tested. The formulation should follow the principles in ISO/IEC 25010:2023, ISO/IEC 25030:2019, and ISO/IEC/IEEE 29148:2018.",
+    "descriptionHelp": "<strong>Formulate the requirement clearly, concretely, and verifiably.</strong>\nDescribe who or what the requirement applies to and what should be achieved. Focus on what should apply, not how the solution should be implemented. Where relevant, specify measurable conditions such as time, threshold, precision, or capacity so the requirement can be understood and verified. Avoid vague words like fast, simple, appropriate, or as needed. This follows the principles in ISO/IEC/IEEE 29148:2018 for clear and unambiguous requirements and ISO/IEC 25030:2019 for measurable quality requirements.\n\nDo not enter names or other details that can identify a living person.\n\nExamples:\nGood: The system shall display search results within 2 seconds.\nLess good: The system should be fast and user-friendly.",
+    "acceptanceCriteriaHelp": "<strong>Specify the objective conditions that must be met for the requirement to be accepted.</strong>\nWrite clearly, concretely, and measurably where relevant, such as time, threshold, precision, capacity, or observable outcome. Describe what should be fulfilled, not how it should be tested. The formulation should follow the principles in ISO/IEC 25010:2023, ISO/IEC 25030:2019, and ISO/IEC/IEEE 29148:2018.\n\nDo not enter names or other details that can identify a living person.",
     "categoryHelp": "<strong>Select the category that best describes the nature of the requirement.</strong>\nThe category helps classify and filter requirements.",
     "typeHelp": "<strong>Select the type that best describes the requirement.</strong>\nThe type determines which quality characteristics can be linked to the requirement.",
     "qualityCharacteristicHelp": "<strong>Select the quality characteristic the requirement contributes to.</strong>\nQuality characteristics follow ISO/IEC 25010:2023 and help categorize requirements by quality aspect.",
@@ -257,7 +259,7 @@
     "help": {
       "prefix": "Enter the short uppercase prefix used when requirement IDs are generated for this area. The prefix can only be changed when creating a new area.",
       "name": "Enter the display name for this requirement area.",
-      "description": "Optionally describe what kinds of requirements belong in this area.",
+      "description": "Optionally describe what kinds of requirements belong in this area. Do not enter names or other details that can identify a living person.",
       "owner": "Choose the person or group responsible for this requirement area."
     },
     "newArea": "New requirement area",
@@ -292,7 +294,7 @@
     "linkedRequirements": "Linked requirements",
     "businessNeedsReference": "Business needs reference",
     "businessNeedsReferencePlaceholder": "Free text linking the specification to a business need or functional requirement",
-    "businessNeedsReferenceHelp": "Use this field to capture the business need, initiative, or functional reference that this specification supports.",
+    "businessNeedsReferenceHelp": "Use this field to capture the business need, initiative, or functional reference that this specification supports. Do not enter names or other details that can identify a living person.",
     "uniqueId": "Specification ID",
     "uniqueIdPlaceholder": "E.g. MY-SPECIFICATION",
     "uniqueIdHelp": "Used in URL and as short identifier",
@@ -347,7 +349,7 @@
     "addNeedsRef": "Needs reference (optional)",
     "addNeedsRefHelp": "Optionally apply a needs reference to all selected requirements when adding them to the specification.",
     "addNeedsRefTextLabel": "New needs reference",
-    "addNeedsRefTextHelp": "Describe the shared needs reference that should be stored and linked to the selected requirements.",
+    "addNeedsRefTextHelp": "Describe the shared needs reference that should be stored and linked to the selected requirements. Do not enter names or other details that can identify a living person.",
     "addNeedsRefPlaceholder": "Enter a needs reference that applies to all selected requirements",
     "noNeedsRef": "— No needs reference —",
     "newNeedsRef": "+ Write new needs reference…",
@@ -373,11 +375,11 @@
     "title": "Deviations",
     "deviation": "Deviation",
     "motivation": "Motivation",
-    "motivationHelp": "Explain the reason why this requirement cannot be fulfilled.",
+    "motivationHelp": "Explain the reason why this requirement cannot be fulfilled. Do not enter names or other details that can identify a living person.",
     "motivationPlaceholder": "Explain the reason for the deviation",
     "decision": "Decision",
     "decisionMotivation": "Decision motivation",
-    "decisionMotivationHelp": "Document the reasoning behind approving or rejecting this deviation.",
+    "decisionMotivationHelp": "Document the reasoning behind approving or rejecting this deviation. Do not enter names or other details that can identify a living person.",
     "decidedBy": "Decided by",
     "decidedByHelp": "Enter the name of the person making this decision.",
     "decidedAt": "Decided at",
@@ -433,11 +435,11 @@
   "improvementSuggestion": {
     "title": "Improvement suggestions",
     "content": "Content",
-    "contentHelp": "Describe the improvement suggestion or change proposal for this requirement.",
+    "contentHelp": "Describe the improvement suggestion or change proposal for this requirement. Do not enter names or other details that can identify a living person.",
     "contentPlaceholder": "Describe the improvement suggestion or change proposal",
     "resolution": "Resolution",
     "resolutionMotivation": "Motivation",
-    "resolutionMotivationHelp": "Document the reasoning behind resolving or dismissing this suggestion.",
+    "resolutionMotivationHelp": "Document the reasoning behind resolving or dismissing this suggestion. Do not enter names or other details that can identify a living person.",
     "resolvedBy": "Reviewed by",
     "resolvedByHelp": "Enter the name of the person reviewing this suggestion.",
     "resolvedAt": "Resolved at",
@@ -537,9 +539,9 @@
     "nameEnHelp": "Enter the English name for this requirements package.",
     "description": "Description",
     "descriptionSvLabel": "Description (Swedish)",
-    "descriptionSvHelp": "Optionally describe the requirements package in Swedish so users understand the grouping it represents.",
+    "descriptionSvHelp": "Optionally describe the requirements package in Swedish so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
     "descriptionEnLabel": "Description (English)",
-    "descriptionEnHelp": "Optionally describe the requirements package in English so users understand the grouping it represents.",
+    "descriptionEnHelp": "Optionally describe the requirements package in English so users understand the grouping it represents. Do not enter names or other details that can identify a living person.",
     "owner": "Requirements package owner",
     "help": {
       "owner": "Choose the owner responsible for this requirements package and its linked requirements."
@@ -583,6 +585,8 @@
     "emptyState": "No norm references yet. Create your first norm reference."
   },
   "qualityCharacteristicMgmt": {
+    "chapterId": "Chapter",
+    "chapterIdHelp": "Enter the ISO/IEC 25010 chapter number for this quality characteristic, for example 3.1 or 3.1.1.",
     "name": "Name",
     "nameSvHelp": "Enter the Swedish name for this quality characteristic.",
     "nameEnHelp": "Enter the English name for this quality characteristic.",
@@ -621,10 +625,12 @@
     "name": "Name",
     "firstName": "First name",
     "lastName": "Last name",
+    "hsaId": "HSA-ID",
     "email": "Email",
     "help": {
       "firstName": "Enter the owner's given name.",
       "lastName": "Enter the owner's family name.",
+      "hsaId": "Enter the owner's verified HSA-ID. Names are display snapshots; HSA-ID is the durable identity key.",
       "email": "Enter the email address used to contact this owner."
     }
   },
@@ -682,6 +688,103 @@
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
     "referenceData": "Reference data",
     "referenceDataDescription": "Open the existing reference-data pages with their current route slugs.",
+    "privacyDescription": "Preview and execute HSA-ID based GDPR erasure for actor identity snapshots and live assignments.",
+    "privacy": {
+      "title": "Privacy",
+      "targetHsaId": "Target HSA-ID",
+      "replacementHsaId": "Replacement HSA-ID",
+      "replacementName": "Replacement name",
+      "replacementEmail": "Replacement email address",
+      "replacementEmailOptional": "Email address is optional.",
+      "fieldHelp": {
+        "targetHsaId": "Enter the HSA-ID for the person who should be handled. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
+        "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner or co-author. This field must be combined with replacement name before the Switch action can be used.",
+        "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
+        "replacementEmail": "Optional. Enter an email address when a replacement owner should be created or updated so requirement areas and packages keep the right contact details after the switch."
+      },
+      "preview": "Preview",
+      "execute": "Execute erasure",
+      "previewError": "Could not preview privacy erasure.",
+      "executeError": "Could not execute privacy erasure.",
+      "disabledTooltip": "You need the Privacy officer permission.",
+      "permissionError": "You need the Privacy officer role. Sign in as a user with PrivacyOfficer to run privacy erasure.",
+      "replacementIncomplete": "Enter both replacement HSA-ID and replacement name, or leave both fields empty to anonymize.",
+      "invalidReplacementEmail": "Check the replacement email address.",
+      "invalidHsaId": "Check the HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
+      "serverPreviewError": "The server could not preview privacy erasure.",
+      "serverExecuteError": "The server could not execute privacy erasure.",
+      "serverErrorWithDetail": "{message} Technical detail: {detail}",
+      "errorWithDetail": "{message} Error: {detail}",
+      "executeSuccess": "Privacy erasure completed.",
+      "stalePreview": "The preview is stale. Run preview again before executing.",
+      "confirmTitle": "Execute privacy erasure",
+      "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
+      "guidanceTitle": "Recommended handling",
+      "guidanceBody": "Live assignments are usually switched to another HSA-ID. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "previewResult": "{count} HSA-ID occurrence(s)",
+      "object": "Object",
+      "count": "Count",
+      "affected": "Affected objects",
+      "currentValue": "Current display",
+      "action": "Action",
+      "warning": "Guidance",
+      "status": "Status",
+      "notAvailable": "Not available",
+      "actions": {
+        "switch": "Switch",
+        "anonymize": "Anonymize",
+        "delete": "Delete",
+        "skip": "Skip"
+      },
+      "executionStatus": {
+        "completed": "Completed",
+        "skipped": "Skipped",
+        "failed": "Failed: {reason}"
+      },
+      "executionErrors": {
+        "owner_area_references_blocking": "Requirement areas must be switched before the owner can be changed.",
+        "owner_references_blocking": "Owner references must be switched before the owner can be deleted.",
+        "replacement_required": "Replacement HSA-ID and name are required for the selected action.",
+        "unsupported_owner_action": "The owner row does not support the selected action.",
+        "unsupported_privacy_action": "The row does not support the selected action."
+      },
+      "objects": {
+        "owners": "Owners",
+        "requirementAreas": "Requirement areas",
+        "requirementPackages": "Requirement packages",
+        "requirementVersions": "Requirement versions",
+        "deviations": "Deviations",
+        "specificationLocalDeviations": "Specification-local deviations",
+        "improvementSuggestions": "Improvement suggestions",
+        "specifications": "Specifications",
+        "areaCoAuthors": "Area co-authors",
+        "specificationCoAuthors": "Specification co-authors"
+      },
+      "fields": {
+        "identity": "Identity",
+        "owner": "Owner",
+        "createdBy": "Created by",
+        "decidedBy": "Decided by",
+        "resolvedBy": "Resolved by",
+        "responsible": "Responsible",
+        "coAuthor": "Co-author"
+      },
+      "warnings": {
+        "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",
+        "ownerDelete": "This owner is not assigned to requirement areas. Delete the owner row, or skip it.",
+        "ownerAreaSwitchOnly": "This owner is assigned to requirement areas. Switch those areas to the replacement owner, or skip the owner row.",
+        "liveAssignment": "Live assignments normally switch to the replacement HSA-ID. Without a replacement, remove co-author rows or keep the anonymized owner.",
+        "historySwitch": "Switching historical authorship can change the record's meaning. Anonymize is the default.",
+        "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default."
+      },
+      "blockers": {
+        "ownerAreaReplacementRequired": "This owner is assigned to requirement areas. Update those areas first or specify a replacement HSA-ID and name.",
+        "ownerPackageReplacementRequired": "This owner is assigned to requirement packages. Update those packages first or specify a replacement HSA-ID and name."
+      },
+      "readOnly": {
+        "controlledByOwner": "Shown for information. Requirement areas are switched automatically when the owner row is switched."
+      }
+    },
     "swedish": "Svenska",
     "english": "English",
     "singular": "Singular",
@@ -1070,6 +1173,49 @@
       "referenceData": {
         "heading": "Reference data",
         "body": "Quick links to manage areas, types, requirements packages, statuses, quality characteristics, business objects, implementation types, and area owners."
+      },
+      "privacy": {
+        "heading": "Privacy erasure",
+        "body": "Use the Privacy tab for GDPR erasure work. Matches are made by HSA-ID only; names are shown for confirmation and never create matches."
+      }
+    },
+    "adminPrivacy": {
+      "title": "Privacy",
+      "overview": {
+        "heading": "Purpose",
+        "body": "The Privacy tab is used when an authorized officer needs to preview and execute GDPR erasure for actor identities. It handles structured identity fields such as owners, creators, decision makers, and co-authors. Free-text fields are not scanned because users are instructed not to enter person-identifying details there."
+      },
+      "permissions": {
+        "heading": "Permission",
+        "body": "The workflow requires the PrivacyOfficer role. The role is intentionally narrow: it grants access to this privacy workflow but should not grant unrelated administrative powers."
+      },
+      "search": {
+        "heading": "Search by HSA-ID",
+        "body": "Start by entering the person's HSA-ID. Every match uses the exact HSA-ID, not the name. That prevents two people with the same name from being mixed together. Names are shown only as confirmation support in the preview."
+      },
+      "replacement": {
+        "heading": "Replacement",
+        "body": "Enter replacement HSA-ID and name when live assignments should move to another person. Email address is optional and is used for owner records when a replacement owner needs to be created or updated. If no replacement is supplied, historical identity fields are anonymized where allowed."
+      },
+      "preview": {
+        "heading": "Preview",
+        "body": "Run Preview before executing. The table groups matches by object type and field, showing how many records are affected, the current display value, affected objects, and the recommended action. Rows controlled by an owner row are shown for information and have no separate action menu."
+      },
+      "actions": {
+        "heading": "Table actions",
+        "body": "Switch is used for live assignments when a replacement is supplied. Anonymize is usually used for historical creators, decisions, and resolutions. Delete is used only when an identity row can be removed without breaking references. Skip leaves the row unchanged. Some rows are locked to prevent invalid combinations."
+      },
+      "execution": {
+        "heading": "When you execute erasure",
+        "body": "When you click Execute erasure, the server checks the matches again inside a transaction. If the preview is stale, you must preview again. After a successful run, the table remains as a receipt: completed rows are green, skipped rows are neutral, and row-specific failures are shown in red."
+      },
+      "audit": {
+        "heading": "Traceability",
+        "body": "The system writes a security audit event to the platform log stream with the handler identity, request id, action counts, and a non-reversible target fingerprint. That log is not a database table, is not shown in the preview, and is not rewritten by this workflow. The raw HSA-ID and name for the erased person are not logged."
+      },
+      "caveats": {
+        "heading": "Important limits",
+        "body": "The officer must confirm that erasure is allowed and that no stronger legal basis or retention duty prevents the action. Security logs and external logs are handled by a separate retention or deletion policy. Anonymizing handler identity in those logs can reduce traceability."
       }
     },
     "requirementAreas": {
@@ -1146,7 +1292,7 @@
       "title": "Quality Characteristics",
       "overview": {
         "heading": "ISO/IEC 25010:2023 hierarchy",
-        "body": "Quality characteristics are organized in a two-level tree following ISO/IEC 25010:2023 SQuaRE. Top-level characteristics (e.g. Performance efficiency) can have sub-characteristics (e.g. Time behavior)."
+        "body": "Quality characteristics are organized in a two-level tree following ISO/IEC 25010:2023 SQuaRE. Top-level characteristics (e.g. Performance efficiency) can have sub-characteristics (e.g. Time behaviour)."
       },
       "manage": {
         "heading": "Managing",

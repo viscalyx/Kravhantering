@@ -12,6 +12,7 @@ export interface RequirementVersionEntity {
   archiveInitiatedAt: Date | null
   createdAt: Date
   createdBy: string | null
+  createdByHsaId: string | null
   description: string
   editedAt: Date | null
   id: number
@@ -73,6 +74,12 @@ export const requirementVersionEntity =
         length: 'MAX',
         nullable: true,
       },
+      createdByHsaId: {
+        name: 'created_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
       archiveInitiatedAt: {
         name: 'archive_initiated_at',
         type: 'datetime2',
@@ -93,6 +100,10 @@ export const requirementVersionEntity =
       {
         name: 'idx_requirement_versions_requirement_id',
         columns: ['requirement'],
+      },
+      {
+        name: 'idx_requirement_versions_created_by_hsa_id',
+        columns: ['createdByHsaId'],
       },
     ],
     relations: {

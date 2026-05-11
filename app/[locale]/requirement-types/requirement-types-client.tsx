@@ -28,11 +28,31 @@ interface Type {
 }
 
 interface TypeCategory {
+  chapterId: string
   id: number
   nameEn: string
   nameSv: string
   parentId: number | null
   requirementTypeId: number
+}
+
+function compareChapterIds(a: string, b: string) {
+  const left = a.split('.').map(part => Number(part))
+  const right = b.split('.').map(part => Number(part))
+  const length = Math.max(left.length, right.length)
+  for (let index = 0; index < length; index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
+function ChapterBadge({ chapterId }: { chapterId: string }) {
+  return (
+    <span className="inline-flex shrink-0 rounded border border-primary-200 bg-primary-50 px-1.5 py-0.5 font-mono text-[0.7rem] leading-none text-primary-700 dark:border-primary-800 dark:bg-primary-900/30 dark:text-primary-300">
+      {chapterId}
+    </span>
+  )
 }
 
 export default function RequirementTypesClient() {
@@ -92,11 +112,11 @@ export default function RequirementTypesClient() {
           {tn('types')}
         </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-8 items-start">
           {types.map(type => {
-            const topLevel = qualityCharacteristics.filter(
-              c => c.requirementTypeId === type.id && !c.parentId,
-            )
+            const topLevel = qualityCharacteristics
+              .filter(c => c.requirementTypeId === type.id && !c.parentId)
+              .sort((a, b) => compareChapterIds(a.chapterId, b.chapterId))
             return (
               <div
                 className="bg-white/80 dark:bg-secondary-900/60 backdrop-blur-sm rounded-2xl border dark:border-secondary-700 shadow-sm transition-all duration-200 hover:shadow-md overflow-hidden"
@@ -148,24 +168,30 @@ export default function RequirementTypesClient() {
                       {tc('noResults')}
                     </p>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-1 gap-3">
                       {topLevel.map(parent => {
-                        const children = qualityCharacteristics.filter(
-                          c => c.parentId === parent.id,
-                        )
+                        const children = qualityCharacteristics
+                          .filter(c => c.parentId === parent.id)
+                          .sort((a, b) =>
+                            compareChapterIds(a.chapterId, b.chapterId),
+                          )
                         return (
                           <div key={parent.id}>
-                            <h3 className="text-sm font-medium text-primary-700 dark:text-primary-300 mb-1">
-                              {getName(parent)}
+                            <h3 className="mb-1 flex min-w-0 items-start gap-2 text-sm font-medium leading-snug text-primary-700 dark:text-primary-300">
+                              <ChapterBadge chapterId={parent.chapterId} />
+                              <span className="min-w-0">{getName(parent)}</span>
                             </h3>
                             {children.length > 0 && (
                               <ul className="ml-3 space-y-0.5">
                                 {children.map(child => (
                                   <li
-                                    className="text-xs text-secondary-600 dark:text-secondary-400 pl-2 border-l-2 border-primary-200 dark:border-primary-800"
+                                    className="flex min-w-0 items-start gap-2 border-l-2 border-primary-200 pl-2 text-xs leading-snug text-secondary-600 dark:border-primary-800 dark:text-secondary-400"
                                     key={child.id}
                                   >
-                                    {getName(child)}
+                                    <ChapterBadge chapterId={child.chapterId} />
+                                    <span className="min-w-0">
+                                      {getName(child)}
+                                    </span>
                                   </li>
                                 ))}
                               </ul>

@@ -14,6 +14,10 @@ import {
   parseRouteParams,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import {
+  createRequestContext,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -67,11 +71,14 @@ export async function PUT(
   const db = await getRequestSqlServerDataSource()
 
   try {
-    await updateSpecificationLocalDeviation(
-      db,
-      parsedParams.data.id,
-      parsedBody.data,
+    const actor = requireHumanActorSnapshot(
+      await createRequestContext(request, 'rest'),
     )
+    await updateSpecificationLocalDeviation(db, parsedParams.data.id, {
+      motivation: parsedBody.data.motivation,
+      createdBy: actor.displayName,
+      createdByHsaId: actor.hsaId,
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

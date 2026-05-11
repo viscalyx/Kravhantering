@@ -18,6 +18,10 @@ import {
   routeSegmentSchema,
   SQL_SERVER_INT_MAX,
 } from '@/lib/http/validation'
+import {
+  createRequestContext,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -141,19 +145,23 @@ export async function POST(
     return itemIdResult.response
   }
   const { decodedItemId, parsedItemRef, numericItemId } = itemIdResult
-  const { motivation, createdBy } = parsedBody.data
+  const { motivation } = parsedBody.data
   const db = await getRequestSqlServerDataSource()
 
   try {
+    const context = await createRequestContext(request, 'rest')
+    const actor = requireHumanActorSnapshot(context)
     const result =
       parsedItemRef == null
         ? await createDeviation(db, {
             specificationItemId: numericItemId ?? 0,
             motivation,
-            createdBy: typeof createdBy === 'string' ? createdBy : null,
+            createdBy: actor.displayName,
+            createdByHsaId: actor.hsaId,
           })
         : await createDeviationForItemRef(db, {
-            createdBy: typeof createdBy === 'string' ? createdBy : null,
+            createdBy: actor.displayName,
+            createdByHsaId: actor.hsaId,
             itemRef: decodedItemId,
             motivation,
           })

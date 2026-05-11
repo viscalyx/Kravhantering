@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { Suspense } from 'react'
 import { routing } from '@/i18n/routing'
+import { getSession, isSignedIn } from '@/lib/auth/session'
 import {
   getRequirementListColumnDefaults,
   getUiTerminology,
@@ -34,10 +35,12 @@ export default async function AdminPage({ params }: { params: PageParams }) {
   const locale = resolveLocale(requestedLocale)
   const t = await getTranslations({ locale, namespace: 'admin' })
   const db = await getRequestSqlServerDataSource()
-  const [terminology, initialColumnDefaults] = await Promise.all([
+  const [session, terminology, initialColumnDefaults] = await Promise.all([
+    getSession(),
     getUiTerminology(db),
     getRequirementListColumnDefaults(db),
   ])
+  const currentUserRoles = isSignedIn(session) ? session.roles : []
 
   return (
     <Suspense
@@ -52,6 +55,7 @@ export default async function AdminPage({ params }: { params: PageParams }) {
       }
     >
       <AdminClient
+        currentUserRoles={currentUserRoles}
         initialColumnDefaults={initialColumnDefaults}
         initialTerminology={buildUiTerminologyPayload(terminology)}
       />
