@@ -19,5 +19,9 @@ applyTo: "{app/**/*.tsx,components/**/*.tsx,lib/reports/**/*,tests/unit/**/*.ts,
   directly in UI, report, PDF, print, CSV-visible output, or user-facing tests.
 - Do not use display-name formatting for HSA-ID matching, durable identity,
   privacy execution, audit fingerprints, or internal logs.
+- Do not weaken, skip, narrow, allowlist, or relax
+  `tests/unit/privacy-display-name-enforcement.test.ts` to make app code pass.
+- If `tests/unit/privacy-display-name-enforcement.test.ts` fails, fix the
+  UI/report rendering code to import and use `@/lib/privacy/display-name`.
 - Add or update tests when adding a new user-facing actor display field,
   including coverage that `no-user` is shown as `Anonym` / `Anonymous`.

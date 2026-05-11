@@ -19,6 +19,53 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Guard privacy display-name enforcement test
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const protectedFiles = [
+              'tests/unit/privacy-display-name-enforcement.test.ts'
+            ];
+            const overrideLabel = 'privacy-guardrail-approved';
+            const labels = (context.payload.pull_request.labels ?? [])
+              .map(label => label.name);
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                per_page: 100
+              }
+            );
+            const touchedProtectedFiles = files
+              .map(file => file.filename)
+              .filter(filename => protectedFiles.includes(filename));
+
+            if (touchedProtectedFiles.length === 0) {
+              core.info('No privacy display-name guardrail files changed.');
+              return;
+            }
+
+            if (labels.includes(overrideLabel)) {
+              core.warning(
+                `Privacy display-name guardrail file changed, but '${overrideLabel}' is present.`
+              );
+              return;
+            }
+
+            core.setFailed(
+              [
+                'Privacy display-name guardrail test changed:',
+                ...touchedProtectedFiles.map(filename => `- ${filename}`),
+                '',
+                'This test protects the rule that user-facing actor names must use @/lib/privacy/display-name instead of rendering raw no-user or actor fields.',
+                'Fix app/report rendering code instead of weakening this test.',
+                `If the guardrail change is intentional and privacy-reviewed, add the '${overrideLabel}' label to the PR and rerun this workflow.`
+              ].join('\n')
+            );
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:

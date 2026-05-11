@@ -4,13 +4,13 @@ import { HelpCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode, useMemo, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
-
 import type {
   NormReferenceOption,
   QualityCharacteristicOption,
   TaxonomyOption,
   TaxonomyOptions,
 } from '@/hooks/useTaxonomyOptions'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 
 export interface RequirementFormFieldValues {
   acceptanceCriteria: string
@@ -145,6 +145,12 @@ export default function RequirementFormFields({
   const childCategories = qualityCharacteristics.filter(c => c.parentId)
   const getQcName = (c: QualityCharacteristicOption) =>
     locale === 'sv' ? c.nameSv : c.nameEn
+  const selectedAreaOwnerName = values.areaId
+    ? formatActorDisplayNameForLocale(
+        areas.find(a => String(a.id) === values.areaId)?.ownerName,
+        locale,
+      )
+    : null
 
   const mainFields = (
     <>
@@ -176,8 +182,7 @@ export default function RequirementFormFields({
         </select>
         {values.areaId && (
           <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">
-            {t('area')} — {t('areaOwner')}:{' '}
-            {areas.find(a => String(a.id) === values.areaId)?.ownerName ?? '—'}
+            {t('area')} — {t('areaOwner')}: {selectedAreaOwnerName ?? '—'}
           </p>
         )}
       </div>
