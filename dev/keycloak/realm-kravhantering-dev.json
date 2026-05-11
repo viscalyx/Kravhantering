@@ -332,7 +332,7 @@
           "consentRequired": false,
           "config": {
             "claim.name": "employeeHsaId",
-            "claim.value": "mcp-client:kravhantering-mcp",
+            "claim.value": "SE2321000032-mcp1",
             "jsonType.label": "String",
             "id.token.claim": "false",
             "access.token.claim": "true",

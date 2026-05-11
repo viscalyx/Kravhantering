@@ -265,23 +265,25 @@ token and userinfo response. The value is sourced from each user's
 Login is rejected with 401 when the claim is missing or fails this
 check.
 
-### MCP synthetic HSA-id
+### MCP service-account HSA-id
 
 The `kravhantering-mcp` Keycloak client is configured with an
 `oidc-hardcoded-claim` mapper that emits
-`employeeHsaId = mcp-client:kravhantering-mcp` on the access token used
-by the MCP service-account flow. Values that begin with `mcp-client:`
-deliberately bypass the HSA-id format validator; assignment-based
-authorization treats the literal string as the actor identity.
+`employeeHsaId = SE2321000032-mcp1` on the access token used by the MCP
+service-account flow. This gives MCP write workflows a real-format HSA-ID
+for actor stamping in requirement history, deviations, and improvement
+suggestions.
 
 For local and prodlike Keycloak realms that were imported before that mapper
-existed, the app also accepts the same synthetic identity by deriving
-`mcp-client:<client_id>` from a verified service-account token when
-`client_id` or `azp` matches the configured MCP client id. The expected client
-id is read by `getExpectedMcpClientId()` from `AUTH_OIDC_MCP_CLIENT_ID`,
-falling back to `MCP_CLIENT_ID`, and finally to the local default
-`kravhantering-mcp`. If both variables are set differently,
-`AUTH_OIDC_MCP_CLIENT_ID` is canonical and `MCP_CLIENT_ID` is ignored.
+existed, the app still accepts a synthetic identity by deriving
+`mcp-client:<client_id>` from a verified service-account token when `client_id`
+or `azp` matches the configured MCP client id. Synthetic identities are valid
+for MCP authentication, but write workflows that stamp actor history require a
+real-format `employeeHsaId`. The expected client id is read by
+`getExpectedMcpClientId()` from `AUTH_OIDC_MCP_CLIENT_ID`, falling back to
+`MCP_CLIENT_ID`, and finally to the local default `kravhantering-mcp`. If both
+variables are set differently, `AUTH_OIDC_MCP_CLIENT_ID` is canonical and
+`MCP_CLIENT_ID` is ignored.
 
 ### No refresh tokens
 
