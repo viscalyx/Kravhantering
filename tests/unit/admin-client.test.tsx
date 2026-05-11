@@ -783,6 +783,66 @@ describe('AdminClient', () => {
     ).toBeNull()
   })
 
+  it('clears stale privacy preview rows when the target HSA-ID changes', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['INT0001 v1'],
+            allowedActions: ['anonymize', 'skip'],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            fieldKey: 'createdBy',
+            key: 'requirement_versions.created_by',
+            objectKey: 'requirementVersions',
+            recommendedAction: 'anonymize',
+            warningKey: 'historySwitch',
+          },
+        ],
+        previewToken: 'target-change-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 1,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    const targetInput = screen.getByLabelText('admin.privacy.targetHsaId')
+    fireEvent.change(targetInput, {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await screen.findByText('admin.privacy.objects.requirementVersions')
+    expect(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeTruthy()
+
+    fireEvent.change(targetInput, {
+      target: { value: 'SE2321000032-kalle2' },
+    })
+
+    expect(
+      screen.queryByText('admin.privacy.objects.requirementVersions'),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeNull()
+  })
+
   it('shows execute-specific server details when privacy execution fails unexpectedly', async () => {
     searchParamsMock.current = new URLSearchParams('tab=privacy')
     fetchMock

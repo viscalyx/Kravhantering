@@ -114,6 +114,14 @@ describe('seedDatabase', () => {
       parent_id: 44,
       requirement_type_id: 2,
     })
+    expect(qualityCharacteristics[5]).toMatchObject({
+      id: 6,
+      name_en: 'Time behavior',
+    })
+    expect(qualityCharacteristics[35]).toMatchObject({
+      id: 36,
+      name_en: 'Analyzability',
+    })
     const rowById = new Map(qualityCharacteristics.map(row => [row.id, row]))
     for (const row of qualityCharacteristics) {
       if (row.parent_id == null) continue

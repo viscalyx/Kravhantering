@@ -255,6 +255,7 @@ export async function createSuggestion(
   }
 
   const now = new Date()
+  const createdByHsaId = data.createdByHsaId?.trim() || null
   const insertedRows = (await db.query(
     `
       INSERT INTO improvement_suggestions (
@@ -274,7 +275,7 @@ export async function createSuggestion(
       data.requirementVersionId ?? null,
       data.content.trim(),
       data.createdBy ?? null,
-      data.createdByHsaId ?? null,
+      createdByHsaId,
       now,
       0,
     ],
@@ -362,6 +363,11 @@ export async function recordResolution(
     throw validationError('Resolved by is required')
   }
 
+  const resolvedByHsaId = data.resolvedByHsaId.trim()
+  if (!resolvedByHsaId) {
+    throw validationError('Resolved by HSA-ID is required')
+  }
+
   const existing = await findSqlServerSuggestionState(db, suggestionId)
 
   if (!existing) {
@@ -397,7 +403,7 @@ export async function recordResolution(
       data.resolution,
       data.resolutionMotivation.trim(),
       data.resolvedBy.trim(),
-      data.resolvedByHsaId,
+      resolvedByHsaId,
       now,
       suggestionId,
     ],

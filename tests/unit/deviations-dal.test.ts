@@ -57,6 +57,12 @@ describe('deviations DAL (SQL Server path)', () => {
       expect.stringContaining('FROM deviations deviation'),
       [3],
     )
+    expect(query.mock.calls[0][0]).toContain(
+      'deviation.created_by_hsa_id AS createdByHsaId',
+    )
+    expect(query.mock.calls[0][0]).toContain(
+      'deviation.decided_by_hsa_id AS decidedByHsaId',
+    )
     expect(result).toEqual([
       {
         id: 7,

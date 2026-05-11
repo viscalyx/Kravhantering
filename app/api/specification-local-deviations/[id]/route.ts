@@ -9,7 +9,6 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   idParamSchema,
-  nullableBusinessTextSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
   readJsonWithSchema,
@@ -27,7 +26,6 @@ type Params = Promise<{ id: string }>
 
 const updateSpecificationLocalDeviationSchema = z
   .object({
-    createdBy: nullableBusinessTextSchema.optional(),
     motivation: optionalBusinessTextSchema,
   })
   .strict()
@@ -71,13 +69,9 @@ export async function PUT(
   const db = await getRequestSqlServerDataSource()
 
   try {
-    const actor = requireHumanActorSnapshot(
-      await createRequestContext(request, 'rest'),
-    )
+    requireHumanActorSnapshot(await createRequestContext(request, 'rest'))
     await updateSpecificationLocalDeviation(db, parsedParams.data.id, {
       motivation: parsedBody.data.motivation,
-      createdBy: actor.displayName,
-      createdByHsaId: actor.hsaId,
     })
     return NextResponse.json({ ok: true })
   } catch (error) {

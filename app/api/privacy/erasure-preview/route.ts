@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { recordSecurityEvent } from '@/lib/auth/audit'
+import { CsrfError } from '@/lib/auth/csrf'
 import { isHsaId } from '@/lib/auth/hsa-id'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(preview)
   } catch (error) {
-    if (isRequirementsServiceError(error)) {
+    if (error instanceof CsrfError || isRequirementsServiceError(error)) {
       const { body, status } = toHttpErrorPayload(error)
       return NextResponse.json(body, { status })
     }

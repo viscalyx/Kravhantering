@@ -6,6 +6,8 @@ import {
   getRequirementById,
   getRequirementByUniqueId,
   initiateArchiving,
+  reactivateRequirement,
+  restoreVersion,
 } from '@/lib/dal/requirements'
 
 function createSqlServerDb() {
@@ -431,6 +433,121 @@ describe('requirements DAL (SQL Server path)', () => {
       'revision_token = CONVERT(uniqueidentifier, @10)',
     )
     expect(result.revisionToken).toBe('22222222-2222-4222-8222-222222222222')
+  })
+
+  it('restores creator attribution as an atomic actor snapshot', async () => {
+    const { db, query } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: null,
+          createdBy: 'Original Actor',
+          createdByHsaId: 'SE2321000032-original',
+          description: 'Archived text',
+          id: 21,
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementId: 7,
+          requirementTypeId: null,
+          requiresTesting: 0,
+          riskLevelId: null,
+          verificationMethod: null,
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ maxVersion: 2 }])
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: null,
+          archiveInitiatedAt: null,
+          archivedAt: null,
+          createdAt: new Date('2026-04-20T08:30:00.000Z'),
+          createdBy: 'Original Actor',
+          createdByHsaId: 'SE2321000032-original',
+          description: 'Archived text',
+          editedAt: new Date('2026-04-20T08:30:00.000Z'),
+          id: 22,
+          publishedAt: null,
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementId: 7,
+          requirementTypeId: null,
+          requiresTesting: 0,
+          revisionToken: '33333333-3333-4333-8333-333333333333',
+          riskLevelId: null,
+          statusId: 1,
+          verificationMethod: null,
+          versionNumber: 3,
+        },
+      ])
+
+    const result = await restoreVersion(db, 7, 21, 'New Actor')
+
+    expect(result.createdBy).toBe('Original Actor')
+    expect(result.createdByHsaId).toBe('SE2321000032-original')
+    const insertParams = query.mock.calls[4]?.[1] ?? []
+    expect(insertParams.at(13)).toBe('Original Actor')
+    expect(insertParams.at(14)).toBe('SE2321000032-original')
+  })
+
+  it('reactivates archived requirements atomically and clears the archived flag', async () => {
+    const { db, query, transaction } = createSqlServerDb()
+    query
+      .mockResolvedValueOnce([{ id: 21, statusId: 4 }])
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: null,
+          createdBy: 'Original Actor',
+          createdByHsaId: 'SE2321000032-original',
+          description: 'Archived text',
+          id: 21,
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementId: 7,
+          requirementTypeId: null,
+          requiresTesting: 0,
+          riskLevelId: null,
+          verificationMethod: null,
+        },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ maxVersion: 2 }])
+      .mockResolvedValueOnce([
+        {
+          acceptanceCriteria: null,
+          archiveInitiatedAt: null,
+          archivedAt: null,
+          createdAt: new Date('2026-04-20T08:30:00.000Z'),
+          createdBy: 'Reviewer',
+          createdByHsaId: 'SE2321000032-reviewer1',
+          description: 'Archived text',
+          editedAt: new Date('2026-04-20T08:30:00.000Z'),
+          id: 22,
+          publishedAt: null,
+          qualityCharacteristicId: null,
+          requirementCategoryId: null,
+          requirementId: 7,
+          requirementTypeId: null,
+          requiresTesting: 0,
+          revisionToken: '33333333-3333-4333-8333-333333333333',
+          riskLevelId: null,
+          statusId: 1,
+          verificationMethod: null,
+          versionNumber: 3,
+        },
+      ])
+      .mockResolvedValueOnce([])
+
+    await reactivateRequirement(db, 7, 'Reviewer', 'SE2321000032-reviewer1')
+
+    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0]?.[0]).toContain('WITH (UPDLOCK, HOLDLOCK)')
+    expect(query.mock.calls.at(-1)).toEqual([
+      'UPDATE requirements SET is_archived = 0 WHERE id = @0',
+      [7],
+    ])
   })
 })
 

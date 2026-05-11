@@ -526,7 +526,13 @@ function previewTokenFor(
       readOnlyReasonKey: group.readOnlyReasonKey ?? null,
       recommendedAction: group.recommendedAction,
     })),
-    replacementHsaId: replacement?.hsaId ?? null,
+    replacement: replacement
+      ? {
+          displayName: replacement.displayName,
+          email: replacement.email,
+          hsaId: replacement.hsaId,
+        }
+      : null,
     targetHsaId,
   })
   return createHash('sha256').update(stablePayload, 'utf8').digest('hex')

@@ -1,6 +1,10 @@
+// The creator display-name backfills below are intentionally seed-only. They
+// document known development HSA-IDs and will not populate production actors;
+// future writes set created_by_display_name at write time.
 const UP_STATEMENTS = [
   'ALTER TABLE [requirement_area_co_authors] ADD [created_by_display_name] nvarchar(max) NULL;',
   'ALTER TABLE [specification_co_authors] ADD [created_by_display_name] nvarchar(max) NULL;',
+  // Seed-only backfill for requirement-area co-author fixture rows.
   `UPDATE [requirement_area_co_authors]
     SET [created_by_display_name] = CASE [created_by_hsa_id]
       WHEN N'SE2321000032-seed' THEN N'seed'
@@ -19,6 +23,7 @@ const UP_STATEMENTS = [
     END
     WHERE [created_by_hsa_id] IS NOT NULL
       AND [created_by_display_name] IS NULL;`,
+  // Seed-only backfill for specification co-author fixture rows.
   `UPDATE [specification_co_authors]
     SET [created_by_display_name] = CASE [created_by_hsa_id]
       WHEN N'SE2321000032-seed' THEN N'seed'

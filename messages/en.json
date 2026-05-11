@@ -707,7 +707,7 @@
       "previewError": "Could not preview privacy erasure.",
       "executeError": "Could not execute privacy erasure.",
       "disabledTooltip": "You need the Privacy officer permission.",
-      "permissionError": "You need the Privacy officer role. Sign in as a user with PrivacyOfficer to run privacy erasure.",
+      "permissionError": "You need the Privacy officer role. Sign in as a privacy officer to run privacy erasure.",
       "replacementIncomplete": "Enter both replacement HSA-ID and replacement name, or leave both fields empty to anonymize.",
       "invalidReplacementEmail": "Check the replacement email address.",
       "invalidHsaId": "Check the HSA-ID. The format is SE followed by 10 digits, a hyphen, and an alphanumeric suffix.",
@@ -1187,7 +1187,7 @@
       },
       "permissions": {
         "heading": "Permission",
-        "body": "The workflow requires the PrivacyOfficer role. The role is intentionally narrow: it grants access to this privacy workflow but should not grant unrelated administrative powers."
+        "body": "The workflow requires the Privacy officer role. The role is intentionally narrow: it grants access to this privacy workflow but should not grant unrelated administrative powers."
       },
       "search": {
         "heading": "Search by HSA-ID",

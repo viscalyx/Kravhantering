@@ -70,7 +70,12 @@ export async function listQualityCharacteristics(
         parent_id AS parentId
       FROM quality_characteristics
       ${typeId != null ? 'WHERE requirement_type_id = @0' : ''}
-      ORDER BY chapter_id ASC
+      ORDER BY
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[0]')) ASC,
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[1]')) ASC,
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[2]')) ASC,
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[3]')) ASC,
+        id ASC
     `,
     typeId != null ? [typeId] : [],
   )

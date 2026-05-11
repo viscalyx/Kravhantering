@@ -635,6 +635,50 @@ describe('privacy erasure service', () => {
     ).toBe(false)
   })
 
+  it('rejects stale previews when replacement display details change', async () => {
+    const previewDb = createPrivacyDb({
+      'requirement_versions.created_by': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const preview = await previewPrivacyErasure(previewDb.db, {
+      replacement: {
+        displayName: 'John Levi',
+        email: 'john.levi@example.com',
+        hsaId: 'SE2321000032-johlju',
+      },
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    const executionDb = createPrivacyDb({
+      'requirement_versions.created_by': {
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+
+    await expect(
+      executePrivacyErasure(createTransactionalDb(executionDb.query), {
+        actions: { 'requirement_versions.created_by': 'switch' },
+        previewToken: preview.previewToken,
+        replacement: {
+          displayName: 'Jane Levi',
+          email: 'jane.levi@example.com',
+          hsaId: 'SE2321000032-johlju',
+        },
+        target: { hsaId: TARGET_HSA_ID },
+      }),
+    ).rejects.toMatchObject({
+      details: { reason: 'stale_privacy_preview' },
+      status: 409,
+    })
+    expect(
+      executionDb.query.mock.calls.some(([sql]) =>
+        /UPDATE|DELETE|INSERT/.test(sql),
+      ),
+    ).toBe(false)
+  })
+
   it('creates a stable non-reversible fingerprint', () => {
     const fingerprint = privacyTargetFingerprint(TARGET_HSA_ID)
 

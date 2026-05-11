@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CsrfError } from '@/lib/auth/csrf'
 import { conflictError, validationError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
@@ -60,10 +61,14 @@ function privacyContext(roles: string[] = ['PrivacyOfficer']) {
   }
 }
 
-function jsonPost(url: string, body: unknown): Request {
+function jsonPost(
+  url: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Request {
   return new Request(url, {
     body: JSON.stringify(body),
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     method: 'POST',
   })
 }
@@ -117,6 +122,41 @@ describe('privacy erasure routes', () => {
     )
     const auditArg = routeState.recordSecurityEvent.mock.calls[0][0]
     expect(JSON.stringify(auditArg.detail)).not.toContain('SE2321000032-kalle1')
+  })
+
+  it('rejects erasure preview when CSRF validation fails before previewing', async () => {
+    routeState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Missing X-Requested-With header.'),
+    )
+    const { POST } = await import('@/app/api/privacy/erasure-preview/route')
+    const response = await POST(
+      jsonPost('http://localhost/api/privacy/erasure-preview', {
+        target: { hsaId: 'SE2321000032-kalle1' },
+      }) as never,
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.previewPrivacyErasure).not.toHaveBeenCalled()
+  })
+
+  it('accepts erasure preview when the request context passes CSRF validation', async () => {
+    const { POST } = await import('@/app/api/privacy/erasure-preview/route')
+    const response = await POST(
+      jsonPost(
+        'http://localhost/api/privacy/erasure-preview',
+        { target: { hsaId: 'SE2321000032-kalle1' } },
+        {
+          Origin: 'http://localhost',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ) as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(routeState.previewPrivacyErasure).toHaveBeenCalledTimes(1)
+    expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'privacy.erasure.previewed' }),
+    )
   })
 
   it('accepts a replacement HSA-ID and display name that are not seeded', async () => {
@@ -197,6 +237,45 @@ describe('privacy erasure routes', () => {
 
     expect(response.status).toBe(409)
     expect(routeState.recordSecurityEvent).not.toHaveBeenCalled()
+  })
+
+  it('rejects erasure execution when CSRF validation fails before executing', async () => {
+    routeState.createRequestContext.mockRejectedValueOnce(
+      new CsrfError('Invalid X-Requested-With header.'),
+    )
+    const { POST } = await import('@/app/api/privacy/erasure-requests/route')
+    const response = await POST(
+      jsonPost('http://localhost/api/privacy/erasure-requests', {
+        previewToken: 'preview-token',
+        target: { hsaId: 'SE2321000032-kalle1' },
+      }) as never,
+    )
+
+    expect(response.status).toBe(403)
+    expect(routeState.executePrivacyErasure).not.toHaveBeenCalled()
+  })
+
+  it('accepts erasure execution when the request context passes CSRF validation', async () => {
+    const { POST } = await import('@/app/api/privacy/erasure-requests/route')
+    const response = await POST(
+      jsonPost(
+        'http://localhost/api/privacy/erasure-requests',
+        {
+          previewToken: 'preview-token',
+          target: { hsaId: 'SE2321000032-kalle1' },
+        },
+        {
+          Origin: 'http://localhost',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      ) as never,
+    )
+
+    expect(response.status).toBe(201)
+    expect(routeState.executePrivacyErasure).toHaveBeenCalledTimes(1)
+    expect(routeState.recordSecurityEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'privacy.erasure.executed' }),
+    )
   })
 
   it('rejects execution without PrivacyOfficer', async () => {

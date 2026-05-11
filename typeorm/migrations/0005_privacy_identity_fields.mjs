@@ -47,6 +47,7 @@ const DOWN_STATEMENTS = [
   "IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'uq_owners_hsa_id' AND object_id = OBJECT_ID(N'owners')) DROP INDEX [uq_owners_hsa_id] ON [owners];",
   "IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'uq_owners_email' AND object_id = OBJECT_ID(N'owners')) DROP INDEX [uq_owners_email] ON [owners];",
   'ALTER TABLE [owners] DROP COLUMN [hsa_id];',
+  "IF EXISTS (SELECT 1 FROM [owners] WHERE [email] IS NULL) THROW 51000, N'Cannot roll back privacy identity fields while owners.email contains NULL values; backfill or remove those rows before restoring NOT NULL.', 1;",
   'ALTER TABLE [owners] ALTER COLUMN [email] nvarchar(450) NOT NULL;',
   'CREATE UNIQUE INDEX [uq_owners_email] ON [owners] ([email]);',
 ]

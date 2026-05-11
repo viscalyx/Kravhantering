@@ -88,6 +88,8 @@ Apply these rules to all schema objects.
 | ---- | --------- | --------- |
 | 4 | `requirement_version_requirement_packages` uses composite PK `(requirement_version_id, requirement_package_id)` instead of a single `id` | Standard practice for many-to-many join tables; adding a surrogate `id` would add no value. |
 | 4 | `requirement_version_norm_references` uses composite PK `(requirement_version_id, norm_reference_id)` instead of a single `id` | Same rationale as the requirement-packages join table above. |
+| 4 | `requirement_area_co_authors` uses composite PK `(area_id, hsa_id)` instead of a single `id` | The live co-author assignment is naturally keyed by requirement area plus durable HSA-ID; a surrogate `id` would not improve identity or lookup semantics. |
+| 4 | `specification_co_authors` uses composite PK `(specification_id, hsa_id)` instead of a single `id` | The live co-author assignment is naturally keyed by specification plus durable HSA-ID; a surrogate `id` would not improve identity or lookup semantics. |
 | 4 | `specification_local_requirement_requirement_packages` uses composite PK `(specification_local_requirement_id, requirement_package_id)` instead of a single `id` | Same rationale as the version-based requirement-packages join table above. |
 | 4 | `specification_local_requirement_norm_references` uses composite PK `(specification_local_requirement_id, norm_reference_id)` instead of a single `id` | Same rationale as the version-based norm-references join table above. |
 | Localized columns | `norm_references.name`, `norm_references.type`, `norm_references.issuer` are single-language columns | Norm references are external legal/regulatory documents (e.g. laws, ISO standards) with proper names in their source language. Localizing them would be factually incorrect — "SFS 2018:218" and "Riksdagen" do not have per-locale translations. |
@@ -1577,6 +1579,7 @@ graph LR
         RA[requirement_areas]
         R[requirements]
         RV[requirement_versions]
+        IS[improvement_suggestions]
     end
 
     subgraph Specifications
@@ -1588,10 +1591,13 @@ graph LR
         PNR[specification_needs_references]
         PLR[specification_local_requirements]
         RPI[requirements_specification_items]
+        D[deviations]
         PLRD[specification_local_requirement_deviations]
     end
 
     subgraph Join Tables
+        RAC[requirement_area_co_authors]
+        SCA[specification_co_authors]
         RVS[requirement_version_requirement_packages]
         RVNR[requirement_version_norm_references]
         PLRPKG[specification_local_requirement_requirement_packages]
@@ -1599,6 +1605,7 @@ graph LR
     end
 
     OW -- "uq_owners_email\n(email)" --> OW
+    OW -- "uq_owners_hsa_id\n(hsa_id)" --> OW
     RA -- "FK owner_id" --> OW
     RA -- "uq_requirement_areas_prefix\n(prefix)" --> RA
     R -- "uq_requirements_unique_id\n(unique_id)" --> R
@@ -1608,6 +1615,16 @@ graph LR
     RV -- "uq_..._requirement_id_version_number\n(requirement_id, version_number)" --> R
     RV -- "uq_requirement_versions_revision_token\n(revision_token)" --> RV
     RV -- "idx_..._requirement_id\n(requirement_id)" --> R
+    RV -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> RV
+
+    IS -- "idx_..._requirement_id\n(requirement_id)" --> R
+    IS -- "idx_..._requirement_version_id\n(requirement_version_id)" --> RV
+    IS -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> IS
+    IS -- "idx_..._resolved_by_hsa_id\n(resolved_by_hsa_id)" --> IS
+
+    RAC -- "FK area_id" --> RA
+    RAC -- "idx_..._hsa_id\n(hsa_id)" --> RAC
+    RAC -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> RAC
 
     RVS -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RPKG
     RVNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
@@ -1623,18 +1640,28 @@ graph LR
     RL -- "uq_..._name_sv / name_en" --> RL
 
     RP -- "uq_requirements_specifications_unique_id\n(unique_id)" --> RP
+    RP -- "idx_..._responsible_hsa_id\n(responsible_hsa_id)" --> RP
+    SCA -- "FK specification_id" --> RP
+    SCA -- "idx_..._hsa_id\n(hsa_id)" --> SCA
+    SCA -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> SCA
     PNR -- "uq_..._specification_text\n(specification_id, text)" --> RP
     PNR -- "uq_..._specification_id_id\n(specification_id, id)" --> RP
     PLR -- "uq_..._specification_id_unique_id\n(specification_id, unique_id)" --> RP
     PLR -- "uq_..._specification_id_sequence_number\n(specification_id, sequence_number)" --> RP
+    PLR -- "idx_..._specification_id\n(specification_id)" --> RP
     PLR -- "idx_..._requirement_area_id\n(requirement_area_id)" --> RA
     PLR -- "idx_..._specification_item_status_id\n(specification_item_status_id)" --> PIS
     RPI -- "idx_..._requirements_specification_id\n(requirements_specification_id)" --> RP
     RPI -- "idx_..._requirement_id\n(requirement_id)" --> R
     RPI -- "idx_..._specification_item_status_id\n(specification_item_status_id)" --> PIS
+    D -- "idx_..._specification_item_id\n(specification_item_id)" --> RPI
+    D -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> D
+    D -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> D
     PLRPKG -- "idx_..._requirement_package_id\n(requirement_package_id)" --> RPKG
     PLRNR -- "idx_..._norm_reference_id\n(norm_reference_id)" --> NR
     PLRD -- "idx_..._specification_local_requirement_id\n(specification_local_requirement_id)" --> PLR
+    PLRD -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> PLRD
+    PLRD -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> PLRD
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
@@ -1644,6 +1671,8 @@ graph LR
     RVS -. "composite PK\n(requirement_version_id,\nrequirement_package_id)" .-> RV
     RVS -. "composite PK" .-> RPKG
 
+    RAC -. "composite PK\n(area_id,\nhsa_id)" .-> RA
+    SCA -. "composite PK\n(specification_id,\nhsa_id)" .-> RP
     RVNR -. "composite PK\n(requirement_version_id,\nnorm_reference_id)" .-> RV
     RVNR -. "composite PK" .-> NR
     PLRPKG -. "composite PK\n(specification_local_requirement_id,\nrequirement_package_id)" .-> PLR

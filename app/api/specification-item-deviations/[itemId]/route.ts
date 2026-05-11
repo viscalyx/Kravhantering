@@ -10,7 +10,6 @@ import { parseSpecificationItemRef } from '@/lib/dal/requirements-specifications
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
-  boundedDbStringSchema,
   businessTextSchema,
   invalidRequestResponse,
   parseRouteParams,
@@ -43,7 +42,6 @@ const itemDeviationParamSchema = z
 
 const createDeviationSchema = z
   .object({
-    createdBy: boundedDbStringSchema.optional(),
     motivation: businessTextSchema,
   })
   .strict()

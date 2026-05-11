@@ -763,7 +763,7 @@ const SEED_DATA = {
         '3.1.3',
       ],
       [5, 'Prestandaeffektivitet', 'Performance efficiency', 2, null, '3.2'],
-      [6, 'Tidsbeteende', 'Time behaviour', 2, 5, '3.2.1'],
+      [6, 'Tidsbeteende', 'Time behavior', 2, 5, '3.2.1'],
       [7, 'Resursutnyttjande', 'Resource utilization', 2, 5, '3.2.2'],
       [8, 'Kapacitet', 'Capacity', 2, 5, '3.2.3'],
       [9, 'Kompatibilitet', 'Compatibility', 2, null, '3.3'],
@@ -800,7 +800,7 @@ const SEED_DATA = {
       [33, 'Underhållbarhet', 'Maintainability', 2, null, '3.7'],
       [34, 'Modularitet', 'Modularity', 2, 33, '3.7.1'],
       [35, 'Återanvändbarhet', 'Reusability', 2, 33, '3.7.2'],
-      [36, 'Analyserbarhet', 'Analysability', 2, 33, '3.7.3'],
+      [36, 'Analyserbarhet', 'Analyzability', 2, 33, '3.7.3'],
       [37, 'Ändringsbarhet', 'Modifiability', 2, 33, '3.7.4'],
       [38, 'Testbarhet', 'Testability', 2, 33, '3.7.5'],
       [39, 'Flexibilitet', 'Flexibility', 2, null, '3.8'],
@@ -12149,6 +12149,11 @@ const PRIVACY_SEED_TS = '2026-04-23 09:00:00'
 const HSA_BY_DISPLAY_NAME = new Map([
   ['seed', 'SE2321000032-seed'],
   ['seed-dogfood', 'SE2321000032-seeddogfood'],
+  ['data-admin', 'SE2321000032-dataadmin'],
+  ['devops-lead', 'SE2321000032-devopslead'],
+  ['platform-eng', 'SE2321000032-platformeng'],
+  ['security-admin', 'SE2321000032-securityadmin'],
+  ['storage-admin', 'SE2321000032-storageadmin'],
   ['Anna Johansson', 'SE2321000032-annaj'],
   ['Erik Lindberg', 'SE2321000032-erikl'],
   ['Maria Svensson', 'SE2321000032-marias'],
@@ -12239,19 +12244,15 @@ function setSeedRowValues(table, matchColumn, matchValue, values) {
   }
 }
 
-function generatedHsaId(value) {
-  const text = String(value ?? 'seed')
-  let hash = 0x811c9dc5
-  for (let i = 0; i < text.length; i += 1) {
-    hash ^= text.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193) >>> 0
-  }
-  return `SE2321000032-${hash.toString(36).slice(0, 18)}`
-}
-
 function hsaForDisplayName(displayName) {
   if (displayName == null || displayName === '') return null
-  return HSA_BY_DISPLAY_NAME.get(displayName) ?? generatedHsaId(displayName)
+  const hsaId = HSA_BY_DISPLAY_NAME.get(displayName)
+  if (!hsaId) {
+    throw new Error(
+      `Privacy seed: missing explicit HSA-ID mapping for display name '${displayName}'`,
+    )
+  }
+  return hsaId
 }
 
 function addHsaColumnForDisplay(tableName, displayColumn, hsaColumn) {

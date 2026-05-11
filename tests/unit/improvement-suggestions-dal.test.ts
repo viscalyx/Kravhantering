@@ -90,7 +90,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       requirementVersionId: 9,
       content: '  Improve this  ',
       createdBy: 'tester',
-      createdByHsaId: 'SE2321000032-tester1',
+      createdByHsaId: '  SE2321000032-tester1  ',
     })
 
     expect(result).toEqual({ id: 42 })
@@ -136,7 +136,7 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       resolution: 1,
       resolutionMotivation: '  Applied fix  ',
       resolvedBy: '  alice  ',
-      resolvedByHsaId: 'SE2321000032-alice1',
+      resolvedByHsaId: '  SE2321000032-alice1  ',
     })
 
     expect(query).toHaveBeenNthCalledWith(
@@ -144,6 +144,41 @@ describe('improvement suggestions DAL (SQL Server path)', () => {
       expect.stringContaining('UPDATE improvement_suggestions'),
       [1, 'Applied fix', 'alice', 'SE2321000032-alice1', expect.any(Date), 5],
     )
+  })
+
+  it('normalizes blank creator HSA-ID values to null when creating suggestions', async () => {
+    const { db, query } = createSqlServerDb()
+    query.mockResolvedValueOnce([{ id: 1 }]).mockResolvedValueOnce([{ id: 42 }])
+
+    await createSuggestion(db, {
+      requirementId: 1,
+      content: 'Improve this',
+      createdBy: 'tester',
+      createdByHsaId: '   ',
+    })
+
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO improvement_suggestions'),
+      [1, null, 'Improve this', 'tester', null, expect.any(Date), 0],
+    )
+  })
+
+  it('rejects blank resolver HSA-ID values before recording a resolution', async () => {
+    const { db, query } = createSqlServerDb()
+
+    await expect(
+      recordResolution(db, 5, {
+        resolution: 1,
+        resolutionMotivation: 'Applied fix',
+        resolvedBy: 'alice',
+        resolvedByHsaId: '   ',
+      }),
+    ).rejects.toMatchObject({
+      code: 'validation',
+      message: 'Resolved by HSA-ID is required',
+    })
+    expect(query).not.toHaveBeenCalled()
   })
 
   it('requests review for a draft suggestion', async () => {

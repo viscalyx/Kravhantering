@@ -49,4 +49,8 @@ export const ownerEntity = new EntitySchema<OwnerEntity>({
       type: 'datetime2',
     },
   },
+  uniques: [
+    { columns: ['email'], name: 'uq_owners_email' },
+    { columns: ['hsaId'], name: 'uq_owners_hsa_id' },
+  ],
 })

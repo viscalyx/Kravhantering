@@ -84,7 +84,9 @@ describe('requirement-types DAL (SQL Server path)', () => {
       expect.stringContaining('WHERE requirement_type_id = @0'),
       [5],
     )
-    expect(query.mock.calls[0][0]).toContain('ORDER BY chapter_id ASC')
+    expect(query.mock.calls[0][0]).toContain('JSON_VALUE')
+    expect(query.mock.calls[0][0]).toContain('TRY_CONVERT(int')
+    expect(query.mock.calls[0][0]).toContain('id ASC')
   })
 
   it('listQualityCharacteristics omits WHERE clause when no typeId', async () => {

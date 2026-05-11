@@ -707,7 +707,7 @@
       "previewError": "Kunde inte förhandsgranska dataskyddsradering.",
       "executeError": "Kunde inte köra dataskyddsradering.",
       "disabledTooltip": "Du behöver behörigheten Dataskyddshandläggare.",
-      "permissionError": "Du saknar rollen Dataskyddshandläggare. Logga in som en användare med PrivacyOfficer för att köra dataskyddsradering.",
+      "permissionError": "Du saknar rollen Dataskyddshandläggare. Logga in som dataskyddshandläggare för att köra dataskyddsradering.",
       "replacementIncomplete": "Ange både ersättande HSA-ID och ersättande namn, eller lämna båda fälten tomma för anonymisering.",
       "invalidReplacementEmail": "Kontrollera den ersättande e-postadressen.",
       "invalidHsaId": "Kontrollera HSA-ID. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
@@ -1187,7 +1187,7 @@
       },
       "permissions": {
         "heading": "Behörighet",
-        "body": "Åtgärden kräver rollen Dataskyddshandläggare/PrivacyOfficer. Rollen är avsiktligt smal: den ger åtkomst till dataskyddsflödet men ska inte ge övriga administrativa rättigheter."
+        "body": "Åtgärden kräver rollen Dataskyddshandläggare. Rollen är avsiktligt smal: den ger åtkomst till dataskyddsflödet men ska inte ge övriga administrativa rättigheter."
       },
       "search": {
         "heading": "Sökning med HSA-ID",

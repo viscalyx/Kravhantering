@@ -599,6 +599,8 @@ function PrivacyErasurePanel() {
               onChange={event => {
                 resetExecutionFeedback()
                 setTargetHsaId(event.target.value)
+                setPreview(null)
+                setActions({})
               }}
               required
               value={targetHsaId}
