@@ -2,9 +2,10 @@
  * Parses the OIDC roles claim into the canonical app role list.
  *
  * Per the committed auth contract, PhenixID emits
- * `roles` as a JSON array of strings with values exactly `Reviewer` or
- * `Admin`. Author/Steward have been dropped — non-elevated users have an
- * empty `roles` array. This parser additionally tolerates two legacy shapes
+ * `roles` as a JSON array of strings with values exactly `Reviewer`,
+ * `Admin`, or the narrow privacy-erasure role `PrivacyOfficer`.
+ * Author/Steward have been dropped — non-elevated users have an empty
+ * `roles` array. This parser additionally tolerates two legacy shapes
  * for robustness:
  *   - space-separated string: "Reviewer"
  *   - LDAP group DNs: "CN=kravhantering-admin,OU=Groups,DC=example,DC=test"
@@ -13,7 +14,7 @@
  * stale IdP configuration never grants more capability than intended.
  */
 
-export const CANONICAL_ROLES = ['Reviewer', 'Admin'] as const
+export const CANONICAL_ROLES = ['Reviewer', 'Admin', 'PrivacyOfficer'] as const
 export type CanonicalRole = (typeof CANONICAL_ROLES)[number]
 
 const CANONICAL_BY_LOWER: Record<string, CanonicalRole> = Object.fromEntries(
@@ -28,6 +29,7 @@ const CANONICAL_BY_LOWER: Record<string, CanonicalRole> = Object.fromEntries(
 const GROUP_CN_TO_ROLE: Record<string, CanonicalRole> = {
   'kravhantering-reviewer': 'Reviewer',
   'kravhantering-admin': 'Admin',
+  'kravhantering-privacy-officer': 'PrivacyOfficer',
 }
 
 function extractCnFromDn(value: string): string | undefined {

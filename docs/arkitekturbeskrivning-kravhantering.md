@@ -539,7 +539,7 @@ och visar samtliga kravposter i underlaget med:
 
 ### Administrationscenter
 
-Administrationscentret (`/admin`) erbjuder tre flikar:
+Administrationscentret (`/admin`) erbjuder fyra flikar:
 
 1. **Terminologi** — Hantera visningsnamn för
    kravrelaterade begrepp (singular, plural, bestämd
@@ -549,6 +549,19 @@ Administrationscentret (`/admin`) erbjuder tre flikar:
 3. **Referensdata** — Navigeringsnav till alla
    referensdatasidor (områden, typer, kategorier,
    kvalitetskaraktäristiker, statusar, kravpaket).
+4. **Dataskydd** — Förhandsgranskning och körning av
+   HSA-ID-baserad GDPR-radering. Fliken kräver rollen
+   `PrivacyOfficer` (`Dataskyddshandläggare`) och ger inte
+   övriga administratörsrättigheter.
+
+Dataskyddsflödet matchar endast på HSA-ID. Namn visas för
+operatörens kontroll, men namn används inte som nyckel och
+begäran med endast namn avvisas. Historiska aktörsfält
+anonymiseras normalt till det interna sentinel-värdets visningsnamn
+`no-user` (lokaliserat till `Anonym`/`Anonymous`), medan aktiva
+tilldelningar normalt byts till en ersättande HSA-identitet.
+Beskrivningsfält och annan fritext skannas inte eftersom
+hjälptexterna förbjuder personidentifierande uppgifter där.
 
 ### Export och rapporter
 
@@ -820,8 +833,9 @@ användarsynliga texter i separata kolumner per språk:
 kolumn baserat på aktivt locale vid frågetillfället.
 
 Kvalitetskaraktäristikerna följer ISO/IEC 25010:2023
-med 48 poster i en hierarkisk trädstruktur
-(förälder-barn-relationer).
+med 49 poster i en hierarkisk trädstruktur
+(förälder-barn-relationer). Varje post lagrar även
+standardens kapitelnummer i `chapter_id`.
 
 ### Effektiv status (beräknas vid fråga)
 

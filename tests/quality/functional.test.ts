@@ -579,6 +579,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestDeviationReview(appDb(), libraryDeviation.id)
     await recordDecision(appDb(), libraryDeviation.id, {
       decidedBy: 'reviewer',
+      decidedByHsaId: 'SE2321000032-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved library deviation',
     })
@@ -590,6 +591,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestSpecificationLocalReview(appDb(), localDeviation.id)
     await recordSpecificationLocalDecision(appDb(), localDeviation.id, {
       decidedBy: 'reviewer',
+      decidedByHsaId: 'SE2321000032-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved local deviation',
     })
@@ -667,6 +669,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         resolution: SUGGESTION_RESOLVED,
         resolutionMotivation: 'Should fail before review',
         resolvedBy: 'reviewer',
+        resolvedByHsaId: 'SE2321000032-reviewer1',
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -679,6 +682,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
       resolution: SUGGESTION_RESOLVED,
       resolutionMotivation: 'Reviewed and resolved',
       resolvedBy: 'reviewer',
+      resolvedByHsaId: 'SE2321000032-reviewer1',
     })
 
     await expect(
@@ -686,6 +690,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
         resolution: SUGGESTION_DISMISSED,
         resolutionMotivation: 'Second resolution must fail',
         resolvedBy: 'reviewer',
+        resolvedByHsaId: 'SE2321000032-reviewer1',
       }),
     ).rejects.toMatchObject({
       code: 'conflict',
@@ -722,6 +727,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await requestDeviationReview(appDb(), deviation.id)
     await recordDecision(appDb(), deviation.id, {
       decidedBy: 'reviewer',
+      decidedByHsaId: 'SE2321000032-reviewer1',
       decision: DEVIATION_APPROVED,
       decisionMotivation: 'Approved once',
     })
@@ -729,6 +735,7 @@ describeIfSqlServer('Fitness Scenarios (SQL Server)', () => {
     await expect(
       recordDecision(appDb(), deviation.id, {
         decidedBy: 'reviewer',
+        decidedByHsaId: 'SE2321000032-reviewer1',
         decision: DEVIATION_REJECTED,
         decisionMotivation: 'Second decision must fail',
       }),

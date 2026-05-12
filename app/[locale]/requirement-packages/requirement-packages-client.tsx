@@ -12,6 +12,7 @@ import { Link } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
 import { isSwedish } from '@/lib/i18n/localized'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 
 const REQUIREMENT_PACKAGES_HELP: HelpContent = {
@@ -228,12 +229,13 @@ export default function RequirementPackagesClient() {
     }
   }
 
-  const getOwnerName = (requirementPackage: RequirementPackage) => {
-    if (requirementPackage.owner) {
-      return `${requirementPackage.owner.firstName} ${requirementPackage.owner.lastName}`
-    }
-    return '—'
-  }
+  const getOwnerName = (owner: Owner | null) =>
+    owner
+      ? (formatActorDisplayNameForLocale(
+          `${owner.firstName} ${owner.lastName}`.trim(),
+          locale,
+        ) ?? '—')
+      : '—'
 
   const truncateDescription = (text: string | null) => {
     if (!text) return null
@@ -400,7 +402,7 @@ export default function RequirementPackagesClient() {
                       <option value="">—</option>
                       {owners.map(owner => (
                         <option key={owner.id} value={owner.id}>
-                          {owner.firstName} {owner.lastName}
+                          {getOwnerName(owner)}
                         </option>
                       ))}
                     </select>
@@ -576,7 +578,7 @@ export default function RequirementPackagesClient() {
                       {getDescription(requirementPackage) || '—'}
                     </td>
                     <td className="py-3 px-4 text-secondary-600 dark:text-secondary-400">
-                      {getOwnerName(requirementPackage)}
+                      {getOwnerName(requirementPackage.owner)}
                     </td>
                     <td className="py-3 px-4 text-center text-secondary-600 dark:text-secondary-400">
                       {t('requirementCount', {

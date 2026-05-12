@@ -25,6 +25,7 @@ import { dirname, resolve } from 'node:path'
 
 const KNOWN_USERS = {
   'ada.admin': 'devpass',
+  'only.admin': 'devpass',
   'rita.reviewer': 'devpass',
 }
 

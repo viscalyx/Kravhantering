@@ -5,6 +5,7 @@ import {
 } from '@/lib/typeorm/entities'
 
 export interface QualityCharacteristicRow {
+  chapterId: string
   id: number
   nameEn: string
   nameSv: string
@@ -62,13 +63,19 @@ export async function listQualityCharacteristics(
     `
       SELECT
         id,
+        chapter_id AS chapterId,
         name_sv AS nameSv,
         name_en AS nameEn,
         requirement_type_id AS requirementTypeId,
         parent_id AS parentId
       FROM quality_characteristics
       ${typeId != null ? 'WHERE requirement_type_id = @0' : ''}
-      ORDER BY name_sv ASC
+      ORDER BY
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[0]')) ASC,
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[1]')) ASC,
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[2]')) ASC,
+        TRY_CONVERT(int, JSON_VALUE(CONCAT(N'["', REPLACE(chapter_id, N'.', N'","'), N'"]'), N'$[3]')) ASC,
+        id ASC
     `,
     typeId != null ? [typeId] : [],
   )
@@ -108,6 +115,7 @@ export async function deleteType(db: SqlServerDatabase, id: number) {
 export async function createQualityCharacteristic(
   db: SqlServerDatabase,
   data: {
+    chapterId: string
     nameSv: string
     nameEn: string
     requirementTypeId: number
@@ -117,6 +125,7 @@ export async function createQualityCharacteristic(
   const rows = await db.query(
     `
       INSERT INTO quality_characteristics (
+        chapter_id,
         name_sv,
         name_en,
         requirement_type_id,
@@ -124,13 +133,20 @@ export async function createQualityCharacteristic(
       )
       OUTPUT
         inserted.id AS id,
+        inserted.chapter_id AS chapterId,
         inserted.name_sv AS nameSv,
         inserted.name_en AS nameEn,
         inserted.requirement_type_id AS requirementTypeId,
         inserted.parent_id AS parentId
-      VALUES (@0, @1, @2, @3)
+      VALUES (@0, @1, @2, @3, @4)
     `,
-    [data.nameSv, data.nameEn, data.requirementTypeId, data.parentId ?? null],
+    [
+      data.chapterId,
+      data.nameSv,
+      data.nameEn,
+      data.requirementTypeId,
+      data.parentId ?? null,
+    ],
   )
   return rows[0]
 }
@@ -139,6 +155,7 @@ export async function updateQualityCharacteristic(
   db: SqlServerDatabase,
   id: number,
   data: {
+    chapterId?: string
     nameSv?: string
     nameEn?: string
     requirementTypeId?: number
@@ -148,6 +165,10 @@ export async function updateQualityCharacteristic(
   const sets: string[] = []
   const params: Array<string | number | null> = []
 
+  if (data.chapterId !== undefined) {
+    params.push(data.chapterId)
+    sets.push(`chapter_id = @${params.length - 1}`)
+  }
   if (data.nameSv !== undefined) {
     params.push(data.nameSv)
     sets.push(`name_sv = @${params.length - 1}`)
@@ -170,6 +191,7 @@ export async function updateQualityCharacteristic(
       `
         SELECT
           id,
+          chapter_id AS chapterId,
           name_sv AS nameSv,
           name_en AS nameEn,
           requirement_type_id AS requirementTypeId,
@@ -189,6 +211,7 @@ export async function updateQualityCharacteristic(
       SET ${sets.join(', ')}
       OUTPUT
         inserted.id AS id,
+        inserted.chapter_id AS chapterId,
         inserted.name_sv AS nameSv,
         inserted.name_en AS nameEn,
         inserted.requirement_type_id AS requirementTypeId,

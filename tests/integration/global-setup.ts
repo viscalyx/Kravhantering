@@ -25,6 +25,12 @@ export const ROLES: ReadonlyArray<RoleSpec> = [
     filePath: 'test-results/auth/admin.json',
   },
   {
+    role: 'admin-only',
+    username: 'only.admin',
+    password: 'devpass',
+    filePath: 'test-results/auth/admin-only.json',
+  },
+  {
     role: 'reviewer',
     username: 'rita.reviewer',
     password: 'devpass',

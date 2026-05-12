@@ -197,6 +197,7 @@ interface RequirementMutationData {
   baseRevisionToken?: string | null
   baseVersionId?: number | null
   createdBy?: string
+  createdByHsaId?: string | null
   description: string
   normReferenceIds?: number[]
   qualityCharacteristicId?: number
@@ -248,6 +249,7 @@ interface VersionInsertedRow {
   archiveInitiatedAt: string | null
   createdAt: string
   createdBy: string | null
+  createdByHsaId: string | null
   description: string
   editedAt: string | null
   id: number
@@ -298,6 +300,8 @@ function mapVersion(row: Record<string, unknown>): VersionInsertedRow {
     archivedAt: toIso(row.archivedAt),
     archiveInitiatedAt: toIso(row.archiveInitiatedAt),
     createdBy: row.createdBy == null ? null : String(row.createdBy),
+    createdByHsaId:
+      row.createdByHsaId == null ? null : String(row.createdByHsaId),
   }
 }
 
@@ -331,7 +335,8 @@ const VERSION_OUTPUT = `
     INSERTED.published_at AS publishedAt,
     INSERTED.archived_at AS archivedAt,
     INSERTED.archive_initiated_at AS archiveInitiatedAt,
-    INSERTED.created_by AS createdBy
+    INSERTED.created_by AS createdBy,
+    INSERTED.created_by_hsa_id AS createdByHsaId
 `
 
 export async function createRequirement(
@@ -373,10 +378,10 @@ export async function createRequirement(
         requirement_category_id, requirement_type_id, quality_characteristic_id,
         risk_level_id, requirement_status_id, is_testing_required,
         verification_method, created_at, edited_at, published_at,
-        archived_at, archive_initiated_at, created_by
+        archived_at, archive_initiated_at, created_by, created_by_hsa_id
       )
         ${VERSION_OUTPUT}
-        VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12)`,
+        VALUES (@0, 1, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, NULL, NULL, NULL, @12, @13)`,
       [
         requirement.id,
         data.description,
@@ -391,6 +396,7 @@ export async function createRequirement(
         now,
         now,
         data.createdBy ?? null,
+        data.createdByHsaId ?? null,
       ],
     )) as Array<Record<string, unknown>>
     version = mapVersion(verRows[0] ?? {})
@@ -410,6 +416,7 @@ interface VersionLite {
   acceptanceCriteria: string | null
   archiveInitiatedAt: string | null
   createdBy: string | null
+  createdByHsaId: string | null
   description: string
   id: number
   qualityCharacteristicId: number | null
@@ -442,7 +449,8 @@ async function getLatestVersionLite(
         risk_level_id AS riskLevelId,
         CAST(is_testing_required AS int) AS requiresTesting,
         verification_method AS verificationMethod,
-        created_by AS createdBy
+        created_by AS createdBy,
+        created_by_hsa_id AS createdByHsaId
       FROM requirement_versions${lockHint}
       WHERE requirement_id = @0
       ORDER BY version_number DESC`,
@@ -466,6 +474,8 @@ async function getLatestVersionLite(
     verificationMethod:
       row.verificationMethod == null ? null : String(row.verificationMethod),
     createdBy: row.createdBy == null ? null : String(row.createdBy),
+    createdByHsaId:
+      row.createdByHsaId == null ? null : String(row.createdByHsaId),
   }
 }
 
@@ -634,10 +644,10 @@ export async function editRequirement(
           requirement_category_id, requirement_type_id, quality_characteristic_id,
           risk_level_id, requirement_status_id, is_testing_required,
           verification_method, created_at, edited_at, published_at,
-          archived_at, archive_initiated_at, created_by
+          archived_at, archive_initiated_at, created_by, created_by_hsa_id
         )
         ${VERSION_OUTPUT}
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13)`,
+        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14)`,
       [
         requirementId,
         nextVersionNumber,
@@ -653,6 +663,7 @@ export async function editRequirement(
         now,
         now,
         data.createdBy ?? null,
+        data.createdByHsaId ?? null,
       ],
     )) as Array<Record<string, unknown>>
     result = mapVersion(insertRows[0] ?? {})
@@ -995,6 +1006,7 @@ export async function restoreVersion(
   requirementId: number,
   versionId: number,
   createdBy?: string,
+  createdByHsaId?: string | null,
 ): Promise<VersionInsertedRow> {
   let result!: VersionInsertedRow
 
@@ -1002,76 +1014,113 @@ export async function restoreVersion(
     const tx: SqlServerTxExecutor = {
       query: (sql, params) => manager.query(sql, params),
     }
-    const oldRows = (await tx.query(
-      `SELECT TOP (1)
-          id, requirement_id AS requirementId,
-          description, acceptance_criteria AS acceptanceCriteria,
-          requirement_category_id AS requirementCategoryId,
-          requirement_type_id AS requirementTypeId,
-          quality_characteristic_id AS qualityCharacteristicId,
-          risk_level_id AS riskLevelId,
-          CAST(is_testing_required AS int) AS requiresTesting,
-          verification_method AS verificationMethod,
-          created_by AS createdBy
-        FROM requirement_versions WHERE id = @0`,
-      [versionId],
-    )) as Array<Record<string, unknown>>
-    if (!oldRows[0] || Number(oldRows[0].requirementId) !== requirementId) {
-      throw notFoundError('Version not found or does not belong to requirement')
-    }
-    const old = oldRows[0]
-
-    const requirementPackageRows = (await tx.query(
-      `SELECT requirement_package_id AS requirementPackageId FROM requirement_version_requirement_packages WHERE requirement_version_id = @0`,
-      [versionId],
-    )) as Array<Record<string, unknown>>
-    const normRefRows = (await tx.query(
-      `SELECT norm_reference_id AS normReferenceId FROM requirement_version_norm_references WHERE requirement_version_id = @0`,
-      [versionId],
-    )) as Array<Record<string, unknown>>
-
-    const nextVersionNumber = await getNextVersionNumberSqlServer(
+    result = await restoreVersionSqlServer(
       tx,
       requirementId,
-    )
-    const now = new Date()
-
-    const insertRows = (await tx.query(
-      `INSERT INTO requirement_versions (
-          requirement_id, version_number, description, acceptance_criteria,
-          requirement_category_id, requirement_type_id, quality_characteristic_id,
-          risk_level_id, requirement_status_id, is_testing_required,
-          verification_method, created_at, edited_at, published_at,
-          archived_at, archive_initiated_at, created_by
-        )
-        ${VERSION_OUTPUT}
-        VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13)`,
-      [
-        requirementId,
-        nextVersionNumber,
-        String(old.description ?? ''),
-        old.acceptanceCriteria,
-        toNum(old.requirementCategoryId),
-        toNum(old.requirementTypeId),
-        toNum(old.qualityCharacteristicId),
-        toNum(old.riskLevelId),
-        STATUS_DRAFT,
-        toBool(old.requiresTesting) ? 1 : 0,
-        old.verificationMethod,
-        now,
-        now,
-        createdBy ?? old.createdBy ?? null,
-      ],
-    )) as Array<Record<string, unknown>>
-    result = mapVersion(insertRows[0] ?? {})
-
-    await insertVersionJoinsSqlServer(
-      tx,
-      result.id,
-      requirementPackageRows.map(r => Number(r.requirementPackageId)),
-      normRefRows.map(r => Number(r.normReferenceId)),
+      versionId,
+      createdBy,
+      createdByHsaId,
     )
   })
+
+  return result
+}
+
+function restoreActorSnapshot(
+  old: Record<string, unknown>,
+  createdBy?: string,
+  createdByHsaId?: string | null,
+): { createdBy: string | null; createdByHsaId: string | null } {
+  if (createdBy !== undefined && createdByHsaId != null) {
+    return { createdBy, createdByHsaId }
+  }
+
+  return {
+    createdBy: old.createdBy == null ? null : String(old.createdBy),
+    createdByHsaId:
+      old.createdByHsaId == null ? null : String(old.createdByHsaId),
+  }
+}
+
+async function restoreVersionSqlServer(
+  tx: SqlServerTxExecutor,
+  requirementId: number,
+  versionId: number,
+  createdBy?: string,
+  createdByHsaId?: string | null,
+): Promise<VersionInsertedRow> {
+  const oldRows = (await tx.query(
+    `SELECT TOP (1)
+        id, requirement_id AS requirementId,
+        description, acceptance_criteria AS acceptanceCriteria,
+        requirement_category_id AS requirementCategoryId,
+        requirement_type_id AS requirementTypeId,
+        quality_characteristic_id AS qualityCharacteristicId,
+        risk_level_id AS riskLevelId,
+        CAST(is_testing_required AS int) AS requiresTesting,
+        verification_method AS verificationMethod,
+        created_by AS createdBy,
+        created_by_hsa_id AS createdByHsaId
+      FROM requirement_versions WHERE id = @0`,
+    [versionId],
+  )) as Array<Record<string, unknown>>
+  if (!oldRows[0] || Number(oldRows[0].requirementId) !== requirementId) {
+    throw notFoundError('Version not found or does not belong to requirement')
+  }
+  const old = oldRows[0]
+  const actor = restoreActorSnapshot(old, createdBy, createdByHsaId)
+
+  const requirementPackageRows = (await tx.query(
+    `SELECT requirement_package_id AS requirementPackageId FROM requirement_version_requirement_packages WHERE requirement_version_id = @0`,
+    [versionId],
+  )) as Array<Record<string, unknown>>
+  const normRefRows = (await tx.query(
+    `SELECT norm_reference_id AS normReferenceId FROM requirement_version_norm_references WHERE requirement_version_id = @0`,
+    [versionId],
+  )) as Array<Record<string, unknown>>
+
+  const nextVersionNumber = await getNextVersionNumberSqlServer(
+    tx,
+    requirementId,
+  )
+  const now = new Date()
+
+  const insertRows = (await tx.query(
+    `INSERT INTO requirement_versions (
+        requirement_id, version_number, description, acceptance_criteria,
+        requirement_category_id, requirement_type_id, quality_characteristic_id,
+        risk_level_id, requirement_status_id, is_testing_required,
+        verification_method, created_at, edited_at, published_at,
+        archived_at, archive_initiated_at, created_by, created_by_hsa_id
+      )
+      ${VERSION_OUTPUT}
+      VALUES (@0, @1, @2, @3, @4, @5, @6, @7, @8, @9, @10, @11, @12, NULL, NULL, NULL, @13, @14)`,
+    [
+      requirementId,
+      nextVersionNumber,
+      String(old.description ?? ''),
+      old.acceptanceCriteria,
+      toNum(old.requirementCategoryId),
+      toNum(old.requirementTypeId),
+      toNum(old.qualityCharacteristicId),
+      toNum(old.riskLevelId),
+      STATUS_DRAFT,
+      toBool(old.requiresTesting) ? 1 : 0,
+      old.verificationMethod,
+      now,
+      now,
+      actor.createdBy,
+      actor.createdByHsaId,
+    ],
+  )) as Array<Record<string, unknown>>
+  const result = mapVersion(insertRows[0] ?? {})
+
+  await insertVersionJoinsSqlServer(
+    tx,
+    result.id,
+    requirementPackageRows.map(r => Number(r.requirementPackageId)),
+    normRefRows.map(r => Number(r.normReferenceId)),
+  )
 
   return result
 }
@@ -1080,21 +1129,41 @@ export async function reactivateRequirement(
   db: SqlServerDatabase,
   requirementId: number,
   createdBy?: string,
+  createdByHsaId?: string | null,
 ): Promise<VersionInsertedRow> {
-  const rows = (await db.query(
-    `SELECT TOP (1) id, requirement_status_id AS statusId
-      FROM requirement_versions
-      WHERE requirement_id = @0
-      ORDER BY version_number DESC`,
-    [requirementId],
-  )) as Array<Record<string, unknown>>
-  if (!rows[0]) {
-    throw notFoundError('No version found for requirement')
-  }
-  if (!isRequirementArchivedStatus(Number(rows[0].statusId))) {
-    throw conflictError('Only fully archived requirements can be reactivated')
-  }
-  return restoreVersion(db, requirementId, Number(rows[0].id), createdBy)
+  let result!: VersionInsertedRow
+
+  await db.transaction(async manager => {
+    const tx: SqlServerTxExecutor = {
+      query: (sql, params) => manager.query(sql, params),
+    }
+    const rows = (await tx.query(
+      `SELECT TOP (1) id, requirement_status_id AS statusId
+        FROM requirement_versions WITH (UPDLOCK, HOLDLOCK)
+        WHERE requirement_id = @0
+        ORDER BY version_number DESC`,
+      [requirementId],
+    )) as Array<Record<string, unknown>>
+    if (!rows[0]) {
+      throw notFoundError('No version found for requirement')
+    }
+    if (!isRequirementArchivedStatus(Number(rows[0].statusId))) {
+      throw conflictError('Only fully archived requirements can be reactivated')
+    }
+
+    result = await restoreVersionSqlServer(
+      tx,
+      requirementId,
+      Number(rows[0].id),
+      createdBy,
+      createdByHsaId,
+    )
+    await tx.query(`UPDATE requirements SET is_archived = 0 WHERE id = @0`, [
+      requirementId,
+    ])
+  })
+
+  return result
 }
 
 export async function getVersionHistory(

@@ -5,10 +5,13 @@ import type { SpecificationResponsibilityAreaEntity } from '@/lib/typeorm/entiti
 
 export interface RequirementsSpecificationEntity {
   businessNeedsReference: string | null
+  canResponsibleGenerateAi: boolean
   createdAt: Date
   id: number
   localRequirementNextSequence: number
   name: string
+  responsibleDisplayName: string | null
+  responsibleHsaId: string | null
   specificationImplementationType: SpecificationImplementationTypeEntity | null
   specificationLifecycleStatus: SpecificationLifecycleStatusEntity | null
   specificationResponsibilityArea: SpecificationResponsibilityAreaEntity | null
@@ -52,11 +55,34 @@ export const requirementsSpecificationEntity =
         type: 'int',
         default: 1,
       },
+      responsibleHsaId: {
+        name: 'responsible_hsa_id',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
+      responsibleDisplayName: {
+        name: 'responsible_display_name',
+        type: 'nvarchar',
+        length: 'MAX',
+        nullable: true,
+      },
+      canResponsibleGenerateAi: {
+        name: 'can_responsible_generate_ai',
+        type: 'bit',
+        default: false,
+      },
     },
     uniques: [
       {
         name: 'uq_requirements_specifications_unique_id',
         columns: ['uniqueId'],
+      },
+    ],
+    indices: [
+      {
+        name: 'idx_requirements_specifications_responsible_hsa_id',
+        columns: ['responsibleHsaId'],
       },
     ],
     relations: {

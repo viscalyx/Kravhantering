@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { isHsaId } from '@/lib/auth/hsa-id'
 import { deleteOwner, updateOwner } from '@/lib/dal/owners'
 import { getRequestSqlServerDataSource } from '@/lib/db'
 import {
@@ -15,8 +16,15 @@ type Params = Promise<{ id: string }>
 
 const ownerUpdateSchema = z
   .object({
-    email: boundedDbStringSchema.optional(),
+    email: boundedDbStringSchema.nullable().optional(),
     firstName: boundedDbStringSchema.optional(),
+    hsaId: boundedDbStringSchema
+      .refine(isHsaId, {
+        message:
+          'HSA-ID must use format SE<10-digit org no>-<alphanumeric suffix>.',
+      })
+      .nullable()
+      .optional(),
     lastName: boundedDbStringSchema.optional(),
   })
   .strict()

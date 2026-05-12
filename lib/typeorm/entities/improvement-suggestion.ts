@@ -6,6 +6,7 @@ export interface ImprovementSuggestionEntity {
   content: string
   createdAt: Date
   createdBy: string | null
+  createdByHsaId: string | null
   id: number
   isReviewRequested: boolean
   requirement: RequirementEntity
@@ -14,6 +15,7 @@ export interface ImprovementSuggestionEntity {
   resolutionMotivation: string | null
   resolvedAt: Date | null
   resolvedBy: string | null
+  resolvedByHsaId: string | null
   reviewRequestedAt: Date | null
   updatedAt: Date | null
 }
@@ -48,11 +50,23 @@ export const improvementSuggestionEntity =
         length: 'MAX',
         nullable: true,
       },
+      resolvedByHsaId: {
+        name: 'resolved_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
       resolvedAt: { name: 'resolved_at', type: 'datetime2', nullable: true },
       createdBy: {
         name: 'created_by',
         type: 'nvarchar',
         length: 'MAX',
+        nullable: true,
+      },
+      createdByHsaId: {
+        name: 'created_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
         nullable: true,
       },
       createdAt: { name: 'created_at', type: 'datetime2' },
@@ -71,6 +85,14 @@ export const improvementSuggestionEntity =
       {
         name: 'idx_improvement_suggestions_requirement_version_id',
         columns: ['requirementVersion'],
+      },
+      {
+        name: 'idx_improvement_suggestions_created_by_hsa_id',
+        columns: ['createdByHsaId'],
+      },
+      {
+        name: 'idx_improvement_suggestions_resolved_by_hsa_id',
+        columns: ['resolvedByHsaId'],
       },
     ],
     relations: {

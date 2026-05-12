@@ -7,15 +7,16 @@ import {
 
 describe('CANONICAL_ROLES', () => {
   it('enumerates the canonical roles in spec order', () => {
-    expect(CANONICAL_ROLES).toEqual(['Reviewer', 'Admin'])
+    expect(CANONICAL_ROLES).toEqual(['Reviewer', 'Admin', 'PrivacyOfficer'])
   })
 })
 
 describe('parseRolesClaim', () => {
   it('accepts JSON array form', () => {
-    expect(parseRolesClaim(['Reviewer', 'Admin'])).toEqual([
+    expect(parseRolesClaim(['Reviewer', 'Admin', 'PrivacyOfficer'])).toEqual([
       'Reviewer',
       'Admin',
+      'PrivacyOfficer',
     ])
   })
 
@@ -32,9 +33,11 @@ describe('parseRolesClaim', () => {
     const result = parseRolesClaim([
       'CN=kravhantering-reviewer,OU=Groups,DC=example,DC=com',
       'CN=kravhantering-admin,OU=Groups,DC=example,DC=com',
+      'CN=kravhantering-privacy-officer,OU=Groups,DC=example,DC=com',
     ])
     expect(result).toContain('Reviewer')
     expect(result).toContain('Admin')
+    expect(result).toContain('PrivacyOfficer')
   })
 
   it('returns an empty array for unknown shapes', () => {

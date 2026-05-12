@@ -4,8 +4,10 @@ import type { SpecificationLocalRequirementEntity } from '@/lib/typeorm/entities
 export interface SpecificationLocalRequirementDeviationEntity {
   createdAt: Date
   createdBy: string | null
+  createdByHsaId: string | null
   decidedAt: Date | null
   decidedBy: string | null
+  decidedByHsaId: string | null
   decision: number | null
   decisionMotivation: string | null
   id: number
@@ -45,11 +47,23 @@ export const specificationLocalRequirementDeviationEntity =
         length: 'MAX',
         nullable: true,
       },
+      decidedByHsaId: {
+        name: 'decided_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
+        nullable: true,
+      },
       decidedAt: { name: 'decided_at', type: 'datetime2', nullable: true },
       createdBy: {
         name: 'created_by',
         type: 'nvarchar',
         length: 'MAX',
+        nullable: true,
+      },
+      createdByHsaId: {
+        name: 'created_by_hsa_id',
+        type: 'nvarchar',
+        length: 64,
         nullable: true,
       },
       createdAt: { name: 'created_at', type: 'datetime2' },
@@ -59,6 +73,14 @@ export const specificationLocalRequirementDeviationEntity =
       {
         name: 'idx_specification_local_requirement_deviations_specification_local_requirement_id',
         columns: ['specificationLocalRequirement'],
+      },
+      {
+        name: 'idx_specification_local_requirement_deviations_created_by_hsa_id',
+        columns: ['createdByHsaId'],
+      },
+      {
+        name: 'idx_specification_local_requirement_deviations_decided_by_hsa_id',
+        columns: ['decidedByHsaId'],
       },
     ],
     relations: {

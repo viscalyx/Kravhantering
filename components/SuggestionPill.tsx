@@ -3,6 +3,7 @@
 import { CheckCircle2, Eye, PenLine, XCircle } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { devMarker } from '@/lib/developer-mode-markers'
+import { formatActorDisplayName } from '@/lib/privacy/display-name'
 
 interface SuggestionData {
   content: string
@@ -30,7 +31,16 @@ export default function SuggestionPill({
   suggestion,
 }: SuggestionPillProps) {
   const t = useTranslations('improvementSuggestion')
+  const tc = useTranslations('common')
   const locale = useLocale()
+  const createdBy = formatActorDisplayName(
+    suggestion.createdBy,
+    tc('anonymousUser'),
+  )
+  const resolvedBy = formatActorDisplayName(
+    suggestion.resolvedBy,
+    tc('anonymousUser'),
+  )
   const isResolved = suggestion.resolution !== null
   const isActioned = suggestion.resolution === 1
   const effectiveStep =
@@ -121,8 +131,8 @@ export default function SuggestionPill({
         {suggestion.content}
       </p>
       <p className="text-xs text-secondary-500 dark:text-secondary-400">
-        {suggestion.createdBy && <span>{suggestion.createdBy}</span>}
-        {suggestion.createdBy && suggestion.createdAt && <span> · </span>}
+        {createdBy && <span>{createdBy}</span>}
+        {createdBy && suggestion.createdAt && <span> · </span>}
         {suggestion.createdAt && (
           <span>
             {new Date(suggestion.createdAt).toLocaleDateString(locale)}
@@ -150,8 +160,8 @@ export default function SuggestionPill({
             </p>
           )}
           <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            {suggestion.resolvedBy && <span>{suggestion.resolvedBy}</span>}
-            {suggestion.resolvedBy && suggestion.resolvedAt && <span> · </span>}
+            {resolvedBy && <span>{resolvedBy}</span>}
+            {resolvedBy && suggestion.resolvedAt && <span> · </span>}
             {suggestion.resolvedAt && (
               <span>
                 {new Date(suggestion.resolvedAt).toLocaleDateString(locale)}

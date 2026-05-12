@@ -128,7 +128,11 @@ All accounts use the password `devpass` (clearly dev-only, do not reuse).
 | `petra.specresp` | _(none)_ | `SE2321000032-specresp1` |
 | `paul.pkgcoauthor` | _(none)_ | `SE2321000032-pkgco1` |
 | `rita.reviewer` | `Reviewer` | `SE2321000032-reviewer1` |
-| `ada.admin` | `Admin` | `SE2321000032-admin1` |
+| `ada.admin` | `Admin`, `PrivacyOfficer` | `SE2321000032-admin1` |
+| `only.admin` | `Admin` | `SE2321000032-admin2` |
+| `disa.privacy` | `PrivacyOfficer` | `SE2321000032-privacy1` |
+| `kalle.one` | _(none — duplicate-name privacy test)_ | `SE2321000032-kalle1` |
+| `kalle.two` | _(none — duplicate-name privacy test)_ | `SE2321000032-kalle2` |
 | `noah.noroles` | _(none — for negative testing)_ | `SE2321000032-noroles1` |
 
 The realm JSON is imported only when the `idp` container starts **and
@@ -136,9 +140,21 @@ the realm does not already exist** in Keycloak's embedded H2 store. A
 plain `docker compose restart` keeps the existing realm and silently
 skips the re-import, so any edits to
 `dev/keycloak/realm-kravhantering-dev.json` (adding, removing, renaming
-users or changing their roles) won't show up. Recreate the container
-from the **host** instead so it boots with a fresh in-memory database
-and re-imports the JSON:
+users or changing their roles) won't show up.
+
+If you use the standalone IdP compose file (`npm run idp:up`), reset it
+with:
+
+<!-- markdownlint-disable MD013 -->
+```sh
+npm run idp:reset
+```
+<!-- markdownlint-enable MD013 -->
+
+If you use the devcontainer-managed IdP, `npm run idp:reset` targets the
+wrong compose project. Recreate the devcontainer `idp` service from the
+**host** instead so it boots with a fresh in-memory database and re-imports
+the JSON:
 
 <!-- markdownlint-disable MD013 -->
 ```sh
@@ -151,7 +167,7 @@ instead:
 
 <!-- markdownlint-disable MD013 -->
 ```sh
-docker compose -f .devcontainer/elevated/docker-compose.yml up -d --force-recreate idp
+npm run idp:reset:elevated
 ```
 <!-- markdownlint-enable MD013 -->
 
@@ -160,6 +176,26 @@ devcontainer itself does not have access to the host Docker daemon.
 The compose file does not mount a Keycloak data volume, so recreation
 is non-destructive (the JSON is the source of truth). Wait ~30 s for
 Keycloak to finish booting before signing in.
+
+Existing application sessions still contain the old role claims. After a
+realm reset, log out and sign in again, or force-refresh helper cookies:
+
+<!-- markdownlint-disable MD013 -->
+```sh
+node scripts/dev-login.mjs --force
+node scripts/dev-login.mjs --user only.admin --force
+```
+<!-- markdownlint-enable MD013 -->
+
+For Playwright, delete stale storage states or let global setup regenerate
+them:
+
+<!-- markdownlint-disable MD013 -->
+```sh
+rm -f test-results/auth/admin.json test-results/auth/admin-only.json
+npm run test:integration -- tests/integration/admin-entrypoint.spec.ts
+```
+<!-- markdownlint-enable MD013 -->
 
 ### Prodlike local client (`kravhantering-local`)
 
@@ -201,17 +237,18 @@ AUTH_OIDC_API_AUDIENCE=kravhantering-app
 
 The matching build-target side lives in
 [`lib/runtime/build-target.local-prod.ts`](../lib/runtime/build-target.local-prod.ts).
-Like the dev client, the seeded users above (and the `Reviewer` /
-`Admin` roles + `employeeHsaId` claim) work unchanged because both
+Like the dev client, the seeded users above (and the `Reviewer`, `Admin`,
+`PrivacyOfficer` roles + `employeeHsaId` claim) work unchanged because both
 clients live in the same realm and share the same protocol mappers.
 
 ### Roles claim
 
 The realm emits a `roles` claim as a JSON array of strings on both ID and
-access tokens. Values are exactly `Reviewer` and `Admin` (the canonical
-names used throughout the app and for RBAC). Authoring rights are not
-carried by the roles claim — they are assignment-driven via
-`employeeHsaId`.
+access tokens. Values are exactly `Reviewer`, `Admin`, and
+`PrivacyOfficer` (the canonical names used throughout the app). Authoring
+rights are not carried by the roles claim — they are assignment-driven via
+`employeeHsaId`. `PrivacyOfficer` is limited to GDPR erasure preview and
+execution in the Admin Center privacy tab; it does not imply `Admin`.
 
 ### `employeeHsaId` claim
 
@@ -228,23 +265,25 @@ token and userinfo response. The value is sourced from each user's
 Login is rejected with 401 when the claim is missing or fails this
 check.
 
-### MCP synthetic HSA-id
+### MCP service-account HSA-id
 
-The `kravhantering-mcp` Keycloak client is configured with an
-`oidc-hardcoded-claim` mapper that emits
-`employeeHsaId = mcp-client:kravhantering-mcp` on the access token used
-by the MCP service-account flow. Values that begin with `mcp-client:`
-deliberately bypass the HSA-id format validator; assignment-based
-authorization treats the literal string as the actor identity.
+The `kravhantering-mcp` Keycloak client is configured with the
+`oidc-hardcoded-claim-mapper` protocol mapper that emits
+`employeeHsaId = SE2321000032-mcp1` on the access token used by the MCP
+service-account flow. This gives MCP write workflows a real-format HSA-ID
+for actor stamping in requirement history, deviations, and improvement
+suggestions.
 
 For local and prodlike Keycloak realms that were imported before that mapper
-existed, the app also accepts the same synthetic identity by deriving
-`mcp-client:<client_id>` from a verified service-account token when
-`client_id` or `azp` matches the configured MCP client id. The expected client
-id is read by `getExpectedMcpClientId()` from `AUTH_OIDC_MCP_CLIENT_ID`,
-falling back to `MCP_CLIENT_ID`, and finally to the local default
-`kravhantering-mcp`. If both variables are set differently,
-`AUTH_OIDC_MCP_CLIENT_ID` is canonical and `MCP_CLIENT_ID` is ignored.
+existed, the app still accepts a synthetic identity by deriving
+`mcp-client:<client_id>` from a verified service-account token when `client_id`
+or `azp` matches the configured MCP client id. Synthetic identities are valid
+for MCP authentication, but write workflows that stamp actor history require a
+real-format `employeeHsaId`. The expected client id is read by
+`getExpectedMcpClientId()` from `AUTH_OIDC_MCP_CLIENT_ID`, falling back to
+`MCP_CLIENT_ID`, and finally to the local default `kravhantering-mcp`. If both
+variables are set differently, `AUTH_OIDC_MCP_CLIENT_ID` is canonical and
+`MCP_CLIENT_ID` is ignored.
 
 ### No refresh tokens
 

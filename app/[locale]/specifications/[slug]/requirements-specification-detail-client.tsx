@@ -888,7 +888,7 @@ export default function KravunderlagDetailClient({
   )
 
   const handleBulkDeviation = useCallback(
-    async (motivation: string, createdBy: string) => {
+    async (motivation: string, _createdBy: string) => {
       if (leftSelectedIds.size === 0) return
       setBulkDeviationSaving(true)
       setBulkDeviationError(null)
@@ -905,7 +905,7 @@ export default function KravunderlagDetailClient({
                 {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ motivation, createdBy }),
+                  body: JSON.stringify({ motivation }),
                 },
               ).then(async res => {
                 if (!res.ok) {

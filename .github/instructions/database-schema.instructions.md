@@ -64,6 +64,32 @@ applyTo: "{lib/typeorm/**/*.ts,typeorm/migrations/**/*.mjs,typeorm/seed.mjs,docs
 - If a deviation is required, add it to `Accepted Exceptions` in
   `docs/database-schema.md` in the same change.
 
+## Personal Data / Privacy
+
+- Treat columns that store or derive living-person identity as personal data.
+  This includes `name`, `display_name`, `first_name`, `last_name`, `email`,
+  `hsa_id`, `*_by`, `*_by_hsa_id`, `*_display_name`, actor snapshots,
+  assignees, owners, responsible users, co-authors, and decision/resolution
+  identities.
+- When a schema change adds, renames, removes, or changes semantics for such a
+  field, update the Admin Center Privacy / Dataskydd erasure workflow in the
+  same change.
+- Add or update the relevant `GROUP_POLICIES` entry in
+  `lib/privacy/erasure.ts` so preview and execution handle the field by HSA-ID.
+- Use HSA-ID as the durable identity key. Names, email addresses, and display
+  names are snapshots or contact details, never matching keys for erasure.
+- Add or update seeded privacy scenarios in `typeorm/seed.mjs`, including
+  representative HSA-ID values and duplicate-name coverage when ambiguity is
+  possible.
+- Add or update tests for preview, execution, exact HSA-ID matching, duplicate
+  name safety, no-replacement anonymization, and UI/i18n copy when the field is
+  visible in Admin Privacy.
+- Update `docs/admin-center.md`, `docs/database-schema.md`, and relevant auth
+  or API security docs so the privacy surface and limitations remain explicit.
+- Do not add database-backed privacy audit logs unless explicitly requested.
+  The current privacy audit events are platform security-log events and are not
+  part of the Admin Privacy preview matrix.
+
 ## Documentation Checklist
 
 When any database schema, migration, or seed change is made, review and

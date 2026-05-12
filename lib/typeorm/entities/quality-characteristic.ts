@@ -2,6 +2,7 @@ import { EntitySchema } from 'typeorm'
 import type { RequirementTypeEntity } from '@/lib/typeorm/entities/requirement-type'
 
 export interface QualityCharacteristicEntity {
+  chapterId: string
   id: number
   nameEn: string
   nameSv: string
@@ -20,6 +21,7 @@ export const qualityCharacteristicEntity =
         type: 'int',
         generated: 'increment',
       },
+      chapterId: { name: 'chapter_id', type: 'nvarchar', length: 32 },
       nameSv: { name: 'name_sv', type: 'nvarchar', length: 'MAX' },
       nameEn: { name: 'name_en', type: 'nvarchar', length: 'MAX' },
     },

@@ -9,11 +9,14 @@ import { getRequestSqlServerDataSource } from '@/lib/db'
 import { logSanitizedError } from '@/lib/http/safe-errors'
 import {
   idParamSchema,
-  nullableBusinessTextSchema,
   optionalBusinessTextSchema,
   parseRouteParams,
   readJsonWithSchema,
 } from '@/lib/http/validation'
+import {
+  createRequestContext,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
 import { isRequirementsServiceError } from '@/lib/requirements/errors'
 import { toHttpErrorPayload } from '@/lib/requirements/http-errors'
 
@@ -23,7 +26,6 @@ type Params = Promise<{ id: string }>
 
 const updateDeviationSchema = z
   .object({
-    createdBy: nullableBusinessTextSchema.optional(),
     motivation: optionalBusinessTextSchema,
   })
   .strict()
@@ -57,10 +59,13 @@ export async function PUT(
   if (!parsedParams.ok) return parsedParams.response
   const parsedBody = await readJsonWithSchema(request, updateDeviationSchema)
   if (!parsedBody.ok) return parsedBody.response
-  const db = await getRequestSqlServerDataSource()
 
   try {
-    await updateDeviation(db, parsedParams.data.id, parsedBody.data)
+    requireHumanActorSnapshot(await createRequestContext(request, 'rest'))
+    const db = await getRequestSqlServerDataSource()
+    await updateDeviation(db, parsedParams.data.id, {
+      motivation: parsedBody.data.motivation,
+    })
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (isRequirementsServiceError(error)) {

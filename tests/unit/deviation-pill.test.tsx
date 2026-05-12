@@ -8,10 +8,12 @@ vi.mock('next-intl', () => ({
     dateTime: (date: Date, opts?: Intl.DateTimeFormatOptions) =>
       date.toLocaleDateString('en', opts),
   }),
-  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
-    if (params && 'count' in params) return `${key}(${params.count})`
-    return key
-  },
+  useTranslations:
+    (section?: string) => (key: string, params?: Record<string, unknown>) => {
+      if (section === 'common' && key === 'anonymousUser') return 'Anonymous'
+      if (params && 'count' in params) return `${key}(${params.count})`
+      return key
+    },
 }))
 
 const baseDeviation = {
@@ -63,6 +65,22 @@ describe('DeviationPill', () => {
 
     const pill = container.querySelector('.border-green-200')
     expect(pill).toBeTruthy()
+  })
+
+  it('shows the localized anonymous label for the no-user sentinel', () => {
+    const approved = {
+      ...baseDeviation,
+      createdBy: 'no-user',
+      decision: 1,
+      decisionMotivation: 'Approved reason',
+      decidedBy: ' no-user ',
+      decidedAt: '2024-01-16T10:00:00Z',
+    }
+
+    render(<DeviationPill history={[]} latest={approved} />)
+
+    expect(screen.getAllByText('Anonymous')).toHaveLength(2)
+    expect(screen.queryByText(/no-user/i)).not.toBeInTheDocument()
   })
 
   it('renders rejected deviation with red styling and rejection chip', () => {

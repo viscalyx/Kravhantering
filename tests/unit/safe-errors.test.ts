@@ -6,10 +6,11 @@ import {
 } from '@/lib/http/safe-errors'
 
 describe('safe error helpers', () => {
-  it('redacts provider keys, bearer tokens, JWTs, secrets, and SQL fragments', () => {
+  it('redacts provider keys, bearer tokens, JWTs, HSA IDs, secrets, and SQL fragments', () => {
     const text = [
       'OpenRouter sk-or-v1-secret123 failed',
       'Authorization: Bearer eyJhbGciOi.demo.payload',
+      'employeeHsaId=SE2321000032-12345',
       'client_secret=supersecret',
       'SELECT token FROM sessions',
     ].join(' ')
@@ -18,9 +19,12 @@ describe('safe error helpers', () => {
 
     expect(redacted).toContain('[OPENROUTER_KEY_REDACTED]')
     expect(redacted).toContain('Bearer [REDACTED]')
+    expect(redacted).toContain('[HSA_ID_REDACTED]')
     expect(redacted).toContain('client_secret=[REDACTED]')
     expect(redacted).toContain('[SQL_REDACTED]')
-    expect(redacted).not.toMatch(/sk-or-v1-|eyJhbGciOi|supersecret|SELECT/)
+    expect(redacted).not.toMatch(
+      /sk-or-v1-|eyJhbGciOi|SE2321000032-12345|supersecret|SELECT/,
+    )
   })
 
   it('redacts error message and stack for log payloads', () => {

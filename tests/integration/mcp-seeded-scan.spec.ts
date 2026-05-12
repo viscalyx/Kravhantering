@@ -133,8 +133,14 @@ function structuredRecord(result: ToolCallResult, label: string) {
 }
 
 function expectToolOk(result: ToolCallResult, label: string) {
-  expect(result.isError, `${label} returned MCP isError`).not.toBe(true)
+  const errorText = result.isError
+    ? redactSensitive(contentText(result)).trim()
+    : ''
   assertNoSensitiveLeak(result, label)
+  expect(
+    result.isError,
+    `${label} returned MCP isError${errorText ? `: ${errorText}` : ''}`,
+  ).not.toBe(true)
   return structuredRecord(result, label)
 }
 

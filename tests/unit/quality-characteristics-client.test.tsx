@@ -33,6 +33,7 @@ const sampleTypes = [{ id: 1, nameSv: 'Typ sv', nameEn: 'Quality' }]
 
 const sampleCategories = [
   {
+    chapterId: '3.7',
     id: 10,
     nameSv: 'Kat sv',
     nameEn: 'Maintainability',
@@ -40,14 +41,19 @@ const sampleCategories = [
     requirementTypeId: 1,
   },
   {
+    chapterId: '3.7.3',
     id: 11,
     nameSv: 'Barn sv',
-    nameEn: 'Analyzability',
+    nameEn: 'Analysability',
     parentId: 10,
     requirementTypeId: 1,
   },
 ]
 
+const qcChapterInput = () =>
+  screen.getByRole('textbox', {
+    name: /qualityCharacteristicMgmt\.chapterId/,
+  })
 const qcNameSvInput = () =>
   screen.getByRole('textbox', {
     name: /qualityCharacteristicMgmt\.name \(SV\)/,
@@ -100,7 +106,7 @@ describe('QualityCharacteristicsClient', () => {
       expect(screen.getByText('Quality')).toBeInTheDocument()
     })
     expect(screen.getByText('Maintainability')).toBeInTheDocument()
-    expect(screen.getByText('Analyzability')).toBeInTheDocument()
+    expect(screen.getByText('Analysability')).toBeInTheDocument()
   })
 
   it('shows loading text initially', () => {
@@ -115,6 +121,7 @@ describe('QualityCharacteristicsClient', () => {
       expect(screen.getByText('Quality')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
+    expect(qcChapterInput()).toBeInTheDocument()
     expect(qcNameSvInput()).toBeInTheDocument()
     expect(qcNameEnInput()).toBeInTheDocument()
     const nameHelpButton = screen.getByRole('button', {
@@ -128,6 +135,11 @@ describe('QualityCharacteristicsClient', () => {
     expect(
       screen.getByRole('button', {
         name: 'common.help: qualityCharacteristicMgmt.type',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'common.help: qualityCharacteristicMgmt.chapterId',
       }),
     ).toBeInTheDocument()
   })
@@ -191,6 +203,9 @@ describe('QualityCharacteristicsClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
 
+    fireEvent.change(qcChapterInput(), {
+      target: { value: '3.10' },
+    })
     fireEvent.change(qcNameSvInput(), {
       target: { value: 'Ny' },
     })
@@ -219,6 +234,7 @@ describe('QualityCharacteristicsClient', () => {
           method: 'POST',
           headers: expect.any(Headers),
           body: JSON.stringify({
+            chapterId: '3.10',
             nameSv: 'Ny',
             nameEn: 'New',
             requirementTypeId: 1,
@@ -248,6 +264,9 @@ describe('QualityCharacteristicsClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
 
+    fireEvent.change(qcChapterInput(), {
+      target: { value: '3.10' },
+    })
     fireEvent.change(qcNameSvInput(), {
       target: { value: 'Ny' },
     })
@@ -312,6 +331,9 @@ describe('QualityCharacteristicsClient', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /common\.create/ }))
 
+    fireEvent.change(qcChapterInput(), {
+      target: { value: '3.10' },
+    })
     fireEvent.change(qcNameSvInput(), {
       target: { value: 'Ny' },
     })
@@ -356,8 +378,65 @@ describe('QualityCharacteristicsClient', () => {
     )
     fireEvent.click(editButtons[0])
 
+    expect(qcChapterInput()).toHaveValue('3.7')
     expect(qcNameSvInput()).toHaveValue('Kat sv')
     expect(qcNameEnInput()).toHaveValue('Maintainability')
+  })
+
+  it('sorts parent and child characteristics by chapter', async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/requirement-types')
+        return Promise.resolve(okJson({ types: sampleTypes }))
+      if (url === '/api/quality-characteristics')
+        return Promise.resolve(
+          okJson({
+            qualityCharacteristics: [
+              {
+                chapterId: '3.7',
+                id: 10,
+                nameSv: 'Underhållbarhet',
+                nameEn: 'Maintainability',
+                parentId: null,
+                requirementTypeId: 1,
+              },
+              {
+                chapterId: '3.7.2',
+                id: 12,
+                nameSv: 'Återanvändbarhet',
+                nameEn: 'Reusability',
+                parentId: 10,
+                requirementTypeId: 1,
+              },
+              {
+                chapterId: '3.2',
+                id: 13,
+                nameSv: 'Prestandaeffektivitet',
+                nameEn: 'Performance efficiency',
+                parentId: null,
+                requirementTypeId: 1,
+              },
+              {
+                chapterId: '3.7.1',
+                id: 11,
+                nameSv: 'Modularitet',
+                nameEn: 'Modularity',
+                parentId: 10,
+                requirementTypeId: 1,
+              },
+            ],
+          }),
+        )
+      return Promise.resolve(okJson({}))
+    })
+
+    render(<QualityCharacteristicsClient />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Performance efficiency')).toBeInTheDocument()
+    })
+    const text = document.body.textContent ?? ''
+    expect(text.indexOf('3.2')).toBeLessThan(text.indexOf('3.7'))
+    expect(text.indexOf('3.7.1')).toBeLessThan(text.indexOf('3.7.2'))
   })
 
   it('hides form when cancel button is clicked', async () => {

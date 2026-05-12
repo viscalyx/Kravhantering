@@ -46,6 +46,7 @@ describe('owners DAL (TypeORM repository path)', () => {
         firstName: 'Ada',
         lastName: 'Lovelace',
         email: 'ada@example.com',
+        hsaId: 'SE2321000032-ada1',
         createdAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedAt: new Date('2026-01-02T00:00:00.000Z'),
       },
@@ -63,6 +64,7 @@ describe('owners DAL (TypeORM repository path)', () => {
         firstName: 'Ada',
         lastName: 'Lovelace',
         email: 'ada@example.com',
+        hsaId: 'SE2321000032-ada1',
       },
     ])
   })
@@ -84,6 +86,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Grace',
       lastName: 'Hopper',
       email: 'grace@example.com',
+      hsaId: 'SE2321000032-grace1',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -95,6 +98,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Grace',
       lastName: 'Hopper',
       email: 'grace@example.com',
+      hsaId: 'SE2321000032-grace1',
     })
   })
 
@@ -107,6 +111,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Edsger', // cSpell:ignore Edsger
       lastName: 'Dijkstra',
       email: 'edsger@example.com',
+      hsaId: 'SE2321000032-edsger1',
       createdAt,
       updatedAt,
     })
@@ -115,6 +120,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Edsger',
       lastName: 'Dijkstra',
       email: 'edsger@example.com',
+      hsaId: 'SE2321000032-edsger1',
     })
 
     expect(repository.create).toHaveBeenCalledWith(
@@ -122,6 +128,7 @@ describe('owners DAL (TypeORM repository path)', () => {
         firstName: 'Edsger',
         lastName: 'Dijkstra',
         email: 'edsger@example.com',
+        hsaId: 'SE2321000032-edsger1',
         createdAt: expect.any(Date),
         updatedAt: expect.any(Date),
       }),
@@ -132,6 +139,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Edsger',
       lastName: 'Dijkstra',
       email: 'edsger@example.com',
+      hsaId: 'SE2321000032-edsger1',
       createdAt: '2026-04-21T08:00:00.000Z',
       updatedAt: '2026-04-21T08:00:00.000Z',
     })
@@ -145,6 +153,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Alan',
       lastName: 'Turing',
       email: 'alan@example.com',
+      hsaId: 'SE2321000032-alan1',
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -164,6 +173,7 @@ describe('owners DAL (TypeORM repository path)', () => {
       firstName: 'Alan',
       lastName: 'Turing',
       email: 'alan@example.com',
+      hsaId: 'SE2321000032-alan1',
     })
   })
 

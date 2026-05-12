@@ -15,7 +15,11 @@
   "roles": {
     "realm": [
       { "name": "Reviewer", "description": "Can review requirements" },
-      { "name": "Admin", "description": "Full administrative access" }
+      { "name": "Admin", "description": "Full administrative access" },
+      {
+        "name": "PrivacyOfficer",
+        "description": "Can preview and execute GDPR erasure workflows"
+      }
     ]
   },
   "users": [
@@ -107,7 +111,67 @@
       "credentials": [
         { "type": "password", "value": "devpass", "temporary": false }
       ],
+      "realmRoles": ["Admin", "PrivacyOfficer"]
+    },
+    {
+      "username": "only.admin",
+      "enabled": true,
+      "email": "only.admin@example.test",
+      "emailVerified": true,
+      "firstName": "Only",
+      "lastName": "Admin",
+      "attributes": {
+        "hsaId": ["SE2321000032-admin2"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
       "realmRoles": ["Admin"]
+    },
+    {
+      "username": "disa.privacy",
+      "enabled": true,
+      "email": "disa.privacy@example.test",
+      "emailVerified": true,
+      "firstName": "Disa",
+      "lastName": "PrivacyOfficer",
+      "attributes": {
+        "hsaId": ["SE2321000032-privacy1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": ["PrivacyOfficer"]
+    },
+    {
+      "username": "kalle.one",
+      "enabled": true,
+      "email": "kalle.one@example.test",
+      "emailVerified": true,
+      "firstName": "Kalle",
+      "lastName": "Svensson",
+      "attributes": {
+        "hsaId": ["SE2321000032-kalle1"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
+    },
+    {
+      "username": "kalle.two",
+      "enabled": true,
+      "email": "kalle.two@example.test",
+      "emailVerified": true,
+      "firstName": "Kalle",
+      "lastName": "Svensson",
+      "attributes": {
+        "hsaId": ["SE2321000032-kalle2"]
+      },
+      "credentials": [
+        { "type": "password", "value": "devpass", "temporary": false }
+      ],
+      "realmRoles": []
     },
     {
       "username": "noah.noroles",
@@ -264,11 +328,11 @@
         {
           "name": "mcp-employeeHsaId",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
           "consentRequired": false,
           "config": {
             "claim.name": "employeeHsaId",
-            "claim.value": "mcp-client:kravhantering-mcp",
+            "claim.value": "SE2321000032-mcp1",
             "jsonType.label": "String",
             "id.token.claim": "false",
             "access.token.claim": "true",

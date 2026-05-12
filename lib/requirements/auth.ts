@@ -6,7 +6,7 @@ import {
   isSignedIn,
   type LoggedInSession,
 } from '@/lib/auth/session'
-import { forbiddenError } from '@/lib/requirements/errors'
+import { forbiddenError, validationError } from '@/lib/requirements/errors'
 
 // In-process attachment of verified actor identities to Request objects.
 // Used by the MCP route after JWT verification and by tests.
@@ -48,6 +48,31 @@ export interface RequestContext {
   requestId: string
   source: RequestSource
   toolName?: string
+}
+
+export interface ActorIdentitySnapshot {
+  displayName: string
+  hsaId: string
+}
+
+export function requireHumanActorSnapshot(
+  context: RequestContext,
+): ActorIdentitySnapshot {
+  const hsaId = context.actor.hsaId
+  if (!context.actor.isAuthenticated || !hsaId || hsaId.startsWith('mcp-')) {
+    throw validationError(
+      'Authenticated actor with a verified HSA-ID is required for this write',
+      {
+        reason: 'missing_actor_hsa_id',
+        source: context.actor.source,
+      },
+    )
+  }
+
+  return {
+    displayName: context.actor.displayName.trim() || context.actor.id || hsaId,
+    hsaId,
+  }
 }
 
 export type RequirementsAction =

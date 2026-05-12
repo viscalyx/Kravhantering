@@ -24,12 +24,20 @@ export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ id: string }>
 
+const chapterIdSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .regex(/^\d+(?:\.\d+)*$/, 'Expected an ISO chapter number')
+
 const qualityCharacteristicUpdateSchema = z
   .object({
-    nameEn: boundedDbStringSchema.optional(),
-    nameSv: boundedDbStringSchema.optional(),
+    chapterId: chapterIdSchema,
+    nameEn: boundedDbStringSchema,
+    nameSv: boundedDbStringSchema,
     parentId: positiveIntegerSchema.nullable().optional(),
-    requirementTypeId: positiveIntegerSchema.optional(),
+    requirementTypeId: positiveIntegerSchema,
   })
   .strict()
 

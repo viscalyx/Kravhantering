@@ -152,7 +152,7 @@ export function useDeviationWorkflow({
   }, [])
 
   const handleCreateDeviation = useCallback(
-    async (motivation: string, createdBy: string) => {
+    async (motivation: string, _createdBy: string) => {
       if (!specificationItemId || !motivation) return
       setDeviationSaving(true)
       try {
@@ -163,7 +163,6 @@ export function useDeviationWorkflow({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               motivation,
-              createdBy: createdBy || null,
             }),
           },
         )
@@ -183,14 +182,14 @@ export function useDeviationWorkflow({
   )
 
   const handleEditDeviation = useCallback(
-    async (motivation: string, createdBy: string) => {
+    async (motivation: string, _createdBy: string) => {
       if (!latestDeviation || !motivation) return
       setDeviationSaving(true)
       try {
         const res = await apiFetch(`/api/deviations/${latestDeviation.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ motivation, createdBy: createdBy || null }),
+          body: JSON.stringify({ motivation }),
         })
         if (res.ok) {
           closeDialog()

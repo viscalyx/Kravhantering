@@ -4,10 +4,12 @@ import SuggestionPill from '@/components/SuggestionPill'
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
-  useTranslations: () => (key: string, params?: Record<string, unknown>) => {
-    if (params && 'count' in params) return `${key}(${params.count})`
-    return key
-  },
+  useTranslations:
+    (section?: string) => (key: string, params?: Record<string, unknown>) => {
+      if (section === 'common' && key === 'anonymousUser') return 'Anonymous'
+      if (params && 'count' in params) return `${key}(${params.count})`
+      return key
+    },
 }))
 
 const baseSuggestion = {
@@ -65,6 +67,22 @@ describe('SuggestionPill', () => {
     )
     expect(screen.getByText('Action taken')).toBeInTheDocument()
     expect(container.querySelector('.border-green-200')).toBeTruthy()
+  })
+
+  it('shows the localized anonymous label for the no-user sentinel', () => {
+    const anonymized = {
+      ...baseSuggestion,
+      createdBy: 'no-user',
+      resolution: 1,
+      resolutionMotivation: 'Action taken',
+      resolvedBy: ' no-user ',
+      resolvedAt: '2024-01-16T10:00:00Z',
+    }
+
+    render(<SuggestionPill suggestion={anonymized} />)
+
+    expect(screen.getAllByText('Anonymous')).toHaveLength(2)
+    expect(screen.queryByText(/no-user/i)).not.toBeInTheDocument()
   })
 
   it('renders dismissed state with statusDismissed chip', () => {

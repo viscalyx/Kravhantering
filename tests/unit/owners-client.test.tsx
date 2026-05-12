@@ -38,8 +38,20 @@ describe('OwnersClient', () => {
     fetchMock.mockResolvedValue(
       okJson({
         owners: [
-          { id: 1, firstName: 'Anna', lastName: 'S', email: 'a@b.com' },
-          { id: 2, firstName: 'Erik', lastName: 'L', email: 'e@t.com' },
+          {
+            id: 1,
+            firstName: 'Anna',
+            lastName: 'S',
+            email: 'a@b.com',
+            hsaId: 'SE2321000032-annas',
+          },
+          {
+            id: 2,
+            firstName: 'Erik',
+            lastName: 'L',
+            email: 'e@t.com',
+            hsaId: 'SE2321000032-erik1',
+          },
         ],
       }),
     )
@@ -89,6 +101,9 @@ describe('OwnersClient', () => {
       screen.getByRole('textbox', { name: /ownerMgmt\.lastName/ }),
     ).toBeInTheDocument()
     expect(
+      screen.getByRole('textbox', { name: /ownerMgmt\.hsaId/ }),
+    ).toBeInTheDocument()
+    expect(
       screen.getByRole('textbox', { name: /ownerMgmt\.email/ }),
     ).toBeInTheDocument()
   })
@@ -117,6 +132,12 @@ describe('OwnersClient', () => {
       screen.getByRole('textbox', { name: /ownerMgmt\.email/ }),
       {
         target: { value: 'new@test.com' },
+      },
+    )
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /ownerMgmt\.hsaId/ }),
+      {
+        target: { value: 'SE2321000032-new1' },
       },
     )
 
@@ -178,7 +199,13 @@ describe('OwnersClient', () => {
     fetchMock.mockResolvedValueOnce(
       okJson({
         owners: [
-          { id: 1, firstName: 'Updated', lastName: 'S', email: 'a@b.com' },
+          {
+            id: 1,
+            firstName: 'Updated',
+            lastName: 'S',
+            email: 'a@b.com',
+            hsaId: 'SE2321000032-annas',
+          },
         ],
       }),
     )
@@ -220,7 +247,15 @@ describe('OwnersClient', () => {
     fetchMock.mockResolvedValueOnce(okJson({}))
     fetchMock.mockResolvedValueOnce(
       okJson({
-        owners: [{ id: 2, firstName: 'Erik', lastName: 'L', email: 'e@t.com' }],
+        owners: [
+          {
+            id: 2,
+            firstName: 'Erik',
+            lastName: 'L',
+            email: 'e@t.com',
+            hsaId: 'SE2321000032-erik1',
+          },
+        ],
       }),
     )
 
@@ -283,9 +318,13 @@ describe('OwnersClient', () => {
     const emailInput = screen.getByRole('textbox', {
       name: /ownerMgmt\.email/,
     })
+    const hsaInput = screen.getByRole('textbox', {
+      name: /ownerMgmt\.hsaId/,
+    })
     fireEvent.change(firstNameInput, { target: { value: 'Test' } })
     fireEvent.change(lastNameInput, { target: { value: 'User' } })
     fireEvent.change(emailInput, { target: { value: 'test@test.com' } })
+    fireEvent.change(hsaInput, { target: { value: 'SE2321000032-test1' } })
 
     fetchMock.mockImplementationOnce(
       () =>

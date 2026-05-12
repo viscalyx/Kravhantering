@@ -24,6 +24,12 @@ Deferred from Phase 5:
 
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
   deviations, and improvement suggestions.
+- Privacy erasure routes
+  (`POST /api/privacy/erasure-preview`,
+  `POST /api/privacy/erasure-requests`). They require the separate
+  `PrivacyOfficer` role, strict CSRF/origin handling, HSA-ID-only matching,
+  stale-preview rejection, and audit-redaction checks before they should be
+  added to the OpenAPI fuzzing contract.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
 
@@ -177,3 +183,6 @@ their auth/CSRF behavior is understood.
   contracts.
 - Do not add production URLs, production secrets, vendor tokens, or external
   scan targets.
+- For privacy erasure paths, include only disposable seeded identities and
+  assert that generated examples never log or expose raw target HSA-IDs in
+  audit details.

@@ -52,6 +52,7 @@
     "copied": "Kopierad",
     "help": "Hjälp",
     "backToTop": "Till toppen",
+    "anonymousUser": "Anonym",
     "selectAll": "Markera alla",
     "selectRow": "Markera {id}",
     "showShortText": "Visa kortad text",
@@ -98,7 +99,8 @@
   },
   "roles": {
     "reviewer": "Granskare",
-    "admin": "Administratör"
+    "admin": "Administratör",
+    "privacyOfficer": "Dataskyddshandläggare"
   },
   "notFound": {
     "title": "404",
@@ -132,11 +134,11 @@
     "requiresTestingOff": "Inte verifierbar",
     "specificationCount": "Används i kravunderlag",
     "verificationMethod": "Verifieringsmetod",
-    "verificationMethodHelp": "<strong>Ange hur det ska verifieras att acceptanskriterierna är uppfyllda.</strong>\nVälj eller beskriv lämplig metod, till exempel inspektion, analys/simulering, demonstration eller test, i linje med ISO/IEC/IEEE 29148:2018.",
+    "verificationMethodHelp": "<strong>Ange hur det ska verifieras att acceptanskriterierna är uppfyllda.</strong>\nVälj eller beskriv lämplig metod, till exempel inspektion, analys/simulering, demonstration eller test, i linje med ISO/IEC/IEEE 29148:2018.\n\nAnge inte namn eller andra uppgifter som kan identifiera en levande person.",
     "areaHelp": "<strong>Välj det område som kravet tillhör.</strong>\nOmrådet styr prefix för krav-ID och kopplar kravet till en ansvarig ägare.",
     "areaHelpOptional": "<strong>Välj valfritt ett område för att gruppera kravet.</strong>\nOmrådet är inte obligatoriskt för unika krav men kan användas för att organisera dem inom ett befintligt område.",
-    "descriptionHelp": "<strong>Formulera kravet tydligt, konkret och verifierbart.</strong>\nBeskriv vem eller vad kravet gäller och vad som ska uppnås. Fokusera på vad som ska gälla, inte hur lösningen ska implementeras. När det är relevant, ange mätbara villkor, till exempel tid, gränsvärde, precision eller kapacitet, så att kravet kan förstås och verifieras. Undvik vaga ord som snabb, enkel, lämplig eller vid behov. Detta följer principerna i ISO/IEC/IEEE 29148:2018 för tydliga och entydiga krav samt ISO/IEC 25030:2019 för mätbara kvalitetskrav.\n\nExempel:\nBra: Systemet ska visa sökresultat inom 2 sekunder.\nMindre bra: Systemet ska vara snabbt och användarvänligt.",
-    "acceptanceCriteriaHelp": "<strong>Ange de objektiva villkor som måste vara uppfyllda för att kravet ska godkännas.</strong>\nSkriv tydligt, konkret och mätbart när det är relevant, till exempel tid, gränsvärde, precision, kapacitet eller observerbart resultat. Beskriv vad som ska vara uppfyllt, inte hur det ska testas. Formuleringen bör följa principerna i ISO/IEC 25010:2023, ISO/IEC 25030:2019 och ISO/IEC/IEEE 29148:2018.",
+    "descriptionHelp": "<strong>Formulera kravet tydligt, konkret och verifierbart.</strong>\nBeskriv vem eller vad kravet gäller och vad som ska uppnås. Fokusera på vad som ska gälla, inte hur lösningen ska implementeras. När det är relevant, ange mätbara villkor, till exempel tid, gränsvärde, precision eller kapacitet, så att kravet kan förstås och verifieras. Undvik vaga ord som snabb, enkel, lämplig eller vid behov. Detta följer principerna i ISO/IEC/IEEE 29148:2018 för tydliga och entydiga krav samt ISO/IEC 25030:2019 för mätbara kvalitetskrav.\n\nAnge inte namn eller andra uppgifter som kan identifiera en levande person.\n\nExempel:\nBra: Systemet ska visa sökresultat inom 2 sekunder.\nMindre bra: Systemet ska vara snabbt och användarvänligt.",
+    "acceptanceCriteriaHelp": "<strong>Ange de objektiva villkor som måste vara uppfyllda för att kravet ska godkännas.</strong>\nSkriv tydligt, konkret och mätbart när det är relevant, till exempel tid, gränsvärde, precision, kapacitet eller observerbart resultat. Beskriv vad som ska vara uppfyllt, inte hur det ska testas. Formuleringen bör följa principerna i ISO/IEC 25010:2023, ISO/IEC 25030:2019 och ISO/IEC/IEEE 29148:2018.\n\nAnge inte namn eller andra uppgifter som kan identifiera en levande person.",
     "categoryHelp": "<strong>Välj den kategori som bäst beskriver kravets karaktär.</strong>\nKategorin hjälper till att klassificera och filtrera krav.",
     "typeHelp": "<strong>Välj den typ som bäst beskriver kravet.</strong>\nTypen bestämmer vilka kvalitetsegenskaper som kan kopplas till kravet.",
     "qualityCharacteristicHelp": "<strong>Välj den kvalitetsegenskap som kravet bidrar till.</strong>\nKvalitetsegenskaper följer ISO/IEC 25010:2023 och hjälper till att kategorisera kraven efter kvalitetsaspekt.",
@@ -257,7 +259,7 @@
     "help": {
       "prefix": "Ange det korta prefix med versaler som används när krav-ID:n skapas för området. Prefixet kan bara ändras när ett nytt område skapas.",
       "name": "Ange visningsnamnet för kravområdet.",
-      "description": "Beskriv vid behov vilka typer av krav som hör hemma i området.",
+      "description": "Beskriv vid behov vilka typer av krav som hör hemma i området. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
       "owner": "Välj den person eller grupp som ansvarar för kravområdet."
     },
     "newArea": "Nytt kravområde",
@@ -292,7 +294,7 @@
     "linkedRequirements": "Kopplade krav",
     "businessNeedsReference": "Verksamhetsbehovsreferens",
     "businessNeedsReferencePlaceholder": "Fritext för att koppla underlaget till ett verksamhetsbehov eller funktionellt krav",
-    "businessNeedsReferenceHelp": "Använd fältet för att ange det verksamhetsbehov, initiativ eller den funktionella referens som underlaget stödjer.",
+    "businessNeedsReferenceHelp": "Använd fältet för att ange det verksamhetsbehov, initiativ eller den funktionella referens som underlaget stödjer. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "uniqueId": "Kravunderlag-ID",
     "uniqueIdPlaceholder": "T.ex. MITT-UNDERLAG",
     "uniqueIdHelp": "Används i URL och som kortidentifierare",
@@ -347,7 +349,7 @@
     "addNeedsRef": "Behovsreferens (valfri)",
     "addNeedsRefHelp": "Lägg vid behov till en behovsreferens som ska gälla för alla valda krav när de läggs till i underlaget.",
     "addNeedsRefTextLabel": "Ny behovsreferens",
-    "addNeedsRefTextHelp": "Beskriv den gemensamma behovsreferens som ska sparas och kopplas till de valda kraven.",
+    "addNeedsRefTextHelp": "Beskriv den gemensamma behovsreferens som ska sparas och kopplas till de valda kraven. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "addNeedsRefPlaceholder": "Ange en behovsreferens som gäller för alla valda krav",
     "noNeedsRef": "— Ingen behovsreferens —",
     "newNeedsRef": "+ Skriv ny behovsreferens…",
@@ -373,11 +375,11 @@
     "title": "Avsteg",
     "deviation": "Avsteg",
     "motivation": "Motivering",
-    "motivationHelp": "Motivera vad skälet är till varför detta krav inte kan uppfyllas.",
+    "motivationHelp": "Motivera vad skälet är till varför detta krav inte kan uppfyllas. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "motivationPlaceholder": "Motivera skälet till avsteget",
     "decision": "Beslut",
     "decisionMotivation": "Beslutsmotivering",
-    "decisionMotivationHelp": "Dokumentera resonemanget bakom godkännandet eller avslaget av detta avsteg.",
+    "decisionMotivationHelp": "Dokumentera resonemanget bakom godkännandet eller avslaget av detta avsteg. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "decidedBy": "Beslutad av",
     "decidedByHelp": "Ange namnet på den person som fattar detta beslut.",
     "decidedAt": "Beslutad den",
@@ -433,11 +435,11 @@
   "improvementSuggestion": {
     "title": "Förbättringsförslag",
     "content": "Innehåll",
-    "contentHelp": "Beskriv förbättringsförslaget eller ändringsförslaget för detta krav.",
+    "contentHelp": "Beskriv förbättringsförslaget eller ändringsförslaget för detta krav. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "contentPlaceholder": "Beskriv förbättringsförslaget eller ändringsförslaget",
     "resolution": "Åtgärd",
     "resolutionMotivation": "Motivering",
-    "resolutionMotivationHelp": "Dokumentera resonemanget bakom åtgärden eller avvisningen av detta förslag.",
+    "resolutionMotivationHelp": "Dokumentera resonemanget bakom åtgärden eller avvisningen av detta förslag. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "resolvedBy": "Granskad av",
     "resolvedByHelp": "Ange namnet på den person som granskar detta förslag.",
     "resolvedAt": "Åtgärdad den",
@@ -537,9 +539,9 @@
     "nameEnHelp": "Ange kravpaketets engelska namn.",
     "description": "Beskrivning",
     "descriptionSvLabel": "Beskrivning (svenska)",
-    "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser.",
+    "descriptionSvHelp": "Beskriv vid behov kravpaketet på svenska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "descriptionEnLabel": "Beskrivning (engelska)",
-    "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser.",
+    "descriptionEnHelp": "Beskriv vid behov kravpaketet på engelska så att användare förstår vilken gruppering det avser. Ange inte namn eller andra uppgifter som kan identifiera en levande person.",
     "owner": "Ägare",
     "help": {
       "owner": "Välj ägaren som ansvarar för kravpaketet och dess kopplade krav."
@@ -583,6 +585,8 @@
     "emptyState": "Inga normreferenser ännu. Skapa din första normreferens."
   },
   "qualityCharacteristicMgmt": {
+    "chapterId": "Kapitel",
+    "chapterIdHelp": "Ange kapitelnumret i ISO/IEC 25010 för kvalitetsegenskapen, till exempel 3.1 eller 3.1.1.",
     "name": "Namn",
     "nameSvHelp": "Ange det svenska namnet för kvalitetsegenskapen.",
     "nameEnHelp": "Ange det engelska namnet för kvalitetsegenskapen.",
@@ -621,10 +625,12 @@
     "name": "Namn",
     "firstName": "Förnamn",
     "lastName": "Efternamn",
+    "hsaId": "HSA-ID",
     "email": "E-post",
     "help": {
       "firstName": "Ange ägarens förnamn.",
       "lastName": "Ange ägarens efternamn.",
+      "hsaId": "Ange ägarens verifierade HSA-ID. Namn är visningskopior; HSA-ID är den varaktiga identitetsnyckeln.",
       "email": "Ange e-postadressen som används för att kontakta ägaren."
     }
   },
@@ -682,6 +688,110 @@
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
     "referenceData": "Referensdata",
     "referenceDataDescription": "Öppna de befintliga referensdatasidorna med oförändrade route-sluggar.",
+    "privacyDescription": "Förhandsgranska och kör HSA-ID-baserad GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
+    "privacy": {
+      "title": "Dataskydd",
+      "targetHsaId": "HSA-ID att radera",
+      "replacementHsaId": "Ersättande HSA-ID",
+      "replacementName": "Ersättande namn",
+      "replacementFirstName": "Ersättande förnamn",
+      "replacementLastName": "Ersättande efternamn",
+      "replacementEmail": "Ersättande e-postadress",
+      "replacementEmailOptional": "E-postadress är valfri.",
+      "fieldHelp": {
+        "targetHsaId": "Ange HSA-ID för personen som ska hanteras. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
+        "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare eller medförfattare. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
+        "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-ID är den beständiga identiteten.",
+        "replacementFirstName": "Valfritt. Ange exakt förnamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
+        "replacementLastName": "Valfritt. Ange exakt efternamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
+        "replacementEmail": "Valfritt. Ange e-postadress när en ersättande ägare ska skapas eller uppdateras så att kravområden och kravpaket får rätt kontaktuppgift efter bytet."
+      },
+      "preview": "Förhandsgranska",
+      "execute": "Kör radering",
+      "previewError": "Kunde inte förhandsgranska dataskyddsradering.",
+      "executeError": "Kunde inte köra dataskyddsradering.",
+      "disabledTooltip": "Du behöver behörigheten Dataskyddshandläggare.",
+      "permissionError": "Du saknar rollen Dataskyddshandläggare. Logga in som dataskyddshandläggare för att köra dataskyddsradering.",
+      "replacementIncomplete": "Ange både ersättande HSA-ID och ersättande namn, eller lämna båda fälten tomma för anonymisering.",
+      "invalidReplacementEmail": "Kontrollera den ersättande e-postadressen.",
+      "invalidHsaId": "Kontrollera HSA-ID. Formatet ska vara SE följt av 10 siffror, bindestreck och en alfanumerisk ändelse.",
+      "serverPreviewError": "Servern kunde inte förhandsgranska dataskyddsraderingen.",
+      "serverExecuteError": "Servern kunde inte köra dataskyddsraderingen.",
+      "serverErrorWithDetail": "{message} Teknisk feltext: {detail}",
+      "errorWithDetail": "{message} Fel: {detail}",
+      "executeSuccess": "Dataskyddsradering slutförd.",
+      "stalePreview": "Förhandsgranskningen är inaktuell. Kör en ny förhandsgranskning innan radering.",
+      "confirmTitle": "Kör dataskyddsradering",
+      "confirmMessage": "Detta byter {switch}, anonymiserar {anonymize}, tar bort {delete} och hoppar över {skip} förekomster.",
+      "guidanceTitle": "Rekommenderad hantering",
+      "guidanceBody": "Aktiva tilldelningar byts oftast till ett annat HSA-ID. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
+      "previewResult": "{count} HSA-ID-förekomster",
+      "object": "Objekt",
+      "count": "Antal",
+      "affected": "Påverkade objekt",
+      "currentValue": "Nuvarande visning",
+      "action": "Åtgärd",
+      "warning": "Vägledning",
+      "status": "Status",
+      "notAvailable": "Saknas",
+      "actions": {
+        "switch": "Byt",
+        "anonymize": "Anonymisera",
+        "delete": "Ta bort",
+        "skip": "Hoppa över"
+      },
+      "executionStatus": {
+        "completed": "Utfört",
+        "skipped": "Hoppades över",
+        "failed": "Misslyckades: {reason}"
+      },
+      "executionErrors": {
+        "owner_area_references_blocking": "Kravområden måste bytas innan ägaren kan ändras.",
+        "owner_references_blocking": "Ägarreferenser måste bytas innan ägaren kan tas bort.",
+        "replacement_required": "Ersättande HSA-ID och namn krävs för den valda åtgärden.",
+        "unsupported_owner_action": "Ägarraden stöder inte den valda åtgärden.",
+        "unsupported_privacy_action": "Raden stöder inte den valda åtgärden."
+      },
+      "objects": {
+        "owners": "Ägare",
+        "requirementAreas": "Kravområden",
+        "requirementPackages": "Kravpaket",
+        "requirementVersions": "Versioner",
+        "deviations": "Avvikelser",
+        "specificationLocalDeviations": "Lokala avvikelser i kravunderlag",
+        "improvementSuggestions": "Förbättringsförslag",
+        "specifications": "Kravunderlag",
+        "areaCoAuthors": "Medförfattare för område",
+        "specificationCoAuthors": "Medförfattare för kravunderlag"
+      },
+      "fields": {
+        "identity": "Identitet",
+        "owner": "Ägare",
+        "createdBy": "Skapad av",
+        "decidedBy": "Beslutad av",
+        "resolvedBy": "Åtgärdad av",
+        "responsible": "Ansvarig",
+        "coAuthor": "Medförfattare"
+      },
+      "warnings": {
+        "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
+        "ownerDelete": "Ägaren är inte kopplad till kravområden eller kravpaket. Ta bort ägarraden, eller hoppa över den.",
+        "ownerAreaSwitchOnly": "Ägaren är kopplad till kravområden. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
+        "ownerPackageSwitchOnly": "Ägaren är kopplad till kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
+        "ownerAreaAndPackageSwitchOnly": "Ägaren är kopplad till kravområden och kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
+        "liveAssignment": "Aktiva tilldelningar byts normalt till ersättande HSA-ID. Utan ersättare tas rader för medförfattare bort eller så behålls den anonymiserade ägaren.",
+        "historySwitch": "Att byta historiskt författarskap kan ändra postens innebörd. Anonymisering är standard.",
+        "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard."
+      },
+      "blockers": {
+        "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden. Uppdatera de kravområdena först eller ange ersättande HSA-ID och namn.",
+        "ownerPackageReplacementRequired": "Ägaren är kopplad till kravpaket. Uppdatera de kravpaketen först eller ange ersättande HSA-ID och namn.",
+        "ownerAreaAndPackageReplacementRequired": "Ägaren är kopplad till kravområden och kravpaket. Uppdatera tilldelningarna först eller ange ersättande HSA-ID och namn."
+      },
+      "readOnly": {
+        "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
+      }
+    },
     "swedish": "Svenska",
     "english": "English",
     "singular": "Singular",
@@ -1070,6 +1180,49 @@
       "referenceData": {
         "heading": "Referensdata",
         "body": "Snabblänkar till hantering av områden, typer, kravpaket, statusar, kvalitetsegenskaper, verksamhetsobjekt, genomförandeformer och områdesägare."
+      },
+      "privacy": {
+        "heading": "Dataskyddsradering",
+        "body": "Använd fliken Dataskydd för GDPR-radering. Matchningar görs enbart med HSA-ID; namn visas för kontroll och skapar aldrig matchningar."
+      }
+    },
+    "adminPrivacy": {
+      "title": "Dataskydd",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Dataskyddsfliken används när en behörig handläggare behöver förhandsgranska och genomföra GDPR-radering av aktörsidentiteter. Den hanterar strukturerade identitetsfält som ägare, skapare, beslutsfattare och medförfattare. Fritextfält skannas inte, eftersom användare instrueras att inte skriva personidentifierande uppgifter där."
+      },
+      "permissions": {
+        "heading": "Behörighet",
+        "body": "Åtgärden kräver rollen Dataskyddshandläggare. Rollen är avsiktligt smal: den ger åtkomst till dataskyddsflödet men ska inte ge övriga administrativa rättigheter."
+      },
+      "search": {
+        "heading": "Sökning med HSA-ID",
+        "body": "Börja med att ange personens HSA-ID. Alla träffar görs med exakt HSA-ID, inte med namn. Det gör att två personer med samma namn inte blandas ihop. Namn visas bara som stöd för kontroll i förhandsgranskningen."
+      },
+      "replacement": {
+        "heading": "Ersättare",
+        "body": "Ange ersättande HSA-ID och namn när aktiva tilldelningar ska flyttas till en annan person. E-postadress är valfri och används för ägarposter när en ersättande ägare behöver skapas eller uppdateras. Om ingen ersättare anges anonymiseras historiska identitetsfält där det är tillåtet."
+      },
+      "preview": {
+        "heading": "Förhandsgranskning",
+        "body": "Förhandsgranska innan radering. Tabellen grupperar träffar per objekttyp och fält, visar hur många poster som påverkas, aktuellt visningsvärde, påverkade objekt och rekommenderad åtgärd. Rader som styrs av en ägarrad visas som information och har ingen egen åtgärdsmeny."
+      },
+      "actions": {
+        "heading": "Åtgärder i tabellen",
+        "body": "Byt används för aktiva tilldelningar när en ersättare anges. Anonymisera används normalt för historiska skapare, beslut och åtgärder. Ta bort används bara när en identitetsrad kan tas bort utan att referenser bryts. Hoppa över lämnar raden oförändrad. Vissa rader är låsta för att förhindra ogiltiga kombinationer."
+      },
+      "execution": {
+        "heading": "När du kör radering",
+        "body": "När du klickar Kör radering kontrollerar servern träffarna på nytt i en transaktion. Om förhandsgranskningen är inaktuell måste du förhandsgranska igen. Vid lyckad körning ligger tabellen kvar som kvitto: utförda rader blir gröna, överhoppade rader är neutrala och fel kopplade till en specifik rad visas rött."
+      },
+      "audit": {
+        "heading": "Spårbarhet",
+        "body": "Systemet skriver en händelse i säkerhetsloggen till driftens loggström med handläggarens identitet, request-id, antal åtgärder och ett icke-reversibelt fingeravtryck för målet. Den loggen är inte en databastabell, visas inte i förhandsgranskningen och skrivs inte om av detta flöde. Det råa HSA-ID:t och namnet för personen som raderas loggas inte."
+      },
+      "caveats": {
+        "heading": "Viktiga begränsningar",
+        "body": "Handläggaren måste bedöma att radering får göras och att ingen starkare rättslig grund eller bevarandeskyldighet hindrar åtgärden. Säkerhetsloggar och externa loggar hanteras enligt separat gallrings- eller anonymiseringspolicy. Att anonymisera handläggaridentitet i sådana loggar kan försämra spårbarheten."
       }
     },
     "requirementAreas": {

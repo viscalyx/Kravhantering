@@ -95,10 +95,12 @@ The MCP route is authenticated. Every request to `/api/mcp` must include an
 The middleware checks that the Bearer header is present. The MCP HTTP route then
 validates the JWT against the configured issuer JWKS and API audience before any
 MCP transport or tool handler runs. Accepted tokens must contain an
-`employeeHsaId` claim. Service-account tokens may use the documented synthetic
-form `mcp-client:<client-id>`; for the configured MCP service client, the
-server can derive that value from a verified `client_id` or `azp` claim when
-the token does not carry a separate `employeeHsaId` mapper.
+`employeeHsaId` claim. Mutating tools that stamp actor history require a
+real-format HSA-ID; the committed local MCP service client emits
+`SE2321000032-mcp1`. Read-only service-account tokens may use the documented
+synthetic form `mcp-client:<client-id>`; for the configured MCP service client,
+the server can derive that value from a verified `client_id` or `azp` claim
+when the token does not carry a separate `employeeHsaId` mapper.
 
 Invalid or missing tokens return `401` with `WWW-Authenticate: Bearer` and a
 JSON-RPC error body. MCP does not use browser cookies and is intentionally

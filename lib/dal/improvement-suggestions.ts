@@ -9,6 +9,7 @@ export interface ImprovementSuggestionRow {
   content: string
   createdAt: string
   createdBy: string | null
+  createdByHsaId: string | null
   id: number
   isReviewRequested: number
   requirementDescription: string | null
@@ -19,6 +20,7 @@ export interface ImprovementSuggestionRow {
   resolutionMotivation: string | null
   resolvedAt: string | null
   resolvedBy: string | null
+  resolvedByHsaId: string | null
   reviewRequestedAt: string | null
   updatedAt: string | null
 }
@@ -67,6 +69,8 @@ function mapSqlServerSuggestionRow(
     content: String(row.content ?? ''),
     createdAt: toIsoString(row.createdAt) ?? new Date(0).toISOString(),
     createdBy: row.createdBy == null ? null : String(row.createdBy),
+    createdByHsaId:
+      row.createdByHsaId == null ? null : String(row.createdByHsaId),
     id: Number(row.id),
     isReviewRequested: toNumericFlag(row.isReviewRequested),
     requirementDescription:
@@ -84,6 +88,8 @@ function mapSqlServerSuggestionRow(
         : String(row.resolutionMotivation),
     resolvedAt: toIsoString(row.resolvedAt),
     resolvedBy: row.resolvedBy == null ? null : String(row.resolvedBy),
+    resolvedByHsaId:
+      row.resolvedByHsaId == null ? null : String(row.resolvedByHsaId),
     reviewRequestedAt: toIsoString(row.reviewRequestedAt),
     updatedAt: toIsoString(row.updatedAt),
   }
@@ -139,8 +145,10 @@ export async function listSuggestionsForRequirement(
         suggestion.resolution AS resolution,
         suggestion.resolution_motivation AS resolutionMotivation,
         suggestion.resolved_by AS resolvedBy,
+        suggestion.resolved_by_hsa_id AS resolvedByHsaId,
         suggestion.resolved_at AS resolvedAt,
         suggestion.created_by AS createdBy,
+        suggestion.created_by_hsa_id AS createdByHsaId,
         suggestion.created_at AS createdAt,
         suggestion.updated_at AS updatedAt,
         suggestion.review_requested_at AS reviewRequestedAt,
@@ -175,8 +183,10 @@ export async function getSuggestion(
         suggestion.resolution AS resolution,
         suggestion.resolution_motivation AS resolutionMotivation,
         suggestion.resolved_by AS resolvedBy,
+        suggestion.resolved_by_hsa_id AS resolvedByHsaId,
         suggestion.resolved_at AS resolvedAt,
         suggestion.created_by AS createdBy,
+        suggestion.created_by_hsa_id AS createdByHsaId,
         suggestion.created_at AS createdAt,
         suggestion.updated_at AS updatedAt,
         suggestion.review_requested_at AS reviewRequestedAt,
@@ -206,6 +216,7 @@ export async function createSuggestion(
     requirementVersionId?: number | null
     content: string
     createdBy?: string | null
+    createdByHsaId?: string | null
   },
 ): Promise<{ id: number }> {
   if (!data.content.trim()) {
@@ -244,6 +255,7 @@ export async function createSuggestion(
   }
 
   const now = new Date()
+  const createdByHsaId = data.createdByHsaId?.trim() || null
   const insertedRows = (await db.query(
     `
       INSERT INTO improvement_suggestions (
@@ -251,17 +263,19 @@ export async function createSuggestion(
         requirement_version_id,
         content,
         created_by,
+        created_by_hsa_id,
         created_at,
         is_review_requested
       )
       OUTPUT INSERTED.id AS id
-      VALUES (@0, @1, @2, @3, @4, @5)
+      VALUES (@0, @1, @2, @3, @4, @5, @6)
     `,
     [
       data.requirementId,
       data.requirementVersionId ?? null,
       data.content.trim(),
       data.createdBy ?? null,
+      createdByHsaId,
       now,
       0,
     ],
@@ -331,6 +345,7 @@ export async function recordResolution(
     resolution: number
     resolutionMotivation: string
     resolvedBy: string
+    resolvedByHsaId: string
   },
 ): Promise<void> {
   if (
@@ -346,6 +361,11 @@ export async function recordResolution(
 
   if (!data.resolvedBy.trim()) {
     throw validationError('Resolved by is required')
+  }
+
+  const resolvedByHsaId = data.resolvedByHsaId.trim()
+  if (!resolvedByHsaId) {
+    throw validationError('Resolved by HSA-ID is required')
   }
 
   const existing = await findSqlServerSuggestionState(db, suggestionId)
@@ -374,14 +394,16 @@ export async function recordResolution(
         resolution = @0,
         resolution_motivation = @1,
         resolved_by = @2,
-        resolved_at = @3,
-        updated_at = @3
-      WHERE id = @4
+        resolved_by_hsa_id = @3,
+        resolved_at = @4,
+        updated_at = @4
+      WHERE id = @5
     `,
     [
       data.resolution,
       data.resolutionMotivation.trim(),
       data.resolvedBy.trim(),
+      resolvedByHsaId,
       now,
       suggestionId,
     ],

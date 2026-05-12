@@ -2,6 +2,23 @@ import { describe, expect, it } from 'vitest'
 import { findMissingRoleFiles, ROLES } from '@/tests/integration/global-setup'
 
 describe('findMissingRoleFiles', () => {
+  it('keeps a dedicated admin-only storage state for permission-negative tests', () => {
+    expect(ROLES).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'admin',
+          username: 'ada.admin',
+          filePath: 'test-results/auth/admin.json',
+        }),
+        expect.objectContaining({
+          role: 'admin-only',
+          username: 'only.admin',
+          filePath: 'test-results/auth/admin-only.json',
+        }),
+      ]),
+    )
+  })
+
   it('returns an empty array when every role storageState exists', () => {
     const result = findMissingRoleFiles(ROLES, () => true)
     expect(result).toEqual([])

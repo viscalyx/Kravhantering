@@ -94,6 +94,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Reference-data CRUD forms may use shared field help toggles; those
   triggers stay inside the existing `crud form` surface rather than
   adding separate developer-mode markers.
+- Admin Center Dataskydd field help toggles stay inside the existing
+  `tab panel: privacy` surface rather than adding separate developer-mode
+  markers.
 - Navigation help triggers use the `navigation` context with button
   values `help toggle open` and `help toggle closed`.
 - Auth account-detail rows keep their developer-mode values in English
@@ -241,6 +244,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 The current canonical labels include:
 
 - `edge tab`
+  - Admin Center uses this marker for all top tabs, including the disabled
+    privacy tab shown to users without `PrivacyOfficer`.
 - `floating action rail`
 - `floating pill`
 - `floating pill menu`

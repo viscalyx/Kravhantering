@@ -74,7 +74,12 @@ describe('owners routes', () => {
 
   describe('POST /api/owners', () => {
     it('creates an owner and returns 201', async () => {
-      const body = { firstName: 'Erik', lastName: 'L', email: 'e@t.com' }
+      const body = {
+        email: 'e@t.com',
+        firstName: 'Erik',
+        hsaId: 'SE2321000032-erik1',
+        lastName: 'L',
+      }
       mocks.createOwner.mockResolvedValue({ id: 2, ...body })
       const req = new Request('http://localhost/api/owners', {
         method: 'POST',

@@ -2,8 +2,9 @@ import { EntitySchema } from 'typeorm'
 
 export interface OwnerEntity {
   createdAt: Date
-  email: string
+  email: string | null
   firstName: string
+  hsaId: string | null
   id: number
   lastName: string
   updatedAt: Date
@@ -30,6 +31,14 @@ export const ownerEntity = new EntitySchema<OwnerEntity>({
     email: {
       name: 'email',
       type: 'nvarchar',
+      length: 450,
+      nullable: true,
+    },
+    hsaId: {
+      name: 'hsa_id',
+      type: 'nvarchar',
+      length: 64,
+      nullable: true,
     },
     createdAt: {
       name: 'created_at',
@@ -40,10 +49,18 @@ export const ownerEntity = new EntitySchema<OwnerEntity>({
       type: 'datetime2',
     },
   },
-  uniques: [
+  indices: [
     {
       columns: ['email'],
       name: 'uq_owners_email',
+      unique: true,
+      where: '[email] IS NOT NULL',
+    },
+    {
+      columns: ['hsaId'],
+      name: 'uq_owners_hsa_id',
+      unique: true,
+      where: '[hsa_id] IS NOT NULL',
     },
   ],
 })

@@ -7,6 +7,7 @@ import CrudAdminPanel, {
 import FieldLabelWithHelp from '@/components/FieldLabelWithHelp'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useCrudAdminResource } from '@/hooks/useCrudAdminResource'
+import { formatActorDisplayName } from '@/lib/privacy/display-name'
 
 const OWNERS_HELP: HelpContent = {
   sections: [
@@ -25,8 +26,9 @@ const OWNERS_HELP: HelpContent = {
 }
 
 interface Owner {
-  email: string
+  email: string | null
   firstName: string
+  hsaId: string | null
   id: number
   lastName: string
 }
@@ -34,18 +36,21 @@ interface Owner {
 interface OwnerForm {
   email: string
   firstName: string
+  hsaId: string
   lastName: string
 }
 
 const getInitialForm = (): OwnerForm => ({
   email: '',
   firstName: '',
+  hsaId: '',
   lastName: '',
 })
 
 const toForm = (item: Owner): OwnerForm => ({
-  email: item.email,
+  email: item.email ?? '',
   firstName: item.firstName,
+  hsaId: item.hsaId ?? '',
   lastName: item.lastName,
 })
 
@@ -56,6 +61,11 @@ export default function OwnersClient() {
   const t = useTranslations('ownerMgmt')
   const tn = useTranslations('nav')
   const tc = useTranslations('common')
+  const formatOwnerName = (owner: Owner) =>
+    formatActorDisplayName(
+      `${owner.firstName} ${owner.lastName}`.trim(),
+      tc('anonymousUser'),
+    ) ?? ''
 
   const controller = useCrudAdminResource<Owner, OwnerForm>({
     confirmDeleteMessage: tc('confirm'),
@@ -73,13 +83,20 @@ export default function OwnersClient() {
       className: 'py-3 px-4 font-medium',
       header: t('name'),
       key: 'name',
-      render: item => `${item.firstName} ${item.lastName}`,
+      render: item => formatOwnerName(item),
     },
     {
       className: 'py-3 px-4 text-secondary-600 dark:text-secondary-400',
       header: t('email'),
       key: 'email',
-      render: item => item.email,
+      render: item => item.email ?? '',
+    },
+    {
+      className:
+        'py-3 px-4 font-mono text-sm text-secondary-600 dark:text-secondary-400',
+      header: t('hsaId'),
+      key: 'hsaId',
+      render: item => item.hsaId ?? '',
     },
   ]
 
@@ -108,6 +125,27 @@ export default function OwnersClient() {
               }
               required
               value={form.firstName}
+            />
+          </div>
+          <div>
+            <FieldLabelWithHelp
+              help={t('help.hsaId')}
+              htmlFor="owner-hsa-id"
+              label={t('hsaId')}
+              required
+            />
+            <input
+              className={inputClassName}
+              id="owner-hsa-id"
+              onChange={event =>
+                setForm(previousForm => ({
+                  ...previousForm,
+                  hsaId: event.target.value,
+                }))
+              }
+              pattern="SE[0-9]{10}-[A-Za-z0-9]+"
+              required
+              value={form.hsaId}
             />
           </div>
           <div>

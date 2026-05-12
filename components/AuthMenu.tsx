@@ -29,6 +29,7 @@ type AuthMe = AuthMeAuthenticated | AuthMeUnauthenticated
 const ROLE_KEY_BY_CANONICAL: Record<string, string> = {
   Reviewer: 'reviewer',
   Admin: 'admin',
+  PrivacyOfficer: 'privacyOfficer',
 }
 
 interface AuthLogoutButtonProps {

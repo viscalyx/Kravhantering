@@ -7,6 +7,8 @@ import {
 } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminClient from '@/app/[locale]/admin/admin-client'
+import { ConfirmModalProvider } from '@/components/ConfirmModal'
+import { HelpProvider, useHelp } from '@/components/HelpPanel'
 import {
   DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS,
   normalizeRequirementListColumnDefaults,
@@ -29,8 +31,17 @@ const routerRefresh = routerMock.refresh
 const routerReplace = routerMock.replace
 
 vi.mock('next-intl', () => ({
-  useTranslations: (namespace?: string) => (key: string) =>
-    namespace ? `${namespace}.${key}` : key,
+  useTranslations:
+    (namespace?: string) => (key: string, values?: Record<string, unknown>) => {
+      const translationKey = namespace ? `${namespace}.${key}` : key
+      if (
+        key === 'privacy.errorWithDetail' ||
+        key === 'privacy.serverErrorWithDetail'
+      ) {
+        return `${translationKey} ${values?.message ?? ''} ${values?.detail ?? ''}`.trim()
+      }
+      return translationKey
+    },
 }))
 
 vi.mock('next/navigation', () => ({
@@ -56,6 +67,14 @@ function okJson(body: unknown) {
   } as Response
 }
 
+function errorJson(body: unknown, status: number) {
+  return {
+    json: async () => body,
+    ok: false,
+    status,
+  } as Response
+}
+
 function deferred<T>() {
   let reject!: (reason?: unknown) => void
   let resolve!: (value: T | PromiseLike<T>) => void
@@ -65,6 +84,11 @@ function deferred<T>() {
   })
 
   return { promise, reject, resolve }
+}
+
+function HelpContentProbe() {
+  const { content } = useHelp()
+  return <output data-testid="help-title">{content?.titleKey ?? 'none'}</output>
 }
 
 function getColumnOrder(container: HTMLElement) {
@@ -304,6 +328,1306 @@ describe('AdminClient', () => {
     expect(columnsTab).toHaveAttribute('aria-controls', 'columns-panel')
     expect(columnsTab).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tabpanel')).toHaveAttribute('id', 'columns-panel')
+  })
+
+  it('switches the header help content when the privacy tab is selected', async () => {
+    render(
+      <HelpProvider>
+        <ConfirmModalProvider>
+          <AdminClient
+            currentUserRoles={['PrivacyOfficer']}
+            initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+            initialTerminology={buildUiTerminologyPayload(
+              getDefaultUiTerminology(),
+            )}
+          />
+        </ConfirmModalProvider>
+        <HelpContentProbe />
+      </HelpProvider>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('help-title')).toHaveTextContent('admin.title'),
+    )
+
+    fireEvent.click(screen.getByRole('tab', { name: 'admin.privacy.title' }))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('help-title')).toHaveTextContent(
+        'adminPrivacy.title',
+      ),
+    )
+  })
+
+  it('dims and disables the privacy tab without the PrivacyOfficer role', () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+
+    render(
+      <AdminClient
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const privacyTab = screen.getByRole('tab', {
+      name: 'admin.privacy.title',
+    })
+
+    expect(privacyTab).toHaveAttribute('aria-disabled', 'true')
+    expect(privacyTab).toHaveAttribute('title', 'admin.privacy.disabledTooltip')
+    expect(privacyTab).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute(
+      'id',
+      'terminology-panel',
+    )
+    expect(screen.queryByLabelText('admin.privacy.targetHsaId')).toBeNull()
+
+    fireEvent.click(privacyTab)
+
+    expect(routerReplace).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('shows inline help for each privacy form field', () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    const helpButtons = [
+      ['admin.privacy.targetHsaId', 'admin.privacy.fieldHelp.targetHsaId'],
+      [
+        'admin.privacy.replacementHsaId',
+        'admin.privacy.fieldHelp.replacementHsaId',
+      ],
+      [
+        'admin.privacy.replacementName',
+        'admin.privacy.fieldHelp.replacementName',
+      ],
+      [
+        'admin.privacy.replacementFirstName',
+        'admin.privacy.fieldHelp.replacementFirstName',
+      ],
+      [
+        'admin.privacy.replacementLastName',
+        'admin.privacy.fieldHelp.replacementLastName',
+      ],
+      [
+        'admin.privacy.replacementEmail',
+        'admin.privacy.fieldHelp.replacementEmail',
+      ],
+    ] as const
+
+    for (const [label] of helpButtons) {
+      expect(
+        screen.getByRole('button', { name: `common.help: ${label}` }),
+      ).toBeTruthy()
+    }
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'common.help: admin.privacy.targetHsaId',
+      }),
+    )
+
+    expect(screen.getByText('admin.privacy.fieldHelp.targetHsaId')).toBeTruthy()
+  })
+
+  it('previews duplicate-name privacy erasure by HSA-ID instead of name', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['INT0001 v1 / suggestion 990001'],
+            allowedActions: ['anonymize', 'switch', 'skip'],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            fieldKey: 'resolvedBy',
+            key: 'improvement_suggestions.resolved_by',
+            objectKey: 'improvementSuggestions',
+            recommendedAction: 'anonymize',
+            warningKey: 'decisionSwitch',
+          },
+        ],
+        previewToken: 'duplicate-name-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 1,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    expect(screen.getAllByRole('textbox')).toHaveLength(6)
+    expect(
+      screen.getByLabelText('admin.privacy.replacementFirstName'),
+    ).toBeTruthy()
+    expect(
+      screen.getByLabelText('admin.privacy.replacementLastName'),
+    ).toBeTruthy()
+    expect(screen.getByLabelText('admin.privacy.replacementEmail')).toBeTruthy()
+    expect(
+      screen.getByRole('img', {
+        name: 'admin.privacy.replacementEmailOptional',
+      }),
+    ).toBeTruthy()
+    expect(
+      screen.queryByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeNull()
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle2' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/privacy/erasure-preview',
+        expect.objectContaining({
+          body: JSON.stringify({
+            replacement: null,
+            target: {
+              hsaId: 'SE2321000032-kalle2',
+            },
+          }),
+          method: 'POST',
+        }),
+      ),
+    )
+
+    const row = screen
+      .getByText('admin.privacy.objects.improvementSuggestions')
+      .closest('tr')
+
+    expect(row).not.toBeNull()
+    expect(
+      within(row as HTMLTableRowElement).getByText(
+        'admin.privacy.fields.resolvedBy',
+      ),
+    ).toBeTruthy()
+    expect(within(row as HTMLTableRowElement).getByText('1')).toBeTruthy()
+    expect(
+      within(row as HTMLTableRowElement).getByText('Kalle Svensson'),
+    ).toBeTruthy()
+    expect(
+      within(row as HTMLTableRowElement).getByText(
+        'INT0001 v1 / suggestion 990001',
+      ),
+    ).toBeTruthy()
+    const actionSelect = within(row as HTMLTableRowElement).getByRole(
+      'combobox',
+    )
+    expect(actionSelect).toHaveValue('anonymize')
+    expect(
+      within(row as HTMLTableRowElement).queryByRole('option', {
+        name: 'admin.privacy.actions.switch',
+      }),
+    ).toBeNull()
+    expect(
+      within(row as HTMLTableRowElement).getByRole('option', {
+        name: 'admin.privacy.actions.anonymize',
+      }),
+    ).toHaveValue('anonymize')
+    expect(
+      within(row as HTMLTableRowElement).getByRole('option', {
+        name: 'admin.privacy.actions.skip',
+      }),
+    ).toHaveValue('skip')
+    const executeButton = screen.getByRole('button', {
+      name: 'admin.privacy.execute',
+    })
+    const previewTable = row?.closest('table')
+    expect(previewTable).not.toBeNull()
+    const executePosition =
+      previewTable?.compareDocumentPosition(executeButton) ?? 0
+    expect(Boolean(executePosition & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
+      true,
+    )
+    expect(screen.queryByText('admin.privacy.objects.owners')).toBeNull()
+    expect(screen.queryByText('admin.privacy.fields.identity')).toBeNull()
+  })
+
+  it('does not show the privacy execution button for an empty preview', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [],
+        previewToken: 'empty-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 0,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    expect(
+      screen.queryByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeNull()
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-johlju' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await screen.findByText('admin.privacy.previewResult')
+
+    expect(
+      screen.queryByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeNull()
+  })
+
+  it('shows safe server details when privacy preview fails unexpectedly', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      errorJson(
+        {
+          debugMessage: 'Invalid column name created_by_hsa_id',
+          error: 'Failed to preview privacy erasure',
+        },
+        500,
+      ),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-12345' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'admin.privacy.serverPreviewError',
+      ),
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Invalid column name created_by_hsa_id',
+    )
+    expect(screen.getByRole('alert')).not.toHaveTextContent(
+      'databasmigreringar',
+    )
+  })
+
+  it('keeps the preview and marks executed privacy rows after a successful erasure', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          groups: [
+            {
+              affectedReferences: ['SEC Säkerhet'],
+              allowedActions: ['switch', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              disabledReasonKey: null,
+              fieldKey: 'identity',
+              key: 'owners.identity',
+              objectKey: 'owners',
+              recommendedAction: 'switch',
+              warningKey: 'ownerAreaSwitchOnly',
+            },
+            {
+              affectedReferences: ['SEC Säkerhet'],
+              allowedActions: ['switch', 'skip'],
+              controlledByGroupKey: 'owners.identity',
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              disabledReasonKey: null,
+              fieldKey: 'owner',
+              key: 'requirement_areas.owner',
+              objectKey: 'requirementAreas',
+              readOnlyReasonKey: 'controlledByOwner',
+              recommendedAction: 'switch',
+              warningKey: 'liveAssignment',
+            },
+            {
+              affectedReferences: ['INT0001 v1'],
+              allowedActions: ['anonymize', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              fieldKey: 'createdBy',
+              key: 'requirement_versions.created_by',
+              objectKey: 'requirementVersions',
+              recommendedAction: 'skip',
+              warningKey: 'historySwitch',
+            },
+          ],
+          previewToken: 'execution-preview-token',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 3,
+        }),
+      )
+      .mockResolvedValueOnce(
+        okJson({
+          actions: { anonymize: 0, delete: 0, skip: 1, switch: 2 },
+          groups: [],
+          requestId: 'erasure-request-1',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 3,
+        }),
+      )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
+      target: { value: 'SE2321000032-johlju' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
+      target: { value: 'John Carl Levi' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('admin.privacy.replacementFirstName'),
+      {
+        target: { value: 'John Carl' },
+      },
+    )
+    fireEvent.change(
+      screen.getByLabelText('admin.privacy.replacementLastName'),
+      {
+        target: { value: 'Levi' },
+      },
+    )
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementEmail'), {
+      target: { value: 'john.levi@example.com' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const ownerRow = (
+      await screen.findByText('admin.privacy.objects.owners')
+    ).closest('tr')
+    const requirementAreaRow = screen
+      .getByText('admin.privacy.objects.requirementAreas')
+      .closest('tr')
+    const versionRow = screen
+      .getByText('admin.privacy.objects.requirementVersions')
+      .closest('tr')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    const [executeUrl, executeInit] = fetchMock.mock.calls.at(-1) ?? []
+    expect(executeUrl).toBe('/api/privacy/erasure-requests')
+    expect(executeInit).toEqual(expect.objectContaining({ method: 'POST' }))
+    expect(JSON.parse(String((executeInit as RequestInit).body))).toEqual({
+      actions: {
+        'owners.identity': 'switch',
+        'requirement_areas.owner': 'switch',
+        'requirement_versions.created_by': 'skip',
+      },
+      previewToken: 'execution-preview-token',
+      replacement: {
+        displayName: 'John Carl Levi',
+        email: 'john.levi@example.com',
+        firstName: 'John Carl',
+        hsaId: 'SE2321000032-johlju',
+        lastName: 'Levi',
+      },
+      target: { hsaId: 'SE2321000032-kalle1' },
+    })
+
+    expect(screen.getByText('admin.privacy.status')).toBeTruthy()
+    expect(ownerRow).toHaveTextContent(
+      'admin.privacy.executionStatus.completed',
+    )
+    expect(ownerRow?.className).toContain('bg-emerald')
+    expect(requirementAreaRow).toHaveTextContent(
+      'admin.privacy.executionStatus.completed',
+    )
+    expect(requirementAreaRow?.className).toContain('bg-emerald')
+    expect(versionRow).toHaveTextContent(
+      'admin.privacy.executionStatus.skipped',
+    )
+    expect(versionRow?.className).toContain('bg-secondary')
+    expect(
+      screen.queryByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeNull()
+  })
+
+  it('clears stale privacy preview rows when the target HSA-ID changes', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['INT0001 v1'],
+            allowedActions: ['anonymize', 'skip'],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            fieldKey: 'createdBy',
+            key: 'requirement_versions.created_by',
+            objectKey: 'requirementVersions',
+            recommendedAction: 'anonymize',
+            warningKey: 'historySwitch',
+          },
+        ],
+        previewToken: 'target-change-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 1,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    const targetInput = screen.getByLabelText('admin.privacy.targetHsaId')
+    fireEvent.change(targetInput, {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await screen.findByText('admin.privacy.objects.requirementVersions')
+    expect(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeTruthy()
+
+    fireEvent.change(targetInput, {
+      target: { value: 'SE2321000032-kalle2' },
+    })
+
+    expect(
+      screen.queryByText('admin.privacy.objects.requirementVersions'),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeNull()
+  })
+
+  it('shows execute-specific server details when privacy execution fails unexpectedly', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          groups: [
+            {
+              affectedReferences: ['REQ0001 v1'],
+              allowedActions: ['anonymize', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Linnéa Bergström',
+              fieldKey: 'createdBy',
+              key: 'requirement_versions.created_by',
+              objectKey: 'requirementVersions',
+              recommendedAction: 'anonymize',
+              warningKey: 'historySwitch',
+            },
+          ],
+          previewToken: 'execution-server-error-preview-token',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        errorJson(
+          {
+            debugMessage: 'Cannot update responsible_hsa_id',
+            error: 'Failed to execute privacy erasure',
+          },
+          500,
+        ),
+      )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-12345' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+    await screen.findByText('admin.privacy.objects.requirementVersions')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'admin.privacy.serverExecuteError',
+      ),
+    )
+    const executeButton = screen.getByRole('button', {
+      name: 'admin.privacy.execute',
+    })
+    const executeAlert = screen.getByRole('alert')
+    expect(executeAlert).toHaveTextContent('Cannot update responsible_hsa_id')
+    expect(
+      Boolean(
+        executeButton.compareDocumentPosition(executeAlert) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
+    expect(screen.queryByText('admin.privacy.status')).toBeNull()
+    expect(
+      screen.queryByText('admin.privacy.executionStatus.failed'),
+    ).toBeNull()
+  })
+
+  it('marks only the failed privacy row when execution returns safe row details', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          groups: [
+            {
+              affectedReferences: ['SEC Säkerhet'],
+              allowedActions: ['delete', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              disabledReasonKey: null,
+              fieldKey: 'identity',
+              key: 'owners.identity',
+              objectKey: 'owners',
+              recommendedAction: 'delete',
+              warningKey: 'ownerDelete',
+            },
+            {
+              affectedReferences: ['INT0001 v1'],
+              allowedActions: ['anonymize', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              fieldKey: 'createdBy',
+              key: 'requirement_versions.created_by',
+              objectKey: 'requirementVersions',
+              recommendedAction: 'anonymize',
+              warningKey: 'historySwitch',
+            },
+          ],
+          previewToken: 'failed-preview-token',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 2,
+        }),
+      )
+      .mockResolvedValueOnce(
+        errorJson(
+          {
+            code: 'validation',
+            details: {
+              groupKey: 'owners.identity',
+              reason: 'owner_area_references_blocking',
+            },
+            error:
+              'Requirement areas must be switched before changing the owner identity',
+          },
+          400,
+        ),
+      )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const ownerRow = (
+      await screen.findByText('admin.privacy.objects.owners')
+    ).closest('tr')
+    const versionRow = screen
+      .getByText('admin.privacy.objects.requirementVersions')
+      .closest('tr')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('alert')
+          .some(alert =>
+            alert.textContent?.includes('admin.privacy.errorWithDetail'),
+          ),
+      ).toBe(true),
+    )
+
+    expect(screen.getByText('admin.privacy.status')).toBeTruthy()
+    expect(ownerRow).toHaveTextContent('admin.privacy.executionStatus.failed')
+    expect(ownerRow?.className).toContain('bg-red')
+    expect(versionRow).toHaveTextContent('admin.privacy.warnings.historySwitch')
+    expect(versionRow).not.toHaveTextContent(
+      'admin.privacy.executionStatus.completed',
+    )
+    expect(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeEnabled()
+  })
+
+  it('keeps stale privacy previews in preview mode without row failure status', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          groups: [
+            {
+              affectedReferences: ['INT0001 v1'],
+              allowedActions: ['anonymize', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              fieldKey: 'createdBy',
+              key: 'requirement_versions.created_by',
+              objectKey: 'requirementVersions',
+              recommendedAction: 'anonymize',
+              warningKey: 'historySwitch',
+            },
+          ],
+          previewToken: 'stale-preview-token',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 1,
+        }),
+      )
+      .mockResolvedValueOnce(
+        errorJson(
+          {
+            code: 'conflict',
+            error: 'Privacy erasure preview is stale',
+          },
+          409,
+        ),
+      )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const versionRow = (
+      await screen.findByText('admin.privacy.objects.requirementVersions')
+    ).closest('tr')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'admin.privacy.execute' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'admin.privacy.stalePreview',
+      ),
+    )
+
+    expect(screen.queryByText('admin.privacy.status')).toBeNull()
+    expect(
+      screen.queryByText('admin.privacy.executionStatus.failed'),
+    ).toBeNull()
+    expect(versionRow).toHaveTextContent('admin.privacy.warnings.historySwitch')
+    expect(
+      screen.getByRole('button', { name: 'admin.privacy.execute' }),
+    ).toBeEnabled()
+  })
+
+  it('disables the owner action row when requirement areas still reference the owner and no replacement exists', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['INT Integration', 'SEC Säkerhet'],
+            allowedActions: ['skip'],
+            blockingReferences: [
+              {
+                objectKey: 'requirementAreas',
+                values: ['INT Integration', 'SEC Säkerhet'],
+              },
+            ],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: 'ownerAreaReplacementRequired',
+            fieldKey: 'identity',
+            key: 'owners.identity',
+            objectKey: 'owners',
+            recommendedAction: 'skip',
+            warningKey: 'ownerSwitch',
+          },
+          {
+            affectedReferences: ['INT Integration', 'SEC Säkerhet'],
+            allowedActions: ['switch', 'skip'],
+            controlledByGroupKey: 'owners.identity',
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: null,
+            fieldKey: 'owner',
+            key: 'requirement_areas.owner',
+            objectKey: 'requirementAreas',
+            readOnlyReasonKey: 'controlledByOwner',
+            recommendedAction: 'skip',
+            warningKey: 'liveAssignment',
+          },
+        ],
+        previewToken: 'owner-blocked-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 2,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const row = await screen.findByText('admin.privacy.objects.owners')
+    const ownerRow = row.closest('tr')
+    expect(ownerRow).not.toBeNull()
+    expect(ownerRow).toHaveAttribute('aria-disabled', 'true')
+
+    const select = within(ownerRow as HTMLTableRowElement).getByRole('combobox')
+    expect(select).toBeDisabled()
+    expect(
+      within(ownerRow as HTMLTableRowElement).getAllByRole('option'),
+    ).toHaveLength(1)
+    expect(
+      within(ownerRow as HTMLTableRowElement).getByRole('option', {
+        name: 'admin.privacy.actions.skip',
+      }),
+    ).toHaveValue('skip')
+    expect(ownerRow).toHaveTextContent(
+      'admin.privacy.blockers.ownerAreaReplacementRequired',
+    )
+    const ownerAlert = within(ownerRow as HTMLTableRowElement).getByRole(
+      'alert',
+    )
+    expect(ownerAlert).not.toHaveTextContent('INT Integration')
+    expect(ownerAlert).not.toHaveTextContent('SEC Säkerhet')
+    expect(ownerRow).toHaveTextContent('INT Integration')
+    expect(ownerRow).toHaveTextContent('SEC Säkerhet')
+
+    const requirementAreaRow = (
+      await screen.findByText('admin.privacy.objects.requirementAreas')
+    ).closest('tr')
+    expect(requirementAreaRow).not.toBeNull()
+    expect(requirementAreaRow).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      within(requirementAreaRow as HTMLTableRowElement).queryByRole('combobox'),
+    ).toBeNull()
+    expect(requirementAreaRow).toHaveTextContent('admin.privacy.actions.skip')
+    expect(requirementAreaRow).toHaveTextContent('INT Integration')
+    expect(requirementAreaRow).toHaveTextContent('SEC Säkerhet')
+    expect(requirementAreaRow).toHaveTextContent(
+      'admin.privacy.readOnly.controlledByOwner',
+    )
+  })
+
+  it('disables the requirement package owner row when no replacement exists', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['SPR Språkstöd', 'TIL Tillgänglighet'],
+            allowedActions: ['skip'],
+            count: 2,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: 'ownerPackageReplacementRequired',
+            fieldKey: 'owner',
+            key: 'requirement_packages.owner',
+            objectKey: 'requirementPackages',
+            recommendedAction: 'skip',
+            warningKey: 'liveAssignment',
+          },
+        ],
+        previewToken: 'package-owner-blocked-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 2,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const row = (
+      await screen.findByText('admin.privacy.objects.requirementPackages')
+    ).closest('tr')
+    expect(row).not.toBeNull()
+    expect(row).toHaveAttribute('aria-disabled', 'true')
+
+    const select = within(row as HTMLTableRowElement).getByRole('combobox')
+    expect(select).toBeDisabled()
+    expect(
+      within(row as HTMLTableRowElement).getAllByRole('option'),
+    ).toHaveLength(1)
+    expect(
+      within(row as HTMLTableRowElement).getByRole('option', {
+        name: 'admin.privacy.actions.skip',
+      }),
+    ).toHaveValue('skip')
+    expect(row).toHaveTextContent(
+      'admin.privacy.blockers.ownerPackageReplacementRequired',
+    )
+    expect(row).toHaveTextContent('SPR Språkstöd')
+    expect(row).toHaveTextContent('TIL Tillgänglighet')
+  })
+
+  it('shows only switch and skip for an owner row when a replacement is supplied for linked requirement areas', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['SEC Säkerhet'],
+            allowedActions: ['switch', 'skip'],
+            blockingReferences: [
+              {
+                objectKey: 'requirementAreas',
+                values: ['SEC Säkerhet'],
+              },
+            ],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: null,
+            fieldKey: 'identity',
+            key: 'owners.identity',
+            objectKey: 'owners',
+            recommendedAction: 'switch',
+            warningKey: 'ownerAreaSwitchOnly',
+          },
+          {
+            affectedReferences: ['SEC Säkerhet'],
+            allowedActions: ['switch', 'skip'],
+            controlledByGroupKey: 'owners.identity',
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: null,
+            fieldKey: 'owner',
+            key: 'requirement_areas.owner',
+            objectKey: 'requirementAreas',
+            readOnlyReasonKey: 'controlledByOwner',
+            recommendedAction: 'switch',
+            warningKey: 'liveAssignment',
+          },
+        ],
+        previewToken: 'owner-switch-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 2,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
+      target: { value: 'SE2321000032-johlju' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
+      target: { value: 'John Levi' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const ownerRow = (
+      await screen.findByText('admin.privacy.objects.owners')
+    ).closest('tr')
+    expect(ownerRow).not.toBeNull()
+
+    const select = within(ownerRow as HTMLTableRowElement).getByRole('combobox')
+    expect(select).toBeEnabled()
+    expect(
+      within(ownerRow as HTMLTableRowElement)
+        .getAllByRole('option')
+        .map(option => option.getAttribute('value')),
+    ).toEqual(['switch', 'skip'])
+    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.anonymize')
+    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.delete')
+
+    const requirementAreaRow = (
+      await screen.findByText('admin.privacy.objects.requirementAreas')
+    ).closest('tr')
+    expect(requirementAreaRow).not.toBeNull()
+    expect(requirementAreaRow).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      within(requirementAreaRow as HTMLTableRowElement).queryByRole('combobox'),
+    ).toBeNull()
+    expect(requirementAreaRow).toHaveTextContent('admin.privacy.actions.switch')
+    expect(requirementAreaRow).toHaveTextContent('SEC Säkerhet')
+    expect(requirementAreaRow).toHaveTextContent(
+      'admin.privacy.readOnly.controlledByOwner',
+    )
+  })
+
+  it('hides switch actions if the replacement HSA-ID is cleared after preview', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: ['SPR Språkstöd'],
+            allowedActions: ['switch', 'skip'],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: null,
+            fieldKey: 'owner',
+            key: 'requirement_packages.owner',
+            objectKey: 'requirementPackages',
+            recommendedAction: 'switch',
+            warningKey: 'liveAssignment',
+          },
+        ],
+        previewToken: 'replacement-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 1,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
+      target: { value: 'SE2321000032-johlju' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
+      target: { value: 'John Levi' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const row = (
+      await screen.findByText('admin.privacy.objects.requirementPackages')
+    ).closest('tr')
+    expect(row).not.toBeNull()
+    const rowQueries = within(row as HTMLTableRowElement)
+    expect(rowQueries.getByRole('combobox')).toHaveValue('switch')
+    expect(
+      rowQueries.getByRole('option', {
+        name: 'admin.privacy.actions.switch',
+      }),
+    ).toHaveValue('switch')
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
+      target: { value: '' },
+    })
+
+    expect(rowQueries.getByRole('combobox')).toHaveValue('skip')
+    expect(
+      rowQueries.queryByRole('option', {
+        name: 'admin.privacy.actions.switch',
+      }),
+    ).toBeNull()
+    expect(
+      rowQueries.getByRole('option', {
+        name: 'admin.privacy.actions.skip',
+      }),
+    ).toHaveValue('skip')
+  })
+
+  it('shows only delete and skip for an owner row with no linked requirement areas', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce(
+      okJson({
+        groups: [
+          {
+            affectedReferences: [],
+            allowedActions: ['delete', 'skip'],
+            count: 1,
+            currentDisplayValue: 'Kalle Svensson',
+            disabledReasonKey: null,
+            fieldKey: 'identity',
+            key: 'owners.identity',
+            objectKey: 'owners',
+            recommendedAction: 'delete',
+            warningKey: 'ownerDelete',
+          },
+        ],
+        previewToken: 'owner-delete-preview-token',
+        targetFingerprint: '0123456789abcdef0123456789abcdef',
+        totalCount: 1,
+      }),
+    )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    const ownerRow = (
+      await screen.findByText('admin.privacy.objects.owners')
+    ).closest('tr')
+    expect(ownerRow).not.toBeNull()
+
+    const select = within(ownerRow as HTMLTableRowElement).getByRole('combobox')
+    expect(select).toBeEnabled()
+    expect(
+      within(ownerRow as HTMLTableRowElement)
+        .getAllByRole('option')
+        .map(option => option.getAttribute('value')),
+    ).toEqual(['delete', 'skip'])
+    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.switch')
+    expect(ownerRow).not.toHaveTextContent('admin.privacy.actions.anonymize')
+  })
+
+  it('explains when privacy preview requires the PrivacyOfficer role', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce({
+      json: async () => ({
+        code: 'forbidden',
+        error: 'PrivacyOfficer role is required',
+      }),
+      ok: false,
+      status: 403,
+    } as Response)
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'admin.privacy.permissionError',
+      ),
+    )
+  })
+
+  it('explains that replacement switching needs both HSA-ID and name', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock.mockResolvedValueOnce({
+      json: async () => ({
+        error: 'Invalid request',
+        issues: [
+          {
+            code: 'too_small',
+            message: 'Too small: expected string to have >=1 characters',
+            path: 'replacement.displayName',
+          },
+        ],
+      }),
+      ok: false,
+      status: 400,
+    } as Response)
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle1' },
+    })
+    fireEvent.change(screen.getByLabelText('admin.privacy.replacementHsaId'), {
+      target: { value: 'SE2321000032-johlju' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'admin.privacy.replacementIncomplete',
+      ),
+    )
   })
 
   it('disables terminology controls while saving and shows an error when the save request fails', async () => {

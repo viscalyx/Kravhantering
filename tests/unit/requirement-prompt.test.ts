@@ -28,7 +28,7 @@ const testTaxonomy: TaxonomyData = {
       parentName: 'Functional suitability',
     },
     { id: 10, name: 'Performance efficiency' },
-    { id: 11, name: 'Time behavior', parentName: 'Performance efficiency' },
+    { id: 11, name: 'Time behaviour', parentName: 'Performance efficiency' },
   ],
   riskLevels: [
     { id: 1, name: 'Low' },

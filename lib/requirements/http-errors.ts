@@ -21,7 +21,24 @@ interface SafeStaleEditHttpDetails {
   reason: 'stale_requirement_edit'
 }
 
-type SafeHttpErrorDetails = SafeStaleEditHttpDetails
+const SAFE_PRIVACY_ERASURE_REASONS = [
+  'owner_area_references_blocking',
+  'owner_references_blocking',
+  'replacement_required',
+  'unsupported_owner_action',
+  'unsupported_privacy_action',
+] as const
+
+type SafePrivacyErasureReason = (typeof SAFE_PRIVACY_ERASURE_REASONS)[number]
+
+interface SafePrivacyErasureHttpDetails {
+  groupKey: string
+  reason: SafePrivacyErasureReason
+}
+
+type SafeHttpErrorDetails =
+  | SafePrivacyErasureHttpDetails
+  | SafeStaleEditHttpDetails
 
 function isStatusError(error: unknown): error is Error & {
   details?: Record<string, unknown>
@@ -70,13 +87,27 @@ function toSafeHttpErrorDetails(
   code: RequirementsErrorCode,
   details: Record<string, unknown> | undefined,
 ): SafeHttpErrorDetails | undefined {
-  if (code !== 'conflict' || details?.reason !== 'stale_requirement_edit') {
+  if (code === 'conflict' && details?.reason === 'stale_requirement_edit') {
+    return {
+      latest: toSafeLatestEditSummary(details.latest),
+      reason: 'stale_requirement_edit',
+    }
+  }
+
+  if (
+    code !== 'validation' ||
+    typeof details?.groupKey !== 'string' ||
+    !/^[a-z_]+(\.[a-z_]+)+$/.test(details.groupKey) ||
+    !SAFE_PRIVACY_ERASURE_REASONS.includes(
+      details.reason as SafePrivacyErasureReason,
+    )
+  ) {
     return undefined
   }
 
   return {
-    latest: toSafeLatestEditSummary(details.latest),
-    reason: 'stale_requirement_edit',
+    groupKey: details.groupKey,
+    reason: details.reason as SafePrivacyErasureReason,
   }
 }
 

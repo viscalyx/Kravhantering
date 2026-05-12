@@ -26,7 +26,7 @@ const resolutionBodySchema = z
       z.literal(SUGGESTION_DISMISSED),
     ]),
     resolutionMotivation: businessTextSchema,
-    resolvedBy: businessTextSchema,
+    resolvedBy: businessTextSchema.optional(),
   })
   .strict()
 

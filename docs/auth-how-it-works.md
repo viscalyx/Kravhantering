@@ -180,11 +180,11 @@ sequenceDiagram
   `jwks_uri` and caches the resulting `RemoteJWKSet`.
 - JWT verification checks signature, issuer, audience, and a 30-second clock
   tolerance.
-- The required MCP identity is `employeeHsaId`. Values prefixed with
-  `mcp-client:` are accepted as synthetic service identities; other values
-  must match the HSA-id validator. For the configured MCP service-account
-  client, the app derives `mcp-client:<client_id>` when the token omits the
-  hardcoded claim but still has a verified `client_id`/`azp`.
+- The required MCP identity is `employeeHsaId`. Real HSA-ID values must match
+  the HSA-id validator. Values prefixed with `mcp-client:` are still accepted
+  as synthetic service identities for authentication fallback, but mutating
+  requirement workflows that stamp actor history require a real-format HSA-ID.
+  The configured local MCP service client emits `SE2321000032-mcp1`.
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active
   `Request` before the requirements service builds its request context.
@@ -215,12 +215,19 @@ sequenceDiagram
   `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`, and
-  `requirements.high_risk_mutation.succeeded`.
+  `requirements.high_risk_mutation.succeeded`,
+  `privacy.erasure.previewed`, `privacy.erasure.executed`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured
   `detail-key-redacted` breadcrumb with the source event, actor source, and
   redacted key name.
+- Privacy erasure audit events are emitted to the platform security-log stream,
+  not stored in the application database. They include the handler identity,
+  request id, grouped action counts, and a non-reversible target fingerprint.
+  They must not include the raw target HSA-ID. Retention or redaction of handler
+  identity in those logs is handled by the platform logging policy because
+  removing it can reduce traceability.
 
 ### Audit event stream
 
@@ -350,9 +357,10 @@ flowchart LR
   the IdP session.
 - Issue ID tokens that include the required claims:
   `sub`, `given_name`, `family_name`, and `employeeHsaId`.
-- Emit reviewer/admin role information in a way that resolves to the
-  canonical app roles `Reviewer` and `Admin`. For the least friction, emit
-  those exact values on a `roles` claim.
+- Emit global role information in a way that resolves to the canonical app
+  roles `Reviewer`, `Admin`, and `PrivacyOfficer`. For the least friction,
+  emit those exact values on a `roles` claim. `PrivacyOfficer` is only for
+  GDPR erasure work and does not imply `Admin`.
 - Do not model authoring rights as IdP roles. The application derives
   authoring rights from area and specification assignments matched on
   `employeeHsaId`.
@@ -364,8 +372,9 @@ flowchart LR
 - Issue signed JWT access tokens that can be verified against the IdP JWKS.
   Opaque access tokens are not sufficient for the current MCP implementation.
 - Ensure MCP access tokens match the configured issuer and audience.
-- Include `sub` and `employeeHsaId` on the MCP access token, or use the
-  configured MCP service-account client so the app can derive
+- Include `sub` and a real-format `employeeHsaId` on the MCP access token for
+  any client that will call mutating requirement tools. Read-only clients may
+  use the configured service-account fallback where the app derives
   `mcp-client:<client_id>` from a verified `client_id`/`azp`.
 - The current MCP implementation may also consume `roles` and/or `scope`.
   If role-based behavior is needed there, emit the canonical app roles on a

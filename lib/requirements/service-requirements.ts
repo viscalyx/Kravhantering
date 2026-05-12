@@ -39,7 +39,10 @@ import {
 import { listRiskLevels } from '@/lib/dal/risk-levels'
 import type { UiSettingsLoader } from '@/lib/dal/ui-settings'
 import type { SqlServerDatabase } from '@/lib/db'
-import type { AuthorizationService } from '@/lib/requirements/auth'
+import {
+  type AuthorizationService,
+  requireHumanActorSnapshot,
+} from '@/lib/requirements/auth'
 import {
   conflictError,
   isRequirementsServiceError,
@@ -739,9 +742,11 @@ export function createRequirementWorkflow({
             }
 
             await ensureAreaExists(db, payload.areaId)
+            const actor = requireHumanActorSnapshot(context)
             const created = await createRequirement(db, {
               acceptanceCriteria: payload.acceptanceCriteria,
-              createdBy: payload.createdBy ?? context.actor.id ?? undefined,
+              createdBy: actor.displayName,
+              createdByHsaId: actor.hsaId,
               description,
               normReferenceIds: payload.normReferenceIds,
               requirementAreaId: payload.areaId,
@@ -810,13 +815,15 @@ export function createRequirementWorkflow({
             if (payload.areaId != null) {
               await ensureAreaExists(db, payload.areaId)
             }
+            const actor = requireHumanActorSnapshot(context)
             let version: Awaited<ReturnType<typeof editRequirement>>
             try {
               version = await editRequirement(db, requirementId, {
                 acceptanceCriteria: payload.acceptanceCriteria,
                 baseRevisionToken: payload.baseRevisionToken,
                 baseVersionId: payload.baseVersionId,
-                createdBy: payload.createdBy ?? context.actor.id ?? undefined,
+                createdBy: actor.displayName,
+                createdByHsaId: actor.hsaId,
                 description,
                 normReferenceIds: payload.normReferenceIds,
                 requirementAreaId: payload.areaId,
@@ -975,10 +982,12 @@ export function createRequirementWorkflow({
           }
 
           if (input.operation === 'reactivate') {
+            const actor = requireHumanActorSnapshot(context)
             await reactivateRequirement(
               db,
               requirementId,
-              context.actor.id ?? undefined,
+              actor.displayName,
+              actor.hsaId,
             )
             const detail = formatRequirementDetail(
               (await getRequirementById(db, requirementId)) ??
@@ -1029,11 +1038,13 @@ export function createRequirementWorkflow({
             })
           }
 
+          const actor = requireHumanActorSnapshot(context)
           const restored = await restoreVersion(
             db,
             requirementId,
             version.id,
-            context.actor.id ?? undefined,
+            actor.displayName,
+            actor.hsaId,
           )
 
           const detail = formatRequirementDetail(

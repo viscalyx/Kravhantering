@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl'
 import { localizedName } from '@/lib/i18n/localized'
+import { formatActorDisplayNameForLocale } from '@/lib/privacy/display-name'
 import type {
   DiffSegment,
   MetadataChange,
@@ -319,6 +320,7 @@ function VersionDetails({
   const tc = useTranslations('common')
   const getName = (item: { nameSv: string; nameEn: string } | null) =>
     item ? localizedName(item, locale) || null : null
+  const createdBy = formatActorDisplayNameForLocale(version.createdBy, locale)
 
   return (
     <div style={{ fontSize: '0.875rem' }}>
@@ -388,9 +390,7 @@ function VersionDetails({
           label={t('requiresTesting')}
           value={version.requiresTesting ? tc('yes') : tc('no')}
         />
-        {version.createdBy && (
-          <MetadataItem label={t('createdBy')} value={version.createdBy} />
-        )}
+        {createdBy && <MetadataItem label={t('createdBy')} value={createdBy} />}
       </div>
       {version.normReferences.length > 0 && (
         <div style={{ marginTop: '0.5rem' }}>
@@ -601,6 +601,7 @@ function TimelineEntrySection({
   section: Extract<ReportSection, { type: 'timeline-entry' }>
 }) {
   const { entry } = section
+  const createdBy = formatActorDisplayNameForLocale(entry.createdBy, locale)
 
   return (
     <div
@@ -621,9 +622,7 @@ function TimelineEntrySection({
       </div>
       <div style={{ flex: 1, fontSize: '0.8125rem' }}>
         <div style={{ color: '#64748b' }}>
-          {entry.createdBy && (
-            <span style={{ fontWeight: 500 }}>{entry.createdBy} · </span>
-          )}
+          {createdBy && <span style={{ fontWeight: 500 }}>{createdBy} · </span>}
           <TimelineDate entry={entry} locale={locale} />
         </div>
         {entry.descriptionExcerpt && (
@@ -834,6 +833,7 @@ function DeviationSummarySection({
   const riskName = section.riskLevel
     ? localizedName(section.riskLevel, locale)
     : null
+  const createdBy = formatActorDisplayNameForLocale(section.createdBy, locale)
   return (
     <div
       style={{
@@ -899,9 +899,9 @@ function DeviationSummarySection({
           paddingTop: '0.5rem',
         }}
       >
-        {section.createdBy && (
+        {createdBy && (
           <span>
-            {t('submittedBy')} {section.createdBy} ·{' '}
+            {t('submittedBy')} {createdBy} ·{' '}
           </span>
         )}
         {new Date(section.createdAt).toLocaleDateString(locale)}
@@ -964,6 +964,8 @@ function SuggestionCard({
 }) {
   const t = useTranslations('reports.printLabels')
   const isResolved = item.resolvedAt !== null
+  const createdBy = formatActorDisplayNameForLocale(item.createdBy, locale)
+  const resolvedBy = formatActorDisplayNameForLocale(item.resolvedBy, locale)
 
   return (
     <div
@@ -987,7 +989,7 @@ function SuggestionCard({
       >
         <StatusBadge color={item.status.color} label={item.status.label} />
         <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>
-          {item.createdBy && <span>{item.createdBy} · </span>}
+          {createdBy && <span>{createdBy} · </span>}
           {new Date(item.createdAt).toLocaleDateString(locale)}
         </span>
       </div>
@@ -1017,7 +1019,7 @@ function SuggestionCard({
           <div style={{ color: '#4b5563', whiteSpace: 'pre-wrap' }}>
             {item.resolutionMotivation}
           </div>
-          {(item.resolvedBy || item.resolvedAt) && (
+          {(resolvedBy || item.resolvedAt) && (
             <div
               style={{
                 color: '#6b7280',
@@ -1025,8 +1027,8 @@ function SuggestionCard({
                 marginTop: '0.25rem',
               }}
             >
-              {item.resolvedBy}
-              {item.resolvedBy && item.resolvedAt && ' · '}
+              {resolvedBy}
+              {resolvedBy && item.resolvedAt && ' · '}
               {item.resolvedAt &&
                 new Date(item.resolvedAt).toLocaleDateString(locale)}
             </div>
