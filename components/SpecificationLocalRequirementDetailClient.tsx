@@ -373,7 +373,7 @@ export default function SpecificationLocalRequirementDetailClient({
   )
 
   const handleCreateDeviation = useCallback(
-    async (motivation: string, createdBy: string) => {
+    async (motivation: string, _createdBy: string) => {
       if (!requirement?.itemRef || !motivation) {
         return
       }
@@ -384,7 +384,6 @@ export default function SpecificationLocalRequirementDetailClient({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            createdBy: createdBy || null,
             motivation,
           }),
         },
@@ -396,7 +395,7 @@ export default function SpecificationLocalRequirementDetailClient({
   )
 
   const handleEditDeviation = useCallback(
-    async (motivation: string, createdBy: string) => {
+    async (motivation: string, _createdBy: string) => {
       if (!latestDeviation || !motivation) {
         return
       }
@@ -406,7 +405,7 @@ export default function SpecificationLocalRequirementDetailClient({
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ motivation, createdBy: createdBy || null }),
+          body: JSON.stringify({ motivation }),
         },
         td('saveFailed'),
         () => setShowEditDeviationForm(false),
