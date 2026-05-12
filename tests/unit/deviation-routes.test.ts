@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { validationError } from '@/lib/requirements/errors'
 
 const routeState = vi.hoisted(() => ({
   createDeviation: vi.fn(),
@@ -117,6 +118,34 @@ describe('deviation mutation routes', () => {
     expect(routeState.updateDeviation).toHaveBeenCalledWith(mockDb, 7, {
       motivation: 'Updated motivation',
     })
+    expect(
+      routeState.createRequestContext.mock.invocationCallOrder[0],
+    ).toBeLessThan(routeState.updateDeviation.mock.invocationCallOrder[0])
+    expect(
+      routeState.requireHumanActorSnapshot.mock.invocationCallOrder[0],
+    ).toBeLessThan(routeState.updateDeviation.mock.invocationCallOrder[0])
+  })
+
+  it('rejects deviation updates before loading the database when no human actor is present', async () => {
+    routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
+      throw validationError(
+        'Authenticated actor with a verified HSA-ID is required for this write',
+        { reason: 'missing_actor_hsa_id' },
+      )
+    })
+    const { PUT } = await import('@/app/api/deviations/[id]/route')
+
+    const response = await PUT(
+      jsonRequest('https://example.test/api/deviations/7', {
+        motivation: 'Updated motivation',
+      }) as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.updateDeviation).not.toHaveBeenCalled()
+    expect(routeState.updateSpecificationLocalDeviation).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 
   it('rejects client-supplied creators for specification-local deviation updates', async () => {
@@ -156,5 +185,39 @@ describe('deviation mutation routes', () => {
       7,
       { motivation: 'Updated motivation' },
     )
+    expect(
+      routeState.createRequestContext.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      routeState.updateSpecificationLocalDeviation.mock.invocationCallOrder[0],
+    )
+    expect(
+      routeState.requireHumanActorSnapshot.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      routeState.updateSpecificationLocalDeviation.mock.invocationCallOrder[0],
+    )
+  })
+
+  it('rejects specification-local deviation updates before loading the database when no human actor is present', async () => {
+    routeState.requireHumanActorSnapshot.mockImplementationOnce(() => {
+      throw validationError(
+        'Authenticated actor with a verified HSA-ID is required for this write',
+        { reason: 'missing_actor_hsa_id' },
+      )
+    })
+    const { PUT } = await import(
+      '@/app/api/specification-local-deviations/[id]/route'
+    )
+
+    const response = await PUT(
+      jsonRequest('https://example.test/api/specification-local-deviations/7', {
+        motivation: 'Updated motivation',
+      }) as never,
+      params({ id: '7' }),
+    )
+
+    expect(response.status).toBe(400)
+    expect(routeState.updateDeviation).not.toHaveBeenCalled()
+    expect(routeState.updateSpecificationLocalDeviation).not.toHaveBeenCalled()
+    expect(routeState.getRequestSqlServerDataSource).not.toHaveBeenCalled()
   })
 })

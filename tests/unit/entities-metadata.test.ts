@@ -28,7 +28,12 @@ const NAMING_PATTERNS = {
 
 interface EntityOptionsLike {
   columns?: Record<string, unknown>
-  indices?: Array<{ name?: string; columns?: Array<string | (() => unknown)> }>
+  indices?: Array<{
+    columns?: Array<string | (() => unknown)>
+    name?: string
+    unique?: boolean
+    where?: string
+  }>
   name: string
   relations?: Record<
     string,
@@ -104,7 +109,9 @@ describe('sqlServerEntities metadata conventions', () => {
               index.columns,
             )} must declare an explicit name`,
           ).toBeTypeOf('string')
-          expect(index.name as string).toMatch(NAMING_PATTERNS.index)
+          expect(index.name as string).toMatch(
+            index.unique ? NAMING_PATTERNS.unique : NAMING_PATTERNS.index,
+          )
         }
       })
 

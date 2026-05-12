@@ -88,6 +88,115 @@ afterEach(() => {
 })
 
 describe('useDeviationWorkflow', () => {
+  it('creates deviations without client-supplied creator fields', async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url === '/api/specification-item-deviations/31') {
+          if (init?.method === 'POST') {
+            return response({ id: 99, ok: true })
+          }
+          return response({ deviations: [] })
+        }
+        throw new Error(`Unhandled fetch: ${url}`)
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(
+      () =>
+        useDeviationWorkflow({
+          isSpecificationItemContext: true,
+          specificationItemId: 31,
+        }),
+      { wrapper },
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/specification-item-deviations/31',
+      ),
+    )
+
+    await act(async () => {
+      await result.current.handleCreateDeviation(
+        'Needs exception',
+        'Client Supplied Creator',
+      )
+    })
+
+    const postCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input) === '/api/specification-item-deviations/31' &&
+        init?.method === 'POST',
+    )
+
+    expect(postCall).toBeDefined()
+    const postInit = postCall?.[1] as RequestInit
+    expect(JSON.parse(String(postInit.body))).toEqual({
+      motivation: 'Needs exception',
+    })
+  })
+
+  it('updates deviations without client-supplied creator fields', async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url === '/api/specification-item-deviations/31') {
+          return response({
+            deviations: [
+              {
+                createdAt: '2026-03-01',
+                createdBy: 'Original Creator',
+                decidedAt: null,
+                decidedBy: null,
+                decision: null,
+                decisionMotivation: null,
+                id: 11,
+                isReviewRequested: 0,
+                motivation: 'Original deviation',
+              },
+            ],
+          })
+        }
+        if (url === '/api/deviations/11' && init?.method === 'PUT') {
+          return response({ ok: true })
+        }
+        throw new Error(`Unhandled fetch: ${url}`)
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { result } = renderHook(
+      () =>
+        useDeviationWorkflow({
+          isSpecificationItemContext: true,
+          specificationItemId: 31,
+        }),
+      { wrapper },
+    )
+
+    await waitFor(() => expect(result.current.latestDeviation?.id).toBe(11))
+
+    await act(async () => {
+      await result.current.handleEditDeviation(
+        'Updated deviation',
+        'Client Supplied Creator',
+      )
+    })
+
+    const putCall = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input) === '/api/deviations/11' && init?.method === 'PUT',
+    )
+
+    expect(putCall).toBeDefined()
+    const putInit = putCall?.[1] as RequestInit
+    expect(JSON.parse(String(putInit.body))).toEqual({
+      motivation: 'Updated deviation',
+    })
+  })
+
   it('clears the previous deviation while a new specification item fetch is pending', async () => {
     const secondFetch = createDeferred<Response>()
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

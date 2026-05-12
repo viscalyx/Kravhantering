@@ -532,7 +532,44 @@ describe('privacy erasure service', () => {
     )
   })
 
-  it('stores optional replacement email when creating a replacement owner', async () => {
+  it('stores optional replacement email when creating a replacement owner for owner reference switches', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirement_packages.owner': {
+        affectedValues: ['SPR Språkstöd'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const replacement = {
+      displayName: 'John Levi',
+      email: 'john.levi@example.com',
+      hsaId: 'SE2321000032-johlju',
+    }
+    const preview = await previewPrivacyErasure(db, {
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'switch' },
+      previewToken: preview.previewToken,
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO owners'),
+      [
+        'John',
+        'Levi',
+        'john.levi@example.com',
+        'SE2321000032-johlju',
+        expect.any(Date),
+      ],
+    )
+  })
+
+  it('does not create a replacement owner when switching direct HSA snapshots', async () => {
     const { db, query } = createPrivacyDb({
       'requirement_versions.created_by': {
         count: 1,
@@ -556,15 +593,14 @@ describe('privacy erasure service', () => {
       target: { hsaId: TARGET_HSA_ID },
     })
 
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).includes('INSERT INTO owners'),
+      ),
+    ).toBe(false)
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('INSERT INTO owners'),
-      [
-        'John',
-        'Levi',
-        'john.levi@example.com',
-        'SE2321000032-johlju',
-        expect.any(Date),
-      ],
+      expect.stringContaining('UPDATE requirement_versions'),
+      [TARGET_HSA_ID, replacement.hsaId, replacement.displayName],
     )
   })
 
