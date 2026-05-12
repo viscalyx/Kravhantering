@@ -98,11 +98,27 @@ interface GroupPolicy {
 const GROUP_POLICIES: GroupPolicy[] = [
   {
     affectedReferencesSql: `/* privacy:affected:owners.identity */
-      SELECT CONCAT(area.prefix, N' ', area.name) AS value
-      FROM requirement_areas area
-      INNER JOIN owners owner ON owner.id = area.owner_id
-      WHERE owner.hsa_id = @0
-      ORDER BY area.prefix ASC, area.id ASC`,
+      SELECT refs.value
+      FROM (
+        SELECT
+          CONCAT(area.prefix, N' ', area.name) AS value,
+          area.prefix AS sort_value,
+          area.id AS sort_id,
+          0 AS sort_group
+        FROM requirement_areas area
+        INNER JOIN owners owner ON owner.id = area.owner_id
+        WHERE owner.hsa_id = @0
+        UNION ALL
+        SELECT
+          pkg.name_sv AS value,
+          pkg.name_sv AS sort_value,
+          pkg.id AS sort_id,
+          1 AS sort_group
+        FROM requirement_packages pkg
+        INNER JOIN owners owner ON owner.id = pkg.owner_id
+        WHERE owner.hsa_id = @0
+      ) refs
+      ORDER BY refs.sort_group ASC, refs.sort_value ASC, refs.sort_id ASC`,
     allowedActions: ['switch', 'anonymize', 'delete', 'skip'],
     countSql: 'SELECT COUNT(*) AS count FROM owners WHERE hsa_id = @0',
     currentDisplaySql:
@@ -559,6 +575,21 @@ async function listOwnerRequirementAreaReferences(
   return valuesFromRows(rows)
 }
 
+async function listOwnerRequirementPackageReferences(
+  db: QueryExecutor,
+  targetHsaId: string,
+): Promise<string[]> {
+  const rows = (await db.query(
+    `SELECT pkg.name_sv AS value
+      FROM requirement_packages pkg
+      INNER JOIN owners owner ON owner.id = pkg.owner_id
+      WHERE owner.hsa_id = @0
+      ORDER BY pkg.name_sv ASC, pkg.id ASC`,
+    [targetHsaId],
+  )) as Array<Record<string, unknown>>
+  return valuesFromRows(rows)
+}
+
 async function listAffectedReferences(
   db: QueryExecutor,
   policy: GroupPolicy,
@@ -599,65 +630,78 @@ export async function previewPrivacyErasure(
       policy.kind === 'owner'
         ? await listOwnerRequirementAreaReferences(db, target.hsaId)
         : []
+    const blockingPackageReferences =
+      policy.kind === 'owner'
+        ? await listOwnerRequirementPackageReferences(db, target.hsaId)
+        : []
+    const blockingReferences: PrivacyBlockingReference[] = [
+      ...(blockingAreaReferences.length > 0
+        ? [
+            {
+              objectKey: 'requirementAreas',
+              values: blockingAreaReferences,
+            },
+          ]
+        : []),
+      ...(blockingPackageReferences.length > 0
+        ? [
+            {
+              objectKey: 'requirementPackages',
+              values: blockingPackageReferences,
+            },
+          ]
+        : []),
+    ]
+    const ownerHasBlockingReferences = blockingReferences.length > 0
     const ownerBlockedWithoutReplacement =
-      blockingAreaReferences.length > 0 && !replacement
+      policy.kind === 'owner' && ownerHasBlockingReferences && !replacement
     const ownerRequiresSwitch =
-      blockingAreaReferences.length > 0 && replacement != null
-    const ownerWithoutAreaReferences =
-      policy.kind === 'owner' && blockingAreaReferences.length === 0
-    const requirementAreasControlledByOwner =
-      policy.key === 'requirement_areas.owner'
-    const packageOwnerBlockedWithoutReplacement =
-      policy.key === 'requirement_packages.owner' && !replacement
+      policy.kind === 'owner' &&
+      ownerHasBlockingReferences &&
+      replacement != null
+    const ownerWithoutBlockingReferences =
+      policy.kind === 'owner' && !ownerHasBlockingReferences
+    const ownerReferenceControlledByOwner =
+      policy.key === 'requirement_areas.owner' ||
+      policy.key === 'requirement_packages.owner'
     const policyAllowedActions: PrivacyErasureAction[] =
       ownerBlockedWithoutReplacement
         ? ['skip']
         : ownerRequiresSwitch
           ? ['switch', 'skip']
-          : ownerWithoutAreaReferences
+          : ownerWithoutBlockingReferences
             ? ['delete', 'skip']
-            : packageOwnerBlockedWithoutReplacement
-              ? ['skip']
-              : policy.allowedActions
+            : policy.allowedActions
     const allowedActions = actionsAllowedForReplacement(
       policyAllowedActions,
       replacement,
     )
     const recommendedAction = ownerBlockedWithoutReplacement
       ? 'skip'
-      : ownerWithoutAreaReferences
+      : ownerWithoutBlockingReferences
         ? 'delete'
-        : packageOwnerBlockedWithoutReplacement
-          ? 'skip'
-          : replacement
-            ? policy.defaultWithReplacement
-            : policy.defaultWithoutReplacement
+        : replacement
+          ? policy.defaultWithReplacement
+          : policy.defaultWithoutReplacement
     groups.push({
       affectedReferences,
       allowedActions,
       blockingReferences:
-        blockingAreaReferences.length > 0
-          ? [
-              {
-                objectKey: 'requirementAreas',
-                values: blockingAreaReferences,
-              },
-            ]
-          : undefined,
+        blockingReferences.length > 0 ? blockingReferences : undefined,
       count,
-      controlledByGroupKey: requirementAreasControlledByOwner
+      controlledByGroupKey: ownerReferenceControlledByOwner
         ? 'owners.identity'
         : null,
       currentDisplayValue: valueFromRows(valueRows),
       disabledReasonKey: ownerBlockedWithoutReplacement
-        ? 'ownerAreaReplacementRequired'
-        : packageOwnerBlockedWithoutReplacement
-          ? 'ownerPackageReplacementRequired'
-          : null,
+        ? blockingAreaReferences.length > 0
+          ? 'ownerAreaReplacementRequired'
+          : 'ownerPackageReplacementRequired'
+        : null,
       fieldKey: policy.fieldKey,
       key: policy.key,
       objectKey: policy.objectKey,
-      readOnlyReasonKey: requirementAreasControlledByOwner
+      readOnlyReasonKey: ownerReferenceControlledByOwner
         ? 'controlledByOwner'
         : null,
       recommendedAction: allowedActions.includes(recommendedAction)
@@ -665,7 +709,7 @@ export async function previewPrivacyErasure(
         : (allowedActions[0] ?? 'skip'),
       warningKey: ownerRequiresSwitch
         ? 'ownerAreaSwitchOnly'
-        : ownerWithoutAreaReferences
+        : ownerWithoutBlockingReferences
           ? 'ownerDelete'
           : policy.warningKey,
     })

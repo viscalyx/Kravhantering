@@ -775,18 +775,18 @@
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",
-        "ownerDelete": "This owner is not assigned to requirement areas. Delete the owner row, or skip it.",
-        "ownerAreaSwitchOnly": "This owner is assigned to requirement areas. Switch those areas to the replacement owner, or skip the owner row.",
+        "ownerDelete": "This owner is not assigned to requirement areas or packages. Delete the owner row, or skip it.",
+        "ownerAreaSwitchOnly": "This owner is assigned to requirement areas or packages. Switch those assignments to the replacement owner, or skip the owner row.",
         "liveAssignment": "Live assignments normally switch to the replacement HSA-ID. Without a replacement, remove co-author rows or keep the anonymized owner.",
         "historySwitch": "Switching historical authorship can change the record's meaning. Anonymize is the default.",
         "decisionSwitch": "Decisions and resolutions should not be reassigned unless legally documented. Anonymize is the default."
       },
       "blockers": {
-        "ownerAreaReplacementRequired": "This owner is assigned to requirement areas. Update those areas first or specify a replacement HSA-ID and name.",
+        "ownerAreaReplacementRequired": "This owner is assigned to requirement areas or packages. Update those assignments first or specify a replacement HSA-ID and name.",
         "ownerPackageReplacementRequired": "This owner is assigned to requirement packages. Update those packages first or specify a replacement HSA-ID and name."
       },
       "readOnly": {
-        "controlledByOwner": "Shown for information. Requirement areas are switched automatically when the owner row is switched."
+        "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
       }
     },
     "swedish": "Svenska",
