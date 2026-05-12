@@ -898,13 +898,13 @@ owner identity.
 | `id` | integer PK | Auto-increment primary key |
 | `first_name` | text | First name |
 | `last_name` | text | Last name |
-| `email` | text, unique, nullable | Email address |
-| `hsa_id` | text, unique, nullable | HSA-ID used for assignment and privacy matching |
+| `email` | text, unique when non-null, nullable | Email address |
+| `hsa_id` | text, unique when non-null, nullable | HSA-ID used for assignment and privacy matching |
 | `created_at` | text (ISO 8601) | Creation timestamp |
 | `updated_at` | text (ISO 8601) | Last-modified timestamp |
 <!-- markdownlint-enable MD013 -->
 
-**Unique indexes:** `uq_owners_email`, `uq_owners_hsa_id`.
+**Filtered unique indexes:** `uq_owners_email`, `uq_owners_hsa_id`.
 
 **Seed data:**
 
@@ -1435,8 +1435,8 @@ its purpose and the table/column(s) it covers.
 | `uq_requirement_versions_revision_token` | `requirement_versions` | `revision_token` | Ensures each opaque edit token identifies one version row |
 | `uq_specification_responsibility_areas_name_sv` | `specification_responsibility_areas` | `name_sv` | Prevents duplicate Swedish responsibility area names |
 | `uq_specification_responsibility_areas_name_en` | `specification_responsibility_areas` | `name_en` | Prevents duplicate English responsibility area names |
-| `uq_owners_email` | `owners` | `email` | Prevents duplicate owner email addresses |
-| `uq_owners_hsa_id` | `owners` | `hsa_id` | Prevents duplicate live owner identities by HSA-ID |
+| `uq_owners_email` | `owners` | `email` | Prevents duplicate non-null owner email addresses |
+| `uq_owners_hsa_id` | `owners` | `hsa_id` | Prevents duplicate non-null live owner identities by HSA-ID |
 | `uq_specification_implementation_types_name_sv` | `specification_implementation_types` | `name_sv` | Prevents duplicate Swedish implementation type names |
 | `uq_specification_implementation_types_name_en` | `specification_implementation_types` | `name_en` | Prevents duplicate English implementation type names |
 | `uq_specification_lifecycle_statuses_name_sv` | `specification_lifecycle_statuses` | `name_sv` | Prevents duplicate Swedish lifecycle status names |
