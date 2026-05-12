@@ -66,10 +66,10 @@ export async function PUT(
     updateSpecificationLocalDeviationSchema,
   )
   if (!parsedBody.ok) return parsedBody.response
-  const db = await getRequestSqlServerDataSource()
 
   try {
     requireHumanActorSnapshot(await createRequestContext(request, 'rest'))
+    const db = await getRequestSqlServerDataSource()
     await updateSpecificationLocalDeviation(db, parsedParams.data.id, {
       motivation: parsedBody.data.motivation,
     })

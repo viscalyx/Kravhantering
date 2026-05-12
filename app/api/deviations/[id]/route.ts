@@ -59,10 +59,10 @@ export async function PUT(
   if (!parsedParams.ok) return parsedParams.response
   const parsedBody = await readJsonWithSchema(request, updateDeviationSchema)
   if (!parsedBody.ok) return parsedBody.response
-  const db = await getRequestSqlServerDataSource()
 
   try {
     requireHumanActorSnapshot(await createRequestContext(request, 'rest'))
+    const db = await getRequestSqlServerDataSource()
     await updateDeviation(db, parsedParams.data.id, {
       motivation: parsedBody.data.motivation,
     })
