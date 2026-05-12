@@ -49,8 +49,18 @@ export const ownerEntity = new EntitySchema<OwnerEntity>({
       type: 'datetime2',
     },
   },
-  uniques: [
-    { columns: ['email'], name: 'uq_owners_email' },
-    { columns: ['hsaId'], name: 'uq_owners_hsa_id' },
+  indices: [
+    {
+      columns: ['email'],
+      name: 'uq_owners_email',
+      unique: true,
+      where: '[email] IS NOT NULL',
+    },
+    {
+      columns: ['hsaId'],
+      name: 'uq_owners_hsa_id',
+      unique: true,
+      where: '[hsa_id] IS NOT NULL',
+    },
   ],
 })

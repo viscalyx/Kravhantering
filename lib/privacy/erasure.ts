@@ -956,9 +956,22 @@ export async function executePrivacyErasure(
         { reason: 'stale_privacy_preview' },
       )
     }
-    const replacement = normalizeReplacement(input.replacement)
-    const replacementOwnerId = await ensureReplacementOwner(tx, replacement)
     const actions = resolveActions(preview, input.actions)
+    const switchesIdentity = Object.values(actions).includes('switch')
+    const replacement =
+      input.replacement && switchesIdentity
+        ? normalizeReplacement(input.replacement)
+        : null
+    const switchesOwnerReferences = preview.groups.some(group => {
+      const policy = POLICY_BY_KEY.get(group.key)
+      return (
+        policy?.kind === 'ownerReference' && actions[group.key] === 'switch'
+      )
+    })
+    const replacementOwnerId =
+      input.replacement && switchesOwnerReferences
+        ? await ensureReplacementOwner(tx, replacement)
+        : null
 
     for (const group of preview.groups) {
       const policy = POLICY_BY_KEY.get(group.key)
