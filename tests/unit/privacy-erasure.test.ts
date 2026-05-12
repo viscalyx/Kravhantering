@@ -454,7 +454,7 @@ describe('privacy erasure service', () => {
         disabledReasonKey: null,
         key: 'owners.identity',
         recommendedAction: 'switch',
-        warningKey: 'ownerAreaSwitchOnly',
+        warningKey: 'ownerPackageSwitchOnly',
       }),
       expect.objectContaining({
         affectedReferences: ['SPR Språkstöd'],
@@ -464,6 +464,73 @@ describe('privacy erasure service', () => {
         key: 'requirement_packages.owner',
         readOnlyReasonKey: 'controlledByOwner',
         recommendedAction: 'switch',
+      }),
+    ])
+  })
+
+  it('uses combined owner blocker copy keys when areas and packages reference the owner', async () => {
+    const withoutReplacement = await previewPrivacyErasure(
+      createPrivacyDb({
+        'owners.identity': {
+          affectedValues: ['SEC Säkerhet', 'SPR Språkstöd'],
+          count: 1,
+          value: 'Kalle Svensson',
+        },
+        'owners.identity.areaReferences': {
+          count: 1,
+          values: ['SEC Säkerhet'],
+        },
+        'owners.identity.packageReferences': {
+          count: 1,
+          values: ['SPR Språkstöd'],
+        },
+      }).db,
+      {
+        target: { hsaId: TARGET_HSA_ID },
+      },
+    )
+
+    expect(withoutReplacement.groups).toEqual([
+      expect.objectContaining({
+        allowedActions: ['skip'],
+        disabledReasonKey: 'ownerAreaAndPackageReplacementRequired',
+        key: 'owners.identity',
+        recommendedAction: 'skip',
+      }),
+    ])
+
+    const withReplacement = await previewPrivacyErasure(
+      createPrivacyDb({
+        'owners.identity': {
+          affectedValues: ['SEC Säkerhet', 'SPR Språkstöd'],
+          count: 1,
+          value: 'Kalle Svensson',
+        },
+        'owners.identity.areaReferences': {
+          count: 1,
+          values: ['SEC Säkerhet'],
+        },
+        'owners.identity.packageReferences': {
+          count: 1,
+          values: ['SPR Språkstöd'],
+        },
+      }).db,
+      {
+        replacement: {
+          displayName: 'John Levi',
+          hsaId: 'SE2321000032-johlju',
+        },
+        target: { hsaId: TARGET_HSA_ID },
+      },
+    )
+
+    expect(withReplacement.groups).toEqual([
+      expect.objectContaining({
+        allowedActions: ['switch', 'skip'],
+        disabledReasonKey: null,
+        key: 'owners.identity',
+        recommendedAction: 'switch',
+        warningKey: 'ownerAreaAndPackageSwitchOnly',
       }),
     ])
   })
@@ -770,6 +837,37 @@ describe('privacy erasure service', () => {
         'anna.maria.eriksson@example.com',
         expect.any(Date),
       ],
+    )
+  })
+
+  it('derives a missing replacement owner first name when last name is explicit', async () => {
+    const { db, query } = createPrivacyDb({
+      'requirement_packages.owner': {
+        affectedValues: ['SPR Språkstöd'],
+        count: 1,
+        value: 'Kalle Svensson',
+      },
+    })
+    const replacement = {
+      displayName: 'John Doe',
+      hsaId: 'SE2321000032-johlju',
+      lastName: 'Doe',
+    }
+    const preview = await previewPrivacyErasure(db, {
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'switch' },
+      previewToken: preview.previewToken,
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO owners'),
+      ['John', 'Doe', null, 'SE2321000032-johlju', expect.any(Date)],
     )
   })
 

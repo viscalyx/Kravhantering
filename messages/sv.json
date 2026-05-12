@@ -776,14 +776,17 @@
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
         "ownerDelete": "Ägaren är inte kopplad till kravområden eller kravpaket. Ta bort ägarraden, eller hoppa över den.",
-        "ownerAreaSwitchOnly": "Ägaren är kopplad till kravområden eller kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
+        "ownerAreaSwitchOnly": "Ägaren är kopplad till kravområden. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
+        "ownerPackageSwitchOnly": "Ägaren är kopplad till kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
+        "ownerAreaAndPackageSwitchOnly": "Ägaren är kopplad till kravområden och kravpaket. Byt tilldelningarna till den ersättande ägaren, eller hoppa över ägarraden.",
         "liveAssignment": "Aktiva tilldelningar byts normalt till ersättande HSA-ID. Utan ersättare tas rader för medförfattare bort eller så behålls den anonymiserade ägaren.",
         "historySwitch": "Att byta historiskt författarskap kan ändra postens innebörd. Anonymisering är standard.",
         "decisionSwitch": "Beslut och åtgärder ska inte tilldelas om utan dokumenterad rättslig grund. Anonymisering är standard."
       },
       "blockers": {
-        "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden eller kravpaket. Uppdatera tilldelningarna först eller ange ersättande HSA-ID och namn.",
-        "ownerPackageReplacementRequired": "Ägaren är kopplad till kravpaket. Uppdatera de kravpaketen först eller ange ersättande HSA-ID och namn."
+        "ownerAreaReplacementRequired": "Ägaren är kopplad till kravområden. Uppdatera de kravområdena först eller ange ersättande HSA-ID och namn.",
+        "ownerPackageReplacementRequired": "Ägaren är kopplad till kravpaket. Uppdatera de kravpaketen först eller ange ersättande HSA-ID och namn.",
+        "ownerAreaAndPackageReplacementRequired": "Ägaren är kopplad till kravområden och kravpaket. Uppdatera tilldelningarna först eller ange ersättande HSA-ID och namn."
       },
       "readOnly": {
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."

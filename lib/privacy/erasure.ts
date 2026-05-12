@@ -119,12 +119,12 @@ const GROUP_POLICIES: GroupPolicy[] = [
         WHERE owner.hsa_id = @0
       ) refs
       ORDER BY refs.sort_group ASC, refs.sort_value ASC, refs.sort_id ASC`,
-    allowedActions: ['switch', 'anonymize', 'delete', 'skip'],
+    allowedActions: ['switch', 'skip'],
     countSql: 'SELECT COUNT(*) AS count FROM owners WHERE hsa_id = @0',
     currentDisplaySql:
       "SELECT TOP (1) CONCAT(first_name, CASE WHEN last_name = '' THEN '' ELSE CONCAT(' ', last_name) END) AS value FROM owners WHERE hsa_id = @0 ORDER BY id ASC",
     defaultWithReplacement: 'switch',
-    defaultWithoutReplacement: 'anonymize',
+    defaultWithoutReplacement: 'skip',
     fieldKey: 'identity',
     key: 'owners.identity',
     kind: 'owner',
@@ -493,6 +493,25 @@ function actionsAllowedForReplacement(
   return replacement ? actions : actions.filter(action => action !== 'switch')
 }
 
+interface OwnerBlockingCopyKeys {
+  area: string
+  areaAndPackage: string
+  packageOnly: string
+}
+
+function ownerBlockingCopyKey(
+  areaReferences: string[],
+  packageReferences: string[],
+  keys: OwnerBlockingCopyKeys,
+): string | null {
+  const hasAreaReferences = areaReferences.length > 0
+  const hasPackageReferences = packageReferences.length > 0
+  if (hasAreaReferences && hasPackageReferences) return keys.areaAndPackage
+  if (hasAreaReferences) return keys.area
+  if (hasPackageReferences) return keys.packageOnly
+  return null
+}
+
 function normalizeTarget(
   input: PrivacyErasureTargetInput,
 ): PrivacyErasureTargetInput {
@@ -683,6 +702,24 @@ export async function previewPrivacyErasure(
         : replacement
           ? policy.defaultWithReplacement
           : policy.defaultWithoutReplacement
+    const ownerReplacementRequiredKey = ownerBlockingCopyKey(
+      blockingAreaReferences,
+      blockingPackageReferences,
+      {
+        area: 'ownerAreaReplacementRequired',
+        areaAndPackage: 'ownerAreaAndPackageReplacementRequired',
+        packageOnly: 'ownerPackageReplacementRequired',
+      },
+    )
+    const ownerSwitchOnlyWarningKey = ownerBlockingCopyKey(
+      blockingAreaReferences,
+      blockingPackageReferences,
+      {
+        area: 'ownerAreaSwitchOnly',
+        areaAndPackage: 'ownerAreaAndPackageSwitchOnly',
+        packageOnly: 'ownerPackageSwitchOnly',
+      },
+    )
     groups.push({
       affectedReferences,
       allowedActions,
@@ -694,9 +731,7 @@ export async function previewPrivacyErasure(
         : null,
       currentDisplayValue: valueFromRows(valueRows),
       disabledReasonKey: ownerBlockedWithoutReplacement
-        ? blockingAreaReferences.length > 0
-          ? 'ownerAreaReplacementRequired'
-          : 'ownerPackageReplacementRequired'
+        ? ownerReplacementRequiredKey
         : null,
       fieldKey: policy.fieldKey,
       key: policy.key,
@@ -708,7 +743,7 @@ export async function previewPrivacyErasure(
         ? recommendedAction
         : (allowedActions[0] ?? 'skip'),
       warningKey: ownerRequiresSwitch
-        ? 'ownerAreaSwitchOnly'
+        ? ownerSwitchOnlyWarningKey
         : ownerWithoutBlockingReferences
           ? 'ownerDelete'
           : policy.warningKey,
@@ -738,10 +773,16 @@ function replacementOwnerName(replacement: PrivacyReplacementInput): {
   firstName: string
   lastName: string
 } {
-  if (replacement.firstName || replacement.lastName) {
+  if (replacement.firstName) {
     return {
-      firstName: replacement.firstName ?? replacement.displayName,
+      firstName: replacement.firstName,
       lastName: replacement.lastName ?? '',
+    }
+  }
+  if (replacement.lastName) {
+    return {
+      firstName: splitDisplayName(replacement.displayName).firstName,
+      lastName: replacement.lastName,
     }
   }
   return splitDisplayName(replacement.displayName)
