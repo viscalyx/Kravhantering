@@ -182,19 +182,17 @@ stale previews and unexpected failures remain global errors because no row has
 been changed.
 
 Owner rows have an extra live-assignment guard. If an owner is assigned to one
-or more requirement areas and no replacement HSA-ID/name is supplied, the owner
-row is disabled and its affected-objects column lists the requirement areas;
-the warning text stays generic. Requirement area rows are still shown in the
-preview as greyed informational rows, but their action is controlled by the
-owner row. With a replacement supplied, the owner row only allows `Switch` or
-`Skip`; choosing `Switch` changes the linked requirement areas to the
+or more requirement areas or requirement packages and no replacement
+HSA-ID/name is supplied, the owner row is disabled and its affected-objects
+column lists the blocking assignments; the warning text stays generic.
+Requirement area and package owner rows are still shown in the preview as
+greyed informational rows, but their action is controlled by the owner row.
+With a replacement supplied, the owner row only allows `Switch` or `Skip`;
+choosing `Switch` changes the linked requirement areas and packages to the
 replacement owner in the same transaction. `Anonymize` and `Delete` are
-rejected for that owner while requirement areas are linked. Requirement package
-owner rows also require a replacement before switching; without a replacement
-they are disabled and limited to `Skip`, with the package names shown in the
-affected-objects column. If no requirement area references the owner, the owner
-row only allows `Delete` or `Skip`; `Switch` and `Anonymize` are not valid
-owner actions in that state.
+rejected for that owner while requirement areas or packages are linked. If no
+area or package references the owner, the owner row only allows `Delete` or
+`Skip`; `Switch` and `Anonymize` are not valid owner actions in that state.
 
 If no replacement person is supplied, display snapshots are anonymized with the
 internal sentinel `no-user`, shown through localization as `Anonym` in Swedish

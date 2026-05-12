@@ -883,14 +883,14 @@ People who can be assigned as responsible owners for requirement areas.
 Managed via the area owners reference data page. `hsa_id` is the durable
 identity key; names and email are display/contact snapshots.
 
-Privacy erasure cannot anonymize or delete an owner while requirement areas
-still reference that owner. The handler must switch those areas to a replacement
-owner first, or skip the owner row. Requirement-area owner references are shown
-as informational rows in the preview and are controlled by the owner action; a
-`Switch` owner action updates the linked requirement areas in the same
-transaction. When no requirement area references the owner, privacy erasure may
-delete or skip the owner row; it does not switch or anonymize that standalone
-owner identity.
+Privacy erasure cannot anonymize or delete an owner while requirement areas or
+requirement packages still reference that owner. The handler must switch those
+assignments to a replacement owner first, or skip the owner row. Requirement
+area and package owner references are shown as informational rows in the
+preview and are controlled by the owner action; a `Switch` owner action updates
+the linked requirement areas and packages in the same transaction. When no area
+or package references the owner, privacy erasure may delete or skip the owner
+row; it does not switch or anonymize that standalone owner identity.
 
 <!-- markdownlint-disable MD013 -->
 | Column | Type | Description |
