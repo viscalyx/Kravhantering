@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AuthMenu from '@/components/AuthMenu'
 
@@ -14,6 +21,11 @@ vi.mock('next-intl', () => ({
 }))
 
 vi.mock('@/i18n/routing', () => ({
+  Link: ({ children, href, ...props }: Record<string, unknown>) => (
+    <a href={href as string} {...props}>
+      {children as React.ReactNode}
+    </a>
+  ),
   usePathname: () => pathnameState.value,
 }))
 
@@ -283,6 +295,41 @@ describe('AuthMenu', () => {
     ).toBeNull()
     expect(dialog.className).toContain('max-w-sm')
     expect(dialog.className).not.toContain('w-72')
+  })
+
+  it('links signed-in users to their data export page', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        authenticated: true,
+        sub: 'user-1',
+        hsaId: 'SE2321000032-admin1',
+        givenName: 'Ada',
+        familyName: 'Admin',
+        name: 'Ada Admin',
+        email: 'ada@example.test',
+        roles: ['Admin'],
+        expiresAt: 123,
+      }),
+    })
+
+    render(<AuthMenu variant="desktop" />)
+
+    const trigger = await screen.findByRole('button', {
+      name: 'signedInAs Ada Admin',
+    })
+    fireEvent.click(trigger)
+
+    const dialog = await screen.findByRole('dialog', { name: 'userInfoTitle' })
+    const dataExportLink = within(dialog).getByRole('link', {
+      name: 'dataExport',
+    })
+
+    expect(dataExportLink).toHaveAttribute('href', '/privacy')
+    expect(dataExportLink).toHaveAttribute(
+      'data-developer-mode-value',
+      'data export',
+    )
   })
 
   it('skips the session expiry row when expiresAt is invalid', async () => {

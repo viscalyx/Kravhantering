@@ -95,7 +95,21 @@
     "userInfoSubject": "Användar-id",
     "userInfoSessionExpires": "Sessionen går ut",
     "userInfoRoles": "Roller",
-    "userInfoNoRoles": "Inga roller tilldelade"
+    "userInfoNoRoles": "Inga roller tilldelade",
+    "dataExport": "Mina personuppgifter"
+  },
+  "privacyDataExport": {
+    "title": "Export av personuppgifter",
+    "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-ID som strukturerad JSON eller som läsbar PDF.",
+    "name": "Namn",
+    "hsaId": "HSA-ID",
+    "email": "E-post",
+    "exportJson": "Exportera JSON",
+    "exportPdf": "Exportera PDF",
+    "exportingJson": "Exporterar JSON…",
+    "exportingPdf": "Exporterar PDF…",
+    "exportError": "Kunde inte exportera personuppgifter: {detail}",
+    "signIn": "Logga in för att exportera dina personuppgifter"
   },
   "roles": {
     "reviewer": "Granskare",
@@ -688,10 +702,10 @@
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
     "referenceData": "Referensdata",
     "referenceDataDescription": "Öppna de befintliga referensdatasidorna med oförändrade route-sluggar.",
-    "privacyDescription": "Förhandsgranska och kör HSA-ID-baserad GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
+    "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "privacy": {
       "title": "Dataskydd",
-      "targetHsaId": "HSA-ID att radera",
+      "targetHsaId": "HSA-ID att söka efter",
       "replacementHsaId": "Ersättande HSA-ID",
       "replacementName": "Ersättande namn",
       "replacementFirstName": "Ersättande förnamn",
@@ -699,7 +713,7 @@
       "replacementEmail": "Ersättande e-postadress",
       "replacementEmailOptional": "E-postadress är valfri.",
       "fieldHelp": {
-        "targetHsaId": "Ange HSA-ID för personen som ska hanteras. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
+        "targetHsaId": "Ange HSA-ID för personen som ska sökas fram för förhandsgranskning, export eller radering. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
         "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare eller medförfattare. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
         "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-ID är den beständiga identiteten.",
         "replacementFirstName": "Valfritt. Ange exakt förnamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
@@ -708,6 +722,11 @@
       },
       "preview": "Förhandsgranska",
       "execute": "Kör radering",
+      "exportJson": "Exportera JSON",
+      "exportPdf": "Exportera PDF",
+      "exportingJson": "Exporterar JSON…",
+      "exportingPdf": "Exporterar PDF…",
+      "exportError": "Kunde inte exportera data: {detail}",
       "previewError": "Kunde inte förhandsgranska dataskyddsradering.",
       "executeError": "Kunde inte köra dataskyddsradering.",
       "disabledTooltip": "Du behöver behörigheten Dataskyddshandläggare.",
@@ -723,8 +742,8 @@
       "stalePreview": "Förhandsgranskningen är inaktuell. Kör en ny förhandsgranskning innan radering.",
       "confirmTitle": "Kör dataskyddsradering",
       "confirmMessage": "Detta byter {switch}, anonymiserar {anonymize}, tar bort {delete} och hoppar över {skip} förekomster.",
-      "guidanceTitle": "Rekommenderad hantering",
-      "guidanceBody": "Aktiva tilldelningar byts oftast till ett annat HSA-ID. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
+      "guidanceTitle": "Rekommenderad hantering och export",
+      "guidanceBody": "Använd förhandsgranskningen för att kontrollera exakt vilka HSA-ID-träffar som kan exporteras eller raderas. Exporten påverkar inte uppgifterna. Aktiva tilldelningar byts oftast till ett annat HSA-ID vid radering. Historiska fält för skapare, beslut och åtgärd anonymiseras oftast i stället för att tilldelas om. Beskrivningsfält och fritext skannas inte eftersom gränssnittet instruerar användare att inte ange personidentifierande uppgifter där.",
       "previewResult": "{count} HSA-ID-förekomster",
       "object": "Objekt",
       "count": "Antal",
@@ -1223,6 +1242,21 @@
       "caveats": {
         "heading": "Viktiga begränsningar",
         "body": "Handläggaren måste bedöma att radering får göras och att ingen starkare rättslig grund eller bevarandeskyldighet hindrar åtgärden. Säkerhetsloggar och externa loggar hanteras enligt separat gallrings- eller anonymiseringspolicy. Att anonymisera handläggaridentitet i sådana loggar kan försämra spårbarheten."
+      }
+    },
+    "privacyDataExport": {
+      "title": "Export av personuppgifter",
+      "description": {
+        "heading": "Vad som ingår",
+        "body": "Exporten innehåller strukturerade personuppgifter som är kopplade till ditt verifierade HSA-ID, till exempel ägarposter, ögonblicksbilder av skapare, beslut, tilldelningar som medförfattare och aktuella sessionsuppgifter."
+      },
+      "formats": {
+        "heading": "JSON och PDF",
+        "body": "JSON är det styrande maskinläsbara exportformatet. PDF är en läsbar återgivning av samma innehåll för kontroll eller arkivering."
+      },
+      "limits": {
+        "heading": "Viktiga begränsningar",
+        "body": "Fritextfält skannas inte eftersom produkten instruerar användare att inte skriva personidentifierande uppgifter där. Plattformens säkerhetsloggar hanteras i driftens loggström och ingår inte i den här exporten från applikationen."
       }
     },
     "requirementAreas": {

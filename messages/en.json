@@ -95,7 +95,21 @@
     "userInfoSubject": "Subject",
     "userInfoSessionExpires": "Session expires",
     "userInfoRoles": "Roles",
-    "userInfoNoRoles": "No roles assigned"
+    "userInfoNoRoles": "No roles assigned",
+    "dataExport": "My personal data"
+  },
+  "privacyDataExport": {
+    "title": "Personal data export",
+    "description": "Download the personal data that is connected to your HSA-ID in a structured JSON file or as a readable PDF.",
+    "name": "Name",
+    "hsaId": "HSA-ID",
+    "email": "Email",
+    "exportJson": "Export JSON",
+    "exportPdf": "Export PDF",
+    "exportingJson": "Exporting JSON…",
+    "exportingPdf": "Exporting PDF…",
+    "exportError": "Could not export personal data: {detail}",
+    "signIn": "Sign in to export your personal data"
   },
   "roles": {
     "reviewer": "Reviewer",
@@ -688,10 +702,10 @@
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
     "referenceData": "Reference data",
     "referenceDataDescription": "Open the existing reference-data pages with their current route slugs.",
-    "privacyDescription": "Preview and execute HSA-ID based GDPR erasure for actor identity snapshots and live assignments.",
+    "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "privacy": {
       "title": "Privacy",
-      "targetHsaId": "Target HSA-ID",
+      "targetHsaId": "HSA-ID to search for",
       "replacementHsaId": "Replacement HSA-ID",
       "replacementName": "Replacement name",
       "replacementFirstName": "Replacement first name",
@@ -699,7 +713,7 @@
       "replacementEmail": "Replacement email address",
       "replacementEmailOptional": "Email address is optional.",
       "fieldHelp": {
-        "targetHsaId": "Enter the HSA-ID for the person who should be handled. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
+        "targetHsaId": "Enter the HSA-ID to search for before preview, export, or erasure. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
         "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner or co-author. This field must be combined with replacement name before the Switch action can be used.",
         "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
         "replacementFirstName": "Optional. Enter the exact first-name value for the owner record when the display name cannot be split reliably.",
@@ -708,6 +722,11 @@
       },
       "preview": "Preview",
       "execute": "Execute erasure",
+      "exportJson": "Export JSON",
+      "exportPdf": "Export PDF",
+      "exportingJson": "Exporting JSON…",
+      "exportingPdf": "Exporting PDF…",
+      "exportError": "Could not export data: {detail}",
       "previewError": "Could not preview privacy erasure.",
       "executeError": "Could not execute privacy erasure.",
       "disabledTooltip": "You need the Privacy officer permission.",
@@ -723,8 +742,8 @@
       "stalePreview": "The preview is stale. Run preview again before executing.",
       "confirmTitle": "Execute privacy erasure",
       "confirmMessage": "This will switch {switch}, anonymize {anonymize}, delete {delete}, and skip {skip} occurrence(s).",
-      "guidanceTitle": "Recommended handling",
-      "guidanceBody": "Live assignments are usually switched to another HSA-ID. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
+      "guidanceTitle": "Recommended handling and export",
+      "guidanceBody": "Use the preview to verify exactly which HSA-ID matches can be exported or erased. Export does not change the data. Live assignments are usually switched to another HSA-ID during erasure. Historical creator, decision, and resolution fields are usually anonymized instead of reassigned. Description and free-text fields are not scanned because the UI instructs users not to enter person-identifying details there.",
       "previewResult": "{count} HSA-ID occurrence(s)",
       "object": "Object",
       "count": "Count",
@@ -1223,6 +1242,21 @@
       "caveats": {
         "heading": "Important limits",
         "body": "The officer must confirm that erasure is allowed and that no stronger legal basis or retention duty prevents the action. Security logs and external logs are handled by a separate retention or deletion policy. Anonymizing handler identity in those logs can reduce traceability."
+      }
+    },
+    "privacyDataExport": {
+      "title": "Personal data export",
+      "description": {
+        "heading": "What is included",
+        "body": "The export contains structured personal data that is connected to your verified HSA-ID, such as owner records, creator snapshots, decisions, co-author assignments, and current session claims."
+      },
+      "formats": {
+        "heading": "JSON and PDF",
+        "body": "JSON is the authoritative machine-readable export format. PDF is a readable rendering of the same payload for review or filing."
+      },
+      "limits": {
+        "heading": "Important limits",
+        "body": "Free-text fields are not scanned because the product instructs users not to enter person-identifying data there. Platform security-audit logs are handled in the operational log stream and are not included in this application export."
       }
     },
     "requirementAreas": {

@@ -24,12 +24,16 @@ Deferred from Phase 5:
 
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
   deviations, and improvement suggestions.
-- Privacy erasure routes
+- Privacy erasure and data-subject export routes
   (`POST /api/privacy/erasure-preview`,
-  `POST /api/privacy/erasure-requests`). They require the separate
+  `POST /api/privacy/erasure-requests`,
+  `POST /api/privacy/data-subject-export`). They require the separate
   `PrivacyOfficer` role, strict CSRF/origin handling, HSA-ID-only matching,
   stale-preview rejection, and audit-redaction checks before they should be
-  added to the OpenAPI fuzzing contract.
+  added to the OpenAPI fuzzing contract. The export route also supports
+  self-service export for the signed-in user's own HSA-ID, returns
+  `Cache-Control: no-store`, and records only a non-reversible target
+  fingerprint in audit details.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
 
@@ -183,6 +187,8 @@ their auth/CSRF behavior is understood.
   contracts.
 - Do not add production URLs, production secrets, vendor tokens, or external
   scan targets.
-- For privacy erasure paths, include only disposable seeded identities and
-  assert that generated examples never log or expose raw target HSA-IDs in
-  audit details.
+- For privacy paths, include only disposable seeded identities and assert that
+  generated examples never log or expose raw target HSA-IDs in audit details.
+  Data-subject export should remain outside this contract until the privacy
+  route policy explicitly covers both self-export and `PrivacyOfficer`
+  cross-user export.
