@@ -9,6 +9,8 @@ import {
   CircleDot,
   CircleMinus,
   ClipboardList,
+  FileJson,
+  FileText,
   FolderCog,
   FolderTree,
   Gauge,
@@ -27,11 +29,12 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import AnimatedHelpPanel from '@/components/AnimatedHelpPanel'
 import { useConfirmModal } from '@/components/ConfirmModal'
 import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
+import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
 import { Link, useRouter } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { apiFetch } from '@/lib/http/api-fetch'
@@ -283,6 +286,7 @@ function executionStatusForAction(
 function PrivacyErasurePanel() {
   const ta = useTranslations('admin')
   const tc = useTranslations('common')
+  const locale = useLocale()
   const { confirm } = useConfirmModal()
   const [targetHsaId, setTargetHsaId] = useState('')
   const [replacementHsaId, setReplacementHsaId] = useState('')
@@ -302,6 +306,10 @@ function PrivacyErasurePanel() {
   const [messageScope, setMessageScope] = useState<'execute' | 'preview'>(
     'preview',
   )
+  const dataSubjectExport = useDataSubjectExportDownload({
+    locale,
+    targetHsaId: preview ? targetHsaId.trim() : undefined,
+  })
 
   const replacement =
     replacementHsaId.trim() ||
@@ -785,6 +793,48 @@ function PrivacyErasurePanel() {
               <div className="font-mono text-xs text-secondary-500 dark:text-secondary-400">
                 {preview.targetFingerprint.slice(0, 16)}
               </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                disabled={
+                  status === 'saving' || dataSubjectExport.downloading !== null
+                }
+                onClick={() =>
+                  void dataSubjectExport.download({ delivery: 'json' })
+                }
+                type="button"
+              >
+                <FileJson aria-hidden="true" className="h-4 w-4" />
+                {dataSubjectExport.downloading === 'json'
+                  ? ta('privacy.exportingJson')
+                  : ta('privacy.exportJson')}
+              </button>
+              <button
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-secondary-200 bg-white px-4 py-2 text-sm font-medium text-secondary-700 transition-colors hover:bg-secondary-100 disabled:opacity-60 dark:border-secondary-700 dark:bg-secondary-900 dark:text-secondary-200 dark:hover:bg-secondary-800"
+                disabled={
+                  status === 'saving' || dataSubjectExport.downloading !== null
+                }
+                onClick={() =>
+                  void dataSubjectExport.download({ delivery: 'pdf' })
+                }
+                type="button"
+              >
+                <FileText aria-hidden="true" className="h-4 w-4" />
+                {dataSubjectExport.downloading === 'pdf'
+                  ? ta('privacy.exportingPdf')
+                  : ta('privacy.exportPdf')}
+              </button>
+              {dataSubjectExport.error ? (
+                <span
+                  className="text-sm font-medium text-red-700 dark:text-red-300"
+                  role="alert"
+                >
+                  {ta('privacy.exportError', {
+                    detail: dataSubjectExport.error,
+                  })}
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="overflow-x-auto">

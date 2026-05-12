@@ -71,14 +71,14 @@ interface QueryExecutor {
   query<T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T>
 }
 
-type GroupKind =
+export type PrivacyGroupKind =
   | 'coAuthor'
   | 'hsaOnly'
   | 'owner'
   | 'ownerReference'
   | 'simpleDisplay'
 
-interface GroupPolicy {
+export interface PrivacyGroupPolicy {
   affectedReferencesSql?: string
   allowedActions: PrivacyErasureAction[]
   countSql: string
@@ -89,13 +89,13 @@ interface GroupPolicy {
   fieldKey: string
   hsaColumn?: string
   key: string
-  kind: GroupKind
+  kind: PrivacyGroupKind
   objectKey: string
   table?: string
   warningKey: string | null
 }
 
-const GROUP_POLICIES: GroupPolicy[] = [
+const GROUP_POLICIES: PrivacyGroupPolicy[] = [
   {
     affectedReferencesSql: `/* privacy:affected:owners.identity */
       SELECT refs.value
@@ -470,6 +470,8 @@ const POLICY_BY_KEY = new Map(
   GROUP_POLICIES.map(policy => [policy.key, policy]),
 )
 
+export const PRIVACY_ERASURE_GROUP_POLICIES = GROUP_POLICIES
+
 function countFromRows(rows: Array<Record<string, unknown>>): number {
   return Number(rows[0]?.count ?? 0)
 }
@@ -611,7 +613,7 @@ async function listOwnerRequirementPackageReferences(
 
 async function listAffectedReferences(
   db: QueryExecutor,
-  policy: GroupPolicy,
+  policy: PrivacyGroupPolicy,
   targetHsaId: string,
 ): Promise<string[]> {
   if (!policy.affectedReferencesSql) return []
@@ -871,7 +873,7 @@ function resolveActions(
 
 async function applyOwnerReferences(
   tx: QueryExecutor,
-  policy: GroupPolicy,
+  policy: PrivacyGroupPolicy,
   action: PrivacyErasureAction,
   targetHsaId: string,
   replacementOwnerId: number | null,
@@ -965,7 +967,7 @@ async function applyOwners(
   }
 }
 
-function displayColumnFor(policy: GroupPolicy): string | null {
+function displayColumnFor(policy: PrivacyGroupPolicy): string | null {
   if (policy.displayColumn) return policy.displayColumn
   if (policy.kind === 'hsaOnly') return null
   if (policy.table === 'requirements_specifications') {
@@ -980,7 +982,7 @@ function displayColumnFor(policy: GroupPolicy): string | null {
 
 async function applyDirectHsaGroup(
   tx: QueryExecutor,
-  policy: GroupPolicy,
+  policy: PrivacyGroupPolicy,
   action: PrivacyErasureAction,
   targetHsaId: string,
   replacement: PrivacyReplacementInput | null,

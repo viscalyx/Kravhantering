@@ -216,18 +216,20 @@ sequenceDiagram
   `auth.mcp.token.accepted`, `auth.roles.changed`,
   `auth.csrf.rejected`, `auth.authorization.denied`, and
   `requirements.high_risk_mutation.succeeded`,
-  `privacy.erasure.previewed`, `privacy.erasure.executed`.
+  `privacy.erasure.previewed`, `privacy.erasure.executed`,
+  `privacy.data_subject_export.generated`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
   authorization codes, PKCE verifiers, `state`, and `nonce`. When a top-level
   detail key is redacted, the audit writer also emits a structured
   `detail-key-redacted` breadcrumb with the source event, actor source, and
   redacted key name.
-- Privacy erasure audit events are emitted to the platform security-log stream,
-  not stored in the application database. They include the handler identity,
-  request id, grouped action counts, and a non-reversible target fingerprint.
-  They must not include the raw target HSA-ID. Retention or redaction of handler
-  identity in those logs is handled by the platform logging policy because
-  removing it can reduce traceability.
+- Privacy erasure and data-subject export audit events are emitted to the
+  platform security-log stream, not stored in the application database. They
+  include the handler identity, request id, grouped counts or delivery metadata,
+  and a non-reversible target fingerprint. They must not include the raw target
+  HSA-ID in event detail. Retention or redaction of handler identity in those
+  logs is handled by the platform logging policy because removing it can reduce
+  traceability.
 
 ### Audit event stream
 

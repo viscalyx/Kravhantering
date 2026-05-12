@@ -1,8 +1,8 @@
 # Admin Center
 
 This document describes the contributor-facing admin center for UI
-terminology, default requirement-list columns, privacy erasure, and
-reference-data entrypoints.
+terminology, default requirement-list columns, privacy erasure and data
+portability, and reference-data entrypoints.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -119,6 +119,8 @@ Requirements list reset:
 
 The `Privacy` tab is available at `/{locale}/admin?tab=privacy`. It supports
 GDPR Article 17 erasure handling for actor identities and live assignments.
+After a successful preview it also supports GDPR Article 20 data portability
+export for the previewed HSA-ID.
 
 Access is intentionally narrow:
 
@@ -181,6 +183,14 @@ hidden. If execution fails with a safe row key, only that row is marked red;
 stale previews and unexpected failures remain global errors because no row has
 been changed.
 
+After preview, the handler can export the same HSA-ID scope as JSON or PDF.
+The JSON payload is the authoritative machine-readable format and uses schema
+version `privacy-data-subject-export.v1`; the PDF is a readable rendering of
+that payload. Download filenames use a non-reversible target fingerprint and
+date, not the raw HSA-ID. The export route checks authorization server-side:
+the signed-in user may export their own HSA-ID, while cross-user export requires
+`PrivacyOfficer`.
+
 Owner rows have an extra live-assignment guard. If an owner is assigned to one
 or more requirement areas or requirement packages and no replacement
 HSA-ID/name is supplied, the owner row is disabled and its affected-objects
@@ -211,6 +221,11 @@ handler identity, request id, action counts, and a non-reversible target
 fingerprint; they do not log the raw target HSA-ID. Retention or redaction of
 handler identity in security logs is handled by the platform logging policy,
 because removing it can reduce traceability.
+
+Signed-in users can export their own data at `/{locale}/privacy`. That
+self-service path sends no target HSA-ID in the request body; the server derives
+the subject from the verified session HSA-ID and includes current session claims
+only for that self-export.
 
 ## Reference Data
 
@@ -248,7 +263,7 @@ If you change any of the following, update this document:
 - admin tab behavior
 - terminology persistence or scope
 - column default precedence
-- privacy-erasure policy, actions, or role gating
+- privacy-erasure or data-portability policy, actions, or role gating
 - admin entrypoint navigation
 - reference-data navigation structure
 

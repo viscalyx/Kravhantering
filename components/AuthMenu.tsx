@@ -1,10 +1,10 @@
 'use client'
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { LogIn, LogOut, UserCircle2 } from 'lucide-react'
+import { FileDown, LogIn, LogOut, UserCircle2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useId, useRef, useState } from 'react'
-import { usePathname } from '@/i18n/routing'
+import { Link, usePathname } from '@/i18n/routing'
 import { devMarker } from '@/lib/developer-mode-markers'
 import { offsetPanelMotion } from '@/lib/reduced-motion'
 
@@ -331,6 +331,14 @@ export default function AuthMenu({ variant }: ComponentProps) {
         })}
       >
         {userIdentity}
+        <Link
+          className="inline-flex min-h-[44px] items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
+          href="/privacy"
+          {...devMarker({ name: 'link', value: 'data export' })}
+        >
+          <FileDown aria-hidden="true" className="h-4 w-4" />
+          {t('dataExport')}
+        </Link>
         <AuthLogoutButton
           className="inline-flex items-center gap-1.5 self-start rounded-xl px-3 py-2 text-sm font-medium text-secondary-700 hover:bg-secondary-100 dark:text-secondary-300 dark:hover:bg-secondary-800"
           errorLabel={t('logoutError')}
@@ -476,8 +484,16 @@ export default function AuthMenu({ variant }: ComponentProps) {
                   </dd>
                 </div>
               </dl>
+              <Link
+                className="mt-4 inline-flex w-full min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                href="/privacy"
+                {...devMarker({ name: 'link', value: 'data export' })}
+              >
+                <FileDown aria-hidden="true" className="h-4 w-4" />
+                {t('dataExport')}
+              </Link>
               <AuthLogoutButton
-                className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-secondary-200 px-3 py-2 text-sm font-medium text-secondary-700 transition-all duration-200 hover:bg-secondary-100 dark:border-secondary-700 dark:text-secondary-300 dark:hover:bg-secondary-800"
                 errorLabel={t('logoutError')}
                 formClassName="mt-4"
                 label={t('signOut')}

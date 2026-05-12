@@ -103,6 +103,9 @@ should be updated alongside the relevant `devMarker(...)` call sites.
   as `user info name`, `user info email`, `user info subject`, and
   `user info session expires` even when the visible labels are
   localized.
+- Auth data-export navigation uses `link: data export` in both the desktop
+  account popover and the mobile signed-in menu. The self-service privacy page
+  uses `page: privacy data export` for the main export surface.
 - Auth logout failures use the stable `text: logout error` marker so the
   localized alert text does not become the developer-mode identifier.
 - Requirement specification form save errors and specification-list load errors

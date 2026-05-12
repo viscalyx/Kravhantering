@@ -27,16 +27,22 @@ const searchParamsMock = vi.hoisted(() => ({
   current: new URLSearchParams(),
 }))
 const fetchMock = vi.fn()
+const createObjectURLMock = vi.fn(() => 'blob:data-subject-export')
+const revokeObjectURLMock = vi.fn()
+const anchorClickMock = vi.fn()
 const routerRefresh = routerMock.refresh
 const routerReplace = routerMock.replace
 
 vi.mock('next-intl', () => ({
+  useLocale: () => 'sv',
   useTranslations:
     (namespace?: string) => (key: string, values?: Record<string, unknown>) => {
       const translationKey = namespace ? `${namespace}.${key}` : key
       if (
         key === 'privacy.errorWithDetail' ||
-        key === 'privacy.serverErrorWithDetail'
+        key === 'privacy.serverErrorWithDetail' ||
+        key === 'privacy.exportError' ||
+        key === 'exportError'
       ) {
         return `${translationKey} ${values?.message ?? ''} ${values?.detail ?? ''}`.trim()
       }
@@ -75,6 +81,31 @@ function errorJson(body: unknown, status: number) {
   } as Response
 }
 
+function dataSubjectExportBody() {
+  return {
+    generatedAt: '2026-05-12T12:00:00.000Z',
+    generatedBy: {
+      displayName: 'Disa PrivacyOfficer',
+      hsaId: 'SE2321000032-privacy1',
+      roles: ['PrivacyOfficer'],
+      source: 'oidc',
+      sub: 'privacy-sub',
+    },
+    limitations: [],
+    schemaVersion: 'privacy-data-subject-export.v1',
+    sources: [],
+    subject: {
+      hsaId: 'SE2321000032-kalle2',
+      targetFingerprint: '0123456789abcdef0123456789abcdef',
+    },
+    summary: {
+      itemCount: 2,
+      limitationCount: 0,
+      sourceCount: 1,
+    },
+  }
+}
+
 function deferred<T>() {
   let reject!: (reason?: unknown) => void
   let resolve!: (value: T | PromiseLike<T>) => void
@@ -102,10 +133,25 @@ function getColumnOrder(container: HTMLElement) {
 describe('AdminClient', () => {
   beforeEach(() => {
     fetchMock.mockReset()
+    createObjectURLMock.mockClear()
+    revokeObjectURLMock.mockClear()
+    anchorClickMock.mockClear()
     routerRefresh.mockReset()
     routerReplace.mockReset()
     searchParamsMock.current = new URLSearchParams()
     vi.stubGlobal('fetch', fetchMock)
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURLMock,
+    })
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURLMock,
+    })
+    Object.defineProperty(HTMLAnchorElement.prototype, 'click', {
+      configurable: true,
+      value: anchorClickMock,
+    })
   })
 
   it('opens the reference data tab from the admin tab query parameter', () => {
@@ -568,6 +614,125 @@ describe('AdminClient', () => {
     )
     expect(screen.queryByText('admin.privacy.objects.owners')).toBeNull()
     expect(screen.queryByText('admin.privacy.fields.identity')).toBeNull()
+  })
+
+  it('exports the privacy preview target as structured JSON', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          groups: [
+            {
+              affectedReferences: ['INT0001 v1 / suggestion 990001'],
+              allowedActions: ['anonymize', 'skip'],
+              count: 1,
+              currentDisplayValue: 'Kalle Svensson',
+              fieldKey: 'resolvedBy',
+              key: 'improvement_suggestions.resolved_by',
+              objectKey: 'improvementSuggestions',
+              recommendedAction: 'anonymize',
+              warningKey: 'decisionSwitch',
+            },
+          ],
+          previewToken: 'duplicate-name-preview-token',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 1,
+        }),
+      )
+      .mockResolvedValueOnce(okJson(dataSubjectExportBody()))
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle2' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await screen.findByRole('button', {
+      name: 'admin.privacy.exportJson',
+    })
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.exportJson' }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/api/privacy/data-subject-export',
+        expect.objectContaining({
+          body: JSON.stringify({
+            delivery: 'json',
+            target: { hsaId: 'SE2321000032-kalle2' },
+          }),
+          method: 'POST',
+        }),
+      ),
+    )
+    expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    expect(anchorClickMock).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:data-subject-export')
+  })
+
+  it('shows a preview export error when data portability export fails', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=privacy')
+    fetchMock
+      .mockResolvedValueOnce(
+        okJson({
+          groups: [],
+          previewToken: 'empty-preview-token',
+          targetFingerprint: '0123456789abcdef0123456789abcdef',
+          totalCount: 0,
+        }),
+      )
+      .mockResolvedValueOnce(
+        errorJson({ error: 'PrivacyOfficer role is required' }, 403),
+      )
+
+    render(
+      <ConfirmModalProvider>
+        <AdminClient
+          currentUserRoles={['PrivacyOfficer']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </ConfirmModalProvider>,
+    )
+
+    fireEvent.change(screen.getByLabelText('admin.privacy.targetHsaId'), {
+      target: { value: 'SE2321000032-kalle2' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.preview' }),
+    )
+
+    await screen.findByRole('button', {
+      name: 'admin.privacy.exportJson',
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.privacy.exportJson' }),
+    )
+
+    await screen.findByRole('alert')
+    expect(
+      screen.getByText(
+        'admin.privacy.exportError PrivacyOfficer role is required',
+      ),
+    ).toBeTruthy()
+    expect(createObjectURLMock).not.toHaveBeenCalled()
   })
 
   it('does not show the privacy execution button for an empty preview', async () => {
