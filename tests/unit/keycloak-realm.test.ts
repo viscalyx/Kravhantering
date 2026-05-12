@@ -8,6 +8,7 @@ type KeycloakRealmClient = {
   protocolMappers?: Array<{
     name?: string
     config?: Record<string, string>
+    protocolMapper?: string
   }>
 }
 
@@ -24,22 +25,23 @@ function readDevRealm() {
   ) as KeycloakRealm
 }
 
-function getMcpEmployeeHsaIdClaim() {
+function getMcpEmployeeHsaIdMapper() {
   const realm = readDevRealm()
   const mcpClient = realm.clients?.find(
     client => client.clientId === 'kravhantering-mcp',
   )
-  const employeeHsaIdMapper = mcpClient?.protocolMappers?.find(
+  return mcpClient?.protocolMappers?.find(
     mapper => mapper.name === 'mcp-employeeHsaId',
   )
-
-  return employeeHsaIdMapper?.config?.['claim.value']
 }
 
 describe('dev Keycloak realm', () => {
   it('emits a real-format HSA-ID for the MCP service account', () => {
-    const employeeHsaId = getMcpEmployeeHsaIdClaim()
+    const mapper = getMcpEmployeeHsaIdMapper()
+    const employeeHsaId = mapper?.config?.['claim.value']
 
+    expect(mapper?.protocolMapper).toBe('oidc-hardcoded-claim-mapper')
+    expect(mapper?.config?.['access.token.claim']).toBe('true')
     expect(employeeHsaId).toBe('SE2321000032-mcp1')
     expect(isHsaId(employeeHsaId)).toBe(true)
   })

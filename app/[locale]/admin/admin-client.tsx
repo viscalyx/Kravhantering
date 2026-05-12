@@ -192,7 +192,9 @@ function createShippedColumnDefaults() {
 type PrivacyAction = 'anonymize' | 'delete' | 'skip' | 'switch'
 type PrivacyHelpField =
   | 'replacementEmail'
+  | 'replacementFirstName'
   | 'replacementHsaId'
+  | 'replacementLastName'
   | 'replacementName'
   | 'targetHsaId'
 
@@ -285,6 +287,8 @@ function PrivacyErasurePanel() {
   const [targetHsaId, setTargetHsaId] = useState('')
   const [replacementHsaId, setReplacementHsaId] = useState('')
   const [replacementName, setReplacementName] = useState('')
+  const [replacementFirstName, setReplacementFirstName] = useState('')
+  const [replacementLastName, setReplacementLastName] = useState('')
   const [replacementEmail, setReplacementEmail] = useState('')
   const [preview, setPreview] = useState<PrivacyPreview | null>(null)
   const [actions, setActions] = useState<Record<string, PrivacyAction>>({})
@@ -300,11 +304,17 @@ function PrivacyErasurePanel() {
   )
 
   const replacement =
-    replacementHsaId.trim() || replacementName.trim() || replacementEmail.trim()
+    replacementHsaId.trim() ||
+    replacementName.trim() ||
+    replacementFirstName.trim() ||
+    replacementLastName.trim() ||
+    replacementEmail.trim()
       ? {
           displayName: replacementName.trim(),
           email: replacementEmail.trim() || undefined,
+          firstName: replacementFirstName.trim() || undefined,
           hsaId: replacementHsaId.trim(),
+          lastName: replacementLastName.trim() || undefined,
         }
       : null
   const canUseSwitchAction = Boolean(
@@ -648,6 +658,54 @@ function PrivacyErasurePanel() {
                   setReplacementName(event.target.value)
                 }}
                 value={replacementName}
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <label
+                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                  htmlFor="privacy-replacement-first-name"
+                >
+                  {ta('privacy.replacementFirstName')}
+                </label>
+                {helpButton(
+                  'replacementFirstName',
+                  ta('privacy.replacementFirstName'),
+                )}
+              </div>
+              {helpPanel('replacementFirstName')}
+              <input
+                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                id="privacy-replacement-first-name"
+                onChange={event => {
+                  resetExecutionFeedback()
+                  setReplacementFirstName(event.target.value)
+                }}
+                value={replacementFirstName}
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <label
+                  className="text-sm font-medium text-secondary-700 dark:text-secondary-200"
+                  htmlFor="privacy-replacement-last-name"
+                >
+                  {ta('privacy.replacementLastName')}
+                </label>
+                {helpButton(
+                  'replacementLastName',
+                  ta('privacy.replacementLastName'),
+                )}
+              </div>
+              {helpPanel('replacementLastName')}
+              <input
+                className="w-full rounded-xl border border-secondary-200 bg-white px-3 py-2.5 text-sm dark:border-secondary-700 dark:bg-secondary-900"
+                id="privacy-replacement-last-name"
+                onChange={event => {
+                  resetExecutionFeedback()
+                  setReplacementLastName(event.target.value)
+                }}
+                value={replacementLastName}
               />
             </div>
             <div className="space-y-1">

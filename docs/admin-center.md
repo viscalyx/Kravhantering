@@ -141,11 +141,12 @@ logging, and limits. Each privacy form field also has inline help behind a
 question-mark icon so an operator can understand the expected input without
 leaving the workflow.
 
-The workflow matches by HSA-ID only. The UI accepts a replacement name and
-optional replacement email address when a replacement person is supplied, but
-target matching never uses names or email addresses and name-only erasure
-requests are rejected. The optional replacement email is used only for the
-owner contact row when owner assignments are switched.
+The workflow matches by HSA-ID only. The UI accepts a replacement display name,
+optional explicit first/last name values, and optional replacement email address
+when a replacement person is supplied, but target matching never uses names or
+email addresses and name-only erasure requests are rejected. Explicit first/last
+name values are used only for owner rows when owner assignments are switched;
+otherwise the owner name falls back to the replacement display name.
 
 Local seed data includes two users named `Kalle Svensson` with different
 HSA-IDs. The second identity resolves an improvement suggestion so UI tests can
@@ -168,9 +169,9 @@ Historical creator, decision, and resolution fields are usually anonymized
 instead of reassigned. Decision fields include stronger warning copy because
 switching a historical decision changes accountability semantics.
 The `Switch` action is never offered when no complete replacement HSA-ID/name
-has been supplied; replacement email is optional. If the replacement identity is
-cleared after preview, switch options disappear from the visible dropdowns
-before execution.
+has been supplied; explicit first/last names and replacement email are optional.
+If the replacement identity is cleared after preview, switch options disappear
+from the visible dropdowns before execution.
 The execute action is only shown after a preview with at least one occurrence,
 and it appears below the preview rows so the handler reviews the exact rows
 before running the erasure.

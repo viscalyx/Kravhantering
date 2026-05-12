@@ -694,12 +694,16 @@
       "targetHsaId": "HSA-ID att radera",
       "replacementHsaId": "Ersättande HSA-ID",
       "replacementName": "Ersättande namn",
+      "replacementFirstName": "Ersättande förnamn",
+      "replacementLastName": "Ersättande efternamn",
       "replacementEmail": "Ersättande e-postadress",
       "replacementEmailOptional": "E-postadress är valfri.",
       "fieldHelp": {
         "targetHsaId": "Ange HSA-ID för personen som ska hanteras. Alla träffar görs med exakt HSA-ID. Namn används inte för matchning och därför finns inget separat namn att söka på.",
         "replacementHsaId": "Ange HSA-ID för personen som ska ta över aktiva tilldelningar, till exempel ägare eller medförfattare. Fältet måste kombineras med ersättande namn för att åtgärden Byt ska kunna användas.",
         "replacementName": "Ange visningsnamnet som ska sparas som ögonblicksbild för den ersättande personen. Namnet hjälper användaren att kontrollera bytet, men HSA-ID är den beständiga identiteten.",
+        "replacementFirstName": "Valfritt. Ange exakt förnamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
+        "replacementLastName": "Valfritt. Ange exakt efternamn för ägarposten när visningsnamnet inte kan delas upp säkert.",
         "replacementEmail": "Valfritt. Ange e-postadress när en ersättande ägare ska skapas eller uppdateras så att kravområden och kravpaket får rätt kontaktuppgift efter bytet."
       },
       "preview": "Förhandsgranska",

@@ -416,6 +416,14 @@ describe('AdminClient', () => {
         'admin.privacy.fieldHelp.replacementName',
       ],
       [
+        'admin.privacy.replacementFirstName',
+        'admin.privacy.fieldHelp.replacementFirstName',
+      ],
+      [
+        'admin.privacy.replacementLastName',
+        'admin.privacy.fieldHelp.replacementLastName',
+      ],
+      [
         'admin.privacy.replacementEmail',
         'admin.privacy.fieldHelp.replacementEmail',
       ],
@@ -471,7 +479,13 @@ describe('AdminClient', () => {
       </ConfirmModalProvider>,
     )
 
-    expect(screen.getAllByRole('textbox')).toHaveLength(4)
+    expect(screen.getAllByRole('textbox')).toHaveLength(6)
+    expect(
+      screen.getByLabelText('admin.privacy.replacementFirstName'),
+    ).toBeTruthy()
+    expect(
+      screen.getByLabelText('admin.privacy.replacementLastName'),
+    ).toBeTruthy()
     expect(screen.getByLabelText('admin.privacy.replacementEmail')).toBeTruthy()
     expect(
       screen.getByRole('img', {
@@ -719,8 +733,20 @@ describe('AdminClient', () => {
       target: { value: 'SE2321000032-johlju' },
     })
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementName'), {
-      target: { value: 'John Levi' },
+      target: { value: 'John Carl Levi' },
     })
+    fireEvent.change(
+      screen.getByLabelText('admin.privacy.replacementFirstName'),
+      {
+        target: { value: 'John Carl' },
+      },
+    )
+    fireEvent.change(
+      screen.getByLabelText('admin.privacy.replacementLastName'),
+      {
+        target: { value: 'Levi' },
+      },
+    )
     fireEvent.change(screen.getByLabelText('admin.privacy.replacementEmail'), {
       target: { value: 'john.levi@example.com' },
     })
@@ -758,9 +784,11 @@ describe('AdminClient', () => {
       },
       previewToken: 'execution-preview-token',
       replacement: {
-        displayName: 'John Levi',
+        displayName: 'John Carl Levi',
         email: 'john.levi@example.com',
+        firstName: 'John Carl',
         hsaId: 'SE2321000032-johlju',
+        lastName: 'Levi',
       },
       target: { hsaId: 'SE2321000032-kalle1' },
     })

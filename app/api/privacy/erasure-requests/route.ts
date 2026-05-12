@@ -49,7 +49,9 @@ const replacementSchema = z
       value => value == null || z.email().safeParse(value).success,
       { message: 'Replacement email must be a valid email address.' },
     ),
+    firstName: optionalBoundedDbStringSchema,
     hsaId: hsaIdSchema,
+    lastName: optionalBoundedDbStringSchema,
   })
   .strict()
 

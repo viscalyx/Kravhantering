@@ -267,8 +267,8 @@ check.
 
 ### MCP service-account HSA-id
 
-The `kravhantering-mcp` Keycloak client is configured with an
-`oidc-hardcoded-claim` mapper that emits
+The `kravhantering-mcp` Keycloak client is configured with the
+`oidc-hardcoded-claim-mapper` protocol mapper that emits
 `employeeHsaId = SE2321000032-mcp1` on the access token used by the MCP
 service-account flow. This gives MCP write workflows a real-format HSA-ID
 for actor stamping in requirement history, deviations, and improvement

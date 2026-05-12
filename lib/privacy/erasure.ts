@@ -11,7 +11,9 @@ export type PrivacyErasureAction = 'anonymize' | 'delete' | 'skip' | 'switch'
 export interface PrivacyReplacementInput {
   displayName: string
   email?: string | null
+  firstName?: string | null
   hsaId: string
+  lastName?: string | null
 }
 
 export interface PrivacyErasureTargetInput {
@@ -494,13 +496,15 @@ function normalizeReplacement(
   const hsaId = input.hsaId.trim()
   const displayName = input.displayName.trim()
   const email = input.email?.trim() || null
+  const firstName = input.firstName?.trim() || null
+  const lastName = input.lastName?.trim() || null
   if (!isHsaId(hsaId) || !displayName) {
     throw validationError(
       'Replacement requires both a valid HSA-ID and display name',
       { reason: 'invalid_replacement' },
     )
   }
-  return { displayName, email, hsaId }
+  return { displayName, email, firstName, hsaId, lastName }
 }
 
 export function privacyTargetFingerprint(hsaId: string): string {
@@ -530,7 +534,9 @@ function previewTokenFor(
       ? {
           displayName: replacement.displayName,
           email: replacement.email,
+          firstName: replacement.firstName,
           hsaId: replacement.hsaId,
+          lastName: replacement.lastName,
         }
       : null,
     targetHsaId,
@@ -684,31 +690,48 @@ function splitDisplayName(displayName: string): {
   }
 }
 
+function replacementOwnerName(replacement: PrivacyReplacementInput): {
+  firstName: string
+  lastName: string
+} {
+  if (replacement.firstName || replacement.lastName) {
+    return {
+      firstName: replacement.firstName ?? replacement.displayName,
+      lastName: replacement.lastName ?? '',
+    }
+  }
+  return splitDisplayName(replacement.displayName)
+}
+
 async function ensureReplacementOwner(
   tx: QueryExecutor,
   replacement: PrivacyReplacementInput | null,
 ): Promise<number | null> {
   if (!replacement) return null
+  const { firstName, lastName } = replacementOwnerName(replacement)
   const existing = (await tx.query(
     'SELECT TOP (1) id, email FROM owners WHERE hsa_id = @0 ORDER BY id ASC',
     [replacement.hsaId],
   )) as Array<Record<string, unknown>>
   if (existing[0]) {
     const ownerId = Number(existing[0].id)
-    if (replacement.email) {
-      await tx.query(
-        `UPDATE owners
-          SET email = @1,
-              updated_at = @2
-          WHERE id = @0
-            AND (email IS NULL OR email <> @1)`,
-        [ownerId, replacement.email, new Date()],
-      )
-    }
+    await tx.query(
+      `UPDATE owners
+        SET first_name = @1,
+            last_name = @2,
+            email = CASE WHEN @3 IS NULL THEN email ELSE @3 END,
+            updated_at = @4
+        WHERE id = @0
+          AND (
+            first_name <> @1
+            OR last_name <> @2
+            OR (@3 IS NOT NULL AND (email IS NULL OR email <> @3))
+          )`,
+      [ownerId, firstName, lastName, replacement.email ?? null, new Date()],
+    )
     return ownerId
   }
 
-  const { firstName, lastName } = splitDisplayName(replacement.displayName)
   const now = new Date()
   const inserted = (await tx.query(
     `INSERT INTO owners (first_name, last_name, email, hsa_id, created_at, updated_at)

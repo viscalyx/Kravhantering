@@ -694,12 +694,16 @@
       "targetHsaId": "Target HSA-ID",
       "replacementHsaId": "Replacement HSA-ID",
       "replacementName": "Replacement name",
+      "replacementFirstName": "Replacement first name",
+      "replacementLastName": "Replacement last name",
       "replacementEmail": "Replacement email address",
       "replacementEmailOptional": "Email address is optional.",
       "fieldHelp": {
         "targetHsaId": "Enter the HSA-ID for the person who should be handled. Every match uses the exact HSA-ID. Names are not used for matching, so there is no separate name search field.",
         "replacementHsaId": "Enter the HSA-ID for the person who should take over live assignments, such as owner or co-author. This field must be combined with replacement name before the Switch action can be used.",
         "replacementName": "Enter the display name snapshot to store for the replacement person. The name helps the operator confirm the switch, but HSA-ID remains the durable identity.",
+        "replacementFirstName": "Optional. Enter the exact first-name value for the owner record when the display name cannot be split reliably.",
+        "replacementLastName": "Optional. Enter the exact last-name value for the owner record when the display name cannot be split reliably.",
         "replacementEmail": "Optional. Enter an email address when a replacement owner should be created or updated so requirement areas and packages keep the right contact details after the switch."
       },
       "preview": "Preview",

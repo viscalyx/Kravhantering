@@ -543,7 +543,9 @@ describe('privacy erasure service', () => {
     const replacement = {
       displayName: 'John Levi',
       email: 'john.levi@example.com',
+      firstName: 'John Carl',
       hsaId: 'SE2321000032-johlju',
+      lastName: 'Levi',
     }
     const preview = await previewPrivacyErasure(db, {
       replacement,
@@ -560,10 +562,68 @@ describe('privacy erasure service', () => {
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO owners'),
       [
-        'John',
+        'John Carl',
         'Levi',
         'john.levi@example.com',
         'SE2321000032-johlju',
+        expect.any(Date),
+      ],
+    )
+  })
+
+  it('updates existing replacement owner names from explicit fields', async () => {
+    const query = vi.fn(
+      <T = unknown[]>(sql: string, parameters?: unknown[]): Promise<T> => {
+        void parameters
+        if (
+          sql.includes('SELECT COUNT(*) AS count FROM requirement_packages pkg')
+        ) {
+          return Promise.resolve([{ count: 1 }] as T)
+        }
+        if (sql.includes('SELECT TOP (1) CONCAT(owner.first_name')) {
+          return Promise.resolve([{ value: 'Anna Maria Eriksson' }] as T)
+        }
+        if (sql.includes('privacy:affected:requirement_packages.owner')) {
+          return Promise.resolve([{ value: 'SPR Språkstöd' }] as T)
+        }
+        if (sql.includes('SELECT TOP (1) id, email FROM owners')) {
+          return Promise.resolve([{ email: 'old@example.com', id: 2 }] as T)
+        }
+        if (sql.includes('COUNT(*)')) {
+          return Promise.resolve([{ count: 0 }] as T)
+        }
+        return Promise.resolve([] as T)
+      },
+    )
+    const db = { query } as Parameters<typeof previewPrivacyErasure>[0]
+    const replacement = {
+      displayName: 'Anna Maria Eriksson',
+      email: 'anna.maria.eriksson@example.com',
+      firstName: 'Anna Maria',
+      hsaId: 'SE2321000032-johlju',
+      lastName: 'Eriksson',
+    }
+    const preview = await previewPrivacyErasure(db, {
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    query.mockClear()
+
+    await executePrivacyErasure(createTransactionalDb(query), {
+      actions: { 'requirement_packages.owner': 'switch' },
+      previewToken: preview.previewToken,
+      replacement,
+      target: { hsaId: TARGET_HSA_ID },
+    })
+
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE owners'),
+      [
+        2,
+        'Anna Maria',
+        'Eriksson',
+        'anna.maria.eriksson@example.com',
         expect.any(Date),
       ],
     )

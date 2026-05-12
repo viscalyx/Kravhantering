@@ -166,7 +166,9 @@ describe('privacy erasure routes', () => {
         replacement: {
           displayName: 'John Levi',
           email: 'john.levi@example.com',
+          firstName: 'John Carl',
           hsaId: 'SE2321000032-johlju',
+          lastName: 'Levi',
         },
         target: { hsaId: 'SE2321000032-kalle1' },
       }) as never,
@@ -179,7 +181,9 @@ describe('privacy erasure routes', () => {
         replacement: {
           displayName: 'John Levi',
           email: 'john.levi@example.com',
+          firstName: 'John Carl',
           hsaId: 'SE2321000032-johlju',
+          lastName: 'Levi',
         },
         target: { hsaId: 'SE2321000032-kalle1' },
       },
@@ -425,5 +429,37 @@ describe('privacy erasure routes', () => {
       }),
     )
     expect(JSON.stringify(auditArg.detail)).not.toContain('SE2321000032-kalle1')
+  })
+
+  it('executes erasure with explicit replacement owner names', async () => {
+    const { POST } = await import('@/app/api/privacy/erasure-requests/route')
+    const response = await POST(
+      jsonPost('http://localhost/api/privacy/erasure-requests', {
+        actions: { 'requirement_packages.owner': 'switch' },
+        previewToken: 'preview-token',
+        replacement: {
+          displayName: 'Anna Maria Eriksson',
+          email: 'anna.maria.eriksson@example.com',
+          firstName: 'Anna Maria',
+          hsaId: 'SE2321000032-johlju',
+          lastName: 'Eriksson',
+        },
+        target: { hsaId: 'SE2321000032-kalle1' },
+      }) as never,
+    )
+
+    expect(response.status).toBe(201)
+    expect(routeState.executePrivacyErasure).toHaveBeenCalledWith(
+      { db: true },
+      expect.objectContaining({
+        replacement: {
+          displayName: 'Anna Maria Eriksson',
+          email: 'anna.maria.eriksson@example.com',
+          firstName: 'Anna Maria',
+          hsaId: 'SE2321000032-johlju',
+          lastName: 'Eriksson',
+        },
+      }),
+    )
   })
 })

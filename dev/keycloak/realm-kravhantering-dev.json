@@ -328,7 +328,7 @@
         {
           "name": "mcp-employeeHsaId",
           "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
           "consentRequired": false,
           "config": {
             "claim.name": "employeeHsaId",
