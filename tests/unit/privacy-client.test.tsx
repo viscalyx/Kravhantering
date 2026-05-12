@@ -2,10 +2,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PrivacyClient from '@/app/[locale]/privacy/privacy-client'
 
+const helpContentState = vi.hoisted(() => ({
+  useHelpContent: vi.fn(),
+}))
 const fetchMock = vi.fn()
 const createObjectURLMock = vi.fn(() => 'blob:self-data-export')
 const revokeObjectURLMock = vi.fn()
 const anchorClickMock = vi.fn()
+
+vi.mock('@/components/HelpPanel', () => ({
+  useHelpContent: helpContentState.useHelpContent,
+}))
 
 vi.mock('next-intl', () => ({
   useLocale: () => 'sv',
@@ -53,6 +60,7 @@ function okJson(body: unknown) {
 
 describe('PrivacyClient', () => {
   beforeEach(() => {
+    helpContentState.useHelpContent.mockClear()
     fetchMock.mockReset()
     createObjectURLMock.mockClear()
     revokeObjectURLMock.mockClear()
@@ -106,6 +114,38 @@ describe('PrivacyClient', () => {
     expect(createObjectURLMock).toHaveBeenCalledTimes(1)
     expect(anchorClickMock).toHaveBeenCalledTimes(1)
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:self-data-export')
+  })
+
+  it('registers contextual help for the personal data export page', () => {
+    render(
+      <PrivacyClient
+        currentUser={{
+          hsaId: 'SE2321000032-admin1',
+          name: 'Ada Admin',
+        }}
+      />,
+    )
+
+    expect(helpContentState.useHelpContent).toHaveBeenCalledWith({
+      sections: [
+        {
+          bodyKey: 'privacyDataExport.description.body',
+          headingKey: 'privacyDataExport.description.heading',
+          kind: 'text',
+        },
+        {
+          bodyKey: 'privacyDataExport.formats.body',
+          headingKey: 'privacyDataExport.formats.heading',
+          kind: 'text',
+        },
+        {
+          bodyKey: 'privacyDataExport.limits.body',
+          headingKey: 'privacyDataExport.limits.heading',
+          kind: 'text',
+        },
+      ],
+      titleKey: 'privacyDataExport.title',
+    })
   })
 
   it('shows a sign-in action when no current user is available', () => {

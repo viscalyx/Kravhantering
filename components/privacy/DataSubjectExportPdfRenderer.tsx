@@ -42,6 +42,21 @@ const labels = {
   },
 } as const
 
+const NAME_FIELDS = new Set([
+  'created_by',
+  'created_by_display_name',
+  'decided_by',
+  'display_name',
+  'familyName',
+  'first_name',
+  'givenName',
+  'last_name',
+  'name',
+  'owner_display_name',
+  'resolved_by',
+  'responsible_display_name',
+])
+
 const styles = StyleSheet.create({
   page: {
     padding: 36,
@@ -115,11 +130,7 @@ function itemValue(
   if (Array.isArray(value)) return value.join(', ')
   if (typeof value === 'boolean') return value ? 'true' : 'false'
   const stringified = String(value)
-  if (
-    item.fieldName.toLowerCase().includes('display') ||
-    item.fieldName.toLowerCase().includes('name') ||
-    item.fieldName.endsWith('_by')
-  ) {
+  if (NAME_FIELDS.has(item.fieldName)) {
     return formatActorDisplayNameForLocale(stringified, locale) ?? stringified
   }
   return stringified

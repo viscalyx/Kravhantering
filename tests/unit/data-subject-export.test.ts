@@ -43,6 +43,7 @@ describe('data-subject export service', () => {
     expect(new Set(DATA_SUBJECT_EXPORT_SOURCE_KEYS)).toEqual(
       new Set(PRIVACY_ERASURE_GROUP_POLICIES.map(policy => policy.key)),
     )
+    expect(Object.isFrozen(PRIVACY_ERASURE_GROUP_POLICIES)).toBe(true)
   })
 
   it('collects structured owner data and self-session claims', async () => {

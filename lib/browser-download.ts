@@ -4,7 +4,10 @@ export function downloadBlob(blob: Blob, filename: string): void {
   link.href = url
   link.download = filename
   document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  try {
+    link.click()
+  } finally {
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 }

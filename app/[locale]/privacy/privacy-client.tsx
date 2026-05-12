@@ -2,8 +2,30 @@
 
 import { FileJson, FileText, ShieldCheck } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
+import { type HelpContent, useHelpContent } from '@/components/HelpPanel'
 import { useDataSubjectExportDownload } from '@/components/privacy/useDataSubjectExportDownload'
 import { devMarker } from '@/lib/developer-mode-markers'
+
+const PRIVACY_DATA_EXPORT_HELP: HelpContent = {
+  sections: [
+    {
+      bodyKey: 'privacyDataExport.description.body',
+      headingKey: 'privacyDataExport.description.heading',
+      kind: 'text',
+    },
+    {
+      bodyKey: 'privacyDataExport.formats.body',
+      headingKey: 'privacyDataExport.formats.heading',
+      kind: 'text',
+    },
+    {
+      bodyKey: 'privacyDataExport.limits.body',
+      headingKey: 'privacyDataExport.limits.heading',
+      kind: 'text',
+    },
+  ],
+  titleKey: 'privacyDataExport.title',
+}
 
 interface CurrentUser {
   email?: string
@@ -19,6 +41,7 @@ export default function PrivacyClient({ currentUser }: ComponentProps) {
   const t = useTranslations('privacyDataExport')
   const locale = useLocale()
   const dataSubjectExport = useDataSubjectExportDownload({ locale })
+  useHelpContent(PRIVACY_DATA_EXPORT_HELP)
 
   return (
     <main className="section-padding px-4 sm:px-6 lg:px-8">

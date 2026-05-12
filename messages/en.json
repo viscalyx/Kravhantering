@@ -96,10 +96,10 @@
     "userInfoSessionExpires": "Session expires",
     "userInfoRoles": "Roles",
     "userInfoNoRoles": "No roles assigned",
-    "dataExport": "Data export"
+    "dataExport": "My personal data"
   },
   "privacyDataExport": {
-    "title": "Data export",
+    "title": "Personal data export",
     "description": "Download the personal data that is connected to your HSA-ID in a structured JSON file or as a readable PDF.",
     "name": "Name",
     "hsaId": "HSA-ID",
@@ -108,8 +108,8 @@
     "exportPdf": "Export PDF",
     "exportingJson": "Exporting JSON…",
     "exportingPdf": "Exporting PDF…",
-    "exportError": "Could not export data: {detail}",
-    "signIn": "Sign in to export your data"
+    "exportError": "Could not export personal data: {detail}",
+    "signIn": "Sign in to export your personal data"
   },
   "roles": {
     "reviewer": "Reviewer",
@@ -1242,6 +1242,21 @@
       "caveats": {
         "heading": "Important limits",
         "body": "The officer must confirm that erasure is allowed and that no stronger legal basis or retention duty prevents the action. Security logs and external logs are handled by a separate retention or deletion policy. Anonymizing handler identity in those logs can reduce traceability."
+      }
+    },
+    "privacyDataExport": {
+      "title": "Personal data export",
+      "description": {
+        "heading": "What is included",
+        "body": "The export contains structured personal data that is connected to your verified HSA-ID, such as owner records, creator snapshots, decisions, co-author assignments, and current session claims."
+      },
+      "formats": {
+        "heading": "JSON and PDF",
+        "body": "JSON is the authoritative machine-readable export format. PDF is a readable rendering of the same payload for review or filing."
+      },
+      "limits": {
+        "heading": "Important limits",
+        "body": "Free-text fields are not scanned because the product instructs users not to enter person-identifying data there. Platform security-audit logs are handled in the operational log stream and are not included in this application export."
       }
     },
     "requirementAreas": {

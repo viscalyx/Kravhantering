@@ -470,7 +470,8 @@ const POLICY_BY_KEY = new Map(
   GROUP_POLICIES.map(policy => [policy.key, policy]),
 )
 
-export const PRIVACY_ERASURE_GROUP_POLICIES = GROUP_POLICIES
+export const PRIVACY_ERASURE_GROUP_POLICIES: readonly PrivacyGroupPolicy[] =
+  Object.freeze([...GROUP_POLICIES])
 
 function countFromRows(rows: Array<Record<string, unknown>>): number {
   return Number(rows[0]?.count ?? 0)

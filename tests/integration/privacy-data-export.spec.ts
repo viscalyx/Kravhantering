@@ -89,7 +89,9 @@ test('self-service privacy page exports the signed-in user without target overri
   })
 
   await page.goto('/sv/privacy')
-  await expect(page.getByRole('heading', { name: 'Dataexport' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Export av personuppgifter' }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Exportera JSON' }).click()
 
   await expect.poll(() => exportRequests.length).toBe(1)

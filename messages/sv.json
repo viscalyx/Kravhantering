@@ -96,10 +96,10 @@
     "userInfoSessionExpires": "Sessionen går ut",
     "userInfoRoles": "Roller",
     "userInfoNoRoles": "Inga roller tilldelade",
-    "dataExport": "Dataexport"
+    "dataExport": "Mina personuppgifter"
   },
   "privacyDataExport": {
-    "title": "Dataexport",
+    "title": "Export av personuppgifter",
     "description": "Ladda ned personuppgifterna som är kopplade till ditt HSA-ID som strukturerad JSON eller som läsbar PDF.",
     "name": "Namn",
     "hsaId": "HSA-ID",
@@ -108,8 +108,8 @@
     "exportPdf": "Exportera PDF",
     "exportingJson": "Exporterar JSON…",
     "exportingPdf": "Exporterar PDF…",
-    "exportError": "Kunde inte exportera data: {detail}",
-    "signIn": "Logga in för att exportera dina data"
+    "exportError": "Kunde inte exportera personuppgifter: {detail}",
+    "signIn": "Logga in för att exportera dina personuppgifter"
   },
   "roles": {
     "reviewer": "Granskare",
@@ -1242,6 +1242,21 @@
       "caveats": {
         "heading": "Viktiga begränsningar",
         "body": "Handläggaren måste bedöma att radering får göras och att ingen starkare rättslig grund eller bevarandeskyldighet hindrar åtgärden. Säkerhetsloggar och externa loggar hanteras enligt separat gallrings- eller anonymiseringspolicy. Att anonymisera handläggaridentitet i sådana loggar kan försämra spårbarheten."
+      }
+    },
+    "privacyDataExport": {
+      "title": "Export av personuppgifter",
+      "description": {
+        "heading": "Vad som ingår",
+        "body": "Exporten innehåller strukturerade personuppgifter som är kopplade till ditt verifierade HSA-ID, till exempel ägarposter, ögonblicksbilder av skapare, beslut, tilldelningar som medförfattare och aktuella sessionsuppgifter."
+      },
+      "formats": {
+        "heading": "JSON och PDF",
+        "body": "JSON är det styrande maskinläsbara exportformatet. PDF är en läsbar återgivning av samma innehåll för kontroll eller arkivering."
+      },
+      "limits": {
+        "heading": "Viktiga begränsningar",
+        "body": "Fritextfält skannas inte eftersom produkten instruerar användare att inte skriva personidentifierande uppgifter där. Plattformens säkerhetsloggar hanteras i driftens loggström och ingår inte i den här exporten från applikationen."
       }
     },
     "requirementAreas": {
