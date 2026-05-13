@@ -6,11 +6,27 @@ describe('error boundary test route helper', () => {
     vi.unstubAllEnvs()
   })
 
-  it('blocks environment-enabled test routes in production', () => {
+  it('blocks environment-enabled test routes in production without local-prod target', () => {
     vi.stubEnv('ENABLE_ERROR_BOUNDARY_TEST_ROUTE', '1')
     vi.stubEnv('NODE_ENV', 'production')
 
     expect(isErrorBoundaryTestRouteEnabled(new Headers())).toBe(false)
+  })
+
+  it('blocks environment-enabled test routes in real production', () => {
+    vi.stubEnv('ENABLE_ERROR_BOUNDARY_TEST_ROUTE', '1')
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('BUILD_TARGET', 'prod')
+
+    expect(isErrorBoundaryTestRouteEnabled(new Headers())).toBe(false)
+  })
+
+  it('allows environment-enabled test routes for local-prod validation', () => {
+    vi.stubEnv('ENABLE_ERROR_BOUNDARY_TEST_ROUTE', '1')
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('BUILD_TARGET', 'local-prod')
+
+    expect(isErrorBoundaryTestRouteEnabled(new Headers())).toBe(true)
   })
 
   it('allows environment-enabled test routes outside production', () => {
