@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { seedDatabase, seedPositionDetail } from '../../typeorm/seed.mjs'
 
-// cspell:ignore linneab
+// cspell:ignore linneab repoåtkomstgranskning
 
 const LINNEA_HSA_ID = 'SE2321000032-linneab'
 const LINNEA_DISPLAY_NAME = 'Linnéa Bergström'
@@ -181,6 +181,26 @@ describe('seedDatabase', () => {
       owners.filter(row => row.hsa_id === LINNEA_HSA_ID).map(row => row.id),
     )
     const counts = {
+      'access_review_items.decided_by': seedRowsFor(
+        rows,
+        'access_review_items',
+      ).filter(row => row.decided_by_hsa_id === LINNEA_HSA_ID).length,
+      'access_review_items.principal': seedRowsFor(
+        rows,
+        'access_review_items',
+      ).filter(row => row.principal_hsa_id === LINNEA_HSA_ID).length,
+      'access_review_runs.completed_by': seedRowsFor(
+        rows,
+        'access_review_runs',
+      ).filter(row => row.completed_by_hsa_id === LINNEA_HSA_ID).length,
+      'access_review_runs.created_by': seedRowsFor(
+        rows,
+        'access_review_runs',
+      ).filter(row => row.created_by_hsa_id === LINNEA_HSA_ID).length,
+      'access_review_runs.reviewer': seedRowsFor(
+        rows,
+        'access_review_runs',
+      ).filter(row => row.reviewer_hsa_id === LINNEA_HSA_ID).length,
       'deviations.created_by': seedRowsFor(rows, 'deviations').filter(
         row => row.created_by_hsa_id === LINNEA_HSA_ID,
       ).length,
@@ -238,6 +258,11 @@ describe('seedDatabase', () => {
     }
 
     expect(counts).toEqual({
+      'access_review_items.decided_by': 2,
+      'access_review_items.principal': 1,
+      'access_review_runs.completed_by': 1,
+      'access_review_runs.created_by': 1,
+      'access_review_runs.reviewer': 1,
       'deviations.created_by': 1,
       'deviations.decided_by': 1,
       'improvement_suggestions.created_by': 1,
@@ -274,5 +299,47 @@ describe('seedDatabase', () => {
         row => row.created_by_hsa_id === LINNEA_HSA_ID,
       )?.created_by_display_name,
     ).toBe(LINNEA_DISPLAY_NAME)
+    const linneaCompletedRuns = seedRowsFor(rows, 'access_review_runs').filter(
+      row =>
+        row.status === 'completed' &&
+        (row.created_by_hsa_id === LINNEA_HSA_ID ||
+          row.reviewer_hsa_id === LINNEA_HSA_ID),
+    )
+    const accessReviewRunsById = new Map(
+      seedRowsFor(rows, 'access_review_runs').map(row => [row.id, row]),
+    )
+    expect(linneaCompletedRuns).toHaveLength(2)
+    expect(accessReviewRunsById.get(1)).toMatchObject({
+      created_by_hsa_id: LINNEA_HSA_ID,
+      external_evidence_reference:
+        'DNR-KH-2025-0142: IAM- och repoåtkomstgranskning 2025',
+      status: 'completed',
+    })
+    expect(accessReviewRunsById.get(2)).toMatchObject({
+      external_evidence_reference:
+        'REV-IAM-2024-009: IdP-rollgranskning och sign-off',
+      reviewer_hsa_id: LINNEA_HSA_ID,
+      status: 'completed',
+    })
+    expect(accessReviewRunsById.get(3)).toMatchObject({
+      external_evidence_reference:
+        'Jira IAM-7312: Årlig granskning IdP-roller, repo och MCP 2026',
+      status: 'in_review',
+    })
+    expect(
+      linneaCompletedRuns.some(
+        row =>
+          row.created_by_hsa_id === LINNEA_HSA_ID &&
+          row.created_by_display_name === LINNEA_DISPLAY_NAME,
+      ),
+    ).toBe(true)
+    expect(
+      linneaCompletedRuns.some(
+        row =>
+          row.created_by_hsa_id !== LINNEA_HSA_ID &&
+          row.reviewer_hsa_id === LINNEA_HSA_ID &&
+          row.reviewer_display_name === LINNEA_DISPLAY_NAME,
+      ),
+    ).toBe(true)
   })
 })

@@ -702,6 +702,7 @@
     "columnsDescription": "Control the default order and visibility of the requirements list columns.",
     "referenceData": "Reference data",
     "referenceDataDescription": "Open the existing reference-data pages with their current route slugs.",
+    "accessReviewDescription": "Create recurring reviews of app-managed assignments and AI permissions, decide each access row, and export review evidence.",
     "privacyDescription": "Preview HSA-ID based matches, export data, and execute GDPR erasure for actor identity snapshots and live assignments.",
     "privacy": {
       "title": "Privacy",
@@ -781,16 +782,21 @@
         "improvementSuggestions": "Improvement suggestions",
         "specifications": "Specifications",
         "areaCoAuthors": "Area co-authors",
-        "specificationCoAuthors": "Specification co-authors"
+        "specificationCoAuthors": "Specification co-authors",
+        "accessReviewRuns": "Access review rounds",
+        "accessReviewItems": "Access review rows"
       },
       "fields": {
         "identity": "Identity",
         "owner": "Owner",
         "createdBy": "Created by",
+        "completedBy": "Completed by",
         "decidedBy": "Decided by",
         "resolvedBy": "Resolved by",
         "responsible": "Responsible",
-        "coAuthor": "Co-author"
+        "coAuthor": "Co-author",
+        "reviewer": "Reviewer",
+        "accessReviewPrincipal": "Access review principal"
       },
       "warnings": {
         "ownerSwitch": "Switch references to a replacement owner, or anonymize to the deleted-user sentinel when no replacement is supplied.",
@@ -809,6 +815,80 @@
       },
       "readOnly": {
         "controlledByOwner": "Shown for information. Requirement areas and packages are switched automatically when the owner row is switched."
+      }
+    },
+    "accessReview": {
+      "title": "Access review",
+      "action": "Action",
+      "aiDisabled": "AI disabled",
+      "aiEnabled": "AI enabled",
+      "cancel": "Cancel review",
+      "cancelConfirmMessage": "Review #{id} will be marked as cancelled. The review rows are kept as history, but can no longer be decided or completed.",
+      "cancelConfirmTitle": "Cancel review?",
+      "cancelError": "Could not cancel access review.",
+      "cancelSuccess": "Access review cancelled.",
+      "comment": "Comment",
+      "complete": "Complete review",
+      "completeError": "Could not complete access review.",
+      "completeSuccess": "Access review completed.",
+      "create": "Create review",
+      "createBlockedByOpenRun": "An access review is already in progress. Complete or cancel it before creating a new one.",
+      "createError": "Could not create access review.",
+      "createSuccess": "Access review created.",
+      "createTitle": "New review round",
+      "creating": "Creating…",
+      "decision": "Decision",
+      "decisionError": "Could not save the access review decision.",
+      "dueAt": "Due",
+      "dismissError": "Dismiss error message",
+      "errorPopupTitle": "Something went wrong",
+      "externalEvidenceHelp": "This field is optional and points to external evidence for permissions that Kravhantering does not own, such as IdP role review for administrators, reviewers and privacy officers, source-code repository access, and external MCP/client provisioning. Enter a ticket ID, audit-report link, or case/document number. The external evidence should show period, scope, systems/roles reviewed, reviewer, decisions, actions, and sign-off.",
+      "externalEvidenceNote": "Global IdP roles, source-code access, and external MCP client provisioning are reviewed in the tools where those permissions are assigned.",
+      "externalEvidenceReference": "External evidence reference",
+      "exportError": "Could not export access review: {detail}",
+      "exportJson": "Export JSON",
+      "exportPdf": "Export PDF",
+      "exportingJson": "Exporting JSON…",
+      "exportingPdf": "Exporting PDF…",
+      "items": "Review rows",
+      "itemsDescription": "Rows are snapshots from app-managed assignments at the time the review was created. Click the row icon to mark it complete. When all rows are marked complete, the review can be completed.",
+      "loadError": "Could not load access reviews.",
+      "lockState": "Review state",
+      "noRuns": "No access review rounds yet.",
+      "overdue": "This review is overdue.",
+      "pendingCount": "{count} pending",
+      "permission": "Permission",
+      "principal": "Principal",
+      "rowApproved": "Row marked complete",
+      "rowNeedsReview": "Row needs review",
+      "runNumber": "Review #{id}",
+      "runs": "Review rounds",
+      "scope": "Scope",
+      "selectRun": "Select an access review round.",
+      "summary": {
+        "due": "Due",
+        "progress": "Progress",
+        "reviewer": "Reviewer",
+        "status": "Status"
+      },
+      "statuses": {
+        "cancelled": "Cancelled",
+        "completed": "Completed",
+        "draft": "Draft",
+        "in_review": "In review"
+      },
+      "decisions": {
+        "approved": "Approved",
+        "changed": "Changed",
+        "not_applicable": "Not applicable",
+        "pending": "Not saved",
+        "revoke_required": "Revoke required"
+      },
+      "permissionTypes": {
+        "area_co_author": "Area co-author",
+        "area_owner": "Area owner",
+        "specification_co_author": "Specification co-author",
+        "specification_responsible": "Specification responsible"
       }
     },
     "swedish": "Svenska",
@@ -1203,6 +1283,10 @@
       "privacy": {
         "heading": "Privacy erasure",
         "body": "Use the Privacy tab for GDPR erasure work. Matches are made by HSA-ID only; names are shown for confirmation and never create matches."
+      },
+      "accessReview": {
+        "heading": "Access review",
+        "body": "Use Access review to create recurring review rounds for app-managed assignments and AI permissions. Global IdP roles are reviewed in the identity-management tool."
       }
     },
     "adminPrivacy": {
@@ -1242,6 +1326,25 @@
       "caveats": {
         "heading": "Important limits",
         "body": "The officer must confirm that erasure is allowed and that no stronger legal basis or retention duty prevents the action. Security logs and external logs are handled by a separate retention or deletion policy. Anonymizing handler identity in those logs can reduce traceability."
+      }
+    },
+    "adminAccessReview": {
+      "title": "Access review",
+      "overview": {
+        "heading": "Purpose",
+        "body": "Access review records who currently holds app-managed assignments, who reviewed them, and which decision was made for each row."
+      },
+      "scope": {
+        "heading": "Scope",
+        "body": "The app inventories area owners, area co-authors, specification responsibles, specification co-authors, and their app-managed AI permissions. Global IdP roles, source-code access, and external client provisioning are reviewed in their source tools."
+      },
+      "decisions": {
+        "heading": "Decisions",
+        "body": "Each row starts as pending and can be approved, marked for revocation, marked as changed, or marked not applicable. A review can be completed only when no rows are pending."
+      },
+      "evidence": {
+        "heading": "Evidence",
+        "body": "Export JSON as the structured evidence format. PDF is a readable rendering of the same payload. Store references to external IdP or repository access reviews in the evidence field."
       }
     },
     "privacyDataExport": {

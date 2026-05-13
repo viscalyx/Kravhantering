@@ -44,8 +44,10 @@ const labels = {
 
 const NAME_FIELDS = new Set([
   'created_by',
+  'completed_by_display_name',
   'created_by_display_name',
   'decided_by',
+  'decided_by_display_name',
   'display_name',
   'familyName',
   'first_name',
@@ -53,7 +55,9 @@ const NAME_FIELDS = new Set([
   'last_name',
   'name',
   'owner_display_name',
+  'principal_display_name',
   'resolved_by',
+  'reviewer_display_name',
   'responsible_display_name',
 ])
 

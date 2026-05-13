@@ -464,6 +464,116 @@ const GROUP_POLICIES: PrivacyGroupPolicy[] = [
     table: 'specification_co_authors',
     warningKey: 'historySwitch',
   },
+  {
+    affectedReferencesSql: `/* privacy:affected:access_review_runs.created_by */
+      SELECT CONCAT(N'Access review ', id) AS value
+      FROM access_review_runs
+      WHERE created_by_hsa_id = @0
+      ORDER BY id ASC`,
+    allowedActions: ['anonymize', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM access_review_runs WHERE created_by_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) created_by_display_name AS value FROM access_review_runs WHERE created_by_hsa_id = @0 ORDER BY id ASC',
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'created_by_display_name',
+    fieldKey: 'createdBy',
+    hsaColumn: 'created_by_hsa_id',
+    key: 'access_review_runs.created_by',
+    kind: 'hsaOnly',
+    objectKey: 'accessReviewRuns',
+    table: 'access_review_runs',
+    warningKey: 'historySwitch',
+  },
+  {
+    affectedReferencesSql: `/* privacy:affected:access_review_runs.reviewer */
+      SELECT CONCAT(N'Access review ', id) AS value
+      FROM access_review_runs
+      WHERE reviewer_hsa_id = @0
+      ORDER BY id ASC`,
+    allowedActions: ['switch', 'anonymize', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM access_review_runs WHERE reviewer_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) reviewer_display_name AS value FROM access_review_runs WHERE reviewer_hsa_id = @0 ORDER BY id ASC',
+    defaultWithReplacement: 'switch',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'reviewer_display_name',
+    fieldKey: 'reviewer',
+    hsaColumn: 'reviewer_hsa_id',
+    key: 'access_review_runs.reviewer',
+    kind: 'hsaOnly',
+    objectKey: 'accessReviewRuns',
+    table: 'access_review_runs',
+    warningKey: 'liveAssignment',
+  },
+  {
+    affectedReferencesSql: `/* privacy:affected:access_review_runs.completed_by */
+      SELECT CONCAT(N'Access review ', id) AS value
+      FROM access_review_runs
+      WHERE completed_by_hsa_id = @0
+      ORDER BY id ASC`,
+    allowedActions: ['anonymize', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM access_review_runs WHERE completed_by_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) completed_by_display_name AS value FROM access_review_runs WHERE completed_by_hsa_id = @0 ORDER BY id ASC',
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'completed_by_display_name',
+    fieldKey: 'completedBy',
+    hsaColumn: 'completed_by_hsa_id',
+    key: 'access_review_runs.completed_by',
+    kind: 'hsaOnly',
+    objectKey: 'accessReviewRuns',
+    table: 'access_review_runs',
+    warningKey: 'historySwitch',
+  },
+  {
+    affectedReferencesSql: `/* privacy:affected:access_review_items.principal */
+      SELECT CONCAT(N'Access review ', run_id, N' / item ', id) AS value
+      FROM access_review_items
+      WHERE principal_hsa_id = @0
+      ORDER BY run_id ASC, id ASC`,
+    allowedActions: ['anonymize', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM access_review_items WHERE principal_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) principal_display_name AS value FROM access_review_items WHERE principal_hsa_id = @0 ORDER BY run_id ASC, id ASC',
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'principal_display_name',
+    fieldKey: 'accessReviewPrincipal',
+    hsaColumn: 'principal_hsa_id',
+    key: 'access_review_items.principal',
+    kind: 'hsaOnly',
+    objectKey: 'accessReviewItems',
+    table: 'access_review_items',
+    warningKey: 'historySwitch',
+  },
+  {
+    affectedReferencesSql: `/* privacy:affected:access_review_items.decided_by */
+      SELECT CONCAT(N'Access review ', run_id, N' / item ', id) AS value
+      FROM access_review_items
+      WHERE decided_by_hsa_id = @0
+      ORDER BY run_id ASC, id ASC`,
+    allowedActions: ['anonymize', 'skip'],
+    countSql:
+      'SELECT COUNT(*) AS count FROM access_review_items WHERE decided_by_hsa_id = @0',
+    currentDisplaySql:
+      'SELECT TOP (1) decided_by_display_name AS value FROM access_review_items WHERE decided_by_hsa_id = @0 ORDER BY run_id ASC, id ASC',
+    defaultWithReplacement: 'anonymize',
+    defaultWithoutReplacement: 'anonymize',
+    displayColumn: 'decided_by_display_name',
+    fieldKey: 'decidedBy',
+    hsaColumn: 'decided_by_hsa_id',
+    key: 'access_review_items.decided_by',
+    kind: 'hsaOnly',
+    objectKey: 'accessReviewItems',
+    table: 'access_review_items',
+    warningKey: 'historySwitch',
+  },
 ]
 
 const POLICY_BY_KEY = new Map(

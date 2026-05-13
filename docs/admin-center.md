@@ -1,8 +1,8 @@
 # Admin Center
 
 This document describes the contributor-facing admin center for UI
-terminology, default requirement-list columns, privacy erasure and data
-portability, and reference-data entrypoints.
+terminology, default requirement-list columns, recurring access review,
+privacy erasure and data portability, and reference-data entrypoints.
 
 For requirement-list interaction details such as resizing, sorting, and
 filtering, see [requirements-ui-behaviour.md](./requirements-ui-behaviour.md).
@@ -21,12 +21,13 @@ the admin center instead.
 
 ## Tabs
 
-The admin center currently has four tabs:
+The admin center currently has five tabs:
 
 - `Terminology`
 - `Columns`
-- `Privacy`
 - `Reference data`
+- `Access review`
+- `Privacy`
 
 ## Terminology
 
@@ -160,8 +161,11 @@ Seed data also gives `SE2321000032-linneab` coverage across every privacy
 preview group: owner rows, area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
 and resolver fields, specification responsibility, and area/specification
-co-author assignment rows. This lets the privacy UI be tested end-to-end with
-one HSA-ID.
+co-author assignment rows, plus access-review creator, reviewer, completer,
+reviewed-principal, and decision snapshots. The access-review fixture includes
+two completed reviews: one created by the Linnéa HSA identity and one created
+by another user where the Linnéa HSA identity is the reviewer. This lets the
+privacy UI be tested end-to-end with one HSA-ID.
 
 The preview groups HSA-ID occurrences by object and field, shows the affected
 objects by name or stable identifier, shows the current actor display snapshot,
@@ -227,6 +231,60 @@ self-service path sends no target HSA-ID in the request body; the server derives
 the subject from the verified session HSA-ID and includes current session claims
 only for that self-export.
 
+## Access Review
+
+The `Access review` tab is available at `/{locale}/admin?tab=accessReview`.
+It supports the recurring authorization review required by the information
+security action plan. The feature inventories app-managed assignments, stores a
+point-in-time review run, assigns newly created runs to the signed-in actor from
+the verified IdP session, lets the assigned reviewer decide each item, lets
+Admin cancel mistaken pending runs without deleting evidence, and lets Admin
+export the review evidence as structured JSON or a PDF rendering of the same
+payload.
+
+The in-app scope is deliberately limited to permissions Kravhantering owns:
+
+- requirement-area owner references
+- requirement-area co-authors
+- requirements-specification responsible person
+- requirements-specification co-authors
+- the assignment-bound AI flags on those co-author/responsible rows
+
+Global IdP roles such as `Admin`, `Reviewer`, and `PrivacyOfficer`, source-code
+repository access, and externally provisioned MCP/client access are reviewed in
+the administration tools where those permissions are assigned. The access
+review run has an external evidence reference field so the in-app review can
+point to that external record.
+
+Access is role-aware:
+
+- `Admin` can create, list, cancel, complete, and export access review runs.
+- The assigned reviewer can open their assigned run and decide items by
+  matching the verified session HSA-ID to the run reviewer HSA-ID.
+- Other users receive a server-side authorization error even if they manipulate
+  the client.
+
+New runs default to an annual period and a due date 30 days after creation. Only
+one `draft` or `in_review` access review may exist at a time; the Admin UI
+disables creation while a run is open, and the create route enforces the same
+rule server-side. The create route does not accept a manual reviewer payload;
+the reviewer snapshot is derived from the same verified actor ticket that
+created the request. Each item starts as `pending` and must be changed to
+`approved`,
+`revoke_required`, `changed`, or `not_applicable` before the run can be
+completed. Decision updates record the deciding actor, timestamp, and optional
+comment. Completion is blocked while any item remains pending. Cancelling a run
+marks it as `cancelled` and keeps the snapshot rows as historical evidence
+instead of hard-deleting them.
+
+The JSON export uses schema version `access-review-export.v1` and is the
+authoritative evidence payload. The PDF button renders the same payload
+client-side for human review. Export responses use `Cache-Control: no-store`.
+Audit events are emitted for run creation, item decisions, cancellation,
+completion, and export. Audit detail contains review id, counts, delivery,
+decision, and status
+where relevant; it does not contain the raw list of reviewed HSA-IDs.
+
 ## Reference Data
 
 The `Reference data` tab is the curated navigation surface for the existing
@@ -263,6 +321,7 @@ If you change any of the following, update this document:
 - admin tab behavior
 - terminology persistence or scope
 - column default precedence
+- access-review scope, role gating, decisions, or evidence export
 - privacy-erasure or data-portability policy, actions, or role gating
 - admin entrypoint navigation
 - reference-data navigation structure

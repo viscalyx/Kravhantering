@@ -702,6 +702,7 @@
     "columnsDescription": "Styr standardordning och synlighet för kravlistans kolumner.",
     "referenceData": "Referensdata",
     "referenceDataDescription": "Öppna de befintliga referensdatasidorna med oförändrade route-sluggar.",
+    "accessReviewDescription": "Skapa återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr, besluta varje behörighetsrad och exportera granskningsevidens.",
     "privacyDescription": "Förhandsgranska HSA-ID-baserade träffar, exportera data och kör GDPR-radering för aktörsidentiteter och aktiva tilldelningar.",
     "privacy": {
       "title": "Dataskydd",
@@ -781,16 +782,21 @@
         "improvementSuggestions": "Förbättringsförslag",
         "specifications": "Kravunderlag",
         "areaCoAuthors": "Medförfattare för område",
-        "specificationCoAuthors": "Medförfattare för kravunderlag"
+        "specificationCoAuthors": "Medförfattare för kravunderlag",
+        "accessReviewRuns": "Behörighetsöversyner",
+        "accessReviewItems": "Rader i behörighetsöversyn"
       },
       "fields": {
         "identity": "Identitet",
         "owner": "Ägare",
         "createdBy": "Skapad av",
+        "completedBy": "Slutförd av",
         "decidedBy": "Beslutad av",
         "resolvedBy": "Åtgärdad av",
         "responsible": "Ansvarig",
-        "coAuthor": "Medförfattare"
+        "coAuthor": "Medförfattare",
+        "reviewer": "Granskare",
+        "accessReviewPrincipal": "Behörig i översyn"
       },
       "warnings": {
         "ownerSwitch": "Byt referenser till en ersättande ägare, eller anonymisera till den raderade användaren när ingen ersättare anges.",
@@ -809,6 +815,80 @@
       },
       "readOnly": {
         "controlledByOwner": "Visas som information. Kravområden och kravpaket byts automatiskt när ägarraden byts."
+      }
+    },
+    "accessReview": {
+      "title": "Behörighetsöversyn",
+      "action": "Åtgärd",
+      "aiDisabled": "AI av",
+      "aiEnabled": "AI på",
+      "cancel": "Avbryt granskning",
+      "cancelConfirmMessage": "Granskning #{id} markeras som avbruten. Granskningsraderna behålls som historik, men kan inte längre beslutas eller slutföras.",
+      "cancelConfirmTitle": "Avbryt granskning?",
+      "cancelError": "Kunde inte avbryta behörighetsöversynen.",
+      "cancelSuccess": "Behörighetsöversynen avbröts.",
+      "comment": "Kommentar",
+      "complete": "Slutför granskning",
+      "completeError": "Kunde inte slutföra behörighetsöversynen.",
+      "completeSuccess": "Behörighetsöversynen slutfördes.",
+      "create": "Skapa granskning",
+      "createBlockedByOpenRun": "Det finns redan en pågående granskning. Slutför eller avbryt den innan du skapar en ny.",
+      "createError": "Kunde inte skapa behörighetsöversyn.",
+      "createSuccess": "Behörighetsöversyn skapad.",
+      "createTitle": "Ny granskningsomgång",
+      "creating": "Skapar…",
+      "decision": "Beslut",
+      "decisionError": "Kunde inte spara beslutet i behörighetsöversynen.",
+      "dueAt": "Förfaller",
+      "dismissError": "Stäng felmeddelande",
+      "errorPopupTitle": "Något gick fel",
+      "externalEvidenceHelp": "Fältet är frivilligt och används som en pekare till extern evidens för behörigheter som Kravhantering inte själv äger, till exempel IdP-rollgranskning av administratörer, granskare och Dataskyddshandläggare, källkodsåtkomst och hantering av externa MCP-klienter. Ange t.ex. ett ärende-ID, en revisionsrapport-länk eller ett diarienummer. Underlaget bör visa period, scope, vilka system/roller som granskats, vem som granskat, beslut, åtgärder och sign-off.",
+      "externalEvidenceNote": "Globala roller i identitetsverktyget, källkodsåtkomst och extern MCP-klientåtkomst granskas i verktygen där behörigheterna tilldelas.",
+      "externalEvidenceReference": "Extern evidensreferens",
+      "exportError": "Kunde inte exportera behörighetsöversyn: {detail}",
+      "exportJson": "Exportera JSON",
+      "exportPdf": "Exportera PDF",
+      "exportingJson": "Exporterar JSON…",
+      "exportingPdf": "Exporterar PDF…",
+      "items": "Granskningsrader",
+      "itemsDescription": "Raderna är ögonblicksbilder från uppdrag som applikationen styr när granskningen skapades. Klicka på radens ikon för att klarmarkera den. När alla rader är klarmarkerade kan granskningen slutföras.",
+      "loadError": "Kunde inte läsa in behörighetsöversyner.",
+      "lockState": "Status",
+      "noRuns": "Det finns inga granskningsomgångar ännu.",
+      "overdue": "Den här granskningen är förfallen.",
+      "pendingCount": "{count} väntar",
+      "permission": "Behörighet",
+      "principal": "Behörig",
+      "rowApproved": "Rad klarmarkerad",
+      "rowNeedsReview": "Rad behöver granskas",
+      "runNumber": "Granskning #{id}",
+      "runs": "Granskningsomgångar",
+      "scope": "Omfattning",
+      "selectRun": "Välj en granskningsomgång.",
+      "summary": {
+        "due": "Förfaller",
+        "progress": "Status",
+        "reviewer": "Granskare",
+        "status": "Status"
+      },
+      "statuses": {
+        "cancelled": "Avbruten",
+        "completed": "Slutförd",
+        "draft": "Utkast",
+        "in_review": "Pågår"
+      },
+      "decisions": {
+        "approved": "Godkänd",
+        "changed": "Ändrad",
+        "not_applicable": "Ej tillämplig",
+        "pending": "Ej sparad",
+        "revoke_required": "Återkalla"
+      },
+      "permissionTypes": {
+        "area_co_author": "Områdesmedförfattare",
+        "area_owner": "Områdesägare",
+        "specification_co_author": "Medförfattare för kravunderlag",
+        "specification_responsible": "Ansvarig för kravunderlag"
       }
     },
     "swedish": "Svenska",
@@ -1203,6 +1283,10 @@
       "privacy": {
         "heading": "Dataskyddsradering",
         "body": "Använd fliken Dataskydd för GDPR-radering. Matchningar görs enbart med HSA-ID; namn visas för kontroll och skapar aldrig matchningar."
+      },
+      "accessReview": {
+        "heading": "Behörighetsöversyn",
+        "body": "Använd behörighetsöversyn för återkommande granskningar av uppdrag och AI-behörigheter som applikationen styr. Globala roller granskas i identitetsverktyget."
       }
     },
     "adminPrivacy": {
@@ -1242,6 +1326,25 @@
       "caveats": {
         "heading": "Viktiga begränsningar",
         "body": "Handläggaren måste bedöma att radering får göras och att ingen starkare rättslig grund eller bevarandeskyldighet hindrar åtgärden. Säkerhetsloggar och externa loggar hanteras enligt separat gallrings- eller anonymiseringspolicy. Att anonymisera handläggaridentitet i sådana loggar kan försämra spårbarheten."
+      }
+    },
+    "adminAccessReview": {
+      "title": "Behörighetsöversyn",
+      "overview": {
+        "heading": "Syfte",
+        "body": "Behörighetsöversynen dokumenterar vilka som har uppdrag som applikationen styr, vem som granskade dem och vilket beslut som fattades för varje rad."
+      },
+      "scope": {
+        "heading": "Omfattning",
+        "body": "Applikationen inventerar områdesägare, områdesmedförfattare, ansvariga för kravunderlag, medförfattare för kravunderlag och deras AI-behörigheter i applikationen. Globala roller, källkodsåtkomst och extern klientåtkomst granskas i sina källverktyg."
+      },
+      "decisions": {
+        "heading": "Beslut",
+        "body": "Varje rad börjar som väntande och kan godkännas, markeras för återkallelse, markeras som ändrad eller markeras som ej tillämplig. En granskning kan bara slutföras när inga rader väntar."
+      },
+      "evidence": {
+        "heading": "Evidens",
+        "body": "Exportera JSON som strukturerat evidensformat. PDF är en läsbar återgivning av samma innehåll. Lägg referenser till externa roll- eller källkodsgranskningar i evidensfältet."
       }
     },
     "privacyDataExport": {

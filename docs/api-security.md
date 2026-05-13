@@ -23,7 +23,8 @@ Covered in Phase 5:
 Deferred from Phase 5:
 
 - CSV export, MCP, AI routes, admin catalog mutations, specifications,
-  deviations, and improvement suggestions.
+  deviations, improvement suggestions, and Admin Center access-review routes
+  (`/api/admin/access-reviews/**`).
 - Privacy erasure and data-subject export routes
   (`POST /api/privacy/erasure-preview`,
   `POST /api/privacy/erasure-requests`,
@@ -34,6 +35,17 @@ Deferred from Phase 5:
   self-service export for the signed-in user's own HSA-ID, returns
   `Cache-Control: no-store`, and records only a non-reversible target
   fingerprint in audit details.
+- Access-review routes remain outside the OpenAPI/Schemathesis contract for
+  now, aligned with the deferred privacy-route policy. They use the same
+  request-context and CSRF protections as other Admin Center mutations, but the
+  useful assertions are role-matrix and audit-redaction tests: Admin can create,
+  cancel, complete, and export runs; create derives the reviewer from the
+  verified session actor instead of accepting a reviewer body; create is
+  rejected with conflict while another run is `draft` or `in_review`;
+  cancellation is a status change rather than hard deletion; the assigned
+  reviewer can decide their own run; other users receive 403; export responses
+  use `Cache-Control: no-store`; and audit detail never contains a raw reviewed
+  HSA-ID list.
 - ZAP API scan, role-matrix DAST, full active scans, and paid vendor scanners
   that require service-specific CI secrets.
 

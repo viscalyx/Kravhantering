@@ -12,6 +12,11 @@
  */
 
 export type SecurityEventName =
+  | 'access_review.cancelled'
+  | 'access_review.completed'
+  | 'access_review.created'
+  | 'access_review.exported'
+  | 'access_review.item_decided'
   | 'auth.login.succeeded'
   | 'auth.login.failed'
   | 'auth.logout'

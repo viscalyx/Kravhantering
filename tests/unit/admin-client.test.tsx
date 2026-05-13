@@ -1,10 +1,13 @@
+// cspell:ignore annaj
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AdminClient from '@/app/[locale]/admin/admin-client'
 import { ConfirmModalProvider } from '@/components/ConfirmModal'
@@ -42,6 +45,7 @@ vi.mock('next-intl', () => ({
         key === 'privacy.errorWithDetail' ||
         key === 'privacy.serverErrorWithDetail' ||
         key === 'privacy.exportError' ||
+        key === 'accessReview.exportError' ||
         key === 'exportError'
       ) {
         return `${translationKey} ${values?.message ?? ''} ${values?.detail ?? ''}`.trim()
@@ -106,6 +110,155 @@ function dataSubjectExportBody() {
   }
 }
 
+function accessReviewDetail() {
+  return {
+    items: [
+      {
+        canGenerateAi: true,
+        comment: null,
+        createdAt: '2026-05-12T12:00:00.000Z',
+        decidedAt: null,
+        decidedBy: null,
+        decision: 'pending',
+        id: 7,
+        permissionType: 'area_co_author',
+        principal: {
+          displayName: 'Kalle Svensson',
+          hsaId: 'SE2321000032-kalle1',
+        },
+        scope: {
+          key: '1',
+          label: 'INT Integration',
+          type: 'requirement_area',
+        },
+        sourceKey: 'requirement_area_co_authors.hsa_id',
+        sourceTable: 'requirement_area_co_authors',
+      },
+    ],
+    run: {
+      completedAt: null,
+      completedBy: null,
+      createdAt: '2026-05-12T12:00:00.000Z',
+      createdBy: {
+        displayName: 'Ada Admin',
+        hsaId: 'SE2321000032-admin1',
+      },
+      dueAt: '2026-06-11T12:00:00.000Z',
+      externalEvidenceReference: 'IDM-2026',
+      id: 42,
+      periodEnd: '2027-05-12T12:00:00.000Z',
+      periodStart: '2026-05-12T12:00:00.000Z',
+      reviewer: {
+        displayName: 'Ada Admin',
+        hsaId: 'SE2321000032-admin1',
+      },
+      status: 'in_review',
+      summary: {
+        approvedCount: 0,
+        changedCount: 0,
+        itemCount: 1,
+        notApplicableCount: 0,
+        pendingCount: 1,
+        revokeRequiredCount: 0,
+      },
+      updatedAt: '2026-05-12T12:00:00.000Z',
+    },
+  }
+}
+
+function accessReviewExportBody() {
+  return {
+    ...accessReviewDetail(),
+    generatedAt: '2026-05-12T12:30:00.000Z',
+    generatedBy: {
+      displayName: 'Ada Admin',
+      hsaId: 'SE2321000032-admin1',
+    },
+    limitations: [],
+    schemaVersion: 'access-review-export.v1',
+  }
+}
+
+function mockAccessReviewApi(options?: {
+  cancelResponse?: Promise<Response> | Response
+  createResponse?: Promise<Response> | Response
+  detailResponse?: Promise<Response> | Response
+  detailResponses?: Record<number, Promise<Response> | Response>
+  exportResponse?: Promise<Response> | Response
+  itemResponse?: Promise<Response> | Response
+  listResponse?: Promise<Response> | Response
+}) {
+  fetchMock.mockImplementation(
+    (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url === '/api/admin/access-reviews' && method === 'GET') {
+        return Promise.resolve(
+          options?.listResponse ?? okJson({ runs: [accessReviewDetail().run] }),
+        )
+      }
+      if (url === '/api/admin/access-reviews' && method === 'POST') {
+        return Promise.resolve(
+          options?.createResponse ?? okJson(accessReviewDetail()),
+        )
+      }
+      const detailMatch = url.match(/^\/api\/admin\/access-reviews\/(\d+)$/)
+      if (detailMatch && method === 'GET') {
+        const reviewId = Number(detailMatch[1])
+        return Promise.resolve(
+          options?.detailResponses?.[reviewId] ??
+            options?.detailResponse ??
+            okJson(accessReviewDetail()),
+        )
+      }
+      if (
+        url === '/api/admin/access-reviews/42/items/7' &&
+        method === 'PATCH'
+      ) {
+        return Promise.resolve(
+          options?.itemResponse ??
+            okJson({
+              ...accessReviewDetail(),
+              items: [
+                {
+                  ...accessReviewDetail().items[0],
+                  comment: 'Still needed',
+                  decision: 'approved',
+                },
+              ],
+              run: {
+                ...accessReviewDetail().run,
+                summary: {
+                  ...accessReviewDetail().run.summary,
+                  approvedCount: 1,
+                  pendingCount: 0,
+                },
+              },
+            }),
+        )
+      }
+      if (url === '/api/admin/access-reviews/42/export' && method === 'POST') {
+        return Promise.resolve(
+          options?.exportResponse ?? okJson(accessReviewExportBody()),
+        )
+      }
+      if (url === '/api/admin/access-reviews/42/cancel' && method === 'POST') {
+        return Promise.resolve(
+          options?.cancelResponse ??
+            okJson({
+              ...accessReviewDetail(),
+              run: {
+                ...accessReviewDetail().run,
+                status: 'cancelled',
+              },
+            }),
+        )
+      }
+      return Promise.reject(new Error(`Unexpected fetch ${method} ${url}`))
+    },
+  )
+}
+
 function deferred<T>() {
   let reject!: (reason?: unknown) => void
   let resolve!: (value: T | PromiseLike<T>) => void
@@ -115,6 +268,10 @@ function deferred<T>() {
   })
 
   return { promise, reject, resolve }
+}
+
+function renderWithConfirmModal(ui: Parameters<typeof render>[0]) {
+  return render(<ConfirmModalProvider>{ui}</ConfirmModalProvider>)
 }
 
 function HelpContentProbe() {
@@ -403,6 +560,729 @@ describe('AdminClient', () => {
         'adminPrivacy.title',
       ),
     )
+  })
+
+  it('switches the header help content when the access review tab is selected', async () => {
+    mockAccessReviewApi()
+
+    renderWithConfirmModal(
+      <HelpProvider>
+        <AdminClient
+          currentUserRoles={['Admin']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+        <HelpContentProbe />
+      </HelpProvider>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('help-title')).toHaveTextContent('admin.title'),
+    )
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: 'admin.accessReview.title' }),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('help-title')).toHaveTextContent(
+        'adminAccessReview.title',
+      ),
+    )
+  })
+
+  it('loads access review runs and saves reviewer decisions', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi()
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const principalCell = await screen.findByText('Kalle Svensson')
+    const row = principalCell.closest('tr')
+    expect(row).not.toBeNull()
+    expect(
+      screen.getAllByText('admin.accessReview.runNumber').length,
+    ).toBeGreaterThan(0)
+    const runStatus = screen
+      .getAllByText('admin.accessReview.statuses.in_review')
+      .find(element => element.closest('button'))
+    expect(runStatus).toHaveClass('dark:bg-transparent')
+    expect(row).toHaveTextContent(
+      'admin.accessReview.permissionTypes.area_co_author',
+    )
+    expect(row).toHaveTextContent('admin.accessReview.aiEnabled')
+    const displayedEvidenceReference = screen.getByText('IDM-2026')
+    expect(displayedEvidenceReference).toHaveClass('truncate')
+    expect(displayedEvidenceReference).toHaveAttribute('title', 'IDM-2026')
+    expect(row).not.toHaveTextContent('admin.accessReview.decisions.pending')
+    expect(
+      within(row as HTMLTableRowElement).getByRole('combobox'),
+    ).toBeTruthy()
+    const needsReviewButton = within(row as HTMLTableRowElement).getByRole(
+      'button',
+      {
+        name: 'admin.accessReview.rowNeedsReview',
+      },
+    )
+    expect(needsReviewButton).toHaveClass('bg-amber-50', 'dark:bg-amber-950/30')
+    expect(needsReviewButton).toHaveAttribute(
+      'title',
+      'admin.accessReview.rowNeedsReview',
+    )
+
+    fireEvent.change(within(row as HTMLTableRowElement).getByRole('textbox'), {
+      target: { value: 'Still needed' },
+    })
+    fireEvent.click(
+      within(row as HTMLTableRowElement).getByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/access-reviews/42/items/7',
+        expect.objectContaining({
+          body: JSON.stringify({
+            comment: 'Still needed',
+            decision: 'approved',
+          }),
+          method: 'PATCH',
+        }),
+      ),
+    )
+    await waitFor(() =>
+      expect(
+        within(row as HTMLTableRowElement).queryByRole('combobox'),
+      ).toBeNull(),
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(within(row as HTMLTableRowElement).queryByRole('textbox')).toBeNull()
+    expect(
+      within(row as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    ).toBeNull()
+    const savedDecisionText = within(row as HTMLTableRowElement).getByText(
+      'admin.accessReview.decisions.approved',
+    )
+    expect(savedDecisionText).toHaveClass('whitespace-nowrap')
+    expect(savedDecisionText).toHaveClass(
+      'bg-emerald-50',
+      'dark:bg-transparent',
+    )
+    expect(savedDecisionText.closest('td')).toHaveClass(
+      'align-middle',
+      'text-left',
+    )
+    const savedCommentText = within(row as HTMLTableRowElement).getByText(
+      'Still needed',
+    )
+    expect(savedCommentText.closest('td')).toHaveClass(
+      'align-middle',
+      'text-left',
+    )
+    const unlockButton = within(row as HTMLTableRowElement).getByRole(
+      'button',
+      {
+        name: 'admin.accessReview.rowApproved',
+      },
+    )
+    expect(unlockButton).toHaveClass('bg-emerald-50', 'dark:bg-emerald-950/30')
+    expect(unlockButton).toHaveAttribute(
+      'title',
+      'admin.accessReview.rowApproved',
+    )
+    fireEvent.click(unlockButton)
+    expect(
+      within(row as HTMLTableRowElement).getByRole('combobox'),
+    ).toHaveValue('approved')
+    expect(within(row as HTMLTableRowElement).getByRole('textbox')).toHaveValue(
+      'Still needed',
+    )
+    expect(
+      within(row as HTMLTableRowElement).getByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    ).toBeTruthy()
+  })
+
+  it('keeps a row in place when locking a saved access review decision', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    const baseDetail = accessReviewDetail()
+    const annaItem = {
+      ...baseDetail.items[0],
+      id: 8,
+      principal: {
+        displayName: 'Anna Johansson',
+        hsaId: 'SE2321000032-annaj',
+      },
+    }
+    const kalleItem = baseDetail.items[0]
+    const detailBeforeSave = {
+      ...baseDetail,
+      items: [annaItem, kalleItem],
+      run: {
+        ...baseDetail.run,
+        summary: {
+          ...baseDetail.run.summary,
+          itemCount: 2,
+          pendingCount: 2,
+        },
+      },
+    }
+    const detailAfterSaveWithServerReorder = {
+      ...detailBeforeSave,
+      items: [
+        {
+          ...kalleItem,
+          comment: 'Still needed',
+          decision: 'approved',
+        },
+        annaItem,
+      ],
+      run: {
+        ...detailBeforeSave.run,
+        summary: {
+          ...detailBeforeSave.run.summary,
+          approvedCount: 1,
+          pendingCount: 1,
+        },
+      },
+    }
+    mockAccessReviewApi({
+      detailResponse: okJson(detailBeforeSave),
+      itemResponse: okJson(detailAfterSaveWithServerReorder),
+      listResponse: okJson({ runs: [detailBeforeSave.run] }),
+    })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    const kalleRow = (await screen.findByText('Kalle Svensson')).closest('tr')
+    const annaRow = screen.getByText('Anna Johansson').closest('tr')
+    expect(kalleRow).not.toBeNull()
+    expect(annaRow).not.toBeNull()
+    expect(Array.from(kalleRow?.parentElement?.children ?? [])).toEqual([
+      annaRow,
+      kalleRow,
+    ])
+
+    fireEvent.change(
+      within(kalleRow as HTMLTableRowElement).getByRole('textbox'),
+      {
+        target: { value: 'Still needed' },
+      },
+    )
+    fireEvent.click(
+      within(kalleRow as HTMLTableRowElement).getByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(
+        within(kalleRow as HTMLTableRowElement).queryByRole('combobox'),
+      ).toBeNull(),
+    )
+    expect(Array.from(kalleRow?.parentElement?.children ?? [])).toEqual([
+      annaRow,
+      kalleRow,
+    ])
+  })
+
+  it('waits for access review runs before showing the empty state', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    const pendingList = deferred<Response>()
+    mockAccessReviewApi({ listResponse: pendingList.promise })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(screen.queryByText('admin.accessReview.noRuns')).toBeNull()
+    expect(screen.queryByText('admin.accessReview.selectRun')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'admin.accessReview.create' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('button', {
+        name: 'admin.accessReview.creating',
+      }),
+    ).toBeNull()
+
+    await act(async () => {
+      pendingList.resolve(okJson({ runs: [] }))
+    })
+
+    expect(await screen.findByText('admin.accessReview.noRuns')).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'admin.accessReview.create' }),
+    ).toBeEnabled()
+  })
+
+  it('creates access reviews for the signed-in actor without manual reviewer fields', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi({ listResponse: okJson({ runs: [] }) })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(await screen.findByText('admin.accessReview.noRuns')).toBeTruthy()
+    expect(screen.queryByText('admin.accessReview.reviewerHsaId')).toBeNull()
+    expect(
+      screen.queryByText('admin.accessReview.reviewerDisplayName'),
+    ).toBeNull()
+    expect(
+      screen.queryByText('admin.accessReview.externalEvidenceHelp'),
+    ).toBeNull()
+    const externalEvidenceHelpButton = screen.getByRole('button', {
+      name: 'common.help: admin.accessReview.externalEvidenceReference',
+    })
+    expect(externalEvidenceHelpButton).toHaveAttribute('aria-expanded', 'false')
+    const externalEvidenceInput = screen.getByLabelText(
+      'admin.accessReview.externalEvidenceReference',
+    )
+    expect(externalEvidenceInput).not.toHaveAttribute('aria-describedby')
+    fireEvent.click(externalEvidenceHelpButton)
+    expect(externalEvidenceHelpButton).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByText('admin.accessReview.externalEvidenceHelp'),
+    ).toBeTruthy()
+
+    fireEvent.change(externalEvidenceInput, { target: { value: 'IDM-2026' } })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.accessReview.create' }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/access-reviews',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    )
+    const createCall = fetchMock.mock.calls.find(([input, init]) => {
+      return (
+        String(input) === '/api/admin/access-reviews' &&
+        (init as RequestInit | undefined)?.method === 'POST'
+      )
+    })
+    expect(createCall).toBeTruthy()
+    expect(JSON.parse((createCall?.[1] as RequestInit).body as string)).toEqual(
+      {
+        externalEvidenceReference: 'IDM-2026',
+      },
+    )
+  })
+
+  it('loads access review runs under React Strict Mode', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi()
+
+    renderWithConfirmModal(
+      <StrictMode>
+        <AdminClient
+          currentUserRoles={['Admin']}
+          initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+          initialTerminology={buildUiTerminologyPayload(
+            getDefaultUiTerminology(),
+          )}
+        />
+      </StrictMode>,
+    )
+
+    expect(await screen.findByText('Kalle Svensson')).toBeTruthy()
+  })
+
+  it('keeps the access review detail pane quiet while detail is loading', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    const pendingDetail = deferred<Response>()
+    mockAccessReviewApi({ detailResponse: pendingDetail.promise })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(await screen.findByText('admin.accessReview.runNumber')).toBeTruthy()
+    expect(screen.queryByText('admin.accessReview.selectRun')).toBeNull()
+    expect(screen.queryByText('admin.accessReview.summary.status')).toBeNull()
+
+    await act(async () => {
+      pendingDetail.resolve(okJson(accessReviewDetail()))
+    })
+
+    expect(await screen.findByText('Kalle Svensson')).toBeTruthy()
+  })
+
+  it('keeps the previous access review detail mounted while switching runs', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    const currentDetail = accessReviewDetail()
+    const nextDetail = {
+      ...accessReviewDetail(),
+      items: [
+        {
+          ...accessReviewDetail().items[0],
+          id: 8,
+          principal: {
+            displayName: 'Anna Johansson',
+            hsaId: 'SE2321000032-annaj',
+          },
+        },
+      ],
+      run: {
+        ...accessReviewDetail().run,
+        id: 43,
+        summary: {
+          ...accessReviewDetail().run.summary,
+          approvedCount: 1,
+          pendingCount: 0,
+        },
+      },
+    }
+    const pendingNextDetail = deferred<Response>()
+    mockAccessReviewApi({
+      detailResponses: {
+        42: okJson(currentDetail),
+        43: pendingNextDetail.promise,
+      },
+      listResponse: okJson({ runs: [currentDetail.run, nextDetail.run] }),
+    })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(await screen.findByText('Kalle Svensson')).toBeTruthy()
+
+    const runButtons = screen
+      .getAllByRole('button')
+      .filter(button =>
+        button.textContent?.includes('admin.accessReview.pendingCount'),
+      )
+    expect(runButtons).toHaveLength(2)
+    await act(async () => {
+      fireEvent.click(runButtons[0])
+    })
+
+    expect(screen.getByText('Kalle Svensson')).toBeTruthy()
+    expect(screen.queryByText('admin.accessReview.selectRun')).toBeNull()
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith('/api/admin/access-reviews/43'),
+    )
+    expect(
+      fetchMock.mock.calls.filter(([input]) => {
+        return String(input) === '/api/admin/access-reviews'
+      }),
+    ).toHaveLength(1)
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'admin.accessReview.exportJson' }),
+      ).toBeDisabled(),
+    )
+
+    await act(async () => {
+      pendingNextDetail.resolve(okJson(nextDetail))
+    })
+
+    expect(await screen.findByText('Anna Johansson')).toBeTruthy()
+    expect(screen.queryByText('Kalle Svensson')).toBeNull()
+  })
+
+  it('cancels a pending access review after confirmation', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi()
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    await screen.findByText('Kalle Svensson')
+    expect(
+      screen.getByRole('button', { name: 'admin.accessReview.create' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByText('admin.accessReview.createBlockedByOpenRun'),
+    ).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'admin.accessReview.cancel' }),
+    )
+    expect(
+      await screen.findByText('admin.accessReview.cancelConfirmTitle'),
+    ).toBeTruthy()
+
+    const dialog = screen.getByRole('alertdialog')
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: 'admin.accessReview.cancel' }),
+    )
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/access-reviews/42/cancel',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    )
+    expect(screen.getByText('admin.accessReview.cancelSuccess')).toBeTruthy()
+    expect(
+      screen.getAllByText('admin.accessReview.statuses.cancelled'),
+    ).toBeTruthy()
+    const cancelledRunStatus = screen
+      .getAllByText('admin.accessReview.statuses.cancelled')
+      .find(element => element.closest('button'))
+    expect(cancelledRunStatus).toHaveClass('text-red-700')
+    expect(cancelledRunStatus).not.toHaveClass('rounded-full')
+    expect(
+      screen.getByRole('button', { name: 'admin.accessReview.create' }),
+    ).toBeEnabled()
+    const cancelledRow = screen.getByText('Kalle Svensson').closest('tr')
+    expect(cancelledRow).not.toBeNull()
+    expect(cancelledRow).not.toHaveTextContent(
+      'admin.accessReview.decisions.pending',
+    )
+    expect(
+      within(cancelledRow as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    ).toBeNull()
+    expect(
+      within(cancelledRow as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowApproved',
+      }),
+    ).toBeNull()
+    await waitFor(() =>
+      expect(screen.queryByText('admin.accessReview.action')).toBeNull(),
+    )
+  })
+
+  it('exports access review evidence as JSON from the selected run', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi()
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    await screen.findByText('Kalle Svensson')
+    const exportJsonButton = screen.getByRole('button', {
+      name: 'admin.accessReview.exportJson',
+    })
+    const exportPdfButton = screen.getByRole('button', {
+      name: 'admin.accessReview.exportPdf',
+    })
+    expect(exportJsonButton.parentElement).toBe(exportPdfButton.parentElement)
+    expect(exportJsonButton.parentElement).toHaveClass('flex-nowrap')
+    expect(exportJsonButton).toHaveClass('whitespace-nowrap')
+    expect(exportPdfButton).toHaveClass('whitespace-nowrap')
+
+    fireEvent.click(exportJsonButton)
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/access-reviews/42/export',
+        expect.objectContaining({
+          body: JSON.stringify({ delivery: 'json' }),
+          method: 'POST',
+        }),
+      ),
+    )
+    expect(createObjectURLMock).toHaveBeenCalledTimes(1)
+    expect(anchorClickMock).toHaveBeenCalledTimes(1)
+    expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:data-subject-export')
+  })
+
+  it('hides the complete action for completed access reviews', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    const completedDetail = {
+      ...accessReviewDetail(),
+      items: [
+        {
+          ...accessReviewDetail().items[0],
+          decision: 'approved',
+        },
+      ],
+      run: {
+        ...accessReviewDetail().run,
+        completedAt: '2026-05-13T12:00:00.000Z',
+        completedBy: {
+          displayName: 'Ada Admin',
+          hsaId: 'SE2321000032-admin1',
+        },
+        status: 'completed',
+        summary: {
+          ...accessReviewDetail().run.summary,
+          approvedCount: 1,
+          pendingCount: 0,
+        },
+      },
+    }
+    mockAccessReviewApi({
+      detailResponse: okJson(completedDetail),
+      listResponse: okJson({ runs: [completedDetail.run] }),
+    })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    expect(await screen.findByText('Kalle Svensson')).toBeTruthy()
+    const completedRow = screen.getByText('Kalle Svensson').closest('tr')
+    expect(completedRow).not.toBeNull()
+    expect(
+      within(completedRow as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    ).toBeNull()
+    expect(
+      within(completedRow as HTMLTableRowElement).queryByRole('button', {
+        name: 'admin.accessReview.rowApproved',
+      }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', {
+        name: 'admin.accessReview.complete',
+      }),
+    ).toBeNull()
+    expect(screen.queryByText('admin.accessReview.action')).toBeNull()
+  })
+
+  it('shows access review export loading and errors', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    const pendingExport = deferred<Response>()
+    mockAccessReviewApi({ exportResponse: pendingExport.promise })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    await screen.findByText('Kalle Svensson')
+    const exportJsonButton = screen.getByRole('button', {
+      name: 'admin.accessReview.exportJson',
+    })
+    fireEvent.click(exportJsonButton)
+
+    await waitFor(() =>
+      expect(exportJsonButton).toHaveTextContent(
+        'admin.accessReview.exportingJson',
+      ),
+    )
+    expect(exportJsonButton).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'admin.accessReview.exportPdf' }),
+    ).toBeDisabled()
+
+    pendingExport.resolve(errorJson({ error: 'Admin role is required' }, 403))
+
+    const alert = await screen.findByRole('alert')
+    expect(
+      within(alert).getByText('admin.accessReview.errorPopupTitle'),
+    ).toBeTruthy()
+    expect(
+      within(alert).getByText(
+        'admin.accessReview.exportError Admin role is required',
+      ),
+    ).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.accessReview.dismissError',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    expect(createObjectURLMock).not.toHaveBeenCalled()
+  })
+
+  it('surfaces access review action errors in a popup', async () => {
+    searchParamsMock.current = new URLSearchParams('tab=accessReview')
+    mockAccessReviewApi({
+      itemResponse: errorJson({ error: 'Unauthorized' }, 401),
+    })
+
+    renderWithConfirmModal(
+      <AdminClient
+        currentUserRoles={['Admin']}
+        initialColumnDefaults={DEFAULT_REQUIREMENT_LIST_COLUMN_DEFAULTS}
+        initialTerminology={buildUiTerminologyPayload(
+          getDefaultUiTerminology(),
+        )}
+      />,
+    )
+
+    await screen.findByText('Kalle Svensson')
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'admin.accessReview.rowNeedsReview',
+      }),
+    )
+
+    const alert = await screen.findByRole('alert')
+    expect(
+      within(alert).getByText('admin.accessReview.errorPopupTitle'),
+    ).toBeTruthy()
+    expect(within(alert).getByText('Unauthorized')).toBeTruthy()
   })
 
   it('dims and disables the privacy tab without the PrivacyOfficer role', () => {

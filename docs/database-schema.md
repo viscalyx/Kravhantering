@@ -20,8 +20,9 @@ workflow, and CLI reference live in
 3. [Lookup / Taxonomy Tables](#lookup--taxonomy-tables)
 4. [UI Settings Tables](#ui-settings-tables)
 5. [Core Domain Tables](#core-domain-tables)
-6. [Join / Bridge Tables](#join--bridge-tables)
-7. [Status Workflow](#status-workflow)
+6. [Access Review Tables](#access-review-tables)
+7. [Join / Bridge Tables](#join--bridge-tables)
+8. [Status Workflow](#status-workflow)
 
 ---
 
@@ -402,6 +403,44 @@ erDiagram
         text created_by_display_name
     }
 
+    access_review_runs {
+        integer id PK
+        text status
+        text period_start
+        text period_end
+        text due_at
+        text created_at
+        text updated_at
+        text created_by_hsa_id
+        text created_by_display_name
+        text reviewer_hsa_id
+        text reviewer_display_name
+        text external_evidence_reference
+        text completed_at
+        text completed_by_hsa_id
+        text completed_by_display_name
+    }
+
+    access_review_items {
+        integer id PK
+        integer run_id FK
+        text source_key
+        text source_table
+        text principal_hsa_id
+        text principal_display_name
+        text scope_type
+        text scope_key
+        text scope_label
+        text permission_type
+        integer can_generate_ai "boolean"
+        text decision
+        text decided_at
+        text decided_by_hsa_id
+        text decided_by_display_name
+        text comment
+        text created_at
+    }
+
     %% Relationships
     owners |o--o{ requirement_areas : "owns"
     requirement_areas ||--o{ requirement_area_co_authors : "has co-authors"
@@ -445,6 +484,7 @@ erDiagram
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "linked via"
     norm_references ||--o{ specification_local_requirement_norm_references : "linked via"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "has deviations"
+    access_review_runs ||--o{ access_review_items : "snapshots assignments"
 
     improvement_suggestions {
         integer id PK
@@ -930,8 +970,9 @@ not by name. The `SE2321000032-linneab` fixture appears across every privacy
 preview group: owner rows, area and package owner assignments, requirement
 versions, deviation creator and decision fields, improvement-suggestion creator
 and resolver fields, specification responsibility, and area/specification
-co-author assignment rows. This gives privacy-erasure tests a single HSA-ID
-with varied live-assignment and historical occurrences.
+co-author assignment rows, plus access-review creator, reviewer, completer,
+reviewed-principal, and decision snapshots. This gives privacy-erasure tests a
+single HSA-ID with varied live-assignment and historical occurrences.
 
 ---
 
@@ -1131,6 +1172,84 @@ version/review/publication lifecycle.
 specification-local requirements and therefore demonstrates the
 ID format, join tables, and delete semantics for this
 feature.
+
+---
+
+## Access Review Tables
+
+Access review tables store recurring review evidence for app-managed
+permissions. A run snapshots active assignments at creation time; later changes
+to live assignments do not rewrite historical review evidence.
+
+### `access_review_runs`
+
+One recurring access-review round with status, period, due date, assigned
+reviewer, and external evidence reference for IdP/repository review records.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `status` | text | Review status: `draft`, `in_review`, `completed`, or `cancelled` |
+| `period_start` | text (ISO 8601) | Start of the review period |
+| `period_end` | text (ISO 8601) | End of the review period |
+| `due_at` | text (ISO 8601) | Date/time when review evidence is due |
+| `created_at` | text (ISO 8601) | Creation timestamp |
+| `updated_at` | text (ISO 8601) | Last-modified timestamp |
+| `created_by_hsa_id` | text | HSA-ID for the Admin that created the run (nullable after privacy erasure) |
+| `created_by_display_name` | text | Display-name snapshot for the creator |
+| `reviewer_hsa_id` | text | HSA-ID for the assigned reviewer (nullable after privacy erasure) |
+| `reviewer_display_name` | text | Display-name snapshot for the assigned reviewer |
+| `external_evidence_reference` | text | Reference to external IdP/repository/client-access review evidence |
+| `completed_at` | text (ISO 8601) | Completion timestamp (nullable) |
+| `completed_by_hsa_id` | text | HSA-ID for the Admin that completed the run (nullable after privacy erasure) |
+| `completed_by_display_name` | text | Display-name snapshot for the completing Admin |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_access_review_runs_status`,
+`idx_access_review_runs_due_at`, `idx_access_review_runs_reviewer_hsa_id`.
+
+**Check constraint:** `chk_access_review_runs_status` limits `status` to the
+review lifecycle values above.
+
+**Seed note:** Local privacy seed data includes two completed access-review
+runs for `SE2321000032-linneab`: one where that HSA identity created the run
+and one created by another user where that HSA identity is the reviewer. The
+same fixture also covers completed-by and item decision/principal snapshots for
+Admin Privacy preview coverage.
+
+### `access_review_items`
+
+Point-in-time snapshot of one app-managed assignment in an access-review run.
+
+<!-- markdownlint-disable MD013 -->
+| Column | Type | Description |
+| -------- | ------ | ------------- |
+| `id` | integer PK | Auto-increment primary key |
+| `run_id` | integer FK → `access_review_runs.id` (CASCADE DELETE) | Owning review run |
+| `source_key` | text | Stable collector source key, for example `requirement_area_co_authors.hsa_id` |
+| `source_table` | text | Logical table/source captured by the collector |
+| `principal_hsa_id` | text | Reviewed principal HSA-ID (nullable after privacy erasure) |
+| `principal_display_name` | text | Display-name snapshot for the reviewed principal |
+| `scope_type` | text | Scope family, for example `requirement_area` or `requirements_specification` |
+| `scope_key` | text | Stable scope identifier inside the source family |
+| `scope_label` | text | Human-readable scope label |
+| `permission_type` | text | App permission type such as area owner, co-author, or specification responsible |
+| `can_generate_ai` | integer NOT NULL DEFAULT 0 | Whether the assignment had app-managed AI permission at snapshot time |
+| `decision` | text | Review decision: `pending`, `approved`, `revoke_required`, `changed`, or `not_applicable` |
+| `decided_at` | text (ISO 8601) | Decision timestamp (nullable) |
+| `decided_by_hsa_id` | text | HSA-ID for the actor that recorded the decision (nullable after privacy erasure) |
+| `decided_by_display_name` | text | Display-name snapshot for the deciding actor |
+| `comment` | text | Optional review note |
+| `created_at` | text (ISO 8601) | Snapshot creation timestamp |
+<!-- markdownlint-enable MD013 -->
+
+**Indexes:** `idx_access_review_items_run_id_decision`,
+`idx_access_review_items_principal_hsa_id`,
+`idx_access_review_items_source_key`, `idx_access_review_items_decided_by_hsa_id`.
+
+**Check constraint:** `chk_access_review_items_decision` limits `decision` to
+the review decision values above.
 
 ---
 
@@ -1488,6 +1607,13 @@ its purpose and the table/column(s) it covers.
 | `idx_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | Speed up lookups of suggestions by requirement version |
 | `idx_improvement_suggestions_created_by_hsa_id` | `improvement_suggestions` | `created_by_hsa_id` | Speed up privacy erasure of suggestion creators |
 | `idx_improvement_suggestions_resolved_by_hsa_id` | `improvement_suggestions` | `resolved_by_hsa_id` | Speed up privacy erasure of suggestion resolvers |
+| `idx_access_review_runs_status` | `access_review_runs` | `status` | Speed up filtering review runs by lifecycle status |
+| `idx_access_review_runs_due_at` | `access_review_runs` | `due_at` | Speed up overdue and next-due review queries |
+| `idx_access_review_runs_reviewer_hsa_id` | `access_review_runs` | `reviewer_hsa_id` | Speed up assigned-reviewer access checks and privacy lookups |
+| `idx_access_review_items_run_id_decision` | `access_review_items` | `(run_id, decision)` | Speed up review progress counts and pending-item checks |
+| `idx_access_review_items_principal_hsa_id` | `access_review_items` | `principal_hsa_id` | Speed up privacy lookup for reviewed principals |
+| `idx_access_review_items_source_key` | `access_review_items` | `source_key` | Speed up source-family review evidence queries |
+| `idx_access_review_items_decided_by_hsa_id` | `access_review_items` | `decided_by_hsa_id` | Speed up privacy lookup for decision actors |
 <!-- markdownlint-enable MD013 -->
 
 ### Named Foreign Key Constraints
@@ -1555,6 +1681,7 @@ The following table lists every named FK constraint:
 | `fk_improvement_suggestions_requirement_id` | `improvement_suggestions` | `requirement_id` | `requirements.id` | CASCADE | NO ACTION |
 | `fk_improvement_suggestions_requirement_version_id` | `improvement_suggestions` | `requirement_version_id` | `requirement_versions.id` | SET NULL | NO ACTION |
 | `fk_requirement_packages_owner_id` | `requirement_packages` | `owner_id` | `owners.id` | NO ACTION | NO ACTION |
+| `fk_access_review_items_run_id` | `access_review_items` | `run_id` | `access_review_runs.id` | CASCADE | NO ACTION |
 <!-- markdownlint-enable MD013 -->
 
 ### Index Relationship Diagram
@@ -1602,6 +1729,11 @@ graph LR
         RVNR[requirement_version_norm_references]
         PLRPKG[specification_local_requirement_requirement_packages]
         PLRNR[specification_local_requirement_norm_references]
+    end
+
+    subgraph Access Reviews
+        ARR[access_review_runs]
+        ARI[access_review_items]
     end
 
     OW -- "uq_owners_email\n(email)" --> OW
@@ -1662,6 +1794,15 @@ graph LR
     PLRD -- "idx_..._specification_local_requirement_id\n(specification_local_requirement_id)" --> PLR
     PLRD -- "idx_..._created_by_hsa_id\n(created_by_hsa_id)" --> PLRD
     PLRD -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> PLRD
+
+    ARR -- "idx_..._status\n(status)" --> ARR
+    ARR -- "idx_..._due_at\n(due_at)" --> ARR
+    ARR -- "idx_..._reviewer_hsa_id\n(reviewer_hsa_id)" --> ARR
+    ARI -- "FK run_id" --> ARR
+    ARI -- "idx_..._run_id_decision\n(run_id, decision)" --> ARR
+    ARI -- "idx_..._principal_hsa_id\n(principal_hsa_id)" --> ARI
+    ARI -- "idx_..._source_key\n(source_key)" --> ARI
+    ARI -- "idx_..._decided_by_hsa_id\n(decided_by_hsa_id)" --> ARI
 
     PRA -- "uq_..._name_sv / name_en" --> PRA
     PIT -- "uq_..._name_sv / name_en" --> PIT
