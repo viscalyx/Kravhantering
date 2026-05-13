@@ -1,13 +1,14 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import ErrorBoundaryTestTrigger from './ErrorBoundaryTestTrigger'
+import { isErrorBoundaryTestRouteEnabled } from './test-route-helpers'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ErrorBoundaryTestPage() {
-  await headers()
+  const requestHeaders = await headers()
 
-  if (process.env.ENABLE_ERROR_BOUNDARY_TEST_ROUTE !== '1') {
+  if (!isErrorBoundaryTestRouteEnabled(requestHeaders)) {
     notFound()
   }
 

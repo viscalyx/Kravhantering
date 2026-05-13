@@ -14,6 +14,7 @@ const execFileAsync = promisify(execFile)
 const SCAN_DIR = 'test-results/mcp-seeded'
 const EVENTS_PATH = `${SCAN_DIR}/events.ndjson`
 const SUMMARY_PATH = `${SCAN_DIR}/summary.md`
+const REAL_HSA_ID_PATTERN = /^SE\d{10}-[A-Za-z0-9]+$/u
 
 type UnknownRecord = Record<string, unknown>
 type ToolCallResult = Awaited<ReturnType<Client['callTool']>>
@@ -173,9 +174,43 @@ async function loadSeededCaseTools() {
   )
 }
 
+function decodeJwtPayload(token: string): UnknownRecord {
+  const [, payload] = token.split('.')
+  if (!payload) {
+    throw new Error('MCP seeded scan token is not a JWT.')
+  }
+
+  try {
+    return JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8'),
+    ) as UnknownRecord
+  } catch {
+    throw new Error('MCP seeded scan token payload is not valid JSON.')
+  }
+}
+
+function assertWritableMcpActorToken(token: string) {
+  const payload = decodeJwtPayload(token)
+  const employeeHsaId = payload.employeeHsaId
+  if (
+    typeof employeeHsaId !== 'string' ||
+    !REAL_HSA_ID_PATTERN.test(employeeHsaId)
+  ) {
+    throw new Error(
+      'MCP seeded scan requires the service token to include a real-format ' +
+        '`employeeHsaId` claim, for example `SE2321000032-mcp1`. ' +
+        'Reset or re-import the local Keycloak realm from ' +
+        '`dev/keycloak/realm-kravhantering-dev.json` before running this scan.',
+    )
+  }
+}
+
 async function getBearerToken() {
   const fromEnv = process.env.MCP_BEARER_TOKEN?.trim()
-  if (fromEnv) return fromEnv
+  if (fromEnv) {
+    assertWritableMcpActorToken(fromEnv)
+    return fromEnv
+  }
 
   const { stderr, stdout } = await execFileAsync(
     process.execPath,
@@ -195,6 +230,7 @@ async function getBearerToken() {
       `get-mcp-token returned an empty token: ${redactSensitive(stderr)}`,
     )
   }
+  assertWritableMcpActorToken(token)
   return token
 }
 

@@ -17,35 +17,7 @@ type JwksCacheEntry = {
   jwks: RemoteJwks
 }
 
-const DEFAULT_MCP_CLIENT_ID = 'kravhantering-mcp'
-
 let jwksCache: JwksCacheEntry | null = null
-let mcpClientIdConflictWarningKey: string | null = null
-
-function getExpectedMcpClientId(): string {
-  const canonicalClientId = process.env.AUTH_OIDC_MCP_CLIENT_ID?.trim()
-  const legacyClientId = process.env.MCP_CLIENT_ID?.trim()
-  if (
-    canonicalClientId &&
-    legacyClientId &&
-    canonicalClientId !== legacyClientId
-  ) {
-    const warningKey = `${canonicalClientId}\0${legacyClientId}`
-    if (mcpClientIdConflictWarningKey !== warningKey) {
-      console.warn(
-        '[auth] AUTH_OIDC_MCP_CLIENT_ID and MCP_CLIENT_ID differ; ' +
-          'AUTH_OIDC_MCP_CLIENT_ID takes precedence and MCP_CLIENT_ID will be ignored.',
-      )
-      mcpClientIdConflictWarningKey = warningKey
-    }
-  }
-  return canonicalClientId || legacyClientId || DEFAULT_MCP_CLIENT_ID
-}
-
-function syntheticMcpHsaId(clientId: string | undefined): string | null {
-  if (!clientId || clientId !== getExpectedMcpClientId()) return null
-  return `mcp-client:${clientId}`
-}
 
 function parseJwksUrl(jwksUri: string): URL {
   let url: URL
@@ -88,7 +60,6 @@ async function getOrCreateJwks(issuer: string): Promise<RemoteJwks> {
 
 export function resetMcpJwksCacheForTests(): void {
   jwksCache = null
-  mcpClientIdConflictWarningKey = null
 }
 
 export class McpAuthError extends Error {
@@ -147,9 +118,7 @@ export async function verifyMcpBearerToken(
           : undefined
     const hsaIdClaim = payloadRecord.employeeHsaId
     const hsaIdRaw =
-      typeof hsaIdClaim === 'string' && hsaIdClaim !== ''
-        ? hsaIdClaim
-        : syntheticMcpHsaId(clientId)
+      typeof hsaIdClaim === 'string' && hsaIdClaim !== '' ? hsaIdClaim : null
     if (!hsaIdRaw) {
       recordSecurityEvent({
         event: 'auth.token.rejected',
@@ -163,9 +132,7 @@ export async function verifyMcpBearerToken(
         401,
       )
     }
-    // Synthetic MCP service-account namespace bypasses the HSA-id format
-    // validator; everything else must be a real HSA-id.
-    if (!hsaIdRaw.startsWith('mcp-client:') && !isHsaId(hsaIdRaw)) {
+    if (!isHsaId(hsaIdRaw)) {
       recordSecurityEvent({
         event: 'auth.token.rejected',
         outcome: 'failure',

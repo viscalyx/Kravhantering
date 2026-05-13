@@ -156,7 +156,7 @@ sequenceDiagram
     Verify->>JWKS: Fetch/cache signing keys via createRemoteJWKSet(...)
     JWKS-->>Verify: JWK set
     Verify->>Verify: jwtVerify(...): issuer + audience + clockTolerance
-    Verify->>Verify: Extract sub, employeeHsaId or MCP client_id fallback,<br/>roles, optional scope
+    Verify->>Verify: Extract sub, employeeHsaId,<br/>roles, optional scope
     Verify->>Audit: auth.mcp.token.accepted
     Verify-->>Route: Verified actor
     Route->>Attach: attachVerifiedActor(request, actor)
@@ -180,11 +180,10 @@ sequenceDiagram
   `jwks_uri` and caches the resulting `RemoteJWKSet`.
 - JWT verification checks signature, issuer, audience, and a 30-second clock
   tolerance.
-- The required MCP identity is `employeeHsaId`. Real HSA-ID values must match
-  the HSA-id validator. Values prefixed with `mcp-client:` are still accepted
-  as synthetic service identities for authentication fallback, but mutating
-  requirement workflows that stamp actor history require a real-format HSA-ID.
-  The configured local MCP service client emits `SE2321000032-mcp1`.
+- The required MCP identity is `employeeHsaId`. Values must match the HSA-id
+  validator. The configured local MCP service client emits
+  `SE2321000032-mcp1`; a missing claim means the IdP realm must be reset or
+  re-imported from the current realm JSON.
 - The current MCP implementation reads `roles` and `scope` directly from the
   access token payload. On success it attaches a verified actor to the active
   `Request` before the requirements service builds its request context.
@@ -214,8 +213,12 @@ sequenceDiagram
   `auth.login.succeeded`, `auth.login.failed`, `auth.logout`,
   `auth.session.rejected`, `auth.token.rejected`,
   `auth.mcp.token.accepted`, `auth.roles.changed`,
-  `auth.csrf.rejected`, `auth.authorization.denied`, and
+  `auth.csrf.rejected`, `auth.authorization.denied`,
   `requirements.high_risk_mutation.succeeded`,
+  `admin.privileged_action.succeeded`,
+  `access_review.created`, `access_review.item_decided`,
+  `access_review.cancelled`, `access_review.completed`,
+  `access_review.exported`,
   `privacy.erasure.previewed`, `privacy.erasure.executed`,
   `privacy.data_subject_export.generated`.
 - Audit events intentionally redact sensitive fields such as tokens, secrets,
@@ -230,6 +233,12 @@ sequenceDiagram
   HSA-ID in event detail. Retention or redaction of handler identity in those
   logs is handled by the platform logging policy because removing it can reduce
   traceability.
+- Privileged Admin Center and reference-data mutations emit
+  `admin.privileged_action.succeeded` only after the mutation succeeds. The
+  detail contains operation, resource type, optional resource id, item counts,
+  edited field names, request source, session roles and privileged IdP roles;
+  it does not log raw target names, e-mail addresses, HSA-IDs, secrets or
+  submitted values.
 
 ### Audit event stream
 
@@ -374,10 +383,9 @@ flowchart LR
 - Issue signed JWT access tokens that can be verified against the IdP JWKS.
   Opaque access tokens are not sufficient for the current MCP implementation.
 - Ensure MCP access tokens match the configured issuer and audience.
-- Include `sub` and a real-format `employeeHsaId` on the MCP access token for
-  any client that will call mutating requirement tools. Read-only clients may
-  use the configured service-account fallback where the app derives
-  `mcp-client:<client_id>` from a verified `client_id`/`azp`.
+- Include `sub` and a real-format `employeeHsaId` on every MCP access token.
+  If a local or prodlike token lacks the claim, update the Keycloak realm
+  configuration or reset the local IdP so the current realm JSON is imported.
 - The current MCP implementation may also consume `roles` and/or `scope`.
   If role-based behavior is needed there, emit the canonical app roles on a
   `roles` claim.

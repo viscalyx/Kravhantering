@@ -156,7 +156,7 @@ async function createClient(service: RequirementsService) {
   const request = new Request('https://example.test/api/mcp')
   attachVerifiedActor(request, {
     displayName: 'MCP Security Test',
-    hsaId: 'mcp-client:security-test',
+    hsaId: 'SE2321000032-mcp1',
     id: 'svc-security-test',
     isAuthenticated: true,
     roles: ['Admin'],

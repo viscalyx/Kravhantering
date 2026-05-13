@@ -97,6 +97,11 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 - Admin Center Dataskydd field help toggles stay inside the existing
   `tab panel: privacy` surface rather than adding separate developer-mode
   markers.
+- Admin Center Behörighetsöversyn controls stay inside the existing
+  `tab panel: access review` surface. Individual review rows, decision
+  selectors, comments, field help toggles, cancel buttons, and export buttons
+  and error popups do not add separate developer-mode marker names unless a
+  later scanner needs to distinguish one control family.
 - Navigation help triggers use the `navigation` context with button
   values `help toggle open` and `help toggle closed`.
 - Auth account-detail rows keep their developer-mode values in English
@@ -247,8 +252,8 @@ should be updated alongside the relevant `devMarker(...)` call sites.
 The current canonical labels include:
 
 - `edge tab`
-  - Admin Center uses this marker for all top tabs, including the disabled
-    privacy tab shown to users without `PrivacyOfficer`.
+  - Admin Center uses this marker for all top tabs, including access review
+    and the disabled privacy tab shown to users without `PrivacyOfficer`.
 - `floating action rail`
 - `floating pill`
 - `floating pill menu`

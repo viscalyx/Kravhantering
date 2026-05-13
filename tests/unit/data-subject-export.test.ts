@@ -151,4 +151,56 @@ describe('data-subject export service', () => {
     ])
     expect(result.summary.limitationCount).toBe(4)
   })
+
+  it('keeps access review related object labels out of the export payload', async () => {
+    const { db, query } = createExportDb({
+      'access_review_items.principal': [
+        {
+          actorTimestamp: new Date('2026-05-04T10:00:00Z'),
+          canGenerateAi: true,
+          decision: 'approved',
+          displayName: 'Kalle Svensson',
+          hsaId: TARGET_HSA_ID,
+          itemKey: '42:7',
+          permissionType: 'area_co_author',
+          scopeKey: '1',
+          scopeLabel: 'AI på',
+          scopeType: 'requirement_area',
+          sourceKey: 'requirement_area_co_authors.hsa_id',
+        },
+      ],
+      'access_review_runs.created_by': [
+        {
+          actorTimestamp: new Date('2026-05-03T10:00:00Z'),
+          displayName: 'Kalle Svensson',
+          dueAt: new Date('2026-06-03T10:00:00Z'),
+          externalEvidenceReference: 'IDM-2026-04',
+          hsaId: TARGET_HSA_ID,
+          periodEnd: new Date('2027-05-03T10:00:00Z'),
+          periodStart: new Date('2026-05-03T10:00:00Z'),
+          runId: 42,
+          status: 'completed',
+        },
+      ],
+    })
+
+    const result = await collectDataSubjectExport(db, {
+      generatedBy: generatedBy(),
+      target: { hsaId: TARGET_HSA_ID },
+    })
+    const runObject = result.sources.find(
+      source => source.key === 'access_review_runs.created_by',
+    )?.items[0]?.relatedObject
+    const itemObject = result.sources.find(
+      source => source.key === 'access_review_items.principal',
+    )?.items[0]?.relatedObject
+    const sql = query.mock.calls.map(([statement]) => statement).join('\n')
+
+    expect(runObject).toEqual({ key: '42', type: 'access_review_run' })
+    expect(itemObject).toEqual({ key: '42:7', type: 'access_review_item' })
+    expect(JSON.stringify(result)).not.toContain('Access review')
+    expect(JSON.stringify(result)).not.toContain('access_review:')
+    expect(sql).not.toContain('runLabel')
+    expect(sql).not.toContain('itemLabel')
+  })
 })

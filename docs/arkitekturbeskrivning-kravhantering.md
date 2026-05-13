@@ -814,6 +814,7 @@ erDiagram
     specification_local_requirements ||--o{ specification_local_requirement_norm_references : "kopplade normreferenser"
     specification_local_requirement_norm_references }o--|| norm_references : "refererar normreferens"
     specification_local_requirements ||--o{ specification_local_requirement_deviations : "har avsteg"
+    access_review_runs ||--o{ access_review_items : "sparar behörighetssnapshot"
     requirements ||--o{ improvement_suggestions : "har förbättringsförslag"
 ```
 

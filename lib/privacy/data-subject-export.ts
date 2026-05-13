@@ -78,10 +78,10 @@ function relatedObject(
   row: ExportRow,
   type: string,
   keyField: string,
-  labelField: string,
+  labelField?: string,
 ): DataSubjectExportRelatedObject {
   const key = stringValue(row[keyField]) ?? ''
-  const label = stringValue(row[labelField])
+  const label = labelField ? stringValue(row[labelField]) : null
   return {
     key,
     ...(label ? { label } : {}),
@@ -708,6 +708,139 @@ async function collectSpecificationCoAuthorCreators(
   )
 }
 
+async function collectAccessReviewRunActor(
+  db: QueryExecutor,
+  targetHsaId: string,
+  options: {
+    displayField:
+      | 'completed_by_display_name'
+      | 'created_by_display_name'
+      | 'reviewer_display_name'
+    hsaField: 'completed_by_hsa_id' | 'created_by_hsa_id' | 'reviewer_hsa_id'
+    key:
+      | 'access_review_runs.completed_by'
+      | 'access_review_runs.created_by'
+      | 'access_review_runs.reviewer'
+    relationToSubject:
+      | 'access_review_completed_by_snapshot'
+      | 'access_review_creator_snapshot'
+      | 'access_review_reviewer_assignment'
+    timestampField: 'completed_at' | 'created_at' | 'updated_at'
+  },
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor(options.key)
+  const rows = (await db.query(
+    `/* privacy:data-export:${options.key} */
+      SELECT
+        id AS runId,
+        ${options.hsaField} AS hsaId,
+        ${options.displayField} AS displayName,
+        status,
+        period_start AS periodStart,
+        period_end AS periodEnd,
+        due_at AS dueAt,
+        external_evidence_reference AS externalEvidenceReference,
+        ${options.timestampField} AS actorTimestamp
+      FROM access_review_runs
+      WHERE ${options.hsaField} = @0
+      ORDER BY id ASC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      options.relationToSubject,
+      [
+        { fieldName: options.hsaField, value: stringValue(row.hsaId) },
+        {
+          fieldName: options.displayField,
+          value: stringValue(row.displayName),
+        },
+        { fieldName: 'status', value: stringValue(row.status) },
+        { fieldName: 'period_start', value: stringValue(row.periodStart) },
+        { fieldName: 'period_end', value: stringValue(row.periodEnd) },
+        { fieldName: 'due_at', value: stringValue(row.dueAt) },
+        {
+          fieldName: 'external_evidence_reference',
+          value: stringValue(row.externalEvidenceReference),
+        },
+      ],
+      {
+        relatedObject: relatedObject(row, 'access_review_run', 'runId'),
+        timestamp: row.actorTimestamp,
+      },
+    ),
+  )
+}
+
+async function collectAccessReviewItemActor(
+  db: QueryExecutor,
+  targetHsaId: string,
+  options: {
+    displayField: 'decided_by_display_name' | 'principal_display_name'
+    hsaField: 'decided_by_hsa_id' | 'principal_hsa_id'
+    key: 'access_review_items.decided_by' | 'access_review_items.principal'
+    relationToSubject:
+      | 'access_review_decision_snapshot'
+      | 'access_review_principal_snapshot'
+    timestampField: 'created_at' | 'decided_at'
+  },
+): Promise<DataSubjectExportItem[]> {
+  const policy = policyFor(options.key)
+  const rows = (await db.query(
+    `/* privacy:data-export:${options.key} */
+      SELECT
+        item.id AS itemId,
+        CONCAT(item.run_id, N':', item.id) AS itemKey,
+        item.${options.hsaField} AS hsaId,
+        item.${options.displayField} AS displayName,
+        item.source_key AS sourceKey,
+        item.scope_type AS scopeType,
+        item.scope_key AS scopeKey,
+        item.scope_label AS scopeLabel,
+        item.permission_type AS permissionType,
+        item.can_generate_ai AS canGenerateAi,
+        item.decision AS decision,
+        item.${options.timestampField} AS actorTimestamp
+      FROM access_review_items item
+      WHERE item.${options.hsaField} = @0
+      ORDER BY item.run_id ASC, item.id ASC`,
+    [targetHsaId],
+  )) as ExportRow[]
+
+  return rows.flatMap(row =>
+    fieldsForRow(
+      policy,
+      options.relationToSubject,
+      [
+        { fieldName: options.hsaField, value: stringValue(row.hsaId) },
+        {
+          fieldName: options.displayField,
+          value: stringValue(row.displayName),
+        },
+        { fieldName: 'source_key', value: stringValue(row.sourceKey) },
+        { fieldName: 'scope_type', value: stringValue(row.scopeType) },
+        { fieldName: 'scope_key', value: stringValue(row.scopeKey) },
+        { fieldName: 'scope_label', value: stringValue(row.scopeLabel) },
+        {
+          fieldName: 'permission_type',
+          value: stringValue(row.permissionType),
+        },
+        {
+          fieldName: 'can_generate_ai',
+          value: booleanValue(row.canGenerateAi),
+        },
+        { fieldName: 'decision', value: stringValue(row.decision) },
+      ],
+      {
+        relatedObject: relatedObject(row, 'access_review_item', 'itemKey'),
+        timestamp: row.actorTimestamp,
+      },
+    ),
+  )
+}
+
 const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
   {
     collect: collectOwnerIdentity,
@@ -825,6 +958,66 @@ const SOURCE_DEFINITIONS: DataSubjectExportSourceDefinition[] = [
     collect: collectSpecificationCoAuthorCreators,
     policy: policyFor('specification_co_authors.created_by'),
     relationToSubject: 'assignment_creator_snapshot',
+  },
+  {
+    collect: (db, targetHsaId) =>
+      collectAccessReviewRunActor(db, targetHsaId, {
+        displayField: 'created_by_display_name',
+        hsaField: 'created_by_hsa_id',
+        key: 'access_review_runs.created_by',
+        relationToSubject: 'access_review_creator_snapshot',
+        timestampField: 'created_at',
+      }),
+    policy: policyFor('access_review_runs.created_by'),
+    relationToSubject: 'access_review_creator_snapshot',
+  },
+  {
+    collect: (db, targetHsaId) =>
+      collectAccessReviewRunActor(db, targetHsaId, {
+        displayField: 'reviewer_display_name',
+        hsaField: 'reviewer_hsa_id',
+        key: 'access_review_runs.reviewer',
+        relationToSubject: 'access_review_reviewer_assignment',
+        timestampField: 'updated_at',
+      }),
+    policy: policyFor('access_review_runs.reviewer'),
+    relationToSubject: 'access_review_reviewer_assignment',
+  },
+  {
+    collect: (db, targetHsaId) =>
+      collectAccessReviewRunActor(db, targetHsaId, {
+        displayField: 'completed_by_display_name',
+        hsaField: 'completed_by_hsa_id',
+        key: 'access_review_runs.completed_by',
+        relationToSubject: 'access_review_completed_by_snapshot',
+        timestampField: 'completed_at',
+      }),
+    policy: policyFor('access_review_runs.completed_by'),
+    relationToSubject: 'access_review_completed_by_snapshot',
+  },
+  {
+    collect: (db, targetHsaId) =>
+      collectAccessReviewItemActor(db, targetHsaId, {
+        displayField: 'principal_display_name',
+        hsaField: 'principal_hsa_id',
+        key: 'access_review_items.principal',
+        relationToSubject: 'access_review_principal_snapshot',
+        timestampField: 'created_at',
+      }),
+    policy: policyFor('access_review_items.principal'),
+    relationToSubject: 'access_review_principal_snapshot',
+  },
+  {
+    collect: (db, targetHsaId) =>
+      collectAccessReviewItemActor(db, targetHsaId, {
+        displayField: 'decided_by_display_name',
+        hsaField: 'decided_by_hsa_id',
+        key: 'access_review_items.decided_by',
+        relationToSubject: 'access_review_decision_snapshot',
+        timestampField: 'decided_at',
+      }),
+    policy: policyFor('access_review_items.decided_by'),
+    relationToSubject: 'access_review_decision_snapshot',
   },
 ]
 

@@ -1,3 +1,5 @@
+import { accessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
+import { accessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 import { deviationEntity } from '@/lib/typeorm/entities/deviation'
 import { improvementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 import { normReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
@@ -31,6 +33,8 @@ import { specificationResponsibilityAreaEntity } from '@/lib/typeorm/entities/sp
 import { uiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export const sqlServerEntities = [
+  accessReviewRunEntity,
+  accessReviewItemEntity,
   deviationEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
@@ -64,6 +68,8 @@ export const sqlServerEntities = [
   requirementPackageEntity,
 ]
 
+export type { AccessReviewItemEntity } from '@/lib/typeorm/entities/access-review-item'
+export type { AccessReviewRunEntity } from '@/lib/typeorm/entities/access-review-run'
 export type { DeviationEntity } from '@/lib/typeorm/entities/deviation'
 export type { ImprovementSuggestionEntity } from '@/lib/typeorm/entities/improvement-suggestion'
 export type { NormReferenceEntity } from '@/lib/typeorm/entities/norm-reference'
@@ -97,6 +103,8 @@ export type { SpecificationResponsibilityAreaEntity } from '@/lib/typeorm/entiti
 export type { UiTerminologyEntity } from '@/lib/typeorm/entities/ui-terminology'
 
 export {
+  accessReviewItemEntity,
+  accessReviewRunEntity,
   deviationEntity,
   improvementSuggestionEntity,
   normReferenceEntity,
